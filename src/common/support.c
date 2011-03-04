@@ -20,9 +20,9 @@
 
 #include <sys/types.h>
 #include <string.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/bts/support.h>
 #include <osmocore/protocol/gsm_12_21.h>
+//#include <osmocom/bb/common/osmocom_data.h>
+#include <osmo-bts/support.h>
 
 struct bts_support bts_support;
 

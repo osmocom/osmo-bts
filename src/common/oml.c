@@ -23,19 +23,19 @@
  * Operation and Maintainance Messages
  */
 
-#include <stdio.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 
 #include <osmocore/protocol/gsm_12_21.h>
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/bts/support.h>
-#include <osmocom/bb/bts/abis.h>
-#include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
-#include <osmocom/bb/bts/rsl.h>
-#include <osmocom/bb/bts/oml.h>
+#include <osmo-bts/logging.h>
+//#include <osmocom/bb/common/osmocom_data.h>
+#include <osmo-bts/support.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/rtp.h>
+#include <osmo-bts/bts.h>
+#include <osmo-bts/rsl.h>
+#include <osmo-bts/oml.h>
 
 /*
  * support

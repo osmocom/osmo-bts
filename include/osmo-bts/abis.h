@@ -1,6 +1,9 @@
 #ifndef _ABIS_H
 #define _ABIS_H
 
+#include <osmocore/select.h>
+#include <osmocore/timer.h>
+
 #define IPA_TCP_PORT_OML	3002
 #define IPA_TCP_PORT_RSL	3003
 

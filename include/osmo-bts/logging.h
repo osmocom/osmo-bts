@@ -19,6 +19,7 @@ enum {
 	DSAP,
 	DABIS,
 	DRTP,
+	DSUM,
 };
 
 extern const struct log_info log_info;

@@ -18,6 +18,8 @@
  *
  */
 
+#include <errno.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,14 +29,14 @@
 #include <osmocore/msgb.h>
 #include <osmocore/talloc.h>
 #include <osmocore/protocol/gsm_12_21.h>
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/common/l1l2_interface.h>
-#include <osmocom/bb/bts/abis.h>
-#include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
-#include <osmocom/bb/bts/rsl.h>
-#include <osmocom/bb/bts/oml.h>
+#include <osmo-bts/logging.h>
+//#include <osmocom/bb/common/osmocom_data.h>
+//#include <osmocom/bb/common/l1l2_interface.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/rtp.h>
+#include <osmo-bts/bts.h>
+#include <osmo-bts/rsl.h>
+#include <osmo-bts/oml.h>
 
 extern void *l23_ctx;
 

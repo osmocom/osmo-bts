@@ -24,12 +24,12 @@
 #include <osmocore/timer.h>
 #include <osmocore/select.h>
 #include <osmocore/signal.h>
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/bts/support.h>
-#include <osmocom/bb/bts/abis.h>
-#include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
+#include <osmo-bts/logging.h>
+//#include <osmocom/bb/common/osmocom_data.h>
+#include <osmo-bts/support.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/rtp.h>
+#include <osmo-bts/bts.h>
 
 #include <net/if.h>
 

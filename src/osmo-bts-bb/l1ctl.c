@@ -46,10 +46,10 @@
 #include <osmocom/bb/common/osmocom_data.h>
 #include <osmocom/bb/common/l1l2_interface.h>
 #include <osmocom/bb/common/lapdm.h>
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/bts/abis.h>
-#include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
+#include <osmo-bts/logging.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/rtp.h>
+#include <osmo-bts/bts.h>
 
 static struct msgb *osmo_l1_alloc(uint8_t msg_type)
 {

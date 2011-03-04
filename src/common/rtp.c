@@ -23,21 +23,24 @@
  * RTP peer
  */
 
-#include <stdio.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/bts/support.h>
-#include <osmocom/bb/bts/abis.h>
-#include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
-#include <osmocom/bb/bts/rsl.h>
-#include <osmocom/bb/bts/oml.h>
+#include <osmocore/msgb.h>
+
+#include <osmo-bts/logging.h>
+//#include <osmocom/bb/common/osmocom_data.h>
+#include <osmo-bts/support.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/rtp.h>
+#include <osmo-bts/bts.h>
+#include <osmo-bts/rsl.h>
+#include <osmo-bts/oml.h>
 
 #define RTP_PORTBASE 30000
 static unsigned short next_udp_port = RTP_PORTBASE;
