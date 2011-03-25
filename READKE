@@ -1,0 +1,10 @@
+Repsoitory for new BTS-side A-bis code
+
+This is the code that was originally developed inside osmocom-bb.git
+for turning modified OsmocomBB-supported phones into a simplistic BTS.
+
+However, the BTS-side A-bis is also going to be needed for other projects, thus
+the split.
+
+It doesn't really build yet, as a lot of dependencies have not yet been
+resolved.
