@@ -31,7 +31,7 @@
 #include <time.h>
 #include <string.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 #include <osmo-bts/logging.h>
 //#include <osmocom/bb/common/osmocom_data.h>

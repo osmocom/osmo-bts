@@ -24,11 +24,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include <osmocore/select.h>
-#include <osmocore/timer.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmo-bts/logging.h>
 //#include <osmocom/bb/common/osmocom_data.h>
 //#include <osmocom/bb/common/l1l2_interface.h>
@@ -259,8 +259,8 @@ void destroy_bts(struct osmocom_bts *bts)
 				struct osmobts_ms, entry);
 			destroy_ms(ms);
 		}
-		if (bsc_timer_pending(&bts->trx[i]->si.timer))
-			bsc_del_timer(&bts->trx[i]->si.timer);
+		if (osmo_timer_pending(&bts->trx[i]->si.timer))
+			osmo_timer_del(&bts->trx[i]->si.timer);
 		talloc_free(bts->trx[i]);
 		bts->trx[i] = NULL;
 	}
@@ -332,7 +332,7 @@ void bts_new_si(void *arg)
 	struct osmobts_trx *trx = arg;
 	int i;
 
-	if (bsc_timer_pending(&trx->si.timer))
+	if (osmo_timer_pending(&trx->si.timer))
 		return;
 
 	i = 0;
@@ -353,7 +353,7 @@ void bts_new_si(void *arg)
 	/* delay until next SI */
 	trx->si.timer.cb = bts_new_si;
 	trx->si.timer.data = trx;
-	bsc_schedule_timer(&trx->si.timer, 0, 200000);
+	osmo_timer_schedule(&trx->si.timer, 0, 200000);
 }
 
 /* handle bts instance (including MS instances) */

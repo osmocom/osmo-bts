@@ -20,7 +20,7 @@
 
 #include <sys/types.h>
 #include <string.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 //#include <osmocom/bb/common/osmocom_data.h>
 #include <osmo-bts/support.h>
 

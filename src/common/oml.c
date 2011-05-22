@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/core/protocol/gsm_12_21.h>
 #include <osmo-bts/logging.h>
 //#include <osmocom/bb/common/osmocom_data.h>
 #include <osmo-bts/support.h>

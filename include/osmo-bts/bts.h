@@ -62,7 +62,7 @@
 struct osmobts_sysinfo {
 	uint8_t			flags[BTS_SI_NUM];
 	uint8_t			si[BTS_SI_NUM][23];
-	struct timer_list	timer;
+	struct osmo_timer_list	timer;
 };
 
 struct osmobts_slot;
@@ -71,7 +71,6 @@ struct osmobts_slot;
 struct osmobts_ms {
 	struct llist_head	entry;
 	struct osmobts_trx	*trx;
-	struct osmocom_ms	ms;
 };
 
 /* one logical channel instance */
@@ -79,7 +78,7 @@ struct osmobts_lchan {
 	struct osmobts_slot	*slot;
 	uint8_t			lchan_nr;
 	uint8_t			chan_nr; /* CBITS+TN */
-	struct osmol2_entity	l2_entity;
+	struct lapdm_channel	lapdm_channel;
 	struct osmobts_rtp	rtp;
 };
 

@@ -285,7 +285,7 @@ static void abis_timeout(void *arg)
 	case LINK_STATE_RETRYING:
 		ret = abis_open(link, link->ip);
 		if (ret <= 0)
-			bsc_schedule_timer(&link->timer, OML_RETRY_TIMER, 0);
+			osmo_timer_schedule(&link->timer, OML_RETRY_TIMER, 0);
 		break;
 	case LINK_STATE_CONNECT:
 		if (link->ping && !link->pong) {
@@ -294,7 +294,7 @@ static void abis_timeout(void *arg)
 			abis_close(link);
 			ret = abis_open(link, link->ip);
 			if (ret <= 0) {
-				bsc_schedule_timer(&link->timer,
+				osmo_timer_schedule(&link->timer,
 					OML_RETRY_TIMER, 0);
 				link->state = LINK_STATE_RETRYING;
 			}
@@ -304,12 +304,12 @@ static void abis_timeout(void *arg)
 		link->pong = 0;
 		LOGP(DABIS, LOGL_INFO, "PING\n");
 		abis_tx_ipa_pingpong(link, IPA_MSGT_PING);
-		bsc_schedule_timer(&link->timer, OML_PING_TIMER, 0);
+		osmo_timer_schedule(&link->timer, OML_PING_TIMER, 0);
 		break;
 	}	
 }
 
-static int abis_sock_cb(struct bsc_fd *bfd, unsigned int what)
+static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct ipabis_link *link = bfd->data;
 	struct ipabis_head *hh;
@@ -318,11 +318,11 @@ static int abis_sock_cb(struct bsc_fd *bfd, unsigned int what)
 
 	if ((what & BSC_FD_WRITE) && link->state == LINK_STATE_CONNECTING) {
 		if (link->bts) {
-			if (bsc_timer_pending(&link->timer))
-				bsc_del_timer(&link->timer);
-//			bsc_schedule_timer(&link->timer, OML_PING_TIMER, 0);
+			if (osmo_timer_pending(&link->timer))
+				osmo_timer_del(&link->timer);
+//			osmo_timer_schedule(&link->timer, OML_PING_TIMER, 0);
 #warning HACK
-			bsc_schedule_timer(&link->timer, 3, 0);
+			osmo_timer_schedule(&link->timer, 3, 0);
 			link->ping = link->pong = 0;
 		}
 		LOGP(DABIS, LOGL_INFO, "Abis socket now connected.\n");
@@ -394,7 +394,7 @@ close:
 
 	LOGP(DABIS, LOGL_INFO, "Connection to BSC failed, retrying in %d "
 		"seconds.\n", OML_RETRY_TIMER);
-	bsc_schedule_timer(&link->timer, OML_RETRY_TIMER, 0);
+	osmo_timer_schedule(&link->timer, OML_RETRY_TIMER, 0);
 	link->state = LINK_STATE_RETRYING;
 
 	return 0;
@@ -445,7 +445,7 @@ int abis_open(struct ipabis_link *link, uint32_t ip)
 	link->timer.cb = abis_timeout;
 	link->timer.data = link;
 
-	bsc_register_fd(&link->bfd);
+	osmo_fd_register(&link->bfd);
 
 	LOGP(DABIS, LOGL_INFO, "Abis socket trying to reach BSC.\n");
 
@@ -476,13 +476,13 @@ void abis_close(struct ipabis_link *link)
 	while ((msg = msgb_dequeue(&link->tx_queue)))
 		msgb_free(msg);
 
-	bsc_unregister_fd(&link->bfd);
+	osmo_fd_unregister(&link->bfd);
 	
 	close(link->bfd.fd);
 	link->bfd.fd = -1; /* -1 or 0 indicates: 'close' */
 	link->state = LINK_STATE_IDLE;
 
-	if (bsc_timer_pending(&link->timer))
-		bsc_del_timer(&link->timer);
+	if (osmo_timer_pending(&link->timer))
+		osmo_timer_del(&link->timer);
 }
 

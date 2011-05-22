@@ -1,8 +1,8 @@
 #ifndef _ABIS_H
 #define _ABIS_H
 
-#include <osmocore/select.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
 
 #define IPA_TCP_PORT_OML	3002
 #define IPA_TCP_PORT_RSL	3003
@@ -47,8 +47,8 @@ struct ipabis_link {
 	int state;
 	struct osmocom_bts	*bts;	/* set, if OML link */
 	struct osmobts_trx	*trx;	/* set, if RSL link */
-	struct bsc_fd		bfd;
-	struct timer_list	timer;
+	struct osmo_fd		bfd;
+	struct osmo_timer_list	timer;
 	struct msgb		*rx_msg;
 	struct llist_head	tx_queue;
 	int			ping, pong, id_resp;

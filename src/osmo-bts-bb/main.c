@@ -19,11 +19,10 @@
  */
 
 #include <netinet/in.h>
-#include <osmocore/talloc.h>
-#include <osmocore/signal.h>
-#include <osmocore/timer.h>
-#include <osmocore/select.h>
-#include <osmocore/signal.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/signal.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/select.h>
 #include <osmo-bts/logging.h>
 //#include <osmocom/bb/common/osmocom_data.h>
 #include <osmo-bts/support.h>
@@ -206,7 +205,7 @@ int main(int argc, char **argv)
 
 	while (!quit) {
 		work_bts(bts);
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 fail:

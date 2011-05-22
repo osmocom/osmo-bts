@@ -11,7 +11,7 @@ struct osmobts_lchan *lchan;
 
 struct osmobts_udp {
 	struct osmobts_rtp	*rtp;
-	struct bsc_fd		bfd;
+	struct osmo_fd		bfd;
 	struct sockaddr_in	sin_local, sin_remote;
 	struct llist_head	tx_queue;
 };
