@@ -1,5 +1,6 @@
 /*
  * (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -27,7 +28,8 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocom/core/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <osmo-bts/logging.h>
 //#include <osmocom/bb/common/osmocom_data.h>
 #include <osmo-bts/support.h>
@@ -40,76 +42,6 @@
 /*
  * support
  */
-
-/* FIXME: move this to osmocore */
-const struct tlv_definition nm_att_tlvdef = {
-	.def = {
-		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V },
-		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV },
-		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_BCCH_ARFCN] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_BSIC] =			{ TLV_TYPE_TV },
-		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV },
-		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV },
-		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV },
-		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV },
-		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V },
-		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV },
-		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_HSN] =			{ TLV_TYPE_TV },
-		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV },
-		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_MAIO] =			{ TLV_TYPE_TV },
-		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV },
-		[NM_ATT_MDROP_LINK] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_MDROP_NEXT] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV },
-		[NM_ATT_NY1] =			{ TLV_TYPE_TV },
-		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV },
-		[NM_ATT_POWER_THRESH] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_PROB_CAUSE] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV },
-		[NM_ATT_LDAVG_SLOTS] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV },
-		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV },
-		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV },
-		[NM_ATT_START_TIME] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_T200] =			{ TLV_TYPE_FIXED, 7 },
-		[NM_ATT_TEI] =			{ TLV_TYPE_TV },
-		[NM_ATT_TEST_DUR] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV },
-		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_VSWR_THRESH] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV },
-		[NM_ATT_TSC] =			{ TLV_TYPE_TV },
-		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV },
-		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
-		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
-		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
-	},
-};
 
 struct osmobts_trx *get_trx_by_nr(struct osmocom_bts *bts, uint8_t trx_nr)
 {
@@ -257,7 +189,7 @@ int oml_rx_set_bts_attr(struct osmocom_bts *bts, struct msgb *msg)
 
 	LOGP(DOML, LOGL_INFO, "BSC is setting BTS attributes:\n");
 
-	tlv_parse(&tp, &nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
+	tlv_parse(&tp, &abis_nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
 	/* 9.4.31 Maximum Timing Advance */
 	if (TLVP_PRESENT(&tp, NM_ATT_MAX_TA)) {
 		uint16_t *fn = (uint16_t *) TLVP_VAL(&tp, NM_ATT_START_TIME);
@@ -307,7 +239,7 @@ int oml_rx_set_radio_attr(struct osmocom_bts *bts, struct msgb *msg)
 
 	LOGP(DOML, LOGL_INFO, "BSC is setting radio attributes:\n");
 
-	tlv_parse(&tp, &nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
+	tlv_parse(&tp, &abis_nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
 	/* 9.4.47 RF Max Power Reduction */
 	if (TLVP_PRESENT(&tp, NM_ATT_RF_MAXPOWR_R)) {
 		trx->rf_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R);
@@ -357,7 +289,7 @@ int oml_rx_set_chan_attr(struct osmocom_bts *bts, struct msgb *msg)
 
 	LOGP(DOML, LOGL_INFO, "BSC is setting channel attributes:\n");
 
-	tlv_parse(&tp, &nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
+	tlv_parse(&tp, &abis_nm_att_tlvdef, foh->data, msgb_l3len(msg) - sizeof(*foh), 0, 0);
 	/* 9.4.13 Channel Combination */
 	if (TLVP_PRESENT(&tp, NM_ATT_CHAN_COMB)) {
 		uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
