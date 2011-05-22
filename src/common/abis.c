@@ -66,7 +66,7 @@ struct msgb *abis_msgb_alloc(int headroom)
 {
 	struct msgb *nmsg;
 
-	headroom += sizeof(struct ipabis_head);
+	headroom += sizeof(struct ipaccess_head);
 
 	nmsg = msgb_alloc_headroom(ABIS_ALLOC_SIZE + headroom,
 		headroom, "Abis/IP");
@@ -77,10 +77,10 @@ struct msgb *abis_msgb_alloc(int headroom)
 
 void abis_push_ipa(struct msgb *msg, uint8_t proto)
 {
-	struct ipabis_head *nhh;
+	struct ipaccess_head *nhh;
 
 	msg->l2h = msg->data;
-	nhh = (struct ipabis_head *) msgb_push(msg, sizeof(*nhh));
+	nhh = (struct ipaccess_head *) msgb_push(msg, sizeof(*nhh));
 	nhh->proto = proto;
 	nhh->len = htons(msgb_l2len(msg));
 }
@@ -236,7 +236,7 @@ rsl_tx_chan_rqd(link->bts->trx[0]);
 /* receive message from BSC */
 static int abis_rx(struct ipabis_link *link, struct msgb *msg)
 {
-	struct ipabis_head *hh = (struct ipabis_head *) msg->data;
+	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
 	int ret = 0;
 
 	switch (hh->proto) {
@@ -312,7 +312,7 @@ static void abis_timeout(void *arg)
 static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct ipabis_link *link = bfd->data;
-	struct ipabis_head *hh;
+	struct ipaccess_head *hh;
 	struct msgb *msg;
 	int ret = 0;
 
@@ -337,7 +337,7 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 				return -ENOMEM;
 		}
 		msg = link->rx_msg;
-		hh = (struct ipabis_head *) msg->data;
+		hh = (struct ipaccess_head *) msg->data;
 		if (msg->len < sizeof(*hh)) {
 			ret = recv(link->bfd.fd, msg->data, sizeof(*hh), 0);
 			if (ret <= 0) {

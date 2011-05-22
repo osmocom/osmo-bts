@@ -3,45 +3,10 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
-
-#define IPA_TCP_PORT_OML	3002
-#define IPA_TCP_PORT_RSL	3003
+#include <osmocom/gsm/protocol/ipaccess.h>
 
 #define	OML_RETRY_TIMER		5
 #define	OML_PING_TIMER		20
-
-struct ipabis_head {
-	u_int16_t len;	/* network byte order */
-	u_int8_t proto;
-	u_int8_t data[0];
-} __attribute__ ((packed));
-
-enum ipabis_proto {
-	IPA_PROTO_RSL		= 0x00,
-	IPA_PROTO_IPACCESS	= 0xfe,
-	IPA_PROTO_SCCP		= 0xfd,
-	IPA_PROTO_OML		= 0xff,
-};
-
-enum ipabis_msgtype {
-	IPA_MSGT_PING		= 0x00,
-	IPA_MSGT_PONG		= 0x01,
-	IPA_MSGT_ID_GET		= 0x04,
-	IPA_MSGT_ID_RESP	= 0x05,
-	IPA_MSGT_ID_ACK		= 0x06,
-};
-
-enum ipabis_id_tags {
-	IPA_IDTAG_SERNR		= 0x00,
-	IPA_IDTAG_UNITNAME	= 0x01,
-	IPA_IDTAG_LOCATION1	= 0x02,
-	IPA_IDTAG_LOCATION2	= 0x03,
-	IPA_IDTAG_EQUIPVERS	= 0x04,
-	IPA_IDTAG_SWVERSION	= 0x05,
-	IPA_IDTAG_IPADDR	= 0x06,
-	IPA_IDTAG_MACADDR	= 0x07,
-	IPA_IDTAG_UNIT		= 0x08,
-};
 
 struct ipabis_link {
 	int state;
