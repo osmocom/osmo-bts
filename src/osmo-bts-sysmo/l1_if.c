@@ -363,7 +363,6 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
 	struct msgb *msg;
-#warning Properly determine the SAPI here
 	uint8_t lapdm_sapi = 0;
 
 	if (data_ind->measParam.fLinkQuality < MIN_QUAL_NORM)
@@ -391,7 +390,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	/* FIXME: LAPDm shouldn't really need those... */
 	pp.u.data.chan_nr = gsm_lchan2chan_nr(lchan);
-	pp.u.data.link_id = gen_link_id(data_ind->sapi, lapdm_sapi);
+	pp.u.data.link_id = gen_link_id(data_ind->sapi, 0);
 
 	return lapdm_phsap_up(&pp.oph, le);
 }
