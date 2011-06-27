@@ -11,6 +11,8 @@ struct paging_state;
 struct paging_state *paging_init(void *ctx, unsigned int num_paging_max,
 				 unsigned int paging_lifetime);
 
+void paging_reset(struct paging_state *ps);
+
 /* update with new SYSTEM INFORMATION parameters */
 int paging_si_update(struct paging_state *ps, struct gsm48_control_channel_descr *chan_desc);
 

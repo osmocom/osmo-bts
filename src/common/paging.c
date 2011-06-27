@@ -438,3 +438,23 @@ struct paging_state *paging_init(void *ctx, unsigned int num_paging_max,
 	}
 	return ps;
 }
+
+void paging_reset(struct paging_state *ps)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ps->paging_queue); i++) {
+		struct llist_head *queue = &ps->paging_queue[i];
+		struct paging_record *pr, *pr2;
+		llist_for_each_entry_safe(pr, pr2, queue, list) {
+			llist_del(&pr->list);
+			talloc_free(pr);
+			ps->num_paging--;
+		}
+	}
+
+	if (ps->num_paging != 0)
+		LOGP(DPAG, LOGL_NOTICE, "num_paging != 0 after flushing all records?!?\n");
+
+	ps->num_paging = 0;
+}
