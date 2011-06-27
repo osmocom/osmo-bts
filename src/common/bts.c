@@ -1,10 +1,13 @@
+/* BTS support code common to all supported BTS models */
+
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -12,9 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,23 +31,30 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/lapdm.h>
+
 #include <osmo-bts/logging.h>
-//#include <osmocom/bb/common/osmocom_data.h>
-//#include <osmocom/bb/common/l1l2_interface.h>
 #include <osmo-bts/abis.h>
-#include <osmo-bts/rtp.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 
-extern void *l23_ctx;
 
-extern uint8_t cr_loc2rem_cmd;
-extern uint8_t cr_loc2rem_resp;
-extern uint8_t cr_rem2loc_cmd;
-extern uint8_t cr_rem2loc_resp;
+void *tall_bts_ctx;
 
-BTS_SI_NAME;
+int bts_init(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb;
+
+	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
+
+	INIT_LLIST_HEAD(&btsb->agch_queue);
+
+	/* FIXME: make those parameters configurable */
+	btsb->paging_state = paging_init(btsb, 200, 0);
+
+	return bts_model_init(bts);
+}
 
 #if 0
 struct osmobts_lchan *lchan_by_channelnr(struct osmobts_trx *trx,
@@ -88,7 +97,6 @@ struct osmobts_lchan *lchan_by_channelnr(struct osmobts_trx *trx,
 	return NULL;
 
 }
-#endif
 
 struct osmocom_bts *create_bts(uint8_t num_trx, char *id)
 {
@@ -267,45 +275,33 @@ void destroy_bts(struct osmocom_bts *bts)
 	abis_close(&bts->link);
 	talloc_free(bts);
 }
+#endif
 
 /* main link is established, send status report */
-int bts_link_estab(struct osmocom_bts *bts)
+int bts_link_estab(struct gsm_bts *bts)
 {
 	int i, j;
 	uint8_t radio_state;
 
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending Status'.\n");
 
-	/* site-manager status */
-	oml_tx_state_changed(&bts->link, NM_OPSTATE_ENABLED, NM_AVSTATE_OK,
-		NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
-	/* bts status */
-	oml_tx_state_changed(&bts->link, NM_OPSTATE_ENABLED, NM_AVSTATE_OK,
-		NM_OC_BTS, 0, 0xff, 0xff);
-	/* trx */
+	oml_mo_state_chg(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+	oml_mo_state_chg(&bts->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_DEPENDENCY);
+
 	for (i = 0; i < bts->num_trx; i++) {
-		radio_state = (bts->trx[i]->link.state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
-		oml_tx_state_changed(&bts->link, radio_state,
-			NM_AVSTATE_OK, NM_OC_RADIO_CARRIER, 0,
-			bts->trx[i]->trx_nr, 0xff);
-		oml_tx_sw_act_rep(&bts->link, NM_OC_RADIO_CARRIER, 0, bts->trx[i]->trx_nr, 0xff);
-		oml_tx_state_changed(&bts->link, NM_OPSTATE_ENABLED,
-			NM_AVSTATE_OK, NM_OC_BASEB_TRANSC, 0,
-			bts->trx[i]->trx_nr, 0xff);
-		oml_tx_sw_act_rep(&bts->link, NM_OC_BASEB_TRANSC, 0, bts->trx[i]->trx_nr, 0xff);
-		/* channel */
-		for (j = 0; j < 8; j++) {
-			if (bts->trx[i]->slot[j].tx_ms)
-				oml_tx_state_changed(&bts->link,
-					NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY,
-					NM_OC_CHANNEL, 0, bts->trx[i]->trx_nr,
-					bts->trx[i]->slot[j].slot_nr);
-			else
-				oml_tx_state_changed(&bts->link,
-					NM_OPSTATE_DISABLED,
-					NM_AVSTATE_NOT_INSTALLED,
-					NM_OC_CHANNEL, 0, bts->trx[i]->trx_nr,
-					bts->trx[i]->slot[j].slot_nr);
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
+		struct ipabis_link *link = (struct ipabis_link *) trx->rsl_link;
+
+		radio_state = (link && link->state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
+		oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
+		oml_mo_tx_sw_act_rep(&trx->mo);
+		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+
+		for (j = 0; j < ARRAY_SIZE(trx->ts); j++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[j];
+
+			oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 		}
 	}
 
@@ -313,15 +309,17 @@ int bts_link_estab(struct osmocom_bts *bts)
 }
 
 /* RSL link is established, send status report */
-int trx_link_estab(struct osmobts_trx *trx)
+int trx_link_estab(struct gsm_bts_trx *trx)
 {
-	uint8_t radio_state = (trx->link.state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
+	struct ipabis_link *link = (struct ipabis_link *) trx->rsl_link;
+	uint8_t radio_state = (link->state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
 
-	LOGP(DSUM, LOGL_INFO, "RSL link (TRX %02x) state changed to %s, sending Status'.\n", trx->trx_nr, (trx->link.state == LINK_STATE_CONNECT) ? "up" : "down");
+	LOGP(DSUM, LOGL_INFO, "RSL link (TRX %02x) state changed to %s, sending Status'.\n",
+		trx->nr, (link->state == LINK_STATE_CONNECT) ? "up" : "down");
 
-	oml_tx_state_changed(&trx->bts->link, radio_state, NM_AVSTATE_OK, NM_OC_RADIO_CARRIER, 0, trx->trx_nr, 0xff);
+	oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
 
-	if (trx->link.state == LINK_STATE_CONNECT)
+	if (link->state == LINK_STATE_CONNECT)
 		rsl_tx_rf_res(trx);
 
 	return 0;
@@ -332,6 +330,7 @@ void bts_new_si(void *arg)
 	struct osmobts_trx *trx = arg;
 	int i;
 
+#if 0
 	if (osmo_timer_pending(&trx->si.timer))
 		return;
 
@@ -354,25 +353,41 @@ void bts_new_si(void *arg)
 	trx->si.timer.cb = bts_new_si;
 	trx->si.timer.data = trx;
 	osmo_timer_schedule(&trx->si.timer, 0, 200000);
-}
-
-/* handle bts instance (including MS instances) */
-int work_bts(struct osmocom_bts *bts)
-{
-	int work = 0, w;
-
-	do {
-		w = 0;
-//		w |= xxx_dequeue(ms);
-		if (w)
-			work = 1;
-	} while (w);
-	return work;
-}
-#if 0
-int create_chan(struct osmocom_bts *slot, uint8_t type)
-{
-	welcher type?:
-}
 #endif
+}
 
+int lchan_init_lapdm(struct gsm_lchan *lchan)
+{
+	struct lapdm_channel *lc = &lchan->lapdm_ch;
+
+	lapdm_channel_init(lc, LAPDM_MODE_BTS);
+	lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
+	lapdm_channel_set_l1(lc, NULL, lchan);
+	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);
+
+	return 0;
+}
+
+int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);;
+
+	/* FIXME: implement max queue length */
+	llist_add_tail(&msg->list, &btsb->agch_queue);
+
+	return 0;
+}
+
+struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);;
+	struct msgb *msg;
+
+	if (llist_empty(&btsb->agch_queue))
+		return NULL;
+
+	msg = llist_entry(btsb->agch_queue.next, struct msgb, list);
+	llist_del(&msg->list);
+
+	return msg;
+}

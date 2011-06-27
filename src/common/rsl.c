@@ -1,11 +1,13 @@
-/*
- * (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
+/* GSM TS 08.58 RSL, BTS Side */
+
+/* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -13,14 +15,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- */
-
-/*
- * Radio Link Layer Messages
  */
 
 #include <stdio.h>
@@ -28,90 +25,110 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/rsl.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/rsl.h>
+#include <osmocom/gsm/lapdm.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
+
 #include <osmo-bts/logging.h>
-//#include <osmocom/bb/common/osmocom_data.h>
+#include <osmo-bts/gsm_data.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/rtp.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
-#include <osmo-bts/support.h>
+#include <osmo-bts/signal.h>
+#include <osmo-bts/bts_model.h>
 
-static int rsl_tx_error_report(struct osmobts_trx *trx, uint8_t cause);
+static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause);
+
+/* list of RSL SI types that can occur on the SACCH */
+static const unsigned int rsl_sacch_sitypes[] = {
+	RSL_SYSTEM_INFO_5,
+	RSL_SYSTEM_INFO_6,
+	RSL_SYSTEM_INFO_5bis,
+	RSL_SYSTEM_INFO_5ter,
+	RSL_EXT_MEAS_ORDER,
+	RSL_MEAS_INFO,
+};
+
+/* FIXME: move this to libosmocore */
+int osmo_in_array(unsigned int search, const unsigned int *arr, unsigned int size)
+{
+	unsigned int i;
+	for (i = 0; i < size; i++) {
+		if (arr[i] == search)
+			return 1;
+	}
+	return 0;
+}
+#define OSMO_IN_ARRAY(search, arr) osmo_in_array(search, arr, ARRAY_SIZE(arr))
+
+/* FIXME: move this to libosmocore */
+void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
+{
+	uint8_t t1p = gtime->t1 % 32;
+	out[0] = (t1p << 3) | (gtime->t3 >> 3);
+	out[1] = (gtime->t3 << 5) | gtime->t2;
+}
+
+
 
 /*
  * support
  */
 
-static uint8_t bts_si_list[BTS_SI_NUM] = BTS_SI_LIST;
 
-struct osmobts_lchan *rsl_get_chan(struct osmobts_trx *trx, uint8_t chan_nr)
+#warning merge lchan_lookup with OpenBSC
+/* determine logical channel based on TRX and channel number IE */
+struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
+	struct gsm_lchan *lchan;
 	uint8_t ts_nr = chan_nr & 0x07;
 	uint8_t cbits = chan_nr >> 3;
-	struct bts_support *sup = &bts_support;
-	struct osmobts_slot *slot = &trx->slot[ts_nr];
-	struct osmobts_lchan *lchan = NULL;
-
-	if (!slot->tx_ms) {
-		LOGP(DRSL, LOGL_NOTICE, "Given slot not available: %d\n", ts_nr);
-		return NULL;
-	}
+	uint8_t lch_idx;
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 
 	if (cbits == 0x01) {
-		/* TCH/F */
-		if (!sup->chan_comb[NM_CHANC_TCHFull]) {
-			LOGP(DRSL, LOGL_NOTICE, "TCH/F not not supported on slot: %d\n", ts_nr);
-			return NULL;
-		}
-		if (slot->chan_comb != NM_CHANC_TCHFull) {
-			LOGP(DRSL, LOGL_NOTICE, "Given channel type not TCH/F: %d\n", ts_nr);
-			return NULL;
-		}
-		lchan = slot->lchan[0];
+		lch_idx = 0;	/* TCH/F */	
+		if (ts->pchan != GSM_PCHAN_TCH_F &&
+		    ts->pchan != GSM_PCHAN_PDCH &&
+		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
+				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1e) == 0x02) {
-		/* TCH/H */
-		if (!sup->chan_comb[NM_CHANC_TCHHalf]) {
-			LOGP(DRSL, LOGL_NOTICE, "TCH/H not not supported on slot: %d\n", ts_nr);
-			return NULL;
-		}
-		if (slot->chan_comb != NM_CHANC_TCHHalf) {
-			LOGP(DRSL, LOGL_NOTICE, "Given channel type not TCH/H: %d\n", ts_nr);
-			return NULL;
-		}
-		lchan = slot->lchan[cbits & 0x01];;
+		lch_idx = cbits & 0x1;	/* TCH/H */
+		if (ts->pchan != GSM_PCHAN_TCH_H)
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
+				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1c) == 0x04) {
-		/* BCCH+SDCCH4 */
-		if (!sup->chan_comb[NM_CHANC_BCCHComb]) {
-			LOGP(DRSL, LOGL_NOTICE, "Combined BCCH+SDCCH/4 not not supported on slot: %d\n", ts_nr);
-			return NULL;
-		}
-		if (slot->chan_comb != NM_CHANC_BCCHComb) {
-			LOGP(DRSL, LOGL_NOTICE, "Given channel type not Combined BCCH+SDCCH/4: %d\n", ts_nr);
-			return NULL;
-		}
-		lchan = slot->lchan[cbits & 0x03];;
+		lch_idx = cbits & 0x3;	/* SDCCH/4 */
+		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
+				chan_nr, ts->pchan);
 	} else if ((cbits & 0x18) == 0x08) {
-		/* SDCCH8 */
-		if (!sup->chan_comb[NM_CHANC_SDCCH]) {
-			LOGP(DRSL, LOGL_NOTICE, "SDCCH/8 not not supported on slot: %d\n", ts_nr);
-			return NULL;
-		}
-		if (slot->chan_comb != NM_CHANC_SDCCH) {
-			LOGP(DRSL, LOGL_NOTICE, "Given channel type not SDCCH/8: %d\n", ts_nr);
-			return NULL;
-		}
-		lchan = slot->lchan[cbits & 0x07];
+		lch_idx = cbits & 0x7;	/* SDCCH/8 */
+		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C)
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
+				chan_nr, ts->pchan);
+	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
+		lch_idx = 0;
+		if (ts->pchan != GSM_PCHAN_CCCH &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
+				chan_nr, ts->pchan);
+		/* FIXME: we should not return first sdcch4 !!! */
 	} else {
-		LOGP(DRSL, LOGL_NOTICE, "Given chan_nr unknown: %d\n", chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
 		return NULL;
 	}
 
-	if (!lchan)
-		LOGP(DRSL, LOGL_ERROR, "Lchan not created.\n");
+	lchan = &ts->lchan[lch_idx];
+#if 0
+	log_set_context(BSC_CTX_LCHAN, lchan);
+	if (lchan->conn)
+		log_set_context(BSC_CTX_SUBSCR, lchan->conn->subscr);
+#endif
 
 	return lchan;
 }
@@ -153,6 +170,7 @@ static void rsl_dch_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr
 	dch = (struct abis_rsl_dchan_hdr *) msgb_push(msg, sizeof(*dch));
 	dch->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dch->c.msg_type = msg_type;
+	dch->ie_chan = RSL_IE_CHAN_NR;
 	dch->chan_nr = chan_nr;
 }
 
@@ -162,41 +180,37 @@ static void rsl_dch_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr
  */
 
 /* 8.6.4 sending ERROR REPORT */
-static int rsl_tx_error_report(struct osmobts_trx *trx, uint8_t cause)
+static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause)
 {
 	struct msgb *nmsg;
-	uint8_t *ie;
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending Error Report: cause = 0x%02x\n", cause);
+	LOGP(DRSL, LOGL_NOTICE, "Tx RSL Error Report: cause = 0x%02x\n", cause);
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!nmsg)
 		return -ENOMEM;
-	ie = msgb_put(nmsg, 3);
-	ie[0] = RSL_IE_CAUSE;
-	ie[1] = 1;
-	ie[2] = cause;
+	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
 	rsl_trx_push_hdr(nmsg, RSL_MT_ERROR_REPORT);
-	abis_push_ipa(nmsg, IPA_PROTO_RSL);
+	nmsg->trx = trx;
 
-	return abis_tx(&trx->link, nmsg);
+	return abis_rsl_sendmsg(nmsg);
 }
 
 /* 8.6.1 sending RF RESOURCE INDICATION */
-int rsl_tx_rf_res(struct osmobts_trx *trx)
+int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 {
 	struct msgb *nmsg;
 
-	LOGP(DRSL, LOGL_INFO, "Sending RF RESource INDication\n");
+	LOGP(DRSL, LOGL_INFO, "Tx RSL RF RESource INDication\n");
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!nmsg)
 		return -ENOMEM;
 	// FIXME: add interference levels of TRX
 	rsl_trx_push_hdr(nmsg, RSL_MT_RF_RES_IND);
-	abis_push_ipa(nmsg, IPA_PROTO_RSL);
+	nmsg->trx = trx;
 
-	return abis_tx(&trx->link, nmsg);
+	return abis_rsl_sendmsg(nmsg);
 }
 
 /* 
@@ -204,87 +218,191 @@ int rsl_tx_rf_res(struct osmobts_trx *trx)
  */
 
 /* 8.5.1 BCCH INFOrmation is received */
-static int rsl_rx_bcch_info(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 {
+	struct gsm_bts *bts = trx->bts;
 	struct tlv_parsed tp;
-	uint8_t si;
-	int i;
-
-	LOGP(DRSL, LOGL_INFO, "RSL BCCH Information:\n");
+	uint8_t rsl_si;
+	enum osmo_sysinfo_type osmo_si;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.30 System Info Type */
-	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE)) {
+	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
-	}
-	si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
-	i = 0;
-	while(i < BTS_SI_NUM) {
-		if (bts_si_list[i] == si)
-			break;
-		i++;
-	}
-	if (i == BTS_SI_NUM) {
-		LOGP(DRSL, LOGL_NOTICE, " SI 0x%02x not supported.\n", si);
+
+	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
+	if (OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+
+	osmo_si = osmo_rsl2sitype(rsl_si);
+	if (osmo_si == SYSINFO_TYPE_NONE) {
+		LOGP(DRSL, LOGL_NOTICE, " Rx RSL SI 0x%02x not supported.\n", rsl_si);
 		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 	}
 	/* 9.3.39 Full BCCH Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_FULL_BCCH_INFO)) {
-		trx->si.flags[i] |= BTS_SI_USE;
-		memcpy(trx->si.si[i], TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), 23);
-		LOGP(DRSL, LOGL_INFO, " Got new SYSTEM INFORMATION 0x%02x.\n",si);
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_FULL_BCCH_INFO);
+		if (len > sizeof(sysinfo_buf_t))
+			len = sizeof(sysinfo_buf_t);
+		bts->si_valid |= (1 << osmo_si);
+		memcpy(bts->si_buf[osmo_si],
+			TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
+		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
+			get_value_string(osmo_sitype_strs, osmo_si));
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		trx->si.flags[i] |= BTS_SI_USE;
-		memcpy(trx->si.si[i], TLVP_VAL(&tp, RSL_IE_L3_INFO), 23);
-		LOGP(DRSL, LOGL_INFO, " Got new SYSTEM INFORMATION 0x%02x.\n",si);
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		if (len > sizeof(sysinfo_buf_t))
+			len = sizeof(sysinfo_buf_t);
+		bts->si_valid |= (1 << osmo_si);
+		memcpy(bts->si_buf[osmo_si],
+			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
+		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
+			get_value_string(osmo_sitype_strs, osmo_si));
 	} else {
-		trx->si.flags[i] &= ~BTS_SI_USE;
-		LOGP(DRSL, LOGL_INFO, " Removing SYSTEM INFORMATION 0x%02x.\n",si);
+		bts->si_valid &= (1 << osmo_si);
+		LOGP(DRSL, LOGL_INFO, " RX RSL Disabling BCCH INFO (SI%s)\n",
+			get_value_string(osmo_sitype_strs, osmo_si));
 	}
-	trx->si.flags[i] |= BTS_SI_NEW;
-	bts_new_si(trx);
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 
 	return 0;
 }
 
-/* 8.5.6 IMMEDIATE ASSIGN COMMAND is received */
-static int rsl_rx_imm_ass(struct osmobts_trx *trx, struct msgb *msg)
+/* 8.5.2 CCCH Load Indication (PCH) */
+int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail)
 {
-	struct tlv_parsed tp;
-	uint8_t *data;
+	struct msgb *msg;
 
-	LOGP(DRSL, LOGL_INFO, "Immidiate Assignment Command:\n");
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	if (!msg)
+		return -ENOMEM;
+	rsl_trx_push_hdr(msg, RSL_MT_CCCH_LOAD_IND);
+	msgb_tv16_put(msg, RSL_IE_PAGING_LOAD, paging_avail);
+	msg->trx = bts->c0;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* 8.5.5 PAGING COMMAND */
+static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct gsm_bts_role_bts *btsb = trx->bts->role;
+	struct tlv_parsed tp;
+	uint8_t chan_needed = 0, paging_group;
+	const uint8_t *identity_lv;
+	int rc;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (!TLVP_PRESENT(&tp, RSL_IE_PAGING_GROUP) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_MS_IDENTITY))
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+
+	paging_group = *TLVP_VAL(&tp, RSL_IE_PAGING_GROUP);
+	identity_lv = TLVP_VAL(&tp, RSL_IE_MS_IDENTITY)-1;
+
+	if (TLVP_PRESENT(&tp, RSL_IE_CHAN_NEEDED))
+		chan_needed = *TLVP_VAL(&tp, RSL_IE_CHAN_NEEDED);
+
+	rc = paging_add_identity(btsb->paging_state, paging_group,
+				 identity_lv, chan_needed);
+	if (rc < 0) {
+		/* FIXME: notfiy the BSC somehow ?*/
+	}
+
+	return 0;
+}
+
+int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t rach_slots,
+			      uint16_t rach_busy, uint16_t rach_access)
+{
+	struct msgb *msg;
+	uint16_t payload[3];
+
+	payload[0] = htons(rach_slots);
+	payload[1] = htons(rach_busy);
+	payload[2] = htons(rach_access);
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	msgb_tlv_put(msg, RSL_IE_RACH_LOAD, 6, (uint8_t *)payload);
+	rsl_trx_push_hdr(msg, RSL_MT_CCCH_LOAD_IND);
+	msg->trx = bts->c0;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* 8.6.2 SACCH FILLING */
+static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct gsm_bts *bts = trx->bts;
+	struct tlv_parsed tp;
+	uint8_t rsl_si;
+	enum osmo_sysinfo_type osmo_si;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.30 System Info Type */
-	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO)) {
+	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+
+	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
+	if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+
+	osmo_si = osmo_rsl2sitype(rsl_si);
+	if (osmo_si == SYSINFO_TYPE_NONE) {
+		LOGP(DRSL, LOGL_NOTICE, " Rx SACCH SI 0x%02x not supported.\n", rsl_si);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 	}
-	data = (uint8_t *) TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO);
-	LOGP(DRSL, LOGL_INFO, " length = %d\n", data[-1]);
-
-#warning HACK
-	{
-		struct msgb *nmsg = rsl_msgb_alloc(64);
-		struct l1ctl_info_dl *dl;
-		uint8_t lupd[23] = {0x01,0x03f,0x3d,
-				0x05,0x08,0x12,0x62,0xf2,0x10,0x31,0x04,0x33,0x05,0xf4,0x87,0x16,0xb3,0xf0,
-				0x2b, 0x2b, 0x2b, 0x2b, 0x2b};
-
-		memcpy(msgb_put(nmsg, sizeof(lupd)), lupd, sizeof(lupd));
-
-		nmsg->l3h = nmsg->data;
-		dl = (struct l1ctl_info_dl *)(nmsg->l1h = msgb_push(nmsg, sizeof(*dl)));
-		dl->chan_nr = trx->slot[2].lchan[0]->chan_nr;
-		dl->link_id = 0x00;
-		msgb_push(nmsg, sizeof(struct l1ctl_hdr));
-		printf("%p '%s'\n", trx->slot[2].tx_ms, trx->slot[2].tx_ms->ms.name);
-		rx_ph_data_ind(&trx->slot[2].tx_ms->ms, nmsg);
+	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		/* We have to pre-fix with the two-byte LAPDM UI header */
+		if (len > sizeof(sysinfo_buf_t)-2)
+			len = sizeof(sysinfo_buf_t)-2;
+		bts->si_valid |= (1 << osmo_si);
+		bts->si_buf[osmo_si][0] = 0x00;
+		bts->si_buf[osmo_si][1] = 0x03;
+		memcpy(bts->si_buf[osmo_si]+2,
+			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
+		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s)\n",
+			get_value_string(osmo_sitype_strs, osmo_si));
+	} else {
+		bts->si_valid &= (1 << osmo_si);
+		LOGP(DRSL, LOGL_INFO, " Rx RSL Disabling SACCH FILLING (SI%s)\n",
+			get_value_string(osmo_sitype_strs, osmo_si));
 	}
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 
 	return 0;
+
+}
+
+/* 8.5.6 IMMEDIATE ASSIGN COMMAND is received */
+static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct tlv_parsed tp;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO))
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+
+	/* cut down msg to the 04.08 RR part */
+	msg->data = (uint8_t *) TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO);
+	msg->len = TLVP_LEN(&tp, RSL_IE_FULL_IMM_ASS_INFO);
+
+	/* put into the AGCH queue of the BTS */
+	if (bts_agch_enqueue(trx->bts, msg) < 0) {
+		/* if there is no space in the queue: send DELETE IND */
+		msgb_free(msg);
+	}
+
+	/* return 1 means: don't msgb_free() the msg */
+	return 1;
 }
 
 /*
@@ -292,49 +410,40 @@ static int rsl_rx_imm_ass(struct osmobts_trx *trx, struct msgb *msg)
  */
 
 /* 8.4.19 sebdubg RF CHANnel RELease ACKnowledge */
-static int rsl_tx_rf_rel_ack(struct osmobts_trx *trx, struct msgb *msg, uint8_t t1, uint8_t t2, uint8_t t3)
+int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t chan_nr = dch->chan_nr;
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Release ACK\n");
-
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx RF CHAN REL ACK\n", gsm_lchan_name(lchan));
 
 	rsl_dch_push_hdr(msg, RSL_MT_RF_CHAN_REL_ACK, chan_nr);
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = lchan->ts->trx;
 
-	return abis_tx(&trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
-static int rsl_tx_chan_ack(struct osmobts_trx *trx, struct msgb *msg, uint8_t t1, uint8_t t2, uint8_t t3)
+int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t *ie;
-	uint8_t chan_nr = dch->chan_nr;
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t ie[2];
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Activated ACK\n");
+	LOGP(DRSL, LOGL_NOTICE, "(%s) Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
 
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
-
-	ie = msgb_put(msg, 3);
-	ie[0] = RSL_IE_FRAME_NUMBER;
-	ie[1] = (t1 << 3) | (t3 >> 3);
-	ie[2] = (t3 & 0x07) | (t2 & 0x1f);
+	gsm48_gen_starting_time(ie, gtime);
+	msgb_tv_fixed_put(msg, RSL_IE_FRAME_NUMBER, 2, ie);
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_ACK, chan_nr);
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = lchan->ts->trx;
 
-	return abis_tx(&trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
-static int rsl_tx_chan_nack(struct osmobts_trx *trx, struct msgb *msg, uint8_t cause)
+static int rsl_tx_chan_nack(struct gsm_bts_trx *trx, struct msgb *msg, uint8_t cause)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t *ie;
 	uint8_t chan_nr = dch->chan_nr;
 
 	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Activated NACK: cause = 0x%02x\n", cause);
@@ -342,57 +451,71 @@ static int rsl_tx_chan_nack(struct osmobts_trx *trx, struct msgb *msg, uint8_t c
 	msg->len = 0;
 	msg->data = msg->tail = msg->l3h;
 
-	ie = msgb_put(msg, 3);
 	/* 9.3.26 Cause */
-	ie[0] = RSL_IE_CAUSE;
-	ie[1] = 1;
-	ie[2] = cause;
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_NACK, chan_nr);
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = trx;
 
-	return abis_tx(&trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
 /* 8.5.3 sending CHANnel ReQuireD */
-int rsl_tx_chan_rqd(struct osmobts_trx *trx)
+int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
+		    uint8_t ra, uint8_t acc_delay)
 {
 	struct msgb *nmsg;
-	uint8_t *ie;
+	uint8_t payload[3];
 
 	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Required\n");
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
 	if (!nmsg)
 		return -ENOMEM;
-	ie = msgb_put(nmsg, 4);
-	/* 9.3.19 Request Reference */
-	ie[0] = RSL_IE_REQ_REFERENCE;
-	ie[1] = 0xe0; // FIXME
-	ie[2] = 0x00;
-	ie[3] = 0x00;
-	/* 9.3.17 Access Delay */
-	ie = msgb_put(nmsg, 2);
-	ie[0] = RSL_IE_ACCESS_DELAY;
-	ie[1] = 0x00; // FIXME
-	rsl_cch_push_hdr(nmsg, RSL_MT_CHAN_RQD, 0x88); // FIXME
-	abis_push_ipa(nmsg, IPA_PROTO_RSL);
 
-	return abis_tx(&trx->link, nmsg);
+	/* 9.3.19 Request Reference */
+	payload[0] = ra;
+	gsm48_gen_starting_time(payload+1, gtime);
+	msgb_tv_fixed_put(nmsg, RSL_IE_REQ_REFERENCE, 3, payload);
+
+	/* 9.3.17 Access Delay */
+	msgb_tv_put(nmsg, RSL_IE_ACCESS_DELAY, acc_delay);
+
+	rsl_cch_push_hdr(nmsg, RSL_MT_CHAN_RQD, 0x88); // FIXME
+	nmsg->trx = trx;
+
+	return abis_rsl_sendmsg(nmsg);
 }
 
+/* copy the SACCH related sysinfo from BTS global buffer to lchan specific buffer */
+static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(rsl_sacch_sitypes); i++) {
+		uint8_t rsl_si = rsl_sacch_sitypes[i];
+		uint8_t osmo_si = osmo_rsl2sitype(rsl_si);
+		uint8_t osmo_si_shifted = (1 << osmo_si);
+		if (osmo_si == SYSINFO_TYPE_NONE)
+			continue;
+		if (!(bts->si_valid & osmo_si_shifted)) {
+			lchan->si.valid &= ~osmo_si_shifted;
+			continue;
+		}
+		lchan->si.valid |= osmo_si_shifted;
+		memcpy(lchan->si.buf[osmo_si], bts->si_buf[osmo_si],
+			sizeof(sysinfo_buf_t));
+	}
+}
+
+
 /* 8.4.1 CHANnel ACTIVation is received */
-static int rsl_rx_chan_activ(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_chan_activ(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
+	struct gsm_lchan *lchan = msg->lchan;
 	struct tlv_parsed tp;
 	uint8_t type, mode;
-	struct osmobts_lchan *lchan;
-
-	LOGP(DRSL, LOGL_INFO, "Channel Activation:\n");
-
-	lchan = rsl_get_chan(trx, dch->chan_nr);
-	if (!lchan)
-		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -400,48 +523,157 @@ static int rsl_rx_chan_activ(struct osmobts_trx *trx, struct msgb *msg)
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Activation Type\n");
 		msgb_free(msg);
-		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
 	}
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
+
 	/* 9.3.6 Channel Mode */
 	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
 		msgb_free(msg);
-		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
 	}
 	mode = *TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 
+	/* 9.3.7 Encryption Information */
+	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
+		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
+		lchan->encr.alg_id = *val++;
+		lchan->encr.key_len = len -1;
+		if (lchan->encr.key_len > sizeof(lchan->encr.key))
+			lchan->encr.key_len = sizeof(lchan->encr.key);
+		memcpy(lchan->encr.key, val, lchan->encr.key_len);
+	}
+
+	/* 9.3.9 Handover Reference */
+
+	/* 9.3.4 BS Power */
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+	/* 9.3.13 MS Power */
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER))
+		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
+	/* 9.3.24 Timing Advance */
+	if (TLVP_PRESENT(&tp, RSL_IE_TIMING_ADVANCE))
+		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
+
+	/* 9.3.32 BS Power Parameters */
+	/* 9.3.31 MS Power Parameters */
+	/* 9.3.16 Physical Context */
+
+	/* 9.3.29 SACCH Information */
+	if (TLVP_PRESENT(&tp, RSL_IE_SACCH_INFO)) {
+		uint8_t tot_len = TLVP_LEN(&tp, RSL_IE_SACCH_INFO);
+		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_SACCH_INFO);
+		uint8_t num_msgs = *val++;
+		unsigned int i;
+		for (i = 0; i < num_msgs; i++) {
+			uint8_t rsl_si = *val++;
+			uint8_t si_len = *val++;
+			uint8_t osmo_si;
+			uint8_t copy_len;
+
+			if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+
+			osmo_si = osmo_rsl2sitype(rsl_si);
+			if (osmo_si == SYSINFO_TYPE_NONE) {
+				LOGP(DRSL, LOGL_NOTICE, " Rx SACCH SI 0x%02x not supported.\n", rsl_si);
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+			}
+
+			copy_len = si_len;
+			/* We have to pre-fix with the two-byte LAPDM UI header */
+			if (copy_len > sizeof(sysinfo_buf_t)-2)
+				copy_len = sizeof(sysinfo_buf_t)-2;
+			lchan->si.valid |= (1 << osmo_si);
+			lchan->si.buf[osmo_si][0] = 0x00;
+			lchan->si.buf[osmo_si][1] = 0x03;
+			memcpy(lchan->si.buf[osmo_si]+2, val, copy_len);
+
+			val += si_len;
+		}
+	} else {
+		/* use standard SACCH filling of the BTS */
+		copy_sacch_si_to_lchan(lchan);
+	}
+	/* 9.3.52 MultiRate Configuration */
+	/* 9.3.53 MultiRate Control */
+	/* 9.3.54 Supported Codec Types */
+
 	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n", dch->chan_nr, type, mode);
 
-	return rsl_tx_chan_ack(trx, msg, 0, 0, 0);
+	/* actually activate the channel in the BTS */
+	return bts_model_rsl_chan_act(msg->lchan, &tp);
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
-static int rsl_rx_rf_chan_rel(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_rf_chan_rel(struct msgb *msg)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	struct osmobts_lchan *lchan;
-	int rc;
-
-	LOGP(DRSL, LOGL_INFO, "Channel Release:\n");
-
-	lchan = rsl_get_chan(trx, dch->chan_nr);
-	if (!lchan)
-		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
-
-	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x\n", dch->chan_nr);
-
+#if 0
 	lapdm_reset(&lchan->l2_entity.lapdm_dcch);
 	lapdm_reset(&lchan->l2_entity.lapdm_acch);
 
-	rc = rsl_tx_rf_rel_ack(trx, msg, 0, 0, 0);
-
 	if (lchan->rtp.socket_created)
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
+#endif
 
-	return rc;
+	return bts_model_rsl_chan_rel(msg->lchan);
 }
 
+/* 8.4.20 SACCH INFO MODify */
+static int rsl_rx_sacch_inf_mod(struct msgb *msg)
+{
+	struct gsm_lchan *lchan = msg->lchan;
+	struct tlv_parsed tp;
+	uint8_t rsl_si, osmo_si;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_STARTNG_TIME)) {
+		LOGP(DRSL, LOGL_NOTICE, "Starting time not supported\n");
+		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL);
+	}
+
+	/* 9.3.30 System Info Type */
+	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+
+	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
+	if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+
+	osmo_si = osmo_rsl2sitype(rsl_si);
+	if (osmo_si == SYSINFO_TYPE_NONE) {
+		LOGP(DRSL, LOGL_NOTICE, "%s Rx SACCH SI 0x%02x not supported.\n",
+			gsm_lchan_name(lchan), rsl_si);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+	}
+	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		/* We have to pre-fix with the two-byte LAPDM UI header */
+		if (len > sizeof(sysinfo_buf_t)-2)
+			len = sizeof(sysinfo_buf_t)-2;
+		lchan->si.valid |= (1 << osmo_si);
+		lchan->si.buf[osmo_si][0] = 0x00;
+		lchan->si.buf[osmo_si][1] = 0x03;
+		memcpy(lchan->si.buf[osmo_si]+2,
+			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
+		LOGP(DRSL, LOGL_INFO, "%s Rx RSL SACCH FILLING (SI%s)\n",
+			gsm_lchan_name(lchan),
+			get_value_string(osmo_sitype_strs, osmo_si));
+	} else {
+		lchan->si.valid &= (1 << osmo_si);
+		LOGP(DRSL, LOGL_INFO, "%s Rx RSL Disabling SACCH FILLING (SI%s)\n",
+			gsm_lchan_name(lchan),
+			get_value_string(osmo_sitype_strs, osmo_si));
+	}
+
+	return 0;
+}
+
+#if 0
 /*
  * ip.access related messages
  */
@@ -449,25 +681,21 @@ static int rsl_rx_rf_chan_rel(struct osmobts_trx *trx, struct msgb *msg)
 int rsl_tx_ipac_dlcx_ind(struct osmobts_lchan *lchan, uint8_t cause)
 {
 	struct msgb *nmsg;
-	struct osmobts_trx *trx = lchan->slot->trx;
-	uint8_t *ie;
+	struct gsm_bts_trx *trx = lchan->slot->trx;
 
 	LOGP(DRSL, LOGL_NOTICE, "Sending RTP delete indication: cause=%d\n", cause);
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!nmsg)
 		return -ENOMEM;
-	ie = msgb_put(nmsg, 3);
-	ie[0] = RSL_IE_CAUSE;
-	ie[1] = 1;
-	ie[2] = cause;
+	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
 	rsl_trx_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND);
-	abis_push_ipa(nmsg, IPA_PROTO_RSL);
+	msg->trx = trx;
 
-	return abis_tx(&trx->link, nmsg);
+	return abis_rsl_sendmsg(nmsg);
 }
 
-static int rsl_tx_ipac_cx_ack(struct osmobts_trx *trx, struct msgb *msg, uint32_t ip, uint16_t port, uint16_t *conn_id)
+static int rsl_tx_ipac_cx_ack(struct gsm_bts_trx *trx, struct msgb *msg, uint32_t ip, uint16_t port, uint16_t *conn_id)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	uint8_t chan_nr = dch->chan_nr;
@@ -487,35 +715,31 @@ static int rsl_tx_ipac_cx_ack(struct osmobts_trx *trx, struct msgb *msg, uint32_
 	msgb_tv16_put(msg, RSL_IE_IPAC_LOCAL_PORT, htons(port));
 
 	rsl_dch_push_hdr(msg, msg_type + 1, chan_nr);
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = trx;
 
-	return abis_tx(&trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
-static int rsl_tx_ipac_cx_nack(struct osmobts_trx *trx, struct msgb *msg, uint8_t cause)
+static int rsl_tx_ipac_cx_nack(struct gsm_bts_trx *trx, struct msgb *msg, uint8_t cause)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	uint8_t chan_nr = dch->chan_nr;
 	uint8_t msg_type = dch->c.msg_type;
-	uint8_t *ie;
 
 	LOGP(DRSL, LOGL_NOTICE, "Sending RTP connection request NACK: cause=%d\n", cause);
 
 	msg->len = 0;
 	msg->data = msg->tail = msg->l3h;
 
-	ie = msgb_put(msg, 3);
 	/* 9.3.26 Cause */
-	ie[0] = RSL_IE_CAUSE;
-	ie[1] = 1;
-	ie[2] = cause;
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, msg_type + 2, chan_nr);
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = trx;
 
-	return abis_tx(&trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
-static int rsl_rx_ipac_crcx_mdcx(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_ipac_crcx_mdcx(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
@@ -531,7 +755,7 @@ static int rsl_rx_ipac_crcx_mdcx(struct osmobts_trx *trx, struct msgb *msg)
 	else
 		LOGP(DRSL, LOGL_INFO, "Request of modding RTP connection:\n");
 
-	lchan = rsl_get_chan(trx, dch->chan_nr);
+	lchan = rsl_lchan_lookup(trx, dch->chan_nr);
 	if (!lchan)
 		return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
 
@@ -584,7 +808,7 @@ static int rsl_rx_ipac_crcx_mdcx(struct osmobts_trx *trx, struct msgb *msg)
 	return rsl_tx_ipac_cx_ack(trx, msg, ntohl(lchan->rtp.rtp_udp.sin_local.sin_addr.s_addr), ntohs(lchan->rtp.rtp_udp.sin_local.sin_port), &conn_id);
 }
 
-static int rsl_rx_ipac_dlcx(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_ipac_dlcx(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
@@ -592,7 +816,7 @@ static int rsl_rx_ipac_dlcx(struct osmobts_trx *trx, struct msgb *msg)
 
 	LOGP(DRSL, LOGL_INFO, "Request of deleting RTP connection:\n");
 
-	lchan = rsl_get_chan(trx, dch->chan_nr);
+	lchan = rsl_lchan_lookup(trx, dch->chan_nr);
 	if (!lchan)
 		return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
 
@@ -602,15 +826,16 @@ static int rsl_rx_ipac_dlcx(struct osmobts_trx *trx, struct msgb *msg)
 
 	return rsl_tx_ipac_cx_ack(trx, msg, ntohl(lchan->rtp.rtp_udp.sin_local.sin_addr.s_addr), ntohs(lchan->rtp.rtp_udp.sin_local.sin_port), NULL);
 }
+#endif
 
 /*
  * selecting message
  */
 
-static int rsl_rx_rll(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_rll_hdr *rh = msgb_l2(msg);
-	struct osmobts_lchan *lchan;
+	struct gsm_lchan *lchan;
 
 	if (msgb_l2len(msg) < sizeof(*rh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Radio Link Layer message too short\n");
@@ -619,26 +844,28 @@ static int rsl_rx_rll(struct osmobts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)rh + sizeof(*rh);
 
-	lchan = rsl_get_chan(trx, rh->chan_nr);
+	lchan = rsl_lchan_lookup(trx, rh->chan_nr);
 	if (!lchan)
 		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
 
-	return rslms_recvmsg(msg, &lchan->l2_entity);
+	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
 }
 
-int rsl_tx_rll(struct msgb *msg, struct osmol2_entity *l2_entity)
+/* call-back for LAPDm code, called when it wants to send msgs UP */
+int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 {
-	struct osmobts_lchan *lchan = container_of(l2_entity, struct osmobts_lchan, l2_entity);
+	struct gsm_lchan *lchan = ctx;
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
 
-	LOGP(DRSL, LOGL_INFO, "Got '%s' message from L2.\n", get_rsl_name(rh->msg_type));
+	LOGP(DRSL, LOGL_INFO, "%s Fwd RLL msg %s from LAPDm to A-bis\n",
+		gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
 
-	abis_push_ipa(msg, IPA_PROTO_RSL);
+	msg->trx = lchan->ts->trx;
 
-	return abis_tx(&lchan->slot->trx->link, msg);
+	return abis_rsl_sendmsg(msg);
 }
 
-static int rsl_rx_cchan(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	int ret = 0;
@@ -650,6 +877,16 @@ static int rsl_rx_cchan(struct osmobts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)cch + sizeof(*cch);
 
+	msg->lchan = rsl_lchan_lookup(trx, cch->chan_nr);
+	if (!msg->lchan) {
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+			rsl_msg_name(cch->c.msg_type));
+		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	}
+
+	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
+		rsl_msg_name(cch->c.msg_type));
+
 	switch (cch->c.msg_type) {
 	case RSL_MT_BCCH_INFO:
 		ret = rsl_rx_bcch_info(trx, msg);
@@ -657,17 +894,29 @@ static int rsl_rx_cchan(struct osmobts_trx *trx, struct msgb *msg)
 	case RSL_MT_IMMEDIATE_ASSIGN_CMD:
 		ret = rsl_rx_imm_ass(trx, msg);
 		break;
+	case RSL_MT_PAGING_CMD:
+		ret = rsl_rx_paging_cmd(trx, msg);
+		break;
+	case RSL_MT_SMS_BC_REQ:
+	case RSL_MT_SMS_BC_CMD:
+	case RSL_MT_NOT_CMD:
+		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL cchan msg_type %s\n",
+			rsl_msg_name(cch->c.msg_type));
+		break;
 	default:
-		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL cchan msg_type 0x%02x\n",
+		LOGP(DRSL, LOGL_NOTICE, "undefined RSL cchan msg_type 0x%02x\n",
 			cch->c.msg_type);
 		ret = -EINVAL;
+		break;
 	}
 
-	msgb_free(msg);
+	if (ret != 1)
+		msgb_free(msg);
+
 	return ret;
 }
 
-static int rsl_rx_dchan(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	int ret = 0;
@@ -679,22 +928,48 @@ static int rsl_rx_dchan(struct osmobts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
+	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
+	if (!msg->lchan) {
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+			rsl_msg_name(dch->c.msg_type));
+		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	}
+
+	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
+		rsl_msg_name(dch->c.msg_type));
+
 	switch (dch->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV:
-		return rsl_rx_chan_activ(trx, msg);
+		return rsl_rx_chan_activ(msg);
 	case RSL_MT_RF_CHAN_REL:
-		return rsl_rx_rf_chan_rel(trx, msg);
+		return rsl_rx_rf_chan_rel(msg);
+	case RSL_MT_SACCH_INFO_MODIFY:
+		return rsl_rx_sacch_inf_mod(msg);
+	case RSL_MT_DEACTIVATE_SACCH:
+	case RSL_MT_ENCR_CMD:
+	case RSL_MT_MODE_MODIFY_REQ:
+	case RSL_MT_PHY_CONTEXT_REQ:
+	case RSL_MT_PREPROC_CONFIG:
+	case RSL_MT_RTD_REP:
+	case RSL_MT_PRE_HANDO_NOTIF:
+	case RSL_MT_MR_CODEC_MOD_REQ:
+	case RSL_MT_TFO_MOD_REQ:
+		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL dchan msg_type %s\n",
+			rsl_msg_name(dch->c.msg_type));
+		break;
 	default:
-		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL dchan msg_type 0x%02x\n",
+		LOGP(DRSL, LOGL_NOTICE, "undefined RSL dchan msg_type 0x%02x\n",
 			dch->c.msg_type);
 		ret = -EINVAL;
 	}
 
-	msgb_free(msg);
+	if (ret != 1)
+		msgb_free(msg);
+
 	return ret;
 }
 
-static int rsl_rx_trx(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_trx(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *th = msgb_l2(msg);
 	int ret = 0;
@@ -708,19 +983,21 @@ static int rsl_rx_trx(struct osmobts_trx *trx, struct msgb *msg)
 
 	switch (th->msg_type) {
 	case RSL_MT_SACCH_FILL:
-		ret = rsl_rx_bcch_info(trx, msg);
+		ret = rsl_rx_sacch_fill(trx, msg);
 		break;
 	default:
-		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL TRX msg_type 0x%02x\n",
+		LOGP(DRSL, LOGL_NOTICE, "undefined RSL TRX msg_type 0x%02x\n",
 			th->msg_type);
 		ret = -EINVAL;
 	}
 
-	msgb_free(msg);
+	if (ret != 1)
+		msgb_free(msg);
+
 	return ret;
 }
 
-static int rsl_rx_ipaccess(struct osmobts_trx *trx, struct msgb *msg)
+static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	int ret = 0;
@@ -733,22 +1010,25 @@ static int rsl_rx_ipaccess(struct osmobts_trx *trx, struct msgb *msg)
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
 	switch (dch->c.msg_type) {
+#if 0
 	case RSL_MT_IPAC_CRCX:
 	case RSL_MT_IPAC_MDCX:
 		return rsl_rx_ipac_crcx_mdcx(trx, msg);
 	case RSL_MT_IPAC_DLCX:
 		return rsl_rx_ipac_dlcx(trx, msg);
+#endif
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL ip.access msg_type 0x%02x\n",
 			dch->c.msg_type);
 		ret = -EINVAL;
 	}
 
-	msgb_free(msg);
+	if (ret != 1)
+		msgb_free(msg);
 	return ret;
 }
 
-int down_rsl(struct osmobts_trx *trx, struct msgb *msg)
+int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
 	int ret = 0;
@@ -784,5 +1064,3 @@ int down_rsl(struct osmobts_trx *trx, struct msgb *msg)
 
 	return ret;
 }
-
-

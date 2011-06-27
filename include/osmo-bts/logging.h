@@ -9,19 +9,17 @@ enum {
 	DOML,
 	DRLL,
 	DRR,
-	DMM,
-	DCC,
-	DSMS,
 	DMEAS,
 	DPAG,
-	DLAPDM,
 	DL1C,
-	DSAP,
+	DL1P,
 	DABIS,
 	DRTP,
 	DSUM,
 };
 
-extern const struct log_info log_info;
+extern const struct log_info bts_log_info;
+
+int bts_log_init(const char *category_mask);
 
 #endif /* _LOGGING_H */

@@ -1,10 +1,14 @@
+/* Minimalistic Abis/IP interface routines, soon to be replaced by
+ * libosmo-abis (Pablo) */
+
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -12,9 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -27,16 +30,20 @@
 #include <errno.h>
 #include <string.h>
 
-#include <osmocore/select.h>
-#include <osmocore/timer.h>
-#include <osmocore/msgb.h>
-#include <osmocom/bb/common/logging.h>
-#include <osmocom/bb/common/osmocom_data.h>
-#include <osmocom/bb/bts/abis.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+
+#include <osmo-bts/logging.h>
+#include <osmo-bts/gsm_data.h>
+#include <osmo-bts/abis.h>
+#include <osmo-bts/bts.h>
+#include <osmo-bts/rsl.h>
+#include <osmo-bts/oml.h>
+#if 0
 #include <osmocom/bb/bts/rtp.h>
-#include <osmocom/bb/bts/bts.h>
-#include <osmocom/bb/bts/rsl.h>
-#include <osmocom/bb/bts/oml.h>
+#endif
 
 extern char *software_version;
 extern uint8_t abis_mac[6];
@@ -61,6 +68,23 @@ int abis_tx(struct ipabis_link *link, struct msgb *msg)
 	return 0;
 }
 
+int abis_oml_sendmsg(struct msgb *msg)
+{
+	struct gsm_bts *bts = msg->trx->bts;
+
+	abis_push_ipa(msg, 0xff);
+
+	return abis_tx((struct ipabis_link *) bts->oml_link, msg);
+}
+
+int abis_rsl_sendmsg(struct msgb *msg)
+{
+	struct gsm_bts_trx *trx = msg->trx;
+
+	abis_push_ipa(msg, 0);
+
+	return abis_tx((struct ipabis_link *) trx->rsl_link, msg);
+}
 
 struct msgb *abis_msgb_alloc(int headroom)
 {
@@ -98,7 +122,7 @@ static int abis_tx_ipa_pingpong(struct ipabis_link *link, uint8_t pingpong)
 	if (!nmsg)
 		return -ENOMEM;
 	*msgb_put(nmsg, 1) = pingpong;
-	abis_push_ipa(nmsg, IPA_PROTO_IPACCESS);
+	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
 
 	return abis_tx(link, nmsg);
 }
@@ -106,16 +130,20 @@ static int abis_tx_ipa_pingpong(struct ipabis_link *link, uint8_t pingpong)
 /* send ACK and ID RESP */
 static int abis_rx_ipa_id_get(struct ipabis_link *link, uint8_t *data, int len)
 {
+	struct gsm_bts *bts = link->bts;
 	struct msgb *nmsg, *nmsg2;
 	char str[64];
 	uint8_t *tag;
+
+	if (!link->bts)
+		bts = link->trx->bts;
 
 	LOGP(DABIS, LOGL_INFO, "Reply to ID_GET\n");
 
 	nmsg = abis_msgb_alloc(0);
 	if (!nmsg)
 		return -ENOMEM;
-	*msgb_put(nmsg, 1) = IPA_MSGT_ID_RESP;
+	*msgb_put(nmsg, 1) = IPAC_MSGT_ID_RESP;
 	while (len) {
 		if (len < 2) {
 			LOGP(DABIS, LOGL_NOTICE,
@@ -124,32 +152,33 @@ static int abis_rx_ipa_id_get(struct ipabis_link *link, uint8_t *data, int len)
 			return -EIO;
 		}
 		switch (data[1]) {
-		case IPA_IDTAG_UNIT:
-			sprintf(str, "%s/%d", (link->trx) ? link->trx->bts->id
-							  : link->bts->id,
-				(link->trx) ? link->trx->trx_nr : 0);
+		case IPAC_IDTAG_UNIT:
+			sprintf(str, "%u/%u/%u", 
+				bts->ip_access.site_id,
+				bts->ip_access.bts_id,
+				(link->trx) ? link->trx->nr : 0);
 			break;
-		case IPA_IDTAG_MACADDR:
+		case IPAC_IDTAG_MACADDR:
 			sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
 				abis_mac[0], abis_mac[1], abis_mac[2],
 				abis_mac[3], abis_mac[4], abis_mac[5]);
 			break;
-		case IPA_IDTAG_LOCATION1:
+		case IPAC_IDTAG_LOCATION1:
 			strcpy(str, "osmoBTS");
 			break;
-		case IPA_IDTAG_LOCATION2:
+		case IPAC_IDTAG_LOCATION2:
 			strcpy(str, "osmoBTS");
 			break;
-		case IPA_IDTAG_EQUIPVERS:
-		case IPA_IDTAG_SWVERSION:
+		case IPAC_IDTAG_EQUIPVERS:
+		case IPAC_IDTAG_SWVERSION:
 			strcpy(str, software_version);
 			break;
-		case IPA_IDTAG_UNITNAME:
+		case IPAC_IDTAG_UNITNAME:
 			sprintf(str, "osmoBTS-%02x-%02x-%02x-%02x-%02x-%02x",
 				abis_mac[0], abis_mac[1], abis_mac[2],
 				abis_mac[3], abis_mac[4], abis_mac[5]);
 			break;
-		case IPA_IDTAG_SERNR:
+		case IPAC_IDTAG_SERNR:
 			strcpy(str, "");
 			break;
 		default:
@@ -167,15 +196,15 @@ static int abis_rx_ipa_id_get(struct ipabis_link *link, uint8_t *data, int len)
 		data += 2;
 		len -= 2;
 	}
-	abis_push_ipa(nmsg, IPA_PROTO_IPACCESS);
+	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
 
 	nmsg2 = abis_msgb_alloc(0);
 	if (!nmsg2) {
 		msgb_free(nmsg);
 		return -ENOMEM;
 	}
-	*msgb_put(nmsg2, 1) = IPA_MSGT_ID_ACK;
-	abis_push_ipa(nmsg2, IPA_PROTO_IPACCESS);
+	*msgb_put(nmsg2, 1) = IPAC_MSGT_ID_ACK;
+	abis_push_ipa(nmsg2, IPAC_PROTO_IPACCESS);
 
 	link->id_resp = 1;
 
@@ -196,21 +225,23 @@ static int abis_rx_ipaccess(struct ipabis_link *link, struct msgb *msg)
 	}
 
 	switch (*data) {
-	case IPA_MSGT_PONG:
+	case IPAC_MSGT_PONG:
+#if 0
 #warning HACK
 rsl_tx_chan_rqd(link->bts->trx[0]);
-		LOGP(DABIS, LOGL_INFO, "PONG\n");
+#endif
+		LOGP(DABIS, LOGL_DEBUG, "PONG\n");
 		link->pong = 1;
 		break;
-	case IPA_MSGT_PING:
-		LOGP(DABIS, LOGL_INFO, "reply to ping request\n");
-		ret = abis_tx_ipa_pingpong(link, IPA_MSGT_PONG);
+	case IPAC_MSGT_PING:
+		LOGP(DABIS, LOGL_DEBUG, "reply to ping request\n");
+		ret = abis_tx_ipa_pingpong(link, IPAC_MSGT_PONG);
 		break;
-	case IPA_MSGT_ID_GET:
+	case IPAC_MSGT_ID_GET:
 		ret = abis_rx_ipa_id_get(link, data + 1, len - 1);
 		break;
-	case IPA_MSGT_ID_ACK:
-		LOGP(DABIS, LOGL_INFO, "ID ACK\n");
+	case IPAC_MSGT_ID_ACK:
+		LOGP(DABIS, LOGL_DEBUG, "ID ACK\n");
 		if (link->id_resp && link->bts)
 			ret = bts_link_estab(link->bts);
 		if (link->id_resp && link->trx)
@@ -240,7 +271,7 @@ static int abis_rx(struct ipabis_link *link, struct msgb *msg)
 	int ret = 0;
 
 	switch (hh->proto) {
-	case IPA_PROTO_RSL:
+	case IPAC_PROTO_RSL:
 		if (!link->trx) {
 			LOGP(DABIS, LOGL_NOTICE,
 				"Received RSL message not on RSL link\n");
@@ -248,16 +279,17 @@ static int abis_rx(struct ipabis_link *link, struct msgb *msg)
 			ret = EIO;
 			break;
 		}
+		msg->trx = link->trx;
 		ret = down_rsl(link->trx, msg);
 		break;
-	case IPA_PROTO_IPACCESS:
+	case IPAC_PROTO_IPACCESS:
 		ret = abis_rx_ipaccess(link, msg);
 		break;
-	case IPA_PROTO_SCCP:
+	case IPAC_PROTO_SCCP:
 		LOGP(DABIS, LOGL_INFO, "Received SCCP message\n");
 		msgb_free(msg);
 		break;
-	case IPA_PROTO_OML:
+	case IPAC_PROTO_OML:
 		if (!link->bts) {
 			LOGP(DABIS, LOGL_NOTICE,
 				"Received OML message not on OML link\n");
@@ -265,6 +297,7 @@ static int abis_rx(struct ipabis_link *link, struct msgb *msg)
 			ret = EIO;
 			break;
 		}
+		msg->trx = link->bts->c0;
 		ret = down_oml(link->bts, msg);
 		break;
 	default:
@@ -302,8 +335,8 @@ static void abis_timeout(void *arg)
 		}
 		link->ping = 1;
 		link->pong = 0;
-		LOGP(DABIS, LOGL_INFO, "PING\n");
-		abis_tx_ipa_pingpong(link, IPA_MSGT_PING);
+		LOGP(DABIS, LOGL_DEBUG, "PING\n");
+		abis_tx_ipa_pingpong(link, IPAC_MSGT_PING);
 		osmo_timer_schedule(&link->timer, OML_PING_TIMER, 0);
 		break;
 	}	
@@ -348,7 +381,7 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 				return 0;
 			msg->l2h = msg->data + sizeof(*hh);
 			if (ntohs(hh->len) > msgb_tailroom(msg)) {
-				LOGP(DABIS, LOGL_NOTICE, "Received packet from "
+				LOGP(DABIS, LOGL_DEBUG, "Received packet from "
 					"Abis socket too large.\n");
 				goto close;
 			}
@@ -363,13 +396,13 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 		if (ntohs(hh->len) + sizeof(*hh) > msg->len)
 			return 0;
 		link->rx_msg = NULL;
-		LOGP(DABIS, LOGL_INFO, "Received messages from Abis socket.\n");
+		LOGP(DABIS, LOGL_DEBUG, "Received messages from Abis socket.\n");
 		ret = abis_rx(link, msg);
 	}
 	if ((what & BSC_FD_WRITE)) {
 		msg = msgb_dequeue(&link->tx_queue);
 		if (msg) {
-			LOGP(DABIS, LOGL_INFO, "Sending messages to Abis socket.\n");
+			LOGP(DABIS, LOGL_DEBUG, "Sending messages to Abis socket.\n");
 			ret = send(link->bfd.fd, msg->data, msg->len, 0);
 			if (ret < 0)
 				goto close;
@@ -377,7 +410,7 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 			link->bfd.when &= ~BSC_FD_WRITE;
 	}
 	if ((what & BSC_FD_EXCEPT)) {
-		LOGP(DABIS, LOGL_INFO, "Abis socket received exception\n");
+		LOGP(DABIS, LOGL_NOTICE, "Abis socket received exception\n");
 		goto close;
 	}
 
@@ -388,11 +421,11 @@ close:
 
 	/* RSL link will just close and BSC is notified */
 	if (link->trx) {
-		LOGP(DABIS, LOGL_INFO, "Connection to BSC failed\n");
+		LOGP(DABIS, LOGL_NOTICE, "Connection to BSC failed\n");
 		return trx_link_estab(link->trx);
 	}
 
-	LOGP(DABIS, LOGL_INFO, "Connection to BSC failed, retrying in %d "
+	LOGP(DABIS, LOGL_NOTICE, "Connection to BSC failed, retrying in %d "
 		"seconds.\n", OML_RETRY_TIMER);
 	osmo_timer_schedule(&link->timer, OML_RETRY_TIMER, 0);
 	link->state = LINK_STATE_RETRYING;
@@ -406,6 +439,8 @@ int abis_open(struct ipabis_link *link, uint32_t ip)
 	struct sockaddr_in addr;
 	int sock;
 	int ret;
+
+	oml_init();
 
 	if (link->bfd.fd > 0)
 		return -EBUSY;
@@ -455,18 +490,11 @@ int abis_open(struct ipabis_link *link, uint32_t ip)
 void abis_close(struct ipabis_link *link)
 {
 	struct msgb *msg;
-	int i;
 
 	if (link->bfd.fd <= 0)
 		return;
 	
-	LOGP(DABIS, LOGL_INFO, "Abis socket closed.\n");
-
-#warning if any link fails, shutdown all links
-	if (link->trx) {
-		for (i = 0; i < 8; i++)
-			bts_setup_slot(&link->trx->slot[i], 0xff);
-	}
+	LOGP(DABIS, LOGL_NOTICE, "Abis socket closed.\n");
 
 	if (link->rx_msg) {
 		msgb_free(link->rx_msg);

@@ -189,12 +189,12 @@ int l1ctl_tx_data_req(struct osmocom_ms *ms, struct msgb *msg,
 	uint8_t chan_type, chan_ts, chan_ss;
 	uint8_t gsmtap_chan_type;
 
-	if (msgb_l2len(msg) > 23) {
+	if (msgb_l2len(msg) > GSM_MACBLOCK_LEN) {
 		LOGP(DL1C, LOGL_ERROR, "L1 cannot handle message length "
 			"> 23 (%u)\n", msgb_l2len(msg));
 		msgb_free(msg);
 		return -EINVAL;
-	} else if (msgb_l2len(msg) < 23)
+	} else if (msgb_l2len(msg) < GSM_MACBLOCK_LEN)
 		LOGP(DL1C, LOGL_ERROR, "L1 message length < 23 (%u) "
 			"doesn't seem right!\n", msgb_l2len(msg));
 

@@ -1,1 +1,1 @@
-SUBDIRS = common osmo-bts-bb
+SUBDIRS = common osmo-bts-sysmo #osmo-bts-bb
