@@ -946,6 +946,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	case RSL_MT_SACCH_INFO_MODIFY:
 		return rsl_rx_sacch_inf_mod(msg);
 	case RSL_MT_DEACTIVATE_SACCH:
+		return bts_model_rsl_deact_sacch(msg->lchan);
 	case RSL_MT_ENCR_CMD:
 	case RSL_MT_MODE_MODIFY_REQ:
 	case RSL_MT_PHY_CONTEXT_REQ:

@@ -487,6 +487,25 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 	return 0;
 }
 
+int lchan_deactivate_sacch(struct gsm_lchan *lchan)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	struct msgb *msg = l1p_msgb_alloc();
+	GsmL1_MphDeactivateReq_t *deact_req;
+
+	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
+	deact_req->u8Tn = lchan->ts->nr;
+	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
+	deact_req->dir = DIR_BOTH;
+	deact_req->sapi = GsmL1_Sapi_Sacch;
+
+	LOGP(DL1C, LOGL_NOTICE, "%s SACCH MPH-DEACTIVATE.req\n",
+		gsm_lchan_name(lchan));
+
+	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
+	return l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);
+}
+
 
 struct gsm_time *bts_model_get_time(struct gsm_bts *bts)
 {

@@ -39,3 +39,8 @@ int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 	lchan_deactivate(lchan);
 	return rsl_tx_rf_rel_ack(lchan);
 }
+
+int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
+{
+	return lchan_deactivate_sacch(lchan);
+}
