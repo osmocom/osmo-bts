@@ -180,7 +180,7 @@ static int opstart_compl_cb(struct msgb *l1_msg, void *data)
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
 	    mo->obj_inst.ts_nr == 0) {
 		DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
-		lchan_activate(&mo->bts->c0->ts[0].lchan[0]);
+		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
 	}
 
 	/* Send OPSTART ack */
@@ -242,6 +242,9 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 {
 	switch (lchan->ts->pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4:
+		if (lchan->type == GSM_LCHAN_CCCH)
+			return GsmL1_SubCh_NA;
+		/* fall-through */
 	case GSM_PCHAN_TCH_H:
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 		return lchan->nr;

@@ -548,12 +548,12 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 	switch (ts->pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4:
 		for (i = 0; i < 4; i++) {
-			lchan = &ts->lchan[i+1];
+			lchan = &ts->lchan[i];
 			lchan->type = GSM_LCHAN_SDCCH;
 		}
 		/* fallthrough */
 	case GSM_PCHAN_CCCH:
-		lchan = &ts->lchan[0];
+		lchan = &ts->lchan[4];
 		lchan->type = GSM_LCHAN_CCCH;
 		break;
 	case GSM_PCHAN_TCH_F:
