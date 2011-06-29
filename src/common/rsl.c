@@ -858,6 +858,8 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
 		rsl_msg_name(rh->c.msg_type));
 
+	/* exception: RLL messages are _NOT_ freed as they are now
+	 * owned by LAPDm which might have queued them */
 	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
 }
 
@@ -1036,13 +1038,17 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	switch (dch->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV:
-		return rsl_rx_chan_activ(msg);
+		ret = rsl_rx_chan_activ(msg);
+		break;
 	case RSL_MT_RF_CHAN_REL:
-		return rsl_rx_rf_chan_rel(msg);
+		ret = rsl_rx_rf_chan_rel(msg);
+		break;
 	case RSL_MT_SACCH_INFO_MODIFY:
-		return rsl_rx_sacch_inf_mod(msg);
+		ret = rsl_rx_sacch_inf_mod(msg);
+		break;
 	case RSL_MT_DEACTIVATE_SACCH:
-		return bts_model_rsl_deact_sacch(msg->lchan);
+		ret = bts_model_rsl_deact_sacch(msg->lchan);
+		break;
 	case RSL_MT_ENCR_CMD:
 	case RSL_MT_MODE_MODIFY_REQ:
 	case RSL_MT_PHY_CONTEXT_REQ:
@@ -1139,6 +1145,8 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 	switch (rslh->msg_discr & 0xfe) {
 	case ABIS_RSL_MDISC_RLL:
 		ret = rsl_rx_rll(trx, msg);
+		/* exception: RLL messages are _NOT_ freed as they are now
+		 * owned by LAPDm which might have queued them */
 		break;
 	case ABIS_RSL_MDISC_COM_CHAN:
 		ret = rsl_rx_cchan(trx, msg);
@@ -1158,6 +1166,9 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 		msgb_free(msg);
 		ret = -EINVAL;
 	}
+
+	/* we don't free here, as rsl_rx{cchan,dchan,trx,ipaccess,rll} are
+	 * responsible for owning the msg */
 
 	return ret;
 }
