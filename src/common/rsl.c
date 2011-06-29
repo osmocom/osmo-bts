@@ -615,15 +615,16 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 /* 8.4.14 RF CHANnel RELease is received */
 static int rsl_rx_rf_chan_rel(struct msgb *msg)
 {
+	int rc;
 #if 0
-	lapdm_reset(&lchan->l2_entity.lapdm_dcch);
-	lapdm_reset(&lchan->l2_entity.lapdm_acch);
-
 	if (lchan->rtp.socket_created)
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
 #endif
+	rc = bts_model_rsl_chan_rel(msg->lchan);
 
-	return bts_model_rsl_chan_rel(msg->lchan);
+	lapdm_channel_reset(&msg->lchan->lapdm_ch);
+
+	return rc;
 }
 
 /* 8.4.20 SACCH INFO MODify */
