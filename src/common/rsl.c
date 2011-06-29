@@ -431,7 +431,7 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
 
-	LOGP(DRSL, LOGL_NOTICE, "(%s) Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
 
 	gsm48_gen_starting_time(ie, gtime);
 	msgb_tv_fixed_put(msg, RSL_IE_FRAME_NUMBER, 2, ie);
@@ -903,7 +903,7 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "(%s) Tx MEAS RES\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx MEAS RES\n", gsm_lchan_name(lchan));
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
 	if (lchan->meas.flags & LC_UL_M_F_RES_VALID) {
