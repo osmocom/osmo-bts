@@ -23,6 +23,8 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
 
+#include "l1_if.h"
+
 int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 {
 	uint8_t mode = *TLVP_VAL(tp, RSL_IE_CHAN_MODE);
@@ -43,4 +45,11 @@ int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
 {
 	return lchan_deactivate_sacch(lchan);
+}
+
+int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+
+	return l1if_activate_rf(fl1, 0);
 }

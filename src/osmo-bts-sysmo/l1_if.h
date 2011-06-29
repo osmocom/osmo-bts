@@ -40,6 +40,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 struct femtol1_hdl *l1if_open(void *priv);
 int l1if_close(struct femtol1_hdl *hdl);
 int l1if_reset(struct femtol1_hdl *hdl);
+int l1if_activate_rf(struct femtol1_hdl *hdl, int on);
 
 struct msgb *l1p_msgb_alloc(void);
 struct msgb *sysp_msgb_alloc(void);

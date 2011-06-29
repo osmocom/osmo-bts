@@ -513,5 +513,13 @@ void abis_close(struct ipabis_link *link)
 
 	if (osmo_timer_pending(&link->timer))
 		osmo_timer_del(&link->timer);
+
+	/* for now, we simply terminate the program and re-spawn */
+	if (link->bts)
+		bts_shutdown(link->bts);
+	else if (link->trx)
+		bts_shutdown(link->trx->bts);
+	else
+		exit(43);
 }
 

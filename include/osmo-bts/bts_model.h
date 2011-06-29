@@ -31,4 +31,6 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp);
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan);
 int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan);
 
+int bts_model_trx_deact_rf(struct gsm_bts_trx *trx);
+
 #endif

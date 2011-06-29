@@ -160,6 +160,8 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+static struct gsm_bts *bts;
+
 static void signal_handler(int signal)
 {
 	fprintf(stderr, "signal %u received\n", signal);
@@ -167,8 +169,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		sleep(3);
-		exit(0);
+		bts_shutdown(bts);
 		break;
 	case SIGABRT:
 	case SIGUSR1:
@@ -182,7 +183,6 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	struct gsm_bts *bts;
 	struct ipabis_link *link;
 	void *tall_msgb_ctx;
 	int rc;

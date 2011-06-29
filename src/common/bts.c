@@ -56,6 +56,27 @@ int bts_init(struct gsm_bts *bts)
 	return bts_model_init(bts);
 }
 
+static void shutdown_timer_cb(void *data)
+{
+	exit(42);
+}
+
+static struct osmo_timer_list shutdown_timer = {
+	.cb = &shutdown_timer_cb,
+};
+
+void bts_shutdown(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		bts_model_trx_deact_rf(trx);
+
+	/* shedule a timer to make sure select loop logic can run again
+	 * to dispatch any pending primitives */
+	osmo_timer_schedule(&shutdown_timer, 3, 0);
+}
+
 #if 0
 struct osmobts_lchan *lchan_by_channelnr(struct osmobts_trx *trx,
 	uint8_t channelnr)
