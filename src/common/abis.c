@@ -404,6 +404,7 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 		if (msg) {
 			LOGP(DABIS, LOGL_DEBUG, "Sending messages to Abis socket.\n");
 			ret = send(link->bfd.fd, msg->data, msg->len, 0);
+			msgb_free(msg);
 			if (ret < 0)
 				goto close;
 		} else
