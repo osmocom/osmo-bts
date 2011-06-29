@@ -384,8 +384,11 @@ int lchan_activate(struct gsm_lchan *lchan)
 	for (i = 0; i < s4l->num_sapis; i++) {
 		struct msgb *msg = l1p_msgb_alloc();
 		GsmL1_MphActivateReq_t *act_req;
+		GsmL1_LogChParam_t *lch_par;
+		int j;
 
 		act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq, fl1h);
+		lch_par = &act_req->logChPrm;
 		act_req->u8Tn = lchan->ts->nr;
 		act_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
 		act_req->dir = s4l->sapis[i].dir;
@@ -394,11 +397,11 @@ int lchan_activate(struct gsm_lchan *lchan)
 
 		switch (act_req->sapi) {
 		case GsmL1_Sapi_Rach:
-			act_req->logChPrm.rach.u8Bsic = lchan->ts->trx->bts->bsic;
+			lch_par->rach.u8Bsic = lchan->ts->trx->bts->bsic;
 			break;
 		case GsmL1_Sapi_Agch:
 #warning Set BS_AG_BLKS_RES
-			act_req->logChPrm.agch.u8NbrOfAgch = 1;
+			lch_par->agch.u8NbrOfAgch = 1;
 			break;
 		case GsmL1_Sapi_Sacch:
 			/* Only if we use manual MS power control */
@@ -407,6 +410,10 @@ int lchan_activate(struct gsm_lchan *lchan)
 		case GsmL1_Sapi_TchH:
 		case GsmL1_Sapi_TchF:
 #warning Set AMR parameters for TCH
+			lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
+			lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
+			for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
+				lch_par->tch.amrActiveCodecSet[i] = GsmL1_AmrCodec_Unset;
 			break;
 		default:
 			break;
