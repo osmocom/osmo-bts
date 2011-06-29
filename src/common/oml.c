@@ -717,7 +717,6 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
 		LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
-		msgb_free(msg);
 		return -EIO;
 	}
 
@@ -822,7 +821,6 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
 		LOGP(DOML, LOGL_NOTICE, "Manufacturer O&M message too short\n");
-		msgb_free(msg);
 		return -EIO;
 	}
 
@@ -879,7 +877,6 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	case ABIS_OM_MDISC_FOM:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
 			LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
-			msgb_free(msg);
 			ret = -EIO;
 			break;
 		}
@@ -888,7 +885,6 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	case ABIS_OM_MDISC_MANUF:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
 			LOGP(DOML, LOGL_NOTICE, "Manufacturer O&M message too short\n");
-			msgb_free(msg);
 			ret = -EIO;
 			break;
 		}
@@ -897,9 +893,10 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	default:
 		LOGP(DOML, LOGL_NOTICE, "unknown OML msg_discr 0x%02x\n",
 			oh->mdisc);
-		msgb_free(msg);
 		ret = -EINVAL;
 	}
+
+	msgb_free(msg);
 
 	return ret;
 }
