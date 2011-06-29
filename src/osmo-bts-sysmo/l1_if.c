@@ -305,7 +305,21 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* FIXME: special paging logic */
 		break;
 	case GsmL1_Sapi_TchF:
+		break;
 	case GsmL1_Sapi_FacchF:
+		/* resolve the L2 entity using rts_ind->hLayer2 */
+		lc = get_lapdm_chan_by_hl2(trx, rts_ind->hLayer2);
+		le = &lc->lapdm_dcch;
+		rc = lapdm_phsap_dequeue_prim(le, &pp);
+		if (rc < 0)
+			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
+#warning Send actual speech data on the TCH
+		else {
+			data_req->sapi = GsmL1_Sapi_FacchF;
+			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
+			msgb_free(pp.oph.msg);
+		}
+		break;
 		/* we should never receive a request here */
 	default:
 		memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
@@ -375,6 +389,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
 	struct msgb *msg;
+	int rc;
 
 	lchan = l1if_hLayer2_to_lchan(fl1->priv, data_ind->hLayer2);
 	if (!lchan) {
@@ -387,33 +402,56 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	if (data_ind->measParam.fLinkQuality < MIN_QUAL_NORM)
 		return 0;
 
-	DEBUGP(DL1C, "Rx PH-DATA.ind (hLayer2 = 0x%08x)", data_ind->hLayer2);
+	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
+		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
+		data_ind->hLayer2,
+		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
+			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(&data_ind->measParam);
 
-	/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
-	if (data_ind->sapi == GsmL1_Sapi_Sacch &&
-	    data_ind->msgUnitParam.u8Size >= 2) {
+	switch (data_ind->sapi) {
+	case GsmL1_Sapi_Sacch:
+		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
+		if (data_ind->msgUnitParam.u8Size < 2)
+			break;
 		lchan->meas.l1_info[0] = data_ind->msgUnitParam.u8Buffer[0];
 		lchan->meas.l1_info[1] = data_ind->msgUnitParam.u8Buffer[1];
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
+		/* fall-through */
+	case GsmL1_Sapi_Sdcch:
+	case GsmL1_Sapi_FacchF:
+	case GsmL1_Sapi_FacchH:
+		/* SDCCH, SACCH and FACCH all go to LAPDm */
+		le = le_by_l1_sapi(&lchan->lapdm_ch, data_ind->sapi);
+		/* allocate and fill LAPDm primitive */
+		msg = msgb_alloc_headroom(128, 64, "PH-DATA.ind");
+		osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_DATA,
+				PRIM_OP_INDICATION, msg);
+
+		/* copy over actual MAC block */
+		msg->l2h = msgb_put(msg, data_ind->msgUnitParam.u8Size);
+		memcpy(msg->l2h, data_ind->msgUnitParam.u8Buffer,
+			data_ind->msgUnitParam.u8Size);
+
+		/* LAPDm requires those... */
+		pp.u.data.chan_nr = gsm_lchan2chan_nr(lchan);
+		pp.u.data.link_id = gen_link_id(data_ind->sapi, 0);
+
+		/* feed into the LAPDm code of libosmogsm */
+		rc = lapdm_phsap_up(&pp.oph, le);
+		break;
+	case GsmL1_Sapi_TchF:
+	case GsmL1_Sapi_TchH:
+		/* FIXME: TCH speech frame handling */
+		rc = 0;
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
+			get_value_string(femtobts_l1sapi_names, data_ind->sapi));
+		break;
 	}
 
-	le = le_by_l1_sapi(&lchan->lapdm_ch, data_ind->sapi);
-
-	msg = msgb_alloc_headroom(128, 64, "PH-DATA.ind");
-
-	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_DATA,
-			PRIM_OP_INDICATION, msg);
-
-	msg->l2h = msgb_put(msg, data_ind->msgUnitParam.u8Size);
-	memcpy(msg->l2h, data_ind->msgUnitParam.u8Buffer,
-		data_ind->msgUnitParam.u8Size);
-
-	/* FIXME: LAPDm shouldn't really need those... */
-	pp.u.data.chan_nr = gsm_lchan2chan_nr(lchan);
-	pp.u.data.link_id = gen_link_id(data_ind->sapi, 0);
-
-	return lapdm_phsap_up(&pp.oph, le);
+	return rc;
 }
 
 
