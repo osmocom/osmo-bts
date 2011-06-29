@@ -849,8 +849,14 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	msg->l3h = (unsigned char *)rh + sizeof(*rh);
 
 	lchan = rsl_lchan_lookup(trx, rh->chan_nr);
-	if (!lchan)
+	if (!lchan) {
+		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
+			rsl_msg_name(rh->c.msg_type));
 		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	}
+
+	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
+		rsl_msg_name(rh->c.msg_type));
 
 	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
 }
