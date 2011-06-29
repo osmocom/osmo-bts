@@ -184,9 +184,12 @@ int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
 	struct ipabis_link *link;
+	void *tall_msgb_ctx;
 	int rc;
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
+	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
+	msgb_set_talloc_ctx(tall_msgb_ctx);
 
 	bts_log_init(NULL);
 
