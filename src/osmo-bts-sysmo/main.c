@@ -196,6 +196,7 @@ int main(int argc, char **argv)
 	bts = gsm_bts_alloc(tall_bts_ctx);
 
 	vty_init(&bts_vty_info);
+	logging_vty_add_cmds(&bts_log_info);
 	//bts_vty_init(&
 
 	/* FIXME: parse config file */
