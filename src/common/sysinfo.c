@@ -58,7 +58,6 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan, struct gsm_time *g_time)
 	for (tmp = lchan->si.last + 1; tmp != lchan->si.last; tmp = (tmp + 1) % 32) {
 		if (lchan->si.valid & (1 << tmp)) {
 			lchan->si.last = tmp;
-			printf("returning SACCH SI type %u\n", tmp);
 			return lchan->si.buf[tmp];
 		}
 	}
