@@ -883,10 +883,18 @@ static int rslms_is_meas_rep(struct msgb *msg)
 	if (gh->proto_discr != GSM48_PDISC_RR)
 		return 0;
 
-	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
-		return 0;
+	switch (gh->msg_type) {
+	case GSM48_MT_RR_MEAS_REP:
+	case GSM48_MT_RR_EXT_MEAS_REP:
+		return 1;
+	default:
+		break;
+	}
 
-	return 1;
+	/* FIXME: this does not cover the Bter frame format and the associated
+	 * short RR protocol descriptor for ENHANCED MEASUREMENT REPORT */
+
+	return 0;
 }
 
 /* 8.4.8 MEASUREMENT RESult */
