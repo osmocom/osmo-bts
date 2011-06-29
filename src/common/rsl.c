@@ -869,26 +869,23 @@ static int rslms_is_meas_rep(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh;
 	struct gsm48_hdr *gh;
 
-	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL) {
-		DEBUGP(DRSL, "msg_disc 0x%x != RLL\n", rh->msg_discr);
+	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL)
 		return 0;
-	}
 
-	if (rh->msg_type != RSL_MT_UNIT_DATA_IND) {
-		DEBUGP(DRSL, "msg_type 0x%x != UNIT_DATA_IND\n", rh->msg_type);
+	if (rh->msg_type != RSL_MT_UNIT_DATA_IND)
 		return 0;
-	}
-#if 0
+
 	rllh = msgb_l2(msg);
 	if (rsl_link_id_is_sacch(rllh->link_id) == 0)
 		return 0;
+
 	gh = msgb_l3(msg);
 	if (gh->proto_discr != GSM48_PDISC_RR)
 		return 0;
 
 	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
 		return 0;
-#endif
+
 	return 1;
 }
 
