@@ -275,8 +275,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data, GSM_MACBLOCK_LEN-2);
 			msgb_free(pp.oph.msg);
 		}
-		DEBUGP(DL1C, "Sending SACCH payload bytes: %s\n",
-			osmo_hexdump(msu_param->u8Buffer, GSM_MACBLOCK_LEN));
 		break;
 	case GsmL1_Sapi_Sdcch:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
@@ -297,8 +295,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			if (!msg)
 				memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 			else {
-				DEBUGP(DL1C, "Sending AGCH payload %u bytes: %s\n",
-					msg->len, osmo_hexdump(msg->data, msg->len));
 				memcpy(msu_param->u8Buffer, msg->data, msg->len);
 				msgb_free(msg);
 			}
