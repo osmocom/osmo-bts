@@ -58,7 +58,7 @@ static const struct log_info_cat bts_log_info_cat[] = {
 	[DMEAS] = {
 		.name = "DMEAS",
 		.description = "Radio Measurement Processing",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DPAG]	= {
 		.name = "DPAG",
@@ -107,7 +107,7 @@ const struct log_info bts_log_info = {
 	.num_cat = ARRAY_SIZE(bts_log_info_cat),
 };
 
-#define DEFAULT_MASK "DL1C:DOML:DRSL:DPAG"
+#define DEFAULT_MASK "DL1C:DOML:DRSL:DPAG:DMEAS"
 
 int bts_log_init(const char *category_mask)
 {

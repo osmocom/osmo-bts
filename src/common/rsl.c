@@ -39,6 +39,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/measurement.h>
 
 static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause);
 
@@ -251,7 +252,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 		if (len > sizeof(sysinfo_buf_t))
 			len = sizeof(sysinfo_buf_t);
 		bts->si_valid |= (1 << osmo_si);
@@ -359,7 +360,7 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 		/* We have to pre-fix with the two-byte LAPDM UI header */
 		if (len > sizeof(sysinfo_buf_t)-2)
 			len = sizeof(sysinfo_buf_t)-2;
@@ -436,6 +437,9 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 	msgb_tv_fixed_put(msg, RSL_IE_FRAME_NUMBER, 2, ie);
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
+
+	/* since activation was successful, do some lchan initialization */
+	lchan->meas.res_nr = 0;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -605,7 +609,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n", dch->chan_nr, type, mode);
 
 	/* actually activate the channel in the BTS */
-	return bts_model_rsl_chan_act(msg->lchan, &tp);
+	return  bts_model_rsl_chan_act(msg->lchan, &tp);
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
@@ -651,7 +655,7 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		uint8_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 		/* We have to pre-fix with the two-byte LAPDM UI header */
 		if (len > sizeof(sysinfo_buf_t)-2)
 			len = sizeof(sysinfo_buf_t)-2;
@@ -851,18 +855,99 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
 }
 
+static inline int rsl_link_id_is_sacch(uint8_t link_id)
+{
+	if (link_id >> 6 == 1)
+		return 1;
+	else
+		return 0;
+}
+
+static int rslms_is_meas_rep(struct msgb *msg)
+{
+	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
+	struct abis_rsl_rll_hdr *rllh;
+	struct gsm48_hdr *gh;
+
+	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL) {
+		DEBUGP(DRSL, "msg_disc 0x%x != RLL\n", rh->msg_discr);
+		return 0;
+	}
+
+	if (rh->msg_type != RSL_MT_UNIT_DATA_IND) {
+		DEBUGP(DRSL, "msg_type 0x%x != UNIT_DATA_IND\n", rh->msg_type);
+		return 0;
+	}
+#if 0
+	rllh = msgb_l2(msg);
+	if (rsl_link_id_is_sacch(rllh->link_id) == 0)
+		return 0;
+	gh = msgb_l3(msg);
+	if (gh->proto_discr != GSM48_PDISC_RR)
+		return 0;
+
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		return 0;
+#endif
+	return 1;
+}
+
+/* 8.4.8 MEASUREMENT RESult */
+static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
+{
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_NOTICE, "(%s) Tx MEAS RES\n", gsm_lchan_name(lchan));
+
+	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
+	if (lchan->meas.flags & LC_UL_M_F_RES_VALID) {
+		uint8_t meas_res[16];
+		int ie_len = lchan_build_rsl_ul_meas(lchan, meas_res);
+		if (ie_len >= 3) {
+			msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
+			lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
+		}
+	}
+	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->meas.bts_tx_pwr);
+	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
+		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
+		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
+	}
+	msgb_tl16v_put(msg, RSL_IE_L3_INFO, l3_len, l3);
+		//msgb_tv_put(msg, RSL_IE_MS_TIMING_OFFSET, FIXME);
+
+	rsl_dch_push_hdr(msg, RSL_MT_MEAS_RES, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* call-back for LAPDm code, called when it wants to send msgs UP */
 int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 {
 	struct gsm_lchan *lchan = ctx;
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
 
-	LOGP(DRSL, LOGL_INFO, "%s Fwd RLL msg %s from LAPDm to A-bis\n",
-		gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
-
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	/* check if this is a measurement report from SACCH which needs special
+	 * processing before forwarding */
+	if (rslms_is_meas_rep(msg)) {
+		int rc;
+
+		LOGP(DRSL, LOGL_INFO, "%s Handing RLL msg %s from LAPDm to MEAS REP\n",
+			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
+
+		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg));
+		msgb_free(msg);
+		return rc;
+	} else {
+		LOGP(DRSL, LOGL_INFO, "%s Fwd RLL msg %s from LAPDm to A-bis\n",
+			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
+
+		return abis_rsl_sendmsg(msg);
+	}
 }
 
 static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)

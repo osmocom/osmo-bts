@@ -3,5 +3,6 @@ AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS)
 
 noinst_LIBRARIES = libbts.a
-libbts_a_SOURCES = gsm_data_shared.c sysinfo.c logging.c abis.c oml.c bts.c rsl.c vty.c paging.c
+libbts_a_SOURCES = gsm_data_shared.c sysinfo.c logging.c abis.c oml.c bts.c \
+		   rsl.c vty.c paging.c measurement.c
 #support.c rtp.c 
