@@ -165,8 +165,11 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	ber_full_sum = ber_full_sum / lchan->meas.num_ul_meas;
 	irssi_full_sum = irssi_full_sum / lchan->meas.num_ul_meas;
 	taqb_sum = taqb_sum / lchan->meas.num_ul_meas;
-	ber_sub_sum = ber_sub_sum / num_meas_sub;
-	irssi_sub_sum = irssi_sub_sum / num_meas_sub;
+
+	if (num_meas_sub) {
+		ber_sub_sum = ber_sub_sum / num_meas_sub;
+		irssi_sub_sum = irssi_sub_sum / num_meas_sub;
+	}
 
 	DEBUGP(DMEAS, "%s Computed TA(% 4uqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
 		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)", gsm_lchan_name(lchan),
