@@ -13,7 +13,7 @@
 
 case "$1" in
         start)
-		/usr/bin/screen -c /etc/osmocom/screenrc-sysmobts
+		/usr/bin/screen -d -m -c /etc/osmocom/screenrc-sysmobts
                 ;;
 	stop)
 		echo "This script doesn't support stop"
