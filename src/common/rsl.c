@@ -570,11 +570,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_SACCH_INFO)) {
 		uint8_t tot_len = TLVP_LEN(&tp, RSL_IE_SACCH_INFO);
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_SACCH_INFO);
-		uint8_t num_msgs = *val++;
+		const uint8_t *cur = val;
+		uint8_t num_msgs = *cur++;
 		unsigned int i;
 		for (i = 0; i < num_msgs; i++) {
-			uint8_t rsl_si = *val++;
-			uint8_t si_len = *val++;
+			uint8_t rsl_si = *cur++;
+			uint8_t si_len = *cur++;
 			uint8_t osmo_si;
 			uint8_t copy_len;
 
@@ -594,9 +595,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			lchan->si.valid |= (1 << osmo_si);
 			lchan->si.buf[osmo_si][0] = 0x00;
 			lchan->si.buf[osmo_si][1] = 0x03;
-			memcpy(lchan->si.buf[osmo_si]+2, val, copy_len);
+			memcpy(lchan->si.buf[osmo_si]+2, cur, copy_len);
 
-			val += si_len;
+			cur += si_len;
+			if (cur >= val + tot_len) {
+				LOGP(DRSL, LOGL_ERROR, "Error parsing SACCH INFO IE\n");
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+			}
 		}
 	} else {
 		/* use standard SACCH filling of the BTS */

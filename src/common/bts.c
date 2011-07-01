@@ -36,6 +36,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_model.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 
@@ -318,7 +319,6 @@ int bts_link_estab(struct gsm_bts *bts)
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
-		struct ipabis_link *link = (struct ipabis_link *) trx->rsl_link;
 
 		oml_tx_state_changed(&trx->mo);
 		oml_tx_state_changed(&trx->bb_transc.mo);
@@ -353,7 +353,6 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 void bts_new_si(void *arg)
 {
 	struct osmobts_trx *trx = arg;
-	int i;
 
 #if 0
 	if (osmo_timer_pending(&trx->si.timer))

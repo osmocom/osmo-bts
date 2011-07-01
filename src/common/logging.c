@@ -30,7 +30,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/logging.h>
 
-static const struct log_info_cat bts_log_info_cat[] = {
+static struct log_info_cat bts_log_info_cat[] = {
 	[DRSL] = {
 		.name = "DRSL",
 		.description = "A-bis Radio Siganlling Link (RSL)",

@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>

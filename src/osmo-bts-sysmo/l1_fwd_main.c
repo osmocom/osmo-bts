@@ -49,6 +49,7 @@
 
 #include "femtobts.h"
 #include "l1_if.h"
+#include "l1_transp.h"
 #include "l1_fwd.h"
 
 static const uint16_t fwd_udp_ports[_NUM_MQ_WRITE] = {
