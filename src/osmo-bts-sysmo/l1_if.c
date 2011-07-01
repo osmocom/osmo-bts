@@ -100,7 +100,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	if (is_system_prim == 0) {
 		GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 
-		LOGP(DL1C, LOGL_DEBUG, "Tx L1 prim %s\n",
+		LOGP(DL1P, LOGL_INFO, "Tx L1 prim %s\n",
 			get_value_string(femtobts_l1prim_names, l1p->id));
 
 		if (femtobts_l1prim_type[l1p->id] != L1P_T_REQ) {
@@ -116,7 +116,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	} else {
 		FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
 
-		LOGP(DL1C, LOGL_DEBUG, "Tx SYS prim %s\n",
+		LOGP(DL1C, LOGL_INFO, "Tx SYS prim %s\n",
 			get_value_string(femtobts_sysprim_names, sysp->id));
 
 		if (femtobts_sysprim_type[sysp->id] != L1P_T_REQ) {

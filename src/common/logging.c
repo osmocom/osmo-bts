@@ -35,7 +35,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.name = "DRSL",
 		.description = "A-bis Radio Siganlling Link (RSL)",
 		.color = "\033[1;35m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_INFO,
 	},
 	[DOML] =	{
 		.name = "DOML",
@@ -69,7 +69,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 	[DL1C] = {
 		.name = "DL1C",
 		.description = "Layer 1",
-		.loglevel = LOGL_DEBUG,
+		.loglevel = LOGL_INFO,
 		.enabled = 1,
 	},
 	[DL1P] = {
@@ -107,16 +107,12 @@ const struct log_info bts_log_info = {
 	.num_cat = ARRAY_SIZE(bts_log_info_cat),
 };
 
-#define DEFAULT_MASK "DL1C:DOML:DRSL:DPAG:DMEAS"
-
 int bts_log_init(const char *category_mask)
 {
-	if (!category_mask)
-		category_mask = DEFAULT_MASK;
-
 	osmo_init_logging(&bts_log_info);
 
-	log_parse_category_mask(osmo_stderr_target, category_mask);
+	if (category_mask)
+		log_parse_category_mask(osmo_stderr_target, category_mask);
 
 	return 0;
 }

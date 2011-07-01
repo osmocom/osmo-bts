@@ -310,7 +310,7 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 		/* add cause */
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
 	} else {
-		LOGP(DOML, LOGL_NOTICE, "Sending FOM ACK.\n");
+		LOGP(DOML, LOGL_DEBUG, "Sending FOM ACK.\n");
 		foh->msg_type++; /* ack */
 	}
 
@@ -515,7 +515,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* 9.4.47 RF Max Power Reduction */
 	if (TLVP_PRESENT(&tp, NM_ATT_RF_MAXPOWR_R)) {
 		trx->max_power_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R);
-		LOGP(DOML, LOGL_INFO, " RF Max Power Reduction = %d\n", trx->max_power_red);
+		LOGP(DOML, LOGL_INFO, "Set RF Max Power Reduction = %d\n", trx->max_power_red);
 	}
 	/* 9.4.5 ARFCN List */
 #if 0
@@ -634,7 +634,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc = bts->bsic & 0x3;
 	}
-	DEBUGP(DOML, "TS %u, settig TSC = %u\n", ts->nr, ts->tsc);
+	LOGP(DOML, LOGL_INFO, "%s SET CHAN ATTR (TSC = %u)\n",
+		gsm_abis_mo_name(&ts->mo), ts->tsc);
 
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(bts, msg, tp_merged, ts);
@@ -773,8 +774,6 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	uint8_t stream_id = 0;
 
-	DEBUGP(DOML, "Rx IPA RSL CONNECT ");
-
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP)) {
 		const uint8_t *ptr = TLVP_VAL(tp, NM_ATT_IPACC_DST_IP);
 		ip = ntohl(*(uint32_t *)ptr);
@@ -788,8 +787,8 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 
 	in.s_addr = htonl(ip);
-	DEBUGPC(DOML, "IP=%s PORT=%u STREAM=0x%02x\n", inet_ntoa(in),
-		port, stream_id);
+	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
+		inet_ntoa(in), port, stream_id);
 
 	if (!trx->rsl_link) {
 		struct ipabis_link *rsl_link = talloc_zero(trx, struct ipabis_link);
@@ -816,8 +815,6 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	struct tlv_parsed tp;
 	int ret;
 
-	DEBUGP(DOML, "Manufacturer OML message\n");
-
 	if (msgb_l2len(msg) < sizeof(*foh)) {
 		LOGP(DOML, LOGL_NOTICE, "Manufacturer O&M message too short\n");
 		return -EIO;
@@ -843,7 +840,7 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "IPACCESS(0x%02x): ", foh->msg_type);
+	DEBUGPC(DOML, "Rx IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT:
