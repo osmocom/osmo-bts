@@ -45,6 +45,22 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 };
 
+static int band_osmo2femto(enum gsm_band osmo_band)
+{
+	switch (osmo_band) {
+	case GSM_BAND_850:
+		return GsmL1_FreqBand_850;
+	case GSM_BAND_900:
+		return GsmL1_FreqBand_900;
+	case GSM_BAND_1800:
+		return GsmL1_FreqBand_1800;
+	case GSM_BAND_1900:
+		return GsmL1_FreqBand_1900;
+	default:
+		return -1;
+	}
+}
+
 static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct femtol1_hdl *gl1)
 {
 	prim->id = id;
@@ -234,6 +250,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
+	enum gsm_band osmo_band;
+	int femto_band;
 
 	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
 				    ARRAY_SIZE(trx_rqd_attr))) {
@@ -243,11 +261,18 @@ static int trx_init(struct gsm_bts_trx *trx)
 		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
 	}
 
+	osmo_band = gsm_arfcn2band(trx->arfcn);
+	femto_band = band_osmo2femto(osmo_band);
+	if (femto_band < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Unsupported GSM band %s\n",
+			gsm_band_name(osmo_band));
+	}
+
 	msg = l1p_msgb_alloc();
 	mi_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphInitReq, fl1h);
 	dev_par = &mi_req->deviceParam;
 	dev_par->devType = GsmL1_DevType_TxdRxu;
-	dev_par->freqBand = GsmL1_FreqBand_1800;
+	dev_par->freqBand = femto_band;
 	dev_par->u16Arfcn = trx->arfcn;
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
