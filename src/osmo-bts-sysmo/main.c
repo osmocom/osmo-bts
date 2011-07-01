@@ -61,6 +61,7 @@ int bts_model_init(struct gsm_bts *bts)
 	}
 
 	bts->c0->role_bts.l1h = fl1h;
+	bts->c0->nominal_power = 23;
 
 	l1if_reset(fl1h);
 
