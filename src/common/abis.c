@@ -525,7 +525,8 @@ void abis_close(struct ipabis_link *link)
 		bts_shutdown(link->bts, "Abis close / OML");
 	else if (link->trx)
 		bts_shutdown(link->trx->bts, "Abis close / RSL");
-	else
+	else {
+		LOGP(DABIS, LOGL_FATAL, "Unable to connect to BSC\n");
 		exit(43);
+	}
 }
-

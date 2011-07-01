@@ -21,6 +21,8 @@
  */
 
 #include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -62,6 +64,7 @@ int bts_init(struct gsm_bts *bts)
 
 static void shutdown_timer_cb(void *data)
 {
+	fprintf(stderr, "Shutdown timer expired\n");
 	exit(42);
 }
 
@@ -73,7 +76,7 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 {
 	struct gsm_bts_trx *trx;
 
-	LOGP(DOML, LOGL_INFO, "Shutting down BTS %u, Reason %s\n",
+	LOGP(DOML, LOGL_NOTICE, "Shutting down BTS %u, Reason %s\n",
 		bts->nr, reason);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
