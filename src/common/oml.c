@@ -207,8 +207,7 @@ char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
 }
 
 /* 8.8.1 sending State Changed Event Report */
-int oml_tx_state_changed(struct gsm_abis_mo *mo,
-			 uint8_t op_state, uint8_t avail_status)
+int oml_tx_state_changed(struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
 
@@ -219,10 +218,10 @@ int oml_tx_state_changed(struct gsm_abis_mo *mo,
 		return -ENOMEM;
 
 	/* 9.4.38 Operational State */
-	msgb_tv_put(nmsg, NM_ATT_OPER_STATE, op_state);
+	msgb_tv_put(nmsg, NM_ATT_OPER_STATE, mo->nm_state.operational);
 
 	/* 9.4.7 Availability Status */
-	msgb_tl16v_put(nmsg, NM_ATT_AVAIL_STATUS, 1, &avail_status);
+	msgb_tl16v_put(nmsg, NM_ATT_AVAIL_STATUS, 1, &mo->nm_state.availability);
 
 	return oml_mo_send_msg(mo, nmsg, NM_MT_STATECHG_EVENT_REP);
 }
@@ -249,7 +248,7 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 		}
 
 		/* send state change report */
-		rc = oml_tx_state_changed(mo, op_state, avail_state);
+		rc = oml_tx_state_changed(mo);
 	}
 	return rc;
 }

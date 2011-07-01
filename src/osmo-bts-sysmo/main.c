@@ -170,7 +170,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		bts_shutdown(bts);
+		bts_shutdown(bts, "SIGINT");
 		break;
 	case SIGABRT:
 	case SIGUSR1:

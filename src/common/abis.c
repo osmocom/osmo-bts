@@ -74,6 +74,11 @@ int abis_oml_sendmsg(struct msgb *msg)
 
 	abis_push_ipa(msg, 0xff);
 
+	if (!bts->oml_link) {
+		msgb_free(msg);
+		return 0;
+	}
+
 	return abis_tx((struct ipabis_link *) bts->oml_link, msg);
 }
 
@@ -516,9 +521,9 @@ void abis_close(struct ipabis_link *link)
 
 	/* for now, we simply terminate the program and re-spawn */
 	if (link->bts)
-		bts_shutdown(link->bts);
+		bts_shutdown(link->bts, "Abis close / OML");
 	else if (link->trx)
-		bts_shutdown(link->trx->bts);
+		bts_shutdown(link->trx->bts, "Abis close / RSL");
 	else
 		exit(43);
 }

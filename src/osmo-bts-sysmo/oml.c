@@ -195,9 +195,17 @@ static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphInitCnf_t *ic = &l1p->u.mphInitCnf;
 
+	LOGP(DL1C, LOGL_INFO, "Rx MPH-INIT.conf (status=%s)\n",
+		get_value_string(femtobts_l1status_names, ic->status));
+
 	/* store layer1 handle */
-	if (ic->status == GsmL1_Status_Success)
-		fl1h->hLayer1 = ic->hLayer1;
+	if (ic->status != GsmL1_Status_Success) {
+		LOGP(DL1C, LOGL_FATAL, "Rx MPH-INIT.conf status=%s\n",
+			get_value_string(femtobts_l1status_names, ic->status));
+		bts_shutdown(trx->bts, "MPH-INIT failure");
+	}
+
+	fl1h->hLayer1 = ic->hLayer1;
 
 	return opstart_compl_cb(l1_msg, &trx->mo);
 }
@@ -585,8 +593,9 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	case NM_OC_BTS:
 	case NM_OC_SITE_MANAGER:
 	case NM_OC_BASEB_TRANSC:
-		mo->nm_state.operational = NM_OPSTATE_ENABLED;
+		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, -1);
 		rc = oml_mo_opstart_ack(mo);
+		break;
 	default:
 		rc = oml_mo_opstart_nack(mo, NM_NACK_OBJCLASS_NOTSUPP);
 	}

@@ -37,6 +37,7 @@
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/oml.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
@@ -111,7 +112,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		wlc->is_sys_prim = 0;
 		wlc->conf_prim_id = femtobts_l1prim_req2conf[l1p->id];
 		wqueue = &fl1h->write_q[MQ_L1_WRITE];
-		timeout_secs = 10;
+		timeout_secs = 30;
 	} else {
 		FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
 
@@ -592,8 +593,11 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 static int activate_rf_compl_cb(struct msgb *resp, void *data)
 {
 	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
+	struct femtol1_hdl *fl1h = data;
+	struct gsm_bts_trx *trx = fl1h->priv;
 	GsmL1_Status_t status;
 	int on = 0;
+	unsigned int i;
 
 	if (sysp->id == FemtoBts_PrimId_ActivateRfCnf)
 		on = 1;
@@ -606,11 +610,32 @@ static int activate_rf_compl_cb(struct msgb *resp, void *data)
 	LOGP(DL1C, LOGL_INFO, "Rx RF-%sACT.conf (status=%s)\n", on ? "" : "DE",
 		get_value_string(femtobts_l1status_names, status));
 
+
+	if (on) {
+		if (status != GsmL1_Status_Success) {
+			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
+				get_value_string(femtobts_l1status_names, status));
+			bts_shutdown(trx->bts, "RF-ACT failure");
+		}
+		/* signal availability */
+		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
+		oml_mo_tx_sw_act_rep(&trx->mo);
+		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
+		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
+			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+	} else {
+		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+	}
+
 	talloc_free(resp);
 
 	return 0;
 }
 
+/* activate or de-activate the entire RF-Frontend */
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
@@ -629,6 +654,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 static int reset_compl_cb(struct msgb *resp, void *data)
 {
 	struct femtol1_hdl *fl1h = data;
+	struct gsm_bts_trx *trx = fl1h->priv;
 	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;
 
@@ -638,8 +664,14 @@ static int reset_compl_cb(struct msgb *resp, void *data)
 	talloc_free(resp);
 
 	/* If we're coming out of reset .. */
-	if (status == GsmL1_Status_Success)
-		l1if_activate_rf(fl1h, 1);
+	if (status != GsmL1_Status_Success) {
+		LOGP(DL1C, LOGL_FATAL, "L1-RESET.conf with status %s\n",
+			get_value_string(femtobts_l1status_names, status));
+		bts_shutdown(trx->bts, "L1-RESET failure");
+	}
+
+	/* otherwise, request activation of RF board */
+	l1if_activate_rf(fl1h, 1);
 
 	return 0;
 }

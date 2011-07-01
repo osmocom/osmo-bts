@@ -53,6 +53,9 @@ int bts_init(struct gsm_bts *bts)
 	/* FIXME: make those parameters configurable */
 	btsb->paging_state = paging_init(btsb, 200, 0);
 
+	/* set BTS to dependency */
+	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
+
 	return bts_model_init(bts);
 }
 
@@ -65,9 +68,12 @@ static struct osmo_timer_list shutdown_timer = {
 	.cb = &shutdown_timer_cb,
 };
 
-void bts_shutdown(struct gsm_bts *bts)
+void bts_shutdown(struct gsm_bts *bts, const char *reason)
 {
 	struct gsm_bts_trx *trx;
+
+	LOGP(DOML, LOGL_INFO, "Shutting down BTS %u, Reason %s\n",
+		bts->nr, reason);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		bts_model_trx_deact_rf(trx);
@@ -302,27 +308,25 @@ void destroy_bts(struct osmocom_bts *bts)
 int bts_link_estab(struct gsm_bts *bts)
 {
 	int i, j;
-	uint8_t radio_state;
 
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending Status'.\n");
 
-	oml_mo_state_chg(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-	oml_mo_state_chg(&bts->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_DEPENDENCY);
+	/* BTS and SITE MGR are EAABLED, BTS is DEPENDENCY */
+	oml_tx_state_changed(&bts->site_mgr.mo);
+	oml_tx_state_changed(&bts->mo);
 
+	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
 		struct ipabis_link *link = (struct ipabis_link *) trx->rsl_link;
 
-		radio_state = (link && link->state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
-		oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->mo);
-		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+		oml_tx_state_changed(&trx->mo);
+		oml_tx_state_changed(&trx->bb_transc.mo);
 
 		for (j = 0; j < ARRAY_SIZE(trx->ts); j++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[j];
 
-			oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+			oml_tx_state_changed(&ts->mo);
 		}
 	}
 

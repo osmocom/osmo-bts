@@ -6,7 +6,7 @@
 extern void *tall_bts_ctx;
 
 int bts_init(struct gsm_bts *bts);
-void bts_shutdown(struct gsm_bts *bts);
+void bts_shutdown(struct gsm_bts *bts, const char *reason);
 
 struct gsm_bts *create_bts(uint8_t num_trx, char *id);
 int create_ms(struct gsm_bts_trx *trx, int maskc, uint8_t *maskv_tx,
