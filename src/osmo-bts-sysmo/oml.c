@@ -202,14 +202,40 @@ static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
 	return opstart_compl_cb(l1_msg, &trx->mo);
 }
 
+int gsm_abis_mo_check_attr(const struct gsm_abis_mo *mo, uint8_t *attr_ids,
+			   unsigned int num_attr_ids)
+{
+	unsigned int i;
+
+	if (!mo->nm_attr)
+		return 0;
+
+	for (i = 0; i < num_attr_ids; i++) {
+		if (!TLVP_PRESENT(mo->nm_attr, attr_ids[i]))
+			return 0;
+	}
+	return 1;
+}
+
+static const uint8_t trx_rqd_attr[] = { NM_ATT_RF_MAXPOWR_R };
+
 /* initialize the layer1 */
 static int trx_init(struct gsm_bts_trx *trx)
 {
-	struct msgb *msg = l1p_msgb_alloc();
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
 
+	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
+				    ARRAY_SIZE(trx_rqd_attr))) {
+		/* HACK: spec says we need to decline, but openbsc
+		 * doesn't deal with this very well */
+		return oml_mo_opstart_ack(&trx->mo);
+		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
+	}
+
+	msg = l1p_msgb_alloc();
 	mi_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphInitReq, fl1h);
 	dev_par = &mi_req->deviceParam;
 	dev_par->devType = GsmL1_DevType_TxdRxu;
@@ -220,7 +246,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->fRxPowerLevel = -75.f;
 	dev_par->fTxPowerLevel = trx->nominal_power - trx->max_power_red;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "
-		"TxPower % 2.2f dBm", dev_par->u16Arfcn, dev_par->u8NbTsc,
+		"TxPower % 2.2f dBm\n", dev_par->u16Arfcn, dev_par->u8NbTsc,
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
 	
 	/* send MPH-INIT-REQ, wait for MPH-INIT-CNF */
