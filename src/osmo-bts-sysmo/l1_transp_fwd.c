@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -51,8 +52,6 @@
 #include "l1_if.h"
 #include "l1_transp.h"
 #include "l1_fwd.h"
-
-#define BTS_HOST "192.168.100.151"
 
 static const uint16_t fwd_udp_ports[] = {
 	[MQ_SYS_WRITE]	= L1FWD_SYS_PORT,
@@ -98,9 +97,15 @@ static int prim_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 int l1if_transport_open(struct femtol1_hdl *fl1h)
 {
 	int rc, i;
+	char *bts_host = getenv("L1FWD_BTS_HOST");
 
 	printf("sizeof(GsmL1_Prim_t) = %lu\n", sizeof(GsmL1_Prim_t));
 	printf("sizeof(FemtoBts_Prim_t) = %lu\n", sizeof(FemtoBts_Prim_t));
+
+	if (!bts_host) {
+		fprintf(stderr, "You have to set the L1FWD_BTS_HOST environment variable\n");
+		exit(2);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(fl1h->write_q); i++) {
 		struct osmo_wqueue *wq = &fl1h->write_q[i];
@@ -115,7 +120,7 @@ int l1if_transport_open(struct femtol1_hdl *fl1h)
 		ofd->when |= BSC_FD_READ;
 
 		rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
-					BTS_HOST, fwd_udp_ports[i],
+					bts_host, fwd_udp_ports[i],
 					OSMO_SOCK_F_CONNECT);
 		if (rc < 0) {
 			talloc_free(fl1h);
