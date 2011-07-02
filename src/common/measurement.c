@@ -172,7 +172,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	}
 
 	DEBUGP(DMEAS, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
-		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)", gsm_lchan_name(lchan),
+		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
 		taqb_sum, ber_full_sum/100,
 		ber_full_sum%100, irssi_full_sum, ber_sub_sum/100, ber_sub_sum%100,
 		irssi_sub_sum);
