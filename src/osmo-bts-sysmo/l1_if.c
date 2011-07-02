@@ -303,7 +303,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	case GsmL1_Sapi_Pch:
 		rc = paging_gen_msg(btsb->paging_state, msu_param->u8Buffer, &g_time);
-		/* FIXME: special paging logic */
 		break;
 	case GsmL1_Sapi_TchF:
 		break;
