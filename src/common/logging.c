@@ -78,6 +78,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_DEBUG,
 		.enabled = 0,
 	},
+	[DDSP] = {
+		.name = "DDSP",
+		.description = "DSP Trace Messages",
+		.loglevel = LOGL_DEBUG,
+		.enabled = 1,
+	},
 	[DABIS] = {
 		.name = "DABIS",
 		.description = "A-bis Intput Subsystem",

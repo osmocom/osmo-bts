@@ -13,6 +13,7 @@ enum {
 	DPAG,
 	DL1C,
 	DL1P,
+	DDSP,
 	DABIS,
 	DRTP,
 	DSUM,
