@@ -25,4 +25,6 @@ const FemtoBts_PrimId_t femtobts_sysprim_req2conf[FemtoBts_PrimId_NUM];
 const struct value_string femtobts_l1sapi_names[GsmL1_Sapi_NUM+1];
 const struct value_string femtobts_l1status_names[GSML1_STATUS_NUM+1];
 
+const struct value_string femtobts_tracef_names[29];
+
 #endif /* FEMTOBTS_H */

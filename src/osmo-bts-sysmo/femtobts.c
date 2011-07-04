@@ -19,6 +19,10 @@
  *
  */
 
+#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/gsml1const.h>
+#include <sysmocom/femtobts/gsml1dbg.h>
+
 #include "femtobts.h"
 
 const enum l1prim_type femtobts_l1prim_type[GsmL1_PrimId_NUM] = {
@@ -182,5 +186,36 @@ const struct value_string femtobts_l1status_names[GSML1_STATUS_NUM+1] = {
 	{ GsmL1_Status_TxBurstFifoUndr,	"FIFO underrun" },
 	{ GsmL1_Status_NotSynchronized,	"Not synchronized" },
 	{ GsmL1_Status_Unsupported,	"Unsupported feature" },
+	{ 0, NULL }
+};
+
+const struct value_string femtobts_tracef_names[29] = {
+	{ DBG_DEBUG,			"DEBUG" },
+	{ DBG_L1WARNING,		"L1_WARNING" },
+	{ DBG_ERROR,			"ERROR" },
+	{ DBG_L1RXMSG,			"L1_RX_MSG" },
+	{ DBG_L1RXMSGBYTE,		"L1_RX_MSG_BYTE" },
+	{ DBG_L1TXMSG,			"L1_TX_MSG" },
+	{ DBG_L1TXMSGBYTE,		"L1_TX_MSG_BYTE" },
+	{ DBG_MPHCNF,			"MPH_CNF" },
+	{ DBG_MPHIND,			"MPH_IND" },
+	{ DBG_MPHREQ,			"MPH_REQ" },
+	{ DBG_PHIND,			"PH_IND" },
+	{ DBG_PHREQ,			"PH_REQ" },
+	{ DBG_PHYRF,			"PHY_RF" },
+	{ DBG_PHYRFMSGBYTE,		"PHY_MSG_BYTE" },
+	{ DBG_MODE,			"MODE" },
+	{ DBG_TDMAINFO,			"TDMA_INFO" },
+	{ DBG_BADCRC,			"BAD_CRC" },
+	{ DBG_PHINDBYTE,		"PH_IND_BYTE" },
+	{ DBG_PHREQBYTE,		"PH_REQ_BYTE" },
+	{ DBG_DEVICEMSG,		"DEVICE_MSG" },
+	{ DBG_RACHINFO,			"RACH_INFO" },
+	{ DBG_LOGCHINFO,		"LOG_CH_INFO" },
+	{ DBG_MEMORY,			"MEMORY" },
+	{ DBG_PROFILING,		"PROFILING" },
+	{ DBG_TESTCOMMENT,		"TEST_COMMENT" },
+	{ DBG_TEST,			"TEST" },
+	{ DBG_STATUS,			"STATUS" },
 	{ 0, NULL }
 };
