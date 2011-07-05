@@ -252,7 +252,7 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	return cur - out_buf;
 }
 
-static const uint8_t empty_id_lv[] = { 0x01, 0x00 };
+static const uint8_t empty_id_lv[] = { 0x01, 0xF0 };
 
 static struct paging_record *dequeue_pr(struct llist_head *group_q)
 {
