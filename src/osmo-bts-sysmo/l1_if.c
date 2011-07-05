@@ -52,7 +52,7 @@
 #include "l1_transp.h"
 
 /* FIXME: make threshold configurable */
-#define MIN_QUAL_RACH	-0.5f	/* at least -1 dB C/I */
+#define MIN_QUAL_RACH	 1.0f	/* at least  1 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
 
 struct wait_l1_conf {
