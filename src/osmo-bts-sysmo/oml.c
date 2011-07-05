@@ -536,9 +536,9 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
-	unsigned int i;
+	int i;
 
-	for (i = 0; i < s4l->num_sapis; i++) {
+	for (i = s4l->num_sapis-1; i >= 0; i--) {
 		struct msgb *msg = l1p_msgb_alloc();
 		GsmL1_MphDeactivateReq_t *deact_req;
 
