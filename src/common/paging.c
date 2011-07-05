@@ -176,6 +176,8 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	return 0;
 }
 
+#define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
+
 static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan1, const uint8_t *identity2_lv,
 				uint8_t chan2)
@@ -194,7 +196,7 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 	if (identity2_lv)
 		cur = lv_put(cur, identity2_lv[0], identity2_lv+1);
 
-	pt1->l2_plen = cur - out_buf - 1;
+	pt1->l2_plen = L2_PLEN(cur - buf);
 
 	return cur - out_buf;
 }
@@ -220,7 +222,7 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	if (identity3_lv)
 		cur = lv_put(pt2->data, identity3_lv[0], identity3_lv+1);
 
-	pt2->l2_plen = cur - out_buf -1;
+	pt1->l2_plen = L2_PLEN(cur - buf);
 
 	return cur - out_buf;
 }
