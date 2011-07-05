@@ -589,6 +589,16 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 	return l1if_handle_ind(fl1h, msg);
 }
 
+int l1if_handle_dbg(struct femtol1_hdl *fl1h, struct msgb *msg)
+{
+	/* the msgb simply contains a zero-terminated string, print it
+	 * to the log file */
+	LOGP(DDSP, LOGL_DEBUG, "%s", msg->data);
+	msgb_free(msg);
+
+	return 0;
+}
+
 #if 0
 /* called by RSL if the BCCH SI has been modified */
 int sysinfo_has_changed(struct gsm_bts *bts, int si)

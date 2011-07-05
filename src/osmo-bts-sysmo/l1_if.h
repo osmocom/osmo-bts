@@ -8,6 +8,7 @@
 enum {
 	MQ_SYS_READ,
 	MQ_L1_READ,
+	MQ_DBG_READ,
 	_NUM_MQ_READ
 };
 

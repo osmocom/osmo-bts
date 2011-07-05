@@ -54,8 +54,16 @@
 #include "l1_fwd.h"
 
 static const uint16_t fwd_udp_ports[] = {
-	[MQ_SYS_WRITE]	= L1FWD_SYS_PORT,
-	[MQ_L1_WRITE]	= L1FWD_L1_PORT,
+	[MQ_SYS_READ]	= L1FWD_SYS_PORT,
+	[MQ_L1_READ]	= L1FWD_L1_PORT,
+	[MQ_DBG_READ]	= L1FWD_DBG_PORT,
+};
+
+static const struct value_string l1t_mq_names[] = {
+	{ MQ_SYS_READ,	"SYS" },
+	{ MQ_L1_READ,	"L1" },
+	{ MQ_DBG_READ,	"DBG" },
+	{ 0, NULL }
 };
 
 static int fwd_read_cb(struct osmo_fd *ofd)
@@ -80,12 +88,27 @@ static int fwd_read_cb(struct osmo_fd *ofd)
 	}
 	msgb_put(msg, rc);
 
-	if (ofd->priv_nr == MQ_SYS_WRITE)
+	switch (ofd->priv_nr) {
+	case MQ_SYS_WRITE:
 		rc = l1if_handle_sysprim(fl1h, msg);
-	else
+		break;
+	case MQ_L1_READ:
 		rc = l1if_handle_l1prim(fl1h, msg);
+		break;
+	case MQ_DBG_READ:
+		rc = l1if_handle_dbg(fl1h, msg);
+		break;
+	}
 
 	return rc;
+}
+
+static int fwd_read_cb_bfd(struct osmo_fd *ofd, unsigned int what)
+{
+	if (what & BSC_FD_READ)
+		return fwd_read_cb(ofd);
+
+	return 0;
 }
 
 static int prim_write_cb(struct osmo_fd *ofd, struct msgb *msg)
@@ -127,6 +150,25 @@ int l1if_transport_open(struct femtol1_hdl *fl1h)
 			return rc;
 		}
 	}
+	/* special case: debug is read-only and has no write_q */
+	i = MQ_DBG_READ;
+	{
+		struct osmo_fd *ofd = &fl1h->read_ofd[i];
+
+		ofd->data = fl1h;
+		ofd->priv_nr = i;
+		ofd->when |= BSC_FD_READ;
+		ofd->cb = fwd_read_cb_bfd;
+
+		rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM,
+					IPPROTO_UDP, bts_host,
+					fwd_udp_ports[i],
+					OSMO_SOCK_F_CONNECT);
+		if (rc < 0) {
+			talloc_free(fl1h);
+			return rc;
+		}
+	}
 
 	return 0;
 }
@@ -140,6 +182,14 @@ int l1if_transport_close(struct femtol1_hdl *fl1h)
 		struct osmo_fd *ofd = &wq->bfd;
 
 		osmo_wqueue_clear(wq);
+		osmo_fd_unregister(ofd);
+		close(ofd->fd);
+	}
+	/* special case: debug is read-only and has no write_q */
+	i = MQ_DBG_READ;
+	{
+		struct osmo_fd *ofd = &fl1h->read_ofd[i];
+
 		osmo_fd_unregister(ofd);
 		close(ofd->fd);
 	}

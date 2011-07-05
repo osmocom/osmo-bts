@@ -52,16 +52,24 @@
 #include "l1_transp.h"
 #include "l1_fwd.h"
 
-static const uint16_t fwd_udp_ports[_NUM_MQ_WRITE] = {
+static const uint16_t fwd_udp_ports[_NUM_MQ_READ] = {
 	[MQ_SYS_READ]	= L1FWD_SYS_PORT,
 	[MQ_L1_READ]	= L1FWD_L1_PORT,
+	[MQ_DBG_READ]	= L1FWD_DBG_PORT,
+};
+
+static const struct value_string l1t_mq_names[] = {
+	{ MQ_SYS_READ,	"SYS" },
+	{ MQ_L1_READ,	"L1" },
+	{ MQ_DBG_READ,	"DBG" },
+	{ 0, NULL }
 };
 
 struct l1fwd_hdl {
 	struct sockaddr_storage remote_sa;
 	socklen_t remote_sa_len;
 
-	struct osmo_wqueue udp_wq[_NUM_MQ_WRITE];
+	struct osmo_wqueue udp_wq[_NUM_MQ_READ];
 
 	struct femtol1_hdl *fl1h;
 };
@@ -73,7 +81,7 @@ int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg)
 	struct l1fwd_hdl *l1fh = fl1h->priv;
 
 	/* Enqueue message to UDP socket */
-	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_L1_WRITE], msg);
+	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_L1_READ], msg);
 }
 
 /* callback when there's a new SYS primitive coming in from the HW */
@@ -82,9 +90,17 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 	struct l1fwd_hdl *l1fh = fl1h->priv;
 
 	/* Enqueue message to UDP socket */
-	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_SYS_WRITE], msg);
+	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_SYS_READ], msg);
 }
 
+/* callback when there's a new DBG primitive coming in from the HW */
+int l1if_handle_dbg(struct femtol1_hdl *fl1h, struct msgb *msg)
+{
+	struct l1fwd_hdl *l1fh = fl1h->priv;
+
+	/* Enqueue message to UDP socket */
+	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_DBG_READ], msg);
+}
 
 /* data has arrived on the udp socket */
 static int udp_read_cb(struct osmo_fd *ofd)
@@ -114,7 +130,7 @@ static int udp_read_cb(struct osmo_fd *ofd)
 	msgb_put(msg, rc);
 
 	DEBUGP(DL1C, "UDP: Received %u bytes for %s queue\n", rc,
-		ofd->priv_nr == MQ_SYS_WRITE ? "SYS" : "L1");
+		get_value_string(l1t_mq_names, ofd->priv_nr));
 
 	/* put the message into the right queue */
 	if (ofd->priv_nr == MQ_SYS_WRITE)
@@ -132,7 +148,7 @@ static int udp_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 	struct l1fwd_hdl *l1fh = ofd->data;
 
 	DEBUGP(DL1C, "UDP: Writing %u bytes for %s queue\n", msgb_l1len(msg),
-		ofd->priv_nr == MQ_SYS_WRITE ? "SYS" : "L1");
+		get_value_string(l1t_mq_names, ofd->priv_nr));
 
 	rc = sendto(ofd->fd, msg->l1h, msgb_l1len(msg), 0,
 		    (const struct sockaddr *)&l1fh->remote_sa, l1fh->remote_sa_len);
@@ -176,7 +192,7 @@ int main(int argc, char **argv)
 	fl1h->priv = l1fh;
 
 	/* Open UDP */
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 3; i++) {
 		struct osmo_wqueue *wq = &l1fh->udp_wq[i];
 
 		osmo_wqueue_init(wq, 10);

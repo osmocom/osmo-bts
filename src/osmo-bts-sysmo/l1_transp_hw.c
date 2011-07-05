@@ -48,12 +48,14 @@
 
 #define DEV_SYS_DSP2ARM_NAME	"/dev/msgq/femtobts_dsp2arm"
 #define DEV_SYS_ARM2DSP_NAME	"/dev/msgq/femtobts_arm2dsp"
+#define DEV_DBG_DSP2ARM_NAME	"/dev/rtfifo/dsp_trace"
 #define DEV_L1_DSP2ARM_NAME	"/dev/msgq/gsml1_dsp2arm"
 #define DEV_L1_ARM2DSP_NAME	"/dev/msgq/gsml1_arm2dsp"
 
 static const char *rd_devnames[] = {
 	[MQ_SYS_READ]	= DEV_SYS_DSP2ARM_NAME,
 	[MQ_L1_READ]	= DEV_L1_DSP2ARM_NAME,
+	[MQ_DBG_READ]	= DEV_DBG_DSP2ARM_NAME,
 };
 
 static const char *wr_devnames[] = {
@@ -70,7 +72,7 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	int rc;
 
 	msg->l1h = msg->data;
-	rc = read(ofd->fd, msg->l1h, sizeof(GsmL1_Prim_t));
+	rc = read(ofd->fd, msg->l1h, msgb_tailroom(msg));
 	if (rc < 0) {
 		if (rc != -1) 
 			LOGP(DL1C, LOGL_ERROR, "error reading from L1 msg_queue: %s\n",
@@ -80,10 +82,17 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	}
 	msgb_put(msg, rc);
 
-	if (ofd->priv_nr == MQ_L1_WRITE)
+	switch (ofd->priv_nr) {
+	case MQ_L1_READ:
 		return l1if_handle_l1prim(fl1h, msg);
-	else
+	case MQ_SYS_READ:
 		return l1if_handle_sysprim(fl1h, msg);
+	case MQ_DBG_READ:
+		return l1if_handle_dbg(fl1h, msg);
+	default:
+		msgb_free(msg);
+		return 0;
+	}
 };
 
 /* callback when we can write to one of the l1 msg_queue devices */

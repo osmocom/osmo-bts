@@ -1,3 +1,4 @@
 #define L1FWD_L1_PORT	9999
 #define L1FWD_SYS_PORT	9998
+#define L1FWD_DBG_PORT	9997
 
