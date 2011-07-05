@@ -196,7 +196,7 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 	if (identity2_lv)
 		cur = lv_put(cur, identity2_lv[0], identity2_lv+1);
 
-	pt1->l2_plen = L2_PLEN(cur - buf);
+	pt1->l2_plen = L2_PLEN(cur - out_buf);
 
 	return cur - out_buf;
 }
@@ -222,7 +222,7 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	if (identity3_lv)
 		cur = lv_put(pt2->data, identity3_lv[0], identity3_lv+1);
 
-	pt1->l2_plen = L2_PLEN(cur - buf);
+	pt2->l2_plen = L2_PLEN(cur - out_buf);
 
 	return cur - out_buf;
 }
