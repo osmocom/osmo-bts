@@ -214,6 +214,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	struct gsm_bts_role_bts *btsb = bts->role;
 	GsmL1_Prim_t *l1p = msgb_l1prim(resp_msg);
 	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+	GsmL1_PhEmptyFrameReq_t *empty_req = &l1p->u.phEmptyFrameReq;
 	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
 	struct lapdm_channel *lc;
 	struct lapdm_entity *le;
@@ -305,6 +306,8 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		rc = paging_gen_msg(btsb->paging_state, msu_param->u8Buffer, &g_time);
 		break;
 	case GsmL1_Sapi_TchF:
+#warning Send actual speech data on the TCH
+		goto empty_frame;
 		break;
 	case GsmL1_Sapi_FacchF:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
@@ -312,8 +315,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		le = &lc->lapdm_dcch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0)
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-#warning Send actual speech data on the TCH
+			goto empty_frame;
 		else {
 			data_req->sapi = GsmL1_Sapi_FacchF;
 			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
@@ -325,10 +327,24 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;
 	}
+tx:
 	/* transmit */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg);
 
 	return 0;
+
+empty_frame:
+	/* in case we decide to send an empty frame... */
+	memset(l1p, 0, sizeof(*l1p));
+	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+	empty_req->hLayer1 = rts_ind->hLayer1;
+	empty_req->u8Tn = rts_ind->u8Tn;
+	empty_req->u32Fn = rts_ind->u32Fn;
+	empty_req->sapi = rts_ind->sapi;
+	empty_req->subCh = rts_ind->subCh;
+	empty_req->u8BlockNbr = rts_ind->u8BlockNbr;
+
+	goto tx;
 }
 
 static int handle_mph_time_ind(struct femtol1_hdl *fl1,
