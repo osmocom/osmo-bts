@@ -31,6 +31,8 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
+#include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/logging.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
