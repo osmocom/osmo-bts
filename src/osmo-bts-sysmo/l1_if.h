@@ -25,6 +25,9 @@ struct femtol1_hdl {
 
 	void *priv;			/* user reference */
 
+	struct osmo_timer_list alive_timer;
+	unsigned int alive_prim_cnt;
+
 	struct osmo_fd read_ofd[_NUM_MQ_READ];	/* osmo file descriptors */
 	struct osmo_wqueue write_q[_NUM_MQ_WRITE];
 };

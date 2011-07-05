@@ -357,6 +357,9 @@ static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 	 * and pre-compute the respective measurement */
 	trx_meas_check_compute(fl1->priv, time_ind->u32Fn -1);
 
+	/* increment the primitive count for the alive timer */
+	fl1->alive_prim_cnt++;
+
 	return 0;
 }
 

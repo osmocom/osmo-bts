@@ -437,6 +437,19 @@ l1if_hLayer2_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer2)
 	return &ts->lchan[lchan_nr];
 }
 
+/* we regularly check if the DSP L1 is still sending us primitives.
+ * if not, we simply stop the BTS program (and be re-spawned) */
+static void alive_timer_cb(void *data)
+{
+	struct femtol1_hdl *fl1h = data;
+
+	if (fl1h->alive_prim_cnt == 0) {
+		LOGP(DL1C, LOGL_FATAL, "DSP L1 is no longer sending primitives!\n");
+		exit(23);
+	}
+	fl1h->alive_prim_cnt = 0;
+	osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
+}
 
 
 int lchan_activate(struct gsm_lchan *lchan)
@@ -460,6 +473,13 @@ int lchan_activate(struct gsm_lchan *lchan)
 		act_req->hLayer2 = l1if_lchan_to_hLayer2(lchan);
 
 		switch (act_req->sapi) {
+		case GsmL1_Sapi_Sch:
+			/* once we activate the SCH, we should get MPH-TIME.ind */
+			fl1h->alive_timer.cb = alive_timer_cb;
+			fl1h->alive_timer.data = fl1h;
+			fl1h->alive_prim_cnt = 0;
+			osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
+			break;
 		case GsmL1_Sapi_Rach:
 			lch_par->rach.u8Bsic = lchan->ts->trx->bts->bsic;
 			break;
@@ -551,6 +571,10 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 		LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s)\n",
 			gsm_lchan_name(lchan),
 			get_value_string(femtobts_l1sapi_names, deact_req->sapi));
+
+		/* Stop the alive timer once we deactivate the SCH */
+		if (deact_req->sapi == GsmL1_Sapi_Sch)
+			osmo_timer_del(&fl1h->alive_timer);
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 		l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);
