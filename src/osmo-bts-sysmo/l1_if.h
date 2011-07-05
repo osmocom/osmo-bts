@@ -20,6 +20,7 @@ enum {
 struct femtol1_hdl {
 	struct gsm_time gsm_time;
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
+	uint32_t dsp_trace_f;
 	struct llist_head wlc_list;
 
 	void *priv;			/* user reference */
@@ -41,6 +42,7 @@ struct femtol1_hdl *l1if_open(void *priv);
 int l1if_close(struct femtol1_hdl *hdl);
 int l1if_reset(struct femtol1_hdl *hdl);
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on);
+int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags);
 
 struct msgb *l1p_msgb_alloc(void);
 struct msgb *sysp_msgb_alloc(void);

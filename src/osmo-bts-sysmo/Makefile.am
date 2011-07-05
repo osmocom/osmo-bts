@@ -4,7 +4,7 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS)
 
 bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy
 
-COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c bts_model.c
+COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c bts_model.c sysmobts_vty.c
 
 sysmobts_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
 sysmobts_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)

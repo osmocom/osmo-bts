@@ -669,6 +669,10 @@ static int reset_compl_cb(struct msgb *resp, void *data)
 		bts_shutdown(trx->bts, "L1-RESET failure");
 	}
 
+	/* as we cannot get the current DSP trace flags, we simply
+	 * set them to zero (or whatever dsp_trace_f has been initialized to */
+	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f);
+
 	/* otherwise, request activation of RF board */
 	l1if_activate_rf(fl1h, 1);
 
@@ -682,6 +686,24 @@ int l1if_reset(struct femtol1_hdl *hdl)
 	sysp->id = FemtoBts_PrimId_Layer1ResetReq;
 
 	return l1if_req_compl(hdl, msg, 1, reset_compl_cb, hdl);
+}
+
+/* set the trace flags within the DSP */
+int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
+{
+	struct msgb *msg = sysp_msgb_alloc();
+	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+
+	LOGP(DL1C, LOGL_INFO, "Tx SET-TRACE-FLAGS.req (0x%08x)\n",
+		flags);
+
+	sysp->id = FemtoBts_PrimId_SetTraceFlagsReq;
+	sysp->u.setTraceFlagsReq.u32Tf = flags;
+
+	hdl->dsp_trace_f = flags;
+
+	/* There is no confirmation we could wait for */
+	return osmo_wqueue_enqueue(&hdl->write_q[MQ_SYS_WRITE], msg);
 }
 
 struct femtol1_hdl *l1if_open(void *priv)

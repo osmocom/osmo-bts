@@ -65,6 +65,8 @@ int bts_model_init(struct gsm_bts *bts)
 
 	l1if_reset(fl1h);
 
+	femtol1_vty_init(bts);
+
 	return 0;
 }
 
