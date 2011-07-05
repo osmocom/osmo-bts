@@ -49,6 +49,7 @@ static const char *bsc_host = NULL;
 static const char *config_file = "osmo-bts.cfg";
 extern const char *osmobts_copyright;
 static int daemonize = 0;
+static unsigned int dsp_trace = 0;
 
 int bts_model_init(struct gsm_bts *bts)
 {
@@ -59,6 +60,7 @@ int bts_model_init(struct gsm_bts *bts)
 		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 Interface\n");
 		return -EIO;
 	}
+	fl1h->dsp_trace_f = dsp_trace;
 
 	bts->c0->role_bts.l1h = fl1h;
 	bts->c0->nominal_power = 23;
@@ -119,10 +121,11 @@ static void handle_options(int argc, char **argv)
 			{ "version", 0, 0, 'V' },
 			{ "log-level", 1, 0, 'e' },
 			{ "bsc-host", 1, 0, 'B' },
+			{ "dsp-trace", 1, 0, 'p' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hd:Dc:sTVe:B:",
+		c = getopt_long(argc, argv, "hd:Dc:sTVe:B:p:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -156,6 +159,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'B':
 			bsc_host = strdup(optarg);
+			break;
+		case 'p':
+			dsp_trace = strtoul(optarg, NULL, 16);
 			break;
 		default:
 			break;
