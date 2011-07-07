@@ -518,7 +518,8 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 static int encr_info2lchan(struct gsm_lchan *lchan,
 			   const uint8_t *val, uint8_t len)
 {
-	if (len < 2)
+	/* length can be '1' in case of no ciphering */
+	if (len < 1)
 		return -EINVAL;
 
 	lchan->encr.alg_id = *val++;
