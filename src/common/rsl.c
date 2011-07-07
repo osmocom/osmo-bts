@@ -651,15 +651,28 @@ static int rsl_rx_rf_chan_rel(struct msgb *msg)
 #ifdef FAKE_CIPH_MODE_COMPL
 /* ugly hack to send a fake CIPH MODE COMPLETE back to the BSC */
 #include <osmocom/gsm/protocol/gsm_04_08.h>
-static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id)
+#include <osmocom/gsm/gsm48.h>
+static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id,
+				  const char *imeisv)
 {
 	struct msgb *fake_msg = rsl_msgb_alloc(128);
 	struct gsm48_hdr *g48h;
+	uint8_t mid_buf[11];
+	int rc;
 
 	/* generate 04.08 RR message */
 	g48h = (struct gsm48_hdr *) msgb_put(fake_msg, sizeof(*g48h));
 	g48h->proto_discr = GSM48_PDISC_RR;
 	g48h->msg_type = GSM48_MT_RR_CIPH_M_COMPL;
+
+	/* add IMEISV, if requested */
+	if (imeisv) {
+		rc = gsm48_generate_mid_from_imsi(mid_buf, imeisv);
+		if (rc > 0) {
+			mid_buf[2] = (mid_buf[2] & 0xf8) | GSM_MI_TYPE_IMEISV;
+			memcpy(msgb_put(fake_msg, rc), mid_buf, rc);
+		}
+	}
 
 	rsl_rll_push_l3(fake_msg, RSL_MT_DATA_IND, gsm_lchan2chan_nr(lchan),
 			link_id, 1);
@@ -711,10 +724,19 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, dch->chan_nr, link_id, 1);
 
 #ifdef FAKE_CIPH_MODE_COMPL
-	LOGP(DRSL, LOGL_NOTICE, "%s Sending FAKE CIPHERING MODE COMPLETE to BSC\n",
-		gsm_lchan_name(lchan), lchan->encr.alg_id);
+	{
+	struct gsm48_hdr *g48h = (struct gsm48_hdr *) l3_content;
+	const char *imeisv = NULL;
 
-	return tx_ciph_mod_compl_hack(lchan, link_id);
+	LOGP(DRSL, LOGL_NOTICE,
+	     "%s Sending FAKE CIPHERING MODE COMPLETE to BSC (Alg %u)\n",
+	     gsm_lchan_name(lchan), lchan->encr.alg_id);
+
+	if (g48h->data[0] & 0x10)
+		imeisv = "0123456789012345";
+
+	return tx_ciph_mod_compl_hack(lchan, link_id, imeisv);
+	}
 #else
 	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
 		gsm_lchan_name(lchan), lchan->encr.alg_id);
