@@ -41,6 +41,8 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 
+#define FAKE_CIPH_MODE_COMPL
+
 static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause);
 
 /* list of RSL SI types that can occur on the SACCH */
@@ -645,6 +647,30 @@ static int rsl_rx_rf_chan_rel(struct msgb *msg)
 	return rc;
 }
 
+#ifdef FAKE_CIPH_MODE_COMPL
+/* ugly hack to send a fake CIPH MODE COMPLETE back to the BSC */
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id)
+{
+	struct msgb *fake_msg = rsl_msgb_alloc(128);
+	struct gsm48_hdr *g48h;
+
+	/* generate 04.08 RR message */
+	g48h = (struct gsm48_hdr *) msgb_put(fake_msg, sizeof(*g48h));
+	g48h->proto_discr = GSM48_PDISC_RR;
+	g48h->msg_type = GSM48_MT_RR_CIPH_M_COMPL;
+
+	rsl_rll_push_l3(fake_msg, RSL_MT_DATA_IND, gsm_lchan2chan_nr(lchan),
+			link_id, 1);
+
+	fake_msg->lchan = lchan;
+	fake_msg->trx = lchan->ts->trx;
+
+	/* send it back to the BTS */
+	return abis_rsl_sendmsg(fake_msg);
+}
+#endif
+
 /* 8.4.6 ENCRYPTION COMMAND */
 static int rsl_rx_encr_cmd(struct msgb *msg)
 {
@@ -683,11 +709,17 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	/* push a fake RLL DATA REQ header */
 	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, dch->chan_nr, link_id, 1);
 
-	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
+#ifdef FAKE_CIPH_MODE_COMPL
+	LOGP(DRSL, LOGL_NOTICE, "%s Sending FAKE CIPHERING MODE COMPLETE to BSC\n",
 		gsm_lchan_name(lchan), lchan->encr.alg_id);
 
+	return tx_ciph_mod_compl_hack(lchan, link_id);
+#else
+	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
+		gsm_lchan_name(lchan), lchan->encr.alg_id);
 	/* hand it into RSLms for transmission of L3_INFO to the MS */
 	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+#endif
 }
 
 /* 8.4.20 SACCH INFO MODify */
