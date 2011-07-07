@@ -513,6 +513,21 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 }
 
 
+static int encr_info2lchan(struct gsm_lchan *lchan,
+			   const uint8_t *val, uint8_t len)
+{
+	if (len < 2)
+		return -EINVAL;
+
+	lchan->encr.alg_id = *val++;
+	lchan->encr.key_len = len -1;
+	if (lchan->encr.key_len > sizeof(lchan->encr.key))
+		lchan->encr.key_len = sizeof(lchan->encr.key);
+	memcpy(lchan->encr.key, val, lchan->encr.key_len);
+
+	return 0;
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
@@ -543,11 +558,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
 		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
-		lchan->encr.alg_id = *val++;
-		lchan->encr.key_len = len -1;
-		if (lchan->encr.key_len > sizeof(lchan->encr.key))
-			lchan->encr.key_len = sizeof(lchan->encr.key);
-		memcpy(lchan->encr.key, val, lchan->encr.key_len);
+
+		if (encr_info2lchan(lchan, val, len) < 0)
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 	}
 
 	/* 9.3.9 Handover Reference */
@@ -630,6 +643,51 @@ static int rsl_rx_rf_chan_rel(struct msgb *msg)
 	lapdm_channel_reset(&msg->lchan->lapdm_ch);
 
 	return rc;
+}
+
+/* 8.4.6 ENCRYPTION COMMAND */
+static int rsl_rx_encr_cmd(struct msgb *msg)
+{
+	struct gsm_lchan *lchan = msg->lchan;
+	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
+	struct tlv_parsed tp;
+	uint8_t link_id;
+	const uint8_t *l3_content;
+
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0)
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+
+	if (!TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_L3_INFO) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_LINK_IDENT))
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+
+	/* 9.3.7 Encryption Information */
+	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
+		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
+
+		if (encr_info2lchan(lchan, val, len) < 0)
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+	}
+
+	/* FIXME: check if the encryption algorithm sent by BSC is supported! */
+
+	/* 9.3.2 Link Identifier */
+	link_id = *TLVP_VAL(&tp, RSL_IE_LINK_IDENT);
+
+	/* pop the RSL dchan header */
+	l3_content = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+	msgb_pull(msg, l3_content - msg->l2h);
+
+	/* push a fake RLL DATA REQ header */
+	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, dch->chan_nr, link_id, 1);
+
+	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
+		gsm_lchan_name(lchan), lchan->encr.alg_id);
+
+	/* hand it into RSLms for transmission of L3_INFO to the MS */
+	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
 }
 
 /* 8.4.20 SACCH INFO MODify */
@@ -1056,6 +1114,8 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		ret = bts_model_rsl_deact_sacch(msg->lchan);
 		break;
 	case RSL_MT_ENCR_CMD:
+		ret = rsl_rx_encr_cmd(msg);
+		break;
 	case RSL_MT_MODE_MODIFY_REQ:
 	case RSL_MT_PHY_CONTEXT_REQ:
 	case RSL_MT_PREPROC_CONFIG:
