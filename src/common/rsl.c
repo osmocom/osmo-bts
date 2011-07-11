@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -683,7 +684,33 @@ static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id,
 	/* send it back to the BTS */
 	return abis_rsl_sendmsg(fake_msg);
 }
+
+struct ciph_mod_compl {
+	struct osmo_timer_list timer;
+	struct gsm_lchan *lchan;
+	int send_imeisv;
+	uint8_t link_id;
+};
+
+static void cmc_timer_cb(void *data)
+{
+	struct ciph_mod_compl *cmc = data;
+	const char *imeisv = NULL;
+
+	LOGP(DRSL, LOGL_NOTICE,
+	     "%s Sending FAKE CIPHERING MODE COMPLETE to BSC (Alg %u)\n",
+	     gsm_lchan_name(cmc->lchan), cmc->lchan->encr.alg_id);
+
+	if (cmc->send_imeisv)
+		imeisv = "0123456789012345";
+
+	/* We have no clue whatsoever that this lchan still exists! */
+	tx_ciph_mod_compl_hack(cmc->lchan, cmc->link_id, imeisv);
+
+	talloc_free(cmc);
+}
 #endif
+
 
 /* 8.4.6 ENCRYPTION COMMAND */
 static int rsl_rx_encr_cmd(struct msgb *msg)
@@ -725,17 +752,19 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 
 #ifdef FAKE_CIPH_MODE_COMPL
 	{
-	struct gsm48_hdr *g48h = (struct gsm48_hdr *) l3_content;
-	const char *imeisv = NULL;
+		struct ciph_mod_compl *cmc;
+		struct gsm48_hdr *g48h = (struct gsm48_hdr *) l3_content;
 
-	LOGP(DRSL, LOGL_NOTICE,
-	     "%s Sending FAKE CIPHERING MODE COMPLETE to BSC (Alg %u)\n",
-	     gsm_lchan_name(lchan), lchan->encr.alg_id);
+		cmc = talloc_zero(NULL, struct ciph_mod_compl);
+		if (g48h->data[0] & 0x10)
+			cmc->send_imeisv = 1;
+		cmc->lchan = lchan;
+		cmc->link_id = link_id;
+		cmc->timer.cb = cmc_timer_cb;
+		cmc->timer.data = cmc;
+		osmo_timer_schedule(&cmc->timer, 1, 0);
 
-	if (g48h->data[0] & 0x10)
-		imeisv = "0123456789012345";
-
-	return tx_ciph_mod_compl_hack(lchan, link_id, imeisv);
+		return 0;
 	}
 #else
 	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
