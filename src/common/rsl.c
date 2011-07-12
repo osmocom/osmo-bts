@@ -42,7 +42,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 
-#define FAKE_CIPH_MODE_COMPL
+//#define FAKE_CIPH_MODE_COMPL
 
 static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause);
 
@@ -719,7 +719,6 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	uint8_t link_id;
-	const uint8_t *l3_content;
 
 	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0)
 		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
@@ -743,17 +742,21 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	/* 9.3.2 Link Identifier */
 	link_id = *TLVP_VAL(&tp, RSL_IE_LINK_IDENT);
 
-	/* pop the RSL dchan header */
-	l3_content = TLVP_VAL(&tp, RSL_IE_L3_INFO);
-	msgb_pull(msg, l3_content - msg->l2h);
+	/* we have to set msg->l3h as rsl_rll_push_l3 will use it to
+	 * determine the length field of the L3_INFO IE */
+	msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+
+	/* pop the RSL dchan header, but keep L3 TLV */
+	msgb_pull(msg, msg->l3h - msg->data);
 
 	/* push a fake RLL DATA REQ header */
 	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, dch->chan_nr, link_id, 1);
 
+
 #ifdef FAKE_CIPH_MODE_COMPL
-	{
+	if (lchan->encr.alg_id != RSL_ENC_ALG_A5(0)) {
 		struct ciph_mod_compl *cmc;
-		struct gsm48_hdr *g48h = (struct gsm48_hdr *) l3_content;
+		struct gsm48_hdr *g48h = (struct gsm48_hdr *) msg->l3h;
 
 		cmc = talloc_zero(NULL, struct ciph_mod_compl);
 		if (g48h->data[0] & 0x10)
@@ -764,14 +767,19 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 		cmc->timer.data = cmc;
 		osmo_timer_schedule(&cmc->timer, 1, 0);
 
+		/* FIXME: send fake CM SERVICE ACCEPT to MS */
+
 		return 0;
-	}
-#else
+	} else
+#endif
+	{
 	LOGP(DRSL, LOGL_INFO, "%s Fwd RSL ENCR CMD (Alg %u) to LAPDm\n",
 		gsm_lchan_name(lchan), lchan->encr.alg_id);
 	/* hand it into RSLms for transmission of L3_INFO to the MS */
-	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
-#endif
+	lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+	/* return 1 to make sure the msgb is not free'd */
+	return 1;
+	}
 }
 
 /* 8.4.20 SACCH INFO MODify */
