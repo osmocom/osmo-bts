@@ -30,11 +30,11 @@
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/trau/rtp.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/abis.h>
-#include <osmo-bts/rtp.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
@@ -635,16 +635,19 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
-static int rsl_rx_rf_chan_rel(struct msgb *msg)
+static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 {
 	int rc;
-#if 0
-	if (lchan->rtp.socket_created)
-		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
-#endif
-	rc = bts_model_rsl_chan_rel(msg->lchan);
 
-	lapdm_channel_reset(&msg->lchan->lapdm_ch);
+	if (lchan->abis_ip.rtp_socket) {
+		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
+		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+	}
+
+	rc = bts_model_rsl_chan_rel(lchan);
+
+	lapdm_channel_reset(&lchan->lapdm_ch);
 
 	return rc;
 }
@@ -833,160 +836,274 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 	return 0;
 }
 
-#if 0
 /*
  * ip.access related messages
  */
 
-int rsl_tx_ipac_dlcx_ind(struct osmobts_lchan *lchan, uint8_t cause)
+int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *nmsg;
-	struct gsm_bts_trx *trx = lchan->slot->trx;
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending RTP delete indication: cause=%d\n", cause);
+	LOGP(DRSL, LOGL_NOTICE, "%s Sending RTP delete indication: cause=%d\n",
+		gsm_lchan_name(lchan), cause);
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!nmsg)
 		return -ENOMEM;
+
 	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
 	rsl_trx_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND);
-	msg->trx = trx;
+
+	nmsg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(nmsg);
 }
 
-static int rsl_tx_ipac_cx_ack(struct gsm_bts_trx *trx, struct msgb *msg, uint32_t ip, uint16_t port, uint16_t *conn_id)
+/* transmit an CRCX ACK for the lchan */
+static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
+				  uint8_t orig_msgt)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t chan_nr = dch->chan_nr;
-	uint8_t msg_type = dch->c.msg_type;
-	uint8_t *ie;
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint32_t *att_ip;
+	const char *name;
+	struct in_addr ia;
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending RTP connection request ACK\n");
+	if (orig_msgt == RSL_MT_IPAC_CRCX)
+		name = "CRCX";
+	else
+		name = "MDCX";
 
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
+	ia.s_addr = lchan->abis_ip.bound_ip;
+	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_%s_ACK (local %s:%u)\n",
+	     gsm_lchan_name(lchan), name, inet_ntoa(ia),
+	     ntohs(lchan->abis_ip.bound_port));
 
-	if (conn_id)
-		msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, htons(*conn_id));
-	ie = msgb_put(msg, 5);
-	ie[0] = RSL_IE_IPAC_LOCAL_IP;
-	*((uint32_t *)(ie + 1)) = htonl(ip);
-	msgb_tv16_put(msg, RSL_IE_IPAC_LOCAL_PORT, htons(port));
+	/* Connection ID */
+	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
 
-	rsl_dch_push_hdr(msg, msg_type + 1, chan_nr);
-	msg->trx = trx;
+	/* locally bound IP */
+	msgb_v_put(msg, RSL_IE_IPAC_LOCAL_IP);
+	att_ip = (uint32_t *) msgb_put(msg, sizeof(uint32_t));
+	*att_ip = htonl(lchan->abis_ip.bound_ip);
+
+	/* locally bound port */
+	msgb_tv16_put(msg, RSL_IE_IPAC_LOCAL_PORT,
+			htons(lchan->abis_ip.bound_port));
+
+	if (inc_pt2) {
+		/* RTP Payload Type 2 */
+		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2,
+					lchan->abis_ip.rtp_payload2);
+	}
+
+	/* push the header in front */
+	rsl_dch_push_hdr(msg, orig_msgt + 1, chan_nr);
+	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }
 
-static int rsl_tx_ipac_cx_nack(struct gsm_bts_trx *trx, struct msgb *msg, uint8_t cause)
+static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t chan_nr = dch->chan_nr;
-	uint8_t msg_type = dch->c.msg_type;
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending RTP connection request NACK: cause=%d\n", cause);
+	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_DLCX_ACK\n",
+		gsm_lchan_name(lchan));
 
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
+	if (inc_conn_id)
+		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
+
+	rsl_dch_push_hdr(msg, RSL_MT_IPAC_DLCX_ACK, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
+				 uint8_t cause)
+{
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_DLCX_NACK\n",
+		gsm_lchan_name(lchan));
+
+	if (inc_conn_id)
+		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
+
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
+
+	rsl_dch_push_hdr(msg, RSL_MT_IPAC_DLCX_NACK, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+
+}
+
+
+/* transmit an CRCX NACK for the lchan */
+static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
+			     int inc_ipport, uint8_t orig_msgtype)
+{
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	/* FIXME: allocate new msgb and copy old over */
+	LOGP(DRSL, LOGL_NOTICE, "%s RSL Tx IPAC_BIND_NACK\n",
+		gsm_lchan_name(lchan));
+
+	if (inc_ipport) {
+		uint32_t *att_ip;
+		/* remote IP */
+		msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
+		att_ip = (uint32_t *) msgb_put(msg, sizeof(uint32_t));
+		*att_ip = htonl(lchan->abis_ip.connect_ip);
+
+		/* remote port */
+		msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT,
+				htons(lchan->abis_ip.connect_port));
+	}
 
 	/* 9.3.26 Cause */
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
-	rsl_dch_push_hdr(msg, msg_type + 2, chan_nr);
-	msg->trx = trx;
+
+	/* push the header in front */
+	rsl_dch_push_hdr(msg, orig_msgtype + 2, chan_nr);
+	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }
 
-static int rsl_rx_ipac_crcx_mdcx(struct gsm_bts_trx *trx, struct msgb *msg)
+static int rsl_rx_ipac_XXcx(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
-	struct osmobts_lchan *lchan;
-	uint32_t *ip = NULL;
-	uint16_t *port = NULL;
-	uint8_t *speech_mode = NULL, *payload_type = NULL;
-	uint16_t conn_id;
-	int rc;
+	struct gsm_lchan *lchan = msg->lchan;
+	const uint8_t *payload_type, *speech_mode, *payload_type2;
+	const uint32_t *connect_ip;
+	const uint16_t *connect_port;
+	int rc, inc_ip_port = 0;
+	char *name;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
-		LOGP(DRSL, LOGL_INFO, "Request of creating RTP connection:\n");
+		name = "CRCX";
 	else
-		LOGP(DRSL, LOGL_INFO, "Request of modding RTP connection:\n");
+		name = "MDCX";
 
-	lchan = rsl_lchan_lookup(trx, dch->chan_nr);
-	if (!lchan)
-		return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rc < 0)
+		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
+					 0, dch->c.msg_type);
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	/* any of these can be NULL!! */
+	speech_mode = TLVP_VAL(&tp, RSL_IE_IPAC_SPEECH_MODE);
+	payload_type = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD);
+	payload_type2 = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD2);
+	connect_ip = (uint32_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_IP);
+	connect_port = (uint16_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_PORT);
 
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_SPEECH_MODE)) {
-		speech_mode = (uint8_t *) TLVP_VAL(&tp, RSL_IE_IPAC_SPEECH_MODE);
-	}
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_RTP_PAYLOAD)) {
-		payload_type = (uint8_t *) TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD);
-	}
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_IP)) {
-		ip = (uint32_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_IP);
-	}
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_PORT)) {
-		port = (uint16_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_PORT);
+	if (dch->c.msg_type == RSL_MT_IPAC_CRCX && connect_ip && connect_port)
+		inc_ip_port = 1;
+
+	if (payload_type && payload_type2) {
+		LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC %s, "
+			"RTP_PT and RTP_PT2 in same msg !?!\n",
+			gsm_lchan_name(lchan), name);
+		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
+					 inc_ip_port, dch->c.msg_type);
 	}
 
-	if (!lchan->rtp.socket_created) {
-		if (dch->c.msg_type == RSL_MT_IPAC_CRCX && !payload_type) {
-			LOGP(DRSL, LOGL_ERROR, "Missing payload type IE.\n");
-			return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
+		if (lchan->abis_ip.rtp_socket) {
+			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC CRCX, "
+				"but we already have socket!\n",
+				gsm_lchan_name(lchan));
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
 		}
-		rc = rtp_create_socket(lchan, &lchan->rtp);
+		/* FIXME: select default value depending on speech_mode */
+		//if (!payload_type)
+		lchan->abis_ip.rtp_socket = rtp_socket_create(lchan->ts->trx);
+		if (!lchan->abis_ip.rtp_socket) {
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s IPAC Failed to create RTP/RTCP sockets\n",
+			     gsm_lchan_name(lchan));
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
+		}
+
+		rc = rtp_socket_bind(lchan->abis_ip.rtp_socket, INADDR_ANY);
 		if (rc < 0) {
-			LOGP(DRSL, LOGL_ERROR, "Failed to create RTP/RTCP sockets.\n");
-			return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_RES_UNAVAIL);
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
+			     gsm_lchan_name(lchan));
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
 		}
-
-		rc = rtp_bind_socket(&lchan->rtp);
-		if (rc < 0) {
-			LOGP(DRSL, LOGL_ERROR, "Failed to bind RTP/RTCP sockets.\n");
-			rtp_close_socket(&lchan->rtp);
-			return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_RES_UNAVAIL);
+		/* FIXME: multiplex connection, BSC proxy */
+	} else {
+		/* MDCX */
+		if (!lchan->abis_ip.rtp_socket) {
+			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC MDCX, "
+				"but we have no RTP socket!\n");
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
 		}
 	}
+
+	if (connect_ip && connect_port) {
+		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
+					ntohl(*connect_ip), ntohs(*connect_port));
+		if (rc < 0) {
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s Failed to connect RTP/RTCP sockets\n",
+			     gsm_lchan_name(lchan));
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
+		}
+		/* save IP address and port number */
+		lchan->abis_ip.connect_ip = *connect_ip;
+		lchan->abis_ip.connect_port = *connect_port;
+	}
+	/* Everything has succeeded, we can store new values in lchan */
 	if (payload_type)
-		lchan->rtp.payload_type = *payload_type;
+		lchan->abis_ip.rtp_payload = *payload_type;
+	if (payload_type2)
+		lchan->abis_ip.rtp_payload2 = *payload_type2;
+	if (speech_mode)
+		lchan->abis_ip.speech_mode = *speech_mode;
 
-	if (ip && port) {
-		rc = rtp_connect_socket(&lchan->rtp, ntohl(*ip), ntohs(*port));
-		if (rc < 0) {
-			LOGP(DRSL, LOGL_ERROR, "Failed to connect RTP/RTCP sockets.\n");
-			rtp_close_socket(&lchan->rtp);
-			return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_RES_UNAVAIL);
-		}
-	}
+	/* FIXME: CSD, jitterbuffer, compression */
 
-	conn_id = 0; // FIXME: what the hack is conn_id for?
-	return rsl_tx_ipac_cx_ack(trx, msg, ntohl(lchan->rtp.rtp_udp.sin_local.sin_addr.s_addr), ntohs(lchan->rtp.rtp_udp.sin_local.sin_port), &conn_id);
+	return rsl_tx_ipac_XXcx_ack(lchan, payload_type2 ? 1 : 0,
+				    dch->c.msg_type);
 }
 
-static int rsl_rx_ipac_dlcx(struct gsm_bts_trx *trx, struct msgb *msg)
+static int rsl_rx_ipac_dlcx(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
-	struct osmobts_lchan *lchan;
+	struct gsm_lchan *lchan = msg->lchan;
+	int rc, inc_conn_id = 0;
 
-	LOGP(DRSL, LOGL_INFO, "Request of deleting RTP connection:\n");
+	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rc < 0)
+		return rsl_tx_ipac_dlcx_nack(lchan, 0, RSL_ERR_MAND_IE_ERROR);
 
-	lchan = rsl_lchan_lookup(trx, dch->chan_nr);
-	if (!lchan)
-		return rsl_tx_ipac_cx_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_CONN_ID))
+		inc_conn_id = 1;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	rtp_socket_free(lchan->abis_ip.rtp_socket);
+	lchan->abis_ip.rtp_socket = NULL;
 
-	rtp_close_socket(&lchan->rtp);
-
-	return rsl_tx_ipac_cx_ack(trx, msg, ntohl(lchan->rtp.rtp_udp.sin_local.sin_addr.s_addr), ntohs(lchan->rtp.rtp_udp.sin_local.sin_port), NULL);
+	return rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
 }
-#endif
 
 /*
  * selecting message
@@ -1197,7 +1314,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		ret = rsl_rx_chan_activ(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL:
-		ret = rsl_rx_rf_chan_rel(msg);
+		ret = rsl_rx_rf_chan_rel(msg->lchan);
 		break;
 	case RSL_MT_SACCH_INFO_MODIFY:
 		ret = rsl_rx_sacch_inf_mod(msg);
@@ -1270,14 +1387,24 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
+	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
+	if (!msg->lchan) {
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+			rsl_msg_name(dch->c.msg_type));
+		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+	}
+
+	LOGP(DRSL, LOGL_INFO, "%s Rx RSL IPA %s\n", gsm_lchan_name(msg->lchan),
+		rsl_msg_name(dch->c.msg_type));
+
 	switch (dch->c.msg_type) {
-#if 0
 	case RSL_MT_IPAC_CRCX:
 	case RSL_MT_IPAC_MDCX:
-		return rsl_rx_ipac_crcx_mdcx(trx, msg);
+		ret = rsl_rx_ipac_XXcx(msg);
+		break;
 	case RSL_MT_IPAC_DLCX:
-		return rsl_rx_ipac_dlcx(trx, msg);
-#endif
+		ret = rsl_rx_ipac_dlcx(msg);
+		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL ip.access msg_type 0x%02x\n",
 			dch->c.msg_type);
