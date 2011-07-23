@@ -178,6 +178,16 @@ static void rsl_dch_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr
 	dch->chan_nr = chan_nr;
 }
 
+static void rsl_ipa_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr)
+{
+	struct abis_rsl_dchan_hdr *dch;
+
+	dch = (struct abis_rsl_dchan_hdr *) msgb_push(msg, sizeof(*dch));
+	dch->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
+	dch->c.msg_type = msg_type;
+	dch->ie_chan = RSL_IE_CHAN_NR;
+	dch->chan_nr = chan_nr;
+}
 
 /*
  * TRX related messages
@@ -898,7 +908,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	}
 
 	/* push the header in front */
-	rsl_dch_push_hdr(msg, orig_msgt + 1, chan_nr);
+	rsl_ipa_push_hdr(msg, orig_msgt + 1, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -915,7 +925,7 @@ static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 	if (inc_conn_id)
 		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
 
-	rsl_dch_push_hdr(msg, RSL_MT_IPAC_DLCX_ACK, chan_nr);
+	rsl_ipa_push_hdr(msg, RSL_MT_IPAC_DLCX_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -935,7 +945,7 @@ static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 
-	rsl_dch_push_hdr(msg, RSL_MT_IPAC_DLCX_NACK, chan_nr);
+	rsl_ipa_push_hdr(msg, RSL_MT_IPAC_DLCX_NACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -970,7 +980,7 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 
 	/* push the header in front */
-	rsl_dch_push_hdr(msg, orig_msgtype + 2, chan_nr);
+	rsl_ipa_push_hdr(msg, orig_msgtype + 2, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
