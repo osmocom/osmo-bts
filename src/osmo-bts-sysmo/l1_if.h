@@ -53,4 +53,6 @@ struct msgb *sysp_msgb_alloc(void);
 uint32_t l1if_lchan_to_hLayer2(struct gsm_lchan *lchan);
 struct gsm_lchan *l1if_hLayer2_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer2);
 
+int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg);
+
 #endif /* _FEMTO_L1_H */

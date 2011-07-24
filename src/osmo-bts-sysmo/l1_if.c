@@ -402,7 +402,8 @@ static int process_meas_res(struct gsm_lchan *lchan, GsmL1_MeasParam_t *m)
 	return lchan_new_ul_meas(lchan, &ulm);
 }
 
-static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind)
+static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
+			      struct msgb *l1p_msg)
 {
 	struct osmo_phsap_prim pp;
 	struct gsm_lchan *lchan;
@@ -461,8 +462,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		break;
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
-		/* FIXME: TCH speech frame handling */
-		rc = 0;
+		/* TCH speech frame handling */
+		rc = l1if_tch_rx(lchan, l1p_msg);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
@@ -524,7 +525,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd);
 		break;
 	case GsmL1_PrimId_PhDataInd:
-		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd);
+		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 		break;
 	case GsmL1_PrimId_PhRaInd:
 		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd);
@@ -533,7 +534,10 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		break;
 	}
 
-	msgb_free(msg);
+	/* Special return value '1' means: do not free */
+	if (rc != 1)
+		msgb_free(msg);
+
 	return rc;
 }
 

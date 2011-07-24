@@ -219,3 +219,20 @@ const struct value_string femtobts_tracef_names[29] = {
 	{ DBG_STATUS,			"STATUS" },
 	{ 0, NULL }
 };
+
+const struct value_string femtobts_tch_pl_names[] = {
+	{ GsmL1_TchPlType_NA,			"N/A" },
+	{ GsmL1_TchPlType_Fr,			"FR" },
+	{ GsmL1_TchPlType_Hr,			"HR" },
+	{ GsmL1_TchPlType_Amr,			"AMR(IF2)" },
+	{ GsmL1_TchPlType_Amr_SidBad,		"AMR(SID BAD)" },
+	{ GsmL1_TchPlType_Amr_Onset,		"AMR(ONSET)" },
+	{ GsmL1_TchPlType_Amr_Ratscch,		"AMR(RATSCCH)" },
+	{ GsmL1_TchPlType_Amr_SidUpdateInH,	"AMR(SID_UPDATE INH)" },
+	{ GsmL1_TchPlType_Amr_SidFirstP1,	"AMR(SID_FIRST P1)" },
+	{ GsmL1_TchPlType_Amr_SidFirstP2,	"AMR(SID_FIRST P2)" },
+	{ GsmL1_TchPlType_Amr_SidFirstInH,	"AMR(SID_FIRST INH)" },
+	{ GsmL1_TchPlType_Amr_RatscchMarker,	"AMR(RATSCCH MARK)" },
+	{ GsmL1_TchPlType_Amr_RatscchData,	"AMR(RATSCCH DATA)" },
+	{ 0, NULL }
+};
