@@ -519,9 +519,9 @@ void abis_close(struct ipabis_link *link)
 
 	/* for now, we simply terminate the program and re-spawn */
 	if (link->bts)
-		bts_shutdown(link->bts, "Abis close / OML");
+		bts_shutdown(link->bts, "Abis close / OML", 0);
 	else if (link->trx)
-		bts_shutdown(link->trx->bts, "Abis close / RSL");
+		bts_shutdown(link->trx->bts, "Abis close / RSL", 0);
 	else {
 		LOGP(DABIS, LOGL_FATAL, "Unable to connect to BSC\n");
 		exit(43);

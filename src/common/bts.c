@@ -108,7 +108,7 @@ static struct osmo_timer_list shutdown_timer = {
 	.cb = &shutdown_timer_cb,
 };
 
-void bts_shutdown(struct gsm_bts *bts, const char *reason)
+void bts_shutdown(struct gsm_bts *bts, const char *reason, int terminate)
 {
 	struct gsm_bts_trx *trx;
 
@@ -118,9 +118,11 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		bts_model_trx_deact_rf(trx);
 
-	/* shedule a timer to make sure select loop logic can run again
-	 * to dispatch any pending primitives */
-	osmo_timer_schedule(&shutdown_timer, 3, 0);
+	if (terminate) {
+		/* shedule a timer to make sure select loop logic can run again
+		 * to dispatch any pending primitives */
+		osmo_timer_schedule(&shutdown_timer, 3, 0);
+	}
 }
 
 #if 0

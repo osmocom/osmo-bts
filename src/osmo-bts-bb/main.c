@@ -195,7 +195,7 @@ void sighandler(int sigset)
 	signal(SIGTERM, SIG_DFL);
 	signal(SIGPIPE, SIG_DFL);
 
-	bts_shutdown(bts, "SIGINT");
+	bts_shutdown(bts, "SIGINT", 1);
 //	dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 }
 
