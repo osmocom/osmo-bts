@@ -18,3 +18,5 @@ core.*
 src/osmo-bts-sysmo/l1fwd-proxy
 src/osmo-bts-sysmo/sysmobts
 src/osmo-bts-sysmo/sysmobts-remote
+
+src/osmo-bts-bb/osmobts

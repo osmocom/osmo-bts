@@ -1,8 +1,8 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS)
-LDADD = $(LIBOSMOCORE_LIBS)
+AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS)
+LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS)
 
-bin_PROGRAMS = osmo-bts-bb
+bin_PROGRAMS = osmobts
 
-osmo_bts_bb_SOURCES = main.c
-osmo_bts_bb_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
+osmobts_SOURCES = main.c oml.c bts_model.c l1_if.c
+osmobts_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
