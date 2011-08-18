@@ -277,6 +277,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t rsl_si;
 	enum osmo_sysinfo_type osmo_si;
+	struct osmo_signal_new_si new_si;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -317,7 +318,9 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " RX RSL Disabling BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	}
-	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
+	new_si.trx = trx;
+	new_si.osmo_si = osmo_si;
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, &new_si);
 
 	return 0;
 }
@@ -395,6 +398,7 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t rsl_si;
 	enum osmo_sysinfo_type osmo_si;
+	struct osmo_signal_new_si new_si;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -428,7 +432,9 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL Disabling SACCH FILLING (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	}
-	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
+	new_si.trx = trx;
+	new_si.osmo_si = osmo_si;
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, &new_si);
 
 	return 0;
 

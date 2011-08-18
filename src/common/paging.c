@@ -405,11 +405,15 @@ int paging_si_update(struct paging_state *ps, struct gsm48_control_channel_descr
 static int paging_signal_cbfn(unsigned int subsys, unsigned int signal, void *hdlr_data,
 				void *signal_data)
 {
-	if (subsys == SS_GLOBAL && signal == S_NEW_SYSINFO) {
-		struct gsm_bts *bts = signal_data;
+	struct osmo_signal_new_si *new_si = signal_data;
+
+	if (subsys == SS_GLOBAL && signal == S_NEW_SYSINFO
+	 && new_si->osmo_si == SYSINFO_TYPE_3) {
+		struct gsm_bts *bts = new_si->trx->bts;
 		struct gsm_bts_role_bts *btsb = bts->role;
 		struct paging_state *ps = btsb->paging_state;
-		struct gsm48_system_information_type_3 *si3 = (void *) bts->si_buf[SYSINFO_TYPE_3];
+		struct gsm48_system_information_type_3 *si3
+			= (void *) bts->si_buf[SYSINFO_TYPE_3];
 
 		paging_si_update(ps, &si3->control_channel_desc);
 	}
