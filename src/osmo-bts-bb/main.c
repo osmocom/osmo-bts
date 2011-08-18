@@ -46,9 +46,10 @@
 #include <string.h>
 #include <time.h>
 
-char *debugs = "DL1C:DLAPDM:DABIS:DOML:DRSL:DSUM";
+char *debugs = "DL1C:DLLAPDM:DABIS:DOML:DRSL:DSUM";
 int debug_set = 0;
 int level_set = 0;
+int ref_set = 0;
 static int daemonize = 0;
 void *l23_ctx = NULL;
 static struct gsm_bts *bts;
@@ -107,8 +108,9 @@ struct ipabis_link *link_init(struct gsm_bts *bts, uint32_t bsc_ip)
 
 static void print_usage(const char *app)
 {
-	printf("Usage: %s [option]\n", app);
+	printf("Usage: %s -r <arfcn> [option]\n", app);
 	printf("  -h --help             this text\n");
+	printf("  -r --ref-arfcn        Set channel number of reference BTS for clocking\n");
 	printf("  -d --debug            Change debug flags. (default %s)\n", debugs);
 	printf("  -s --disable-color    Don't use colors in stderr log output\n");
 	printf("  -T --timestamp        Prefix every log line with a timestamp\n");
@@ -130,6 +132,7 @@ static void handle_options(int argc, char **argv)
 		int option_index = 0, c;
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
+			{ "ref-arfcn", 1, 0, 'r' },
 			{ "debug", 1, 0, 'd' },
 			{ "disable-color", 0, 0, 's' },
 			{ "timestamp", 0, 0, 'T' },
@@ -139,7 +142,7 @@ static void handle_options(int argc, char **argv)
 			{0, 0, 0, 0},
 		};
 
-		c = getopt_long(argc, argv, "hd:sTe:i:D",
+		c = getopt_long(argc, argv, "hr:d:sTe:i:D",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -148,6 +151,10 @@ static void handle_options(int argc, char **argv)
 		case 'h':
 			print_usage(argv[0]);
 			exit(0);
+		case 'r':
+			ref_arfcn = atoi(optarg);
+			ref_set = 1;
+			break;
 		case 'd':
 			log_parse_category_mask(osmo_stderr_target, optarg);
 			debug_set = 1;
@@ -179,7 +186,8 @@ void sighandler(int sigset)
 	if (sigset == SIGHUP || sigset == SIGPIPE)
 		return;
 
-	fprintf(stderr, "Signal %d recevied.\n", sigset);
+	fprintf(stderr, "Signal %d recevied. Press ^C again to terminate "
+		"instantly.\n", sigset);
 
 	/* in case there is a lockup during exit */
 	signal(SIGINT, SIG_DFL);
@@ -226,6 +234,12 @@ int main(int argc, char **argv)
 	}
 
 	handle_options(argc, argv);
+
+	if (!ref_set) {
+		fprintf(stderr, "Error: ARFCN for reference clock not specified. Use '-h' for help.\n");
+		exit(1);
+	}
+	printf("Using ARFCN '%d' for clock reference.\n", ref_arfcn);
 
 	if (!debug_set)
 		log_parse_category_mask(osmo_stderr_target, debugs);

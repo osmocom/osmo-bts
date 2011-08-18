@@ -43,6 +43,8 @@
 
 #include "l1_if.h"
 
+uint16_t ref_arfcn;
+
 /* l1 confirms setup */
 static int l1if_setup_conf(struct gsm_bts_trx *trx)
 {
