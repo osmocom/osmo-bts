@@ -31,17 +31,23 @@
 #include <osmo-bts/logging.h>
 
 static struct log_info_cat bts_log_info_cat[] = {
+	[DSUM] = {
+		.name = "DSUM",
+		.description = "Summary",
+		.color = "\033[1;37m",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 	[DRSL] = {
 		.name = "DRSL",
 		.description = "A-bis Radio Siganlling Link (RSL)",
 		.color = "\033[1;35m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
-	[DOML] =	{
+	[DOML] = {
 		.name = "DOML",
 		.description = "A-bis Network Management / O&M (NM/OML)",
 		.color = "\033[1;36m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DRLL] = {
 		.name = "DRLL",
@@ -70,6 +76,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.name = "DL1C",
 		.description = "Layer 1",
 		.loglevel = LOGL_INFO,
+		.color = "\033[0;31m",
 		.enabled = 1,
 	},
 	[DL1P] = {
@@ -87,7 +94,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 	[DABIS] = {
 		.name = "DABIS",
 		.description = "A-bis Intput Subsystem",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DRTP] = {
 		.name = "DRTP",

@@ -5,6 +5,7 @@
 #include <osmocom/core/logging.h>
 
 enum {
+	DSUM,
 	DRSL,
 	DOML,
 	DRLL,
@@ -16,7 +17,6 @@ enum {
 	DDSP,
 	DABIS,
 	DRTP,
-	DSUM,
 };
 
 extern const struct log_info bts_log_info;

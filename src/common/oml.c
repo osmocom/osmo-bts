@@ -264,9 +264,12 @@ int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 		return -ENOMEM;
 
 	if (cause) {
+		LOGP(DOML, LOGL_NOTICE, "Sending FOM NACK with cause %s.\n",
+			abis_nm_nack_cause_name(cause));
 		new_msg_type = orig_msg_type + 2;
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
 	} else {
+		LOGP(DOML, LOGL_DEBUG, "Sending FOM ACK.\n");
 		new_msg_type = orig_msg_type + 1;
 	}
 
