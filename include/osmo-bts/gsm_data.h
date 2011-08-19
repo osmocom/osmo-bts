@@ -58,4 +58,11 @@ static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
 	return trx->role_bts.l1h;
 }
 
+struct bbl1_hdl;
+
+static inline struct bbl1_hdl *trx_bbl1_hdl(struct gsm_bts_trx *trx)
+{
+	return trx->role_bts.l1h;
+}
+
 #endif /* _GSM_DATA_H */

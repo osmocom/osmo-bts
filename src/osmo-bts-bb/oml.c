@@ -94,10 +94,10 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	struct gsm_abis_mo *mo = &ts->mo;
 	int cause = 0;
 
+	//FIXME: depends on l1 capabilities
 	if (ts->nr > 3)
 		return opstart_compl(mo, 0, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 	return opstart_compl(mo, 0, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-	//FIXME: only supported TS must be acked
 }
 
 /* callback from OML */

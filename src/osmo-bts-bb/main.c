@@ -50,6 +50,8 @@ char *debugs = "DL1C:DLLAPDM:DABIS:DOML:DRSL:DSUM";
 int debug_set = 0;
 int level_set = 0;
 int ref_set = 0;
+static char *layer2_socket_path = "/tmp/osmocom_l2";
+int tx_only = 0;
 static int daemonize = 0;
 void *l23_ctx = NULL;
 static struct gsm_bts *bts;
@@ -110,6 +112,8 @@ static void print_usage(const char *app)
 {
 	printf("Usage: %s -r <arfcn> [option]\n", app);
 	printf("  -h --help             this text\n");
+	printf("  -s --socket           Path to the unix domain socket (default /tmp/osmocom_l2)\n");
+	printf("  -t --tx-only          Use only one baseband to transmit BCCH only\n");
 	printf("  -r --ref-arfcn        Set channel number of reference BTS for clocking\n");
 	printf("  -d --debug            Change debug flags. (default %s)\n", debugs);
 	printf("  -s --disable-color    Don't use colors in stderr log output\n");
@@ -132,9 +136,11 @@ static void handle_options(int argc, char **argv)
 		int option_index = 0, c;
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
+			{ "socket", 1, 0, 's' },
+			{ "tx-only", 0, 0, 't' },
 			{ "ref-arfcn", 1, 0, 'r' },
 			{ "debug", 1, 0, 'd' },
-			{ "disable-color", 0, 0, 's' },
+			{ "disable-color", 0, 0, 'C' },
 			{ "timestamp", 0, 0, 'T' },
 			{ "log-level", 1, 0, 'e' },
 			{ "bsc-ip", 1, 0, 'i' },
@@ -142,7 +148,7 @@ static void handle_options(int argc, char **argv)
 			{0, 0, 0, 0},
 		};
 
-		c = getopt_long(argc, argv, "hr:d:sTe:i:D",
+		c = getopt_long(argc, argv, "hs:tr:d:CTe:i:D",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -151,6 +157,12 @@ static void handle_options(int argc, char **argv)
 		case 'h':
 			print_usage(argv[0]);
 			exit(0);
+		case 's':
+			layer2_socket_path = talloc_strdup(l23_ctx, optarg);
+			break;
+		case 't':
+			tx_only = 1;
+			break;
 		case 'r':
 			ref_arfcn = atoi(optarg);
 			ref_set = 1;
@@ -159,7 +171,7 @@ static void handle_options(int argc, char **argv)
 			log_parse_category_mask(osmo_stderr_target, optarg);
 			debug_set = 1;
 			break;
-		case 's':
+		case 'C':
 			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'T':
@@ -307,7 +319,11 @@ fail:
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	l1if_open();
+	int rc;
+
+	rc = l1if_open(bts->c0, layer2_socket_path);
+	if (rc)
+		exit(1);
 
 	/* send reset to baseband */
 	l1if_reset(bts->c0);
