@@ -58,9 +58,9 @@ static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
 	return trx->role_bts.l1h;
 }
 
-struct bbl1_hdl;
+struct osmo_l1_if;
 
-static inline struct bbl1_hdl *trx_bbl1_hdl(struct gsm_bts_trx *trx)
+static inline struct osmo_l1_if *trx_l1_if(struct gsm_bts_trx *trx)
 {
 	return trx->role_bts.l1h;
 }

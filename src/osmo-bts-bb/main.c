@@ -32,6 +32,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/vty.h>
 
+#include "l1ctl.h"
 #include "l1_if.h"
 
 #include <net/if.h>
@@ -49,6 +50,7 @@
 char *debugs = "DL1C:DLLAPDM:DABIS:DOML:DRSL:DSUM";
 int debug_set = 0;
 int level_set = 0;
+uint16_t ref_arfcn = 0;
 int ref_set = 0;
 static char *layer2_socket_path = "/tmp/osmocom_l2";
 int tx_only = 0;
@@ -99,7 +101,7 @@ struct ipabis_link *link_init(struct gsm_bts *bts, uint32_t bsc_ip)
 	int rc;
 
 	link->bts = bts;
-	bts->oml_link = link;
+	bts->oml_link = (void *)link;
 
 	rc = abis_open(link, bsc_ip);
 	if (rc < 0)

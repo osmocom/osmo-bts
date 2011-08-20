@@ -27,6 +27,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
 
+#include "l1ctl.h"
 #include "l1_if.h"
 
 int gsm_abis_mo_check_attr(const struct gsm_abis_mo *mo, uint8_t *attr_ids,

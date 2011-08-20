@@ -1,30 +1,31 @@
-#ifndef _BB_L1_H
-#define _BB_L1_H
+#ifndef _BB_L1_IF_H
+#define _BB_L1_IF_H
 
-extern uint16_t ref_arfcn;
-
-#include <osmocom/core/write_queue.h>
-
-enum baseband_role {
-	BASEBAND_TX,
-	BASEBAND_RX,
+enum l1if_prim {
+	L1IF_RESET_REQ,
+	L1IF_RESET_IND,
+	L1IF_RESET_CNF,
+	L1IF_SETUP_REQ,
+	L1IF_SETUP_CNF,
+	L1IF_BCCH_REQ,
+	L1IF_RACH_IND,
 };
 
-struct osmo_l1l2_if {
+struct l1if_hdr {
+	uint8_t msg_type;
+	uint8_t data[0];
+} __attribute__((packed));
 
-	enum baseband_role bb_role;
-	struct bbl1_hdl *bbl1h;
-	struct osmo_wqueue l2_wq;
-};
-
-struct bbl1_hdl {
+struct osmo_l1_if {
 	struct gsm_bts_trx *trx;
-	struct osmo_l1l2_if l1l2if_tx, l1l2if_rx;
+	struct osmo_l1ctl l1ctl_tx, l1ctl_rx;
 	int reset_cnf_tx, reset_cnf_rx;
 };
 
 int l1if_setup(struct gsm_bts_trx *trx);
+int l1if_reset(struct gsm_bts_trx *trx);
+int l1if_recv(struct osmo_l1ctl *l1ctl, struct msgb *msg);
 int l1if_open(struct gsm_bts_trx *trx,  const char *socket_path);
 int l1if_close(struct gsm_bts_trx *trx);
 
-#endif /* _BB_L1_H */
+#endif /* _BB_L1_IF_H */
