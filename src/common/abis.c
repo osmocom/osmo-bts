@@ -42,9 +42,6 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
-#if 0
-#include <osmocom/bb/bts/rtp.h>
-#endif
 
 extern char *software_version;
 extern uint8_t abis_mac[6];
