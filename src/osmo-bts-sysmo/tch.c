@@ -158,9 +158,17 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
 	uint8_t *cur;
 
-#warning Test GSM HR
+	if (payload_len != GSM_HR_BYTES) {
+		LOGP(DL1C, LOGL_ERROR, "L1 HR frame length %u != expected %u\n",
+			payload_len, GSM_HR_BYTES);
+		return NULL;
+	}
+
 	cur = msgb_put(msg, GSM_HR_BYTES);
 	memcpy(cur, l1_payload, GSM_HR_BYTES);
+
+	/* reverse the bit-order of each payload byte */
+	osmo_revbytebits_buf(cur, GSM_HR_BYTES);
 
 	return msg;
 }
@@ -174,8 +182,19 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 static int rtppayload_to_l1_hr(uint8_t *l1_payload, uint8_t *rtp_payload,
 				unsigned int payload_len)
 {
-#warning Implement GSM HR
-	return 0;
+
+	if (payload_len != GSM_HR_BYTES) {
+		LOGP(DL1C, LOGL_ERROR, "RTP HR frame length %u != expected %u\n",
+			payload_len, GSM_HR_BYTES);
+		return 0;
+	}
+
+	memcpy(l1_payload, rtp_payload, GSM_HR_BYTES);
+
+	/* reverse the bit-order of each payload byte */
+	osmo_revbytebits_buf(l1_payload, GSM_HR_BYTES);
+
+	return GSM_HR_BYTES;
 }
 
 #define AMR_TOC_QBIT	0x04
