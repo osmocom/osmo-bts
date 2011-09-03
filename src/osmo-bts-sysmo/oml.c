@@ -299,6 +299,21 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	return l1if_req_compl(fl1h, msg, 0, opstart_compl_cb, &ts->mo);
 }
 
+GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
+{
+	switch (lchan->type) {
+	case GSM_LCHAN_TCH_F:
+		return GsmL1_Sapi_TchF;
+	case GSM_LCHAN_TCH_H:
+		return GsmL1_Sapi_TchH;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "%s cannot determine L1 SAPI\n",
+			gsm_lchan_name(lchan));
+		break;
+	}
+	return GsmL1_Sapi_Idle;
+}
+
 GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 {
 	switch (lchan->ts->pchan) {
@@ -654,7 +669,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 	/* update multi-rate config */
 	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetLogChParams;
-	conf_req->cfgParams.setLogChParams.sapi = GsmL1_Sapi_TchF;
+	conf_req->cfgParams.setLogChParams.sapi = lchan_to_GsmL1_Sapi_t(lchan);
 	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
 	conf_req->cfgParams.setLogChParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
 	conf_req->cfgParams.setLogChParams.dir = direction;
