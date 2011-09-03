@@ -34,6 +34,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/lapdm.h>
+#include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
@@ -48,6 +49,7 @@ void *tall_bts_ctx;
 int bts_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
+	struct gsm_bts_trx *trx;
 
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
 
@@ -58,6 +60,22 @@ int bts_init(struct gsm_bts *bts)
 
 	/* set BTS to dependency */
 	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
+
+	/* initialize bts data structure */
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		int i;
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			int k;
+
+			for (k = 0; k < ARRAY_SIZE(ts->lchan); k++) {
+				struct gsm_lchan *lchan = &ts->lchan[k];
+				INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+			}
+		}
+	}
+
+	osmo_rtp_init(tall_bts_ctx);
 
 	return bts_model_init(bts);
 }

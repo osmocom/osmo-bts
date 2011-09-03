@@ -33,4 +33,7 @@ int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan);
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx);
 
+void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
+			 unsigned int rtp_pl_len);
+
 #endif

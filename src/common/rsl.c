@@ -30,7 +30,7 @@
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
-#include <osmocom/trau/rtp.h>
+#include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -68,6 +68,19 @@ int osmo_in_array(unsigned int search, const unsigned int *arr, unsigned int siz
 }
 #define OSMO_IN_ARRAY(search, arr) osmo_in_array(search, arr, ARRAY_SIZE(arr))
 
+int msgb_queue_flush(struct llist_head *list)
+{
+	struct msgb *msg, *msg2;
+	int count = 0;
+
+	llist_for_each_entry_safe(msg, msg2, list, list) {
+		msgb_free(msg);
+		count++;
+	}
+
+	return count;
+}
+
 /* FIXME: move this to libosmocore */
 void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
 {
@@ -76,6 +89,32 @@ void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
 	out[1] = (gtime->t3 << 5) | gtime->t2;
 }
 
+/* compute lchan->rsl_cmode and lchan->tch_mode from RSL CHAN MODE IE */
+static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
+				     struct rsl_ie_chan_mode *cm)
+{
+	lchan->rsl_cmode = cm->spd_ind;
+	switch (cm->chan_rate) {
+	case RSL_CMOD_SP_GSM1:
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+		break;
+	case RSL_CMOD_SP_GSM2:
+		lchan->tch_mode = GSM48_CMODE_SPEECH_EFR;
+		break;
+	case RSL_CMOD_SP_GSM3:
+		lchan->tch_mode = GSM48_CMODE_SPEECH_AMR;
+		break;
+	case RSL_CMOD_SP_NT_14k5:
+		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
+		break;
+	case RSL_CMOD_SP_NT_12k0:
+		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
+		break;
+	case RSL_CMOD_SP_NT_6k0:
+		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+		break;
+	}
+}
 
 
 /*
@@ -547,8 +586,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
-	uint8_t type, mode;
+	uint8_t type;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -566,7 +606,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		msgb_free(msg);
 		return rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
 	}
-	mode = *TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
+	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
+	lchan_tchmode_from_cmode(lchan, cm);
 
 	/* 9.3.7 Encryption Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
@@ -635,10 +676,19 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		copy_sacch_si_to_lchan(lchan);
 	}
 	/* 9.3.52 MultiRate Configuration */
+	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
+		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_conf)) {
+			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
+			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		}
+		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
+		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
-	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n", dch->chan_nr, type, mode);
+	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n",
+		dch->chan_nr, type, lchan->tch_mode);
 
 	/* actually activate the channel in the BTS */
 	return  bts_model_rsl_chan_act(msg->lchan, &tp);
@@ -651,8 +701,9 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
-		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 		lchan->abis_ip.rtp_socket = NULL;
+		msgb_queue_flush(&lchan->dl_tch_queue);
 	}
 
 	rc = bts_model_rsl_chan_rel(lchan);
@@ -795,6 +846,90 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	}
 }
 
+/* 8.4.11 MODE MODIFY NEGATIVE ACKNOWLEDGE */
+static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
+{
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx MODE MODIFY NACK (cause = 0x%02x)\n",
+	     gsm_lchan_name(lchan), cause);
+
+	msg->len = 0;
+	msg->data = msg->tail = msg->l3h;
+
+	/* 9.3.26 Cause */
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
+	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_NACK, chan_nr);
+	msg->lchan = lchan;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* 8.4.10 MODE MODIFY ACK */
+static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_INFO, "%s Tx MODE MODIF ACK\n", gsm_lchan_name(lchan));
+
+	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_ACK, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* 8.4.9 MODE MODIFY */
+static int rsl_rx_mode_modif(struct msgb *msg)
+{
+	struct gsm_lchan *lchan = msg->lchan;
+	struct rsl_ie_chan_mode *cm;
+	struct tlv_parsed tp;
+	int rc;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	/* 9.3.6 Channel Mode */
+	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
+		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
+		msgb_free(msg);
+		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+	}
+	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
+	lchan_tchmode_from_cmode(lchan, cm);
+
+	/* 9.3.7 Encryption Information */
+	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
+		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
+		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
+
+		if (encr_info2lchan(lchan, val, len) < 0)
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+	}
+
+	/* 9.3.45 Main channel reference */
+
+	/* 9.3.52 MultiRate Configuration */
+	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
+		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_conf)) {
+			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
+			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		}
+		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
+		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+	}
+	/* 9.3.53 MultiRate Control */
+	/* 9.3.54 Supported Codec Types */
+
+	rc = bts_model_rsl_mode_modify(msg->lchan);
+
+	/* FIXME: delay this until L1 says OK? */
+	rsl_tx_mode_modif_ack(msg->lchan);
+
+	return rc;
+}
+
 /* 8.4.20 SACCH INFO MODify */
 static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 {
@@ -884,10 +1019,10 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	else
 		name = "MDCX";
 
-	ia.s_addr = lchan->abis_ip.bound_ip;
+	ia.s_addr = htonl(lchan->abis_ip.bound_ip);
 	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_%s_ACK (local %s:%u)\n",
 	     gsm_lchan_name(lchan), name, inet_ntoa(ia),
-	     ntohs(lchan->abis_ip.bound_port));
+	     lchan->abis_ip.bound_port);
 
 	/* Connection ID */
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
@@ -899,7 +1034,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 
 	/* locally bound port */
 	msgb_tv16_put(msg, RSL_IE_IPAC_LOCAL_PORT,
-			htons(lchan->abis_ip.bound_port));
+		      lchan->abis_ip.bound_port);
 
 	if (inc_pt2) {
 		/* RTP Payload Type 2 */
@@ -1035,7 +1170,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		}
 		/* FIXME: select default value depending on speech_mode */
 		//if (!payload_type)
-		lchan->abis_ip.rtp_socket = rtp_socket_create(lchan->ts->trx);
+		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx);
 		if (!lchan->abis_ip.rtp_socket) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to create RTP/RTCP sockets\n",
@@ -1043,49 +1178,73 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
+		lchan->abis_ip.rtp_socket->priv = lchan;
+		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
 
-		rc = rtp_socket_bind(lchan->abis_ip.rtp_socket, INADDR_ANY);
+#warning remove hard-coded IP address
+		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
+					  "192.168.100.239", -1);
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 			lchan->abis_ip.rtp_socket = NULL;
+			msgb_queue_flush(&lchan->dl_tch_queue);
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
+		rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
+						&lchan->abis_ip.bound_ip,
+						&lchan->abis_ip.bound_port);
+		if (rc < 0)
+			LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
+			     "locally bound IP/port: %d\n",
+			     gsm_lchan_name(lchan), rc);
 		/* FIXME: multiplex connection, BSC proxy */
 	} else {
 		/* MDCX */
 		if (!lchan->abis_ip.rtp_socket) {
 			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC MDCX, "
-				"but we have no RTP socket!\n");
+				"but we have no RTP socket!\n",
+				gsm_lchan_name(lchan));
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
 	}
 
 	if (connect_ip && connect_port) {
-		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
-					ntohl(*connect_ip), ntohs(*connect_port));
+		struct in_addr ia;
+		ia.s_addr = *connect_ip;
+		rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
+					     inet_ntoa(ia), ntohs(*connect_port));
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s Failed to connect RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 			lchan->abis_ip.rtp_socket = NULL;
+			msgb_queue_flush(&lchan->dl_tch_queue);
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
 		/* save IP address and port number */
-		lchan->abis_ip.connect_ip = *connect_ip;
-		lchan->abis_ip.connect_port = *connect_port;
+		lchan->abis_ip.connect_ip = ntohl(*connect_ip);
+		lchan->abis_ip.connect_port = ntohs(*connect_port);
 	}
 	/* Everything has succeeded, we can store new values in lchan */
-	if (payload_type)
+	if (payload_type) {
 		lchan->abis_ip.rtp_payload = *payload_type;
-	if (payload_type2)
+		if (lchan->abis_ip.rtp_socket)
+			osmo_rtp_socket_set_pt(lchan->abis_ip.rtp_socket,
+						*payload_type);
+	}
+	if (payload_type2) {
 		lchan->abis_ip.rtp_payload2 = *payload_type2;
+		if (lchan->abis_ip.rtp_socket)
+			osmo_rtp_socket_set_pt(lchan->abis_ip.rtp_socket,
+						*payload_type2);
+	}
 	if (speech_mode)
 		lchan->abis_ip.speech_mode = *speech_mode;
 
@@ -1109,8 +1268,9 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_CONN_ID))
 		inc_conn_id = 1;
 
-	rtp_socket_free(lchan->abis_ip.rtp_socket);
+	osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 	lchan->abis_ip.rtp_socket = NULL;
+	msgb_queue_flush(&lchan->dl_tch_queue);
 
 	return rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
 }
@@ -1336,6 +1496,8 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		ret = rsl_rx_encr_cmd(msg);
 		break;
 	case RSL_MT_MODE_MODIFY_REQ:
+		ret = rsl_rx_mode_modif(msg);
+		break;
 	case RSL_MT_PHY_CONTEXT_REQ:
 	case RSL_MT_PREPROC_CONFIG:
 	case RSL_MT_RTD_REP:
@@ -1404,8 +1566,8 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
 	}
 
-	LOGP(DRSL, LOGL_INFO, "%s Rx RSL IPA %s\n", gsm_lchan_name(msg->lchan),
-		rsl_msg_name(dch->c.msg_type));
+	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
+		rsl_ipac_msg_name(dch->c.msg_type));
 
 	switch (dch->c.msg_type) {
 	case RSL_MT_IPAC_CRCX:

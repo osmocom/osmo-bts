@@ -165,11 +165,10 @@ struct msgb *sysp_msgb_alloc(void)
 	return msg;
 }
 
-/* prepare a PH-DATA.req primitive in response to a PH-RTS.ind */
-static struct msgb *alloc_ph_data_req(GsmL1_PhReadyToSendInd_t *rts_ind)
+static GsmL1_PhDataReq_t *
+data_req_from_rts_ind(GsmL1_Prim_t *l1p,
+		const GsmL1_PhReadyToSendInd_t *rts_ind)
 {
-	struct msgb *msg = l1p_msgb_alloc();
-	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
 
 	l1p->id = GsmL1_PrimId_PhDataReq;
@@ -182,7 +181,25 @@ static struct msgb *alloc_ph_data_req(GsmL1_PhReadyToSendInd_t *rts_ind)
 	data_req->subCh		= rts_ind->subCh;
 	data_req->u8BlockNbr	= rts_ind->u8BlockNbr;
 
-	return msg;
+	return data_req;
+}
+
+static GsmL1_PhEmptyFrameReq_t *
+empty_req_from_rts_ind(GsmL1_Prim_t *l1p,
+			const GsmL1_PhReadyToSendInd_t *rts_ind)
+{
+	GsmL1_PhEmptyFrameReq_t *empty_req = &l1p->u.phEmptyFrameReq;
+
+	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+
+	empty_req->hLayer1 = rts_ind->hLayer1;
+	empty_req->u8Tn = rts_ind->u8Tn;
+	empty_req->u32Fn = rts_ind->u32Fn;
+	empty_req->sapi = rts_ind->sapi;
+	empty_req->subCh = rts_ind->subCh;
+	empty_req->u8BlockNbr = rts_ind->u8BlockNbr;
+
+	return empty_req;
 }
 
 /* obtain a ptr to the lapdm_channel for a given hLayer2 */
@@ -208,14 +225,12 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 				     GsmL1_PhReadyToSendInd_t *rts_ind)
 {
-	struct msgb *resp_msg = alloc_ph_data_req(rts_ind);
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
-	GsmL1_Prim_t *l1p = msgb_l1prim(resp_msg);
-	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
-	GsmL1_PhEmptyFrameReq_t *empty_req = &l1p->u.phEmptyFrameReq;
-	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
+	struct msgb *resp_msg;
+	GsmL1_PhDataReq_t *data_req;
+	GsmL1_MsgUnitParam_t *msu_param;
 	struct lapdm_channel *lc;
 	struct lapdm_entity *le;
 	struct gsm_lchan *lchan;
@@ -231,13 +246,39 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		g_time.t1, g_time.t2, g_time.t3,
 		get_value_string(femtobts_l1sapi_names, rts_ind->sapi));
 
-	/* copy over parameters from PH-RTS.ind into PH-DATA.req */
-	data_req->hLayer1 = rts_ind->hLayer1;
-	data_req->u8Tn = rts_ind->u8Tn;
-	data_req->u32Fn = rts_ind->u32Fn;
-	data_req->sapi = rts_ind->sapi;
-	data_req->subCh = rts_ind->subCh;
-	data_req->u8BlockNbr = rts_ind->u8BlockNbr;
+	/* In case of TCH downlink trasnmission, we already have a l1
+	 * primitive msgb pre-allocated and pre-formatted in the
+	 * dl_tch_queue.  All we need to do is to pull it off the queue
+	 * and transmit it */
+	switch (rts_ind->sapi) {
+	case GsmL1_Sapi_TchF:
+	case GsmL1_Sapi_TchH:
+		/* resolve the L2 entity using rts_ind->hLayer2 */
+		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		if (!lchan)
+			break;
+
+		/* get a msgb from the dl_tx_queue */
+		resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
+		if (!resp_msg)
+			break;
+
+		/* fill header */
+		data_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
+		/* actually transmit it */
+		goto tx;
+		break;
+	default:
+		break;
+	}
+
+	/* in all other cases, we need to allocate a new PH-DATA.ind
+	 * primitive msgb and start to fill it */
+	resp_msg = l1p_msgb_alloc();
+	data_req = data_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
+	msu_param = &data_req->msgUnitParam;
+
+	/* set default size */
 	msu_param->u8Size = GSM_MACBLOCK_LEN;
 
 	switch (rts_ind->sapi) {
@@ -306,10 +347,13 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		rc = paging_gen_msg(btsb->paging_state, msu_param->u8Buffer, &g_time);
 		break;
 	case GsmL1_Sapi_TchF:
-#warning Send actual speech data on the TCH
+	case GsmL1_Sapi_TchH:
+		/* only hit in case we have a RTP underflow, as real TCH
+		 * frames are handled way above */
 		goto empty_frame;
 		break;
 	case GsmL1_Sapi_FacchF:
+	case GsmL1_Sapi_FacchH:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
 		lc = get_lapdm_chan_by_hl2(trx, rts_ind->hLayer2);
 		le = &lc->lapdm_dcch;
@@ -317,7 +361,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		if (rc < 0)
 			goto empty_frame;
 		else {
-			data_req->sapi = GsmL1_Sapi_FacchF;
 			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
 			msgb_free(pp.oph.msg);
 		}
@@ -335,14 +378,7 @@ tx:
 
 empty_frame:
 	/* in case we decide to send an empty frame... */
-	memset(l1p, 0, sizeof(*l1p));
-	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
-	empty_req->hLayer1 = rts_ind->hLayer1;
-	empty_req->u8Tn = rts_ind->u8Tn;
-	empty_req->u32Fn = rts_ind->u32Fn;
-	empty_req->sapi = rts_ind->sapi;
-	empty_req->subCh = rts_ind->subCh;
-	empty_req->u8BlockNbr = rts_ind->u8BlockNbr;
+	empty_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
 
 	goto tx;
 }

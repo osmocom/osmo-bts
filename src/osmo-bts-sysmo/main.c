@@ -104,6 +104,7 @@ static void print_help()
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
 		"  -B	--bsc-host	Specify host-name of the BSC\n"
+		"  -p   --dsp-trace	Set DSP trace flags\n"
 		);
 }
 

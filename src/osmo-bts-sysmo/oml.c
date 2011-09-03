@@ -452,6 +452,73 @@ static void alive_timer_cb(void *data)
 }
 
 
+static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
+{
+	int j;
+
+	LOGPC(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
+		gsm_lchan_name(lchan), __FUNCTION__, lchan->tch_mode);
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SIGN:
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
+		lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
+		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
+			lch_par->tch.amrActiveCodecSet[j] = GsmL1_AmrCodec_Unset;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd; /* FIXME? */
+		if (lchan->mr_conf.icmi)
+			lch_par->tch.amrInitCodecMode = lchan->mr_conf.smod;
+		/* else: FIXME (implicit rule by TS 05.09 ?!?) */
+
+		/* initialize to clean state */
+		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
+			lch_par->tch.amrActiveCodecSet[j] = GsmL1_AmrCodec_Unset;
+
+		j = 0;
+		if (lchan->mr_conf.m4_75)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_4_75;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m5_15)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_5_15;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m5_90)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_5_9;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m6_70)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_6_7;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m7_40)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_7_4;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m7_95)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_7_95;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+
+		if (lchan->mr_conf.m10_2)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_10_2;
+		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
+			break;
+		if (lchan->mr_conf.m12_2)
+			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_12_2;
+		break;
+	}
+}
+
 int lchan_activate(struct gsm_lchan *lchan)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
@@ -462,7 +529,6 @@ int lchan_activate(struct gsm_lchan *lchan)
 		struct msgb *msg = l1p_msgb_alloc();
 		GsmL1_MphActivateReq_t *act_req;
 		GsmL1_LogChParam_t *lch_par;
-		int j;
 
 		act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq, fl1h);
 		lch_par = &act_req->logChPrm;
@@ -493,11 +559,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 			break;
 		case GsmL1_Sapi_TchH:
 		case GsmL1_Sapi_TchF:
-#warning Set AMR parameters for TCH
-			lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
-			lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
-			for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
-				lch_par->tch.amrActiveCodecSet[i] = GsmL1_AmrCodec_Unset;
+			lchan2lch_par(lch_par, lchan);
 			break;
 		default:
 			break;
@@ -513,6 +575,121 @@ int lchan_activate(struct gsm_lchan *lchan)
 	lchan->state = LCHAN_S_ACT_REQ;
 
 	lchan_init_lapdm(lchan);
+
+	return 0;
+}
+
+const struct value_string femtobts_l1cfgt_names[] = {
+	{ GsmL1_ConfigParamId_SetNbTsc, 	"Set NB TSC" },
+	{ GsmL1_ConfigParamId_SetTxPowerLevel,	"Set Tx power level" },
+	{ GsmL1_ConfigParamId_SetLogChParams,	"Set logical channel params" },
+	{ GsmL1_ConfigParamId_SetCipheringParams,"Configure ciphering params" },
+	{ 0, NULL }
+};
+
+static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sapi)
+{
+	int i;
+
+	switch (sapi) {
+	case GsmL1_Sapi_Rach:
+		LOGPC(DL1C, logl, "BSIC=0x%08x", lch_par->rach.u8Bsic);
+		break;
+	case GsmL1_Sapi_Agch:
+		LOGPC(DL1C, logl, "BS_AG_BLKS_RES=%u ",
+		      lch_par->agch.u8NbrOfAgch);
+		break;
+	case GsmL1_Sapi_Sacch:
+		LOGPC(DL1C, logl, "MS Power Level 0x%02x",
+			lch_par->sacch.u8MsPowerLevel);
+		break;
+	case GsmL1_Sapi_TchF:
+	case GsmL1_Sapi_TchH:
+		LOGPC(DL1C, logl, "amrCmiPhase=0x%02x amrInitCodec=0x%02x (",
+			lch_par->tch.amrCmiPhase,
+			lch_par->tch.amrInitCodecMode);
+		for (i = 0; i < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); i++) {
+			LOGPC(DL1C, logl, "%x ",
+			lch_par->tch.amrActiveCodecSet[i]);
+		}
+		break;
+	/* FIXME: PRACH / PTCCH */
+	}
+	LOGPC(DL1C, logl, ")\n");
+}
+
+static int chmod_modif_compl_cb(struct msgb *l1_msg, void *data)
+{
+	struct gsm_lchan *lchan = data;
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
+
+	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
+		gsm_lchan_name(lchan),
+		get_value_string(femtobts_l1cfgt_names, cc->cfgParamId));
+
+	switch (cc->cfgParamId) {
+	case GsmL1_ConfigParamId_SetLogChParams:
+		dump_lch_par(LOGL_INFO,
+			     &cc->cfgParams.setLogChParams.logChParams,
+			     cc->cfgParams.setLogChParams.sapi);
+		break;
+	}
+
+	msgb_free(l1_msg);
+
+	return 0;
+}
+
+
+static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	struct msgb *msg = l1p_msgb_alloc();
+	GsmL1_MphConfigReq_t *conf_req;
+	GsmL1_LogChParam_t *lch_par;
+
+	/* channel mode, encryption and/or multirate have changed */
+
+	/* update multi-rate config */
+	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
+	conf_req->cfgParamId = GsmL1_ConfigParamId_SetLogChParams;
+	conf_req->cfgParams.setLogChParams.sapi = GsmL1_Sapi_TchF;
+	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
+	conf_req->cfgParams.setLogChParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
+	conf_req->cfgParams.setLogChParams.dir = direction;
+
+	lch_par = &conf_req->cfgParams.setLogChParams.logChParams;
+	lchan2lch_par(lch_par, lchan);
+
+	/* FIXME: update encryption */
+
+	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.req (%s) ",
+		gsm_lchan_name(lchan),
+		get_value_string(femtobts_l1sapi_names,
+				 conf_req->cfgParams.setLogChParams.sapi));
+	LOGP(DL1C, LOGL_INFO, "cfgParams Tn=%u, subCh=%u, dir=0x%x ",
+			conf_req->cfgParams.setLogChParams.u8Tn,
+			conf_req->cfgParams.setLogChParams.subCh,
+			conf_req->cfgParams.setLogChParams.dir);
+	dump_lch_par(LOGL_INFO,
+			&conf_req->cfgParams.setLogChParams.logChParams,
+			conf_req->cfgParams.setLogChParams.sapi);
+
+	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan);
+}
+
+int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+
+	/* channel mode, encryption and/or multirate have changed */
+
+	/* update multi-rate config */
+	tx_confreq_logchpar(lchan, GsmL1_Dir_RxUplink);
+	tx_confreq_logchpar(lchan, GsmL1_Dir_TxDownlink);
+
+	/* FIXME: update encryption */
 
 	return 0;
 }
