@@ -18,7 +18,7 @@ AC_HEADER_STDC
 dnl Checks for typedefs, structures and compiler characteristics
 
 dnl checks for libraries
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.3.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.3.9)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty)
 PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
