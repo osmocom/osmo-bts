@@ -1020,9 +1020,12 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 		name = "MDCX";
 
 	ia.s_addr = htonl(lchan->abis_ip.bound_ip);
-	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_%s_ACK (local %s:%u)\n",
-	     gsm_lchan_name(lchan), name, inet_ntoa(ia),
-	     lchan->abis_ip.bound_port);
+	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_%s_ACK (local %s:%u, ",
+	     gsm_lchan_name(lchan), name,
+	     inet_ntoa(ia), lchan->abis_ip.bound_port);
+	ia.s_addr = htonl(lchan->abis_ip.connect_ip);
+	LOGPC(DRSL, LOGL_INFO, "remote %s:%u)\n",
+		inet_ntoa(ia), lchan->abis_ip.connect_port);
 
 	/* Connection ID */
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
@@ -1215,7 +1218,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 	if (connect_ip && connect_port) {
 		struct in_addr ia;
-		ia.s_addr = *connect_ip;
+		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
+		 * address */
+		if (*connect_ip == 0) {
+			struct ipabis_link *link =
+				lchan->ts->trx->rsl_link;
+			ia.s_addr = htonl(link->ip);
+		} else
+			ia.s_addr = *connect_ip;
 		rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
 					     inet_ntoa(ia), ntohs(*connect_port));
 		if (rc < 0) {
@@ -1229,8 +1239,10 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 						 inc_ip_port, dch->c.msg_type);
 		}
 		/* save IP address and port number */
-		lchan->abis_ip.connect_ip = ntohl(*connect_ip);
+		lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
 		lchan->abis_ip.connect_port = ntohs(*connect_port);
+	} else {
+		/* FIXME: discard all codec frames */
 	}
 	/* Everything has succeeded, we can store new values in lchan */
 	if (payload_type) {

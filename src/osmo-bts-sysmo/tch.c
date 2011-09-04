@@ -198,8 +198,10 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, uint8_t *rtp_payload,
 }
 
 #define AMR_TOC_QBIT	0x04
+#define AMR_CMR_NONE	0xF
 
-static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_len)
+static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_len,
+					 uint8_t active_codec_set)
 {
 	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
 	uint8_t *cur;
@@ -207,6 +209,21 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	uint8_t cmr = l1_payload[1];
 	uint8_t amr_if2_len = payload_len - 2;
 
+#warning Only use CMR when it actually appears according to TDMA time
+#if 0
+	/* CMR can never be > 7 */
+	if (cmr > 7)
+		cmr = AMR_CMR_NONE;
+	else {
+		/* Make sure the CMR of the phone is in the active codec set */
+		if (!(active_codec_set & (1 << cmr))) {
+			LOGP(DL1C, LOGL_NOTICE, "L1->RTP: overriding CMR %u\n", cmr);
+			cmr = AMR_CMR_NONE;
+		}
+	}
+#else
+	cmr = AMR_CMR_NONE;
+#endif
 	/* RFC 3267  4.4.1 Payload Header */
 	msgb_put_u8(msg, (cmr << 4));
 
@@ -234,16 +251,48 @@ enum amr_frame_type {
  *  \param[in] payload_len length of \a rtp_payload
  *  \returns number of \a l1_payload bytes filled
  */
-static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload, uint8_t payload_len)
+static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
+				uint8_t payload_len, const uint8_t active_codec_set)
 {
 	uint8_t ft = (rtp_payload[1] >> 3) & 0xf;
 	uint8_t cmr = rtp_payload[0] >> 4;
+	uint8_t *l1_cmi = l1_payload;
+	uint8_t *l1_cmr = l1_payload+1;
 	uint8_t amr_if2_core_len = payload_len - 2;
 
-	/* CMC is in upper 4 bits of RTP payload header, and we simply
-	 * copy the CMR into the CMC */
-	l1_payload[1] = cmr;
+	/* step1: shift everything right one nibble; make space for FT */
+	osmo_nibble_shift_right(l1_payload+2, rtp_payload+2, amr_if2_core_len*2 -1);
+	/* step2: reverse the bit-order within every byte of the IF2
+	 * core frame contained in the RTP payload */
+	osmo_revbytebits_buf(l1_payload+2, amr_if2_core_len);
 
+	/* CMI in downlink tells the L1 encoder which encoding function
+	 * it will use, so we have to use the frame type */
+	switch (ft) {
+	case 0: case 1: case 2: case 3:
+	case 4: case 5: case 6: case 7:
+		*l1_cmi = ft;
+		break;
+	case AMR_FT_SID_AMR:
+		/* extract the mode indiciation from last 3 bits of
+		 * 39 bit SID frame */
+		*l1_cmi = *(l1_payload+2+4) >> 4;
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
+		break;
+	}
+
+	/* Codec Mode Request is in upper 4 bits of RTP payload header,
+	 * and we simply copy the CMR into the CMC */
+	if (cmr == 0xF)
+		*l1_cmr = 2;
+	else if (!(active_codec_set & (1 << cmr))) {
+		/* FIXME: we need some state about the last codec mode */
+		LOGP(DL1C, LOGL_NOTICE, "RTP->L1: overriding CMR %u\n", cmr);
+		*l1_cmr = 2;
+	} else
+		*l1_cmr = cmr;
 #if 0
 	/* check for bad quality indication */
 	if (rtp_payload[1] & AMR_TOC_QBIT) {
@@ -259,12 +308,6 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload, uint8
 		}
 	}
 #endif
-
-	/* step1: shift everything right one nibble; make space for FT */
-	osmo_nibble_shift_right(l1_payload+2, rtp_payload+2, amr_if2_core_len*2 -1);
-	/* step2: reverse the bit-order within every byte of the IF2
-	 * core frame contained in the RTP payload */
-	osmo_revbytebits_buf(l1_payload+2, amr_if2_core_len);
 
 	/* lower 4 bit of first FR2 byte contains FT */
 	l1_payload[2] |= ft;
@@ -296,6 +339,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
 	uint8_t *payload_type = &msu_param->u8Buffer[0];
 	uint8_t *l1_payload = &msu_param->u8Buffer[1];
+	uint8_t *mr_conf = &lchan->mr_conf;
 	int rc;
 
 	DEBUGP(DL1C, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
@@ -321,7 +365,8 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 #endif
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
-		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl, rtp_pl_len);
+		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
+					  rtp_pl_len, mr_conf[1]);
 		break;
 	default:
 		/* we don't support CSD modes */
@@ -371,6 +416,7 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
 	uint8_t payload_type = data_ind->msgUnitParam.u8Buffer[0];
 	uint8_t *payload = data_ind->msgUnitParam.u8Buffer + 1;
+	uint8_t *mr_conf = &lchan->mr_conf;
 	uint8_t payload_len;
 	struct msgb *rmsg = NULL;
 
@@ -421,7 +467,7 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 		break;
 #endif
 	case GsmL1_TchPlType_Amr:
-		rmsg = l1_to_rtppayload_amr(payload, payload_len);
+		rmsg = l1_to_rtppayload_amr(payload, payload_len, mr_conf[1]);
 		break;
 	}
 
