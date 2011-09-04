@@ -44,12 +44,20 @@
 #include <osmo-bts/oml.h>
 
 
+struct gsm_network bts_gsmnet = {
+	.bts_list = { &bts_gsmnet.bts_list, &bts_gsmnet.bts_list },
+	.num_bts = 0,
+};
+
 void *tall_bts_ctx;
 
 int bts_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
+	int rc;
+
+	bts->band = GSM_BAND_1800;
 
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
 
@@ -77,7 +85,15 @@ int bts_init(struct gsm_bts *bts)
 
 	osmo_rtp_init(tall_bts_ctx);
 
-	return bts_model_init(bts);
+	rc = bts_model_init(bts);
+	if (rc < 0)
+		return rc;
+
+	/* add to list of BTSs */
+	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
+	bts_gsmnet.num_bts++;
+
+	return rc;
 }
 
 static void shutdown_timer_cb(void *data)

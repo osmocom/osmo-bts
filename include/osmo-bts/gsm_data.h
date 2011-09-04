@@ -8,7 +8,8 @@
 #include <osmo-bts/paging.h>
 
 struct gsm_network {
-
+	struct llist_head bts_list;
+	unsigned int num_bts;
 };
 
 /* data structure for BTS related data specific to the BTS role */
@@ -41,6 +42,8 @@ struct gsm_bts_role_bts {
 	uint8_t max_ta;
 	struct llist_head agch_queue;
 	struct paging_state *paging_state;
+	char *bsc_oml_host;
+	char *rtp_bind_host;
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)

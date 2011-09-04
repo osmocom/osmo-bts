@@ -47,7 +47,6 @@ const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
 /* FIXME: generate from git */
 const char *software_version = "0815";
 
-static const char *bsc_host = NULL;
 static const char *config_file = "osmo-bts.cfg";
 extern const char *osmobts_copyright;
 static int daemonize = 0;
@@ -103,7 +102,6 @@ static void print_help()
 		"  -T	--timestamp	Prefix every log line with a timestamp\n"
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
-		"  -B	--bsc-host	Specify host-name of the BSC\n"
 		"  -p   --dsp-trace	Set DSP trace flags\n"
 		);
 }
@@ -123,12 +121,11 @@ static void handle_options(int argc, char **argv)
 			{ "timestamp", 0, 0, 'T' },
 			{ "version", 0, 0, 'V' },
 			{ "log-level", 1, 0, 'e' },
-			{ "bsc-host", 1, 0, 'B' },
 			{ "dsp-trace", 1, 0, 'p' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hd:Dc:sTVe:B:p:",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -159,9 +156,6 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
-			break;
-		case 'B':
-			bsc_host = strdup(optarg);
 			break;
 		case 'p':
 			dsp_trace = strtoul(optarg, NULL, 16);
@@ -195,6 +189,7 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
+	struct gsm_bts_role_bts *btsb;
 	struct ipabis_link *link;
 	void *tall_msgb_ctx;
 	int rc;
@@ -205,25 +200,29 @@ int main(int argc, char **argv)
 
 	bts_log_init(NULL);
 
-	bts = gsm_bts_alloc(tall_bts_ctx);
-
 	vty_init(&bts_vty_info);
-	logging_vty_add_cmds(&bts_log_info);
-	//bts_vty_init(&
+	bts_vty_init(&bts_log_info);
 
-	/* FIXME: parse config file */
+	bts = gsm_bts_alloc(tall_bts_ctx);
+	if (bts_init(bts) < 0) {
+		fprintf(stderr, "unable to to open bts\n");
+		exit(1);
+	}
+	btsb = bts_role_bts(bts);
+
+	handle_options(argc, argv);
+
+	rc = vty_read_config_file(config_file, NULL);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to parse the config file: '%s'\n",
+			config_file);
+		exit(1);
+	}
 
 	rc = telnet_init(tall_bts_ctx, NULL, 4241);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
-	}
-
-	handle_options(argc, argv);
-
-	if (!bsc_host) {
-		fprintf(stderr, "You need to specify the BSC hostname\n");
-		exit(2);
 	}
 
 	signal(SIGINT, &signal_handler);
@@ -232,12 +231,12 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	if (bts_init(bts) < 0) {
-		fprintf(stderr, "unable to to open bts\n");
+	if (!btsb->bsc_oml_host) {
+		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
 		exit(1);
 	}
 
-	link = link_init(bts, bsc_host);
+	link = link_init(bts, btsb->bsc_oml_host);
 	if (!link) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(1);

@@ -1129,6 +1129,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(msg->lchan->ts->trx->bts);
 	const uint8_t *payload_type, *speech_mode, *payload_type2;
 	const uint32_t *connect_ip;
 	const uint16_t *connect_port;
@@ -1186,7 +1187,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 #warning remove hard-coded IP address
 		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
-					  "192.168.100.239", -1);
+					  btsb->rtp_bind_host, -1);
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
