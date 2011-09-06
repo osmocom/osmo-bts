@@ -894,7 +894,7 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 
 	/* we have to set msg->l3h as rsl_rll_push_l3 will use it to
 	 * determine the length field of the L3_INFO IE */
-	msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+	msg->l3h = (uint8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
 
 	/* pop the RSL dchan header, but keep L3 TLV */
 	msgb_pull(msg, msg->l3h - msg->data);
@@ -1275,7 +1275,6 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		lchan->abis_ip.rtp_socket->priv = lchan;
 		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
 
-#warning remove hard-coded IP address
 		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
 					  btsb->rtp_bind_host, -1);
 		if (rc < 0) {
