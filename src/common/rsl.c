@@ -121,6 +121,88 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
  * support
  */
 
+static void log_mr_conf(int ss, int logl, const char *pfx,
+			struct amr_multirate_conf *amr_mrc)
+{
+	int i;
+
+	LOGP(ss, logl, "%s AMR MR Conf: num_modes=%u",
+		pfx, amr_mrc->num_modes);
+
+	for (i = 0; i < amr_mrc->num_modes; i++)
+		LOGPC(ss, logl, ", mode[%u] = %u/%u/%u",
+			i, amr_mrc->mode[i].mode, amr_mrc->mode[i].threshold,
+			amr_mrc->mode[i].hysteresis);
+	LOGPC(ss, logl, "\n");
+}
+
+
+/* parse a GSM 04.08 MultiRate Config IE (10.5.2.21aa) in a more
+ * comfortable internal data structure */
+static int parse_mr_conf(struct amr_multirate_conf *amr_mrc,
+			 const uint8_t *mr_conf, unsigned int len)
+{
+	uint8_t mr_version = mr_conf[0] >> 5;
+	uint8_t num_codecs = 0;
+	int i, j = 0;
+
+	if (mr_version != 1) {
+		LOGP(DRSL, LOGL_ERROR, "AMR Multirate Version %u unknonw\n",
+			mr_version);
+		goto ret_einval;
+	}
+
+	/* check number of active codecs */
+	for (i = 0; i < 8; i++) {
+		if (mr_conf[1] & (1 << i))
+			num_codecs++;
+	}
+
+	/* check for minimum length */
+	if (num_codecs == 0 ||
+	    (num_codecs == 1 && len < 2) ||
+	    (num_codecs == 2 && len < 4) ||
+	    (num_codecs == 3 && len < 5) ||
+	    (num_codecs == 4 && len < 6) ||
+	    (num_codecs > 4)) {
+		LOGP(DRSL, LOGL_ERROR, "AMR Multirate with %u modes len=%u "
+		     "not possible\n", num_codecs, len);
+		goto ret_einval;
+	}
+
+	/* copy the first two octets of the IE */
+	amr_mrc->gsm48_ie[0] = mr_conf[0];
+	amr_mrc->gsm48_ie[1] = mr_conf[1];
+
+	amr_mrc->num_modes = num_codecs;
+
+	for (i = 0; i < 8; i++) {
+		if (mr_conf[1] & (1 << i)) {
+			amr_mrc->mode[j++].mode = i;
+		}
+	}
+
+	if (num_codecs >= 2) {
+		amr_mrc->mode[0].threshold = mr_conf[1] & 0x3F;
+		amr_mrc->mode[0].hysteresis = mr_conf[2] >> 4;
+	}
+	if (num_codecs >= 3) {
+		amr_mrc->mode[1].threshold =
+			((mr_conf[2] & 0xF) << 2) | (mr_conf[3] >> 6);
+		amr_mrc->mode[1].hysteresis = (mr_conf[3] >> 2) & 0x7;
+	}
+	if (num_codecs >= 4) {
+		amr_mrc->mode[3].threshold =
+			((mr_conf[3] & 0x3) << 4) | (mr_conf[4] >> 4);
+		amr_mrc->mode[3].hysteresis = mr_conf[4] & 0xF;
+	}
+
+	return num_codecs;
+
+ret_einval:
+	return -EINVAL;
+}
+
 
 #warning merge lchan_lookup with OpenBSC
 /* determine logical channel based on TRX and channel number IE */
@@ -683,6 +765,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
 		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		parse_mr_conf(&lchan->tch.amr_mr, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
+				TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
+			    &lchan->tch.amr_mr);
 	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
@@ -917,7 +1003,11 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 		}
 		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
-		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+			TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		parse_mr_conf(&lchan->tch.amr_mr, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
+				TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
+			    &lchan->tch.amr_mr);
 	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
