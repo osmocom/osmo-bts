@@ -286,25 +286,25 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
 	case 0: case 1: case 2: case 3:
 	case 4: case 5: case 6: case 7:
 		cmi = ft;
-		LOGP(DL1C, LOGL_ERROR, "SPEECH frame with CMI %u\n", cmi);
+		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame with CMI %u\n", cmi);
 		break;
 	case AMR_FT_SID_AMR:
 		/* extract the mode indiciation from last bits of
 		 * 39 bit SID frame (Table 6 / 26.101) */
 		cmi = (rtp_payload[2+4] >> 1) & 0x7;
 		sti = rtp_payload[2+4] & 0x10;
-		LOGP(DL1C, LOGL_ERROR, "SID %s frame with CMI %u\n",
+		LOGP(DRTP, LOGL_DEBUG, "SID %s frame with CMI %u\n",
 		     sti ? "UPDATE" : "FIRST", cmi);
 		break;
 	default:
-		LOGP(DL1C, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
+		LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
 		return -EINVAL;
 		break;
 	}
 
 	rc = get_amr_mode_idx(amr_mrc, cmi);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_ERROR, "AMR CMI %u not part of AMR MR set\n",
+		LOGP(DRTP, LOGL_ERROR, "AMR CMI %u not part of AMR MR set\n",
 			cmi);
 		*l1_cmi_idx = 0;
 	} else
@@ -319,7 +319,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
 		rc = get_amr_mode_idx(amr_mrc, cmr);
 		if (rc < 0) {
 			/* FIXME: we need some state about the last codec mode */
-			LOGP(DL1C, LOGL_NOTICE, "RTP->L1: overriding CMR %u\n", cmr);
+			LOGP(DRTP, LOGL_INFO, "RTP->L1: overriding CMR %u\n", cmr);
 			*l1_cmr_idx = 0;
 		} else
 			*l1_cmr_idx = rc;
@@ -372,7 +372,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 	uint8_t *l1_payload = &msu_param->u8Buffer[1];
 	int rc;
 
-	DEBUGP(DL1C, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
+	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(rtp_pl, rtp_pl_len));
 
 	switch (lchan->tch_mode) {
@@ -405,7 +405,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 	}
 
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_ERROR, "%s unable to parse RTP payload\n",
+		LOGP(DRTP, LOGL_ERROR, "%s unable to parse RTP payload\n",
 		     gsm_lchan_name(lchan));
 		msgb_free(msg);
 		return;
@@ -413,7 +413,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 
 	msu_param->u8Size = rc + 1;
 
-	DEBUGP(DL1C, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
+	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(msu_param->u8Buffer, msu_param->u8Size));
 
 	/* make sure the number of entries in the dl_tch_queue is never
