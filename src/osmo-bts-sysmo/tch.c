@@ -264,8 +264,9 @@ int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
  */
 static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
 				uint8_t payload_len,
-				struct amr_multirate_conf *amr_mrc)
+				struct gsm_lchan *lchan)
 {
+	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 	uint8_t ft = (rtp_payload[1] >> 3) & 0xf;
 	uint8_t cmr = rtp_payload[0] >> 4;
 	uint8_t cmi, sti;
@@ -343,6 +344,15 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
 	/* lower 4 bit of first FR2 byte contains FT */
 	l1_payload[2] |= ft;
 
+	if (ft == AMR_FT_SID_AMR) {
+		/* store the last SID frame in lchan context */
+		unsigned int copy_len;
+		copy_len = OSMO_MIN(payload_len+1,
+				    ARRAY_SIZE(lchan->tch.last_sid.buf));
+		lchan->tch.last_sid.len = copy_len;
+		memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
+	}
+
 	return payload_len+1;
 }
 
@@ -396,7 +406,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
 		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
-					  rtp_pl_len, &lchan->tch.amr_mr);
+					  rtp_pl_len, lchan);
 		break;
 	default:
 		/* we don't support CSD modes */
@@ -518,4 +528,42 @@ err_payload_match:
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_tch_pl_names, payload_type));
 	return -EINVAL;
+}
+
+struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = l1p_msgb_alloc();
+	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
+	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
+	uint8_t *payload_type = &msu_param->u8Buffer[0];
+	uint8_t *l1_payload = &msu_param->u8Buffer[1];
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_AMR:
+		*payload_type = GsmL1_TchPlType_Amr;
+		if (lchan->tch.last_sid.len) {
+			memcpy(l1_payload, lchan->tch.last_sid.buf,
+				lchan->tch.last_sid.len);
+			msu_param->u8Size = lchan->tch.last_sid.len+1;
+		} else {
+			/* FIXME: decide if we should send SPEECH_BAD or
+			 * SID_BAD */
+#if 0
+			*payload_type = GsmL1_TchPlType_Amr_SidBad;
+			memset(l1_payload, 0xFF, 5);
+			msu_param->u8Size = 5 + 3;
+#else
+			/* send an all-zero SID */
+			msu_param->u8Size = 8;
+#endif
+		}
+		break;
+	default:
+		msgb_free(msg);
+		msg = NULL;
+		break;
+	}
+
+	return msg;
 }
