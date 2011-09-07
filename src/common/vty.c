@@ -194,7 +194,7 @@ DEFUN(cfg_bts_unit_id,
 
 DEFUN(cfg_bts_band,
       cfg_bts_band_cmd,
-      "band (450|480|750|810|850|900|1800|1900)",
+      "band (450|GSM450|480|GSM480|750|GSM750|810|GSM810|850|GSM850|900|GSM900|1800|DCS1800|1900|PCS1900)",
       "Set the frequency band of this BTS\n" "Frequency band\n")
 {
 	struct gsm_bts *bts = vty->index;
