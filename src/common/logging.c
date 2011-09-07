@@ -75,7 +75,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 	[DL1P] = {
 		.name = "DL1P",
 		.description = "Layer 1 Primitives",
-		.loglevel = LOGL_DEBUG,
+		.loglevel = LOGL_INFO,
 		.enabled = 0,
 	},
 	[DDSP] = {
@@ -88,6 +88,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.name = "DABIS",
 		.description = "A-bis Intput Subsystem",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DRTP] = {
+		.name = "DRTP",
+		.description = "Realtime Transfer Protocol",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
 	},
 #if 0
 	[DNS] = {
