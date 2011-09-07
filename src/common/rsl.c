@@ -1264,7 +1264,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		}
 		/* FIXME: select default value depending on speech_mode */
 		//if (!payload_type)
-		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx);
+		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx,
+								OSMO_RTP_F_POLL);
 		if (!lchan->abis_ip.rtp_socket) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to create RTP/RTCP sockets\n",

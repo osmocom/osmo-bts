@@ -35,6 +35,8 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/lapdm.h>
 
+#include <osmocom/trau/osmo_ortp.h>
+
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/oml.h>
@@ -215,7 +217,6 @@ get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
 	return &lchan->lapdm_ch;
 }
 
-
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
 	0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
@@ -258,10 +259,28 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		if (!lchan)
 			break;
 
+		if (lchan->abis_ip.rtp_socket) {
+			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
+			/* FIXME: we _assume_ that we never miss TDMA
+			 * frames and that we always get to this point
+			 * for every to-be-transmitted voice frame.  A
+			 * better solution would be to compute
+			 * rx_user_ts based on how many TDMA frames have
+			 * elapsed since the last call */
+			lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
+		}
 		/* get a msgb from the dl_tx_queue */
 		resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
-		if (!resp_msg)
-			break;
+		/* if there is none, try to generate empty TCH frame
+		 * like AMR SID_BAD */
+		if (!resp_msg) {
+			LOGP(DL1C, LOGL_NOTICE, "%s DL TCH Tx queue underrun\n",
+				gsm_lchan_name(lchan));
+			resp_msg = gen_empty_tch_msg(lchan);
+			/* if there really is none, break here and send empty */
+			if (!resp_msg)
+				break;
+		}
 
 		/* fill header */
 		data_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
