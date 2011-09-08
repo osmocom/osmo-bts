@@ -66,6 +66,8 @@ int bts_init(struct gsm_bts *bts)
 	/* FIXME: make those parameters configurable */
 	btsb->paging_state = paging_init(btsb, 200, 0);
 
+	btsb->rtp_jitter_buf_ms = 100;
+
 	/* set BTS to dependency */
 	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
 

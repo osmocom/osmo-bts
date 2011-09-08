@@ -1273,6 +1273,9 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
+		osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
+					  OSMO_RTP_P_JITBUF,
+					  btsb->rtp_jitter_buf_ms);
 		lchan->abis_ip.rtp_socket->priv = lchan;
 		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
 

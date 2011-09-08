@@ -29,6 +29,8 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
 
+#include <osmocom/trau/osmo_ortp.h>
+
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -138,6 +140,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
 	vty_out(vty, " rtp bind-ip %s%s", btsb->rtp_bind_host, VTY_NEWLINE);
+	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
+		VTY_NEWLINE);
 }
 
 int config_write_bts(struct vty *vty)
@@ -227,10 +231,12 @@ DEFUN(cfg_bts_oml_ip,
 	return CMD_SUCCESS;
 }
 
+#define RTP_STR "RTP parameters\n"
+
 DEFUN(cfg_bts_rtp_bind_ip,
       cfg_bts_rtp_bind_ip_cmd,
       "rtp bind-ip A.B.C.D",
-      "RTP Parameters\n" "RTP local bind IP Address\n" "RTP local bind IP Address\n")
+      RTP_STR "RTP local bind IP Address\n" "RTP local bind IP Address\n")
 {
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
@@ -242,6 +248,20 @@ DEFUN(cfg_bts_rtp_bind_ip,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_rtp_jitbuf,
+	cfg_bts_rtp_jitbuf_cmd,
+	"rtp jitter-buffer <0-10000>",
+	RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->rtp_jitter_buf_ms = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 /* ======================================================================
  * SHOW
  * ======================================================================*/
@@ -316,6 +336,70 @@ DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 	return CMD_SUCCESS;
 }
 
+static struct gsm_lchan *resolve_lchan(struct gsm_network *net,
+					const char **argv, int idx)
+{
+	int bts_nr = atoi(argv[idx+0]);
+	int trx_nr = atoi(argv[idx+1]);
+	int ts_nr = atoi(argv[idx+2]);
+	int lchan_nr = atoi(argv[idx+3]);
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+
+	bts = gsm_bts_num(net, bts_nr);
+	if (!bts)
+		return NULL;
+
+	trx = gsm_bts_trx_num(bts, trx_nr);
+	if (!trx)
+		return NULL;
+
+	if (ts_nr >= ARRAY_SIZE(trx->ts))
+		return NULL;
+	ts = &trx->ts[ts_nr];
+
+	if (lchan_nr >= ARRAY_SIZE(ts->lchan))
+		return NULL;
+
+	return &ts->lchan[lchan_nr];
+}
+
+#define BTS_T_T_L_STR			\
+	"BTS related commands\n"	\
+	"BTS number\n"			\
+	"TRX related commands\n"	\
+	"TRX number\n"			\
+	"timeslot related commands\n"	\
+	"timeslot number\n"		\
+	"logical channel commands\n"	\
+	"logical channel number\n"
+
+DEFUN(bts_t_t_l_jitter_buf,
+	bts_t_t_l_jitter_buf_cmd,
+	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> rtp jitter-buffer <0-10000>",
+	BTS_T_T_L_STR "RTP settings\n"
+	"Jitter buffer\n" "Size of jitter buffer in (ms)\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_lchan *lchan;
+	int jitbuf_ms = atoi(argv[4]);
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (!lchan->abis_ip.rtp_socket) {
+		vty_out(vty, "%% this channel has no active RTP stream%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
+				  OSMO_RTP_P_JITBUF, jitbuf_ms);
+
+	return CMD_SUCCESS;
+}
 
 int bts_vty_init(const struct log_info *cat)
 {
@@ -329,7 +413,10 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_bind_ip_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_jitbuf_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);
+
+	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 }

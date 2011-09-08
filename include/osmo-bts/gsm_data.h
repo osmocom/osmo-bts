@@ -44,6 +44,7 @@ struct gsm_bts_role_bts {
 	struct paging_state *paging_state;
 	char *bsc_oml_host;
 	char *rtp_bind_host;
+	unsigned int rtp_jitter_buf_ms;
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
