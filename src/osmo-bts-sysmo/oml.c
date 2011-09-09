@@ -467,9 +467,6 @@ static void alive_timer_cb(void *data)
 	osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
 }
 
-/* osmocom AMR mode: 0..7, L1: 1..8 */
-#define AMR_MODE_OSMO2L1(x)	(x+1)
-
 static void clear_amr_params(GsmL1_LogChParam_t *lch_par)
 {
 	int j;
@@ -510,8 +507,7 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 		lch_par->tch.tchPlType = GsmL1_TchPlType_Amr;
 
 		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd; /* FIXME? */
-		osmo_amr_mode = amr_get_initial_mode(lchan);
-		lch_par->tch.amrInitCodecMode = AMR_MODE_OSMO2L1(osmo_amr_mode);
+		lch_par->tch.amrInitCodecMode = amr_get_initial_mode(lchan);
 
 		/* initialize to clean state */
 		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
