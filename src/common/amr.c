@@ -89,27 +89,29 @@ ret_einval:
 }
 
 
+/*! \brief determine AMR initial codec mode for given logical channel 
+ *  \returns integer between 0..3 for AMR codce mode 1..4 */
 unsigned int amr_get_initial_mode(struct gsm_lchan *lchan)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 
 	if (lchan->mr_conf.icmi) {
 		/* initial mode given, coding in TS 05.09 3.4.1 */
-		return amr_mrc->mode[lchan->mr_conf.smod].mode;
+		return lchan->mr_conf.smod;
 	} else {
 		/* implicit rule according to TS 05.09 Chapter 3.4.3 */
 		switch (amr_mrc->num_modes) {
 		case 2:
 		case 3:
 			/* return the most robust */
-			return amr_mrc->mode[0].mode;
+			return 0;
 		case 4:
 			/* return the second-most robust */
-			return amr_mrc->mode[1].mode;
+			return 1;
 		case 1:
 		default:
 			/* return the only mode we have */
-			return amr_mrc->mode[0].mode;
+			return 0;
 		}
 	}
 }
