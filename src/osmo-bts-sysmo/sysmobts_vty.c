@@ -42,13 +42,18 @@
 #include "femtobts.h"
 #include "l1_if.h"
 
+#define SHOW_TRX_STR				\
+	SHOW_STR				\
+	"Show TRX specific information\n"	\
+	"TRX number\n"
+
 static struct gsm_bts *vty_bts;
 
 /* This generates the logging command string for VTY. */
 const char *vty_cmd_string_from_valstr(const struct value_string *vals,
 					const char *prefix)
 {
-	int len = 0, offset = 0, ret, i, rem;
+	int len = 0, offset = 0, ret, rem;
 	int size = strlen(prefix);
 	const struct value_string *vs;
 	char *str;
@@ -96,7 +101,7 @@ err:
 
 DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	"show trx <0-0> dsp-trace-flags",
-	SHOW_STR "Display the current setting of the DSP trace flags")
+	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
 {
 	int trx_nr = atoi(argv[0]);
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
@@ -170,6 +175,40 @@ DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", "HIDDEN")
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_sys_info, show_sys_info_cmd,
+	"show trx <0-0> system-information",
+	SHOW_TRX_STR "Display information about system\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct femtol1_hdl *fl1h;
+	int i;
+
+	if (!trx) {
+		vty_out(vty, "Cannot find TRX number %u%s",
+			trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	fl1h = trx_femtol1_hdl(trx);
+
+	vty_out(vty, "DSP Version: %u.%u.%u, FPGA Version: %u.%u.%u%s",
+		fl1h->hw_info.dsp_version[0],
+		fl1h->hw_info.dsp_version[1],
+		fl1h->hw_info.dsp_version[2],
+		fl1h->hw_info.fpga_version[0],
+		fl1h->hw_info.fpga_version[1],
+		fl1h->hw_info.fpga_version[2], VTY_NEWLINE);
+
+	vty_out(vty, "GSM Band Support: ");
+	for (i = 0; i < 32; i++) {
+		if (fl1h->hw_info.band_support & (1 << i))
+			vty_out(vty, "%s ",  gsm_band_name(1 << i));
+	}
+	vty_out(vty, "%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
 
 int femtol1_vty_init(struct gsm_bts *bts)
 {
@@ -182,6 +221,7 @@ int femtol1_vty_init(struct gsm_bts *bts)
 						"no trx <0-0> dsp-trace-flag (");
 
 	install_element_ve(&show_dsp_trace_f_cmd);
+	install_element_ve(&show_sys_info_cmd);
 	install_element_ve(&dsp_trace_f_cmd);
 	install_element_ve(&no_dsp_trace_f_cmd);
 

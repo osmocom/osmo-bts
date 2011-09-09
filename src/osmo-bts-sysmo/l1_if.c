@@ -728,6 +728,55 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb, hdl);
 }
 
+/* call-back on arrival of DSP+FPGA version + band capability */
+static int info_compl_cb(struct msgb *resp, void *data)
+{
+	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
+	FemtoBts_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
+	struct femtol1_hdl *fl1h = data;
+	struct gsm_bts_trx *trx = fl1h->priv;
+
+	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
+	fl1h->hw_info.dsp_version[1] = sic->dspVersion.minor;
+	fl1h->hw_info.dsp_version[2] = sic->dspVersion.build;
+
+	fl1h->hw_info.fpga_version[0] = sic->fpgaVersion.major;
+	fl1h->hw_info.fpga_version[1] = sic->fpgaVersion.minor;
+	fl1h->hw_info.fpga_version[2] = sic->fpgaVersion.build;
+
+	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\n",
+		sic->dspVersion.major, sic->dspVersion.minor,
+		sic->dspVersion.build, sic->fpgaVersion.major,
+		sic->fpgaVersion.minor, sic->fpgaVersion.build);
+
+	if (sic->rfBand.gsm850)
+		fl1h->hw_info.band_support |= GSM_BAND_850;
+	if (sic->rfBand.gsm900)
+		fl1h->hw_info.band_support |= GSM_BAND_900;
+	if (sic->rfBand.dcs1800)
+		fl1h->hw_info.band_support |= GSM_BAND_1800;
+	if (sic->rfBand.pcs1900)
+		fl1h->hw_info.band_support |= GSM_BAND_1900;
+
+	if (!(fl1h->hw_info.band_support & trx->bts->band))
+		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
+		     gsm_band_name(trx->bts->band));
+
+	/* FIXME: clock related */
+	return 0;
+}
+
+/* request DSP+FPGA code versions + band capability */
+static int l1if_get_info(struct femtol1_hdl *hdl)
+{
+	struct msgb *msg = sysp_msgb_alloc();
+	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+
+	sysp->id = FemtoBts_PrimId_SystemInfoReq;
+
+	return l1if_req_compl(hdl, msg, 1, info_compl_cb, hdl);
+}
+
 static int reset_compl_cb(struct msgb *resp, void *data)
 {
 	struct femtol1_hdl *fl1h = data;
@@ -750,6 +799,9 @@ static int reset_compl_cb(struct msgb *resp, void *data)
 	/* as we cannot get the current DSP trace flags, we simply
 	 * set them to zero (or whatever dsp_trace_f has been initialized to */
 	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f);
+
+	/* obtain version information on DSP/FPGA and band capabilities */
+	l1if_get_info(fl1h);
 
 	/* otherwise, request activation of RF board */
 	l1if_activate_rf(fl1h, 1);

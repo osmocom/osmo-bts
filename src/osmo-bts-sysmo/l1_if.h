@@ -30,6 +30,12 @@ struct femtol1_hdl {
 
 	struct osmo_fd read_ofd[_NUM_MQ_READ];	/* osmo file descriptors */
 	struct osmo_wqueue write_q[_NUM_MQ_WRITE];
+
+	struct {
+		uint8_t dsp_version[3];
+		uint8_t fpga_version[3];
+		uint32_t band_support;	/* bitmask of GSM_BAND_* */
+	} hw_info;
 };
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
