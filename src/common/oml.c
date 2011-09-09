@@ -514,8 +514,9 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* 9.4.47 RF Max Power Reduction */
 	if (TLVP_PRESENT(&tp, NM_ATT_RF_MAXPOWR_R)) {
-		trx->max_power_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R);
-		LOGP(DOML, LOGL_INFO, "Set RF Max Power Reduction = %d\n", trx->max_power_red);
+		trx->max_power_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R) * 2;
+		LOGP(DOML, LOGL_INFO, "Set RF Max Power Reduction = %d dBm\n",
+		     trx->max_power_red);
 	}
 	/* 9.4.5 ARFCN List */
 #if 0
