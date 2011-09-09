@@ -29,6 +29,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/amr.h>
 
 #include "l1_if.h"
 #include "femtobts.h"
@@ -466,33 +467,51 @@ static void alive_timer_cb(void *data)
 	osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
 }
 
+/* osmocom AMR mode: 0..7, L1: 1..8 */
+#define AMR_MODE_OSMO2L1(x)	(x+1)
+
+static void clear_amr_params(GsmL1_LogChParam_t *lch_par)
+{
+	int j;
+	/* common for the SIGN, V1 and EFR: */
+	lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
+	lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
+	for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
+		lch_par->tch.amrActiveCodecSet[j] = GsmL1_AmrCodec_Unset;
+}
 
 static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 {
 	int j;
+	unsigned int osmo_amr_mode;
 
-	LOGPC(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
+	LOGP(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
 		gsm_lchan_name(lchan), __FUNCTION__, lchan->tch_mode);
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SIGN:
-	case GSM48_CMODE_SPEECH_V1:
-	case GSM48_CMODE_SPEECH_EFR:
-		if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
+		/* we have to set some TCH payload type even if we don't
+		 * know yet what codec we will use later on */
+		if (lchan->type == GSM_LCHAN_TCH_F)
 			lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
-		else if (lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)
-			lch_par->tch.tchPlType = GsmL1_TchPlType_Efr;
-		/* common for the SIGN, V1 and EFR: */
-		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
-		lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
-		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
-			lch_par->tch.amrActiveCodecSet[j] = GsmL1_AmrCodec_Unset;
+		else
+			lch_par->tch.tchPlType = GsmL1_TchPlType_Hr;
+		clear_amr_params(lch_par);
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+		lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
+		clear_amr_params(lch_par);
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		lch_par->tch.tchPlType = GsmL1_TchPlType_Efr;
+		clear_amr_params(lch_par);
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
+		lch_par->tch.tchPlType = GsmL1_TchPlType_Amr;
+
 		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd; /* FIXME? */
-		if (lchan->mr_conf.icmi)
-			lch_par->tch.amrInitCodecMode = lchan->mr_conf.smod;
-		/* else: FIXME (implicit rule by TS 05.09 ?!?) */
+		osmo_amr_mode = amr_get_initial_mode(lchan);
+		lch_par->tch.amrInitCodecMode = AMR_MODE_OSMO2L1(osmo_amr_mode);
 
 		/* initialize to clean state */
 		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
