@@ -478,6 +478,11 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 	case GSM48_CMODE_SIGN:
 	case GSM48_CMODE_SPEECH_V1:
 	case GSM48_CMODE_SPEECH_EFR:
+		if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
+			lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
+		else if (lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)
+			lch_par->tch.tchPlType = GsmL1_TchPlType_Efr;
+		/* common for the SIGN, V1 and EFR: */
 		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_NA;
 		lch_par->tch.amrInitCodecMode = GsmL1_AmrCodecMode_Unset;
 		for (j = 0; j < ARRAY_SIZE(lch_par->tch.amrActiveCodecSet); j++)
@@ -571,6 +576,8 @@ int lchan_activate(struct gsm_lchan *lchan)
 		case GsmL1_Sapi_Sacch:
 			/* Only if we use manual MS power control */
 			//act_req->logChPrm.sacch.u8MsPowerLevel = FIXME;
+			/* enable bad frame indication from >= -100dBm on SACCH */
+			act_req->fBFILevel -100.0;
 			break;
 		case GsmL1_Sapi_TchH:
 		case GsmL1_Sapi_TchF:
