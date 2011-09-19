@@ -389,36 +389,6 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 	return 0;
 }
 
-void bts_new_si(void *arg)
-{
-	struct osmobts_trx *trx = arg;
-
-#if 0
-	if (osmo_timer_pending(&trx->si.timer))
-		return;
-
-	i = 0;
-	while(i < BTS_SI_NUM) {
-		if ((trx->si.flags[i] & BTS_SI_NEW))
-			break;
-		i++;
-	}
-	if (i == BTS_SI_NUM)
-		return;
-	if ((trx->si.flags[i] & BTS_SI_USE))
-		LOGP(DSUM, LOGL_INFO, "Setting SYSTEM INFORMATION %s.\n", bts_si_name[i]);
-	else
-		LOGP(DSUM, LOGL_INFO, "Removing SYSTEM INFORMATION %s.\n", bts_si_name[i]);
-	trx->si.flags[i] &= ~BTS_SI_NEW;
-	/* distribute */
-	printf("TODO: send SI update to L1\n");
-	/* delay until next SI */
-	trx->si.timer.cb = bts_new_si;
-	trx->si.timer.data = trx;
-	osmo_timer_schedule(&trx->si.timer, 0, 200000);
-#endif
-}
-
 int lchan_init_lapdm(struct gsm_lchan *lchan)
 {
 	struct lapdm_channel *lc = &lchan->lapdm_ch;

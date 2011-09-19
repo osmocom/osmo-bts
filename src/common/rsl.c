@@ -1280,7 +1280,6 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 static int rsl_rx_ipac_dlcx(struct msgb *msg)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
 	int rc, inc_conn_id = 0;

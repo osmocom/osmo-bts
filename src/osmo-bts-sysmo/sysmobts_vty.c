@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
+#include <ctype.h>
 
 #include <arpa/inet.h>
 
@@ -210,7 +211,7 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 }
 
 
-int femtol1_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
 

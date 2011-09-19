@@ -419,4 +419,6 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_no_description_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
+
+	return 0;
 }

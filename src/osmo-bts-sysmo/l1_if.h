@@ -62,5 +62,6 @@ struct gsm_lchan *l1if_hLayer2_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer
 /* tch.c */
 int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg);
 int l1if_tch_fill(struct gsm_lchan *lchan, uint8_t *l1_buffer);
+struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan);
 
 #endif /* _FEMTO_L1_H */

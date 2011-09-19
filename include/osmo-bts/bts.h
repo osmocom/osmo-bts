@@ -25,6 +25,7 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
 
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time);
 uint8_t *lchan_sacch_get(struct gsm_lchan *lchan, struct gsm_time *g_time);
+int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 #endif /* _BTS_H */
 

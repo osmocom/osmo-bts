@@ -39,6 +39,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/vty.h>
+#include <osmo-bts/bts_model.h>
 
 #include "l1_if.h"
 
@@ -68,7 +69,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	l1if_reset(fl1h);
 
-	femtol1_vty_init(bts);
+	bts_model_vty_init(bts);
 
 	return 0;
 }

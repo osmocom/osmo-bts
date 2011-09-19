@@ -29,6 +29,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/rsl.h>
 #include <osmo-bts/amr.h>
 
 #include "l1_if.h"
@@ -227,7 +228,7 @@ static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
 	return opstart_compl_cb(l1_msg, &trx->mo);
 }
 
-int gsm_abis_mo_check_attr(const struct gsm_abis_mo *mo, uint8_t *attr_ids,
+int gsm_abis_mo_check_attr(const struct gsm_abis_mo *mo, const uint8_t *attr_ids,
 			   unsigned int num_attr_ids)
 {
 	unsigned int i;
@@ -480,7 +481,6 @@ static void clear_amr_params(GsmL1_LogChParam_t *lch_par)
 static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 {
 	int j;
-	unsigned int osmo_amr_mode;
 
 	LOGP(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
 		gsm_lchan_name(lchan), __FUNCTION__, lchan->tch_mode);
@@ -551,6 +551,13 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 		if (lchan->mr_conf.m12_2)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_12_2;
 		break;
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+		LOGP(DL1C, LOGL_ERROR, "%s: CSD not supported!\n",
+			gsm_lchan_name(lchan));
+		break;
 	}
 }
 
@@ -592,7 +599,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 			/* Only if we use manual MS power control */
 			//act_req->logChPrm.sacch.u8MsPowerLevel = FIXME;
 			/* enable bad frame indication from >= -100dBm on SACCH */
-			act_req->fBFILevel -100.0;
+			act_req->fBFILevel = -100.0;
 			break;
 		case GsmL1_Sapi_TchH:
 		case GsmL1_Sapi_TchF:
@@ -651,6 +658,8 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 		}
 		break;
 	/* FIXME: PRACH / PTCCH */
+	default:
+		break;
 	}
 	LOGPC(DL1C, logl, ")\n");
 }
@@ -670,6 +679,12 @@ static int chmod_modif_compl_cb(struct msgb *l1_msg, void *data)
 		dump_lch_par(LOGL_INFO,
 			     &cc->cfgParams.setLogChParams.logChParams,
 			     cc->cfgParams.setLogChParams.sapi);
+		break;
+	case GsmL1_ConfigParamId_SetNbTsc:
+	case GsmL1_ConfigParamId_SetTxPowerLevel:
+	case GsmL1_ConfigParamId_SetCipheringParams:
+	default:
+		LOGPC(DL1C, LOGL_INFO, "\n");
 		break;
 	}
 
@@ -874,4 +889,32 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	/* blindly accept all state changes */
 	mo->nm_state.administrative = adm_state;
 	return oml_mo_fom_ack_nack(mo, NM_MT_CHG_ADM_STATE, 0);
+}
+int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
+{
+	//uint8_t mode = *TLVP_VAL(tp, RSL_IE_CHAN_MODE);
+	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
+
+	lchan_activate(lchan);
+	/* FIXME: only do this in case of success */
+
+	return rsl_tx_chan_act_ack(lchan, bts_model_get_time(lchan->ts->trx->bts));
+}
+
+int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
+{
+	lchan_deactivate(lchan);
+	return rsl_tx_rf_rel_ack(lchan);
+}
+
+int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
+{
+	return lchan_deactivate_sacch(lchan);
+}
+
+int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+
+	return l1if_activate_rf(fl1, 0);
 }
