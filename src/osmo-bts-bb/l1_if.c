@@ -234,6 +234,11 @@ int l1if_reset(struct gsm_bts_trx *trx)
 	return 0;
 }
 
+void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
+                         unsigned int rtp_pl_len)
+{
+}
+
 /* Receive incoming data from L1 using L1CTL format */
 int l1if_recv(struct osmo_l1ctl *l1ctl, struct msgb *msg)
 {

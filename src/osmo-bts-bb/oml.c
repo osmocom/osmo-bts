@@ -280,4 +280,20 @@ int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 #endif
 }
 
+int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
+{
+#if 0
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+
+	/* channel mode, encryption and/or multirate have changed */
+
+	/* update multi-rate config */
+	tx_confreq_logchpar(lchan, GsmL1_Dir_RxUplink);
+	tx_confreq_logchpar(lchan, GsmL1_Dir_TxDownlink);
+
+	/* FIXME: update encryption */
+#endif
+	return 0;
+}
+
 
