@@ -169,6 +169,10 @@ static int l1if_signal_cbfn(unsigned int subsys, unsigned int signal, void *hdlr
 	return 0;
 }
 
+int l1if_data_req_cb(struct osmo_prim_hdr *oph, void *ctx)
+{
+}
+
 static int l1if_reset_cnf(struct osmo_l1ctl *l1ctl, struct msgb *msg)
 {
 	enum baseband_role bb_role = l1ctl->bb_role;

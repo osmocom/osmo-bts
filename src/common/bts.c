@@ -421,13 +421,14 @@ void bts_new_si(void *arg)
 #endif
 }
 
-int lchan_init_lapdm(struct gsm_lchan *lchan)
+int lchan_init_lapdm(struct gsm_lchan *lchan, osmo_prim_cb cb)
 {
 	struct lapdm_channel *lc = &lchan->lapdm_ch;
 
 	lapdm_channel_init(lc, LAPDM_MODE_BTS);
-	lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
-	lapdm_channel_set_l1(lc, NULL, lchan);
+	if (!cb)
+		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
+	lapdm_channel_set_l1(lc, cb, lchan);
 	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);
 
 	return 0;

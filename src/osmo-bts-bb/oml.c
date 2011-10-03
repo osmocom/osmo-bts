@@ -247,7 +247,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 #endif
 	lchan->state = LCHAN_S_ACT_REQ;
 
-	lchan_init_lapdm(lchan);
+	lchan_init_lapdm(lchan, l1if_data_req_cb);
 
 	return 0;
 }
