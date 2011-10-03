@@ -19,6 +19,7 @@
  *
  */
 
+#include <errno.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -34,6 +35,7 @@
 
 #include "l1ctl.h"
 #include "l1_if.h"
+#include "settings.h"
 
 #include <net/if.h>
 
@@ -53,7 +55,7 @@ int level_set = 0;
 uint16_t ref_arfcn = 0;
 int ref_set = 0;
 static char *layer2_socket_path = "/tmp/osmocom_l2";
-int tx_only = 0;
+int layout = 0;
 static int daemonize = 0;
 void *l23_ctx = NULL;
 static struct gsm_bts *bts;
@@ -115,7 +117,7 @@ static void print_usage(const char *app)
 	printf("Usage: %s -r <arfcn> [option]\n", app);
 	printf("  -h --help             this text\n");
 	printf("  -s --socket           Path to the unix domain socket (default /tmp/osmocom_l2)\n");
-	printf("  -t --tx-only          Use only one baseband to transmit BCCH only\n");
+	printf("  -l --layout <layout>  Specify slot layout. Use 'help' to get a list.\n");
 	printf("  -r --ref-arfcn        Set channel number of reference BTS for clocking\n");
 	printf("  -d --debug            Change debug flags. (default %s)\n", debugs);
 	printf("  -s --disable-color    Don't use colors in stderr log output\n");
@@ -139,7 +141,7 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
 			{ "socket", 1, 0, 's' },
-			{ "tx-only", 0, 0, 't' },
+			{ "layout", 0, 0, 'l' },
 			{ "ref-arfcn", 1, 0, 'r' },
 			{ "debug", 1, 0, 'd' },
 			{ "disable-color", 0, 0, 'C' },
@@ -150,7 +152,7 @@ static void handle_options(int argc, char **argv)
 			{0, 0, 0, 0},
 		};
 
-		c = getopt_long(argc, argv, "hs:tr:d:CTe:i:D",
+		c = getopt_long(argc, argv, "hs:l:r:d:CTe:i:D",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -162,8 +164,18 @@ static void handle_options(int argc, char **argv)
 		case 's':
 			layer2_socket_path = talloc_strdup(l23_ctx, optarg);
 			break;
-		case 't':
-			tx_only = 1;
+		case 'l':
+			if (!strcmp(optarg, "help")) {
+				set_show_layouts();
+				exit(0);
+			}
+			layout = set_layout_by_name(optarg);
+			if (layout < 0) {
+				fprintf(stderr, "Given layout '%s' not found. "
+					"Use 'help' to list all layouts\n",
+					optarg);
+				exit(-EINVAL);
+			}
 			break;
 		case 'r':
 			ref_arfcn = atoi(optarg);
@@ -228,8 +240,6 @@ int main(int argc, char **argv)
 
 	bts_logo();
 
-	get_mac();
-
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
 	msgb_set_talloc_ctx(tall_msgb_ctx);
@@ -249,6 +259,8 @@ int main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
+	set_show_layout(layout);
+
 	if (!ref_set) {
 		fprintf(stderr, "Error: ARFCN for reference clock not specified. Use '-h' for help.\n");
 		exit(1);
@@ -259,6 +271,8 @@ int main(int argc, char **argv)
 		log_parse_category_mask(osmo_stderr_target, debugs);
 	if (!level_set)
 		log_set_log_level(osmo_stderr_target, LOGL_INFO);
+
+	get_mac();
 
 	if (bts_init(bts) < 0) {
 		fprintf(stderr, "unable to to open bts\n");

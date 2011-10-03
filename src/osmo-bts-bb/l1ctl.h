@@ -10,7 +10,7 @@ enum baseband_role {
 
 struct osmo_l1ctl {
 
-	enum baseband_role bb_role;
+	int bb_role;
 	struct osmo_l1_if *l1_if;
 	struct osmo_wqueue l2_wq;
 };

@@ -48,8 +48,9 @@
 #include "l1ctl.h"
 #include "l1_if.h"
 #include "oml.h"
+#include "settings.h"
 
-extern int tx_only;
+extern int layout;
 
 static struct msgb *osmo_l1if_alloc(uint8_t msg_type)
 {
@@ -175,34 +176,32 @@ int l1if_data_req_cb(struct osmo_prim_hdr *oph, void *ctx)
 
 static int l1if_reset_cnf(struct osmo_l1ctl *l1ctl, struct msgb *msg)
 {
-	enum baseband_role bb_role = l1ctl->bb_role;
+	int i = l1ctl->bb_role;
 	struct osmo_l1_if *l1if = l1ctl->l1_if;
 	struct gsm_bts_trx *trx = l1if->trx;
 	int on = 1; // FIXME: handle failure (wrong firmware)
 
-	if (bb_role == BASEBAND_TX) {
-		LOGP(DL1C, LOGL_INFO, "Reset of TX baseband complete\n");
-		l1if->reset_cnf_tx = 1;
+	LOGP(DL1C, LOGL_INFO, "Reset of baseband %d complete.\n", i + 1);
+	l1if->reset_cnf[i] = 1;
+
+	for (i = 0; i < l1if->num_phones; i++) {
+		if (!l1if->reset_cnf[i]) {
+			LOGP(DL1C, LOGL_INFO, "Waiting for more basebands.\n");
+			return 0;
+		}
 	}
-	if (bb_role == BASEBAND_RX) {
-		LOGP(DL1C, LOGL_INFO, "Reset of RX baseband complete\n");
-		l1if->reset_cnf_rx = 1;
-	}
-	if (!l1if->reset_cnf_tx || (!l1if->reset_cnf_rx && !tx_only)) {
-		LOGP(DL1C, LOGL_INFO, "Waiting for other baseband\n");
-		return 0;
-	}
+	LOGP(DL1C, LOGL_INFO, "All basebands answered to reset.\n");
 
 	if (on) {
-		int i;
+		int s;
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
 		oml_mo_tx_sw_act_rep(&trx->mo);
 		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
 		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
 
-		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
-			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+		for (s = 0; s < ARRAY_SIZE(trx->ts); s++)
+			oml_mo_state_chg(&trx->ts[s].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	} else {
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
@@ -217,29 +216,20 @@ int l1if_reset(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 	struct l1ctl_reset *res;
 	uint8_t type = L1CTL_RES_T_FULL;
+	int i;
 
-	msg = osmo_l1if_alloc(L1IF_RESET_REQ);
-	if (!msg)
-		return -1;
+	for (i = 0; i < l1if->num_phones; i++) {
+		msg = osmo_l1if_alloc(L1IF_RESET_REQ);
+		if (!msg)
+			return -1;
 
-	LOGP(DL1C, LOGL_INFO, "Tx Reset Req (%u) of TX baseband\n", type);
-	res = (struct l1ctl_reset *) msgb_put(msg, sizeof(*res));
-	res->type = type;
+		LOGP(DL1C, LOGL_INFO, "Tx Reset Req (%u) of baseband %d\n",
+			type, i + 1);
+		res = (struct l1ctl_reset *) msgb_put(msg, sizeof(*res));
+		res->type = type;
 
-	l1ctl_send(&l1if->l1ctl_tx, msg);
-
-	if (tx_only)
-		return 0;
-
-	msg = osmo_l1if_alloc(L1IF_RESET_REQ);
-	if (!msg)
-		return -1;
-
-	LOGP(DL1C, LOGL_INFO, "Tx Reset Req (%u) of RX baseband\n", type);
-	res = (struct l1ctl_reset *) msgb_put(msg, sizeof(*res));
-	res->type = type;
-
-	l1ctl_send(&l1if->l1ctl_rx, msg);
+		l1ctl_send(&l1if->l1ctl[i], msg);
+	}
 
 	return 0;
 }
@@ -281,6 +271,7 @@ int l1if_open(struct gsm_bts_trx *trx, const char *socket_path)
 	struct osmo_l1_if *l1if;
 	char pathname[128];
 	int rc;
+	int i;
 
 	osmo_signal_register_handler(SS_GLOBAL, l1if_signal_cbfn, NULL);
 
@@ -288,23 +279,19 @@ int l1if_open(struct gsm_bts_trx *trx, const char *socket_path)
 	if (!l1if)
 		return -ENOMEM;
 	l1if->trx = trx;
-	l1if->l1ctl_tx.bb_role = BASEBAND_TX;
-	l1if->l1ctl_tx.l1_if = l1if;
-	sprintf(pathname, "%s.tx", socket_path);
-	LOGP(DL1C, LOGL_INFO, "Open connection to TX baseband.\n");
-	rc = l1socket_open(&l1if->l1ctl_tx, pathname);
-	if (rc) {
-		talloc_free(l1if);
-		return rc;
-	}
-	if (!tx_only) {
-		l1if->l1ctl_rx.bb_role = BASEBAND_RX;
-		l1if->l1ctl_rx.l1_if = l1if;
-		sprintf(pathname, "%s.rx", socket_path);
-		LOGP(DL1C, LOGL_INFO, "Open connection to RX baseband.\n");
-		rc = l1socket_open(&l1if->l1ctl_rx, pathname);
+	l1if->num_phones = set_num_phones(layout);
+	for (i = 0; i < l1if->num_phones; i++) {
+		l1if->l1ctl[i].bb_role = i;
+		l1if->l1ctl[i].l1_if = l1if;
+		l1if->d_mask[i] = set_get_tx_mask(layout, i);
+		l1if->u_mask[i] = set_get_rx_mask(layout, i);
+		sprintf(pathname, "%s.%d", socket_path, i + 1);
+		LOGP(DL1C, LOGL_INFO, "Open connection to baseband %d.\n",
+			i + 1);
+		rc = l1socket_open(&l1if->l1ctl[i], pathname);
 		if (rc) {
-			l1socket_close(&l1if->l1ctl_tx);
+			while (i--)
+				l1socket_close(&l1if->l1ctl[i]);
 			talloc_free(l1if);
 			return rc;
 		}
@@ -318,9 +305,10 @@ int l1if_open(struct gsm_bts_trx *trx, const char *socket_path)
 int l1if_close(struct gsm_bts_trx *trx)
 {
 	struct osmo_l1_if *l1if = trx_l1_if(trx);
+	int i;
 
-	l1socket_close(&l1if->l1ctl_tx);
-	l1socket_close(&l1if->l1ctl_rx);
+	for (i = 0; i < l1if->num_phones; i++)
+		l1socket_close(&l1if->l1ctl[i]);
 	talloc_free(l1if);
 	osmo_signal_unregister_handler(SS_GLOBAL, l1if_signal_cbfn, NULL);
 	return 0;
