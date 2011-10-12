@@ -720,7 +720,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 
 	if (on) {
 		sysp->id = FemtoBts_PrimId_ActivateRfReq;
-		sysp->u.activateRfReq.u12ClkVc = 0xFFFF;
+		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
 	} else {
 		sysp->id = FemtoBts_PrimId_DeactivateRfReq;
 	}
@@ -847,6 +847,7 @@ struct femtol1_hdl *l1if_open(void *priv)
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	fl1h->priv = priv;
+	fl1h->clk_cal = 0xffff;
 
 	rc = l1if_transport_open(fl1h);
 	if (rc < 0) {

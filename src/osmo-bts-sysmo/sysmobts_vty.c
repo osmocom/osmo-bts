@@ -39,6 +39,7 @@
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
+#include <osmo-bts/vty.h>
 
 #include "femtobts.h"
 #include "l1_if.h"
@@ -99,6 +100,35 @@ err:
 	return str;
 }
 
+/* configuration */
+
+DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
+	"clock-calibration default",
+	"Set the clock calibration value\n" "Default Clock DAC value\n")
+{
+	unsigned int clkcal = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->clk_cal = 0xffff;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
+	"clock-calibration <0-4095>",
+	"Set the clock calibration value\n" "Clock DAC value\n")
+{
+	unsigned int clkcal = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->clk_cal = atoi(argv[0]) & 0xfff;
+
+	return CMD_SUCCESS;
+}
+
+/* runtime */
 
 DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	"show trx <0-0> dsp-trace-flags",
@@ -210,6 +240,19 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 	return CMD_SUCCESS;
 }
 
+void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+{
+}
+
+void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	if (fl1h->clk_cal != 0xffff) {
+		vty_out(vty, "  clock-calibration %u%s", fl1h->clk_cal,
+			VTY_NEWLINE);
+	}
+}
 
 int bts_model_vty_init(struct gsm_bts *bts)
 {
@@ -225,6 +268,9 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&show_sys_info_cmd);
 	install_element_ve(&dsp_trace_f_cmd);
 	install_element_ve(&no_dsp_trace_f_cmd);
+
+	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
+	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 
 	return 0;
 }

@@ -21,6 +21,7 @@ struct femtol1_hdl {
 	struct gsm_time gsm_time;
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;
+	uint16_t clk_cal;
 	struct llist_head wlc_list;
 
 	void *priv;			/* user reference */

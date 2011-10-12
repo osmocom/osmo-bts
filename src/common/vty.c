@@ -47,6 +47,13 @@
 enum node_type bts_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -56,6 +63,7 @@ enum node_type bts_vty_go_parent(struct vty *vty)
 int bts_vty_is_config_node(struct vty *vty, int node)
 {
 	switch (node) {
+	case TRX_NODE:
 	case BTS_NODE:
 		return 1;
 	default:
@@ -67,6 +75,13 @@ gDEFUN(ournode_exit, ournode_exit_cmd, "exit",
 	"Exit current node, go down to provious node")
 {
 	switch (vty->node) {
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
+		break;
 	default:
 		break;
 	}
@@ -128,9 +143,37 @@ static struct cmd_node bts_node = {
 	1,
 };
 
+static struct cmd_node trx_node = {
+	TRX_NODE,
+	"%s(trx)#",
+	1,
+};
+
+DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
+	"trx <0-0>",
+	"Select a TRX to configure\n" "TRX number\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_trx *trx;
+
+	trx = gsm_bts_trx_num(bts, trx_nr);
+	if (!trx) {
+		vty_out(vty, "Unknown TRX %u%s", trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = trx;
+	vty->index_sub = &trx->description;
+	vty->node = TRX_NODE;
+
+	return CMD_SUCCESS;
+}
+
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct gsm_bts_trx *trx;
 
 	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
 	if (bts->description)
@@ -142,9 +185,16 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " rtp bind-ip %s%s", btsb->rtp_bind_host, VTY_NEWLINE);
 	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
 		VTY_NEWLINE);
+
+	bts_model_config_write_bts(vty, bts);
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		vty_out(vty, " trx %u%s", trx->nr, VTY_NEWLINE);
+		bts_model_config_write_trx(vty, trx);
+	}
 }
 
-int config_write_bts(struct vty *vty)
+static int config_write_bts(struct vty *vty)
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts;
@@ -152,6 +202,11 @@ int config_write_bts(struct vty *vty)
 	llist_for_each_entry(bts, &net->bts_list, list)
 		config_write_bts_single(vty, bts);
 
+	return CMD_SUCCESS;
+}
+
+static int config_write_dummy(struct vty *vty)
+{
 	return CMD_SUCCESS;
 }
 
@@ -417,6 +472,11 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);
+
+	/* add and link to TRX config node */
+	install_element(BTS_NODE, &cfg_bts_trx_cmd);
+	install_node(&trx_node, config_write_dummy);
+	install_default(TRX_NODE);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 

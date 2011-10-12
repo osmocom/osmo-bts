@@ -39,4 +39,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
 
 int bts_model_vty_init(struct gsm_bts *bts);
 
+void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts);
+void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx);
+
 #endif
