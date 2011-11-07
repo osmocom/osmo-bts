@@ -155,8 +155,8 @@ int main(int argc, char **argv)
 	struct femtol1_hdl *fl1h;
 	int rc, i;
 
-	printf("sizeof(GsmL1_Prim_t) = %lu\n", sizeof(GsmL1_Prim_t));
-	printf("sizeof(FemtoBts_Prim_t) = %lu\n", sizeof(FemtoBts_Prim_t));
+	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
+	printf("sizeof(FemtoBts_Prim_t) = %zu\n", sizeof(FemtoBts_Prim_t));
 
 	bts_log_init(NULL);
 
