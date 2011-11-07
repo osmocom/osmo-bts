@@ -37,6 +37,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/bts.h>
 
 /* FIXME: move this to libosmocore */
 static struct tlv_definition abis_nm_att_tlvdef_ipa = {
