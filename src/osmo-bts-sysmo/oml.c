@@ -31,6 +31,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/amr.h>
+#include <osmo-bts/bts.h>
 
 #include "l1_if.h"
 #include "femtobts.h"
@@ -733,8 +734,6 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 {
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
-
 	/* channel mode, encryption and/or multirate have changed */
 
 	/* update multi-rate config */
