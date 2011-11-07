@@ -119,7 +119,7 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
  *  \param[in] payload_len length of \a rtp_payload
  *  \returns number of \a l1_payload bytes filled
  */
-static int rtppayload_to_l1_fr(uint8_t *l1_payload, uint8_t *rtp_payload,
+static int rtppayload_to_l1_fr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				unsigned int payload_len)
 {
 	/* step2: we need to shift the RTP payload left by one nibble*/
@@ -179,7 +179,7 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
  *  \param[in] payload_len length of \a rtp_payload
  *  \returns number of \a l1_payload bytes filled
  */
-static int rtppayload_to_l1_hr(uint8_t *l1_payload, uint8_t *rtp_payload,
+static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				unsigned int payload_len)
 {
 
@@ -262,7 +262,7 @@ int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
  *  \param[in] payload_len length of \a rtp_payload
  *  \returns number of \a l1_payload bytes filled
  */
-static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
+static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				uint8_t payload_len,
 				struct gsm_lchan *lchan)
 {
@@ -370,7 +370,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, uint8_t *rtp_payload,
  * yet, as things like the frame number, etc. are unknown at the time we
  * pre-fill the primtive.
  */
-void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, uint8_t *rtp_pl,
+void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			 unsigned int rtp_pl_len)
 {
 	struct gsm_lchan *lchan = rs->priv;
