@@ -106,7 +106,6 @@ DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
 	"clock-calibration default",
 	"Set the clock calibration value\n" "Default Clock DAC value\n")
 {
-	unsigned int clkcal = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
@@ -123,7 +122,7 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
-	fl1h->clk_cal = atoi(argv[0]) & 0xfff;
+	fl1h->clk_cal = clkcal & 0xfff;
 
 	return CMD_SUCCESS;
 }
