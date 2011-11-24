@@ -210,6 +210,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	btsb = bts_role_bts(bts);
+	btsb->support.ciphers = (1 << 0) | (1 << 1) | (1 << 2);
 
 	handle_options(argc, argv);
 

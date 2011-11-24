@@ -45,6 +45,9 @@ struct gsm_bts_role_bts {
 	char *bsc_oml_host;
 	char *rtp_bind_host;
 	unsigned int rtp_jitter_buf_ms;
+	struct {
+		uint8_t ciphers;
+	} support;
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)

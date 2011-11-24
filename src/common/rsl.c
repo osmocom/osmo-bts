@@ -568,6 +568,12 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 static int encr_info2lchan(struct gsm_lchan *lchan,
 			   const uint8_t *val, uint8_t len)
 {
+	struct gsm_bts_role_bts *btsb = bts_role_bts(lchan->ts->trx->bts);
+
+	/* check if the encryption algorithm sent by BSC is supported! */
+	if (!((1 << *val) & btsb->support.ciphers))
+		 return -ENOTSUP;
+
 	/* length can be '1' in case of no ciphering */
 	if (len < 1)
 		return -EINVAL;
@@ -804,8 +810,6 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 		if (encr_info2lchan(lchan, val, len) < 0)
 			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 	}
-
-	/* FIXME: check if the encryption algorithm sent by BSC is supported! */
 
 	/* 9.3.2 Link Identifier */
 	link_id = *TLVP_VAL(&tp, RSL_IE_LINK_IDENT);
