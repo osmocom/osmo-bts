@@ -248,8 +248,7 @@ int create_ms(struct osmobts_trx *trx, int maskc, uint8_t *maskv_tx,
 void destroy_lchan(struct osmobts_lchan *lchan)
 {
 	LOGP(DSUM, LOGL_INFO, "Destroying logical channel. (trx=%d ts=%d ss=%d)\n", lchan->slot->trx->trx_nr, lchan->slot->slot_nr, lchan->lchan_nr);
-	lapdm_exit(&lchan->l2_entity.lapdm_acch);
-	lapdm_exit(&lchan->l2_entity.lapdm_acch);
+	lapdm_channel_exit(&lchan->l2_entity);
 	if (lchan->rtp.socket_created)
 		rtp_close_socket(&lchan->rtp);
 	talloc_free(lchan);
