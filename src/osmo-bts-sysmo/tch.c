@@ -207,10 +207,11 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	uint8_t *cur;
 	u_int8_t cmr;
 	uint8_t ft = l1_payload[2] & 0xF;
-	uint8_t cmr_idx = l1_payload[1];
 	uint8_t amr_if2_len = payload_len - 2;
 
 #if 0
+	uint8_t cmr_idx = l1_payload[1];
+
 	/* CMR == Unset means CMR was not transmitted at this TDMA */
 	if (cmr_idx >= GsmL1_AmrCodecMode_Unset)
 		cmr = AMR_CMR_NONE;
