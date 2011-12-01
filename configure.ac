@@ -4,6 +4,7 @@ AC_INIT([osmo-bts],
 	[openbsc-devel@lists.openbsc.org])
 
 AM_INIT_AUTOMAKE([dist-bzip2])
+AC_CONFIG_TESTDIR(tests)
 
 dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -40,4 +41,6 @@ AC_OUTPUT(
     src/osmo-bts-bb/Makefile
     include/Makefile
     include/osmo-bts/Makefile
+    tests/Makefile
+    tests/paging/Makefile
     Makefile)

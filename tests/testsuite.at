@@ -1,0 +1,8 @@
+AT_INIT
+AT_BANNER([Regression tests.])
+
+AT_SETUP([paging])
+AT_KEYWORDS([paging])
+cat $abs_srcdir/paging/paging_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/paging/paging_test], [], [expout], [ignore])
+AT_CLEANUP
