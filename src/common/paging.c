@@ -295,9 +295,19 @@ static void sort_pr_tmsi_imsi(struct paging_record *pr[], unsigned int n)
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt)
 {
-	unsigned int group = get_pag_subch_nr(ps, gt);
-	struct llist_head *group_q = &ps->paging_queue[group];
+	struct llist_head *group_q;
+	int group;
 	int len;
+
+	group = get_pag_subch_nr(ps, gt);
+	if (group < 0) {
+		LOGP(DPAG, LOGL_ERROR,
+		     "Paging called for GSM wrong time: FN %d/%d/%d/%d.\n",
+		     gt->fn, gt->t1, gt->t2, gt->t3);
+		return -1;
+	}
+
+	group_q = &ps->paging_queue[group];
 
 	/* There is nobody to be paged, send Type1 with two empty ID */
 	if (llist_empty(group_q)) {
