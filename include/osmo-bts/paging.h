@@ -23,4 +23,9 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt);
 
+
+/* inspection methods below */
+int paging_group_queue_empty(struct paging_state *ps, uint8_t group);
+int paging_queue_length(struct paging_state *ps);
+
 #endif

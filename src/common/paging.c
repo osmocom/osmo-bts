@@ -470,3 +470,18 @@ void paging_reset(struct paging_state *ps)
 
 	ps->num_paging = 0;
 }
+
+/**
+ * \brief Helper for the unit tests
+ */
+int paging_group_queue_empty(struct paging_state *ps, uint8_t grp)
+{
+	if (grp >= ARRAY_SIZE(ps->paging_queue))
+		return 1;
+	return llist_empty(&ps->paging_queue[grp]);
+}
+
+int paging_queue_length(struct paging_state *ps)
+{
+	return ps->num_paging;
+}
