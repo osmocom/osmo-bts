@@ -18,8 +18,6 @@ int trx_link_estab(struct gsm_bts_trx *trx);
 void bts_new_si(void *arg);
 void bts_setup_slot(struct gsm_bts_trx_ts *slot, uint8_t comb);
 
-int lchan_init_lapdm(struct gsm_lchan *lchan);
-
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
 
