@@ -402,24 +402,17 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	/* FIXME: implement max queue length */
-	llist_add_tail(&msg->list, &btsb->agch_queue);
+	msgb_enqueue(&btsb->agch_queue, msg);
 
 	return 0;
 }
 
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);;
-	struct msgb *msg;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (llist_empty(&btsb->agch_queue))
-		return NULL;
-
-	msg = llist_entry(btsb->agch_queue.next, struct msgb, list);
-	llist_del(&msg->list);
-
-	return msg;
+	return msgb_dequeue(&btsb->agch_queue);
 }
