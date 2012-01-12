@@ -464,7 +464,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
 	struct msgb *msg;
-	int rc;
+	int rc = 0;
 
 	lchan = l1if_hLayer2_to_lchan(fl1->priv, data_ind->hLayer2);
 	if (!lchan) {
