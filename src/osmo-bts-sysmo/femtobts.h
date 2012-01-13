@@ -27,6 +27,6 @@ const struct value_string femtobts_l1status_names[GSML1_STATUS_NUM+1];
 
 const struct value_string femtobts_tracef_names[29];
 
-const struct value_string femtobts_tch_pl_names[14];
+const struct value_string femtobts_tch_pl_names[15];
 
 #endif /* FEMTOBTS_H */

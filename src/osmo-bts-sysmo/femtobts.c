@@ -224,6 +224,7 @@ const struct value_string femtobts_tch_pl_names[] = {
 	{ GsmL1_TchPlType_NA,			"N/A" },
 	{ GsmL1_TchPlType_Fr,			"FR" },
 	{ GsmL1_TchPlType_Hr,			"HR" },
+	{ GsmL1_TchPlType_Efr,			"EFR" },
 	{ GsmL1_TchPlType_Amr,			"AMR(IF2)" },
 	{ GsmL1_TchPlType_Amr_SidBad,		"AMR(SID BAD)" },
 	{ GsmL1_TchPlType_Amr_Onset,		"AMR(ONSET)" },
