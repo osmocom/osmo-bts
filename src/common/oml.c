@@ -615,7 +615,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* Call into BTS driver to check attribute values */
 	rc = bts_model_check_oml(bts, foh->msg_type, ts->mo.nm_attr, tp_merged, ts);
 	if (rc < 0) {
-		talloc_free(&tp_merged);
+		talloc_free(tp_merged);
 		/* FIXME: Send NACK */
 		return rc;
 	}
