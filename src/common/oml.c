@@ -609,7 +609,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	}
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = tlvp_copy(bts->mo.nm_attr, bts);
+	tp_merged = tlvp_copy(ts->mo.nm_attr, ts);
 	tlvp_merge(tp_merged, &tp);
 
 	/* Call into BTS driver to check attribute values */
@@ -619,6 +619,10 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* FIXME: Send NACK */
 		return rc;
 	}
+
+	/* Success: replace old BTS attributes with new */
+	talloc_free(ts->mo.nm_attr);
+	ts->mo.nm_attr = tp_merged;
 
 	/* 9.4.13 Channel Combination */
 	if (TLVP_PRESENT(&tp, NM_ATT_CHAN_COMB)) {
