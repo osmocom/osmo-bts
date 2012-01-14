@@ -462,7 +462,7 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
  * dedicated channel related messages
  */
 
-/* 8.4.19 sebdubg RF CHANnel RELease ACKnowledge */
+/* 8.4.19 sending RF CHANnel RELease ACKnowledge */
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
