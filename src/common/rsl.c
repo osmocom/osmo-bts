@@ -1004,12 +1004,12 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 	LOGP(DRSL, LOGL_NOTICE, "%s Sending RTP delete indication: cause=%d\n",
 		gsm_lchan_name(lchan), cause);
 
-	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!nmsg)
 		return -ENOMEM;
 
 	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
-	rsl_trx_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND);
+	rsl_ipa_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND, gsm_lchan2chan_nr(lchan));
 
 	nmsg->trx = lchan->ts->trx;
 
