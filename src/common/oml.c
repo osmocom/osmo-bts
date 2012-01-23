@@ -288,9 +288,13 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 {
 	struct abis_om_hdr *old_oh = msgb_l2(old_msg);
 	struct abis_om_fom_hdr *old_foh = msgb_l3(old_msg);
-	struct msgb *msg = oml_msgb_alloc();
+	struct msgb *msg;
 	struct abis_om_fom_hdr *foh;
 	int is_manuf = 0;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
 
 	/* make sure to respond with MANUF if request was MANUF */
 	if (old_oh->mdisc == ABIS_OM_MDISC_MANUF)

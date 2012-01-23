@@ -465,10 +465,14 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 /* 8.4.19 sending RF CHANnel RELease ACKnowledge */
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx RF CHAN REL ACK\n", gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	rsl_dch_push_hdr(msg, RSL_MT_RF_CHAN_REL_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
@@ -479,11 +483,15 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
 int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	gsm48_gen_starting_time(ie, gtime);
 	msgb_tv_fixed_put(msg, RSL_IE_FRAME_NUMBER, 2, ie);
@@ -730,10 +738,14 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id,
 				  const char *imeisv)
 {
-	struct msgb *fake_msg = rsl_msgb_alloc(128);
+	struct msgb *fake_msg;
 	struct gsm48_hdr *g48h;
 	uint8_t mid_buf[11];
 	int rc;
+
+	fake_msg = rsl_msgb_alloc(128);
+	if (!fake_msg)
+		return -ENOMEM;
 
 	/* generate 04.08 RR message */
 	g48h = (struct gsm48_hdr *) msgb_put(fake_msg, sizeof(*g48h));
@@ -857,11 +869,15 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 /* 8.4.11 MODE MODIFY NEGATIVE ACKNOWLEDGE */
 static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx MODE MODIFY NACK (cause = 0x%02x)\n",
 	     gsm_lchan_name(lchan), cause);
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	msg->len = 0;
 	msg->data = msg->tail = msg->l3h;
@@ -877,10 +893,14 @@ static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 /* 8.4.10 MODE MODIFY ACK */
 static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_INFO, "%s Tx MODE MODIF ACK\n", gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
@@ -1020,7 +1040,7 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 				  uint8_t orig_msgt)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint32_t *att_ip;
 	const char *name;
@@ -1038,6 +1058,11 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	ia.s_addr = htonl(lchan->abis_ip.connect_ip);
 	LOGPC(DRSL, LOGL_INFO, "remote %s:%u)\n",
 		inet_ntoa(ia), lchan->abis_ip.connect_port);
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
 
 	/* Connection ID */
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
@@ -1066,11 +1091,15 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 
 static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_DLCX_ACK\n",
 		gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	if (inc_conn_id)
 		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
@@ -1084,11 +1113,15 @@ static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 				 uint8_t cause)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_INFO, "%s RSL Tx IPAC_DLCX_NACK\n",
 		gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	if (inc_conn_id)
 		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
@@ -1107,12 +1140,16 @@ static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 			     int inc_ipport, uint8_t orig_msgtype)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	/* FIXME: allocate new msgb and copy old over */
 	LOGP(DRSL, LOGL_NOTICE, "%s RSL Tx IPAC_BIND_NACK\n",
 		gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	if (inc_ipport) {
 		uint32_t *att_ip;
@@ -1378,10 +1415,14 @@ static int rslms_is_meas_rep(struct msgb *msg)
 /* 8.4.8 MEASUREMENT RESult */
 static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 {
-	struct msgb *msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx MEAS RES\n", gsm_lchan_name(lchan));
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
 	if (lchan->meas.flags & LC_UL_M_F_RES_VALID) {

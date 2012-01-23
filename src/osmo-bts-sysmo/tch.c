@@ -97,8 +97,12 @@ void osmo_nibble_shift_left_unal(uint8_t *out, const uint8_t *in,
 
 static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
 {
-	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	struct msgb *msg;
 	uint8_t *cur;
+
+	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	if (!msg)
+		return NULL;
 
 	/* step1: reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, payload_len);
@@ -134,8 +138,12 @@ static int rtppayload_to_l1_fr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 #ifdef GsmL1_TchPlType_Efr
 static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload, uint8_t payload_len)
 {
-	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	struct msgb *msg;
 	uint8_t *cur;
+
+	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	if (!msg)
+		return NULL;
 
 	/* step1: reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, payload_len);
@@ -155,8 +163,12 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload, uint8_t payload_le
 
 static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len)
 {
-	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	struct msgb *msg;
 	uint8_t *cur;
+
+	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	if (!msg)
+		return NULL;
 
 	if (payload_len != GSM_HR_BYTES) {
 		LOGP(DL1C, LOGL_ERROR, "L1 HR frame length %u != expected %u\n",
@@ -203,11 +215,15 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_len,
 					 struct amr_multirate_conf *amr_mrc)
 {
-	struct msgb *msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	struct msgb *msg;
 	uint8_t *cur;
 	u_int8_t cmr;
 	uint8_t ft = l1_payload[2] & 0xF;
 	uint8_t amr_if2_len = payload_len - 2;
+
+	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	if (!msg)
+		return NULL;
 
 #if 0
 	uint8_t cmr_idx = l1_payload[1];
@@ -375,16 +391,29 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			 unsigned int rtp_pl_len)
 {
 	struct gsm_lchan *lchan = rs->priv;
-	struct msgb *msg = l1p_msgb_alloc();
-	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
-	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
-	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
-	uint8_t *payload_type = &msu_param->u8Buffer[0];
-	uint8_t *l1_payload = &msu_param->u8Buffer[1];
+	struct msgb *msg;
+	GsmL1_Prim_t *l1p;
+	GsmL1_PhDataReq_t *data_req;
+	GsmL1_MsgUnitParam_t *msu_param;
+	uint8_t *payload_type;
+	uint8_t *l1_payload;
 	int rc;
 
 	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(rtp_pl, rtp_pl_len));
+
+	msg = l1p_msgb_alloc();
+	if (!msg) {
+		LOGP(DRTP, LOGL_ERROR, "%s: Failed to allocate Rx payload.\n",
+			gsm_lchan_name(lchan));
+		return;
+	}
+
+	l1p = msgb_l1prim(msg);
+	data_req = &l1p->u.phDataReq;
+	msu_param = &data_req->msgUnitParam;
+	payload_type = &msu_param->u8Buffer[0];
+	l1_payload = &msu_param->u8Buffer[1];
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
@@ -533,12 +562,22 @@ err_payload_match:
 
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan)
 {
-	struct msgb *msg = l1p_msgb_alloc();
-	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
-	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
-	GsmL1_MsgUnitParam_t *msu_param = &data_req->msgUnitParam;
-	uint8_t *payload_type = &msu_param->u8Buffer[0];
-	uint8_t *l1_payload = &msu_param->u8Buffer[1];
+	struct msgb *msg;
+	GsmL1_Prim_t *l1p;
+	GsmL1_PhDataReq_t *data_req;
+	GsmL1_MsgUnitParam_t *msu_param;
+	uint8_t *payload_type;
+	uint8_t *l1_payload;
+
+	msg = l1p_msgb_alloc();
+	if (!msg)
+		return NULL;
+
+	l1p = msgb_l1prim(msg);
+	data_req = &l1p->u.phDataReq;
+	msu_param = &data_req->msgUnitParam;
+	payload_type = &msu_param->u8Buffer[0];
+	l1_payload = &msu_param->u8Buffer[1];
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
