@@ -720,7 +720,14 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 
 	if (on) {
 		sysp->id = FemtoBts_PrimId_ActivateRfReq;
+#ifdef HW_VERSION_1
 		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
+#else
+		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
+		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = 0;
+		sysp->u.activateRfReq.rfTrx.u8ClkSrc=2;
+		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
+#endif
 	} else {
 		sysp->id = FemtoBts_PrimId_DeactivateRfReq;
 	}
@@ -749,6 +756,7 @@ static int info_compl_cb(struct msgb *resp, void *data)
 		sic->dspVersion.build, sic->fpgaVersion.major,
 		sic->fpgaVersion.minor, sic->fpgaVersion.build);
 
+#ifdef HW_VERSION_1
 	if (sic->rfBand.gsm850)
 		fl1h->hw_info.band_support |= GSM_BAND_850;
 	if (sic->rfBand.gsm900)
@@ -757,6 +765,9 @@ static int info_compl_cb(struct msgb *resp, void *data)
 		fl1h->hw_info.band_support |= GSM_BAND_1800;
 	if (sic->rfBand.pcs1900)
 		fl1h->hw_info.band_support |= GSM_BAND_1900;
+#else
+	fl1h->hw_info.band_support |= GSM_BAND_850 | GSM_BAND_900 | GSM_BAND_1800 | GSM_BAND_1900;
+#endif
 
 	if (!(fl1h->hw_info.band_support & trx->bts->band))
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
