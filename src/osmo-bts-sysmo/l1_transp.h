@@ -6,6 +6,8 @@
 /* functions a transport calls on arrival of primitive from BTS */
 int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg);
 int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg);
+int l1if_handle_tchprim(struct femtol1_hdl *fl1h, struct msgb *msg);
+int l1if_handle_pdtchprim(struct femtol1_hdl *fl1h, struct msgb *msg);
 
 /* functions exported by a transport */
 int l1if_transport_open(struct femtol1_hdl *fl1h);

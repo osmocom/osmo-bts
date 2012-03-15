@@ -42,7 +42,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
-#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1types.h>
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 	int rc, i;
 
 	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
-	printf("sizeof(FemtoBts_Prim_t) = %zu\n", sizeof(FemtoBts_Prim_t));
+	printf("sizeof(SuperFemto_Prim_t) = %zu\n", sizeof(SuperFemto_Prim_t));
 
 	bts_log_init(NULL);
 

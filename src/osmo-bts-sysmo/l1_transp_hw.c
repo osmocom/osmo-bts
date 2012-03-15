@@ -36,7 +36,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
-#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1types.h>

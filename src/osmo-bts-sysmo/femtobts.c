@@ -19,7 +19,7 @@
  *
  */
 
-#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1dbg.h>
 
@@ -91,48 +91,48 @@ const GsmL1_PrimId_t femtobts_l1prim_req2conf[GsmL1_PrimId_NUM] = {
 	[GsmL1_PrimId_MphMeasureReq]	= GsmL1_PrimId_MphMeasureCnf,
 };
 
-const enum l1prim_type femtobts_sysprim_type[FemtoBts_PrimId_NUM] = {
-	[FemtoBts_PrimId_SystemInfoReq]		= L1P_T_REQ,
-	[FemtoBts_PrimId_SystemInfoCnf]		= L1P_T_CONF,
-	[FemtoBts_PrimId_SystemFailureInd]	= L1P_T_IND,
-	[FemtoBts_PrimId_ActivateRfReq]		= L1P_T_REQ,
-	[FemtoBts_PrimId_ActivateRfCnf]		= L1P_T_CONF,
-	[FemtoBts_PrimId_DeactivateRfReq]	= L1P_T_REQ,
-	[FemtoBts_PrimId_DeactivateRfCnf]	= L1P_T_CONF,
-	[FemtoBts_PrimId_SetTraceFlagsReq]	= L1P_T_REQ,
-	[FemtoBts_PrimId_RfClockInfoReq]	= L1P_T_REQ,
-	[FemtoBts_PrimId_RfClockInfoCnf]	= L1P_T_CONF,
-	[FemtoBts_PrimId_RfClockSetupReq]	= L1P_T_REQ,
-	[FemtoBts_PrimId_RfClockSetupCnf]	= L1P_T_CONF,
-	[FemtoBts_PrimId_Layer1ResetReq]	= L1P_T_REQ,
-	[FemtoBts_PrimId_Layer1ResetCnf]	= L1P_T_CONF,
+const enum l1prim_type femtobts_sysprim_type[SuperFemto_PrimId_NUM] = {
+	[SuperFemto_PrimId_SystemInfoReq]		= L1P_T_REQ,
+	[SuperFemto_PrimId_SystemInfoCnf]		= L1P_T_CONF,
+	[SuperFemto_PrimId_SystemFailureInd]	= L1P_T_IND,
+	[SuperFemto_PrimId_ActivateRfReq]		= L1P_T_REQ,
+	[SuperFemto_PrimId_ActivateRfCnf]		= L1P_T_CONF,
+	[SuperFemto_PrimId_DeactivateRfReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_DeactivateRfCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_SetTraceFlagsReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_RfClockInfoReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_RfClockInfoCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_RfClockSetupReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_RfClockSetupCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_Layer1ResetReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_Layer1ResetCnf]	= L1P_T_CONF,
 };
 
-const struct value_string femtobts_sysprim_names[FemtoBts_PrimId_NUM+1] = {
-	{ FemtoBts_PrimId_SystemInfoReq,	"SYSTEM-INFO.req" },
-	{ FemtoBts_PrimId_SystemInfoCnf,	"SYSTEM-INFO.conf" },
-	{ FemtoBts_PrimId_SystemFailureInd,	"SYSTEM-FAILURE.ind" },
-	{ FemtoBts_PrimId_ActivateRfReq,	"ACTIVATE-RF.req" },
-	{ FemtoBts_PrimId_ActivateRfCnf,	"ACTIVATE-RF.conf" },
-	{ FemtoBts_PrimId_DeactivateRfReq,	"DEACTIVATE-RF.req" },
-	{ FemtoBts_PrimId_DeactivateRfCnf,	"DEACTIVATE-RF.conf" },
-	{ FemtoBts_PrimId_SetTraceFlagsReq,	"SET-TRACE-FLAGS.req" },
-	{ FemtoBts_PrimId_RfClockInfoReq,	"RF-CLOCK-INFO.req" },
-	{ FemtoBts_PrimId_RfClockInfoCnf,	"RF-CLOCK-INFO.conf" },
-	{ FemtoBts_PrimId_RfClockSetupReq,	"RF-CLOCK-SETUP.req" },
-	{ FemtoBts_PrimId_RfClockSetupCnf,	"RF-CLOCK-SETUP.conf" },
-	{ FemtoBts_PrimId_Layer1ResetReq,	"LAYER1-RESET.req" },
-	{ FemtoBts_PrimId_Layer1ResetCnf,	"LAYER1-RESET.conf" },
+const struct value_string femtobts_sysprim_names[SuperFemto_PrimId_NUM+1] = {
+	{ SuperFemto_PrimId_SystemInfoReq,	"SYSTEM-INFO.req" },
+	{ SuperFemto_PrimId_SystemInfoCnf,	"SYSTEM-INFO.conf" },
+	{ SuperFemto_PrimId_SystemFailureInd,	"SYSTEM-FAILURE.ind" },
+	{ SuperFemto_PrimId_ActivateRfReq,	"ACTIVATE-RF.req" },
+	{ SuperFemto_PrimId_ActivateRfCnf,	"ACTIVATE-RF.conf" },
+	{ SuperFemto_PrimId_DeactivateRfReq,	"DEACTIVATE-RF.req" },
+	{ SuperFemto_PrimId_DeactivateRfCnf,	"DEACTIVATE-RF.conf" },
+	{ SuperFemto_PrimId_SetTraceFlagsReq,	"SET-TRACE-FLAGS.req" },
+	{ SuperFemto_PrimId_RfClockInfoReq,	"RF-CLOCK-INFO.req" },
+	{ SuperFemto_PrimId_RfClockInfoCnf,	"RF-CLOCK-INFO.conf" },
+	{ SuperFemto_PrimId_RfClockSetupReq,	"RF-CLOCK-SETUP.req" },
+	{ SuperFemto_PrimId_RfClockSetupCnf,	"RF-CLOCK-SETUP.conf" },
+	{ SuperFemto_PrimId_Layer1ResetReq,	"LAYER1-RESET.req" },
+	{ SuperFemto_PrimId_Layer1ResetCnf,	"LAYER1-RESET.conf" },
 	{ 0, NULL }
 };
 
-const FemtoBts_PrimId_t femtobts_sysprim_req2conf[FemtoBts_PrimId_NUM] = {
-	[FemtoBts_PrimId_SystemInfoReq]	= FemtoBts_PrimId_SystemInfoCnf,
-	[FemtoBts_PrimId_ActivateRfReq]	= FemtoBts_PrimId_ActivateRfCnf,
-	[FemtoBts_PrimId_DeactivateRfReq] = FemtoBts_PrimId_DeactivateRfCnf,
-	[FemtoBts_PrimId_RfClockInfoReq] = FemtoBts_PrimId_RfClockInfoCnf,
-	[FemtoBts_PrimId_RfClockSetupReq] = FemtoBts_PrimId_RfClockSetupCnf,
-	[FemtoBts_PrimId_Layer1ResetReq] = FemtoBts_PrimId_Layer1ResetCnf,
+const SuperFemto_PrimId_t femtobts_sysprim_req2conf[SuperFemto_PrimId_NUM] = {
+	[SuperFemto_PrimId_SystemInfoReq]	= SuperFemto_PrimId_SystemInfoCnf,
+	[SuperFemto_PrimId_ActivateRfReq]	= SuperFemto_PrimId_ActivateRfCnf,
+	[SuperFemto_PrimId_DeactivateRfReq]	= SuperFemto_PrimId_DeactivateRfCnf,
+	[SuperFemto_PrimId_RfClockInfoReq]	= SuperFemto_PrimId_RfClockInfoCnf,
+	[SuperFemto_PrimId_RfClockSetupReq]	= SuperFemto_PrimId_RfClockSetupCnf,
+	[SuperFemto_PrimId_Layer1ResetReq] 	= SuperFemto_PrimId_Layer1ResetCnf,
 };
 
 const struct value_string femtobts_l1sapi_names[GsmL1_Sapi_NUM+1] = {

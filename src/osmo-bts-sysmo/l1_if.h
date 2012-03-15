@@ -44,7 +44,7 @@ struct femtol1_hdl {
 };
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
-#define msgb_sysprim(msg)	((FemtoBts_Prim_t *)(msg)->l1h)
+#define msgb_sysprim(msg)	((SuperFemto_Prim_t *)(msg)->l1h)
 
 typedef int l1if_compl_cb(struct msgb *l1_msg, void *data);
 

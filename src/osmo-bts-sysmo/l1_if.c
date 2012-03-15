@@ -44,7 +44,7 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
 
-#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1types.h>
@@ -116,7 +116,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		wqueue = &fl1h->write_q[MQ_L1_WRITE];
 		timeout_secs = 30;
 	} else {
-		FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+		SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 
 		LOGP(DL1C, LOGL_INFO, "Tx SYS prim %s\n",
 			get_value_string(femtobts_sysprim_names, sysp->id));
@@ -156,13 +156,13 @@ struct msgb *l1p_msgb_alloc(void)
 	return msg;
 }
 
-/* allocate a msgb containing a FemtoBts_Prim_t */
+/* allocate a msgb containing a SuperFemto_Prim_t */
 struct msgb *sysp_msgb_alloc(void)
 {
-	struct msgb *msg = msgb_alloc(sizeof(FemtoBts_Prim_t), "sys_prim");
+	struct msgb *msg = msgb_alloc(sizeof(SuperFemto_Prim_t), "sys_prim");
 
 	if (msg)
-		msg->l1h = msgb_put(msg, sizeof(FemtoBts_Prim_t));
+		msg->l1h = msgb_put(msg, sizeof(SuperFemto_Prim_t));
 
 	return msg;
 }
@@ -629,7 +629,7 @@ int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg)
 
 int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 {
-	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	struct wait_l1_conf *wlc;
 	int rc;
 
@@ -669,14 +669,14 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 
 static int activate_rf_compl_cb(struct msgb *resp, void *data)
 {
-	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	struct femtol1_hdl *fl1h = data;
 	struct gsm_bts_trx *trx = fl1h->priv;
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
 
-	if (sysp->id == FemtoBts_PrimId_ActivateRfCnf)
+	if (sysp->id == SuperFemto_PrimId_ActivateRfCnf)
 		on = 1;
 
 	if (on)
@@ -716,10 +716,10 @@ static int activate_rf_compl_cb(struct msgb *resp, void *data)
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 
 	if (on) {
-		sysp->id = FemtoBts_PrimId_ActivateRfReq;
+		sysp->id = SuperFemto_PrimId_ActivateRfReq;
 #ifdef HW_VERSION_1
 		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
 #else
@@ -729,7 +729,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
 #endif
 	} else {
-		sysp->id = FemtoBts_PrimId_DeactivateRfReq;
+		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
 
 	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb, hdl);
@@ -738,8 +738,8 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 /* call-back on arrival of DSP+FPGA version + band capability */
 static int info_compl_cb(struct msgb *resp, void *data)
 {
-	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
-	FemtoBts_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
 	struct femtol1_hdl *fl1h = data;
 	struct gsm_bts_trx *trx = fl1h->priv;
 
@@ -781,9 +781,9 @@ static int info_compl_cb(struct msgb *resp, void *data)
 static int l1if_get_info(struct femtol1_hdl *hdl)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 
-	sysp->id = FemtoBts_PrimId_SystemInfoReq;
+	sysp->id = SuperFemto_PrimId_SystemInfoReq;
 
 	return l1if_req_compl(hdl, msg, 1, info_compl_cb, hdl);
 }
@@ -792,7 +792,7 @@ static int reset_compl_cb(struct msgb *resp, void *data)
 {
 	struct femtol1_hdl *fl1h = data;
 	struct gsm_bts_trx *trx = fl1h->priv;
-	FemtoBts_Prim_t *sysp = msgb_sysprim(resp);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;
 
 	LOGP(DL1C, LOGL_NOTICE, "Rx L1-RESET.conf (status=%s)\n",
@@ -823,8 +823,8 @@ static int reset_compl_cb(struct msgb *resp, void *data)
 int l1if_reset(struct femtol1_hdl *hdl)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
-	sysp->id = FemtoBts_PrimId_Layer1ResetReq;
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
 
 	return l1if_req_compl(hdl, msg, 1, reset_compl_cb, hdl);
 }
@@ -833,12 +833,12 @@ int l1if_reset(struct femtol1_hdl *hdl)
 int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	FemtoBts_Prim_t *sysp = msgb_sysprim(msg);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 
 	LOGP(DL1C, LOGL_INFO, "Tx SET-TRACE-FLAGS.req (0x%08x)\n",
 		flags);
 
-	sysp->id = FemtoBts_PrimId_SetTraceFlagsReq;
+	sysp->id = SuperFemto_PrimId_SetTraceFlagsReq;
 	sysp->u.setTraceFlagsReq.u32Tf = flags;
 
 	hdl->dsp_trace_f = flags;

@@ -43,7 +43,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
-#include <sysmocom/femtobts/femtobts.h>
+#include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1types.h>
@@ -102,7 +102,7 @@ int l1if_transport_open(struct femtol1_hdl *fl1h)
 	char *bts_host = getenv("L1FWD_BTS_HOST");
 
 	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
-	printf("sizeof(FemtoBts_Prim_t) = %zu\n", sizeof(FemtoBts_Prim_t));
+	printf("sizeof(SuperFemto_Prim_t) = %zu\n", sizeof(SuperFemto_Prim_t));
 
 	if (!bts_host) {
 		fprintf(stderr, "You have to set the L1FWD_BTS_HOST environment variable\n");
