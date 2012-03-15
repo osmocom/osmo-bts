@@ -613,7 +613,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	}
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = tlvp_copy(ts->mo.nm_attr, ts);
+	tp_merged = tlvp_copy(ts->mo.nm_attr, bts);
 	tlvp_merge(tp_merged, &tp);
 
 	/* Call into BTS driver to check attribute values */
