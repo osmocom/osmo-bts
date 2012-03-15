@@ -723,6 +723,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 #ifdef HW_VERSION_1
 		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
 #else
+		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = 0;
 		sysp->u.activateRfReq.rfTrx.u8ClkSrc=2;
