@@ -127,7 +127,44 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_clksrc, cfg_trx_clksrc_cmd,
+	"clock-source (tcxo|ocxo|ext|gps)",
+	"Set the clock source value\n" "Clock Source value\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	int rc;
+
+	rc = get_string_value(femtobts_clksrc_names, argv[0]);
+	if (rc < 0)
+		return CMD_WARNING;
+
+	fl1h->clk_src = rc;
+
+	return CMD_SUCCESS;
+}
+
 /* runtime */
+
+DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
+	"show trx <0-0> clock-source",
+	SHOW_TRX_STR "Display the clock source for this TRX")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct femtol1_hdl *fl1h;
+
+	if (!trx)
+		return CMD_WARNING;
+
+	fl1h = trx_femtol1_hdl(trx);
+
+	vty_out(vty, "TRX Clock Source: %s%s",
+		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
+		VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
 
 DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	"show trx <0-0> dsp-trace-flags",
@@ -265,11 +302,13 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element_ve(&show_dsp_trace_f_cmd);
 	install_element_ve(&show_sys_info_cmd);
+	install_element_ve(&show_trx_clksrc_cmd);
 	install_element_ve(&dsp_trace_f_cmd);
 	install_element_ve(&no_dsp_trace_f_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
+	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
 
 	return 0;
 }

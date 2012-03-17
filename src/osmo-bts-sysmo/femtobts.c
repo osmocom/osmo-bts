@@ -237,3 +237,14 @@ const struct value_string femtobts_tch_pl_names[] = {
 	{ GsmL1_TchPlType_Amr_RatscchData,	"AMR(RATSCCH DATA)" },
 	{ 0, NULL }
 };
+
+const struct value_string femtobts_clksrc_names[] = {
+	{ SF_CLKSRC_NONE,	"None" },
+	{ SF_CLKSRC_OCXO,	"OCXO" },
+	{ SF_CLKSRC_TCXO,	"TCXO" },
+	{ SF_CLKSRC_EXT,	"EXT" },
+	{ SF_CLKSRC_GPS,	"GPS" },
+	{ SF_CLKSRC_TRX,	"TRX" },
+	{ SF_CLKSRC_RX,		"RX" },
+	{ 0, NULL }
+};

@@ -13,6 +13,16 @@ enum l1prim_type {
 	L1P_T_IND,
 };
 
+/* this should actually be part of the header files */
+enum superfemto_clk_src {
+	SF_CLKSRC_NONE	= 0,
+	SF_CLKSRC_OCXO	= 1,
+	SF_CLKSRC_TCXO	= 2,
+	SF_CLKSRC_EXT	= 3,
+	SF_CLKSRC_GPS	= 4,
+	SF_CLKSRC_TRX	= 5,
+	SF_CLKSRC_RX	= 6,
+};
 
 const enum l1prim_type femtobts_l1prim_type[GsmL1_PrimId_NUM];
 const struct value_string femtobts_l1prim_names[GsmL1_PrimId_NUM+1];
@@ -28,5 +38,7 @@ const struct value_string femtobts_l1status_names[GSML1_STATUS_NUM+1];
 const struct value_string femtobts_tracef_names[29];
 
 const struct value_string femtobts_tch_pl_names[15];
+
+const struct value_string femtobts_clksrc_names[7];
 
 #endif /* FEMTOBTS_H */
