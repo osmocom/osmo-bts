@@ -289,6 +289,23 @@ static int trx_init(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, 0, trx_init_compl_cb, fl1h);
 }
 
+static int trx_close_compl_cb(struct msgb *l1_msg, void *data)
+{
+	return 0;
+}
+
+static int trx_close(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct msgb *msg;
+
+	msg = l1p_msgb_alloc();
+	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h);
+	LOGP(DL1C, LOGL_NOTICE, "Close TRX %u\n", trx->nr);
+
+	return l1if_req_compl(fl1h, msg, 0, trx_close_compl_cb, fl1h);
+}
+
 static int ts_connect(struct gsm_bts_trx_ts *ts)
 {
 	struct msgb *msg = l1p_msgb_alloc();
@@ -915,5 +932,6 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
 
+	trx_close(trx);
 	return l1if_activate_rf(fl1, 0);
 }
