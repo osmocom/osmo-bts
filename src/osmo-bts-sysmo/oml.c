@@ -904,7 +904,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 {
 	/* blindly accept all state changes */
 	mo->nm_state.administrative = adm_state;
-	return oml_mo_fom_ack_nack(mo, NM_MT_CHG_ADM_STATE, 0);
+	return oml_mo_statechg_ack(mo);
 }
 int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 {

@@ -274,6 +274,19 @@ int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 	return oml_mo_send_msg(mo, msg, new_msg_type);
 }
 
+int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
+{
+	struct msgb *msg;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	msgb_tv_put(msg, NM_ATT_ADM_STATE, mo->nm_state.administrative);
+
+	return oml_mo_send_msg(mo, msg, NM_MT_CHG_ADM_STATE_ACK);
+}
+
 int oml_mo_opstart_ack(struct gsm_abis_mo *mo)
 {
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, 0);
@@ -712,7 +725,7 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	if (mo->nm_state.administrative == adm_state) {
 		DEBUGP(DOML, "... automatic ACK, ADM state already was %s\n",
 			get_value_string(abis_nm_adm_state_names, adm_state));
-		return oml_fom_ack_nack(msg, 0);
+		return oml_mo_statechg_ack(mo);
 	}
 
 	/* Step 3: Ask BTS driver to apply the state chg */
