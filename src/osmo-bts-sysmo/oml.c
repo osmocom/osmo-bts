@@ -419,7 +419,9 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphActivateCnf_t *ic = &l1p->u.mphActivateCnf;
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf\n", gsm_lchan_name(lchan));
+	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (SAPI=%s)\n",
+		gsm_lchan_name(lchan),
+		get_value_string(femtobts_l1sapi_names, ic->sapi));
 
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful activation of L1 SAPI %s on TS %u\n",
@@ -627,8 +629,9 @@ int lchan_activate(struct gsm_lchan *lchan)
 			break;
 		}
 
-		LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, SAPI=%d)\n",
-			gsm_lchan_name(lchan), act_req->hLayer2, i);
+		LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, SAPI=%s)\n",
+			gsm_lchan_name(lchan), act_req->hLayer2,
+			get_value_string(femtobts_l1sapi_names, i));
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan);
@@ -768,7 +771,7 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphDeactivateCnf_t *ic = &l1p->u.mphDeactivateCnf;
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (%s)\n",
+	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (SAPI=%s)\n",
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_l1sapi_names, ic->sapi));
 
