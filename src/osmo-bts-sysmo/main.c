@@ -51,7 +51,7 @@ const char *software_version = "0815";
 static const char *config_file = "osmo-bts.cfg";
 extern const char *osmobts_copyright;
 static int daemonize = 0;
-static unsigned int dsp_trace = 0xffffffff;
+static unsigned int dsp_trace = 0x71c00020;
 
 int bts_model_init(struct gsm_bts *bts)
 {
