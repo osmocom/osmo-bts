@@ -741,7 +741,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_l1sapi_names,
 				 conf_req->cfgParams.setLogChParams.sapi));
-	LOGP(DL1C, LOGL_INFO, "cfgParams Tn=%u, subCh=%u, dir=0x%x ",
+	LOGPC(DL1C, LOGL_INFO, "cfgParams Tn=%u, subCh=%u, dir=0x%x ",
 			conf_req->cfgParams.setLogChParams.u8Tn,
 			conf_req->cfgParams.setLogChParams.subCh,
 			conf_req->cfgParams.setLogChParams.dir);
