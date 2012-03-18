@@ -102,6 +102,34 @@ err:
 
 /* configuration */
 
+DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
+	"HIDDEN", "HIDDEN")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	int sapi;
+
+	sapi = get_string_value(femtobts_tracef_names, argv[0]);
+
+	fl1h->gsmtap_sapi_mask |= (1 << sapi);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
+	"HIDDEN", "HIDDEN")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	int sapi;
+
+	sapi = get_string_value(femtobts_tracef_names, argv[1]);
+
+	fl1h->gsmtap_sapi_mask &= ~(1 << sapi);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
 	"clock-calibration default",
 	"Set the clock calibration value\n" "Default Clock DAC value\n")
@@ -299,6 +327,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 						"trx <0-0> dsp-trace-flag (");
 	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(femtobts_tracef_names,
 						"no trx <0-0> dsp-trace-flag (");
+	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+						"gsmtap-sapi (");
+	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+						"no gsmtap-sapi (");
 
 	install_element_ve(&show_dsp_trace_f_cmd);
 	install_element_ve(&show_sys_info_cmd);
@@ -309,6 +341,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
+	install_element(TRX_NODE, &cfg_trx_gsmtap_sapi_cmd);
+	install_element(TRX_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 
 	return 0;
 }

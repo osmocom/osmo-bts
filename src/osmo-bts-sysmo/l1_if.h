@@ -3,6 +3,7 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/write_queue.h>
+#include <osmocom/core/gsmtap_util.h>
 #include <osmocom/gsm/gsm_utils.h>
 
 enum {
@@ -28,6 +29,9 @@ struct femtol1_hdl {
 	uint16_t clk_cal;
 	uint8_t clk_src;
 	struct llist_head wlc_list;
+
+	struct gsmtap_inst *gsmtap;
+	uint32_t gsmtap_sapi_mask;
 
 	void *priv;			/* user reference */
 

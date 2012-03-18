@@ -32,6 +32,8 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/write_queue.h>
+#include <osmocom/core/gsmtap.h>
+#include <osmocom/core/gsmtap_util.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/lapdm.h>
 
@@ -56,6 +58,60 @@
 /* FIXME: make threshold configurable */
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
+
+/* mapping from femtbts L1 SAPI to GSMTAP channel type */
+static const uint8_t l1sapi2gsmtap_cht[GsmL1_Sapi_NUM] = {
+	[GsmL1_Sapi_Idle] = 255,
+	[GsmL1_Sapi_Fcch] = 255,
+	[GsmL1_Sapi_Sch] = 255,
+	[GsmL1_Sapi_Sacch] = GSMTAP_CHANNEL_SDCCH | GSMTAP_CHANNEL_ACCH,
+	[GsmL1_Sapi_Sdcch] = GSMTAP_CHANNEL_SDCCH,
+	[GsmL1_Sapi_Bcch] = GSMTAP_CHANNEL_BCCH,
+	[GsmL1_Sapi_Pch] = GSMTAP_CHANNEL_PCH,
+	[GsmL1_Sapi_Agch] = GSMTAP_CHANNEL_AGCH,
+	[GsmL1_Sapi_Cbch] = GSMTAP_CHANNEL_CBCH51,
+	[GsmL1_Sapi_Rach] = GSMTAP_CHANNEL_RACH,
+	[GsmL1_Sapi_TchF] = 255,
+	[GsmL1_Sapi_FacchF] = GSMTAP_CHANNEL_TCH_F,
+	[GsmL1_Sapi_TchH] = 255,
+	[GsmL1_Sapi_FacchH] = GSMTAP_CHANNEL_TCH_H,
+	[GsmL1_Sapi_Nch] = GSMTAP_CHANNEL_CCCH,
+	[GsmL1_Sapi_Pdtch] = GSMTAP_CHANNEL_PDCH,
+	[GsmL1_Sapi_Pacch] = 255,
+	[GsmL1_Sapi_Pbcch] = 255,
+	[GsmL1_Sapi_Pagch] = 255,
+	[GsmL1_Sapi_Ppch] = 255,
+	[GsmL1_Sapi_Pnch] = 255,
+	[GsmL1_Sapi_Ptcch] = GSMTAP_CHANNEL_PTCCH,
+	[GsmL1_Sapi_Prach] = 255,
+};
+
+static void tx_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
+{
+	struct gsm_bts_trx *trx = fl1h->priv;
+	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
+	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+
+	if (fl1h->gsmtap) {
+		uint8_t ss, chan_type;
+		if (data_req->subCh == 0x1f)
+			ss = 0;
+		else
+			ss = data_req->subCh;
+
+		if (!(fl1h->gsmtap_sapi_mask & (1 << data_req->sapi)))
+			return;
+
+		chan_type = l1sapi2gsmtap_cht[data_req->sapi];
+		if (chan_type == 255)
+			return;
+
+		gsmtap_send(fl1h->gsmtap, trx->arfcn, data_req->u8Tn,
+				chan_type, ss, data_req->u32Fn, 0, 0,
+				data_req->msgUnitParam.u8Buffer,
+				data_req->msgUnitParam.u8Size);
+	}
+}
 
 struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
@@ -390,6 +446,9 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	}
 tx:
+
+	tx_to_gsmtap(fl1, resp_msg);
+
 	/* transmit */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg);
 
@@ -871,6 +930,13 @@ struct femtol1_hdl *l1if_open(void *priv)
 		talloc_free(fl1h);
 		return NULL;
 	}
+
+	fl1h->gsmtap = gsmtap_source_init("localhost", GSMTAP_UDP_PORT, 1);
+	if (fl1h->gsmtap)
+		gsmtap_source_add_sink(fl1h->gsmtap);
+
+	fl1h->gsmtap_sapi_mask = (1 << GsmL1_Sapi_Sacch) | (1 << GsmL1_Sapi_Sdcch) |
+				 (1 << GsmL1_Sapi_FacchF) | (1 << GsmL1_Sapi_FacchH);
 
 	return fl1h;
 }
