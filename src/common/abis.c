@@ -368,7 +368,7 @@ static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
 
 	if ((what & BSC_FD_READ)) {
 		if (!link->rx_msg) {
-			link->rx_msg = msgb_alloc(ABIS_ALLOC_SIZE, "Abis/IP");
+			link->rx_msg = abis_msgb_alloc(128);
 			if (!link->rx_msg)
 				return -ENOMEM;
 		}
