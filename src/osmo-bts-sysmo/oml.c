@@ -18,6 +18,7 @@
  */
 
 #include <stdint.h>
+#include <errno.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
@@ -774,6 +775,46 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 
 	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan);
 }
+
+const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
+	[0]	= GsmL1_CipherId_A50,
+	[1]	= GsmL1_CipherId_A50,
+	[2]	= GsmL1_CipherId_A51,
+	[3]	= GsmL1_CipherId_A52,
+	[4]	= GsmL1_CipherId_A53,
+};
+
+int l1if_enable_ciphering(struct femtol1_hdl *fl1h,
+			  struct gsm_lchan *lchan,
+			  int dir_downlink)
+{
+	struct msgb *msg = l1p_msgb_alloc();
+	struct GsmL1_MphConfigReq_t *cfgr;
+
+	LOGP(DL1C, LOGL_DEBUG, "%s enable_ciphering(dir_downlink=%u)\n",
+		gsm_lchan_name(lchan), dir_downlink);
+
+	cfgr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
+
+	cfgr->cfgParamId = GsmL1_ConfigParamId_SetCipheringParams;
+	cfgr->cfgParams.setCipheringParams.u8Tn = lchan->ts->nr;
+	cfgr->cfgParams.setCipheringParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
+
+	if (dir_downlink)
+		cfgr->cfgParams.setCipheringParams.dir = GsmL1_Dir_TxDownlink;
+	else
+		cfgr->cfgParams.setCipheringParams.dir = GsmL1_Dir_RxUplink;
+
+	if (lchan->encr.alg_id >= ARRAY_SIZE(rsl2l1_ciph))
+		return -EINVAL;
+	cfgr->cfgParams.setCipheringParams.cipherId = rsl2l1_ciph[lchan->encr.alg_id];
+
+	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
+	       lchan->encr.key, lchan->encr.key_len);
+
+	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan);
+}
+
 
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 {

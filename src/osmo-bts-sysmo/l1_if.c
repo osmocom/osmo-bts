@@ -301,6 +301,37 @@ get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
 	return &lchan->lapdm_ch;
 }
 
+enum lchan_ciph_state {
+	LCHAN_CIPH_NONE,
+	LCHAN_CIPH_RX_REQ,
+	LCHAN_CIPH_RX_CONF,
+	LCHAN_CIPH_TXRX_REQ,
+	LCHAN_CIPH_TXRX_CONF,
+};
+
+/* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
+ * uni-directional de-cryption on the uplink. We need this ugly layering
+ * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
+ * to this point in L1 */
+static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
+			      struct msgb *msg, struct gsm_lchan *lchan)
+{
+	/* First byte (Address Field) of LAPDm header) */
+	if (msg->data[0] != 0x03)
+		return 0;
+	/* First byte (protocol discriminator) of RR */
+	if ((msg->data[3] & 0xF) != GSM48_PDISC_RR)
+		return 0;
+	/* 2nd byte (msg type) of RR */
+	if ((msg->data[4] & 0x3F) != GSM48_MT_RR_CIPH_M_CMD)
+		return 0;
+
+	lchan->ciph_state = LCHAN_CIPH_RX_REQ;
+	l1if_enable_ciphering(fl1h, lchan, 0);
+
+	return 1;
+}
+
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
 	0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
@@ -316,7 +347,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
 	GsmL1_MsgUnitParam_t *msu_param;
-	struct lapdm_channel *lc;
 	struct lapdm_entity *le;
 	struct gsm_lchan *lchan;
 	struct gsm_time g_time;
@@ -424,13 +454,15 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	case GsmL1_Sapi_Sdcch:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lc = get_lapdm_chan_by_hl2(trx, rts_ind->hLayer2);
-		le = &lc->lapdm_dcch;
+		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		le = &lchan->lapdm_ch.lapdm_dcch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0)
 			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		else {
 			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
+			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
+			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
 			msgb_free(pp.oph.msg);
 		}
 		break;
@@ -458,13 +490,15 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	case GsmL1_Sapi_FacchF:
 	case GsmL1_Sapi_FacchH:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lc = get_lapdm_chan_by_hl2(trx, rts_ind->hLayer2);
-		le = &lc->lapdm_dcch;
+		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		le = &lchan->lapdm_ch.lapdm_dcch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0)
 			goto empty_frame;
 		else {
 			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
+			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
+			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
 			msgb_free(pp.oph.msg);
 		}
 		break;
@@ -585,6 +619,14 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_FacchF:
 	case GsmL1_Sapi_FacchH:
+		/* if this is the first valid message after enabling Rx
+		 * decryption, we have to enable Tx encryption */
+		if (lchan->ciph_state == LCHAN_CIPH_RX_REQ ||
+		    lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
+			l1if_enable_ciphering(fl1, lchan, 1);
+			lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+		}
+
 		/* SDCCH, SACCH and FACCH all go to LAPDm */
 		le = le_by_l1_sapi(&lchan->lapdm_ch, data_ind->sapi);
 		/* allocate and fill LAPDm primitive */
