@@ -19,6 +19,7 @@
  *
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
@@ -103,6 +104,12 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case MQ_TCH_WRITE:
 	case MQ_PDTCH_WRITE:
 		return l1if_handle_l1prim(fl1h, msg);
+	default:
+		/* The compiler can't know that priv_nr is an enum. Assist. */
+		LOGP(DL1C, LOGL_FATAL, "writing on a wrong queue: %d\n",
+			ofd->priv_nr);
+		assert(false);
+		break;
 	}
 };
 
