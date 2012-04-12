@@ -39,6 +39,6 @@ const struct value_string femtobts_tracef_names[29];
 
 const struct value_string femtobts_tch_pl_names[15];
 
-const struct value_string femtobts_clksrc_names[7];
+const struct value_string femtobts_clksrc_names[8];
 
 #endif /* FEMTOBTS_H */
