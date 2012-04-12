@@ -400,7 +400,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		uint16_t arfcn = ntohs(*value);
 
 		LOGP(DOML, LOGL_NOTICE, "MSG: %s\n", osmo_hexdump(msgb_l3(msg), msgb_l3len(msg)));
-		LOGP(DOML, LOGL_NOTICE, "L3=%p, VAL=%p, DIF=%lu\n", msgb_l3(msg), value,
+		LOGP(DOML, LOGL_NOTICE, "L3=%p, VAL=%p, DIF=%tu\n", msgb_l3(msg), value,
 			(void *)value - (void *) msgb_l3(msg));
 
 		if (arfcn > 1024) {
