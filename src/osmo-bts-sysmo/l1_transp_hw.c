@@ -47,7 +47,7 @@
 #include "l1_transp.h"
 
 
-#ifdef HW_VERSION_1
+#ifdef HW_FEMTOBTS
 #define DEV_SYS_DSP2ARM_NAME	"/dev/msgq/femtobts_dsp2arm"
 #define DEV_SYS_ARM2DSP_NAME	"/dev/msgq/femtobts_arm2dsp"
 #define DEV_L1_DSP2ARM_NAME	"/dev/msgq/gsml1_dsp2arm"
