@@ -295,7 +295,7 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 		fl1h->hw_info.fpga_version[2], VTY_NEWLINE);
 
 	vty_out(vty, "GSM Band Support: ");
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < sizeof(fl1h->hw_info.band_support); i++) {
 		if (fl1h->hw_info.band_support & (1 << i))
 			vty_out(vty, "%s ",  gsm_band_name(1 << i));
 	}
