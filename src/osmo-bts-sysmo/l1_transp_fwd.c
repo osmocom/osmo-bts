@@ -56,8 +56,10 @@
 static const uint16_t fwd_udp_ports[] = {
 	[MQ_SYS_WRITE]	= L1FWD_SYS_PORT,
 	[MQ_L1_WRITE]	= L1FWD_L1_PORT,
+#ifndef HW_FEMTOBTS
 	[MQ_TCH_WRITE]	= L1FWD_TCH_PORT,
 	[MQ_PDTCH_WRITE]= L1FWD_PDTCH_PORT,
+#endif
 };
 
 static int fwd_read_cb(struct osmo_fd *ofd)

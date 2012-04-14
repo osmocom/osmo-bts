@@ -57,25 +57,29 @@
 #define DEV_SYS_ARM2DSP_NAME	"/dev/msgq/superfemto_arm2dsp"
 #define DEV_L1_DSP2ARM_NAME	"/dev/msgq/gsml1_sig_dsp2arm"
 #define DEV_L1_ARM2DSP_NAME	"/dev/msgq/gsml1_sig_arm2dsp"
-#endif
 
 #define DEV_TCH_DSP2ARM_NAME	"/dev/msgq/gsml1_tch_dsp2arm"
 #define DEV_TCH_ARM2DSP_NAME	"/dev/msgq/gsml1_tch_arm2dsp"
 #define DEV_PDTCH_DSP2ARM_NAME	"/dev/msgq/gsml1_pdtch_dsp2arm"
 #define DEV_PDTCH_ARM2DSP_NAME	"/dev/msgq/gsml1_pdtch_arm2dsp"
+#endif
 
 static const char *rd_devnames[] = {
 	[MQ_SYS_READ]	= DEV_SYS_DSP2ARM_NAME,
 	[MQ_L1_READ]	= DEV_L1_DSP2ARM_NAME,
+#ifndef HW_FEMTOBTS
 	[MQ_TCH_READ]	= DEV_TCH_DSP2ARM_NAME,
 	[MQ_PDTCH_READ]	= DEV_PDTCH_DSP2ARM_NAME,
+#endif
 };
 
 static const char *wr_devnames[] = {
 	[MQ_SYS_WRITE]	= DEV_SYS_ARM2DSP_NAME,
 	[MQ_L1_WRITE]	= DEV_L1_ARM2DSP_NAME,
+#ifndef HW_FEMTOBTS
 	[MQ_TCH_WRITE]	= DEV_TCH_ARM2DSP_NAME,
 	[MQ_PDTCH_WRITE]= DEV_PDTCH_ARM2DSP_NAME,
+#endif
 };
 
 /* callback when there's something to read from the l1 msg_queue */
@@ -101,8 +105,10 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case MQ_SYS_WRITE:
 		return l1if_handle_sysprim(fl1h, msg);
 	case MQ_L1_WRITE:
+#ifndef HW_FEMTOBTS
 	case MQ_TCH_WRITE:
 	case MQ_PDTCH_WRITE:
+#endif
 		return l1if_handle_l1prim(fl1h, msg);
 	default:
 		/* The compiler can't know that priv_nr is an enum. Assist. */

@@ -9,16 +9,20 @@
 enum {
 	MQ_SYS_READ,
 	MQ_L1_READ,
+#ifndef HW_FEMTOBTS
 	MQ_TCH_READ,
 	MQ_PDTCH_READ,
+#endif
 	_NUM_MQ_READ
 };
 
 enum {
 	MQ_SYS_WRITE,
 	MQ_L1_WRITE,
+#ifndef HW_FEMTOBTS
 	MQ_TCH_WRITE,
 	MQ_PDTCH_WRITE,
+#endif
 	_NUM_MQ_WRITE
 };
 
