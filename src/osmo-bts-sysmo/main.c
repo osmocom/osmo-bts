@@ -103,7 +103,7 @@ static void print_help()
 		"  -T	--timestamp	Prefix every log line with a timestamp\n"
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
-		"  -p   --dsp-trace	Set DSP trace flags\n"
+		"  -p	--dsp-trace	Set DSP trace flags\n"
 		);
 }
 
@@ -204,6 +204,8 @@ int main(int argc, char **argv)
 	vty_init(&bts_vty_info);
 	bts_vty_init(&bts_log_info);
 
+	handle_options(argc, argv);
+
 	bts = gsm_bts_alloc(tall_bts_ctx);
 	if (bts_init(bts) < 0) {
 		fprintf(stderr, "unable to to open bts\n");
@@ -212,7 +214,6 @@ int main(int argc, char **argv)
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = (1 << 0) | (1 << 1) | (1 << 2);
 
-	handle_options(argc, argv);
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
