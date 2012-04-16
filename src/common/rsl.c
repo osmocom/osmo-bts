@@ -617,6 +617,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t type;
 
+	if (lchan->state != LCHAN_S_NONE) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s: error lchan is not available state: %s.\n",
+		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+	}
+
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.3 Activation Type */
