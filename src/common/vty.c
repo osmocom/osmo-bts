@@ -102,18 +102,19 @@ gDEFUN(ournode_end, ournode_end_cmd, "end",
 	return CMD_SUCCESS;
 }
 
-struct vty_app_info bts_vty_info = {
-	.name		= "OsmoBTS",
-	.version	= PACKAGE_VERSION,
-	.go_parent_cb	= bts_vty_go_parent,
-	.is_config_node	= bts_vty_is_config_node,
-};
-
-const char *osmobts_copyright =
+static const char osmobts_copyright[] =
 	"Copyright (C) 2010, 2011 by Harald Welte, Andreas Eversberg and On-Waves\r\n"
 	"License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
 	"This is free software: you are free to change and redistribute it.\r\n"
 	 "There is NO WARRANTY, to the extent permitted by law.\r\n";
+
+struct vty_app_info bts_vty_info = {
+	.name		= "OsmoBTS",
+	.version	= PACKAGE_VERSION,
+	.copyright	= osmobts_copyright,
+	.go_parent_cb	= bts_vty_go_parent,
+	.is_config_node	= bts_vty_is_config_node,
+};
 
 extern struct gsm_network bts_gsmnet;
 

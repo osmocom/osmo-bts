@@ -49,7 +49,6 @@ const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
 const char *software_version = "0815";
 
 static const char *config_file = "osmo-bts.cfg";
-extern const char *osmobts_copyright;
 static int daemonize = 0;
 static unsigned int dsp_trace = 0x71c00020;
 
