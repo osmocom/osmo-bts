@@ -122,6 +122,18 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
  * support
  */
 
+/**
+ * Handle GSM 08.58 7 Error Handling for the given input. This method will
+ * send either a CHANNEL ACTIVATION NACK, MODE MODIFY NACK or ERROR REPORT
+ * depending on the input of the method.
+ *
+ * TODO: actually make the decision
+ */
+static int report_error(struct gsm_bts_trx *trx)
+{
+	return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+}
+
 #warning merge lchan_lookup with OpenBSC
 /* determine logical channel based on TRX and channel number IE */
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
@@ -1360,7 +1372,8 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!lchan) {
 		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
 			rsl_msg_name(rh->c.msg_type));
-		return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		msgb_free(msg);
+		return report_error(trx);
 	}
 
 	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
@@ -1491,7 +1504,8 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(cch->c.msg_type));
-		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		msgb_free(msg);
+		return report_error(trx);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
@@ -1542,7 +1556,8 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(dch->c.msg_type));
-		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		msgb_free(msg);
+		return report_error(trx);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
@@ -1632,7 +1647,8 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(dch->c.msg_type));
-		//return rsl_tx_chan_nack(trx, msg, RSL_ERR_MAND_IE_ERROR);
+		msgb_free(msg);
+		return report_error(trx);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
