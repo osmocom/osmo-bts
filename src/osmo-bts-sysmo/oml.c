@@ -427,12 +427,12 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful activation of L1 SAPI %s on TS %u\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn);
-		lchan->state = LCHAN_S_ACTIVE;
+		lchan_set_state(lchan, LCHAN_S_ACTIVE);
 	} else {
 		LOGP(DL1C, LOGL_ERROR, "Error activating L1 SAPI %s on TS %u: %s\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn,
 			get_value_string(femtobts_l1status_names, ic->status));
-		lchan->state = LCHAN_S_NONE;
+		lchan_set_state(lchan, LCHAN_S_NONE);
 	}
 
 	switch (ic->sapi) {
@@ -663,7 +663,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 		/* FIXME: check if encryption parameters are present, and issue
 		 * MPH-CONFIG.req */
 	}
-	lchan->state = LCHAN_S_ACT_REQ;
+	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	lchan_init_lapdm(lchan);
 
@@ -858,12 +858,12 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful deactivation of L1 SAPI %s on TS %u\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn);
-		lchan->state = LCHAN_S_ACTIVE;
+		lchan_set_state(lchan, LCHAN_S_ACTIVE);
 	} else {
 		LOGP(DL1C, LOGL_ERROR, "Error deactivating L1 SAPI %s on TS %u: %s\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn,
 			get_value_string(femtobts_l1status_names, ic->status));
-		lchan->state = LCHAN_S_NONE;
+		lchan_set_state(lchan, LCHAN_S_NONE);
 	}
 
 	switch (ic->sapi) {
@@ -908,7 +908,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 		l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);
 
 	}
-	lchan->state = LCHAN_S_ACT_REQ;
+	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 	lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 
 	return 0;
