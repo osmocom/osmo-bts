@@ -103,7 +103,17 @@ static void print_help()
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
 		"  -p	--dsp-trace	Set DSP trace flags\n"
+		"  -w	--hw-version	Print the targeted HW Version\n"
 		);
+}
+
+static void print_hwversion()
+{
+#ifdef HW_FEMTOBTS
+	printf("sysmobts was compiled for hw version 1.\n");
+#else
+	printf("sysmobts was compiled for hw version 2.\n");
+#endif
 }
 
 /* FIXME: finally get some option parsing code into libosmocore */
@@ -122,10 +132,11 @@ static void handle_options(int argc, char **argv)
 			{ "version", 0, 0, 'V' },
 			{ "log-level", 1, 0, 'e' },
 			{ "dsp-trace", 1, 0, 'p' },
+			{ "hw-version", 0, 0, 'w' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -159,6 +170,10 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'p':
 			dsp_trace = strtoul(optarg, NULL, 16);
+			break;
+		case 'w':
+			print_hwversion();
+			exit(0);
 			break;
 		default:
 			break;
