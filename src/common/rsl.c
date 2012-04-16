@@ -517,20 +517,21 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
-static int rsl_tx_chan_nack(struct gsm_bts_trx *trx, struct msgb *msg, uint8_t cause)
+int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 {
-	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
-	uint8_t chan_nr = dch->chan_nr;
+	struct msgb *msg;
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
 	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Activated NACK: cause = 0x%02x\n", cause);
 
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
 
 	/* 9.3.26 Cause */
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_NACK, chan_nr);
-	msg->trx = trx;
+	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -621,16 +622,14 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.3 Activation Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Activation Type\n");
-		rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
-		return 1;
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
 	/* 9.3.6 Channel Mode */
 	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-		rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
-		return 1;
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 	lchan_tchmode_from_cmode(lchan, cm);

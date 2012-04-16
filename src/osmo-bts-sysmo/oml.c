@@ -33,6 +33,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_model.h>
 
 #include "l1_if.h"
 #include "femtobts.h"
@@ -424,6 +425,7 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 
 static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 {
+	struct gsm_time *time;
 	struct gsm_lchan *lchan = data;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphActivateCnf_t *ic = &l1p->u.mphActivateCnf;
@@ -446,7 +448,11 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	switch (ic->sapi) {
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_TchF:
-		/* FIXME: Send RSL CHAN ACT */
+		time = bts_model_get_time(lchan->ts->trx->bts);
+		if (lchan->state == LCHAN_S_ACTIVE)
+			rsl_tx_chan_act_ack(lchan, time);
+		else
+			rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 		break;
 	default:
 		break;
@@ -877,7 +883,8 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	switch (ic->sapi) {
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_TchF:
-		/* FIXME: Send RSL CHAN REL ACK */
+		if (ic->dir == GsmL1_Dir_TxDownlink)
+			rsl_tx_rf_rel_ack(lchan);
 		break;
 	default:
 		break;
@@ -888,7 +895,7 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	return 0;
 }
 
-int lchan_deactivate(struct gsm_lchan *lchan)
+static int lchan_deactivate(struct gsm_lchan *lchan)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
@@ -1016,15 +1023,16 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 
 	lchan->sach_deact = 0;
 	lchan_activate(lchan);
-	/* FIXME: only do this in case of success */
-
-	return rsl_tx_chan_act_ack(lchan, bts_model_get_time(lchan->ts->trx->bts));
+	return 0;
 }
 
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 {
+	/* A duplicate RF Release Request, ignore it */
+	if (lchan->state == LCHAN_S_REL_REQ)
+		return 0;
 	lchan_deactivate(lchan);
-	return rsl_tx_rf_rel_ack(lchan);
+	return 0;
 }
 
 int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
