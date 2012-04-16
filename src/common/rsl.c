@@ -621,16 +621,16 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.3 Activation Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Activation Type\n");
-		msgb_free(msg);
-		return rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
+		rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
+		return 1;
 	}
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
 	/* 9.3.6 Channel Mode */
 	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-		msgb_free(msg);
-		return rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
+		rsl_tx_chan_nack(msg->trx, msg, RSL_ERR_MAND_IE_ERROR);
+		return 1;
 	}
 	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 	lchan_tchmode_from_cmode(lchan, cm);
