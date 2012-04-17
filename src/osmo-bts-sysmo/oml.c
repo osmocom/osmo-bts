@@ -374,20 +374,28 @@ static const struct sapi_dir ccch_sapis[] = {
 #define DIR_BOTH	(GsmL1_Dir_TxDownlink|GsmL1_Dir_RxUplink)
 
 static const struct sapi_dir tchf_sapis[] = {
-	{ GsmL1_Sapi_TchF,	DIR_BOTH },
-	{ GsmL1_Sapi_FacchF,	DIR_BOTH },
-	{ GsmL1_Sapi_Sacch,	DIR_BOTH },
+	{ GsmL1_Sapi_TchF,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_TchF,	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_FacchF,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_FacchF,	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_RxUplink },
 };
 
 static const struct sapi_dir tchh_sapis[] = {
-	{ GsmL1_Sapi_TchH,	DIR_BOTH },
-	{ GsmL1_Sapi_FacchH, 	DIR_BOTH },
-	{ GsmL1_Sapi_Sacch,	DIR_BOTH },
+	{ GsmL1_Sapi_TchH,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_TchH,	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_FacchH, 	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_FacchH, 	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_RxUplink },
 };
 
 static const struct sapi_dir sdcch_sapis[] = {
-	{ GsmL1_Sapi_Sdcch, 	DIR_BOTH },
-	{ GsmL1_Sapi_Sacch,	DIR_BOTH },
+	{ GsmL1_Sapi_Sdcch, 	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Sdcch, 	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_RxUplink },
 };
 
 struct lchan_sapis {
