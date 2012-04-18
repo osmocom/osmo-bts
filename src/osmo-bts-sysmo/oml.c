@@ -516,7 +516,10 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 		clear_amr_params(lch_par);
 		break;
 	case GSM48_CMODE_SPEECH_V1:
-		lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
+		else
+			lch_par->tch.tchPlType = GsmL1_TchPlType_Hr;
 #ifdef L1_HAS_RTP_MODE
 #ifdef USE_L1_RTP_MODE
 		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_Rtp;
