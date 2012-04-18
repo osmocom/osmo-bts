@@ -7,6 +7,11 @@
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1const.h>
 
+#ifdef L1_HAS_RTP_MODE
+/* This is temporarily disabled, as AMR has some bugs in RTP mode */
+//#define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
+#endif
+
 enum l1prim_type {
 	L1P_T_REQ,
 	L1P_T_CONF,

@@ -517,15 +517,35 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 		break;
 	case GSM48_CMODE_SPEECH_V1:
 		lch_par->tch.tchPlType = GsmL1_TchPlType_Fr;
+#ifdef L1_HAS_RTP_MODE
+#ifdef USE_L1_RTP_MODE
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_Rtp;
+#else
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_If2;
+#endif /* USE_L1_RTP_MODE */
+#endif /* L1_HAS_RTP_MODE */
 		clear_amr_params(lch_par);
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		lch_par->tch.tchPlType = GsmL1_TchPlType_Efr;
+#ifdef L1_HAS_RTP_MODE
+#ifdef USE_L1_RTP_MODE
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_Rtp;
+#else
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_If2;
+#endif /* USE_L1_RTP_MODE */
+#endif /* L1_HAS_RTP_MODE */
 		clear_amr_params(lch_par);
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
 		lch_par->tch.tchPlType = GsmL1_TchPlType_Amr;
-
+#ifdef L1_HAS_RTP_MODE
+#ifdef USE_L1_RTP_MODE
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_Rtp;
+#else
+		lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_If2;
+#endif /* USE_L1_RTP_MODE */
+#endif /* L1_HAS_RTP_MODE */
 		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd; /* FIXME? */
 		lch_par->tch.amrInitCodecMode = amr_get_initial_mode(lchan);
 
