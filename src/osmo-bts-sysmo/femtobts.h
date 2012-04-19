@@ -46,4 +46,6 @@ const struct value_string femtobts_tch_pl_names[15];
 
 const struct value_string femtobts_clksrc_names[8];
 
+const struct value_string femtobts_dir_names[6];
+
 #endif /* FEMTOBTS_H */

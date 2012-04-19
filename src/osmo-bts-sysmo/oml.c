@@ -430,9 +430,11 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphActivateCnf_t *ic = &l1p->u.mphActivateCnf;
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (SAPI=%s)\n",
+	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (%s ",
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_l1sapi_names, ic->sapi));
+	LOGPC(DL1C, LOGL_INFO, "%s)\n",
+		get_value_string(femtobts_dir_names, ic->dir));
 
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful activation of L1 SAPI %s on TS %u\n",
@@ -667,9 +669,11 @@ int lchan_activate(struct gsm_lchan *lchan)
 			break;
 		}
 
-		LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, SAPI=%s)\n",
+		LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, %s ",
 			gsm_lchan_name(lchan), act_req->hLayer2,
 			get_value_string(femtobts_l1sapi_names, act_req->sapi));
+		LOGPC(DL1C, LOGL_INFO, "%s)\n",
+			get_value_string(femtobts_dir_names, act_req->dir));
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan);
@@ -865,9 +869,11 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphDeactivateCnf_t *ic = &l1p->u.mphDeactivateCnf;
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (SAPI=%s)\n",
+	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (%s ",
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_l1sapi_names, ic->sapi));
+	LOGPC(DL1C, LOGL_INFO, "%s)\n",
+		get_value_string(femtobts_dir_names, ic->dir));
 
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful deactivation of L1 SAPI %s on TS %u\n",
@@ -920,9 +926,11 @@ static int lchan_deactivate(struct gsm_lchan *lchan)
 		deact_req->dir = s4l->sapis[i].dir;
 		deact_req->sapi = s4l->sapis[i].sapi;
 
-		LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s)\n",
+		LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s ",
 			gsm_lchan_name(lchan),
 			get_value_string(femtobts_l1sapi_names, deact_req->sapi));
+		LOGPC(DL1C, LOGL_INFO, "%s)\n",
+			get_value_string(femtobts_dir_names, deact_req->dir));
 
 		/* Stop the alive timer once we deactivate the SCH */
 		if (deact_req->sapi == GsmL1_Sapi_Sch)
@@ -952,8 +960,9 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 
 	lchan->sach_deact = 1;
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (SACCH)\n",
-		gsm_lchan_name(lchan));
+	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (SACCH %s)\n",
+		gsm_lchan_name(lchan),
+		get_value_string(femtobts_dir_names, deact_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 	return l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);

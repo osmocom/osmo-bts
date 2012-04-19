@@ -248,3 +248,12 @@ const struct value_string femtobts_clksrc_names[] = {
 	{ SF_CLKSRC_RX,		"RX" },
 	{ 0, NULL }
 };
+
+const struct value_string femtobts_dir_names[] = {
+	{ GsmL1_Dir_TxDownlink,	"TxDL" },
+	{ GsmL1_Dir_TxUplink,	"TxUL" },
+	{ GsmL1_Dir_RxUplink,	"RxUL" },
+	{ GsmL1_Dir_RxDownlink,	"RxDL" },
+	{ GsmL1_Dir_TxDownlink|GsmL1_Dir_RxUplink, "BOTH" },
+	{ 0, NULL }
+};
