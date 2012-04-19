@@ -443,6 +443,10 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(rtp_pl, rtp_pl_len));
 
+	/* skip processing of incoming RTP frames if we are in loopback mode */
+	if (lchan->loopback)
+		return;
+
 	msg = l1p_msgb_alloc();
 	if (!msg) {
 		LOGP(DRTP, LOGL_ERROR, "%s: Failed to allocate Rx payload.\n",
@@ -537,6 +541,42 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 		return -EINVAL;
 	}
 	payload_len = data_ind->msgUnitParam.u8Size - 1;
+
+	if (lchan->loopback) {
+		GsmL1_Prim_t *rl1p;
+		GsmL1_PhDataReq_t *data_req;
+		GsmL1_MsgUnitParam_t *msu_param;
+
+		struct msgb *tmp;
+		int count = 0;
+
+		/* generate a new msgb from the paylaod */
+		rmsg = l1p_msgb_alloc();
+		if (!rmsg)
+			return -ENOMEM;
+
+		rl1p = msgb_l1prim(rmsg);
+		data_req = &rl1p->u.phDataReq;
+		msu_param = &data_req->msgUnitParam;
+
+		memcpy(msu_param->u8Buffer,
+			data_ind->msgUnitParam.u8Buffer,
+			data_ind->msgUnitParam.u8Size);
+		msu_param->u8Size = data_ind->msgUnitParam.u8Size;
+
+		/* make sure the queue doesn't get too long */
+		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
+			count++;
+		while (count >= 1) {
+			tmp = msgb_dequeue(&lchan->dl_tch_queue);
+			msgb_free(tmp);
+			count--;
+		}
+
+		msgb_enqueue(&lchan->dl_tch_queue, rmsg);
+
+		return 0;
+	}
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:

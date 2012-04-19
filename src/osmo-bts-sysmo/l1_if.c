@@ -375,7 +375,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		if (!lchan)
 			break;
 
-		if (lchan->abis_ip.rtp_socket) {
+		if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
 			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
 			/* FIXME: we _assume_ that we never miss TDMA
 			 * frames and that we always get to this point

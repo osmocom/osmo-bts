@@ -344,6 +344,45 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(loopback, loopback_cmd,
+	"trx <0-0> <0-7> loopback <0-1>",
+	TRX_STR
+	"Timeslot number\n"
+	"Set TCH loopback\n"
+	"Logical Channel Number\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[2]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	lchan->loopback = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(no_loopback, no_loopback_cmd,
+	"no trx <0-0> <0-7> loopback <0-1>",
+	NO_STR TRX_STR
+	"Timeslot number\n"
+	"Set TCH loopback\n"
+	"Logical Channel Number\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[2]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	lchan->loopback = 0;
+
+	return CMD_SUCCESS;
+}
+
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 }
@@ -380,6 +419,9 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(ENABLE_NODE, &activate_lchan_cmd);
 	install_element(ENABLE_NODE, &set_tx_power_cmd);
+
+	install_element(ENABLE_NODE, &loopback_cmd);
+	install_element(ENABLE_NODE, &no_loopback_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
