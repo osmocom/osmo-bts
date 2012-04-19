@@ -257,3 +257,30 @@ const struct value_string femtobts_dir_names[] = {
 	{ GsmL1_Dir_TxDownlink|GsmL1_Dir_RxUplink, "BOTH" },
 	{ 0, NULL }
 };
+
+const struct value_string femtobts_chcomb_names[] = {
+	{ GsmL1_LogChComb_0,	"dummy" },
+	{ GsmL1_LogChComb_I,	"tch_f" },
+	{ GsmL1_LogChComb_II,	"tch_h" },
+	{ GsmL1_LogChComb_IV,	"ccch" },
+	{ GsmL1_LogChComb_V,	"ccch_sdcch4" },
+	{ GsmL1_LogChComb_VII,	"sdcch8" },
+	{ GsmL1_LogChComb_XIII,	"pdtch" },
+	{ 0, NULL }
+};
+
+const uint8_t pdch_msu_size[_NUM_PDCH_CS] = {
+	[PDCH_CS_1]	= 23,
+	[PDCH_CS_2]	= 34,
+	[PDCH_CS_3]	= 40,
+	[PDCH_CS_4]	= 54,
+	[PDCH_MCS_1]	= 27,
+	[PDCH_MCS_2]	= 33,
+	[PDCH_MCS_3]	= 42,
+	[PDCH_MCS_4]	= 49,
+	[PDCH_MCS_5]	= 60,
+	[PDCH_MCS_6]	= 78,
+	[PDCH_MCS_7]	= 118,
+	[PDCH_MCS_8]	= 142,
+	[PDCH_MCS_9]	= 154
+};

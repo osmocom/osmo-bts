@@ -595,6 +595,10 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 			lchan->type = GSM_LCHAN_SDCCH;
 		}
 		break;
+	case GSM_PCHAN_PDCH:
+		lchan = &ts->lchan[0];
+		lchan->type = GSM_LCHAN_PDTCH;
+		break;
 	default:
 		/* FIXME */
 		break;

@@ -48,4 +48,23 @@ const struct value_string femtobts_clksrc_names[8];
 
 const struct value_string femtobts_dir_names[6];
 
+enum pdch_cs {
+	PDCH_CS_1,
+	PDCH_CS_2,
+	PDCH_CS_3,
+	PDCH_CS_4,
+	PDCH_MCS_1,
+	PDCH_MCS_2,
+	PDCH_MCS_3,
+	PDCH_MCS_4,
+	PDCH_MCS_5,
+	PDCH_MCS_6,
+	PDCH_MCS_7,
+	PDCH_MCS_8,
+	PDCH_MCS_9,
+	_NUM_PDCH_CS
+};
+
+const uint8_t pdch_msu_size[_NUM_PDCH_CS];
+
 #endif /* FEMTOBTS_H */

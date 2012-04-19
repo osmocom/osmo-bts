@@ -505,6 +505,16 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		}
 		break;
 		/* we should never receive a request here */
+	case GsmL1_Sapi_Pdtch:
+		msu_param->u8Size = pdch_msu_size[PDCH_MCS_9];
+		memset(msu_param->u8Buffer, 0, msu_param->u8Size);
+		/* FIXME: copy actual data */
+		break;
+	case GsmL1_Sapi_Pacch:
+	case GsmL1_Sapi_Ptcch:
+	case GsmL1_Sapi_Prach:
+		goto empty_frame;
+		break;
 	default:
 		memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;

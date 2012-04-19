@@ -399,6 +399,17 @@ static const struct sapi_dir sdcch_sapis[] = {
 	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_RxUplink },
 };
 
+static const struct sapi_dir pdtch_sapis[] = {
+	{ GsmL1_Sapi_Pdtch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Pdtch,	GsmL1_Dir_RxUplink },
+#if 0
+	{ GsmL1_Sapi_Ptcch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Ptcch,	GsmL1_Dir_RxUplink },
+	{ GsmL1_Sapi_Pacch,	GsmL1_Dir_TxDownlink },
+	{ GsmL1_Sapi_Prach,	GsmL1_Dir_RxUplink },
+#endif
+};
+
 struct lchan_sapis {
 	const struct sapi_dir *sapis;
 	unsigned int num_sapis;
@@ -420,6 +431,10 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 	[GSM_LCHAN_CCCH] = {
 		.sapis = ccch_sapis,
 		.num_sapis = ARRAY_SIZE(ccch_sapis),
+	},
+	[GSM_LCHAN_PDTCH] = {
+		.sapis = pdtch_sapis,
+		.num_sapis = ARRAY_SIZE(pdtch_sapis),
 	},
 };
 
@@ -906,7 +921,7 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	return 0;
 }
 
-static int lchan_deactivate(struct gsm_lchan *lchan)
+int lchan_deactivate(struct gsm_lchan *lchan)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];

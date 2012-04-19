@@ -304,6 +304,29 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(activate_lchan, activate_lchan_cmd,
+	"trx <0-0> <0-7> (activate|deactivate) <0-7>",
+	"Transceiver related commands\n"
+	"TRX number\n"
+	"Timeslot number\n"
+	"Activate or Deactivate\n"
+	"Logical Channel Number\n" )
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[3]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	if (!strcmp(argv[2], "activate"))
+		lchan_activate(lchan);
+	else
+		lchan_deactivate(lchan);
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 }
@@ -337,6 +360,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&show_trx_clksrc_cmd);
 	install_element_ve(&dsp_trace_f_cmd);
 	install_element_ve(&no_dsp_trace_f_cmd);
+
+	install_element(ENABLE_NODE, &activate_lchan_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
