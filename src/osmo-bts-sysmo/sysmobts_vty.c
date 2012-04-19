@@ -44,10 +44,11 @@
 #include "femtobts.h"
 #include "l1_if.h"
 
+#define TRX_STR "Transceiver related commands\n" "TRX number\n"
+
 #define SHOW_TRX_STR				\
 	SHOW_STR				\
-	"Show TRX specific information\n"	\
-	"TRX number\n"
+	TRX_STR
 
 static struct gsm_bts *vty_bts;
 
@@ -230,7 +231,7 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 
 }
 
-DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", "HIDDEN")
+DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
 {
 	int trx_nr = atoi(argv[0]);
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
@@ -250,7 +251,7 @@ DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", "HIDDEN")
 	return CMD_SUCCESS;
 }
 
-DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", "HIDDEN")
+DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", NO_STR TRX_STR)
 {
 	int trx_nr = atoi(argv[0]);
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
@@ -306,10 +307,10 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 
 DEFUN(activate_lchan, activate_lchan_cmd,
 	"trx <0-0> <0-7> (activate|deactivate) <0-7>",
-	"Transceiver related commands\n"
-	"TRX number\n"
+	TRX_STR
 	"Timeslot number\n"
-	"Activate or Deactivate\n"
+	"Activate Logical Channel\n"
+	"Deactivate Logical Channel\n"
 	"Logical Channel Number\n" )
 {
 	int trx_nr = atoi(argv[0]);
