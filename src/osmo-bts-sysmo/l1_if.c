@@ -329,7 +329,7 @@ static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 		return 0;
 
 	lchan->ciph_state = LCHAN_CIPH_RX_REQ;
-	l1if_enable_ciphering(fl1h, lchan, 0);
+	l1if_set_ciphering(fl1h, lchan, 0);
 
 	return 1;
 }
@@ -629,7 +629,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			 * before decryption was enabled */
 			if (data_ind->msgUnitParam.u8Buffer[0] == 0x01 &&
 			    (data_ind->msgUnitParam.u8Buffer[1] & 0x01) == 0) {
-				l1if_enable_ciphering(fl1, lchan, 1);
+				l1if_set_ciphering(fl1, lchan, 1);
 				lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
 			}
 		}

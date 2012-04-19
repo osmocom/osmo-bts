@@ -678,10 +678,12 @@ int lchan_activate(struct gsm_lchan *lchan)
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan);
 
-		/* FIXME: check if encryption parameters are present, and issue
-		 * MPH-CONFIG.req */
 	}
 	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
+
+	/* set the initial ciphering parameters for both directions */
+	l1if_set_ciphering(fl1h, lchan, 0);
+	l1if_set_ciphering(fl1h, lchan, 1);
 
 	lchan_init_lapdm(lchan);
 
@@ -818,15 +820,12 @@ const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
 	[4]	= GsmL1_CipherId_A53,
 };
 
-int l1if_enable_ciphering(struct femtol1_hdl *fl1h,
+int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 			  struct gsm_lchan *lchan,
 			  int dir_downlink)
 {
 	struct msgb *msg = l1p_msgb_alloc();
 	struct GsmL1_MphConfigReq_t *cfgr;
-
-	LOGP(DL1C, LOGL_NOTICE, "%s enable_ciphering(dir_downlink=%u)\n",
-		gsm_lchan_name(lchan), dir_downlink);
 
 	cfgr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
 
@@ -842,6 +841,12 @@ int l1if_enable_ciphering(struct femtol1_hdl *fl1h,
 	if (lchan->encr.alg_id >= ARRAY_SIZE(rsl2l1_ciph))
 		return -EINVAL;
 	cfgr->cfgParams.setCipheringParams.cipherId = rsl2l1_ciph[lchan->encr.alg_id];
+
+	LOGP(DL1C, LOGL_NOTICE, "%s SET_CIPHERING (ALG=%u %s)\n",
+		gsm_lchan_name(lchan),
+		cfgr->cfgParams.setCipheringParams.cipherId,
+		get_value_string(femtobts_dir_names,
+				 cfgr->cfgParams.setCipheringParams.dir));
 
 	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
 	       lchan->encr.key, lchan->encr.key_len);
