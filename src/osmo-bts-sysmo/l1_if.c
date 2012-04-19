@@ -765,7 +765,10 @@ int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		 * sending the same primitive */
 		if (wlc->is_sys_prim == 0 && l1p->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
-			rc = wlc->cb(msg, wlc->cb_data);
+			if (wlc->cb)
+				rc = wlc->cb(msg, wlc->cb_data);
+			else
+				rc = 0;
 			release_wlc(wlc);
 			return rc;
 		}
@@ -790,7 +793,10 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		 * sending the same primitive */
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
-			rc = wlc->cb(msg, wlc->cb_data);
+			if (wlc->cb)
+				rc = wlc->cb(msg, wlc->cb_data);
+			else
+				rc = 0;
 			release_wlc(wlc);
 			return rc;
 		}
