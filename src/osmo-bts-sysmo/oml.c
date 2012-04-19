@@ -947,7 +947,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 		struct msgb *msg;
 		GsmL1_MphDeactivateReq_t *deact_req;
 
-		if (s4l->sapis[i].sapi == GsmL1_Sapi_Sacch && lchan->sach_deact) {
+		if (s4l->sapis[i].sapi == GsmL1_Sapi_Sacch && lchan->sacch_deact) {
 			LOGP(DL1C, LOGL_INFO, "%s SACCH already deactivated.\n",
 				gsm_lchan_name(lchan));
 			continue;
@@ -994,7 +994,7 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	deact_req->dir = DIR_BOTH;
 	deact_req->sapi = GsmL1_Sapi_Sacch;
 
-	lchan->sach_deact = 1;
+	lchan->sacch_deact = 1;
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (SACCH %s)\n",
 		gsm_lchan_name(lchan),
@@ -1066,7 +1066,7 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 	//uint8_t mode = *TLVP_VAL(tp, RSL_IE_CHAN_MODE);
 	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
 
-	lchan->sach_deact = 0;
+	lchan->sacch_deact = 0;
 	lchan_activate(lchan);
 	return 0;
 }
