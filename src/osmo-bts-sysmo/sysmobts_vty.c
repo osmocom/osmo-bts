@@ -328,6 +328,22 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(set_tx_power, set_tx_power_cmd,
+	"trx <0-0> tx-power <-110-23>",
+	TRX_STR
+	"Set transmit power (override BSC)\n"
+	"Transmit power in dBm\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int power = atoi(argv[1]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	l1if_set_txpower(fl1h, (float) power);
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 }
@@ -363,6 +379,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&no_dsp_trace_f_cmd);
 
 	install_element(ENABLE_NODE, &activate_lchan_cmd);
+	install_element(ENABLE_NODE, &set_tx_power_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
