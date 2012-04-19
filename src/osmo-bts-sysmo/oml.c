@@ -465,6 +465,7 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	switch (ic->sapi) {
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_TchF:
+	case GsmL1_Sapi_TchH:
 		time = bts_model_get_time(lchan->ts->trx->bts);
 		if (lchan->state == LCHAN_S_ACTIVE)
 			rsl_tx_chan_act_ack(lchan, time);
