@@ -630,7 +630,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 		if (encr_info2lchan(lchan, val, len) < 0)
 			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
-	}
+	} else
+		memset(&lchan->encr, 0, sizeof(lchan->encr));
 
 	/* 9.3.9 Handover Reference */
 

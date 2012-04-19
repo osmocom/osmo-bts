@@ -660,6 +660,8 @@ int lchan_activate(struct gsm_lchan *lchan)
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan);
 
+		/* FIXME: check if encryption parameters are present, and issue
+		 * MPH-CONFIG.req */
 	}
 	lchan->state = LCHAN_S_ACT_REQ;
 
@@ -728,6 +730,20 @@ static int chmod_modif_compl_cb(struct msgb *l1_msg, void *data)
 	case GsmL1_ConfigParamId_SetNbTsc:
 	case GsmL1_ConfigParamId_SetTxPowerLevel:
 	case GsmL1_ConfigParamId_SetCipheringParams:
+		switch (lchan->ciph_state) {
+		case LCHAN_CIPH_RX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "RX_REQ -> RX_CONF\n");
+			lchan->ciph_state = LCHAN_CIPH_RX_CONF;
+			break;
+		case LCHAN_CIPH_TXRX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "TX_REQ -> TX_CONF\n");
+			lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+			break;
+		default:
+			LOGPC(DL1C, LOGL_INFO, "unhandled state %u\n", lchan->ciph_state);
+			break;
+		}
+		break;
 	default:
 		LOGPC(DL1C, LOGL_INFO, "\n");
 		break;
@@ -791,7 +807,7 @@ int l1if_enable_ciphering(struct femtol1_hdl *fl1h,
 	struct msgb *msg = l1p_msgb_alloc();
 	struct GsmL1_MphConfigReq_t *cfgr;
 
-	LOGP(DL1C, LOGL_DEBUG, "%s enable_ciphering(dir_downlink=%u)\n",
+	LOGP(DL1C, LOGL_NOTICE, "%s enable_ciphering(dir_downlink=%u)\n",
 		gsm_lchan_name(lchan), dir_downlink);
 
 	cfgr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
@@ -893,6 +909,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 
 	}
 	lchan->state = LCHAN_S_ACT_REQ;
+	lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 
 	return 0;
 }

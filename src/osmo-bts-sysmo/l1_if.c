@@ -301,14 +301,6 @@ get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
 	return &lchan->lapdm_ch;
 }
 
-enum lchan_ciph_state {
-	LCHAN_CIPH_NONE,
-	LCHAN_CIPH_RX_REQ,
-	LCHAN_CIPH_RX_CONF,
-	LCHAN_CIPH_TXRX_REQ,
-	LCHAN_CIPH_TXRX_CONF,
-};
-
 /* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
  * uni-directional de-cryption on the uplink. We need this ugly layering
  * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
@@ -316,6 +308,16 @@ enum lchan_ciph_state {
 static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan)
 {
+
+	/* only do this if we are in the right state */
+	switch (lchan->ciph_state) {
+	case LCHAN_CIPH_NONE:
+	case LCHAN_CIPH_RX_REQ:
+		break;
+	default:
+		return 0;
+	}
+
 	/* First byte (Address Field) of LAPDm header) */
 	if (msg->data[0] != 0x03)
 		return 0;
@@ -621,10 +623,15 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_FacchH:
 		/* if this is the first valid message after enabling Rx
 		 * decryption, we have to enable Tx encryption */
-		if (lchan->ciph_state == LCHAN_CIPH_RX_REQ ||
-		    lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
-			l1if_enable_ciphering(fl1, lchan, 1);
-			lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+		if (lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
+			/* HACK: check if it's an I frame, in order to
+			 * ignore some still buffered/queued UI frames received
+			 * before decryption was enabled */
+			if (data_ind->msgUnitParam.u8Buffer[0] == 0x01 &&
+			    (data_ind->msgUnitParam.u8Buffer[1] & 0x01) == 0) {
+				l1if_enable_ciphering(fl1, lchan, 1);
+				lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+			}
 		}
 
 		/* SDCCH, SACCH and FACCH all go to LAPDm */
