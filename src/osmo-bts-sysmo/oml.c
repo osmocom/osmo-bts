@@ -925,6 +925,7 @@ static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 	switch (ic->sapi) {
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_TchF:
+	case GsmL1_Sapi_TchH:
 		if (ic->dir == GsmL1_Dir_TxDownlink)
 			rsl_tx_rf_rel_ack(lchan);
 		break;
