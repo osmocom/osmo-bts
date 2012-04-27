@@ -429,8 +429,8 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 		if (len > sizeof(sysinfo_buf_t)-2)
 			len = sizeof(sysinfo_buf_t)-2;
 		bts->si_valid |= (1 << osmo_si);
-		bts->si_buf[osmo_si][0] = 0x00;
-		bts->si_buf[osmo_si][1] = 0x03;
+		bts->si_buf[osmo_si][0] = 0x03;	/* C/R + EA */
+		bts->si_buf[osmo_si][1] = 0x03;	/* UI frame */
 		memcpy(bts->si_buf[osmo_si]+2,
 			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s)\n",
