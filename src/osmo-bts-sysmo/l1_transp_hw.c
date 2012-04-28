@@ -47,7 +47,7 @@
 #include "l1_transp.h"
 
 
-#ifdef HW_FEMTOBTS
+#ifdef HW_SYSMOBTS_V1
 #define DEV_SYS_DSP2ARM_NAME	"/dev/msgq/femtobts_dsp2arm"
 #define DEV_SYS_ARM2DSP_NAME	"/dev/msgq/femtobts_arm2dsp"
 #define DEV_L1_DSP2ARM_NAME	"/dev/msgq/gsml1_dsp2arm"
@@ -67,7 +67,7 @@
 static const char *rd_devnames[] = {
 	[MQ_SYS_READ]	= DEV_SYS_DSP2ARM_NAME,
 	[MQ_L1_READ]	= DEV_L1_DSP2ARM_NAME,
-#ifndef HW_FEMTOBTS
+#ifndef HW_SYSMOBTS_V1
 	[MQ_TCH_READ]	= DEV_TCH_DSP2ARM_NAME,
 	[MQ_PDTCH_READ]	= DEV_PDTCH_DSP2ARM_NAME,
 #endif
@@ -76,7 +76,7 @@ static const char *rd_devnames[] = {
 static const char *wr_devnames[] = {
 	[MQ_SYS_WRITE]	= DEV_SYS_ARM2DSP_NAME,
 	[MQ_L1_WRITE]	= DEV_L1_ARM2DSP_NAME,
-#ifndef HW_FEMTOBTS
+#ifndef HW_SYSMOBTS_V1
 	[MQ_TCH_WRITE]	= DEV_TCH_ARM2DSP_NAME,
 	[MQ_PDTCH_WRITE]= DEV_PDTCH_ARM2DSP_NAME,
 #endif
@@ -105,7 +105,7 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	case MQ_SYS_WRITE:
 		return l1if_handle_sysprim(fl1h, msg);
 	case MQ_L1_WRITE:
-#ifndef HW_FEMTOBTS
+#ifndef HW_SYSMOBTS_V1
 	case MQ_TCH_WRITE:
 	case MQ_PDTCH_WRITE:
 #endif

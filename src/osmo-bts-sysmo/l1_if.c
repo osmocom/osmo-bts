@@ -874,7 +874,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 
 	if (on) {
 		sysp->id = SuperFemto_PrimId_ActivateRfReq;
-#ifdef HW_FEMTOBTS
+#ifdef HW_SYSMOBTS_V1
 		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
 #else
 		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
@@ -914,7 +914,7 @@ static int info_compl_cb(struct msgb *resp, void *data)
 		sic->dspVersion.build, sic->fpgaVersion.major,
 		sic->fpgaVersion.minor, sic->fpgaVersion.build);
 
-#ifdef HW_FEMTOBTS
+#ifdef HW_SYSMOBTS_V1
 	if (sic->rfBand.gsm850)
 		fl1h->hw_info.band_support |= GSM_BAND_850;
 	if (sic->rfBand.gsm900)

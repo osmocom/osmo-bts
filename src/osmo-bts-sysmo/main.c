@@ -109,7 +109,7 @@ static void print_help()
 
 static void print_hwversion()
 {
-#ifdef HW_FEMTOBTS
+#ifdef HW_SYSMOBTS_V1
 	printf("sysmobts was compiled for hw version 1.\n");
 #else
 	printf("sysmobts was compiled for hw version 2.\n");
