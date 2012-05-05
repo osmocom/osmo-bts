@@ -1,10 +1,23 @@
-Repsoitory for new BTS-side A-bis code
+Repository for new the Osmocom BTS implementation.
 
-This is the code that was originally developed inside osmocom-bb.git
-for turning modified OsmocomBB-supported phones into a simplistic BTS.
+This code implementes the Layer 2 and higher of a more or less
+conventional GSM BTS (Base Transceiver Station) - however, using an
+Abis/IP interface, rather than the old-fashioned E1/T1.
 
-However, the BTS-side A-bis is also going to be needed for other projects, thus
-the split.
+Specificallt, this includes
+ * BTS-Side implementation of TS 08.58 (RSL) and TS 12.21 (OML)
+ * BTS-Side implementation of LAPDm (using libosmocore/libosmogsm)
+ * A somewhat separated interface between those higher layer parts
+   and the Layer1 interface.
 
-It doesn't really build yet, as a lot of dependencies have not yet been
-resolved.
+Right now, only one hardware and Layer1 are supported:  The sysmocom
+sysmoBTS.
+
+There is some experimental and way incomplete code to use a couple of
+OsmocomBB phones and run them in the BTS.  However, the required code
+for the Calypso DSP code have not been written yet.  This would still
+require a lot of work.
+
+Some additional work is being done in using some parts of the OpenBTS
+L1FEC and glue it against omso-bts.  However, this is also still in an
+early, experimental stage.
