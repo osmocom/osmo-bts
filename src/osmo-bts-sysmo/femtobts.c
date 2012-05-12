@@ -240,10 +240,10 @@ const struct value_string femtobts_tch_pl_names[] = {
 
 const struct value_string femtobts_clksrc_names[] = {
 	{ SF_CLKSRC_NONE,	"None" },
-	{ SF_CLKSRC_OCXO,	"OCXO" },
-	{ SF_CLKSRC_TCXO,	"TCXO" },
-	{ SF_CLKSRC_EXT,	"EXT" },
-	{ SF_CLKSRC_GPS,	"GPS" },
+	{ SF_CLKSRC_OCXO,	"ocxo" },
+	{ SF_CLKSRC_TCXO,	"tcxo" },
+	{ SF_CLKSRC_EXT,	"ext" },
+	{ SF_CLKSRC_GPS,	"gps" },
 	{ SF_CLKSRC_TRX,	"TRX" },
 	{ SF_CLKSRC_RX,		"RX" },
 	{ 0, NULL }

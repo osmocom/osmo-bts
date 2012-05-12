@@ -1,6 +1,7 @@
 /* VTY interface for sysmoBTS */
 
 /* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2012 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -395,6 +396,9 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		vty_out(vty, "  clock-calibration %u%s", fl1h->clk_cal,
 			VTY_NEWLINE);
 	}
+	vty_out(vty, "  clock-source %s%s",
+		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
+		VTY_NEWLINE);
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
