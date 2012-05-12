@@ -159,7 +159,11 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 
 DEFUN(cfg_trx_clksrc, cfg_trx_clksrc_cmd,
 	"clock-source (tcxo|ocxo|ext|gps)",
-	"Set the clock source value\n" "Clock Source value\n")
+	"Set the clock source value\n"
+	"Use the TCXO\n"
+	"Use the OCXO\n"
+	"Use an external clock\n"
+	"Use the GPS pps\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
