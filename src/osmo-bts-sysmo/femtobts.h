@@ -27,6 +27,7 @@ enum superfemto_clk_src {
 	SF_CLKSRC_GPS	= 4,
 	SF_CLKSRC_TRX	= 5,
 	SF_CLKSRC_RX	= 6,
+	SF_CLKSRC_NL	= 7,
 };
 
 const enum l1prim_type femtobts_l1prim_type[GsmL1_PrimId_NUM];
