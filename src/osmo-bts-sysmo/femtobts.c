@@ -239,13 +239,15 @@ const struct value_string femtobts_tch_pl_names[] = {
 };
 
 const struct value_string femtobts_clksrc_names[] = {
-	{ SF_CLKSRC_NONE,	"None" },
-	{ SF_CLKSRC_OCXO,	"ocxo" },
-	{ SF_CLKSRC_TCXO,	"tcxo" },
-	{ SF_CLKSRC_EXT,	"ext" },
-	{ SF_CLKSRC_GPS,	"gps" },
-	{ SF_CLKSRC_TRX,	"TRX" },
-	{ SF_CLKSRC_RX,		"RX" },
+	{ SuperFemto_ClkSrcId_None,	"None" },
+	{ SuperFemto_ClkSrcId_Ocxo,	"ocxo" },
+	{ SuperFemto_ClkSrcId_Tcxo,	"tcxo" },
+	{ SuperFemto_ClkSrcId_External,	"ext" },
+	{ SuperFemto_ClkSrcId_GpsPps,	"gps" },
+	{ SuperFemto_ClkSrcId_Trx,	"trx" },
+	{ SuperFemto_ClkSrcId_Rx,	"rx" },
+	{ SuperFemto_ClkSrcId_Edge,	"edge" },
+	{ SuperFemto_ClkSrcId_NetList,	"nwl" },
 	{ 0, NULL }
 };
 

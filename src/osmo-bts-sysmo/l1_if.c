@@ -881,8 +881,8 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = 0;
 		/* Use clock from OCXO or whatever source is configured */
-		sysp->u.activateRfReq.rfTrx.u8ClkSrc = hdl->clk_src;
-		sysp->u.activateRfReq.rfRx.u8ClkSrc = hdl->clk_src;
+		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
+		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
 		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
 #endif
@@ -1016,9 +1016,9 @@ struct femtol1_hdl *l1if_open(void *priv)
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	fl1h->priv = priv;
-	fl1h->clk_cal = 0xffff;
+	fl1h->clk_cal = 0;
 	/* default clock source: OCXO */
-	fl1h->clk_src = SF_CLKSRC_OCXO;
+	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
 
 	rc = l1if_transport_open(fl1h);
 	if (rc < 0) {
