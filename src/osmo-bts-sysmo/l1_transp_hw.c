@@ -91,7 +91,7 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	int rc;
 
 	msg->l1h = msg->data;
-	rc = read(ofd->fd, msg->l1h, sizeof(GsmL1_Prim_t));
+	rc = read(ofd->fd, msg->l1h, msgb_tailroom(msg));
 	if (rc < 0) {
 		if (rc != -1) 
 			LOGP(DL1C, LOGL_ERROR, "error reading from L1 msg_queue: %s\n",
@@ -103,12 +103,18 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 
 	switch (ofd->priv_nr) {
 	case MQ_SYS_WRITE:
+		if (rc != sizeof(SuperFemto_Prim_t))
+			LOGP(DL1C, LOGL_NOTICE, "%u != "
+			     "sizeof(SuperFemto_Prim_t)\n", rc);
 		return l1if_handle_sysprim(fl1h, msg);
 	case MQ_L1_WRITE:
 #ifndef HW_SYSMOBTS_V1
 	case MQ_TCH_WRITE:
 	case MQ_PDTCH_WRITE:
 #endif
+		if (rc != sizeof(GsmL1_Prim_t))
+			LOGP(DL1C, LOGL_NOTICE, "%u != "
+			     "sizeof(GsmL1_Prim_t)\n", rc);
 		return l1if_handle_l1prim(fl1h, msg);
 	default:
 		/* The compiler can't know that priv_nr is an enum. Assist. */
