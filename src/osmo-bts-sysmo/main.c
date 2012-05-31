@@ -24,7 +24,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <sys/signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -40,6 +43,8 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
+
+#define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
 #include "l1_if.h"
 
@@ -202,8 +207,28 @@ static void signal_handler(int signal)
 	}
 }
 
+static int write_pid_file(char *procname)
+{
+	FILE *outf;
+	char tmp[PATH_MAX+1];
+
+	snprintf(tmp, sizeof(tmp)-1, "/var/run/%s.pid", procname);
+	tmp[PATH_MAX-1] = '\0';
+
+	outf = fopen(tmp, "w");
+	if (!outf)
+		return -1;
+
+	fprintf(outf, "%d\n", getpid());
+
+	fclose(outf);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
+	struct stat st;
 	struct gsm_bts_role_bts *btsb;
 	struct ipabis_link *link;
 	void *tall_msgb_ctx;
@@ -228,13 +253,18 @@ int main(int argc, char **argv)
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = (1 << 0) | (1 << 1) | (1 << 2);
 
-
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n",
 			config_file);
 		exit(1);
 	}
+
+	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
+		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
+		exit(23);
+	}
+	write_pid_file("osmo-bts");
 
 	rc = telnet_init(tall_bts_ctx, NULL, 4241);
 	if (rc < 0) {
