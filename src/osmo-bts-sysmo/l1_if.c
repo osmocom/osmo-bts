@@ -54,6 +54,7 @@
 #include "femtobts.h"
 #include "l1_if.h"
 #include "l1_transp.h"
+#include "hw_misc.h"
 
 /* FIXME: make threshold configurable */
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
@@ -847,7 +848,9 @@ static int activate_rf_compl_cb(struct msgb *resp, void *data)
 			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
 				get_value_string(femtobts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
-		}
+		} else
+			sysmobts_led_set(LED_RF_ACTIVE, 1);
+
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
 		oml_mo_tx_sw_act_rep(&trx->mo);
@@ -857,6 +860,7 @@ static int activate_rf_compl_cb(struct msgb *resp, void *data)
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	} else {
+		sysmobts_led_set(LED_RF_ACTIVE, 0);
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 	}
