@@ -156,7 +156,7 @@ int l1if_transport_open(struct femtol1_hdl *hdl)
 		if (rc < 0) {
 			LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
 				strerror(errno));
-			goto out_free;
+			return rc;
 		}
 		ofd->fd = rc;
 		ofd->priv_nr = i;
@@ -167,7 +167,7 @@ int l1if_transport_open(struct femtol1_hdl *hdl)
 		if (rc < 0) {
 			close(ofd->fd);
 			ofd->fd = -1;
-			goto out_free;
+			return rc;
 		}
 	}
 	for (i = 0; i < ARRAY_SIZE(hdl->write_q); i++) {
@@ -203,8 +203,7 @@ out_read:
 		close(hdl->read_ofd[i].fd);
 		osmo_fd_unregister(&hdl->read_ofd[i]);
 	}
-out_free:
-	talloc_free(hdl);
+
 	return rc;
 }
 
