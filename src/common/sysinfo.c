@@ -37,11 +37,11 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 	case 3:
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_4);
 	case 4:
-		/* 2ter, 2quater, 9, 13 */
-		break;
+		/* FIXME: iterate over 2ter, 2quater, 9, 13 */
+		return GSM_BTS_SI(bts, SYSINFO_TYPE_2ter);
 	case 5:
-		/* 2ter, 2quater */
-		break;
+		/* FIXME: 2bis, 2ter, 2quater */
+		return GSM_BTS_SI(bts, SYSINFO_TYPE_2bis);
 	case 6:
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_3);
 	case 7:
