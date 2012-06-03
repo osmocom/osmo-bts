@@ -21,3 +21,37 @@ require a lot of work.
 Some additional work is being done in using some parts of the OpenBTS
 L1FEC and glue it against omso-bts.  However, this is also still in an
 early, experimental stage.
+
+== Known Limitations ==
+
+As of June 3, 2012, the following known limitations exist in this
+implementation:
+
+=== Common Core ===
+ * No Extended BCCH support
+ * System Information limited to 1,2,2bis,2ter,2quater,3,4,5,6,9,13
+ * No RATSCCH in AMR
+ * No OML (TS 12.21) alarms yet (temperature, ...)
+ * Only single-TRX BTS at this point
+ * Will reject TS 12.21 STARTING TIME in SET BTS ATTR / SET CHAN ATTR
+ * Makes no use of TS 12.21 RACH Busy Threshold (planned)
+ * CCCH Load Indication only for PCH, not for RACH (planned)
+ * No support for frequency hopping
+ * No reporting of interference levels as part of TS 08.58 RF RES IND
+ * No error reporting in case PAGING COMMAND fails due to queue overflow
+ * No hand-over support (planned)
+ * No use of TS 08.58 BS Power and MS Power parameters
+ * No support of TS 08.58 MultiRate Control
+ * No support of TS 08.58 Supported Codec Types
+ * No support of Bter frame / ENHANCED MEASUREMENT REPORT
+
+=== osmo-bts-sysmo ===
+ * No CSD / ECSD support (not planned)
+ * No GPRS/EDGE support (planned)
+ * GSM-R frequency band supported, but no NCH/ASCI/SoLSA
+ * All timeslots on one TRX have to use same training sequence (TSC)
+ * No multi-TRX support yet, though hardware+L1 support stacking
+ * Makes no use of 12.21 Intave Parameters, Max TA and Interference
+   Level Boundaries
+ * Makes no use of TS 12.21 T3105
+ * Doesn't yet include MAC address in Abis/IP Identity message
