@@ -43,7 +43,6 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 
-extern char *software_version;
 extern uint8_t abis_mac[6];
 
 /*
@@ -174,7 +173,7 @@ static int abis_rx_ipa_id_get(struct ipabis_link *link, uint8_t *data, int len)
 			break;
 		case IPAC_IDTAG_EQUIPVERS:
 		case IPAC_IDTAG_SWVERSION:
-			strcpy(str, software_version);
+			strcpy(str, PACKAGE_VERSION);
 			break;
 		case IPAC_IDTAG_UNITNAME:
 			sprintf(str, "osmoBTS-%02x-%02x-%02x-%02x-%02x-%02x",

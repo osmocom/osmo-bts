@@ -50,8 +50,6 @@
 
 /* FIXME: read from real hardware */
 const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
-/* FIXME: generate from git */
-const char *software_version = "0815";
 
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
