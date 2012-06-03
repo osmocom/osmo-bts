@@ -48,6 +48,9 @@ struct gsm_bts_role_bts {
 	struct {
 		uint8_t ciphers;
 	} support;
+	struct {
+		uint8_t tc4_ctr;
+	} si;
 };
 
 enum lchan_ciph_state {
