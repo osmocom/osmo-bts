@@ -1,6 +1,6 @@
 /* Paging message encoding + queue management */
 
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2012 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -53,6 +53,8 @@ struct paging_record {
 };
 
 struct paging_state {
+	struct gsm_bts_role_bts *btsb;
+
 	/* parameters taken / interpreted from BCCH/CCCH configuration */
 	struct gsm48_control_channel_descr chan_desc;
 
@@ -128,6 +130,13 @@ static int get_pag_subch_nr(struct paging_state *ps, struct gsm_time *gt)
 	return pag_idx + mfrm_part;
 }
 
+int paging_buffer_space(struct paging_state *ps)
+{
+	if (ps->num_paging >= ps->num_paging_max)
+		return 0;
+	else
+		return ps->num_paging_max - ps->num_paging;
+}
 
 /* Add an identity to the paging queue */
 int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
@@ -299,6 +308,8 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 	int group;
 	int len;
 
+	ps->btsb->load.ccch.pch_total += 1;
+
 	group = get_pag_subch_nr(ps, gt);
 	if (group < 0) {
 		LOGP(DPAG, LOGL_ERROR,
@@ -319,6 +330,8 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		unsigned int num_pr = 0;
 		time_t now = time(NULL);
 		unsigned int i, num_imsi = 0;
+
+		ps->btsb->load.ccch.pch_used += 1;
 
 		/* get (if we have) up to four paging records */
 		for (i = 0; i < ARRAY_SIZE(pr); i++) {
@@ -428,16 +441,18 @@ static int paging_signal_cbfn(unsigned int subsys, unsigned int signal, void *hd
 
 static int initialized = 0;
 
-struct paging_state *paging_init(void *ctx, unsigned int num_paging_max,
+struct paging_state *paging_init(struct gsm_bts_role_bts *btsb,
+				 unsigned int num_paging_max,
 				 unsigned int paging_lifetime)
 {
 	struct paging_state *ps;
 	unsigned int i;
 
-	ps  = talloc_zero(ctx, struct paging_state);
+	ps  = talloc_zero(btsb, struct paging_state);
 	if (!ps)
 		return NULL;
 
+	ps->btsb = btsb;
 	ps->paging_lifetime = paging_lifetime;
 	ps->num_paging_max = num_paging_max;
 

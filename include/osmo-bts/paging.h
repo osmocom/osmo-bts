@@ -6,9 +6,11 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 
 struct paging_state;
+struct gsm_bts_role_bts;
 
 /* initialize paging code */
-struct paging_state *paging_init(void *ctx, unsigned int num_paging_max,
+struct paging_state *paging_init(struct gsm_bts_role_bts *btsb, 
+				 unsigned int num_paging_max,
 				 unsigned int paging_lifetime);
 
 void paging_reset(struct paging_state *ps);
@@ -27,5 +29,6 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 /* inspection methods below */
 int paging_group_queue_empty(struct paging_state *ps, uint8_t group);
 int paging_queue_length(struct paging_state *ps);
+int paging_buffer_space(struct paging_state *ps);
 
 #endif

@@ -19,12 +19,19 @@
  *
  */
 
-#include <rsl.h>
+#include <stdint.h>
 
 #include <osmocom/core/timer.h>
+#include <osmocom/core/msgb.h>
 
-static void reset_load_counters(void)
+#include <osmo-bts/gsm_data.h>
+#include <osmo-bts/rsl.h>
+#include <osmo-bts/paging.h>
+
+static void reset_load_counters(struct gsm_bts *bts)
 {
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
 	/* re-set the counters */
 	btsb->load.ccch.pch_used = btsb->load.ccch.pch_total = 0;
 }
@@ -32,7 +39,7 @@ static void reset_load_counters(void)
 static void load_timer_cb(void *data)
 {
 	struct gsm_bts *bts = data;
-	struct gsm_bts_role_bts *btsb = FIXME;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	unsigned int pch_percent;
 
 	/* compute percentages */
@@ -40,30 +47,31 @@ static void load_timer_cb(void *data)
 
 	if (pch_percent >= btsb->load.ccch.load_ind_thresh) {
 		/* send RSL load indication message to BSC */
-		uint16_t paging_buffer_space = FIXME;
-		rsl_tx_ccch_load_ind_pch(bts, paging_buffer_space);
+		uint16_t buffer_space = paging_buffer_space(btsb->paging_state);
+		rsl_tx_ccch_load_ind_pch(bts, buffer_space);
 	}
 
-	reset_load_counters();
+	reset_load_counters(bts);
 
 	/* re-schedule the timer */
 	osmo_timer_schedule(&btsb->load.ccch.timer,
 			    btsb->load.ccch.load_ind_period, 0);
 }
 
-static void load_timer_start(struct gsm_bts *bts)
+void load_timer_start(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = FIXME;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	btsb->load.ccch.timer.data = bts;
-	reset_load_counters();
+	btsb->load.ccch.timer.cb = load_timer_cb;
+	reset_load_counters(bts);
 	osmo_timer_schedule(&btsb->load.ccch.timer,
 			    btsb->load.ccch.load_ind_period, 0);
-
-	return 0
 }
 
-static void load_timer_stop(struct gsm_bts *bts)
+void load_timer_stop(struct gsm_bts *bts)
 {
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
 	osmo_timer_del(&btsb->load.ccch.timer);
 }
