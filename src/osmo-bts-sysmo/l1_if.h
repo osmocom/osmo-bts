@@ -9,7 +9,7 @@
 enum {
 	MQ_SYS_READ,
 	MQ_L1_READ,
-#ifndef HW_FEMTOBTS
+#ifndef HW_SYSMOBTS_V1
 	MQ_TCH_READ,
 	MQ_PDTCH_READ,
 #endif
@@ -19,7 +19,7 @@ enum {
 enum {
 	MQ_SYS_WRITE,
 	MQ_L1_WRITE,
-#ifndef HW_FEMTOBTS
+#ifndef HW_SYSMOBTS_V1
 	MQ_TCH_WRITE,
 	MQ_PDTCH_WRITE,
 #endif
