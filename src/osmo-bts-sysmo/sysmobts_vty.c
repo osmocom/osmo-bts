@@ -144,6 +144,7 @@ DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
 	return CMD_SUCCESS;
 }
 
+#ifdef HW_SYSMOBTS_V1
 DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 	"clock-calibration <0-4095>",
 	"Set the clock calibration value\n" "Clock DAC value\n")
@@ -156,6 +157,20 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 
 	return CMD_SUCCESS;
 }
+#else
+DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
+	"clock-calibration <-4095-4095>",
+	"Set the clock calibration value\n" "Offset in PPB\n")
+{
+	int clkcal = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->clk_cal = clkcal;
+
+	return CMD_SUCCESS;
+}
+#endif
 
 DEFUN(cfg_trx_clksrc, cfg_trx_clksrc_cmd,
 	"clock-source (tcxo|ocxo|ext|gps)",
@@ -396,10 +411,8 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
-	if (fl1h->clk_cal != 0xffff) {
-		vty_out(vty, "  clock-calibration %u%s", fl1h->clk_cal,
+	vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
 			VTY_NEWLINE);
-	}
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
