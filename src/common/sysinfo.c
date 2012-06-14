@@ -95,9 +95,14 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_9;
 			tc4_cnt += 1;
 		}
-		/* increment static counter by one, modulo count */
-		btsb->si.tc4_ctr = (btsb->si.tc4_ctr + 1) % tc4_cnt;
-		return GSM_BTS_SI(bts, tc4_sub[btsb->si.tc4_ctr]);
+		/* simply send SI2 if we have nothing else to send */
+		if (tc4_cnt == 0)
+			return GSM_BTS_SI(bts, SYSINFO_TYPE_2);
+		else {
+			/* increment static counter by one, modulo count */
+			btsb->si.tc4_ctr = (btsb->si.tc4_ctr + 1) % tc4_cnt;
+			return GSM_BTS_SI(bts, tc4_sub[btsb->si.tc4_ctr]);
+		}
 	case 5:
 		/* 2bis, 2ter, 2quater */
 		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) &&
