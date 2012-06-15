@@ -739,6 +739,12 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	else
 		pp.u.rach_ind.acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
 
+	if (pp.u.rach_ind.acc_delay > btsb->max_ta) {
+		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
+		     pp.u.rach_ind.acc_delay, btsb->max_ta);
+		return 0;
+	}
+
 	return lapdm_phsap_up(&pp.oph, &lc->lapdm_dcch);
 }
 

@@ -49,7 +49,7 @@ implementation:
  * GSM-R frequency band supported, but no NCH/ASCI/SoLSA
  * All timeslots on one TRX have to use same training sequence (TSC)
  * No multi-TRX support yet, though hardware+L1 support stacking
- * Makes no use of 12.21 Intave Parameters, Max TA and Interference
+ * Makes no use of 12.21 Intave Parameters and Interference
    Level Boundaries
  * Makes no use of TS 12.21 T3105
  * Doesn't yet include MAC address in Abis/IP Identity message
