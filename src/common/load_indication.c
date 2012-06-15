@@ -43,7 +43,11 @@ static void load_timer_cb(void *data)
 	unsigned int pch_percent, rach_percent;
 
 	/* compute percentages */
-	pch_percent = (btsb->load.ccch.pch_used * 100) / btsb->load.ccch.pch_total;
+	if (btsb->load.ccch.pch_total == 0)
+		pch_percent = 0;
+	else
+		pch_percent = (btsb->load.ccch.pch_used * 100) /
+					btsb->load.ccch.pch_total;
 
 	if (pch_percent >= btsb->load.ccch.load_ind_thresh) {
 		/* send RSL load indication message to BSC */
@@ -51,7 +55,12 @@ static void load_timer_cb(void *data)
 		rsl_tx_ccch_load_ind_pch(bts, buffer_space);
 	}
 
-	rach_percent = (btsb->load.rach.busy * 100) / btsb->load.rach.total;
+	if (btsb->load.rach.total == 0)
+		rach_percent = 0;
+	else
+		rach_percent = (btsb->load.rach.busy * 100) /
+					btsb->load.rach.total;
+
 	if (rach_percent >= btsb->load.ccch.load_ind_thresh) {
 		/* send RSL load indication message to BSC */
 		rsl_tx_ccch_load_ind_rach(bts, btsb->load.rach.total,
