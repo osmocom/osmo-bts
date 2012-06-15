@@ -34,8 +34,6 @@ implementation:
  * No OML (TS 12.21) alarms yet (temperature, ...)
  * Only single-TRX BTS at this point
  * Will reject TS 12.21 STARTING TIME in SET BTS ATTR / SET CHAN ATTR
- * Makes no use of TS 12.21 RACH Busy Threshold (planned)
- * CCCH Load Indication only for PCH, not for RACH (planned)
  * No support for frequency hopping
  * No reporting of interference levels as part of TS 08.58 RF RES IND
  * No error reporting in case PAGING COMMAND fails due to queue overflow
