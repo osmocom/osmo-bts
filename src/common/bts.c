@@ -69,6 +69,7 @@ int bts_init(struct gsm_bts *bts)
 	load_timer_start(bts);
 
 	btsb->rtp_jitter_buf_ms = 100;
+	btsb->max_ta = 63;
 
 	/* set BTS to dependency */
 	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
