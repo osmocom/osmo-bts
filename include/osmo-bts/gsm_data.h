@@ -36,6 +36,10 @@ struct gsm_bts_role_bts {
 			/* Input parameters from OML */
 			int16_t busy_thresh;		/* in dBm */
 			uint16_t averaging_slots;
+			/* Internal data */
+			unsigned int total;	/* total nr */
+			unsigned int busy;	/* above busy_thresh */
+			unsigned int access;	/* access bursts */
 		} rach;
 	} load;
 	uint8_t ny1;

@@ -539,6 +539,12 @@ empty_frame:
 static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 				GsmL1_MphTimeInd_t *time_ind)
 {
+	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_role_bts *btsb = bts->role;
+
+	int frames_expired = time_ind->u32Fn - fl1->gsm_time.fn;
+
 	/* Update our data structures with the current GSM time */
 	gsm_fn2gsmtime(&fl1->gsm_time, time_ind->u32Fn);
 
@@ -548,6 +554,19 @@ static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 
 	/* increment the primitive count for the alive timer */
 	fl1->alive_prim_cnt++;
+
+	/* increment number of RACH slots that have passed by since the
+	 * last time indication */
+	if (trx == bts->c0) {
+		unsigned int num_rach_per_frame;
+		/* 27 / 51 taken from TS 05.01 Figure 3 */
+		if (bts->c0->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4)
+			num_rach_per_frame = 27;
+		else
+			num_rach_per_frame = 51;
+
+		btsb->load.rach.total += frames_expired * num_rach_per_frame;
+	}
 
 	return 0;
 }
@@ -681,11 +700,23 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 {
+	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_role_bts *btsb = bts->role;
 	struct osmo_phsap_prim pp;
 	struct lapdm_channel *lc;
 
+	/* increment number of busy RACH slots, if required */
+	if (trx == bts->c0 &&
+	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
+		btsb->load.rach.busy++;
+
 	if (ra_ind->measParam.fLinkQuality < MIN_QUAL_RACH)
 		return 0;
+
+	/* increment number of RACH slots with valid RACH burst */
+	if (trx == bts->c0)
+		btsb->load.rach.access++;
 
 	DEBUGP(DL1C, "Rx PH-RA.ind");
 	dump_meas_res(&ra_ind->measParam);

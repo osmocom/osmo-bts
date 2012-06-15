@@ -342,8 +342,30 @@ int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail)
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!msg)
 		return -ENOMEM;
-	rsl_trx_push_hdr(msg, RSL_MT_CCCH_LOAD_IND);
+	rsl_cch_push_hdr(msg, RSL_MT_CCCH_LOAD_IND, RSL_CHAN_PCH_AGCH);
 	msgb_tv16_put(msg, RSL_IE_PAGING_LOAD, paging_avail);
+	msg->trx = bts->c0;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* 8.5.2 CCCH Load Indication (RACH) */
+int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
+			      uint16_t busy, uint16_t access)
+{
+	struct msgb *msg;
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	if (!msg)
+		return -ENOMEM;
+	rsl_cch_push_hdr(msg, RSL_MT_CCCH_LOAD_IND, RSL_CHAN_RACH);
+	/* tag and length */
+	msgb_tv_put(msg, RSL_IE_RACH_LOAD, 6);
+	/* content of the IE */
+	msgb_put_u16(msg, total);
+	msgb_put_u16(msg, busy);
+	msgb_put_u16(msg, access);
+
 	msg->trx = bts->c0;
 
 	return abis_rsl_sendmsg(msg);
@@ -377,27 +399,6 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 
 	return 0;
-}
-
-int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t rach_slots,
-			      uint16_t rach_busy, uint16_t rach_access)
-{
-	struct msgb *msg;
-	uint16_t payload[3];
-
-	payload[0] = htons(rach_slots);
-	payload[1] = htons(rach_busy);
-	payload[2] = htons(rach_access);
-
-	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
-	if (!msg)
-		return -ENOMEM;
-
-	msgb_tlv_put(msg, RSL_IE_RACH_LOAD, 6, (uint8_t *)payload);
-	rsl_trx_push_hdr(msg, RSL_MT_CCCH_LOAD_IND);
-	msg->trx = bts->c0;
-
-	return abis_rsl_sendmsg(msg);
 }
 
 /* 8.6.2 SACCH FILLING */

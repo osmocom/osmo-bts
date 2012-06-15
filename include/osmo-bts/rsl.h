@@ -16,6 +16,8 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx);
 
 int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail);
+int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
+			      uint16_t busy, uint16_t access);
 
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr);
 

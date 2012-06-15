@@ -40,7 +40,7 @@ static void load_timer_cb(void *data)
 {
 	struct gsm_bts *bts = data;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	unsigned int pch_percent;
+	unsigned int pch_percent, rach_percent;
 
 	/* compute percentages */
 	pch_percent = (btsb->load.ccch.pch_used * 100) / btsb->load.ccch.pch_total;
@@ -49,6 +49,14 @@ static void load_timer_cb(void *data)
 		/* send RSL load indication message to BSC */
 		uint16_t buffer_space = paging_buffer_space(btsb->paging_state);
 		rsl_tx_ccch_load_ind_pch(bts, buffer_space);
+	}
+
+	rach_percent = (btsb->load.rach.busy * 100) / btsb->load.rach.total;
+	if (rach_percent >= btsb->load.ccch.load_ind_thresh) {
+		/* send RSL load indication message to BSC */
+		rsl_tx_ccch_load_ind_rach(bts, btsb->load.rach.total,
+					  btsb->load.rach.busy,
+					  btsb->load.rach.access);
 	}
 
 	reset_load_counters(bts);
