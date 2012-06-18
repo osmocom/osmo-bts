@@ -339,7 +339,7 @@ int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail)
 {
 	struct msgb *msg;
 
-	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
 	if (!msg)
 		return -ENOMEM;
 	rsl_cch_push_hdr(msg, RSL_MT_CCCH_LOAD_IND, RSL_CHAN_PCH_AGCH);
@@ -355,7 +355,7 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 {
 	struct msgb *msg;
 
-	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
 	if (!msg)
 		return -ENOMEM;
 	rsl_cch_push_hdr(msg, RSL_MT_CCCH_LOAD_IND, RSL_CHAN_RACH);
