@@ -65,7 +65,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* FIXME: make those parameters configurable */
 	btsb->paging_state = paging_init(btsb, 200, 0);
-
+	btsb->load.ccch.load_ind_period = 60*100;
 	load_timer_start(bts);
 
 	btsb->rtp_jitter_buf_ms = 100;

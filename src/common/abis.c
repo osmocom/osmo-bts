@@ -54,7 +54,7 @@ extern uint8_t abis_mac[6];
 /* send message to BSC */
 int abis_tx(struct ipabis_link *link, struct msgb *msg)
 {
-	if (link->state != LINK_STATE_CONNECT) {
+	if (!link || link->state != LINK_STATE_CONNECT) {
 		LOGP(DABIS, LOGL_NOTICE, "Link down, dropping message.\n");
 		msgb_free(msg);
 		return -EIO;
