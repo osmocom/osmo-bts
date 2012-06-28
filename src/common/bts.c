@@ -73,6 +73,10 @@ int bts_init(struct gsm_bts *bts)
 
 	/* set BTS to dependency */
 	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_chg(&bts->gprs.nse.mo, -1, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_chg(&bts->gprs.cell.mo, -1, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_chg(&bts->gprs.nsvc[0].mo, -1, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_chg(&bts->gprs.nsvc[1].mo, -1, NM_AVSTATE_DEPENDENCY);
 
 	/* initialize bts data structure */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -136,6 +140,12 @@ int bts_link_estab(struct gsm_bts *bts)
 	/* BTS and SITE MGR are EAABLED, BTS is DEPENDENCY */
 	oml_tx_state_changed(&bts->site_mgr.mo);
 	oml_tx_state_changed(&bts->mo);
+
+	/* those should all be in DEPENDENCY */
+	oml_tx_state_changed(&bts->gprs.nse.mo);
+	oml_tx_state_changed(&bts->gprs.cell.mo);
+	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
+	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {

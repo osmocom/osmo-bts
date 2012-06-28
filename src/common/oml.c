@@ -90,6 +90,7 @@ static struct tlv_definition abis_nm_att_tlvdef_ipa = {
 
 /* ip.access nanoBTS specific commands */
 static const char ipaccess_magic[] = "com.ipaccess";
+static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
 /*
  * support
@@ -781,6 +782,9 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 	case NM_MT_CHG_ADM_STATE:
 		ret = oml_rx_chg_adm_state(bts, msg);
 		break;
+	case NM_MT_IPACC_SET_ATTR:
+		ret = oml_ipa_set_attr(bts, msg);
+		break;
 	default:
 		LOGP(DOML, LOGL_INFO, "unknown Formatted O&M msg_type 0x%02x\n",
 			foh->msg_type);
@@ -793,6 +797,161 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 /*
  * manufacturer related messages
  */
+
+#define TLVP_PRES_LEN(tp, tag, min_len) \
+	(TLVP_PRESENT(tp, tag) && TLVP_LEN(tp, tag) >= min_len)
+
+static int oml_ipa_mo_set_attr_nse(struct gsm_bts *bts, struct tlv_parsed *tp)
+{
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSEI, 2)) {
+		bts->gprs.nse.nsei =
+			ntohs(*(uint16_t *) TLVP_VAL(tp, NM_ATT_IPACC_NSEI));
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NS_CFG, 7)) {
+		memcpy(&bts->gprs.nse.timer,
+		       TLVP_VAL(tp, NM_ATT_IPACC_NS_CFG), 7);
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BSSGP_CFG, 11)) {
+		memcpy(&bts->gprs.cell.timer,
+		       TLVP_VAL(tp, NM_ATT_IPACC_BSSGP_CFG), 11);
+	}
+
+	return 0;
+}
+
+static int oml_ipa_mo_set_attr_cell(struct gsm_bts *bts, struct tlv_parsed *tp)
+{
+	struct gprs_rlc_cfg *rlcc = &bts->gprs.cell.rlc_cfg;
+	const uint8_t *cur;
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RAC, 1))
+		bts->gprs.rac = *TLVP_VAL(tp, NM_ATT_IPACC_RAC);
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_GPRS_PAGING_CFG, 2)) {
+		cur = TLVP_VAL(tp, NM_ATT_IPACC_GPRS_PAGING_CFG);
+		rlcc->paging.repeat_time = cur[0] * 50;
+		rlcc->paging.repeat_count = cur[1];
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BVCI, 2)) {
+		bts->gprs.cell.bvci =
+			ntohs(*(uint16_t *)TLVP_VAL(tp, NM_ATT_IPACC_BVCI));
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG, 9)) {
+		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG);
+		rlcc->parameter[RLC_T3142] = cur[0];
+		rlcc->parameter[RLC_T3169] = cur[1];
+		rlcc->parameter[RLC_T3191] = cur[2];
+		rlcc->parameter[RLC_T3193] = cur[3];
+		rlcc->parameter[RLC_T3195] = cur[4];
+		rlcc->parameter[RLC_N3101] = cur[5];
+		rlcc->parameter[RLC_N3103] = cur[6];
+		rlcc->parameter[RLC_N3105] = cur[7];
+		rlcc->parameter[CV_COUNTDOWN] = cur[8];
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_CODING_SCHEMES, 2)) {
+		int i;
+		rlcc->cs_mask = 0;
+		cur = TLVP_VAL(tp, NM_ATT_IPACC_CODING_SCHEMES);
+
+		for (i = 0; i < 4; i++) {
+			if (cur[0] & (1 << i))
+				rlcc->cs_mask |= GPRS_CS1+i;
+		}
+		if (cur[0] & 0x80)
+			rlcc->cs_mask |= GPRS_MCS9;
+		for (i = 0; i < 8; i++) {
+			if (cur[1] & (1 << i))
+				rlcc->cs_mask |= GPRS_MCS1+i;
+		}
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG_2, 5)) {
+		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_2);
+		rlcc->parameter[T_DL_TBF_EXT] = *(uint16_t *)cur * 10;
+		cur += 2;
+		rlcc->parameter[T_UL_TBF_EXT] = *(uint16_t *)cur * 10;
+		cur += 2;
+		rlcc->initial_cs = *cur;
+	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG_3, 1)) {
+		rlcc->initial_mcs = *TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_3);
+	}
+
+	return 0;
+}
+
+static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
+				    struct tlv_parsed *tp)
+{
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSVCI, 2))
+		nsvc->nsvci =
+			ntohs(*(uint16_t *)TLVP_VAL(tp, NM_ATT_IPACC_NSVCI));
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NS_LINK_CFG, 8)) {
+		const uint8_t *cur = TLVP_VAL(tp, NM_ATT_IPACC_NS_LINK_CFG);
+		nsvc->remote_port = ntohs(*(uint16_t *)cur);
+		cur += 2;
+		nsvc->remote_ip = ntohl(*(uint32_t *)cur);
+		cur += 4;
+		nsvc->local_port = ntohs(*(uint16_t *)cur);
+	}
+
+	return 0;
+}
+
+static int oml_ipa_mo_set_attr(struct gsm_bts *bts, struct gsm_abis_mo *mo,
+				void *obj, struct tlv_parsed *tp)
+{
+	int rc;
+
+	switch (mo->obj_class) {
+	case NM_OC_GPRS_NSE:
+		rc = oml_ipa_mo_set_attr_nse(obj, tp);
+		break;
+	case NM_OC_GPRS_CELL:
+		rc = oml_ipa_mo_set_attr_cell(obj, tp);
+		break;
+	case NM_OC_GPRS_NSVC:
+		rc = oml_ipa_mo_set_attr_nsvc(obj, tp);
+		break;
+	default:
+		rc = NM_NACK_OBJINST_UNKN;
+	}
+
+	return rc;
+}
+
+static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_abis_mo *mo;
+	struct tlv_parsed tp;
+	void *obj;
+	int rc;
+
+	abis_nm_debugp_foh(DOML, foh);
+	DEBUGPC(DOML, "Rx IPA SET ATTR\n");
+
+	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
+	if (rc < 0)
+		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+
+	/* Resolve MO by obj_class/obj_inst */
+	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+	obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst);
+	if (!mo || !obj)
+		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+
+	rc = oml_ipa_mo_set_attr(bts, mo, obj, &tp);
+
+	return oml_fom_ack_nack(msg, rc);
+}
 
 
 static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
@@ -878,6 +1037,9 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT:
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		ret = rx_oml_ipa_rsl_connect(trx, msg, &tp);
+		break;
+	case NM_MT_IPACC_SET_ATTR:
+		ret = oml_ipa_set_attr(bts, msg);
 		break;
 	default:
 		LOGP(DOML, LOGL_INFO, "Manufacturer Formatted O&M msg_type 0x%02x\n",
