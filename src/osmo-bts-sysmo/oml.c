@@ -467,9 +467,12 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
 		time = bts_model_get_time(lchan->ts->trx->bts);
-		if (lchan->state == LCHAN_S_ACTIVE)
-			rsl_tx_chan_act_ack(lchan, time);
-		else
+		if (lchan->state == LCHAN_S_ACTIVE) {
+			/* Hack: we simply only use one direction to
+			 * avoid sending two ACKs for one activate */
+			if (ic->dir == GsmL1_Dir_TxDownlink)
+				rsl_tx_chan_act_ack(lchan, time);
+		} else
 			rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 		break;
 	default:
