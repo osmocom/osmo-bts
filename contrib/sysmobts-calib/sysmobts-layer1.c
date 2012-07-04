@@ -498,6 +498,12 @@ int follow_bcch(HANDLE layer1)
 		return rc;
 	}
 
+	if (prim.u.phConnectInd.sapi != GsmL1_Sapi_Bcch) {
+		printf("Got a connect indication for the wrong type: %d\n",
+			prim.u.phConnectInd.sapi);
+		return -6;
+	}
+
 	/* 3.) Wait for PhDataInd... */
 	printf("Waiting for BCCH data.\n");
 	rc = wait_for_indication(GsmL1_PrimId_PhDataInd, &prim);
@@ -629,6 +635,22 @@ int wait_for_sync(HANDLE layer1, int cor, int calib, int source)
 		return 1;
 	}
 
+	return 0;
+}
+
+int wait_for_data(uint8_t *data, size_t *size)
+{
+	GsmL1_Prim_t prim;
+	int rc;
+
+	rc = wait_for_indication(GsmL1_PrimId_PhDataInd, &prim);
+	if (rc < 0)
+		return rc;
+	if (prim.u.phDataInd.sapi == GsmL1_Sapi_Sch)
+		return 1;
+
+	*size = prim.u.phDataInd.msgUnitParam.u8Size;
+	memcpy(data, prim.u.phDataInd.msgUnitParam.u8Buffer, *size);
 	return 0;
 }
 

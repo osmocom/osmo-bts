@@ -33,16 +33,18 @@
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1types.h>
 
-#define ARRAY_SIZE(ar)	(sizeof(ar)/sizeof((ar)[0]))
+#include <osmocom/core/utils.h>
 
 enum actions {
 	ACTION_SCAN,
 	ACTION_CALIB,
+	ACTION_BCCH,
 };
 
 static const char *modes[] = {
 	[ACTION_SCAN]		= "scan",
 	[ACTION_CALIB]		= "calibrate",
+	[ACTION_BCCH]		= "bcch",
 };
 
 static const char *bands[] = {
@@ -98,7 +100,7 @@ static void print_help(void)
 	printf("  -s --calibration-source "
 		"ocxo|tcxo|external|gps|trx|rx|edge|netlisten\n");
 	printf("  -b --band 850|900|1800|1900\n");
-	printf("  -m --mode scan|calibrate\n");
+	printf("  -m --mode scan|calibrate|bcch\n");
 	printf("  -a --arfcn NR arfcn for calibration\n");
 	printf("  -d --dsp-flags NR dsp mask for debug log\n");
 	printf("  -t --threshold level\n");
@@ -213,6 +215,8 @@ extern int set_clock_cor(int clock_corr, int calib, int source);
 extern int rf_clock_info(HANDLE *layer1, int *clkErr, int *clkErrRes);
 extern int mph_close(HANDLE layer1);
 extern int wait_for_sync(HANDLE layer1, int cor, int calib, int source);
+extern int follow_bcch(HANDLE layer1);
+extern int wait_for_data(uint8_t *data, size_t *size);
 
 #define CHECK_RC(rc) \
 	if (rc != 0) \
@@ -374,6 +378,45 @@ static int calib_clock(void)
 	return EXIT_SUCCESS;
 }
 
+static int bcch_follow(void)
+{
+	int rc, cor = initial_cor;
+	float mean_rssi;
+	HANDLE layer1;
+
+	rc = power_scan(band, cal_arfcn, 10, &mean_rssi);
+	CHECK_RC_MSG(rc, "ARFCN measurement scan failed");
+	if (mean_rssi < -118.0f)
+		printf("ARFCN has weak signal for calibration: %f\n", mean_rssi);
+
+	/* initial lock */
+	rc = follow_sch(band, cal_arfcn, calib, source, &layer1);
+	if (rc == -23)
+		rc = find_initial_clock(layer1, &cor);
+	CHECK_RC_MSG(rc, "Following SCH failed");
+
+	/* follow the bcch */
+	rc = follow_bcch(layer1);
+	CHECK_RC_MSG(rc, "Follow BCCH");
+
+	/* now wait for the PhDataInd */
+	for (;;) {
+		uint8_t data[23];
+		size_t size;
+
+		rc = wait_for_data(data, &size);
+		if (rc == 1)
+			continue;
+		CHECK_RC_MSG(rc, "No Data Indication");
+		printf("Data: %s\n", osmo_hexdump(data, size));
+	}
+
+	rc = mph_close(layer1);
+	CHECK_RC_MSG(rc, "MPH-Close");
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -394,6 +437,8 @@ int main(int argc, char **argv)
 
 	if (action == ACTION_SCAN)
 		return scan_band();
+	else if (action == ACTION_BCCH)
+		return bcch_follow();
 	else
 		return calib_clock();
 
