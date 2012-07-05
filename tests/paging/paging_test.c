@@ -25,6 +25,8 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/gsm_data.h>
 
+#include <unistd.h>
+
 static struct gsm_bts *bts;
 static struct gsm_bts_role_bts *btsb;
 
@@ -68,6 +70,33 @@ static void test_paging_smoke(void)
 	 */
 }
 
+static void test_paging_sleep(void)
+{
+	int rc;
+	uint8_t out_buf[GSM_MACBLOCK_LEN];
+	struct gsm_time g_time;
+	printf("Testing that paging messages expire with sleep.\n");
+
+	/* add paging entry */
+	rc = paging_add_identity(btsb->paging_state, 0, static_ilv, 0);
+	ASSERT_TRUE(rc == 0);
+	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 1);
+
+	/* sleep */
+	sleep(1);
+
+	/* generate messages */
+	g_time.fn = 0;
+	g_time.t1 = 0;
+	g_time.t2 = 0;
+	g_time.t3 = 6;
+	rc = paging_gen_msg(btsb->paging_state, out_buf, &g_time);
+	ASSERT_TRUE(rc == 13);
+
+	ASSERT_TRUE(paging_group_queue_empty(btsb->paging_state, 0));
+	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 0);
+}
+
 int main(int argc, char **argv)
 {
 	void *tall_msgb_ctx;
@@ -86,6 +115,7 @@ int main(int argc, char **argv)
 
 	btsb = bts_role_bts(bts);
 	test_paging_smoke();
+	test_paging_sleep();
 	printf("Success\n");
 
 	return 0;
