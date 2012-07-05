@@ -111,7 +111,7 @@ DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	int sapi;
 
-	sapi = get_string_value(femtobts_tracef_names, argv[0]);
+	sapi = get_string_value(femtobts_l1sapi_names, argv[0]);
 
 	fl1h->gsmtap_sapi_mask |= (1 << sapi);
 
@@ -125,7 +125,7 @@ DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	int sapi;
 
-	sapi = get_string_value(femtobts_tracef_names, argv[1]);
+	sapi = get_string_value(femtobts_l1sapi_names, argv[0]);
 
 	fl1h->gsmtap_sapi_mask &= ~(1 << sapi);
 
@@ -407,15 +407,51 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 }
 
+/* FIXME: move to libosmocore ? */
+static char buf_casecnvt[256];
+char *osmo_str_tolower(const char *in)
+{
+	int len, i;
+
+	if (!in)
+		return NULL;
+
+	len = strlen(in);
+	if (len > sizeof(buf_casecnvt))
+		len = sizeof(buf_casecnvt);
+
+	for (i = 0; i < len; i++) {
+		buf_casecnvt[i] = tolower(in[i]);
+		if (in[i] == '\0')
+			break;
+	}
+	if (i < sizeof(buf_casecnvt))
+		buf_casecnvt[i] = '\0';
+
+	/* just to make sure we're always zero-terminated */
+	buf_casecnvt[sizeof(buf_casecnvt)-1] = '\0';
+
+	return buf_casecnvt;
+}
+
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	int i;
 
 	vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
 			VTY_NEWLINE);
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
+
+	for (i = 0; i < 32; i++) {
+		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
+			const char *name = get_value_string(femtobts_l1sapi_names, i);
+			vty_out(vty, "  gsmtap-sapi %s%s", osmo_str_tolower(name),
+				VTY_NEWLINE);
+		}
+	}
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
