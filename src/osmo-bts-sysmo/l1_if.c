@@ -1071,9 +1071,6 @@ struct femtol1_hdl *l1if_open(void *priv)
 	if (fl1h->gsmtap)
 		gsmtap_source_add_sink(fl1h->gsmtap);
 
-	fl1h->gsmtap_sapi_mask = (1 << GsmL1_Sapi_Sacch) | (1 << GsmL1_Sapi_Sdcch) |
-				 (1 << GsmL1_Sapi_FacchF) | (1 << GsmL1_Sapi_FacchH);
-
 	return fl1h;
 }
 
