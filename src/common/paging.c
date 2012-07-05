@@ -401,7 +401,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 				continue;
 			/* check if we can expire the paging record,
 			 * or if we need to re-queue it */
-			if (pr[i]->expiration_time >= now) {
+			if (pr[i]->expiration_time <= now) {
 				talloc_free(pr[i]);
 				ps->num_paging--;
 				LOGP(DPAG, LOGL_INFO, "Removed paging record, queue_len=%u\n",
