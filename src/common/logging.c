@@ -95,6 +95,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_NOTICE,
 		.enabled = 1,
 	},
+	[DPCU] = {
+		.name = "DPCU",
+		.description = "PCU interface",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
+	},
 #if 0
 	[DNS] = {
 		.name = "DNS",

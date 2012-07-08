@@ -17,6 +17,7 @@ enum {
 	DABIS,
 	DRTP,
 	DSUM,
+	DPCU,
 };
 
 extern const struct log_info bts_log_info;
