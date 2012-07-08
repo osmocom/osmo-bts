@@ -705,6 +705,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct osmo_phsap_prim pp;
 	struct lapdm_channel *lc;
+	uint8_t acc_delay;
 
 	/* increment number of busy RACH slots, if required */
 	if (trx == bts->c0 &&
@@ -732,18 +733,17 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 
 	pp.u.rach_ind.ra = ra_ind->msgUnitParam.u8Buffer[0];
 	pp.u.rach_ind.fn = ra_ind->u32Fn;
-	/* FIXME: check for under/overflow / sign */
-	if (ra_ind->measParam.i16BurstTiming <= 0 ||
-	    ra_ind->measParam.i16BurstTiming > 63 * 4)
-		pp.u.rach_ind.acc_delay = 0;
+	/* check for under/overflow / sign */
+	if (ra_ind->measParam.i16BurstTiming < 0)
+		acc_delay = 0;
 	else
-		pp.u.rach_ind.acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-
-	if (pp.u.rach_ind.acc_delay > btsb->max_ta) {
+		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+	if (acc_delay > btsb->max_ta) {
 		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
-		     pp.u.rach_ind.acc_delay, btsb->max_ta);
+		     acc_delay, btsb->max_ta);
 		return 0;
 	}
+	pp.u.rach_ind.acc_delay = acc_delay;
 
 	return lapdm_phsap_up(&pp.oph, &lc->lapdm_dcch);
 }
