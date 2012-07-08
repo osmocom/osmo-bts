@@ -216,6 +216,7 @@ int ts_meas_check_compute(struct gsm_bts_trx_ts *ts, uint32_t fn)
 		case GSM_LCHAN_SDCCH:
 		case GSM_LCHAN_TCH_F:
 		case GSM_LCHAN_TCH_H:
+		case GSM_LCHAN_PDTCH:
 			lchan_meas_check_compute(lchan, fn);
 			break;
 		default:

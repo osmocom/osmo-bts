@@ -45,6 +45,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
+#include <osmo-bts/pcu_if.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -505,14 +506,13 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			msgb_free(pp.oph.msg);
 		}
 		break;
-		/* we should never receive a request here */
 	case GsmL1_Sapi_Pdtch:
-		msu_param->u8Size = pdch_msu_size[PDCH_MCS_9];
-		memset(msu_param->u8Buffer, 0, msu_param->u8Size);
-		/* FIXME: copy actual data */
-		break;
 	case GsmL1_Sapi_Pacch:
+		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 0,
+			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
 	case GsmL1_Sapi_Ptcch:
+		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 1,
+			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
 		break;
@@ -544,6 +544,9 @@ static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 	struct gsm_bts_role_bts *btsb = bts->role;
 
 	int frames_expired = time_ind->u32Fn - fl1->gsm_time.fn;
+
+	/* update time on PCU interface */
+	pcu_tx_time_ind(time_ind->u32Fn);
 
 	/* Update our data structures with the current GSM time */
 	gsm_fn2gsmtime(&fl1->gsm_time, time_ind->u32Fn);
@@ -613,6 +616,7 @@ static int process_meas_res(struct gsm_lchan *lchan, GsmL1_MeasParam_t *m)
 static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
+	struct gsm_bts_trx *trx = fl1->priv;
 	struct osmo_phsap_prim pp;
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
@@ -688,6 +692,27 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		/* TCH speech frame handling */
 		rc = l1if_tch_rx(lchan, l1p_msg);
 		break;
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
+		/* drop incomplete UL block */
+		if (data_ind->msgUnitParam.u8Buffer[0]
+			!= GsmL1_PdtchPlType_Full)
+			break;
+		/* PDTCH / PACCH frame handling */
+		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 0,
+			data_ind->u32Fn, data_ind->u16Arfcn,
+			data_ind->u8BlockNbr,
+			data_ind->msgUnitParam.u8Buffer + 1,
+			data_ind->msgUnitParam.u8Size - 1);
+		break;
+	case GsmL1_Sapi_Ptcch:
+		/* PTCCH frame handling */
+		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 1,
+			data_ind->u32Fn, data_ind->u16Arfcn,
+			data_ind->u8BlockNbr,
+			data_ind->msgUnitParam.u8Buffer,
+			data_ind->msgUnitParam.u8Size);
+		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
 			get_value_string(femtobts_l1sapi_names, data_ind->sapi));
@@ -728,11 +753,6 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 		return -ENODEV;
 	}
 
-	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_RACH,
-			PRIM_OP_INDICATION, NULL);
-
-	pp.u.rach_ind.ra = ra_ind->msgUnitParam.u8Buffer[0];
-	pp.u.rach_ind.fn = ra_ind->u32Fn;
 	/* check for under/overflow / sign */
 	if (ra_ind->measParam.i16BurstTiming < 0)
 		acc_delay = 0;
@@ -743,6 +763,20 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 		     acc_delay, btsb->max_ta);
 		return 0;
 	}
+
+	/* check for packet access */
+	if (trx == bts->c0
+	 && (ra_ind->msgUnitParam.u8Buffer[0] & 0xf0) == 0x70) {
+		LOGP(DL1C, LOGL_INFO, "RACH for packet access\n");
+		return pcu_tx_rach_ind(bts, ra_ind->measParam.i16BurstTiming,
+			ra_ind->msgUnitParam.u8Buffer[0], ra_ind->u32Fn);
+	}
+
+	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_RACH,
+			PRIM_OP_INDICATION, NULL);
+
+	pp.u.rach_ind.ra = ra_ind->msgUnitParam.u8Buffer[0];
+	pp.u.rach_ind.fn = ra_ind->u32Fn;
 	pp.u.rach_ind.acc_delay = acc_delay;
 
 	return lapdm_phsap_up(&pp.oph, &lc->lapdm_dcch);
@@ -1044,6 +1078,46 @@ int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 
 	/* There is no confirmation we could wait for */
 	return osmo_wqueue_enqueue(&hdl->write_q[MQ_SYS_WRITE], msg);
+}
+
+/* send packet data request to L1 */
+int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
+	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
+{
+	struct gsm_bts_trx *trx = ts->trx;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct msgb *msg;
+	GsmL1_Prim_t *l1p;
+	GsmL1_PhDataReq_t *data_req;
+	GsmL1_MsgUnitParam_t *msu_param;
+	struct gsm_time g_time;
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "TX packet data %02u/%02u/%02u is_ptcch=%d trx=%d ts=%d "
+		"block_nr=%d, arfcn=%d, len=%d\n", g_time.t1, g_time.t2,
+		g_time.t3, is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
+
+	msg = l1p_msgb_alloc();
+	l1p = msgb_l1prim(msg);
+	l1p->id = GsmL1_PrimId_PhDataReq;
+	data_req = &l1p->u.phDataReq;
+	data_req->hLayer1 = fl1h->hLayer1;
+	data_req->sapi = (is_ptcch) ? GsmL1_Sapi_Ptcch : GsmL1_Sapi_Pdtch;
+	data_req->subCh = GsmL1_SubCh_NA;
+	data_req->u8BlockNbr = block_nr;
+	data_req->u8Tn = ts->nr;
+	data_req->u32Fn = fn;
+	msu_param = &data_req->msgUnitParam;
+	msu_param->u8Size = len;
+	memcpy(msu_param->u8Buffer, data, len);
+
+	tx_to_gsmtap(fl1h, msg);
+
+	/* transmit */
+	osmo_wqueue_enqueue(&fl1h->write_q[MQ_L1_WRITE], msg);
+
+	return 0;
 }
 
 struct femtol1_hdl *l1if_open(void *priv)

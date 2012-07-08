@@ -50,6 +50,7 @@ struct gsm_network bts_gsmnet = {
 };
 
 void *tall_bts_ctx;
+extern int gprs_enabled;
 
 int bts_init(struct gsm_bts *bts)
 {
@@ -145,10 +146,12 @@ int bts_link_estab(struct gsm_bts *bts)
 	oml_tx_state_changed(&bts->mo);
 
 	/* those should all be in DEPENDENCY */
-	oml_tx_state_changed(&bts->gprs.nse.mo);
-	oml_tx_state_changed(&bts->gprs.cell.mo);
-	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
-	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
+	if (gprs_enabled) {
+		oml_tx_state_changed(&bts->gprs.nse.mo);
+		oml_tx_state_changed(&bts->gprs.cell.mo);
+		oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
+		oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
+	}
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
