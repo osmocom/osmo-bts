@@ -38,6 +38,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/signal.h>
 
 /* FIXME: move this to libosmocore */
 static struct tlv_definition abis_nm_att_tlvdef_ipa = {
@@ -247,6 +248,7 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 				abis_nm_opstate_name(mo->nm_state.operational),
 				abis_nm_opstate_name(op_state));
 			mo->nm_state.operational = op_state;
+			osmo_signal_dispatch(SS_GLOBAL, S_NEW_OP_STATE, NULL);
 		}
 
 		/* send state change report */
@@ -820,6 +822,8 @@ static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
 		       TLVP_VAL(tp, NM_ATT_IPACC_BSSGP_CFG), 11);
 	}
 
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSE_ATTR, bts);
+
 	return 0;
 }
 
@@ -886,6 +890,8 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 		rlcc->initial_mcs = *TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_3);
 	}
 
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_CELL_ATTR, bts);
+
 	return 0;
 }
 
@@ -904,6 +910,8 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 		cur += 4;
 		nsvc->local_port = ntohs(*(uint16_t *)cur);
 	}
+
+	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSVC_ATTR, nsvc);
 
 	return 0;
 }
