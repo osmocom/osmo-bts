@@ -1042,6 +1042,9 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	case NM_OC_BTS:
 	case NM_OC_SITE_MANAGER:
 	case NM_OC_BASEB_TRANSC:
+	case NM_OC_GPRS_NSE:
+	case NM_OC_GPRS_CELL:
+	case NM_OC_GPRS_NSVC:
 		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, -1);
 		rc = oml_mo_opstart_ack(mo);
 		break;

@@ -801,8 +801,10 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 #define TLVP_PRES_LEN(tp, tag, min_len) \
 	(TLVP_PRESENT(tp, tag) && TLVP_LEN(tp, tag) >= min_len)
 
-static int oml_ipa_mo_set_attr_nse(struct gsm_bts *bts, struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
 {
+	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.nse);
+
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSEI, 2)) {
 		bts->gprs.nse.nsei =
 			ntohs(*(uint16_t *) TLVP_VAL(tp, NM_ATT_IPACC_NSEI));
@@ -821,8 +823,9 @@ static int oml_ipa_mo_set_attr_nse(struct gsm_bts *bts, struct tlv_parsed *tp)
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr_cell(struct gsm_bts *bts, struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 {
+	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.cell);
 	struct gprs_rlc_cfg *rlcc = &bts->gprs.cell.rlc_cfg;
 	const uint8_t *cur;
 
@@ -860,13 +863,13 @@ static int oml_ipa_mo_set_attr_cell(struct gsm_bts *bts, struct tlv_parsed *tp)
 
 		for (i = 0; i < 4; i++) {
 			if (cur[0] & (1 << i))
-				rlcc->cs_mask |= GPRS_CS1+i;
+				rlcc->cs_mask |= (1 << (GPRS_CS1+i));
 		}
 		if (cur[0] & 0x80)
-			rlcc->cs_mask |= GPRS_MCS9;
+			rlcc->cs_mask |= (1 << GPRS_MCS9);
 		for (i = 0; i < 8; i++) {
 			if (cur[1] & (1 << i))
-				rlcc->cs_mask |= GPRS_MCS1+i;
+				rlcc->cs_mask |= (1 << (GPRS_MCS1+i));
 		}
 	}
 
