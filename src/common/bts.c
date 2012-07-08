@@ -57,6 +57,9 @@ int bts_init(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	int rc;
 
+	/* add to list of BTSs */
+	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
+
 	bts->band = GSM_BAND_1800;
 
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
@@ -95,11 +98,11 @@ int bts_init(struct gsm_bts *bts)
 	osmo_rtp_init(tall_bts_ctx);
 
 	rc = bts_model_init(bts);
-	if (rc < 0)
+	if (rc < 0) {
+		llist_del(&bts->list);
 		return rc;
+	}
 
-	/* add to list of BTSs */
-	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
 	bts_gsmnet.num_bts++;
 
 	return rc;
