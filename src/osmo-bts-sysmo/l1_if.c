@@ -606,6 +606,11 @@ static int process_meas_res(struct gsm_lchan *lchan, GsmL1_MeasParam_t *m)
 {
 	struct bts_ul_meas ulm;
 
+	/* in the GPRS case we are not interested in measurement
+	 * processing.  The PCU will take care of it */
+	if (lchan->type == GSM_LCHAN_PDTCH)
+		return 0;
+
 	ulm.ta_offs_qbits = m->i16BurstTiming;
 	ulm.ber10k = (unsigned int) (m->fBer * 100);
 	ulm.inv_rssi = (uint8_t) (m->fRssi * -1);
