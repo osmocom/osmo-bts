@@ -2,7 +2,9 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS) -lortp
 
-bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy
+EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h misc/sysmobts_eeprom.h
+
+bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr
 
 COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c
 
@@ -14,3 +16,5 @@ sysmobts_remote_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
 
 l1fwd_proxy_SOURCES = l1_fwd_main.c l1_transp_hw.c
 l1fwd_proxy_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
+
+sysmobts_mgr_SOURCES = misc/sysmobts_mgr.c misc/sysmobts_misc.c misc/sysmobts_par.c
