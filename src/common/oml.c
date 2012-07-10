@@ -879,9 +879,9 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG_2, 5)) {
 		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_2);
-		rlcc->parameter[T_DL_TBF_EXT] = *(uint16_t *)cur * 10;
+		rlcc->parameter[T_DL_TBF_EXT] = ntohs(*(uint16_t *)cur) * 10;
 		cur += 2;
-		rlcc->parameter[T_UL_TBF_EXT] = *(uint16_t *)cur * 10;
+		rlcc->parameter[T_UL_TBF_EXT] = ntohs(*(uint16_t *)cur) * 10;
 		cur += 2;
 		rlcc->initial_cs = *cur;
 	}
