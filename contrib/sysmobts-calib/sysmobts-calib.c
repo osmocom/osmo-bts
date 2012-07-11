@@ -211,6 +211,8 @@ extern int activate_rf_frontend(int clock_source, int clock_cor);
 extern int power_scan(int band, int arfcn, int duration, float *mean_rssi);
 extern int follow_sch(int band, int arfcn, int calib, int reference, HANDLE *layer1);
 extern int follow_bch(HANDLE layer1);
+extern int find_bsic(void);
+extern int set_tsc_from_bsic(HANDLE layer1, int bsic);
 extern int set_clock_cor(int clock_corr, int calib, int source);
 extern int rf_clock_info(HANDLE *layer1, int *clkErr, int *clkErrRes);
 extern int mph_close(HANDLE layer1);
@@ -224,6 +226,11 @@ extern int wait_for_data(uint8_t *data, size_t *size);
 
 #define CHECK_RC_MSG(rc, msg) \
 	if (rc != 0) { \
+		printf("%s: %d\n", msg, rc);	\
+		return EXIT_FAILURE; 		\
+	}
+#define CHECK_COND_MSG(cond, rc, msg) \
+	if (cond) { \
 		printf("%s: %d\n", msg, rc);	\
 		return EXIT_FAILURE; 		\
 	}
@@ -394,6 +401,13 @@ static int bcch_follow(void)
 	if (rc == -23)
 		rc = find_initial_clock(layer1, &cor);
 	CHECK_RC_MSG(rc, "Following SCH failed");
+
+	/* identify the BSIC and set it as TSC */
+	rc = find_bsic();
+	CHECK_COND_MSG(rc < 0, rc, "Identifying the BSIC failed");
+	rc = set_tsc_from_bsic(layer1, rc);
+	CHECK_RC_MSG(rc, "Setting the TSC failed");
+
 
 	/* follow the bcch */
 	rc = follow_bcch(layer1);

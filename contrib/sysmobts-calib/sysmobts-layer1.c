@@ -407,7 +407,8 @@ int follow_sch(int band, int arfcn, int clock, int ref, HANDLE *layer1)
 	memset(&prim, 0, sizeof(prim));
 	prim.u.mphConnectReq.hLayer1 = *layer1;
 	prim.u.mphConnectReq.u8Tn = 0;
-	prim.u.mphConnectReq.logChComb = GsmL1_LogChComb_V;
+	prim.u.mphConnectReq.logChComb = GsmL1_LogChComb_IV;
+	printf("FIVE\n");
 	rc = send_recv_sig_prim(GsmL1_PrimId_MphConnectReq, &prim);
 	if (rc != 0) {
 		printf("Failed to connect.\n");
@@ -510,6 +511,54 @@ int follow_bcch(HANDLE layer1)
 	if (rc != 0) {
 		printf("Didn't get BCCH data.\n");
 		return rc;
+	}
+
+	return 0;
+}
+
+int find_bsic(void)
+{
+	int rc, i;
+	GsmL1_Prim_t prim;
+
+	printf("Waiting for SCH data.\n");
+	for (i = 0; i < 10; ++i) {
+		uint8_t bsic;
+		rc = wait_for_indication(GsmL1_PrimId_PhDataInd, &prim);
+		if (rc < 0) {
+			printf("Didn't get SCH data.\n");
+			return rc;
+		}
+		if (prim.u.phDataInd.sapi != GsmL1_Sapi_Sch)
+			continue;
+
+		bsic = (prim.u.phDataInd.msgUnitParam.u8Buffer[0] >> 2) & 0xFF;
+		return bsic;
+	}
+
+	printf("Giving up finding the SCH\n");
+	return -1;
+}
+
+int set_tsc_from_bsic(HANDLE layer1, int bsic)
+{
+	int rc;
+	int tsc = bsic & 0x7;
+	GsmL1_Prim_t prim;
+
+	memset(&prim, 0, sizeof(prim));
+	prim.u.mphConfigReq.hLayer3 = 0x23;
+	prim.u.mphConfigReq.hLayer1 = layer1;
+	prim.u.mphConfigReq.cfgParamId = GsmL1_ConfigParamId_SetNbTsc;
+	prim.u.mphConfigReq.cfgParams.setNbTsc.u8NbTsc = tsc;
+	rc = send_recv_sig_prim(GsmL1_PrimId_MphConfigReq, &prim);
+	if (rc != 0) {
+		printf("Failed to send configure.\n");
+	}
+
+	if (prim.u.mphConfigCnf.status != GsmL1_Status_Success) {
+		printf("Failed to set the config cnf.\n");
+		return -1;
 	}
 
 	return 0;
