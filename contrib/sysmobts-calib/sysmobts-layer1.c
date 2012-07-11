@@ -33,6 +33,8 @@
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
 
+#include "sysmobts-layer1.h"
+
 #define ARRAY_SIZE(ar)	(sizeof(ar)/sizeof((ar)[0]))
 
 #define BTS_DSP2ARM    "/dev/msgq/superfemto_dsp2arm"
