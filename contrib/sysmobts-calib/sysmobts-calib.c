@@ -165,7 +165,7 @@ static void handle_options(int argc, char **argv)
 					ARRAY_SIZE(bands), optarg);
 			break;
 		case 'd':
-			dsp_flags = atoi(optarg);	
+			dsp_flags = strtol(optarg, NULL, 16);
 			break;
 		case 'a':
 			cal_arfcn = atoi(optarg);
