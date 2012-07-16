@@ -528,6 +528,7 @@ static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND)
 			LOGP(DPCU, LOGL_INFO, "PCU socket not created, "
 				"dropping message\n");
+		msgb_free(msg);
 		return -EINVAL;
 	}
 	conn_bfd = &state->conn_bfd;
@@ -535,6 +536,7 @@ static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND)
 			LOGP(DPCU, LOGL_NOTICE, "PCU socket not connected, "
 				"dropping message\n");
+		msgb_free(msg);
 		return -EIO;
 	}
 	msgb_enqueue(&state->upqueue, msg);
