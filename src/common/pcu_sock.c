@@ -120,6 +120,7 @@ int pcu_tx_info_ind(void)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
 	info_ind = &pcu_prim->u.info_ind;
+	info_ind->version = PCU_IF_VERSION;
 
 	if (avail_lai && avail_nse && avail_cell && avail_nsvc[0]) {
 		info_ind->flags |= PCU_IF_FLAG_ACTIVE;

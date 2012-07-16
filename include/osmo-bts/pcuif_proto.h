@@ -1,6 +1,8 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
 
+#define PCU_IF_VERSION		0x01
+
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */	
@@ -74,6 +76,7 @@ struct gsm_pcu_if_info_trx {
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_info_ind {
+	uint32_t	version;
 	uint32_t	flags;
 	struct gsm_pcu_if_info_trx trx[8];	/* TRX infos per BTS */
 	/* RAI */
