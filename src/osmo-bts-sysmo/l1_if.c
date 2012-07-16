@@ -405,6 +405,13 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* actually transmit it */
 		goto tx;
 		break;
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
+		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 0,
+			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
+	case GsmL1_Sapi_Ptcch:
+		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 1,
+			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
 	default:
 		break;
 	}
@@ -506,13 +513,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			msgb_free(pp.oph.msg);
 		}
 		break;
-	case GsmL1_Sapi_Pdtch:
-	case GsmL1_Sapi_Pacch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 0,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
-	case GsmL1_Sapi_Ptcch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 1,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
 		break;
