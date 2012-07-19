@@ -821,7 +821,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 	return rc;
 }
 
-int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg)
+int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	struct wait_l1_conf *wlc;
@@ -832,8 +832,8 @@ int l1if_handle_l1prim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		/* silent, don't clog the log file */
 		break;
 	default:
-		LOGP(DL1P, LOGL_DEBUG, "Rx L1 prim %s\n",
-			get_value_string(femtobts_l1prim_names, l1p->id));
+		LOGP(DL1P, LOGL_DEBUG, "Rx L1 prim %s on queue %d\n",
+			get_value_string(femtobts_l1prim_names, l1p->id), wq);
 	}
 
 	/* check if this is a resposne to a sync-waiting request */
@@ -1140,8 +1140,15 @@ struct femtol1_hdl *l1if_open(void *priv)
 	/* default clock source: OCXO */
 	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
 
-	rc = l1if_transport_open(fl1h);
+	rc = l1if_transport_open(MQ_SYS_WRITE, fl1h);
 	if (rc < 0) {
+		talloc_free(fl1h);
+		return NULL;
+	}
+
+	rc = l1if_transport_open(MQ_L1_WRITE, fl1h);
+	if (rc < 0) {
+		l1if_transport_close(MQ_SYS_WRITE, fl1h);
 		talloc_free(fl1h);
 		return NULL;
 	}
@@ -1155,5 +1162,7 @@ struct femtol1_hdl *l1if_open(void *priv)
 
 int l1if_close(struct femtol1_hdl *fl1h)
 {
-	return l1if_transport_close(fl1h);
+	l1if_transport_close(MQ_L1_WRITE, fl1h);
+	l1if_transport_close(MQ_SYS_WRITE, fl1h);
+	return 0;
 }

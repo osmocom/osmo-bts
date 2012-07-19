@@ -115,7 +115,7 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		if (rc != sizeof(GsmL1_Prim_t))
 			LOGP(DL1C, LOGL_NOTICE, "%u != "
 			     "sizeof(GsmL1_Prim_t)\n", rc);
-		return l1if_handle_l1prim(fl1h, msg);
+		return l1if_handle_l1prim(ofd->priv_nr, fl1h, msg);
 	default:
 		/* The compiler can't know that priv_nr is an enum. Assist. */
 		LOGP(DL1C, LOGL_FATAL, "writing on a wrong queue: %d\n",
@@ -144,87 +144,73 @@ static int l1fd_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 	return 0;
 }
 
-int l1if_transport_open(struct femtol1_hdl *hdl)
+int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 {
-	int rc, i;
+	int rc;
 
 	/* Step 1: Open all msg_queue file descriptors */
-	for (i = 0; i < ARRAY_SIZE(hdl->read_ofd); i++) {
-		struct osmo_fd *ofd = &hdl->read_ofd[i];
+	struct osmo_fd *read_ofd = &hdl->read_ofd[q];
+	struct osmo_wqueue *wq = &hdl->write_q[q];
+	struct osmo_fd *write_ofd = &hdl->write_q[q].bfd;
 
-		rc = open(rd_devnames[i], O_RDONLY);
-		if (rc < 0) {
-			LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
-				strerror(errno));
-			return rc;
-		}
-		ofd->fd = rc;
-		ofd->priv_nr = i;
-		ofd->data = hdl;
-		ofd->cb = l1if_fd_cb;
-		ofd->when = BSC_FD_READ;
-		rc = osmo_fd_register(ofd);
-		if (rc < 0) {
-			close(ofd->fd);
-			ofd->fd = -1;
-			return rc;
-		}
+	rc = open(rd_devnames[q], O_RDONLY);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
+			strerror(errno));
+		return rc;
 	}
-	for (i = 0; i < ARRAY_SIZE(hdl->write_q); i++) {
-		struct osmo_wqueue *wq = &hdl->write_q[i];
-		struct osmo_fd *ofd = &hdl->write_q[i].bfd;
-
-		rc = open(wr_devnames[i], O_WRONLY);
-		if (rc < 0) {
-			LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
-				strerror(errno));
-			goto out_read;
-		}
-
-		osmo_wqueue_init(wq, 10);
-		wq->write_cb = l1fd_write_cb;
-
-		ofd->fd = rc;
-		ofd->priv_nr = i;
-		ofd->data = hdl;
-		ofd->when = BSC_FD_WRITE;
-		rc = osmo_fd_register(ofd);
-		if (rc < 0) {
-			close(ofd->fd);
-			ofd->fd = -1;
-			goto out_read;
-		}
-
+	read_ofd->fd = rc;
+	read_ofd->priv_nr = q;
+	read_ofd->data = hdl;
+	read_ofd->cb = l1if_fd_cb;
+	read_ofd->when = BSC_FD_READ;
+	rc = osmo_fd_register(read_ofd);
+	if (rc < 0) {
+		close(read_ofd->fd);
+		read_ofd->fd = -1;
+		return rc;
 	}
+
+	rc = open(wr_devnames[q], O_WRONLY);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
+			strerror(errno));
+		goto out_read;
+	}
+	osmo_wqueue_init(wq, 10);
+	wq->write_cb = l1fd_write_cb;
+	write_ofd->fd = rc;
+	write_ofd->priv_nr = q;
+	write_ofd->data = hdl;
+	write_ofd->when = BSC_FD_WRITE;
+	rc = osmo_fd_register(write_ofd);
+	if (rc < 0) {
+		close(write_ofd->fd);
+		write_ofd->fd = -1;
+		goto out_read;
+	}
+
 	return 0;
 
 out_read:
-	for (i = 0; i < ARRAY_SIZE(hdl->read_ofd); i++) {
-		close(hdl->read_ofd[i].fd);
-		osmo_fd_unregister(&hdl->read_ofd[i]);
-	}
+	close(hdl->read_ofd[q].fd);
+	osmo_fd_unregister(&hdl->read_ofd[q]);
 
 	return rc;
 }
 
-int l1if_transport_close(struct femtol1_hdl *hdl)
+int l1if_transport_close(int q, struct femtol1_hdl *hdl)
 {
-	int i;
+	struct osmo_fd *read_ofd = &hdl->read_ofd[q];
+	struct osmo_fd *write_ofd = &hdl->write_q[q].bfd;
 
-	for (i = 0; i < ARRAY_SIZE(hdl->read_ofd); i++) {
-		struct osmo_fd *ofd = &hdl->read_ofd[i];
+	osmo_fd_unregister(read_ofd);
+	close(read_ofd->fd);
+	read_ofd->fd = -1;
 
-		osmo_fd_unregister(ofd);
-		close(ofd->fd);
-		ofd->fd = -1;
-	}
+	osmo_fd_unregister(write_ofd);
+	close(write_ofd->fd);
+	write_ofd->fd = -1;
 
-	for (i = 0; i < ARRAY_SIZE(hdl->write_q); i++) {
-		struct osmo_fd *ofd = &hdl->write_q[i].bfd;
-
-		osmo_fd_unregister(ofd);
-		close(ofd->fd);
-		ofd->fd = -1;
-	}
 	return 0;
 }

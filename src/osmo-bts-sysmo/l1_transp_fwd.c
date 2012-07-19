@@ -87,7 +87,7 @@ static int fwd_read_cb(struct osmo_fd *ofd)
 	if (ofd->priv_nr == MQ_SYS_WRITE)
 		rc = l1if_handle_sysprim(fl1h, msg);
 	else
-		rc = l1if_handle_l1prim(fl1h, msg);
+		rc = l1if_handle_l1prim(ofd->priv_nr, fl1h, msg);
 
 	return rc;
 }
@@ -98,9 +98,9 @@ static int prim_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 	return write(ofd->fd, msg->head, msg->len);
 }
 
-int l1if_transport_open(struct femtol1_hdl *fl1h)
+int l1if_transport_open(int q, struct femtol1_hdl *fl1h)
 {
-	int rc, i;
+	int rc;
 	char *bts_host = getenv("L1FWD_BTS_HOST");
 
 	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
@@ -111,42 +111,34 @@ int l1if_transport_open(struct femtol1_hdl *fl1h)
 		exit(2);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(fl1h->write_q); i++) {
-		struct osmo_wqueue *wq = &fl1h->write_q[i];
-		struct osmo_fd *ofd = &wq->bfd;
+	struct osmo_wqueue *wq = &fl1h->write_q[q];
+	struct osmo_fd *ofd = &wq->bfd;
 
-		osmo_wqueue_init(wq, 10);
-		wq->write_cb = prim_write_cb;
-		wq->read_cb = fwd_read_cb;
+	osmo_wqueue_init(wq, 10);
+	wq->write_cb = prim_write_cb;
+	wq->read_cb = fwd_read_cb;
 
-		ofd->data = fl1h;
-		ofd->priv_nr = i;
-		ofd->when |= BSC_FD_READ;
+	ofd->data = fl1h;
+	ofd->priv_nr = q;
+	ofd->when |= BSC_FD_READ;
 
-		rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
-					bts_host, fwd_udp_ports[i],
-					OSMO_SOCK_F_CONNECT);
-		if (rc < 0) {
-			talloc_free(fl1h);
-			return rc;
-		}
-	}
+	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
+				bts_host, fwd_udp_ports[q],
+				OSMO_SOCK_F_CONNECT);
+	if (rc < 0)
+		return rc;
 
 	return 0;
 }
 
-int l1if_transport_close(struct femtol1_hdl *fl1h)
+int l1if_transport_close(int q, struct femtol1_hdl *fl1h)
 {
-	int i;
+	struct osmo_wqueue *wq = &fl1h->write_q[q];
+	struct osmo_fd *ofd = &wq->bfd;
 
-	for (i = 0; i < ARRAY_SIZE(fl1h->write_q); i++) {
-		struct osmo_wqueue *wq = &fl1h->write_q[i];
-		struct osmo_fd *ofd = &wq->bfd;
-
-		osmo_wqueue_clear(wq);
-		osmo_fd_unregister(ofd);
-		close(ofd->fd);
-	}
+	osmo_wqueue_clear(wq);
+	osmo_fd_unregister(ofd);
+	close(ofd->fd);
 	
 	return 0;
 }
