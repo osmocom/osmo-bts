@@ -86,7 +86,7 @@ static const char *wr_devnames[] = {
 static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	//struct msgb *msg = l1p_msgb_alloc();
-	struct msgb *msg = msgb_alloc_headroom(2048, 128, "1l_fd");
+	struct msgb *msg = msgb_alloc_headroom(sizeof(SuperFemto_Prim_t) + 128, 128, "1l_fd");
 	struct femtol1_hdl *fl1h = ofd->data;
 	int rc;
 
