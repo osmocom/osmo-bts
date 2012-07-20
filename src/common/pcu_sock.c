@@ -41,7 +41,10 @@
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
 
+uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
+
 extern struct gsm_network bts_gsmnet;
+extern int pcu_direct;
 static int avail_lai = 0, avail_nse = 0, avail_cell = 0, avail_nsvc[2] = {0, 0};
 
 static const char *sapi_string[] = {
@@ -128,6 +131,9 @@ int pcu_tx_info_ind(void)
 	} else
 		LOGP(DPCU, LOGL_INFO, "BTS is down\n");
 
+	if (pcu_direct)
+		info_ind->flags |= PCU_IF_FLAG_SYSMO;
+
 	/* RAI */
 	info_ind->mcc = net->mcc;
 	info_ind->mnc = net->mnc;
@@ -201,6 +207,7 @@ int pcu_tx_info_ind(void)
 			break;
 		info_ind->trx[i].pdch_mask = 0;
 		info_ind->trx[i].arfcn = trx->arfcn;
+		info_ind->trx[i].hlayer1 = trx_get_hlayer1(trx);
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED

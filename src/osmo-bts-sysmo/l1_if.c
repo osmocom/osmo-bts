@@ -57,6 +57,8 @@
 #include "l1_transp.h"
 #include "hw_misc.h"
 
+extern int pcu_direct;
+
 /* FIXME: make threshold configurable */
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
@@ -959,12 +961,10 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 #else
 		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
-		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = 0;
+		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = pcu_direct;
 		/* Use clock from OCXO or whatever source is configured */
 		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
-		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
-		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
 #endif
 	} else {
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;

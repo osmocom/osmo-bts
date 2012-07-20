@@ -291,6 +291,13 @@ static int trx_init(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, 0, trx_init_compl_cb, fl1h);
 }
 
+uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	return fl1h->hLayer1;
+}
+
 static int trx_close_compl_cb(struct msgb *l1_msg, void *data)
 {
 	return 0;

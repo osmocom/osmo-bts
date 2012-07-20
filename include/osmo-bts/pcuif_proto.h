@@ -1,7 +1,7 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
 
-#define PCU_IF_VERSION		0x01
+#define PCU_IF_VERSION		0x03
 
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
@@ -73,12 +73,14 @@ struct gsm_pcu_if_info_trx {
 	uint8_t		pdch_mask;		/* PDCH channels per TS */
 	uint8_t		spare;
 	uint8_t		tsc[8];			/* TSC per channel */
+	uint32_t	hlayer1;
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_info_ind {
 	uint32_t	version;
 	uint32_t	flags;
 	struct gsm_pcu_if_info_trx trx[8];	/* TRX infos per BTS */
+	uint8_t		bsic;
 	/* RAI */
 	uint16_t	mcc, mnc, lac, rac;
 	/* NSE */
@@ -121,6 +123,12 @@ struct gsm_pcu_if_time_ind {
 	uint32_t	fn;
 } __attribute__ ((packed));
 
+struct gsm_pcu_if_pag_req {
+	uint8_t		sapi;
+	uint8_t		chan_needed;
+	uint8_t		identity_lv[9];
+} __attribute__ ((packed));
+
 struct gsm_pcu_if {
 	/* context based information */
 	uint8_t		msg_type;	/* message type */
@@ -135,6 +143,7 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_info_ind	info_ind;
 		struct gsm_pcu_if_act_req	act_req;
 		struct gsm_pcu_if_time_ind	time_ind;
+		struct gsm_pcu_if_pag_req	pag_req;
 	} u;
 } __attribute__ ((packed));
 

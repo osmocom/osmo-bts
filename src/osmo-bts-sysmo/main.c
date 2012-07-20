@@ -51,7 +51,7 @@
 
 /* FIXME: read from real hardware */
 const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
-int gprs_enabled = 0;
+int gprs_enabled = 0, pcu_direct = 0;
 
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
@@ -110,6 +110,8 @@ static void print_help()
 		"  -p	--dsp-trace	Set DSP trace flags\n"
 		"  -w	--hw-version	Print the targeted HW Version\n"
 		"  -P	--pcu		Enable PCU L1 socket interface\n"
+		"  -M	--pcu-direct	Force PCU to access message queue for "
+			"PDCH dchannel directly\n"
 		);
 }
 
@@ -140,10 +142,11 @@ static void handle_options(int argc, char **argv)
 			{ "dsp-trace", 1, 0, 'p' },
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu", 0, 0, 'P' },
+			{ "pcu-direct", 0, 0, 'M' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:P",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:PM",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -174,6 +177,9 @@ static void handle_options(int argc, char **argv)
 				exit(-1);
 			}
 			gprs_enabled = 1;
+			break;
+		case 'M':
+			pcu_direct = 1;
 			break;
 		case 'V':
 			print_version(1);
