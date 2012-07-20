@@ -389,6 +389,39 @@ int pcu_tx_time_ind(uint32_t fn)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
+int pcu_tx_pag_req(uint8_t *identity_lv, uint8_t chan_needed)
+{
+	struct pcu_sock_state *state = bts_gsmnet.pcu_state;
+	struct msgb *msg;
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_pag_req *pag_req;
+
+	/* check if identity does not fit: length > sizeof(lv) - 1 */
+	if (identity_lv[0] >= sizeof(pag_req->identity_lv)) {
+		LOGP(DPCU, LOGL_ERROR, "Paging identity too large (%d)\n",
+			identity_lv[0]);
+		return -EINVAL;
+	}
+
+	/* socket not created */
+	if (!state) {
+		LOGP(DPCU, LOGL_DEBUG, "PCU socket not created, ignoring "
+			"paging message\n");
+		return 0;
+	}
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_PAG_REQ, 0);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	pag_req = &pcu_prim->u.pag_req;
+
+	pag_req->chan_needed = chan_needed;
+	memcpy(pag_req->identity_lv, identity_lv, identity_lv[0] + 1);
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_pcu_if_data *data_req)
 {

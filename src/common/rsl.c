@@ -398,6 +398,8 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 		/* FIXME: notfiy the BSC somehow ?*/
 	}
 
+	pcu_tx_pag_req(identity_lv, chan_needed);
+
 	return 0;
 }
 
