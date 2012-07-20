@@ -307,13 +307,22 @@ int print_system_info()
 
 #define INFO_DSP(x)  x.u.systemInfoCnf.dspVersion
 #define INFO_FPGA(x) x.u.systemInfoCnf.fpgaVersion
+#ifdef FEMTOBTS_NO_BOARD_VERSION
+#define BOARD_REV(x) -1
+#define BOARD_OPT(x) -1
+#else
+#define BOARD_REV(x) x.u.systemInfoCnf.boardVersion.rev
+#define BOARD_OPT(x) x.u.systemInfoCnf.boardVersion.option
+#endif
+
 	printf("DSP v%d.%d.%d FPGA v%d.%d.%d Rev: %d Option: %d\n",
 		INFO_DSP(prim).major, INFO_DSP(prim).minor, INFO_DSP(prim).build,
 		INFO_FPGA(prim).major, INFO_FPGA(prim).minor, INFO_FPGA(prim).build,
-		prim.u.systemInfoCnf.boardVersion.rev,
-		prim.u.systemInfoCnf.boardVersion.option);
+		BOARD_REV(prim), BOARD_OPT(prim));
 #undef INFO_DSP
 #undef INFO_FPGA
+#undef BOARD_REV
+#undef BOARD_OPT
 	return 0;
 }
 
