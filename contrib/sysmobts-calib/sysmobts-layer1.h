@@ -1,6 +1,18 @@
 #ifndef SYSMOBTS_LAYER_H
 #define SYSMOBTS_LAYER_H
 
+#include <sysmocom/femtobts/superfemto.h>
+
+/* older header files don't have this */
+#ifndef SUPERFEMTO_API
+#define SUPERFEMTO_API(x,y,z)  ((x << 16) + (y << 8) + z)
+#endif
+
+#ifndef SUPERFEMTO_API_VERSION
+#define SUPERFEMTO_API_VERSION SUPERFEMTO_API(2,2,0)
+#endif
+
+
 extern int initialize_layer1(uint32_t dsp_flags);
 extern int print_system_info();
 extern int activate_rf_frontend(int clock_source, int clock_cor);

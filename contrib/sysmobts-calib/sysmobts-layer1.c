@@ -338,9 +338,10 @@ int activate_rf_frontend(int clock_source, int initial_cor)
 
 	prim.u.activateRfReq.rfTrx.iClkCor = initial_cor;
 	prim.u.activateRfReq.rfTrx.clkSrc = clock_source;
-
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
 	prim.u.activateRfReq.rfRx.iClkCor = initial_cor;
-	prim.u.activateRfReq.rfRx.clkSrc = clock_source;	
+	prim.u.activateRfReq.rfRx.clkSrc = clock_source;
+#endif
 
 	rc = send_recv_primitive(SuperFemto_PrimId_ActivateRfReq, &prim);
 	return rc;
@@ -583,8 +584,10 @@ int set_clock_cor(int clock_cor, int calib, int source)
 
 	prim.u.rfClockSetupReq.rfTrx.iClkCor = clock_cor;
 	prim.u.rfClockSetupReq.rfTrx.clkSrc = calib;
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
 	prim.u.rfClockSetupReq.rfRx.iClkCor = clock_cor;
 	prim.u.rfClockSetupReq.rfRx.clkSrc = calib;
+#endif
 	prim.u.rfClockSetupReq.rfTrxClkCal.clkSrc = source;
 
 	rc = send_recv_primitive(SuperFemto_PrimId_RfClockSetupReq, &prim);

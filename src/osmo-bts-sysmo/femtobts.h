@@ -12,6 +12,15 @@
 //#define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
 #endif
 
+/* older header files don't have this */
+#ifndef SUPERFEMTO_API
+#define SUPERFEMTO_API(x,y,z)	((x << 16) + (y << 8) + z)
+#endif
+
+#ifndef SUPERFEMTO_API_VERSION
+#define SUPERFEMTO_API_VERSION SUPERFEMTO_API(2,2,0)
+#endif
+
 enum l1prim_type {
 	L1P_T_REQ,
 	L1P_T_CONF,

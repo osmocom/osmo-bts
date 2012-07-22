@@ -965,6 +965,10 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		/* Use clock from OCXO or whatever source is configured */
 		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
+		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
+		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
+#endif /* API 2.4.0 */
 #endif
 	} else {
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
