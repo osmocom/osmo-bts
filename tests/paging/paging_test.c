@@ -156,3 +156,10 @@ int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 { return 0; }
 void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			 unsigned int rtp_pl_len) {}
+
+int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
+        uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
+{ return 0; }
+
+uint32_t trx_get_hlayer1(struct gsm_bts_tx *trx)
+{ return 0; }
