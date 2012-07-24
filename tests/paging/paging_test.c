@@ -29,7 +29,6 @@
 
 static struct gsm_bts *bts;
 static struct gsm_bts_role_bts *btsb;
-int gprs_enabled = 0;
 int pcu_direct = 0;
 
 static const uint8_t static_ilv[] = {
