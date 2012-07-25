@@ -220,6 +220,37 @@ const struct value_string femtobts_tracef_names[29] = {
 	{ 0, NULL }
 };
 
+const struct value_string femtobts_tracef_docs[29] = {
+	{ DBG_DEBUG,			"Debug Region" },
+	{ DBG_L1WARNING,		"L1 Warning Region" },
+	{ DBG_ERROR,			"Error Region" },
+	{ DBG_L1RXMSG,			"L1_RX_MSG Region" },
+	{ DBG_L1RXMSGBYTE,		"L1_RX_MSG_BYTE Region" },
+	{ DBG_L1TXMSG,			"L1_TX_MSG Region" },
+	{ DBG_L1TXMSGBYTE,		"L1_TX_MSG_BYTE Region" },
+	{ DBG_MPHCNF,			"MphConfirmation Region" },
+	{ DBG_MPHIND,			"MphIndication Region" },
+	{ DBG_MPHREQ,			"MphRequest Region" },
+	{ DBG_PHIND,			"PhIndication Region" },
+	{ DBG_PHREQ,			"PhRequest Region" },
+	{ DBG_PHYRF,			"PhyRF Region" },
+	{ DBG_PHYRFMSGBYTE,		"PhyRF Message Region" },
+	{ DBG_MODE,			"Mode Region" },
+	{ DBG_TDMAINFO,			"TDMA Info Region" },
+	{ DBG_BADCRC,			"Bad CRC Region" },
+	{ DBG_PHINDBYTE,		"PH_IND_BYTE" },
+	{ DBG_PHREQBYTE,		"PH_REQ_BYTE" },
+	{ DBG_DEVICEMSG,		"Device Message Region" },
+	{ DBG_RACHINFO,			"RACH Info" },
+	{ DBG_LOGCHINFO,		"LOG_CH_INFO" },
+	{ DBG_MEMORY,			"Memory Region" },
+	{ DBG_PROFILING,		"Profiling Region" },
+	{ DBG_TESTCOMMENT,		"Test Comments" },
+	{ DBG_TEST,			"Test Region" },
+	{ DBG_STATUS,			"Status Region" },
+	{ 0, NULL }
+};
+
 const struct value_string femtobts_tch_pl_names[] = {
 	{ GsmL1_TchPlType_NA,			"N/A" },
 	{ GsmL1_TchPlType_Fr,			"FR" },
