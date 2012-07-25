@@ -161,5 +161,5 @@ int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
         uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
 { return 0; }
 
-uint32_t trx_get_hlayer1(struct gsm_bts_tx *trx)
+uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 { return 0; }
