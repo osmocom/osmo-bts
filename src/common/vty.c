@@ -240,7 +240,9 @@ DEFUN(cfg_bts,
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
       "ipa unit-id <0-65534> <0-255>",
-      "Set the ip.access BTS Unit ID of this BTS\n")
+      "ip.access RSL commands\n"
+      "Set the Unit ID of this BTS\n"
+      "Site ID\n" "Unit ID\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int site_id = atoi(argv[0]);
@@ -255,7 +257,15 @@ DEFUN(cfg_bts_unit_id,
 DEFUN(cfg_bts_band,
       cfg_bts_band_cmd,
       "band (450|GSM450|480|GSM480|750|GSM750|810|GSM810|850|GSM850|900|GSM900|1800|DCS1800|1900|PCS1900)",
-      "Set the frequency band of this BTS\n" "Frequency band\n")
+      "Set the frequency band of this BTS\n"
+      "Alias for GSM450\n450Mhz\n"
+      "Alias for GSM480\n480Mhz\n"
+      "Alias for GSM750\n750Mhz\n"
+      "Alias for GSM810\n810Mhz\n"
+      "Alias for GSM850\n850Mhz\n"
+      "Alias for GSM900\n900Mhz\n"
+      "Alias for DCS1800\n1800Mhz\n"
+      "Alias for PCS1900\n1900Mhz\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int band = gsm_band_parse(argv[0]);
