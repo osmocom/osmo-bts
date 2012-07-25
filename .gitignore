@@ -28,3 +28,11 @@ tests/package.m4
 tests/paging/paging_test
 tests/testsuite
 tests/testsuite.log
+
+# Possible generated file
+doc/vty_reference.xml
+
+# Backups, vi, merges
+*.sw?
+*.orig
+*.sav
