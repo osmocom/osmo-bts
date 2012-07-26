@@ -82,11 +82,17 @@ static const char *wr_devnames[] = {
 #endif
 };
 
+/*
+ * Make sure that all structs we read fit into the SYSMOBTS_PRIM_SIZE
+ */
+osmo_static_assert(sizeof(GsmL1_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, prim)
+osmo_static_assert(sizeof(SuperFemto_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, prim)
+
 /* callback when there's something to read from the l1 msg_queue */
 static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	//struct msgb *msg = l1p_msgb_alloc();
-	struct msgb *msg = msgb_alloc_headroom(sizeof(SuperFemto_Prim_t) + 128, 128, "1l_fd");
+	struct msgb *msg = msgb_alloc_headroom(SYSMOBTS_PRIM_SIZE, 128, "1l_fd");
 	struct femtol1_hdl *fl1h = ofd->data;
 	int rc;
 

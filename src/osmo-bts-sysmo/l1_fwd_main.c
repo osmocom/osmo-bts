@@ -93,7 +93,7 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 /* data has arrived on the udp socket */
 static int udp_read_cb(struct osmo_fd *ofd)
 {
-	struct msgb *msg = msgb_alloc_headroom(sizeof(SuperFemto_Prim_t) + 128, 128, "udp_rx");
+	struct msgb *msg = msgb_alloc_headroom(SYSMOBTS_PRIM_SIZE, 128, "udp_rx");
 	struct l1fwd_hdl *l1fh = ofd->data;
 	struct femtol1_hdl *fl1h = l1fh->fl1h;
 	int rc;

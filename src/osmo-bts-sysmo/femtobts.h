@@ -21,6 +21,14 @@
 #define SUPERFEMTO_API_VERSION SUPERFEMTO_API(2,2,0)
 #endif
 
+/*
+ * Depending on the firmware version either GsmL1_Prim_t or SuperFemto_Prim_t
+ * is the bigger struct. For earlier firmware versions the GsmL1_Prim_t was the
+ * bigger struct.
+ */
+#define SYSMOBTS_PRIM_SIZE \
+	(OSMO_MAX(sizeof(SuperFemto_Prim_t), sizeof(GsmL1_Prim_t)) + 128)
+
 enum l1prim_type {
 	L1P_T_REQ,
 	L1P_T_CONF,

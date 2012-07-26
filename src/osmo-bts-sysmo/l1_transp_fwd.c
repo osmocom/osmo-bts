@@ -64,7 +64,7 @@ static const uint16_t fwd_udp_ports[] = {
 
 static int fwd_read_cb(struct osmo_fd *ofd)
 {
-	struct msgb *msg = msgb_alloc_headroom(sizeof(SuperFemto_Prim_t) + 128, 128, "udp_rx");
+	struct msgb *msg = msgb_alloc_headroom(SYSMOBTS_PRIM_SIZE, 128, "udp_rx");
 	struct femtol1_hdl *fl1h = ofd->data;
 	int rc;
 
