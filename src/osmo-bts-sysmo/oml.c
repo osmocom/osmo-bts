@@ -255,7 +255,6 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
-	enum gsm_band osmo_band;
 	int femto_band;
 
 	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
@@ -266,11 +265,10 @@ static int trx_init(struct gsm_bts_trx *trx)
 		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
 	}
 
-	osmo_band = gsm_arfcn2band(trx->arfcn);
-	femto_band = band_osmo2femto(osmo_band);
+	femto_band = band_osmo2femto(trx->bts->band);
 	if (femto_band < 0) {
 		LOGP(DL1C, LOGL_ERROR, "Unsupported GSM band %s\n",
-			gsm_band_name(osmo_band));
+			gsm_band_name(trx->bts->band));
 	}
 
 	msg = l1p_msgb_alloc();
