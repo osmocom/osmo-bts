@@ -37,6 +37,7 @@
 
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
+#include <osmocom/vty/misc.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -51,60 +52,8 @@
 	SHOW_STR				\
 	TRX_STR
 #define DSP_TRACE_F_STR		"DSP Trace Flag\n"
-#define DO_LOWER		1
 
 static struct gsm_bts *vty_bts;
-
-/* This generates the logging command string for VTY. */
-const char *vty_cmd_string_from_valstr(const struct value_string *vals,
-					const char *prefix, const char *sep,
-					const char *end, int do_lower)
-{
-	int len = 0, offset = 0, ret, rem;
-	int size = strlen(prefix);
-	const struct value_string *vs;
-	char *str;
-
-	for (vs = vals; vs->value || vs->str; vs++)
-		size += strlen(vs->str) + 1;
-
-	rem = size;
-	str = talloc_zero_size(vty_bts, size);
-	if (!str)
-		return NULL;
-
-	ret = snprintf(str + offset, rem, prefix);
-	if (ret < 0)
-		goto err;
-	OSMO_SNPRINTF_RET(ret, rem, offset, len);
-
-	for (vs = vals; vs->value || vs->str; vs++) {
-		if (vs->str) {
-			int j, name_len = strlen(vs->str)+1;
-			char name[name_len];
-
-			for (j = 0; j < name_len; j++)
-				name[j] = do_lower ?
-					tolower(vs->str[j]) : vs->str[j];
-
-			name[name_len-1] = '\0';
-			ret = snprintf(str + offset, rem, "%s%s", name, sep);
-			if (ret < 0)
-				goto err;
-			OSMO_SNPRINTF_RET(ret, rem, offset, len);
-		}
-	}
-	offset--;	/* to remove the trailing | */
-	rem++;
-
-	ret = snprintf(str + offset, rem, end);
-	if (ret < 0)
-		goto err;
-	OSMO_SNPRINTF_RET(ret, rem, offset, len);
-err:
-	str[size-1] = '\0';
-	return str;
-}
 
 /* configuration */
 
@@ -463,31 +412,31 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	vty_bts = bts;
 
 	/* runtime-patch the command strings with debug levels */
-	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(femtobts_tracef_names,
+	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
 						"trx <0-0> dsp-trace-flag (",
-						"|",")", DO_LOWER);
-	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(femtobts_tracef_docs,
+						"|",")", VTY_DO_LOWER);
+	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
 						TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(femtobts_tracef_names,
+	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
 						"no trx <0-0> dsp-trace-flag (",
-						"|",")", DO_LOWER);
-	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(femtobts_tracef_docs,
+						"|",")", VTY_DO_LOWER);
+	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
 						"gsmtap-sapi (",
-						"|",")", DO_LOWER);
-	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+						"|",")", VTY_DO_LOWER);
+	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
 						"GSMTAP SAPI\n",
 						"\n", "", 0);
 
-	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
 						"no gsmtap-sapi (",
-						"|",")", DO_LOWER);
-	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(femtobts_l1sapi_names,
+						"|",")", VTY_DO_LOWER);
+	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
 						NO_STR "GSMTAP SAPI\n",
 						"\n", "", 0);
 
