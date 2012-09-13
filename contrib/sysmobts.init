@@ -9,8 +9,6 @@
 # Description:       
 ### END INIT INFO
 
-. /etc/default/rcS
-
 case "$1" in
         start)
 		/usr/bin/screen -d -m -c /etc/osmocom/screenrc-sysmobts
