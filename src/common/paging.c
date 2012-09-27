@@ -210,7 +210,7 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
-	uint16_t paging_group;
+	uint16_t imsi, paging_group;
 
 	if (len != GSM_MACBLOCK_LEN + 3) {
 		LOGP(DPAG, LOGL_ERROR, "IMM.ASS invalid length %d\n", len);
@@ -218,10 +218,11 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 	}
 	len -= 3;
 
-	paging_group = 100 * (*(data)++ - '0');
-	paging_group += 10 * (*(data)++ - '0');
-	paging_group += *(data)++ - '0';
-	paging_group %= ps->chan_desc.bs_pa_mfrms+2;
+	imsi = 100 * ((*(data++)) - '0');
+	imsi += 10 * ((*(data++)) - '0');
+	imsi += (*(data++)) - '0';
+	paging_group = gsm0502_calc_paging_group(&ps->chan_desc, imsi);
+
 	group_q = &ps->paging_queue[paging_group];
 
 	pr = talloc_zero(ps, struct paging_record);
