@@ -80,8 +80,8 @@ static const uint8_t l1sapi2gsmtap_cht[GsmL1_Sapi_NUM] = {
 	[GsmL1_Sapi_TchH] = 255,
 	[GsmL1_Sapi_FacchH] = GSMTAP_CHANNEL_TCH_H,
 	[GsmL1_Sapi_Nch] = GSMTAP_CHANNEL_CCCH,
-	[GsmL1_Sapi_Pdtch] = GSMTAP_CHANNEL_PDCH,
-	[GsmL1_Sapi_Pacch] = 255,
+	[GsmL1_Sapi_Pdtch] = GSMTAP_CHANNEL_PACCH,
+	[GsmL1_Sapi_Pacch] = GSMTAP_CHANNEL_PACCH,
 	[GsmL1_Sapi_Pbcch] = 255,
 	[GsmL1_Sapi_Pagch] = 255,
 	[GsmL1_Sapi_Ppch] = 255,
@@ -966,8 +966,8 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
-		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
-		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
+//		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
+//		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
 #endif /* API 2.4.0 */
 #endif
 	} else {
