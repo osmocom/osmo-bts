@@ -1,10 +1,11 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
 
-#define PCU_IF_VERSION		0x03
+#define PCU_IF_VERSION		0x04
 
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
+#define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */	
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
@@ -137,6 +138,7 @@ struct gsm_pcu_if {
 
 	union {
 		struct gsm_pcu_if_data		data_req;
+		struct gsm_pcu_if_data		data_cnf;
 		struct gsm_pcu_if_data		data_ind;
 		struct gsm_pcu_if_rts_req	rts_req;
 		struct gsm_pcu_if_rach_ind	rach_ind;

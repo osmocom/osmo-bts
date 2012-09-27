@@ -41,6 +41,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/signal.h>
+#include <osmo-bts/pcu_if.h>
 
 #define MAX_PAGING_BLOCKS_CCCH	9
 #define MAX_BS_PA_MFRMS		9
@@ -413,6 +414,8 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 
 			/* get message and free record */
 			memcpy(out_buf, pr[num_pr]->u.imm_ass.msg,
+							GSM_MACBLOCK_LEN);
+			pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.imm_ass.msg,
 							GSM_MACBLOCK_LEN);
 			talloc_free(pr[num_pr]);
 			return GSM_MACBLOCK_LEN;

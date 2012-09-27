@@ -422,6 +422,33 @@ int pcu_tx_pag_req(uint8_t *identity_lv, uint8_t chan_needed)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
+int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
+{
+	struct gsm_network *net = &bts_gsmnet;
+	struct gsm_bts *bts;
+	struct msgb *msg;
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_data *data_cnf;
+
+	/* FIXME: allow multiple BTS */
+	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
+
+	LOGP(DPCU, LOGL_INFO, "Sending PCH confirm\n");
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	data_cnf = &pcu_prim->u.data_cnf;
+
+	data_cnf->sapi = PCU_IF_SAPI_PCH;
+	data_cnf->fn = fn;
+	memcpy(data_cnf->data, data, len);
+	data_cnf->len = len;
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_pcu_if_data *data_req)
 {
