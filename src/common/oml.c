@@ -456,10 +456,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 	
 	/* 9.4.31 Maximum Timing Advance */
-	if (TLVP_PRESENT(&tp, NM_ATT_MAX_TA)) {
-		uint16_t *fn = (uint16_t *) TLVP_VAL(&tp, NM_ATT_MAX_TA);
-		btsb->max_ta = ntohs(*fn);
-	}
+	if (TLVP_PRESENT(&tp, NM_ATT_MAX_TA))
+		btsb->max_ta = *TLVP_VAL(&tp, NM_ATT_MAX_TA);
 
 	/* 9.4.39 Overload Period */
 	if (TLVP_PRESENT(&tp, NM_ATT_OVERL_PERIOD))
