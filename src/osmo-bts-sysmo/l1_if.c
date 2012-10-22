@@ -122,6 +122,7 @@ static void ul_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
 	struct gsm_bts_trx *trx = fl1h->priv;
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
+	int skip = 0;
 
 	if (fl1h->gsmtap) {
 		uint8_t ss, chan_type;
@@ -136,11 +137,18 @@ static void ul_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
 		chan_type = l1sapi2gsmtap_cht[data_ind->sapi];
 		if (chan_type == 255)
 			return;
+		if (chan_type == GSMTAP_CHANNEL_PACCH
+		 || chan_type == GSMTAP_CHANNEL_PDCH) {
+			if (data_ind->msgUnitParam.u8Buffer[0]
+					!= GsmL1_PdtchPlType_Full)
+				return;
+			skip = 1;
+		}
 
 		gsmtap_send(fl1h->gsmtap, trx->arfcn | GSMTAP_ARFCN_F_UPLINK,
 				data_ind->u8Tn, chan_type, ss, data_ind->u32Fn,
-				0, 0, data_ind->msgUnitParam.u8Buffer,
-				data_ind->msgUnitParam.u8Size);
+				0, 0, data_ind->msgUnitParam.u8Buffer + skip,
+				data_ind->msgUnitParam.u8Size - skip);
 	}
 }
 
