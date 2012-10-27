@@ -12,15 +12,6 @@
 //#define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
 #endif
 
-/* older header files don't have this */
-#ifndef SUPERFEMTO_API
-#define SUPERFEMTO_API(x,y,z)	((x << 16) + (y << 8) + z)
-#endif
-
-#ifndef SUPERFEMTO_API_VERSION
-#define SUPERFEMTO_API_VERSION SUPERFEMTO_API(2,2,0)
-#endif
-
 /*
  * Depending on the firmware version either GsmL1_Prim_t or SuperFemto_Prim_t
  * is the bigger struct. For earlier firmware versions the GsmL1_Prim_t was the
@@ -34,6 +25,19 @@ enum l1prim_type {
 	L1P_T_CONF,
 	L1P_T_IND,
 };
+
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
+enum uperfemto_clk_src {
+	SF_CLKSRC_NONE  = 0,
+	SF_CLKSRC_OCXO  = 1,
+	SF_CLKSRC_TCXO  = 2,
+	SF_CLKSRC_EXT   = 3,
+	SF_CLKSRC_GPS   = 4,
+	SF_CLKSRC_TRX   = 5,
+	SF_CLKSRC_RX    = 6,
+	SF_CLKSRC_NL    = 7,
+};
+#endif
 
 const enum l1prim_type femtobts_l1prim_type[GsmL1_PrimId_NUM];
 const struct value_string femtobts_l1prim_names[GsmL1_PrimId_NUM+1];

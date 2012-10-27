@@ -270,6 +270,7 @@ const struct value_string femtobts_tch_pl_names[] = {
 };
 
 const struct value_string femtobts_clksrc_names[] = {
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	{ SuperFemto_ClkSrcId_None,	"None" },
 	{ SuperFemto_ClkSrcId_Ocxo,	"ocxo" },
 	{ SuperFemto_ClkSrcId_Tcxo,	"tcxo" },
@@ -279,6 +280,15 @@ const struct value_string femtobts_clksrc_names[] = {
 	{ SuperFemto_ClkSrcId_Rx,	"rx" },
 	{ SuperFemto_ClkSrcId_Edge,	"edge" },
 	{ SuperFemto_ClkSrcId_NetList,	"nwl" },
+#else
+	{ SF_CLKSRC_NONE,       "None" },
+	{ SF_CLKSRC_OCXO,       "ocxo" },
+	{ SF_CLKSRC_TCXO,       "tcxo" },
+	{ SF_CLKSRC_EXT,        "ext" },
+	{ SF_CLKSRC_GPS,        "gps" },
+	{ SF_CLKSRC_TRX,        "trx" },
+	{ SF_CLKSRC_RX,         "rx" },
+#endif
 	{ 0, NULL }
 };
 

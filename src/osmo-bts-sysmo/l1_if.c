@@ -967,17 +967,27 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 #ifdef HW_SYSMOBTS_V1
 		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
 #else
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(0,2,0)
 		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
+#endif /* 0.2.0 */
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = pcu_direct;
 		/* Use clock from OCXO or whatever source is configured */
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
+		sysp->u.activateRfReq.rfTrx.u8ClkSrc = hdl->clk_src;
+#else
 		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
+#endif /* 2.1.0 */
 		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
-//		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
-//		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
+		sysp->u.activateRfReq.rfRx.u8ClkSrc = hdl->clk_src;
+#else
+		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
+#endif /* 2.1.0 */
+		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
 #endif /* API 2.4.0 */
-#endif
+#endif /* !HW_SYSMOBTS_V1 */
 	} else {
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
@@ -1154,7 +1164,11 @@ struct femtol1_hdl *l1if_open(void *priv)
 	fl1h->priv = priv;
 	fl1h->clk_cal = 0;
 	/* default clock source: OCXO */
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
+#else
+	fl1h->clk_src = SF_CLKSRC_OCXO;
+#endif
 
 	rc = l1if_transport_open(MQ_SYS_WRITE, fl1h);
 	if (rc < 0) {
