@@ -4,6 +4,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/gsmtap_util.h>
+#include <osmocom/core/timer.h>
 #include <osmocom/gsm/gsm_utils.h>
 
 enum {
@@ -32,6 +33,7 @@ struct femtol1_hdl {
 	uint32_t dsp_trace_f;
 	int clk_cal;
 	uint8_t clk_src;
+	char *calib_path;
 	struct llist_head wlc_list;
 
 	struct gsmtap_inst *gsmtap;

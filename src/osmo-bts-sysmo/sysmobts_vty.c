@@ -146,6 +146,21 @@ DEFUN(cfg_trx_clksrc, cfg_trx_clksrc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
+	"trx-calibration-path PATH",
+	"Set the path name to TRX calibration data\n" "Path name\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	if (fl1h->calib_path)
+		talloc_free(fl1h->calib_path);
+
+	fl1h->calib_path = talloc_strdup(fl1h, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 /* runtime */
 
 DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
@@ -394,6 +409,8 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 
 	vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
 			VTY_NEWLINE);
+	vty_out(vty, "  trx-calibration-path %s%s", fl1h->calib_path,
+			VTY_NEWLINE);
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
@@ -455,6 +472,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
+	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
 	install_element(TRX_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 

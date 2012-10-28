@@ -27,8 +27,12 @@
 
 #include <osmocom/core/utils.h>
 
+#include <osmo-bts/logging.h>
+
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1const.h>
+
+#include "l1_if.h"
 
 struct calib_file_desc {
 	const char *fname;
@@ -104,7 +108,7 @@ static const struct calib_file_desc calib_files[] = {
 
 static const unsigned int arrsize_by_band[] = {
 	[GsmL1_FreqBand_850] = 124,
-	[GsmL1_FreqBand_900] = 195,
+	[GsmL1_FreqBand_900] = 194,
 	[GsmL1_FreqBand_1800] = 374,
 	[GsmL1_FreqBand_1900] = 299
 };
@@ -129,18 +133,20 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 {
 	FILE *in;
 	char fname[PATH_MAX];
-	int rc, i;
+	int i;
 
 	fname[0] = '\0';
-	rc = snprintf(fname, sizeof(fname)-1, "%s/%s", path, desc->fname);
+	snprintf(fname, sizeof(fname)-1, "%s/%s", path, desc->fname);
 	fname[sizeof(fname)-1] = '\0';
 
 	in = fopen(fname, "r");
 	if (!in)
 		return -1;
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	if (desc->rx) {
 		SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
+		memset(rx, 0, sizeof(*rx));
 
 		prim->id = SuperFemto_PrimId_SetRxCalibTblReq;
 
@@ -156,13 +162,16 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 		for (i = 0; i < arrsize_by_band[desc->band]; i++)
 			rx->fRxRollOffCorr[i] = read_float(in);
 
-		rx->u8IqImbalMode = read_int(in);
+		if (desc->uplink) {
+			rx->u8IqImbalMode = read_int(in);
+			printf("%s: u8IqImbalMode=%d\n", desc->fname, rx->u8IqImbalMode);
 
-		for (i = 0; i < ARRAY_SIZE(rx->u16IqImbalCorr); i++)
-			rx->u16IqImbalCorr[i] = read_int(in);
-
+			for (i = 0; i < ARRAY_SIZE(rx->u16IqImbalCorr); i++)
+				rx->u16IqImbalCorr[i] = read_int(in);
+		}
 	} else {
 		SuperFemto_SetTxCalibTblReq_t *tx = &prim->u.setTxCalibTblReq;
+		memset(tx, 0, sizeof(*tx));
 
 		prim->id = SuperFemto_PrimId_SetTxCalibTblReq;
 
@@ -179,12 +188,75 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 		for (i = 0; i < arrsize_by_band[desc->band]; i++)
 			tx->fTxRollOffCorr[i] = read_float(in);
 	}
-
+#else
+#warning Format of calibration tables before API version 2.4.0 not supported
+#endif
 	fclose(in);
 
 	return 0;
 }
 
+/* iteratively download the calibration data into the L1 */
+
+struct calib_send_state {
+	struct femtol1_hdl *fl1h;
+	const char *path;
+	int last_file_idx;
+};
+
+static int calib_send_compl_cb(struct msgb *l1_msg, void *data);
+
+/* send the calibration table for a single specified file */
+static int calib_file_send(struct femtol1_hdl *fl1h,
+			   const struct calib_file_desc *desc, void *state)
+{
+	struct msgb *msg;
+	int rc;
+
+	msg = sysp_msgb_alloc();
+
+	rc = calib_file_read(fl1h->calib_path, desc, msgb_sysprim(msg));
+	if (rc < 0) {
+		msgb_free(msg);
+		return rc;
+	}
+
+	return l1if_req_compl(fl1h, msg, 1, calib_send_compl_cb, state);
+}
+
+/* completion callback after every SetCalibTbl is confirmed */
+static int calib_send_compl_cb(struct msgb *l1_msg, void *data)
+{
+	struct calib_send_state *st = data;
+
+	LOGP(DL1C, LOGL_DEBUG, "L1 calibration table %s loaded\n",
+		calib_files[st->last_file_idx].fname);
+
+	st->last_file_idx++;
+
+	if (st->last_file_idx < ARRAY_SIZE(calib_files))
+		return calib_file_send(st->fl1h,
+				       &calib_files[st->last_file_idx], st);
+
+	LOGP(DL1C, LOGL_INFO, "L1 calibration table loading complete!\n");
+
+	return 0;
+}
+
+
+int calib_load(struct femtol1_hdl *fl1h)
+{
+	static struct calib_send_state st;
+
+	memset(&st, 0, sizeof(st));
+	st.fl1h = fl1h;
+
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
+	return -1;
+#else
+	return calib_file_send(fl1h, &calib_files[0], &st);
+#endif
+}
 
 
 #if 0

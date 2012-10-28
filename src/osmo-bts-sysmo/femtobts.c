@@ -123,6 +123,16 @@ const struct value_string femtobts_sysprim_names[SuperFemto_PrimId_NUM+1] = {
 	{ SuperFemto_PrimId_RfClockSetupCnf,	"RF-CLOCK-SETUP.conf" },
 	{ SuperFemto_PrimId_Layer1ResetReq,	"LAYER1-RESET.req" },
 	{ SuperFemto_PrimId_Layer1ResetCnf,	"LAYER1-RESET.conf" },
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
+	{ SuperFemto_PrimId_GetTxCalibTblReq,	"GET-TX-CALIB.req" },
+	{ SuperFemto_PrimId_GetTxCalibTblCnf,	"GET-TX-CALIB.cnf" },
+	{ SuperFemto_PrimId_SetTxCalibTblReq,	"SET-TX-CALIB.req" },
+	{ SuperFemto_PrimId_SetTxCalibTblCnf,	"SET-TX-CALIB.cnf" },
+	{ SuperFemto_PrimId_GetRxCalibTblReq,	"GET-RX-CALIB.req" },
+	{ SuperFemto_PrimId_GetRxCalibTblCnf,	"GET-RX-CALIB.cnf" },
+	{ SuperFemto_PrimId_SetRxCalibTblReq,	"SET-RX-CALIB.req" },
+	{ SuperFemto_PrimId_SetRxCalibTblCnf,	"SET-RX-CALIB.cnf" },
+#endif
 	{ 0, NULL }
 };
 
@@ -133,6 +143,12 @@ const SuperFemto_PrimId_t femtobts_sysprim_req2conf[SuperFemto_PrimId_NUM] = {
 	[SuperFemto_PrimId_RfClockInfoReq]	= SuperFemto_PrimId_RfClockInfoCnf,
 	[SuperFemto_PrimId_RfClockSetupReq]	= SuperFemto_PrimId_RfClockSetupCnf,
 	[SuperFemto_PrimId_Layer1ResetReq] 	= SuperFemto_PrimId_Layer1ResetCnf,
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
+	[SuperFemto_PrimId_GetTxCalibTblReq]	= SuperFemto_PrimId_GetTxCalibTblCnf,
+	[SuperFemto_PrimId_SetTxCalibTblReq]	= SuperFemto_PrimId_SetTxCalibTblCnf,
+	[SuperFemto_PrimId_GetRxCalibTblReq]	= SuperFemto_PrimId_GetRxCalibTblCnf,
+	[SuperFemto_PrimId_SetRxCalibTblReq]	= SuperFemto_PrimId_SetRxCalibTblCnf,
+#endif
 };
 
 const struct value_string femtobts_l1sapi_names[GsmL1_Sapi_NUM+1] = {
