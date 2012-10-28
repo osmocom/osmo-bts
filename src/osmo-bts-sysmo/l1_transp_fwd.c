@@ -103,8 +103,16 @@ int l1if_transport_open(int q, struct femtol1_hdl *fl1h)
 	int rc;
 	char *bts_host = getenv("L1FWD_BTS_HOST");
 
-	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
-	printf("sizeof(SuperFemto_Prim_t) = %zu\n", sizeof(SuperFemto_Prim_t));
+	switch (q) {
+	case MQ_L1_WRITE:
+		LOGP(DL1C, LOGL_INFO, "sizeof(GsmL1_Prim_t) = %zu\n",
+			sizeof(GsmL1_Prim_t));
+		break;
+	case MQ_SYS_WRITE:
+		LOGP(DL1C, LOGL_INFO, "sizeof(SuperFemto_Prim_t) = %zu\n",
+			sizeof(SuperFemto_Prim_t));
+		break;
+	}
 
 	if (!bts_host) {
 		fprintf(stderr, "You have to set the L1FWD_BTS_HOST environment variable\n");
