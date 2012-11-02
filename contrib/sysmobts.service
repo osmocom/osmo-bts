@@ -4,8 +4,12 @@ Description=sysmocom sysmoBTS
 [Service]
 Type=simple
 ExecStartPre=/bin/sh -c 'echo 0 > /sys/class/leds/activity_led/brightness'
-ExecStartPre=/bin/sh -c 'cat /lib/firmware/sysmobts-v?.out > /dev/dspdl_dm644x_0'
 ExecStart=/usr/bin/sysmobts -s -c /etc/osmocom/osmo-bts.cfg
 ExecStartPost=/bin/sh -c 'echo 0 > /sys/class/leds/activity_led/brightness'
+ExecStartPost=/bin/sh -c 'cat /lib/firmware/sysmobts-v?.out > /dev/dspdl_dm644x_0'
 Restart=always
 RestartSec=2
+
+# The msg queues must be read fast enough
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=1
