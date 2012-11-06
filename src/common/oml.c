@@ -400,7 +400,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* Test for globally unsupported stuff here */
 	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN)) {
 		const uint16_t *value = (const uint16_t *) TLVP_VAL(&tp, NM_ATT_BCCH_ARFCN);
-		uint16_t arfcn = ntohs(*value);
+		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 
 		LOGP(DOML, LOGL_NOTICE, "MSG: %s\n", osmo_hexdump(msgb_l3(msg), msgb_l3len(msg)));
 		LOGP(DOML, LOGL_NOTICE, "L3=%p, VAL=%p, DIF=%tu\n", msgb_l3(msg), value,
@@ -479,8 +479,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	/* 9.4.45 RACH Load Averaging Slots */
 	if (TLVP_PRESENT(&tp, NM_ATT_LDAVG_SLOTS))
-		payload = TLVP_VAL(&tp, NM_ATT_LDAVG_SLOTS);
-		btsb->load.rach.averaging_slots = ntohs(*(uint16_t *)payload);
+		btsb->load.rach.averaging_slots =
+			ntohs(tlvp_val16_unal(&tp, NM_ATT_LDAVG_SLOTS));
 	}
 
 	/* 9.4.10 BTS Air Timer */
@@ -492,10 +492,9 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		btsb->ny1 = *TLVP_VAL(&tp, NM_ATT_NY1);
 	
 	/* 9.4.8 BCCH ARFCN */
-	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN)) {
-		const uint16_t *value = (uint16_t *) TLVP_VAL(&tp, NM_ATT_BCCH_ARFCN);
-		bts->c0->arfcn = ntohs(*value);
-	}
+	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN))
+		bts->c0->arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
+
 	/* 9.4.9 BSIC */
 	if (TLVP_PRESENT(&tp, NM_ATT_BSIC))
 		bts->bsic = *TLVP_VAL(&tp, NM_ATT_BSIC);
@@ -545,12 +544,15 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* 9.4.5 ARFCN List */
 #if 0
 	if (TLVP_PRESENT(&tp, NM_ATT_ARFCN_LIST)) {
-		uint16_t *value = (uint16_t *) TLVP_VAL(&tp, NM_ATT_ARFCN_LIST);
+		uint8_t *value = TLVP_VAL(&tp, NM_ATT_ARFCN_LIST);
+		uint16_t _value;
 		uint16_t length = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST);
 		uint16_t arfcn;
 		int i;
 		for (i = 0; i < length; i++) {
-			arfcn = ntohs(*value++);
+			memcpy(&_value, value, 2);
+			arfcn = ntohs(_value);
+			value += 2;
 			if (arfcn > 1024)
 				return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 			trx->arfcn_list[i] = arfcn;
@@ -805,10 +807,9 @@ static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
 {
 	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.nse);
 
-	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSEI, 2)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSEI, 2))
 		bts->gprs.nse.nsei =
-			ntohs(*(uint16_t *) TLVP_VAL(tp, NM_ATT_IPACC_NSEI));
-	}
+			ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_NSEI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NS_CFG, 7)) {
 		memcpy(&bts->gprs.nse.timer,
@@ -830,6 +831,7 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.cell);
 	struct gprs_rlc_cfg *rlcc = &bts->gprs.cell.rlc_cfg;
 	const uint8_t *cur;
+	uint16_t _cur_s;
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RAC, 1))
 		bts->gprs.rac = *TLVP_VAL(tp, NM_ATT_IPACC_RAC);
@@ -840,10 +842,9 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 		rlcc->paging.repeat_count = cur[1];
 	}
 
-	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BVCI, 2)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BVCI, 2))
 		bts->gprs.cell.bvci =
-			ntohs(*(uint16_t *)TLVP_VAL(tp, NM_ATT_IPACC_BVCI));
-	}
+			htons(tlvp_val16_unal(tp, NM_ATT_IPACC_BVCI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG, 9)) {
 		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG);
@@ -877,9 +878,11 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG_2, 5)) {
 		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_2);
-		rlcc->parameter[T_DL_TBF_EXT] = ntohs(*(uint16_t *)cur) * 10;
+		memcpy(&_cur_s, cur, 2);
+		rlcc->parameter[T_DL_TBF_EXT] = ntohs(_cur_s) * 10;
 		cur += 2;
-		rlcc->parameter[T_UL_TBF_EXT] = ntohs(*(uint16_t *)cur) * 10;
+		memcpy(&_cur_s, cur, 2);
+		rlcc->parameter[T_UL_TBF_EXT] = ntohs(_cur_s) * 10;
 		cur += 2;
 		rlcc->initial_cs = *cur;
 	}
@@ -897,16 +900,21 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 				    struct tlv_parsed *tp)
 {
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSVCI, 2))
-		nsvc->nsvci =
-			ntohs(*(uint16_t *)TLVP_VAL(tp, NM_ATT_IPACC_NSVCI));
+		nsvc->nsvci = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_NSVCI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NS_LINK_CFG, 8)) {
 		const uint8_t *cur = TLVP_VAL(tp, NM_ATT_IPACC_NS_LINK_CFG);
-		nsvc->remote_port = ntohs(*(uint16_t *)cur);
+		uint16_t _cur_s;
+		uint32_t _cur_l;
+
+		memcpy(&_cur_s, cur, 2);
+		nsvc->remote_port = ntohs(_cur_s);
 		cur += 2;
-		nsvc->remote_ip = ntohl(*(uint32_t *)cur);
+		memcpy(&_cur_l, cur, 4);
+		nsvc->remote_ip = ntohl(_cur_l);
 		cur += 4;
-		nsvc->local_port = ntohs(*(uint16_t *)cur);
+		memcpy(&_cur_s, cur, 2);
+		nsvc->local_port = ntohs(_cur_s);
 	}
 
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSVC_ATTR, nsvc);
@@ -975,12 +983,10 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	uint8_t stream_id = 0;
 
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP)) {
-		const uint8_t *ptr = TLVP_VAL(tp, NM_ATT_IPACC_DST_IP);
-		ip = ntohl(*(uint32_t *)ptr);
+		ip = ntohl(tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP));
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP_PORT)) {
-		const uint8_t *ptr = TLVP_VAL(tp, NM_ATT_IPACC_DST_IP_PORT);
-		port = ntohs(*(uint16_t *)ptr);
+		port = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_DST_IP_PORT));
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID)) {
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
