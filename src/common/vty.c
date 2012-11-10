@@ -341,6 +341,8 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
+	struct gsm_bts_role_bts *btsb = bts->role;
+
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, "FIXME", gsm_band_name(bts->band),
@@ -356,6 +358,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
+	vty_out(vty, "  Paging: %u requests in queue%s",
+		paging_queue_length(btsb->paging_state), VTY_NEWLINE);
 #if 0
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),
