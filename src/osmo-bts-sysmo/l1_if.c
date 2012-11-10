@@ -663,7 +663,12 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (data_ind->msgUnitParam.u8Size < 2)
 			break;
-		lchan->meas.l1_info[0] = data_ind->msgUnitParam.u8Buffer[0];
+		/* Some brilliant engineer decided that the ordering of
+		 * fields on the Um interface is different from the
+		 * order of fields in RLS. See TS 04.04 (Chapter 7.2)
+		 * vs. TS 08.58 (Chapter 9.3.10). */
+		lchan->meas.l1_info[0] = data_ind->msgUnitParam.u8Buffer[0] << 3;
+		lchan->meas.l1_info[0] |= ((data_ind->msgUnitParam.u8Buffer[0] >> 5) & 1) << 2;
 		lchan->meas.l1_info[1] = data_ind->msgUnitParam.u8Buffer[1];
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
 		/* fall-through */
