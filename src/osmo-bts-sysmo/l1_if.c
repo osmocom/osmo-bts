@@ -1181,6 +1181,7 @@ struct femtol1_hdl *l1if_open(void *priv)
 
 	fl1h->priv = priv;
 	fl1h->clk_cal = 0;
+	fl1h->ul_power_target = -75;	/* dBm default */
 	/* default clock source: OCXO */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;

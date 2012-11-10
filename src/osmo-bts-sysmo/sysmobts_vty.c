@@ -161,6 +161,19 @@ DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
+	"uplink-power-target <-110-0>",
+	"Set the nominal target Rx Level for uplink power control loop\n"
+	"Target uplink Rx level in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->ul_power_target = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 /* runtime */
 
 DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
@@ -414,6 +427,8 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
+	vty_out(vty, "  uplink-power-target %d%s", fl1h->ul_power_target,
+		VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
@@ -475,6 +490,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
 	install_element(TRX_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
+	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 
 	return 0;
 }

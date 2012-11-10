@@ -32,6 +32,7 @@ struct femtol1_hdl {
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;
 	int clk_cal;
+	int ul_power_target;
 	uint8_t clk_src;
 	char *calib_path;
 	struct llist_head wlc_list;
