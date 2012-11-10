@@ -605,9 +605,9 @@ static uint8_t gen_link_id(GsmL1_Sapi_t l1_sapi, uint8_t lapdm_sapi)
 	return c_bits | (lapdm_sapi & 7);
 }
 
-static void dump_meas_res(GsmL1_MeasParam_t *m)
+static void dump_meas_res(int ll, GsmL1_MeasParam_t *m)
 {
-	DEBUGPC(DL1C, ", Meas: RSSI %-3.2f dBm,  Qual %-3.2f dB,  "
+	LOGPC(DL1C, ll, ", Meas: RSSI %-3.2f dBm,  Qual %-3.2f dB,  "
 		"BER %-3.2f,  Timing %d\n", m->fRssi, m->fLinkQuality,
 		m->fBer, m->i16BurstTiming);
 }
@@ -656,7 +656,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		data_ind->hLayer2,
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
 			     data_ind->msgUnitParam.u8Size));
-	dump_meas_res(&data_ind->measParam);
+	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 
 	switch (data_ind->sapi) {
 	case GsmL1_Sapi_Sacch:
@@ -765,7 +765,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 		btsb->load.rach.access++;
 
 	DEBUGP(DL1C, "Rx PH-RA.ind");
-	dump_meas_res(&ra_ind->measParam);
+	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 
 	lc = get_lapdm_chan_by_hl2(fl1->priv, ra_ind->hLayer2);
 	if (!lc) {
