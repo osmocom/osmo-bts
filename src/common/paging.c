@@ -547,6 +547,14 @@ struct paging_state *paging_init(struct gsm_bts_role_bts *btsb,
 	return ps;
 }
 
+int paging_config(struct paging_state *ps,
+		  unsigned int num_paging_max,
+		  unsigned int paging_lifetime)
+{
+	ps->num_paging_max = num_paging_max;
+	ps->paging_lifetime = paging_lifetime;
+}
+
 void paging_reset(struct paging_state *ps)
 {
 	int i;

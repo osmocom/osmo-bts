@@ -50,6 +50,8 @@ struct gsm_bts_role_bts {
 	uint8_t max_ta;
 	struct llist_head agch_queue;
 	struct paging_state *paging_state;
+	unsigned int paging_q_len;
+	unsigned int paging_lifetime;
 	char *bsc_oml_host;
 	char *rtp_bind_host;
 	unsigned int rtp_jitter_buf_ms;
