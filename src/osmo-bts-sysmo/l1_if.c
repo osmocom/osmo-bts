@@ -1169,10 +1169,17 @@ struct femtol1_hdl *l1if_open(void *priv)
 	struct femtol1_hdl *fl1h;
 	int rc;
 
-	LOGP(DL1C, LOGL_INFO, "sysmoBTS L1IF compiled against API headers "
+#ifndef HW_SYSMOBTS_V1
+	LOGP(DL1C, LOGL_INFO, "sysmoBTSv2 L1IF compiled against API headers "
 			"v%u.%u.%u\n", SUPERFEMTO_API_VERSION >> 16,
 			(SUPERFEMTO_API_VERSION >> 8) & 0xff,
 			 SUPERFEMTO_API_VERSION & 0xff);
+#else
+	LOGP(DL1C, LOGL_INFO, "sysmoBTSv1 L1IF compiled against API headers "
+			"v%u.%u.%u\n", FEMTOBTS_API_VERSION >> 16,
+			(FEMTOBTS_API_VERSION >> 8) & 0xff,
+			 FEMTOBTS_API_VERSION & 0xff);
+#endif
 
 	fl1h = talloc_zero(priv, struct femtol1_hdl);
 	if (!fl1h)

@@ -33,6 +33,7 @@
 #include <sysmocom/femtobts/gsml1const.h>
 
 #include "l1_if.h"
+#include "femtobts.h"
 
 struct calib_file_desc {
 	const char *fname;
