@@ -402,7 +402,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* if there is none, try to generate empty TCH frame
 		 * like AMR SID_BAD */
 		if (!resp_msg) {
-			LOGP(DL1C, LOGL_NOTICE, "%s DL TCH Tx queue underrun\n",
+			LOGP(DL1C, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
 				gsm_lchan_name(lchan));
 			resp_msg = gen_empty_tch_msg(lchan);
 			/* if there really is none, break here and send empty */
