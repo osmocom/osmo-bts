@@ -14,7 +14,7 @@ struct paging_state *paging_init(struct gsm_bts_role_bts *btsb,
 				 unsigned int paging_lifetime);
 
 /* (re) configure paging code */
-int paging_config(struct paging_state *ps,
+void paging_config(struct paging_state *ps,
 		  unsigned int num_paging_max,
 		  unsigned int paging_lifetime);
 
