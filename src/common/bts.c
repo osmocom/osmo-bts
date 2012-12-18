@@ -70,7 +70,7 @@ int bts_init(struct gsm_bts *bts)
 	btsb->paging_state = paging_init(btsb, 200, 0);
 
 	/* configurable via OML */
-	btsb->load.ccch.load_ind_period = 60*100;
+	btsb->load.ccch.load_ind_period = 112;
 	load_timer_start(bts);
 	btsb->rtp_jitter_buf_ms = 100;
 	btsb->max_ta = 63;
