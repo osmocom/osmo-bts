@@ -389,7 +389,7 @@ int pcu_tx_time_ind(uint32_t fn)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
-int pcu_tx_pag_req(uint8_t *identity_lv, uint8_t chan_needed)
+int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 {
 	struct pcu_sock_state *state = bts_gsmnet.pcu_state;
 	struct msgb *msg;

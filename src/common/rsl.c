@@ -42,6 +42,7 @@
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
+#include <osmo-bts/pcu_if.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
