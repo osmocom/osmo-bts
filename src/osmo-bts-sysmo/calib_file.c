@@ -130,7 +130,7 @@ static int read_int(FILE *in)
 	return i;
 }
 
-int calib_file_read(const char *path, const struct calib_file_desc *desc,
+static int calib_file_read(const char *path, const struct calib_file_desc *desc,
 		    SuperFemto_Prim_t *prim)
 {
 	FILE *in;
@@ -142,8 +142,11 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 	fname[sizeof(fname)-1] = '\0';
 
 	in = fopen(fname, "r");
-	if (!in)
+	if (!in) {
+		LOGP(DL1C, LOGL_ERROR,
+			"Failed to open '%s' for calibration data.\n", fname);
 		return -1;
+	}
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	if (desc->rx) {
@@ -244,6 +247,7 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 int calib_load(struct femtol1_hdl *fl1h)
 {
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
+	LOGP(DL1C, LOGL_ERROR, "L1 calibration is not supported on pre 2.4.0 firmware.\n");
 	return -1;
 #else
 	return calib_file_send(fl1h, &calib_files[0]);
