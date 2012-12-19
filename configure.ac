@@ -40,8 +40,15 @@ AC_ARG_WITH([openbsc],
 	[AS_HELP_STRING([--with-openbsc=INCLUDE_DIR],
 		[OpenBSC include directory for openbsc/gsm_data_shared.h])],
 	[openbsc_incdir="$withval"],
-	[openbsc_incdir="\$(abs_top_srcdir)/../openbsc/openbsc/include"])
+	[openbsc_incdir="`cd $srcdir; pwd`/../openbsc/openbsc/include"])
 AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
+
+oldCPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CPPFLAGS -I$OPENBSC_INCDIR $LIBOSMOCORE_CFLAGS"
+AC_CHECK_HEADER([openbsc/gsm_data_shared.h],[],
+	[AC_MSG_ERROR([openbsc/gsm_data_shared.h can not be found in $openbsc_incdir])],
+	[])
+CPPFLAGS=$oldCPPFLAGS
 
 AC_OUTPUT(
     src/Makefile
