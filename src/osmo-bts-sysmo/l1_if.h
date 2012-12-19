@@ -87,4 +87,7 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 			  struct gsm_lchan *lchan,
 			  int dir_downlink);
 
+/* calibration loading */
+int calib_load(struct femtol1_hdl *fl1h);
+
 #endif /* _FEMTO_L1_H */
