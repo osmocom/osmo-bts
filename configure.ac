@@ -34,6 +34,11 @@ AC_ARG_ENABLE(sysmocom-bts,
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
 
+# We share gsm_data.h with OpenBSC and need to be pointed to the source
+# directory of OpenBSC for now.
+openbsc_incdir="\$(abs_top_srcdir)/../openbsc/openbsc/include"
+AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
+
 AC_OUTPUT(
     src/Makefile
     src/common/Makefile
