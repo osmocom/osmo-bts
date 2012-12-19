@@ -36,7 +36,11 @@ AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
 
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
-openbsc_incdir="\$(abs_top_srcdir)/../openbsc/openbsc/include"
+AC_ARG_WITH([openbsc],
+	[AS_HELP_STRING([--with-openbsc=INCLUDE_DIR],
+		[OpenBSC include directory for openbsc/gsm_data_shared.h])],
+	[openbsc_incdir="$withval"],
+	[openbsc_incdir="\$(abs_top_srcdir)/../openbsc/openbsc/include"])
 AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
 
 AC_OUTPUT(
