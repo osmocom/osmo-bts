@@ -34,6 +34,22 @@ AC_ARG_ENABLE(sysmocom-bts,
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
 
+# We share gsm_data.h with OpenBSC and need to be pointed to the source
+# directory of OpenBSC for now.
+AC_ARG_WITH([openbsc],
+	[AS_HELP_STRING([--with-openbsc=INCLUDE_DIR],
+		[OpenBSC include directory for openbsc/gsm_data_shared.h])],
+	[openbsc_incdir="$withval"],
+	[openbsc_incdir="`cd $srcdir; pwd`/../openbsc/openbsc/include"])
+AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
+
+oldCPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CPPFLAGS -I$OPENBSC_INCDIR $LIBOSMOCORE_CFLAGS"
+AC_CHECK_HEADER([openbsc/gsm_data_shared.h],[],
+	[AC_MSG_ERROR([openbsc/gsm_data_shared.h can not be found in $openbsc_incdir])],
+	[])
+CPPFLAGS=$oldCPPFLAGS
+
 AC_OUTPUT(
     src/Makefile
     src/common/Makefile

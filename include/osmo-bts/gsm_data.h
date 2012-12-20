@@ -73,7 +73,7 @@ enum lchan_ciph_state {
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
 
-#include "../../openbsc/openbsc/include/openbsc/gsm_data_shared.h"
+#include "openbsc/gsm_data_shared.h"
 
 struct femtol1_hdl;
 
