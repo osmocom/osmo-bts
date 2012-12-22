@@ -2,7 +2,9 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(OPENBSC_INCDIR)
 AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS) -lortp
 
-EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h misc/sysmobts_eeprom.h
+EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
+	misc/sysmobts_eeprom.h femtobts.h hw_misc.h l1_fwd.h l1_if.h \
+	l1_transp.h
 
 bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr
 
