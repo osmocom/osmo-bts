@@ -85,8 +85,8 @@ static const char *wr_devnames[] = {
 /*
  * Make sure that all structs we read fit into the SYSMOBTS_PRIM_SIZE
  */
-osmo_static_assert(sizeof(GsmL1_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, prim)
-osmo_static_assert(sizeof(SuperFemto_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, prim)
+osmo_static_assert(sizeof(GsmL1_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, l1_prim)
+osmo_static_assert(sizeof(SuperFemto_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, super_prim)
 
 /* callback when there's something to read from the l1 msg_queue */
 static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
