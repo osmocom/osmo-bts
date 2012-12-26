@@ -213,3 +213,18 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 
 	return msgb_dequeue(&btsb->agch_queue);
 }
+
+int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
+{
+	int sup;
+
+	if (rsl_cipher < 1 || rsl_cipher > 8)
+		return -ENOTSUP;
+
+	/* No encryption is always supported */
+	if (rsl_cipher == 1)
+		return 1;
+
+	sup =  (1 << (rsl_cipher - 2)) & bts->support.ciphers;
+	return sup > 0;
+}

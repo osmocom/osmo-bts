@@ -593,11 +593,13 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 static int encr_info2lchan(struct gsm_lchan *lchan,
 			   const uint8_t *val, uint8_t len)
 {
+	int rc;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(lchan->ts->trx->bts);
 
 	/* check if the encryption algorithm sent by BSC is supported! */
-	if (!((1 << *val) & btsb->support.ciphers))
-		 return -ENOTSUP;
+	rc = bts_supports_cipher(btsb, *val);
+	if (rc != 1)
+		return rc;
 
 	/* length can be '1' in case of no ciphering */
 	if (len < 1)

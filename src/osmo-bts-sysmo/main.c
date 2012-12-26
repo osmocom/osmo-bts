@@ -257,7 +257,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	btsb = bts_role_bts(bts);
-	btsb->support.ciphers = (1 << 0) | (1 << 1) | (1 << 2);
+	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {

@@ -59,4 +59,5 @@ dnl    src/osmo-bts-bb/Makefile
     include/osmo-bts/Makefile
     tests/Makefile
     tests/paging/Makefile
+    tests/cipher/Makefile
     Makefile)

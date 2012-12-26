@@ -56,7 +56,7 @@ struct gsm_bts_role_bts {
 	char *rtp_bind_host;
 	unsigned int rtp_jitter_buf_ms;
 	struct {
-		uint8_t ciphers;
+		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
 	} support;
 	struct {
 		uint8_t tc4_ctr;
@@ -84,5 +84,11 @@ static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
 
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
+
+/* cipher code */
+#define CIPHER_A5(x) (1 << (x-1))
+
+int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher);
+
 
 #endif /* _GSM_DATA_H */
