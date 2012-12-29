@@ -233,7 +233,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	osmo_wqueue_enqueue(wqueue, msg);
 	llist_add(&wlc->list, &fl1h->wlc_list);
 
-	/* schedule a timer for 10 seconds. If DSP fails to respond, we terminate */
+	/* schedule a timer for timeout_secs seconds. If DSP fails to respond, we terminate */
 	wlc->timer.data = wlc;
 	wlc->timer.cb = l1if_req_timeout;
 	osmo_timer_schedule(&wlc->timer, timeout_secs, 0);
