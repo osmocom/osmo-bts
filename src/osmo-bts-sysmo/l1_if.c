@@ -63,7 +63,7 @@ extern int pcu_direct;
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
 
-/* mapping from femtbts L1 SAPI to GSMTAP channel type */
+/* mapping from femtobts L1 SAPI to GSMTAP channel type */
 static const uint8_t l1sapi2gsmtap_cht[GsmL1_Sapi_NUM] = {
 	[GsmL1_Sapi_Idle] = 255,
 	[GsmL1_Sapi_Fcch] = 255,
