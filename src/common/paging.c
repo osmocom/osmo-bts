@@ -499,7 +499,7 @@ int paging_si_update(struct paging_state *ps, struct gsm48_control_channel_descr
 {
 	LOGP(DPAG, LOGL_INFO, "Paging SI update\n");
 
-	memcpy(&ps->chan_desc, chan_desc, sizeof(chan_desc));
+	ps->chan_desc = *chan_desc;
 
 	/* FIXME: do we need to re-sort the old paging_records? */
 
