@@ -20,6 +20,14 @@ void paging_config(struct paging_state *ps,
 
 void paging_reset(struct paging_state *ps);
 
+/* The max number of paging entries */
+unsigned int paging_get_queue_max(struct paging_state *ps);
+void paging_set_queue_max(struct paging_state *ps, unsigned int queue_max);
+
+/* The lifetime of a paging entry */
+unsigned int paging_get_lifetime(struct paging_state *ps);
+void paging_set_lifetime(struct paging_state *ps, unsigned int lifetime);
+
 /* update with new SYSTEM INFORMATION parameters */
 int paging_si_update(struct paging_state *ps, struct gsm48_control_channel_descr *chan_desc);
 

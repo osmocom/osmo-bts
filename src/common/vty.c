@@ -186,9 +186,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " rtp bind-ip %s%s", btsb->rtp_bind_host, VTY_NEWLINE);
 	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
 		VTY_NEWLINE);
-	vty_out(vty, " paging queue-size %u%s", btsb->paging_q_len,
+	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(btsb->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " paging lifetime %u%s", btsb->paging_lifetime,
+	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
 		VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
@@ -343,9 +343,7 @@ DEFUN(cfg_bts_paging_queue_size,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->paging_q_len = atoi(argv[0]);
-	paging_config(btsb->paging_state, btsb->paging_q_len,
-		      btsb->paging_lifetime);
+	paging_set_queue_max(btsb->paging_state, atoi(argv[0]));
 
 	return CMD_SUCCESS;
 }
@@ -359,9 +357,7 @@ DEFUN(cfg_bts_paging_lifetime,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->paging_lifetime = atoi(argv[0]);
-	paging_config(btsb->paging_state, btsb->paging_q_len,
-		      btsb->paging_lifetime);
+	paging_set_lifetime(btsb->paging_state, atoi(argv[0]));
 
 	return CMD_SUCCESS;
 }
@@ -399,8 +395,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
 	vty_out(vty, "  Paging: Queue size %u, occupied %u, lifetime %us%s",
-		btsb->paging_q_len, paging_queue_length(btsb->paging_state),
-		btsb->paging_lifetime, VTY_NEWLINE);
+		paging_get_queue_max(btsb->paging_state), paging_queue_length(btsb->paging_state),
+		paging_get_lifetime(btsb->paging_state), VTY_NEWLINE);
 #if 0
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),

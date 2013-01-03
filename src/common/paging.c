@@ -81,6 +81,26 @@ struct paging_state {
 	struct llist_head paging_queue[MAX_PAGING_BLOCKS_CCCH*MAX_BS_PA_MFRMS];
 };
 
+unsigned int paging_get_lifetime(struct paging_state *ps)
+{
+	return ps->paging_lifetime;
+}
+
+unsigned int paging_get_queue_max(struct paging_state *ps)
+{
+	return ps->num_paging_max;
+}
+
+void paging_set_lifetime(struct paging_state *ps, unsigned int lifetime)
+{
+	ps->paging_lifetime = lifetime;
+}
+
+void paging_set_queue_max(struct paging_state *ps, unsigned int queue_max)
+{
+	ps->num_paging_max = queue_max;
+}
+
 static int tmsi_mi_to_uint(uint32_t *out, const uint8_t *tmsi_lv)
 {
 	if (tmsi_lv[0] < 5)
