@@ -40,6 +40,7 @@
 
 enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
+	SAPI_CMD_CONFIG_CIPHERING,
 };
 
 struct sapi_cmd {
@@ -465,6 +466,7 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 };
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
+static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 
 static void sapi_queue_next(struct gsm_lchan *lchan)
 {
@@ -475,6 +477,9 @@ static void sapi_queue_next(struct gsm_lchan *lchan)
 	switch (cmd->type) {
 	case SAPI_CMD_ACTIVATE:
 		mph_send_activate_req(lchan, cmd);
+		break;
+	case SAPI_CMD_CONFIG_CIPHERING:
+		mph_send_config_ciphering(lchan, cmd);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE,
@@ -563,7 +568,8 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	}
 
 	cmd = llist_entry(lchan->sapi_cmds.next, struct sapi_cmd, entry);
-	if (cmd->sapi != ic->sapi || cmd->dir != ic->dir) {
+	if (cmd->sapi != ic->sapi || cmd->dir != ic->dir ||
+			cmd->type != SAPI_CMD_ACTIVATE) {
 		LOGP(DL1C, LOGL_ERROR,
 				"%s Confirmation mismatch (%d, %d) (%d, %d)\n",
 				gsm_lchan_name(lchan), cmd->sapi, cmd->dir,
@@ -824,7 +830,6 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 	time = bts_model_get_time(lchan->ts->trx->bts);
 	rsl_tx_chan_act_ack(lchan, time);
 
-#warning "FIXME: Ciphering needs to be enqueued as well"
 	/* set the initial ciphering parameters for both directions */
 	l1if_set_ciphering(fl1h, lchan, 0);
 	l1if_set_ciphering(fl1h, lchan, 1);
@@ -871,6 +876,7 @@ int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state)
 		enqueue_sapi_act_cmd(lchan, sapi, dir);
 	}
 
+#warning "FIXME: Should this be in sapi_activate_cb?"
 	lchan_init_lapdm(lchan);
 
 	lchan->s = btsb->radio_link_timeout;
@@ -961,6 +967,14 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 			LOGPC(DL1C, LOGL_INFO, "unhandled state %u\n", lchan->ciph_state);
 			break;
 		}
+		if (llist_empty(&lchan->sapi_cmds)) {
+			LOGP(DL1C, LOGL_ERROR,
+				"%s Got ciphering conf with empty queue\n",
+				gsm_lchan_name(lchan));
+			goto err;
+		}
+
+		sapi_queue_dispatch(lchan, cc->status);
 		break;
 	case GsmL1_ConfigParamId_SetNbTsc:
 	default:
@@ -968,6 +982,7 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 		break;
 	}
 
+err:
 	msgb_free(l1_msg);
 
 	return 0;
@@ -1032,10 +1047,9 @@ const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
 	[4]	= GsmL1_CipherId_A53,
 };
 
-int l1if_set_ciphering(struct femtol1_hdl *fl1h,
-			  struct gsm_lchan *lchan,
-			  int dir_downlink)
+static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	struct msgb *msg = l1p_msgb_alloc();
 	struct GsmL1_MphConfigReq_t *cfgr;
 
@@ -1044,12 +1058,8 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 	cfgr->cfgParamId = GsmL1_ConfigParamId_SetCipheringParams;
 	cfgr->cfgParams.setCipheringParams.u8Tn = lchan->ts->nr;
 	cfgr->cfgParams.setCipheringParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
+	cfgr->cfgParams.setCipheringParams.dir = cmd->dir;
 	cfgr->hLayer3 = l1if_lchan_to_hLayer(lchan);
-
-	if (dir_downlink)
-		cfgr->cfgParams.setCipheringParams.dir = GsmL1_Dir_TxDownlink;
-	else
-		cfgr->cfgParams.setCipheringParams.dir = GsmL1_Dir_RxUplink;
 
 	if (lchan->encr.alg_id >= ARRAY_SIZE(rsl2l1_ciph))
 		return -EINVAL;
@@ -1067,6 +1077,30 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
 }
 
+static void enqueue_sapi_ciphering_cmd(struct gsm_lchan *lchan, int dir)
+{
+	struct sapi_cmd *cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
+
+	cmd->dir = dir;
+	cmd->type = SAPI_CMD_CONFIG_CIPHERING;
+	queue_sapi_command(lchan, cmd);
+}
+
+int l1if_set_ciphering(struct femtol1_hdl *fl1h,
+			  struct gsm_lchan *lchan,
+			  int dir_downlink)
+{
+	int dir;
+
+	if (dir_downlink)
+		dir = GsmL1_Dir_RxUplink;
+	else
+		dir = GsmL1_Dir_TxDownlink;
+
+	enqueue_sapi_ciphering_cmd(lchan, dir);
+
+	return 0;
+}
 
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 {
