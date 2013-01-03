@@ -348,7 +348,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
 	if (!strcmp(argv[2], "activate"))
-		lchan_activate(lchan);
+		lchan_activate(lchan, LCHAN_S_ACT_REQ);
 	else
 		lchan_deactivate(lchan);
 
