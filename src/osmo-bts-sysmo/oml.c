@@ -648,6 +648,67 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 	}
 }
 
+static int mph_send_activate_req(struct gsm_lchan *lchan, int sapi, int dir)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	struct msgb *msg = l1p_msgb_alloc();
+	GsmL1_MphActivateReq_t *act_req;
+	GsmL1_LogChParam_t *lch_par;
+
+	act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq, fl1h);
+	lch_par = &act_req->logChPrm;
+	act_req->u8Tn = lchan->ts->nr;
+	act_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
+	act_req->dir = dir;
+	act_req->sapi = sapi;
+	act_req->hLayer2 = l1if_lchan_to_hLayer(lchan);
+	act_req->hLayer3 = act_req->hLayer2;
+
+	switch (act_req->sapi) {
+	case GsmL1_Sapi_Rach:
+		lch_par->rach.u8Bsic = lchan->ts->trx->bts->bsic;
+		break;
+	case GsmL1_Sapi_Agch:
+#warning Set BS_AG_BLKS_RES
+		lch_par->agch.u8NbrOfAgch = 1;
+		break;
+	case GsmL1_Sapi_Sacch:
+		/* Only if we use manual MS power control */
+		//act_req->logChPrm.sacch.u8MsPowerLevel = FIXME;
+		/* enable bad frame indication from >= -100dBm on SACCH */
+		act_req->fBFILevel = -100.0;
+		break;
+	case GsmL1_Sapi_TchH:
+	case GsmL1_Sapi_TchF:
+		lchan2lch_par(lch_par, lchan);
+		break;
+	case GsmL1_Sapi_Ptcch:
+		lch_par->ptcch.u8Bsic = lchan->ts->trx->bts->bsic;
+		break;
+	case GsmL1_Sapi_Prach:
+		lch_par->prach.u8Bsic = lchan->ts->trx->bts->bsic;
+		break;
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
+		/* Be sure that every packet is received, even if it
+		 * fails. In this case the length might be lower or 0.
+		 */
+		act_req->fBFILevel = -200.0;
+		break;
+	default:
+		break;
+	}
+
+	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, %s ",
+		gsm_lchan_name(lchan), act_req->hLayer2,
+		get_value_string(femtobts_l1sapi_names, act_req->sapi));
+	LOGPC(DL1C, LOGL_INFO, "%s)\n",
+		get_value_string(femtobts_dir_names, act_req->dir));
+
+	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
+	return l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb, lchan->ts->trx);
+}
+
 int lchan_activate(struct gsm_lchan *lchan)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
@@ -655,71 +716,14 @@ int lchan_activate(struct gsm_lchan *lchan)
 	unsigned int i;
 
 	for (i = 0; i < s4l->num_sapis; i++) {
-		struct msgb *msg = l1p_msgb_alloc();
-		GsmL1_MphActivateReq_t *act_req;
-		GsmL1_LogChParam_t *lch_par;
-
-		act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq, fl1h);
-		lch_par = &act_req->logChPrm;
-		act_req->u8Tn = lchan->ts->nr;
-		act_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
-		act_req->dir = s4l->sapis[i].dir;
-		act_req->sapi = s4l->sapis[i].sapi;
-		act_req->hLayer2 = l1if_lchan_to_hLayer(lchan);
-		act_req->hLayer3 = act_req->hLayer2;
-
-		switch (act_req->sapi) {
-		case GsmL1_Sapi_Sch:
+		if (s4l->sapis[i].sapi == GsmL1_Sapi_Sch) {
 			/* once we activate the SCH, we should get MPH-TIME.ind */
 			fl1h->alive_timer.cb = alive_timer_cb;
 			fl1h->alive_timer.data = fl1h;
 			fl1h->alive_prim_cnt = 0;
 			osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
-			break;
-		case GsmL1_Sapi_Rach:
-			lch_par->rach.u8Bsic = lchan->ts->trx->bts->bsic;
-			break;
-		case GsmL1_Sapi_Agch:
-#warning Set BS_AG_BLKS_RES
-			lch_par->agch.u8NbrOfAgch = 1;
-			break;
-		case GsmL1_Sapi_Sacch:
-			/* Only if we use manual MS power control */
-			//act_req->logChPrm.sacch.u8MsPowerLevel = FIXME;
-			/* enable bad frame indication from >= -100dBm on SACCH */
-			act_req->fBFILevel = -100.0;
-			break;
-		case GsmL1_Sapi_TchH:
-		case GsmL1_Sapi_TchF:
-			lchan2lch_par(lch_par, lchan);
-			break;
-		case GsmL1_Sapi_Ptcch:
-			lch_par->ptcch.u8Bsic = lchan->ts->trx->bts->bsic;
-			break;
-		case GsmL1_Sapi_Prach:
-			lch_par->prach.u8Bsic = lchan->ts->trx->bts->bsic;
-			break;
-		case GsmL1_Sapi_Pdtch:
-		case GsmL1_Sapi_Pacch:
-			/* Be sure that every packet is received, even if it
-			 * fails. In this case the length might be lower or 0.
-			 */
-			act_req->fBFILevel = -200.0;
-			break;
-		default:
-			break;
 		}
-
-		LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, %s ",
-			gsm_lchan_name(lchan), act_req->hLayer2,
-			get_value_string(femtobts_l1sapi_names, act_req->sapi));
-		LOGPC(DL1C, LOGL_INFO, "%s)\n",
-			get_value_string(femtobts_dir_names, act_req->dir));
-
-		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-		l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb,
-				   lchan->ts->trx);
-
+		mph_send_activate_req(lchan, s4l->sapis[i].sapi, s4l->sapis[i].dir);
 	}
 	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
