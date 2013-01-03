@@ -930,6 +930,23 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 	LOGPC(DL1C, logl, ")\n");
 }
 
+static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+{
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
+
+	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
+		gsm_trx_name(trx),
+		get_value_string(femtobts_l1cfgt_names, cc->cfgParamId));
+
+	LOGPC(DL1C, LOGL_INFO, "setTxPower %f dBm\n",
+		cc->cfgParams.setTxPowerLevel.fTxPowerLevel);
+
+	msgb_free(l1_msg);
+
+	return 0;
+}
+
 static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
 	struct gsm_lchan *lchan;
@@ -955,10 +972,6 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 			     cc->cfgParams.setLogChParams.sapi);
 
 		sapi_queue_dispatch(lchan, cc->status);
-		break;
-	case GsmL1_ConfigParamId_SetTxPowerLevel:
-		LOGPC(DL1C, LOGL_INFO, "setTxPower %f dBm\n",
-			cc->cfgParams.setTxPowerLevel.fTxPowerLevel);
 		break;
 	case GsmL1_ConfigParamId_SetCipheringParams:
 		switch (lchan->ciph_state) {
@@ -1058,7 +1071,7 @@ int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetTxPowerLevel;
 	conf_req->cfgParams.setTxPowerLevel.fTxPowerLevel = tx_power;
 
-	return l1if_gsm_req_compl(fl1h, msg, NULL);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_txpower_compl_cb);
 }
 
 const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
