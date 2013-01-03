@@ -41,6 +41,7 @@
 enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
 	SAPI_CMD_CONFIG_CIPHERING,
+	SAPI_CMD_CONFIG_LOGCH_PARAM,
 };
 
 struct sapi_cmd {
@@ -467,6 +468,7 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
+static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 
 static void sapi_queue_next(struct gsm_lchan *lchan)
 {
@@ -480,6 +482,9 @@ static void sapi_queue_next(struct gsm_lchan *lchan)
 		break;
 	case SAPI_CMD_CONFIG_CIPHERING:
 		mph_send_config_ciphering(lchan, cmd);
+		break;
+	case SAPI_CMD_CONFIG_LOGCH_PARAM:
+		mph_send_config_logchpar(lchan, cmd);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE,
@@ -948,6 +953,8 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 		dump_lch_par(LOGL_INFO,
 			     &cc->cfgParams.setLogChParams.logChParams,
 			     cc->cfgParams.setLogChParams.sapi);
+
+		sapi_queue_dispatch(lchan, cc->status);
 		break;
 	case GsmL1_ConfigParamId_SetTxPowerLevel:
 		LOGPC(DL1C, LOGL_INFO, "setTxPower %f dBm\n",
@@ -988,8 +995,7 @@ err:
 	return 0;
 }
 
-
-static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
+static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	struct msgb *msg = l1p_msgb_alloc();
@@ -1004,7 +1010,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 	conf_req->cfgParams.setLogChParams.sapi = lchan_to_GsmL1_Sapi_t(lchan);
 	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
 	conf_req->cfgParams.setLogChParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
-	conf_req->cfgParams.setLogChParams.dir = direction;
+	conf_req->cfgParams.setLogChParams.dir = cmd->dir;
 	conf_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
 	lch_par = &conf_req->cfgParams.setLogChParams.logChParams;
@@ -1025,6 +1031,22 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 			conf_req->cfgParams.setLogChParams.sapi);
 
 	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
+}
+
+static void enqueue_sapi_logchpar_cmd(struct gsm_lchan *lchan, int dir)
+{
+	struct sapi_cmd *cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
+
+	cmd->dir = dir;
+	cmd->type = SAPI_CMD_CONFIG_LOGCH_PARAM;
+	queue_sapi_command(lchan, cmd);
+}
+
+static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
+{
+	enqueue_sapi_logchpar_cmd(lchan, direction);
+
+	return 0;
 }
 
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
