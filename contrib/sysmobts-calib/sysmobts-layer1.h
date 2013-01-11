@@ -3,15 +3,28 @@
 
 #include <sysmocom/femtobts/superfemto.h>
 
-/* older header files don't have this */
-#ifndef SUPERFEMTO_API
-#define SUPERFEMTO_API(x,y,z)  ((x << 16) + (y << 8) + z)
+#ifdef FEMTOBTS_API_VERSION
+#define SuperFemto_PrimId_t FemtoBts_PrimId_t
+#define SuperFemto_Prim_t FemtoBts_Prim_t
+#define SuperFemto_PrimId_SystemInfoReq 	FemtoBts_PrimId_SystemInfoReq
+#define SuperFemto_PrimId_SystemInfoCnf		FemtoBts_PrimId_SystemInfoCnf
+#define SuperFemto_SystemInfoCnf_t		FemtoBts_SystemInfoCnf_t
+#define SuperFemto_PrimId_SystemFailureInd	FemtoBts_PrimId_SystemFailureInd
+#define SuperFemto_PrimId_ActivateRfReq		FemtoBts_PrimId_ActivateRfReq
+#define SuperFemto_PrimId_ActivateRfCnf		FemtoBts_PrimId_ActivateRfCnf
+#define SuperFemto_PrimId_DeactivateRfReq	FemtoBts_PrimId_DeactivateRfReq
+#define SuperFemto_PrimId_DeactivateRfCnf	FemtoBts_PrimId_DeactivateRfCnf
+#define SuperFemto_PrimId_SetTraceFlagsReq	FemtoBts_PrimId_SetTraceFlagsReq
+#define SuperFemto_PrimId_RfClockInfoReq	FemtoBts_PrimId_RfClockInfoReq
+#define SuperFemto_PrimId_RfClockInfoCnf	FemtoBts_PrimId_RfClockInfoCnf
+#define SuperFemto_PrimId_RfClockSetupReq	FemtoBts_PrimId_RfClockSetupReq
+#define SuperFemto_PrimId_RfClockSetupCnf	FemtoBts_PrimId_RfClockSetupCnf
+#define SuperFemto_PrimId_Layer1ResetReq	FemtoBts_PrimId_Layer1ResetReq
+#define SuperFemto_PrimId_Layer1ResetCnf	FemtoBts_PrimId_Layer1ResetCnf
+#define SuperFemto_PrimId_NUM			FemtoBts_PrimId_NUM
+#define HW_SYSMOBTS_V1				1
+#define SUPERFEMTO_API(x,y,z)			FEMTOBTS_API(x,y,z)
 #endif
-
-#ifndef SUPERFEMTO_API_VERSION
-#define SUPERFEMTO_API_VERSION SUPERFEMTO_API(2,2,0)
-#endif
-
 
 extern int initialize_layer1(uint32_t dsp_flags);
 extern int print_system_info();
