@@ -603,7 +603,7 @@ int set_clock_cor(int clock_cor, int calib, int source)
 	return 0;
 }
 
-int rf_clock_info(HANDLE *layer1, int *clkErr, int *clkErrRes)
+int rf_clock_info(int *clkErr, int *clkErrRes)
 {
 	SuperFemto_Prim_t prim;
 	memset(&prim, 0, sizeof(prim));

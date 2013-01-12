@@ -35,7 +35,7 @@ extern int follow_bch(HANDLE layer1);
 extern int find_bsic(void);
 extern int set_tsc_from_bsic(HANDLE layer1, int bsic);
 extern int set_clock_cor(int clock_corr, int calib, int source);
-extern int rf_clock_info(HANDLE *layer1, int *clkErr, int *clkErrRes);
+extern int rf_clock_info(int *clkErr, int *clkErrRes);
 extern int mph_close(HANDLE layer1);
 extern int wait_for_sync(HANDLE layer1, int cor, int calib, int source);
 extern int follow_bcch(HANDLE layer1);

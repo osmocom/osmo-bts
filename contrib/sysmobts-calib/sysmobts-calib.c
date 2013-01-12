@@ -1,7 +1,7 @@
 /* OCXO/TCXO based calibration utility			*/
 
 /*
- * (C) 2012 Holger Hans Peter Freyther
+ * (C) 2012-2013 Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -194,7 +194,7 @@ static void handle_options(int argc, char **argv)
 		exit(-4);
 	}
 
-	if (action == ACTION_CALIB) {
+	if (action == ACTION_CALIB && source == SuperFemto_ClkSrcId_NetList) {
 		if (cal_arfcn == 0) {
 			printf("Please specify the reference ARFCN.\n");
 			exit(-5);
@@ -274,7 +274,7 @@ static int scan_band()
 	return 0;
 }
 
-static int calib_clock_after_sync(HANDLE *layer1)
+static int calib_clock_after_sync(void)
 {
 	int rc, clkErr, clkErrRes, iteration, cor;
 
@@ -289,7 +289,7 @@ static int calib_clock_after_sync(HANDLE *layer1)
 		else
 			printf("Iteration %d with correction: %d\n", iteration, cor);
 	
-		rc = rf_clock_info(layer1, &clkErr, &clkErrRes);
+		rc = rf_clock_info(&clkErr, &clkErrRes);
 		CHECK_RC_MSG(rc, "Clock info failed.\n");
 
 		/*
@@ -343,7 +343,7 @@ static int find_initial_clock(HANDLE layer1, int *clock)
 	return 0;
 }
 
-static int calib_clock(void)
+static int calib_clock_netlisten(void)
 {
 	int rc, cor = initial_cor;
 	float mean_rssi;
@@ -364,9 +364,24 @@ static int calib_clock(void)
 	rc = set_clock_cor(cor, calib, source);
 	CHECK_RC_MSG(rc, "Clock setup failed.");
 
-	calib_clock_after_sync(&layer1);
+	calib_clock_after_sync();
 
 	rc = mph_close(layer1);
+	CHECK_RC_MSG(rc, "MPH-Close");
+
+	return EXIT_SUCCESS;
+}
+
+static int calib_clock(void)
+{
+	int rc;
+
+	/* now try to calibrate it */
+	rc = set_clock_cor(initial_cor, calib, source);
+	CHECK_RC_MSG(rc, "Clock setup failed.");
+
+	calib_clock_after_sync();
+
 	CHECK_RC_MSG(rc, "MPH-Close");
 
 	return EXIT_SUCCESS;
@@ -440,8 +455,11 @@ int main(int argc, char **argv)
 		return scan_band();
 	else if (action == ACTION_BCCH)
 		return bcch_follow();
-	else
+	else {
+		if (source == SuperFemto_ClkSrcId_NetList) 
+			return calib_clock_netlisten();
 		return calib_clock();
+	}
 
 	return EXIT_SUCCESS;
 }
