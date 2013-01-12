@@ -274,6 +274,25 @@ static int scan_band()
 	return 0;
 }
 
+static int calib_get_clock_error(void)
+{
+	int rc, clkErr, clkErrRes;
+
+	printf("Going to determine the clock offset.\n");
+
+	rc = rf_clock_info(&clkErr, &clkErrRes);
+	CHECK_RC_MSG(rc, "Clock info failed.\n");
+
+	if (clkErr == 0 && clkErrRes == 0) {
+		printf("Failed to get the clock info. Are both clocks present?\n");
+		return -1;
+	}
+
+	/* this is an absolute clock error */
+	printf("The calibration value is: %d\n", clkErr);
+	return 0;
+}
+
 static int calib_clock_after_sync(void)
 {
 	int rc, clkErr, clkErrRes, iteration, cor;
@@ -380,9 +399,7 @@ static int calib_clock(void)
 	rc = set_clock_cor(initial_cor, calib, source);
 	CHECK_RC_MSG(rc, "Clock setup failed.");
 
-	calib_clock_after_sync();
-
-	CHECK_RC_MSG(rc, "MPH-Close");
+	calib_get_clock_error();
 
 	return EXIT_SUCCESS;
 }
