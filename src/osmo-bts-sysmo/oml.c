@@ -1,4 +1,5 @@
 /* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2013 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -42,6 +43,9 @@ enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
 	SAPI_CMD_CONFIG_CIPHERING,
 	SAPI_CMD_CONFIG_LOGCH_PARAM,
+	SAPI_CMD_SACCH_REL_MARKER,
+	SAPI_CMD_REL_MARKER,
+	SAPI_CMD_DEACTIVATE,
 };
 
 struct sapi_cmd {
@@ -400,8 +404,6 @@ static const struct sapi_dir ccch_sapis[] = {
 	{ GsmL1_Sapi_Rach,	GsmL1_Dir_RxUplink },
 };
 
-#define DIR_BOTH	(GsmL1_Dir_TxDownlink|GsmL1_Dir_RxUplink)
-
 static const struct sapi_dir tchf_sapis[] = {
 	{ GsmL1_Sapi_TchF,	GsmL1_Dir_TxDownlink },
 	{ GsmL1_Sapi_TchF,	GsmL1_Dir_RxUplink },
@@ -467,11 +469,23 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 };
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
+static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
 
-static void sapi_queue_next(struct gsm_lchan *lchan)
+static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir);
+static int lchan_deactivate_sapis(struct gsm_lchan *lchan);
+
+/**
+ * Execute the first SAPI command of the queue. In case of the markers
+ * this method is re-entrant so we need to make sure to remove a command
+ * from the list before calling a function that will queue a command.
+ *
+ * \return 0 in case no Gsm Request was sent, 1 otherwise
+ */
+static int sapi_queue_exeute(struct gsm_lchan *lchan)
 {
+	int res;
 	struct sapi_cmd *cmd;
 
 	cmd = llist_entry(lchan->sapi_cmds.next, struct sapi_cmd, entry);
@@ -479,19 +493,53 @@ static void sapi_queue_next(struct gsm_lchan *lchan)
 	switch (cmd->type) {
 	case SAPI_CMD_ACTIVATE:
 		mph_send_activate_req(lchan, cmd);
+		res = 1;
 		break;
 	case SAPI_CMD_CONFIG_CIPHERING:
 		mph_send_config_ciphering(lchan, cmd);
+		res = 1;
 		break;
 	case SAPI_CMD_CONFIG_LOGCH_PARAM:
 		mph_send_config_logchpar(lchan, cmd);
+		res = 1;
+		break;
+	case SAPI_CMD_SACCH_REL_MARKER:
+		llist_del(&cmd->entry);
+		talloc_free(cmd);
+		res = check_sapi_release(lchan, GsmL1_Sapi_Sacch,
+					GsmL1_Dir_TxDownlink);
+		res |= check_sapi_release(lchan, GsmL1_Sapi_Sacch,
+					GsmL1_Dir_RxUplink);
+		break;
+	case SAPI_CMD_REL_MARKER:
+		llist_del(&cmd->entry);
+		talloc_free(cmd);
+		res = lchan_deactivate_sapis(lchan);
+		break;
+	case SAPI_CMD_DEACTIVATE:
+		mph_send_deactivate_req(lchan, cmd);
+		res = 1;
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE,
 			"Unimplemented command type %d\n", cmd->type);
+		llist_del(&cmd->entry);
+		talloc_free(cmd);
+		res = 0;
 		abort();
 		break;
 	}
+
+	return res;
+}
+
+static void sapi_queue_send(struct gsm_lchan *lchan)
+{
+	int res;
+
+	do {
+		res = sapi_queue_exeute(lchan);
+	} while (res == 0 && !llist_empty(&lchan->sapi_cmds));
 }
 
 static void sapi_queue_dispatch(struct gsm_lchan *lchan, int status)
@@ -507,24 +555,29 @@ static void sapi_queue_dispatch(struct gsm_lchan *lchan, int status)
 	talloc_free(cmd);
 
 	if (end) {
-		LOGP(DL1C, LOGL_DEBUG,
-			"%s End of queue encountered\n",
-			gsm_lchan_name(lchan));
+		LOGP(DL1C, LOGL_NOTICE,
+			"%s End of queue encountered. Now empty? %d\n",
+			gsm_lchan_name(lchan), llist_empty(&lchan->sapi_cmds));
 		return;
 	}
 
-	sapi_queue_next(lchan);
+	sapi_queue_send(lchan);
 }
 
-static void queue_sapi_command(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
+/**
+ * Queue and possible execute a SAPI command. Return 1 in case the command was
+ * already executed and 0 in case if it was only put into the queue
+ */
+static int queue_sapi_command(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
 	int start = llist_empty(&lchan->sapi_cmds);
 	llist_add_tail(&cmd->entry, &lchan->sapi_cmds);
 
 	if (!start)
-		return;
+		return 0;
 
-	sapi_queue_next(lchan);
+	sapi_queue_send(lchan);
+	return 1;
 }
 
 static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
@@ -1152,6 +1205,8 @@ int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 
 static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
+	enum lchan_sapi_state status;
+	struct sapi_cmd *cmd;
 	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphDeactivateCnf_t *ic = &l1p->u.mphDeactivateCnf;
@@ -1172,77 +1227,45 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	if (ic->status == GsmL1_Status_Success) {
 		DEBUGP(DL1C, "Successful deactivation of L1 SAPI %s on TS %u\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn);
-		lchan_set_state(lchan, LCHAN_S_NONE);
+		status = LCHAN_SAPI_S_NONE;
 	} else {
 		LOGP(DL1C, LOGL_ERROR, "Error deactivating L1 SAPI %s on TS %u: %s\n",
 			get_value_string(femtobts_l1sapi_names, ic->sapi), ic->u8Tn,
 			get_value_string(femtobts_l1status_names, ic->status));
-		lchan_set_state(lchan, LCHAN_S_REL_ERR);
+		status = LCHAN_SAPI_S_ERROR;
 	}
 
-	switch (ic->sapi) {
-	case GsmL1_Sapi_Sdcch:
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
-		if (ic->dir == GsmL1_Dir_TxDownlink)
-			rsl_tx_rf_rel_ack(lchan);
-		break;
-	default:
-		break;
-	}
+	if (ic->dir & GsmL1_Dir_TxDownlink)
+		lchan->sapis_dl[ic->sapi] = status;
+	if (ic->dir & GsmL1_Dir_RxUplink)
+		lchan->sapis_ul[ic->sapi] = status;
 
-	msgb_free(l1_msg);
 
-	return 0;
-}
-
-int lchan_deactivate(struct gsm_lchan *lchan)
-{
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
-	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
-	int i;
-
-	for (i = s4l->num_sapis-1; i >= 0; i--) {
-		struct msgb *msg;
-		GsmL1_MphDeactivateReq_t *deact_req;
-
-		if (s4l->sapis[i].sapi == GsmL1_Sapi_Sacch && lchan->sacch_deact) {
-			LOGP(DL1C, LOGL_INFO, "%s SACCH already deactivated.\n",
+	if (llist_empty(&lchan->sapi_cmds)) {
+		LOGP(DL1C, LOGL_ERROR,
+				"%s Got de-activation confirmation with empty queue\n",
 				gsm_lchan_name(lchan));
-			continue;
-		}
-
-
-		msg = l1p_msgb_alloc();
-
-		deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
-		deact_req->u8Tn = lchan->ts->nr;
-		deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
-		deact_req->dir = s4l->sapis[i].dir;
-		deact_req->sapi = s4l->sapis[i].sapi;
-		deact_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
-
-		LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s ",
-			gsm_lchan_name(lchan),
-			get_value_string(femtobts_l1sapi_names, deact_req->sapi));
-		LOGPC(DL1C, LOGL_INFO, "%s)\n",
-			get_value_string(femtobts_dir_names, deact_req->dir));
-
-		/* Stop the alive timer once we deactivate the SCH */
-		if (deact_req->sapi == GsmL1_Sapi_Sch)
-			osmo_timer_del(&fl1h->alive_timer);
-
-		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-		l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb);
-
+		goto err;
 	}
-	lchan_set_state(lchan, LCHAN_S_REL_REQ);
-	lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 
+	cmd = llist_entry(lchan->sapi_cmds.next, struct sapi_cmd, entry);
+	if (cmd->sapi != ic->sapi || cmd->dir != ic->dir ||
+			cmd->type != SAPI_CMD_DEACTIVATE) {
+		LOGP(DL1C, LOGL_ERROR,
+				"%s Confirmation mismatch (%d, %d) (%d, %d)\n",
+				gsm_lchan_name(lchan), cmd->sapi, cmd->dir,
+				ic->sapi, ic->dir);
+		goto err;
+	}
+
+	sapi_queue_dispatch(lchan, ic->status);
+
+err:
+	msgb_free(l1_msg);
 	return 0;
 }
 
-static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
+static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	struct msgb *msg = l1p_msgb_alloc();
@@ -1251,20 +1274,139 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
 	deact_req->u8Tn = lchan->ts->nr;
 	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
-	deact_req->dir = DIR_BOTH;
-	deact_req->sapi = GsmL1_Sapi_Sacch;
+	deact_req->dir = cmd->dir;
+	deact_req->sapi = cmd->sapi;
 	deact_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
-	lchan->sacch_deact = 1;
-
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (SACCH %s)\n",
+	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s ",
 		gsm_lchan_name(lchan),
+		get_value_string(femtobts_l1sapi_names, deact_req->sapi));
+	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, deact_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
 	return l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb);
 }
 
+static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
+{
+	/* FIXME: Error handling. There is no NACK... */
+	if (status != GsmL1_Status_Success && lchan->state == LCHAN_S_REL_REQ) {
+		LOGP(DL1C, LOGL_ERROR, "%s is now broken. Stopping the release.\n",
+			gsm_lchan_name(lchan));
+		lchan_set_state(lchan, LCHAN_S_BROKEN);
+		sapi_clear_queue(&lchan->sapi_cmds);
+		rsl_tx_rf_rel_ack(lchan);
+		return -1;
+	}
+
+	if (!llist_empty(&lchan->sapi_cmds))
+		return 0;
+
+	/* Don't send an REL ACK on SACCH deactivate */
+	if (lchan->state != LCHAN_S_REL_REQ)
+		return 0;
+
+	lchan_set_state(lchan, LCHAN_S_NONE);
+	rsl_tx_rf_rel_ack(lchan);
+	return 0;
+}
+
+static int enqueue_sapi_deact_cmd(struct gsm_lchan *lchan, int sapi, int dir)
+{
+	struct sapi_cmd *cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
+
+	cmd->sapi = sapi;
+	cmd->dir = dir;
+	cmd->type = SAPI_CMD_DEACTIVATE;
+	cmd->callback = sapi_deactivate_cb;
+	return queue_sapi_command(lchan, cmd);
+}
+
+/*
+ * Release the SAPI if it was allocated. E.g. the SACCH might be already
+ * deactivated or during a hand-over the TCH was not allocated yet.
+ */
+static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir)
+{
+	/* check if we should schedule a release */
+	if (dir & GsmL1_Dir_TxDownlink) {
+		if (lchan->sapis_dl[sapi] != LCHAN_SAPI_S_ASSIGNED)
+			return 0;
+		lchan->sapis_dl[sapi] = LCHAN_SAPI_S_REL;
+	} else if (dir & GsmL1_Dir_RxUplink) {
+		if (lchan->sapis_ul[sapi] != LCHAN_SAPI_S_ASSIGNED)
+			return 0;
+		lchan->sapis_ul[sapi] = LCHAN_SAPI_S_REL;
+	}
+
+	/* now schedule the command and maybe dispatch it */
+	return enqueue_sapi_deact_cmd(lchan, sapi, dir);
+}
+
+
+static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
+	int i, res;
+
+	res = 0;
+
+	/* The order matters.. the Facch needs to be released first */
+	for (i = s4l->num_sapis-1; i >= 0; i--) {
+		/* Stop the alive timer once we deactivate the SCH */
+		if (s4l->sapis[i].sapi == GsmL1_Sapi_Sch)
+			osmo_timer_del(&fl1h->alive_timer);
+
+		/* Release if it was allocated */
+		res |= check_sapi_release(lchan, s4l->sapis[i].sapi, s4l->sapis[i].dir);
+	}
+
+	/* nothing was queued */
+	if (res == 0) {
+		LOGP(DL1C, LOGL_ERROR, "%s all SAPIs already released?\n",
+			gsm_lchan_name(lchan));
+		lchan_set_state(lchan, LCHAN_S_BROKEN);
+		rsl_tx_rf_rel_ack(lchan);
+	}
+
+	return res;
+}
+
+static void enqueue_rel_marker(struct gsm_lchan *lchan)
+{
+	struct sapi_cmd *cmd;
+
+	/* remember we need to release all active SAPIs */
+	cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
+	cmd->type = SAPI_CMD_REL_MARKER;
+	queue_sapi_command(lchan, cmd);
+}
+
+int lchan_deactivate(struct gsm_lchan *lchan)
+{
+	lchan_set_state(lchan, LCHAN_S_REL_REQ);
+	lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
+	enqueue_rel_marker(lchan);
+	return 0;
+}
+
+static void enqueue_sacch_rel_marker(struct gsm_lchan *lchan)
+{
+	struct sapi_cmd *cmd;
+
+	/* remember we need to check if the SACCH is allocated */
+	cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
+	cmd->type = SAPI_CMD_SACCH_REL_MARKER;
+	queue_sapi_command(lchan, cmd);
+}
+
+static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
+{
+	enqueue_sacch_rel_marker(lchan);
+	return 0;
+}
 
 struct gsm_time *bts_model_get_time(struct gsm_bts *bts)
 {
@@ -1346,6 +1488,9 @@ int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 
 int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
 {
+	/* Only de-activate the SACCH if the lchan is active */
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return 0;
 	return lchan_deactivate_sacch(lchan);
 }
 
