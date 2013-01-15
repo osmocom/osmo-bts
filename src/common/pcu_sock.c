@@ -797,8 +797,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 		return -1;
 	}
 
-	LOGP(DPCU, LOGL_NOTICE, "PCU socket has connection with external "
-		"call control application\n");
+	LOGP(DPCU, LOGL_NOTICE, "PCU socket connected to external PCU\n");
 
 	/* send current info */
 	pcu_tx_info_ind();
