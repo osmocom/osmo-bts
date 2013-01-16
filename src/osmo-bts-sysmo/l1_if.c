@@ -241,6 +241,12 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	return 0;
 }
 
+int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+		   l1if_compl_cb *cb, void *data)
+{
+	return l1if_req_compl(fl1h, msg, 0, cb, data);
+}
+
 /* allocate a msgb containing a GsmL1_Prim_t */
 struct msgb *l1p_msgb_alloc(void)
 {
