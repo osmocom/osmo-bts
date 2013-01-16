@@ -306,7 +306,7 @@ get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
 {
 	struct gsm_lchan *lchan;
 
-	lchan = l1if_hLayer2_to_lchan(trx, hLayer2);
+	lchan = l1if_hLayer_to_lchan(trx, hLayer2);
 	if (!lchan)
 		return NULL;
 
@@ -383,7 +383,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		if (!lchan)
 			break;
 
@@ -456,7 +456,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	case GsmL1_Sapi_Sacch:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		le = &lchan->lapdm_ch.lapdm_acch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
@@ -475,7 +475,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	case GsmL1_Sapi_Sdcch:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		le = &lchan->lapdm_ch.lapdm_dcch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0)
@@ -511,7 +511,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	case GsmL1_Sapi_FacchF:
 	case GsmL1_Sapi_FacchH:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer2_to_lchan(trx, rts_ind->hLayer2);
+		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		le = &lchan->lapdm_ch.lapdm_dcch;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0)
@@ -640,7 +640,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	ul_to_gsmtap(fl1, l1p_msg);
 
-	lchan = l1if_hLayer2_to_lchan(fl1->priv, data_ind->hLayer2);
+	lchan = l1if_hLayer_to_lchan(fl1->priv, data_ind->hLayer2);
 	if (!lchan) {
 		LOGP(DL1C, LOGL_ERROR, "unable to resolve lchan by hLayer2\n");
 		return -ENODEV;

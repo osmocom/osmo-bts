@@ -490,14 +490,14 @@ static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 	return 0;
 }
 
-uint32_t l1if_lchan_to_hLayer2(struct gsm_lchan *lchan)
+uint32_t l1if_lchan_to_hLayer(struct gsm_lchan *lchan)
 {
 	return (lchan->nr << 8) | (lchan->ts->nr << 16) | (lchan->ts->trx->nr << 24);
 }
 
-/* obtain a ptr to the lapdm_channel for a given hLayer2 */
+/* obtain a ptr to the lapdm_channel for a given hLayer */
 struct gsm_lchan *
-l1if_hLayer2_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer2)
+l1if_hLayer_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer2)
 {
 	uint8_t ts_nr = (hLayer2 >> 16) & 0xff;
 	uint8_t lchan_nr = (hLayer2 >> 8)& 0xff;
@@ -656,7 +656,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 		act_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
 		act_req->dir = s4l->sapis[i].dir;
 		act_req->sapi = s4l->sapis[i].sapi;
-		act_req->hLayer2 = l1if_lchan_to_hLayer2(lchan);
+		act_req->hLayer2 = l1if_lchan_to_hLayer(lchan);
 
 		switch (act_req->sapi) {
 		case GsmL1_Sapi_Sch:
