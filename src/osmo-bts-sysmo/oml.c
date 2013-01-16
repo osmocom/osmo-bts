@@ -447,9 +447,18 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
 {
 	struct gsm_time *time;
-	struct gsm_lchan *lchan = data;
+	struct gsm_bts_trx *trx = data;
+	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphActivateCnf_t *ic = &l1p->u.mphActivateCnf;
+
+	/* get the lchan from the information we supplied */
+	lchan = l1if_hLayer_to_lchan(trx, ic->hLayer3);
+	if (!lchan) {
+		LOGP(DL1C, LOGL_ERROR,
+			"Failed to find lchan for hLayer3=0x%x\n", ic->hLayer3);
+		return -1;
+	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (%s ",
 		gsm_lchan_name(lchan),
@@ -657,6 +666,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 		act_req->dir = s4l->sapis[i].dir;
 		act_req->sapi = s4l->sapis[i].sapi;
 		act_req->hLayer2 = l1if_lchan_to_hLayer(lchan);
+		act_req->hLayer3 = act_req->hLayer2;
 
 		switch (act_req->sapi) {
 		case GsmL1_Sapi_Sch:
@@ -707,7 +717,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 			get_value_string(femtobts_dir_names, act_req->dir));
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan);
+		l1if_req_compl(fl1h, msg, 0, lchan_act_compl_cb, lchan->ts->trx);
 
 	}
 	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
@@ -764,9 +774,18 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 
 static int chmod_modif_compl_cb(struct msgb *l1_msg, void *data)
 {
-	struct gsm_lchan *lchan = data;
+	struct gsm_bts_trx *trx = data;
+	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
+
+	/* get the lchan from the information we supplied */
+	lchan = l1if_hLayer_to_lchan(trx, cc->hLayer3);
+	if (!lchan) {
+		LOGP(DL1C, LOGL_ERROR,
+			"Failed to find lchan for hLayer3=0x%x\n", cc->hLayer3);
+		return -1;
+	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
 		gsm_lchan_name(lchan),
@@ -825,6 +844,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
 	conf_req->cfgParams.setLogChParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
 	conf_req->cfgParams.setLogChParams.dir = direction;
+	conf_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
 	lch_par = &conf_req->cfgParams.setLogChParams.logChParams;
 	lchan2lch_par(lch_par, lchan);
@@ -843,7 +863,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 			&conf_req->cfgParams.setLogChParams.logChParams,
 			conf_req->cfgParams.setLogChParams.sapi);
 
-	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan);
+	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan->ts->trx);
 }
 
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
@@ -878,6 +898,7 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 	cfgr->cfgParamId = GsmL1_ConfigParamId_SetCipheringParams;
 	cfgr->cfgParams.setCipheringParams.u8Tn = lchan->ts->nr;
 	cfgr->cfgParams.setCipheringParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
+	cfgr->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
 	if (dir_downlink)
 		cfgr->cfgParams.setCipheringParams.dir = GsmL1_Dir_TxDownlink;
@@ -897,7 +918,7 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
 	       lchan->encr.key, lchan->encr.key_len);
 
-	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan);
+	return l1if_req_compl(fl1h, msg, 0, chmod_modif_compl_cb, lchan->ts->trx);
 }
 
 
@@ -916,9 +937,17 @@ int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 
 static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
 {
-	struct gsm_lchan *lchan = data;
+	struct gsm_bts_trx *trx = data;
+	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphDeactivateCnf_t *ic = &l1p->u.mphDeactivateCnf;
+
+	lchan = l1if_hLayer_to_lchan(trx, ic->hLayer3);
+	if (!lchan) {
+		LOGP(DL1C, LOGL_ERROR,
+			"Failed to find lchan for hLayer3=0x%x\n", ic->hLayer3);
+		return -1;
+	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (%s ",
 		gsm_lchan_name(lchan),
@@ -977,6 +1006,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 		deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
 		deact_req->dir = s4l->sapis[i].dir;
 		deact_req->sapi = s4l->sapis[i].sapi;
+		deact_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
 		LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s ",
 			gsm_lchan_name(lchan),
@@ -989,7 +1019,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 			osmo_timer_del(&fl1h->alive_timer);
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-		l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);
+		l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan->ts->trx);
 
 	}
 	lchan_set_state(lchan, LCHAN_S_REL_REQ);
@@ -1009,6 +1039,7 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
 	deact_req->dir = DIR_BOTH;
 	deact_req->sapi = GsmL1_Sapi_Sacch;
+	deact_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
 	lchan->sacch_deact = 1;
 
@@ -1017,7 +1048,7 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 		get_value_string(femtobts_dir_names, deact_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-	return l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan);
+	return l1if_req_compl(fl1h, msg, 0, lchan_deact_compl_cb, lchan->ts->trx);
 }
 
 
