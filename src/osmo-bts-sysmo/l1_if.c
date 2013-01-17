@@ -678,6 +678,14 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_Sdcch:
 	case GsmL1_Sapi_FacchF:
 	case GsmL1_Sapi_FacchH:
+		/* Check and Re-check for the SACCH */
+		if (data_ind->msgUnitParam.u8Size == 0) {
+			LOGP(DL1C, LOGL_NOTICE, "%s %s data is null.\n",
+				gsm_lchan_name(lchan),
+				get_value_string(femtobts_l1sapi_names, data_ind->sapi));
+			break;
+		}
+
 		/* if this is the first valid message after enabling Rx
 		 * decryption, we have to enable Tx encryption */
 		if (lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
