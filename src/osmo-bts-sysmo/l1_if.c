@@ -662,7 +662,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_Sacch:
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (data_ind->msgUnitParam.u8Size < 2) {
-			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!",
+			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
 				data_ind->msgUnitParam.u8Size);
 			dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 			break;
