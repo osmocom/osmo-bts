@@ -92,6 +92,11 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm)
 	DEBUGP(DMEAS, "%s adding measurement, num_ul_meas=%d\n",
 		gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
 
+	if (lchan->state != LCHAN_S_ACTIVE) {
+		LOGP(DMEAS, LOGL_NOTICE, "%s measurement during state: %s\n",
+			gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
+	}
+
 	if (lchan->meas.num_ul_meas >= ARRAY_SIZE(lchan->meas.uplink)) {
 		LOGP(DMEAS, LOGL_NOTICE, "%s no space for uplink measurement\n",
 			gsm_lchan_name(lchan));
