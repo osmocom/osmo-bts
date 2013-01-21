@@ -933,8 +933,7 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 static int activate_rf_compl_cb(struct msgb *resp, void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
+	struct gsm_bts_trx *trx = data;
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
@@ -1014,7 +1013,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
 
-	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb, hdl->priv);
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
@@ -1022,8 +1021,8 @@ static int info_compl_cb(struct msgb *resp, void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
+	struct gsm_bts_trx *trx = data;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
 	fl1h->hw_info.dsp_version[1] = sic->dspVersion.minor;
@@ -1067,13 +1066,13 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 
 	sysp->id = SuperFemto_PrimId_SystemInfoReq;
 
-	return l1if_req_compl(hdl, msg, 1, info_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, 1, info_compl_cb, hdl->priv);
 }
 
 static int reset_compl_cb(struct msgb *resp, void *data)
 {
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
+	struct gsm_bts_trx *trx = data;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;
 
@@ -1116,7 +1115,7 @@ int l1if_reset(struct femtol1_hdl *hdl)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
 
-	return l1if_req_compl(hdl, msg, 1, reset_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, 1, reset_compl_cb, hdl->priv);
 }
 
 /* set the trace flags within the DSP */
