@@ -179,9 +179,8 @@ static int compl_cb_send_oml_msg(struct msgb *l1_msg, void *data)
 
 int lchan_activate(struct gsm_lchan *lchan);
 
-static int opstart_compl_cb(struct msgb *l1_msg, void *data)
+static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 {
-	struct gsm_abis_mo *mo = data;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_Status_t status = prim_status(l1p);
 
@@ -208,6 +207,17 @@ static int opstart_compl_cb(struct msgb *l1_msg, void *data)
 	return oml_mo_opstart_ack(mo);
 }
 
+static int opstart_compl_cb(struct msgb *l1_msg, void *data)
+{
+	struct gsm_bts_trx *trx = data;
+	struct gsm_abis_mo *mo;
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphConnectCnf_t *cnf = &l1p->u.mphConnectCnf;
+
+	mo = &trx->ts[cnf->u8Tn].mo;
+	return opstart_compl(mo, l1_msg);
+}
+
 static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
 {
 	struct gsm_bts_trx *trx = data;
@@ -228,7 +238,7 @@ static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
 
 	fl1h->hLayer1 = ic->hLayer1;
 
-	return opstart_compl_cb(l1_msg, &trx->mo);
+	return opstart_compl(&trx->mo, l1_msg);
 }
 
 int gsm_abis_mo_check_attr(const struct gsm_abis_mo *mo, const uint8_t *attr_ids,
@@ -324,7 +334,7 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[ts->pchan];
 	
-	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, &ts->mo);
+	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, fl1h->priv);
 }
 
 GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
