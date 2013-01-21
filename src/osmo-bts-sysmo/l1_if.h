@@ -69,7 +69,7 @@ typedef int l1if_compl_cb(struct msgb *l1_msg, void *data);
 
 /* send a request primitive to the L1 and schedule completion call-back */
 int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   int is_system_prim, l1if_compl_cb *cb, void *data);
+		   int is_system_prim, l1if_compl_cb *cb);
 int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		l1if_compl_cb *cb);
 

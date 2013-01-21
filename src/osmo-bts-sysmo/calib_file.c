@@ -217,7 +217,7 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 		return rc;
 	}
 
-	return l1if_req_compl(fl1h, msg, 1, calib_send_compl_cb, fl1h->priv);
+	return l1if_req_compl(fl1h, msg, 1, calib_send_compl_cb);
 }
 
 /* completion callback after every SetCalibTbl is confirmed */
