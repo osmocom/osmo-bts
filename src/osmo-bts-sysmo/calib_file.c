@@ -27,6 +27,7 @@
 
 #include <osmocom/core/utils.h>
 
+#include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 
 #include <sysmocom/femtobts/superfemto.h>
@@ -199,17 +200,11 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 
 /* iteratively download the calibration data into the L1 */
 
-struct calib_send_state {
-	struct femtol1_hdl *fl1h;
-	const char *path;
-	int last_file_idx;
-};
-
 static int calib_send_compl_cb(struct msgb *l1_msg, void *data);
 
 /* send the calibration table for a single specified file */
 static int calib_file_send(struct femtol1_hdl *fl1h,
-			   const struct calib_file_desc *desc, void *state)
+			   const struct calib_file_desc *desc)
 {
 	struct msgb *msg;
 	int rc;
@@ -222,13 +217,15 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 		return rc;
 	}
 
-	return l1if_req_compl(fl1h, msg, 1, calib_send_compl_cb, state);
+	return l1if_req_compl(fl1h, msg, 1, calib_send_compl_cb, fl1h->priv);
 }
 
 /* completion callback after every SetCalibTbl is confirmed */
 static int calib_send_compl_cb(struct msgb *l1_msg, void *data)
 {
-	struct calib_send_state *st = data;
+	struct gsm_bts_trx *trx = data;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct calib_send_state *st = &fl1h->st;
 
 	LOGP(DL1C, LOGL_DEBUG, "L1 calibration table %s loaded\n",
 		calib_files[st->last_file_idx].fname);
@@ -236,8 +233,8 @@ static int calib_send_compl_cb(struct msgb *l1_msg, void *data)
 	st->last_file_idx++;
 
 	if (st->last_file_idx < ARRAY_SIZE(calib_files))
-		return calib_file_send(st->fl1h,
-				       &calib_files[st->last_file_idx], st);
+		return calib_file_send(fl1h,
+				       &calib_files[st->last_file_idx]);
 
 	LOGP(DL1C, LOGL_INFO, "L1 calibration table loading complete!\n");
 
@@ -247,15 +244,10 @@ static int calib_send_compl_cb(struct msgb *l1_msg, void *data)
 
 int calib_load(struct femtol1_hdl *fl1h)
 {
-	static struct calib_send_state st;
-
-	memset(&st, 0, sizeof(st));
-	st.fl1h = fl1h;
-
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
 	return -1;
 #else
-	return calib_file_send(fl1h, &calib_files[0], &st);
+	return calib_file_send(fl1h, &calib_files[0]);
 #endif
 }
 
