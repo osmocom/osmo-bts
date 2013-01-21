@@ -296,7 +296,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
 	
 	/* send MPH-INIT-REQ, wait for MPH-INIT-CNF */
-	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb);
 }
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
@@ -321,7 +321,7 @@ static int trx_close(struct gsm_bts_trx *trx)
 	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h);
 	LOGP(DL1C, LOGL_NOTICE, "Close TRX %u\n", trx->nr);
 
-	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb);
 }
 
 static int ts_connect(struct gsm_bts_trx_ts *ts)
@@ -334,7 +334,7 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[ts->pchan];
 	
-	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb);
 }
 
 GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
@@ -716,7 +716,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, int sapi, int dir)
 		get_value_string(femtobts_dir_names, act_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-	return l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb);
 }
 
 int lchan_activate(struct gsm_lchan *lchan)
@@ -878,7 +878,7 @@ static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 			&conf_req->cfgParams.setLogChParams.logChParams,
 			conf_req->cfgParams.setLogChParams.sapi);
 
-	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
 }
 
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
@@ -890,7 +890,7 @@ int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetTxPowerLevel;
 	conf_req->cfgParams.setTxPowerLevel.fTxPowerLevel = tx_power;
 
-	return l1if_gsm_req_compl(fl1h, msg, NULL, NULL);
+	return l1if_gsm_req_compl(fl1h, msg, NULL);
 }
 
 const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
@@ -933,7 +933,7 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
 	       lchan->encr.key, lchan->encr.key_len);
 
-	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
 }
 
 
@@ -1034,7 +1034,7 @@ int lchan_deactivate(struct gsm_lchan *lchan)
 			osmo_timer_del(&fl1h->alive_timer);
 
 		/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-		l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb, fl1h->priv);
+		l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb);
 
 	}
 	lchan_set_state(lchan, LCHAN_S_REL_REQ);
@@ -1063,7 +1063,7 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 		get_value_string(femtobts_dir_names, deact_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-	return l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb, fl1h->priv);
+	return l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb);
 }
 
 
