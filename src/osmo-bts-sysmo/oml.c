@@ -298,6 +298,7 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 static int trx_close_compl_cb(struct msgb *l1_msg, void *data)
 {
+	msgb_free(l1_msg);
 	return 0;
 }
 
