@@ -181,8 +181,7 @@ static void l1if_req_timeout(void *data)
 	exit(23);
 }
 
-/* send a request primitive to the L1 and schedule completion call-back */
-int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		   int is_system_prim, l1if_compl_cb *cb)
 {
 	struct wait_l1_conf *wlc;
@@ -241,10 +240,17 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	return 0;
 }
 
+/* send a request primitive to the L1 and schedule completion call-back */
+int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+		   l1if_compl_cb *cb)
+{
+	return _l1if_req_compl(fl1h, msg, 1, cb);
+}
+
 int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		   l1if_compl_cb *cb)
 {
-	return l1if_req_compl(fl1h, msg, 0, cb);
+	return _l1if_req_compl(fl1h, msg, 0, cb);
 }
 
 /* allocate a msgb containing a GsmL1_Prim_t */
@@ -1012,7 +1018,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
 
-	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb);
+	return l1if_req_compl(hdl, msg, activate_rf_compl_cb);
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
@@ -1064,7 +1070,7 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 
 	sysp->id = SuperFemto_PrimId_SystemInfoReq;
 
-	return l1if_req_compl(hdl, msg, 1, info_compl_cb);
+	return l1if_req_compl(hdl, msg, info_compl_cb);
 }
 
 static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
@@ -1112,7 +1118,7 @@ int l1if_reset(struct femtol1_hdl *hdl)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
 
-	return l1if_req_compl(hdl, msg, 1, reset_compl_cb);
+	return l1if_req_compl(hdl, msg, reset_compl_cb);
 }
 
 /* set the trace flags within the DSP */
