@@ -901,6 +901,17 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 	return rc;
 }
 
+static inline int is_prim_compat(GsmL1_Prim_t *l1p, struct wait_l1_conf *wlc)
+{
+	/* the limitation here is that we cannot have multiple callers
+	 * sending the same primitive */
+	if (wlc->is_sys_prim != 0)
+		return 0;
+	if (l1p->id != wlc->conf_prim_id)
+		return 0;
+	return 1;
+}
+
 int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
@@ -918,9 +929,7 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 
 	/* check if this is a resposne to a sync-waiting request */
 	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
-		/* the limitation here is that we cannot have multiple callers
-		 * sending the same primitive */
-		if (wlc->is_sys_prim == 0 && l1p->id == wlc->conf_prim_id) {
+		if (is_prim_compat(l1p, wlc)) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
 				rc = wlc->cb(fl1h->priv, msg);
