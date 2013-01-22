@@ -882,8 +882,10 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 			llist_del(&wlc->list);
 			if (wlc->cb)
 				rc = wlc->cb(fl1h->priv, msg);
-			else
+			else {
 				rc = 0;
+				msgb_free(msg);
+			}
 			release_wlc(wlc);
 			return rc;
 		}
@@ -910,8 +912,10 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 			llist_del(&wlc->list);
 			if (wlc->cb)
 				rc = wlc->cb(fl1h->priv, msg);
-			else
+			else {
 				rc = 0;
+				msgb_free(msg);
+			}
 			release_wlc(wlc);
 			return rc;
 		}
