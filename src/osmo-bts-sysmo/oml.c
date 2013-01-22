@@ -207,9 +207,8 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 	return oml_mo_opstart_ack(mo);
 }
 
-static int opstart_compl_cb(struct msgb *l1_msg, void *data)
+static int opstart_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
-	struct gsm_bts_trx *trx = data;
 	struct gsm_abis_mo *mo;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphConnectCnf_t *cnf = &l1p->u.mphConnectCnf;
@@ -218,9 +217,8 @@ static int opstart_compl_cb(struct msgb *l1_msg, void *data)
 	return opstart_compl(mo, l1_msg);
 }
 
-static int trx_init_compl_cb(struct msgb *l1_msg, void *data)
+static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
-	struct gsm_bts_trx *trx = data;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
@@ -306,7 +304,7 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 	return fl1h->hLayer1;
 }
 
-static int trx_close_compl_cb(struct msgb *l1_msg, void *data)
+static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
 	msgb_free(l1_msg);
 	return 0;
@@ -454,10 +452,9 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 	},
 };
 
-static int lchan_act_compl_cb(struct msgb *l1_msg, void *data)
+static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
 	struct gsm_time *time;
-	struct gsm_bts_trx *trx = data;
 	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphActivateCnf_t *ic = &l1p->u.mphActivateCnf;
@@ -787,9 +784,8 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 	LOGPC(DL1C, logl, ")\n");
 }
 
-static int chmod_modif_compl_cb(struct msgb *l1_msg, void *data)
+static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
-	struct gsm_bts_trx *trx = data;
 	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
@@ -950,9 +946,8 @@ int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 	return 0;
 }
 
-static int lchan_deact_compl_cb(struct msgb *l1_msg, void *data)
+static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
-	struct gsm_bts_trx *trx = data;
 	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphDeactivateCnf_t *ic = &l1p->u.mphDeactivateCnf;

@@ -875,7 +875,7 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim == 0 && l1p->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(msg, fl1h->priv);
+				rc = wlc->cb(fl1h->priv, msg);
 			else
 				rc = 0;
 			release_wlc(wlc);
@@ -903,7 +903,7 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(msg, fl1h->priv);
+				rc = wlc->cb(fl1h->priv, msg);
 			else
 				rc = 0;
 			release_wlc(wlc);
@@ -930,10 +930,9 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 }
 #endif
 
-static int activate_rf_compl_cb(struct msgb *resp, void *data)
+static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-	struct gsm_bts_trx *trx = data;
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
@@ -1017,11 +1016,10 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
-static int info_compl_cb(struct msgb *resp, void *data)
+static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
-	struct gsm_bts_trx *trx = data;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
@@ -1069,9 +1067,8 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 	return l1if_req_compl(hdl, msg, 1, info_compl_cb);
 }
 
-static int reset_compl_cb(struct msgb *resp, void *data)
+static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
-	struct gsm_bts_trx *trx = data;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;

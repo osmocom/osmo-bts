@@ -65,7 +65,7 @@ struct femtol1_hdl {
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
 #define msgb_sysprim(msg)	((SuperFemto_Prim_t *)(msg)->l1h)
 
-typedef int l1if_compl_cb(struct msgb *l1_msg, void *data);
+typedef int l1if_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
 
 /* send a request primitive to the L1 and schedule completion call-back */
 int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,

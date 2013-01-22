@@ -200,7 +200,7 @@ int calib_file_read(const char *path, const struct calib_file_desc *desc,
 
 /* iteratively download the calibration data into the L1 */
 
-static int calib_send_compl_cb(struct msgb *l1_msg, void *data);
+static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
 
 /* send the calibration table for a single specified file */
 static int calib_file_send(struct femtol1_hdl *fl1h,
@@ -221,9 +221,8 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 }
 
 /* completion callback after every SetCalibTbl is confirmed */
-static int calib_send_compl_cb(struct msgb *l1_msg, void *data)
+static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
-	struct gsm_bts_trx *trx = data;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct calib_send_state *st = &fl1h->st;
 
