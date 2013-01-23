@@ -664,7 +664,6 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		if (data_ind->msgUnitParam.u8Size < 2) {
 			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
 				data_ind->msgUnitParam.u8Size);
-			dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 			break;
 		}
 		/* Some brilliant engineer decided that the ordering of
