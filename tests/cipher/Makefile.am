@@ -4,5 +4,5 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_
 noinst_PROGRAMS = cipher_test
 EXTRA_DIST = cipher_test.ok
 
-cipher_test_SOURCES = cipher_test.c
+cipher_test_SOURCES = cipher_test.c $(srcdir)/../stubs.c
 cipher_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)

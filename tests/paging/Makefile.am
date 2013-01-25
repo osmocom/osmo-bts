@@ -4,5 +4,5 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_
 noinst_PROGRAMS = paging_test
 EXTRA_DIST = paging_test.ok
 
-paging_test_SOURCES = paging_test.c
+paging_test_SOURCES = paging_test.c $(srcdir)/../stubs.c
 paging_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
