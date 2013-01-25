@@ -664,7 +664,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 	/* 9.3.13 MS Power */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER))
-		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
+		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRESENT(&tp, RSL_IE_TIMING_ADVANCE))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
