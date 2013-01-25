@@ -126,6 +126,12 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 {
 	struct gsm_bts_trx *trx;
 
+	if (osmo_timer_pending(&shutdown_timer)) {
+		LOGP(DOML, LOGL_NOTICE,
+			"BTS is already being shutdown.\n");
+		return;
+	}
+
 	LOGP(DOML, LOGL_NOTICE, "Shutting down BTS %u, Reason %s\n",
 		bts->nr, reason);
 
