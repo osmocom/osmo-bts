@@ -1180,6 +1180,10 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 {
 	int dir;
 
+	/* ignore the request when the channel is not active */
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return -1;
+
 	if (dir_downlink)
 		dir = GsmL1_Dir_RxUplink;
 	else
@@ -1192,6 +1196,9 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 {
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return -1;
+
 	/* channel mode, encryption and/or multirate have changed */
 
 	/* update multi-rate config */
