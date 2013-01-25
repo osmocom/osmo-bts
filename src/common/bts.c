@@ -126,8 +126,10 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 	LOGP(DOML, LOGL_NOTICE, "Shutting down BTS %u, Reason %s\n",
 		bts->nr, reason);
 
-	llist_for_each_entry(trx, &bts->trx_list, list)
+	llist_for_each_entry(trx, &bts->trx_list, list) {
 		bts_model_trx_deact_rf(trx);
+		bts_model_trx_close(trx);
+	}
 
 	/* shedule a timer to make sure select loop logic can run again
 	 * to dispatch any pending primitives */

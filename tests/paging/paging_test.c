@@ -142,6 +142,8 @@ int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 { return 0; }
+int bts_model_trx_close(struct gsm_bts_trx *trx)
+{ return 0; }
 int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 			struct tlv_parsed *old_attr, struct tlv_parsed *new_attr,
 			void *obj)

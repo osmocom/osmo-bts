@@ -310,7 +310,7 @@ static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	return 0;
 }
 
-static int trx_close(struct gsm_bts_trx *trx)
+int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct msgb *msg;
@@ -1149,6 +1149,5 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
 
-	trx_close(trx);
 	return l1if_activate_rf(fl1, 0);
 }
