@@ -1264,7 +1264,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
 
 		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
-					  btsb->rtp_bind_host, -1);
+					  "0.0.0.0", -1);
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",

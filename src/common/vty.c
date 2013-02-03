@@ -183,7 +183,6 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
-	vty_out(vty, " rtp bind-ip %s%s", btsb->rtp_bind_host, VTY_NEWLINE);
 	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
 		VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(btsb->paging_state),
@@ -303,20 +302,14 @@ DEFUN(cfg_bts_oml_ip,
 
 #define RTP_STR "RTP parameters\n"
 
-DEFUN(cfg_bts_rtp_bind_ip,
+DEFUN_HIDDEN(cfg_bts_rtp_bind_ip,
       cfg_bts_rtp_bind_ip_cmd,
       "rtp bind-ip A.B.C.D",
       RTP_STR "RTP local bind IP Address\n" "RTP local bind IP Address\n")
 {
-	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	vty_out(vty, "%% rtp bind-ip is now deprecated%s", VTY_NEWLINE);
 
-	if (btsb->rtp_bind_host)
-		talloc_free(btsb->rtp_bind_host);
-
-	btsb->rtp_bind_host = talloc_strdup(btsb, argv[0]);
-
-	return CMD_SUCCESS;
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_bts_rtp_jitbuf,
