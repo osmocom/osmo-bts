@@ -472,7 +472,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 				/* The +2 is empty space where the DSP inserts the L1 hdr */
 				memcpy(msu_param->u8Buffer+2, si, GSM_MACBLOCK_LEN-2);
 			} else
-				memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
+				memcpy(msu_param->u8Buffer+2, fill_frame, GSM_MACBLOCK_LEN-2);
 		} else {
 			/* The +2 is empty space where the DSP inserts the L1 hdr */
 			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data, GSM_MACBLOCK_LEN-2);
