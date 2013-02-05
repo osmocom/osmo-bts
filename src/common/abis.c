@@ -47,6 +47,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/bts_model.h>
 
 static struct gsm_bts *g_bts;
 
@@ -114,7 +115,7 @@ static void sign_link_down(struct e1inp_line *line)
 		e1inp_sign_link_destroy(g_bts->oml_link);
 	g_bts->oml_link = NULL;
 
-	bts_shutdown(g_bts, "Abis close");
+	bts_model_abis_close(g_bts);
 }
 
 
