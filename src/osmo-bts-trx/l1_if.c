@@ -239,11 +239,18 @@ static int trx_close(struct gsm_bts_trx *trx)
 {
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
 
+	/* close all logical channels and reset timeslots */
+	trx_sched_reset(l1h);
+
+	/* power off tranceiver, if not already */
 	if (l1h->config.poweron) {
 		l1h->config.poweron = 0;
 		l1h->config.poweron_sent = 0;
 		l1if_provision_tranceiver_trx(l1h);
 	}
+
+	/* Set to Operational State: Disabled */
+	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 
 	return 0;
 }
