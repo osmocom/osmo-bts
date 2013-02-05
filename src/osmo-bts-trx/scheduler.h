@@ -26,4 +26,7 @@ int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,
 int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 	int downlink, int active);
 
+/* close all logical channels and reset timeslots */
+void trx_sched_reset(struct trx_l1h *l1h);
+
 #endif /* TRX_SCHEDULER_H */
