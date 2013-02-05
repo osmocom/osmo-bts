@@ -230,6 +230,8 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 
 	if (link)
 		rsl_tx_rf_res(trx);
+	else
+		bts_model_trx_deact_rf(trx);
 
 	return 0;
 }
