@@ -106,6 +106,13 @@ static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
 	return trx->role_bts.l1h;
 }
 
+struct trx_l1h;
+
+static inline struct trx_l1h *trx_l1h_hdl(struct gsm_bts_trx *trx)
+{
+	return trx->role_bts.l1h;
+}
+
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
 
