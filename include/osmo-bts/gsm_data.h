@@ -58,6 +58,7 @@ struct gsm_bts_role_bts {
 	struct {
 		uint8_t tc4_ctr;
 	} si;
+	uint8_t radio_link_timeout;
 };
 
 enum lchan_ciph_state {

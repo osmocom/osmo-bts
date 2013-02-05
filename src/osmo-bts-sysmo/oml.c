@@ -718,6 +718,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, int sapi, int dir)
 
 int lchan_activate(struct gsm_lchan *lchan)
 {
+	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	unsigned int i;
@@ -739,6 +740,8 @@ int lchan_activate(struct gsm_lchan *lchan)
 	l1if_set_ciphering(fl1h, lchan, 1);
 
 	lchan_init_lapdm(lchan);
+
+	lchan->s = btsb->radio_link_timeout;
 
 	return 0;
 }

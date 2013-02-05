@@ -42,6 +42,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/rsl.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
@@ -650,6 +651,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_role_bts *btsb = trx->bts->role;
 	struct osmo_phsap_prim pp;
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
@@ -666,7 +668,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	process_meas_res(lchan, &data_ind->measParam);
 
-	if (data_ind->measParam.fLinkQuality < MIN_QUAL_NORM)
+	if (data_ind->measParam.fLinkQuality < MIN_QUAL_NORM
+	 && data_ind->msgUnitParam.u8Size != 0)
 		return 0;
 
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
@@ -678,6 +681,25 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	switch (data_ind->sapi) {
 	case GsmL1_Sapi_Sacch:
+		/* process radio link timeout coniter S */
+		if (data_ind->msgUnitParam.u8Size == 0) {
+			/* count down radio link counter S */
+			lchan->s--;
+			DEBUGP(DMEAS, "counting down radio link counter S=%d\n",
+				lchan->s);
+			if (lchan->s == 0)
+				rsl_tx_conn_fail(lchan,
+					RSL_ERR_RADIO_LINK_FAIL);
+			break;
+		}
+		if (lchan->s < btsb->radio_link_timeout) {
+			/* count up radio link counter S */
+			lchan->s += 2;
+			if (lchan->s > btsb->radio_link_timeout)
+				lchan->s = btsb->radio_link_timeout;
+			DEBUGP(DMEAS, "counting up radio link counter S=%d\n",
+				lchan->s);
+		}
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (data_ind->msgUnitParam.u8Size < 2) {
 			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
@@ -744,7 +766,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_Pdtch:
 	case GsmL1_Sapi_Pacch:
 		/* drop incomplete UL block */
-		if (data_ind->msgUnitParam.u8Buffer[0]
+		if (!data_ind->msgUnitParam.u8Size
+		 || data_ind->msgUnitParam.u8Buffer[0]
 			!= GsmL1_PdtchPlType_Full)
 			break;
 		/* PDTCH / PACCH frame handling */

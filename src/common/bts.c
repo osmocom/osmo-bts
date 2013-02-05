@@ -75,6 +75,9 @@ int bts_init(struct gsm_bts *bts)
 	btsb->rtp_jitter_buf_ms = 100;
 	btsb->max_ta = 63;
 
+	/* default RADIO_LINK_TIMEOUT */
+	btsb->radio_link_timeout = 32;
+
 	/* set BTS to dependency */
 	oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_chg(&bts->gprs.nse.mo, -1, NM_AVSTATE_DEPENDENCY);

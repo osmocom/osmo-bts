@@ -541,6 +541,26 @@ int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* 8.4.4 sending CONNection FAILure */
+int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause)
+{
+	struct msgb *msg;
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_NOTICE, "Sending Connection Failure: cause = 0x%02x\n", cause);
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	/* 9.3.26 Cause */
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
+	rsl_dch_push_hdr(msg, RSL_MT_CONN_FAIL, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* 8.5.3 sending CHANnel ReQuireD */
 int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
 		    uint8_t ra, uint8_t acc_delay)

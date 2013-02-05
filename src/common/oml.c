@@ -446,7 +446,14 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		btsb->interference.intave = *TLVP_VAL(&tp, NM_ATT_INTAVE_PARAM);
 
 	/* 9.4.14 Connection Failure Criterion */
-	/* ... can be 'operator dependent' and needs to be parsed by bts driver */
+	if (TLVP_PRESENT(&tp, NM_ATT_CONN_FAIL_CRIT) &&
+	    (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) >= 2) &&
+	    *TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT) == 0x01) {
+		const uint8_t *val = TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT);
+		btsb->radio_link_timeout = val[1];
+	}
+	/* if val[0] != 0x01: can be 'operator dependent' and needs to
+	 * be parsed by bts driver */
 
 	/* 9.4.53 T200 */
 	if (TLVP_PRESENT(&tp, NM_ATT_T200)) {
