@@ -33,6 +33,8 @@
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1types.h>
 
+#include <osmocom/gsm/gsm_utils.h>
+
 #include <osmocom/core/utils.h>
 
 #include "sysmobts-layer1.h"
@@ -438,12 +440,17 @@ static int bcch_follow(void)
 		uint8_t block;
 		uint8_t data[23];
 		size_t size;
+		struct gsm_time gsmtime;
 
 		rc = wait_for_data(data, &size, &fn, &block);
 		if (rc == 1)
 			continue;
 		CHECK_RC_MSG(rc, "No Data Indication");
-		printf("Data: %s\n", osmo_hexdump(data, size));
+
+		gsm_fn2gsmtime(&gsmtime, fn);
+		printf("%02u/%02u/%02u %s\n",
+			gsmtime.t1, gsmtime.t2, gsmtime.t3,
+			osmo_hexdump(data, size));
 	}
 
 	rc = mph_close(layer1);

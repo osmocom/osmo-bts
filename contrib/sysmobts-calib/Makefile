@@ -1,5 +1,5 @@
 CFLAGS=`pkg-config --cflags libosmocore` -Wall -Werror
-LIBS=`pkg-config --libs libosmocore`
+LIBS=`pkg-config --libs libosmocore libosmogsm`
 
 all: sysmobts-calib
 
