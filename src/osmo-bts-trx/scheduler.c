@@ -201,10 +201,12 @@ int trx_sched_init(struct trx_l1h *l1h)
 
 	for (tn = 0; tn < 8; tn++) {
 		l1h->mf_index[tn] = 0;
+		INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
-			INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
 			chan_state = &l1h->chan_states[tn][i];
-			chan_state->ul_mask = 0x0;
+			chan_state->dl_active = 0;
+			chan_state->ul_active = 0;
+			chan_state->ul_mask = 0x00;
 		}
 	}
 
@@ -220,8 +222,8 @@ void trx_sched_exit(struct trx_l1h *l1h)
 	LOGP(DL1C, LOGL_NOTICE, "Exit scheduler for trx=%u\n", l1h->trx->nr);
 
 	for (tn = 0; tn < 8; tn++) {
+		msgb_queue_flush(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
-			msgb_queue_flush(&l1h->dl_prims[tn]);
 			chan_state = &l1h->chan_states[tn][i];
 			if (chan_state->dl_bursts) {
 				talloc_free(chan_state->dl_bursts);
@@ -233,6 +235,13 @@ void trx_sched_exit(struct trx_l1h *l1h)
 			}
 		}
 	}
+}
+
+/* close all logical channels and reset timeslots */
+void trx_sched_reset(struct trx_l1h *l1h)
+{
+	trx_sched_exit(l1h);
+	trx_sched_init(l1h);
 }
 
 
