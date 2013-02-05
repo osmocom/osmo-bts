@@ -1,4 +1,4 @@
-SUBDIRS = paging cipher sysmobts agch
+SUBDIRS = paging cipher sysmobts agch bursts
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
 $(srcdir)/package.m4: $(top_srcdir)/configure.ac
