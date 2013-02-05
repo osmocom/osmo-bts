@@ -8,6 +8,7 @@ struct trx_ctrl_msg {
 	struct llist_head	list;
 	char 			cmd[128];
 	int			cmd_len;
+	int			critical;
 };
 
 int trx_if_cmd_poweroff(struct trx_l1h *l1h);

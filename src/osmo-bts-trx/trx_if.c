@@ -176,12 +176,15 @@ static void trx_ctrl_timer_cb(void *data)
 }
 
 /* add a new ctrl command */
-static int trx_ctrl_cmd(struct trx_l1h *l1h, const char *cmd, const char *fmt,
-	...)
+static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
+	const char *fmt, ...)
 {
 	struct trx_ctrl_msg *tcm;
 	va_list ap;
-	int l;
+	int l, pending = 0;
+
+	if (!llist_empty(&l1h->trx_ctrl_list))
+		pending = 1;
 
 	/* create message */
 	tcm = talloc_zero(tall_bts_ctx, struct trx_ctrl_msg);
@@ -195,11 +198,12 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, const char *cmd, const char *fmt,
 	} else
 		snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "CMD %s", cmd);
 	tcm->cmd_len = strlen(cmd);
+	tcm->critical = critical;
 	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
 	LOGP(DTRX, LOGL_INFO, "Adding new control '%s'\n", tcm->cmd);
 
 	/* send message, if no pending message */
-	if (!osmo_timer_pending(&l1h->trx_ctrl_timer))
+	if (!pending)
 		trx_ctrl_send(l1h);
 
 	return 0;
@@ -207,42 +211,42 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, const char *cmd, const char *fmt,
 
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
-	return trx_ctrl_cmd(l1h, "POWEROFF", "");
+	return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
 }
 
 int trx_if_cmd_poweron(struct trx_l1h *l1h)
 {
-	return trx_ctrl_cmd(l1h, "POWERON", "");
+	return trx_ctrl_cmd(l1h, 1, "POWERON", "");
 }
 
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 {
-	return trx_ctrl_cmd(l1h, "SETTSC", "%d", tsc);
+	return trx_ctrl_cmd(l1h, 0, "SETTSC", "%d", tsc);
 }
 
 int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 {
-	return trx_ctrl_cmd(l1h, "SETBSIC", "%d", bsic);
+	return trx_ctrl_cmd(l1h, 0, "SETBSIC", "%d", bsic);
 }
 
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 {
-	return trx_ctrl_cmd(l1h, "SETRXGAIN", "%d", db);
+	return trx_ctrl_cmd(l1h, 0, "SETRXGAIN", "%d", db);
 }
 
 int trx_if_cmd_setpower(struct trx_l1h *l1h, int db)
 {
-	return trx_ctrl_cmd(l1h, "SETPOWER", "%d", db);
+	return trx_ctrl_cmd(l1h, 0, "SETPOWER", "%d", db);
 }
 
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly)
 {
-	return trx_ctrl_cmd(l1h, "SETMAXDLY", "%d", dly);
+	return trx_ctrl_cmd(l1h, 0, "SETMAXDLY", "%d", dly);
 }
 
 int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
 {
-	return trx_ctrl_cmd(l1h, "SETSLOT", "%d %d", tn, type);
+	return trx_ctrl_cmd(l1h, 1, "SETSLOT", "%d %d", tn, type);
 }
 
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
@@ -255,7 +259,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, "RXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd(l1h, 1, "RXTUNE", "%d", freq10 * 100);
 }
 
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
@@ -268,7 +272,7 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, "TXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd(l1h, 1, "TXTUNE", "%d", freq10 * 100);
 }
 
 /* get response from ctrl socket */
@@ -297,6 +301,10 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 		LOGP(DTRX, LOGL_DEBUG, "Response message: '%s'\n", buf);
 
+		/* abort timer and send next message, if any */
+		if (osmo_timer_pending(&l1h->trx_ctrl_timer))
+			osmo_timer_del(&l1h->trx_ctrl_timer);
+
 		/* get command for response message */
 		if (llist_empty(&l1h->trx_ctrl_list)) {
 			LOGP(DTRX, LOGL_NOTICE, "Response message without "
@@ -318,12 +326,15 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			goto notmatch;
 
 		/* check for response code */
-		if (*p) {
-			sscanf(p + 1, "%d", &resp);
-			if (resp) {
-				LOGP(DTRX, LOGL_ERROR, "Tranceiver rejected "
-					"TRX command with response: '%s'\n",
-					buf);
+		sscanf(p + 1, "%d", &resp);
+		if (resp) {
+			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+				"Tranceiver rejected TRX command with "
+				"response: '%s'\n", buf);
+			if (tcm->critical) {
+				bts_shutdown(l1h->trx->bts, "SIGINT");
+				/* keep tcm list, so process is stopped */
+				return -EIO;
 			}
 		}
 
@@ -331,9 +342,6 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		llist_del(&tcm->list);
 		talloc_free(tcm);
 
-		/* abort timer and send next message, if any */
-		if (osmo_timer_pending(&l1h->trx_ctrl_timer))
-			osmo_timer_del(&l1h->trx_ctrl_timer);
 		trx_ctrl_send(l1h);
 	} else
 		LOGP(DTRX, LOGL_NOTICE, "Unknown message on ctrl port: %s\n",
