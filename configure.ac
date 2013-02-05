@@ -54,7 +54,6 @@ AC_OUTPUT(
     src/Makefile
     src/common/Makefile
     src/osmo-bts-sysmo/Makefile
-dnl    src/osmo-bts-bb/Makefile
     include/Makefile
     include/osmo-bts/Makefile
     tests/Makefile

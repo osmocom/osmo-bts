@@ -1,4 +1,4 @@
-SUBDIRS = common #osmo-bts-bb
+SUBDIRS = common
 
 if ENABLE_SYSMOBTS
 SUBDIRS += osmo-bts-sysmo
