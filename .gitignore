@@ -29,6 +29,7 @@ tests/package.m4
 tests/paging/paging_test
 tests/cipher/cipher_test
 tests/sysmobts/sysmobts_test
+tests/bursts/bursts_test
 tests/testsuite
 tests/testsuite.log
 
