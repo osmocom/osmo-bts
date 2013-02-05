@@ -29,6 +29,7 @@ src/osmo-bts-sysmo/sysmobts
 src/osmo-bts-sysmo/sysmobts-remote
 src/osmo-bts-sysmo/sysmobts-mgr
 
+src/osmo-bts-trx/osmobts-trx
 
 tests/atconfig
 tests/package.m4
