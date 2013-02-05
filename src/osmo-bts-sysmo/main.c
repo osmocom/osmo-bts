@@ -420,3 +420,9 @@ int main(int argc, char **argv)
 		osmo_select_main(0);
 	}
 }
+
+void bts_model_abis_close(struct gsm_bts *bts)
+{
+	/* for now, we simply terminate the program and re-spawn */
+	bts_shutdown(bts, "Abis close");
+}
