@@ -24,3 +24,9 @@ AT_KEYWORDS([misc])
 cat $abs_srcdir/misc/misc_test.ok > expout
 AT_CHECK([$OSMO_QEMU $abs_top_builddir/tests/misc/misc_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([bursts])
+AT_KEYWORDS([bursts])
+cat $abs_srcdir/cipher/bursts_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/bursts/bursts_test], [], [expout], [ignore])
+AT_CLEANUP
