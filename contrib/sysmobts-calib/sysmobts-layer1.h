@@ -39,6 +39,6 @@ extern int rf_clock_info(int *clkErr, int *clkErrRes);
 extern int mph_close(HANDLE layer1);
 extern int wait_for_sync(HANDLE layer1, int cor, int calib, int source);
 extern int follow_bcch(HANDLE layer1);
-extern int wait_for_data(uint8_t *data, size_t *size);
+extern int wait_for_data(uint8_t *data, size_t *size, uint32_t *fn, uint8_t *block);
 
 #endif

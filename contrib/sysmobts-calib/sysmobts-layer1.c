@@ -701,7 +701,7 @@ int wait_for_sync(HANDLE layer1, int cor, int calib, int source)
 	return 0;
 }
 
-int wait_for_data(uint8_t *data, size_t *size)
+int wait_for_data(uint8_t *data, size_t *size, uint32_t *fn, uint8_t *block)
 {
 	GsmL1_Prim_t prim;
 	int rc;
@@ -713,6 +713,8 @@ int wait_for_data(uint8_t *data, size_t *size)
 		return 1;
 
 	*size = prim.u.phDataInd.msgUnitParam.u8Size;
+	*fn = prim.u.phDataInd.u32Fn;
+	*block = prim.u.phDataInd.u8BlockNbr;
 	memcpy(data, prim.u.phDataInd.msgUnitParam.u8Buffer, *size);
 	return 0;
 }

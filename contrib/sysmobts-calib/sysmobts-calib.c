@@ -434,10 +434,12 @@ static int bcch_follow(void)
 
 	/* now wait for the PhDataInd */
 	for (;;) {
+		uint32_t fn;
+		uint8_t block;
 		uint8_t data[23];
 		size_t size;
 
-		rc = wait_for_data(data, &size);
+		rc = wait_for_data(data, &size, &fn, &block);
 		if (rc == 1)
 			continue;
 		CHECK_RC_MSG(rc, "No Data Indication");
