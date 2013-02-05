@@ -43,12 +43,14 @@ enum actions {
 	ACTION_SCAN,
 	ACTION_CALIB,
 	ACTION_BCCH,
+	ACTION_BCCH_CCCH,
 };
 
 static const char *modes[] = {
 	[ACTION_SCAN]		= "scan",
 	[ACTION_CALIB]		= "calibrate",
 	[ACTION_BCCH]		= "bcch",
+	[ACTION_BCCH_CCCH]	= "bcch_ccch",
 };
 
 static const char *bands[] = {
@@ -82,6 +84,32 @@ static const char *clk_source[] = {
 	[SuperFemto_ClkSrcId_NetList]	= "netlisten",
 };
 
+static const struct value_string sapi_names[GsmL1_Sapi_NUM+1] = {
+	{ GsmL1_Sapi_Fcch,	"FCCH" },
+	{ GsmL1_Sapi_Sch,	"SCH" },
+	{ GsmL1_Sapi_Sacch,	"SACCH" },
+	{ GsmL1_Sapi_Sdcch,	"SDCCH" },
+	{ GsmL1_Sapi_Bcch,	"BCCH" },
+	{ GsmL1_Sapi_Pch,	"PCH" },
+	{ GsmL1_Sapi_Agch,	"AGCH" },
+	{ GsmL1_Sapi_Cbch,	"CBCH" },
+	{ GsmL1_Sapi_Rach,	"RACH" },
+	{ GsmL1_Sapi_TchF,	"TCH/F" },
+	{ GsmL1_Sapi_FacchF,	"FACCH/F" },
+	{ GsmL1_Sapi_TchH,	"TCH/H" },
+	{ GsmL1_Sapi_FacchH,	"FACCH/H" },
+	{ GsmL1_Sapi_Nch,	"NCH" },
+	{ GsmL1_Sapi_Pdtch,	"PDTCH" },
+	{ GsmL1_Sapi_Pacch,	"PACCH" },
+	{ GsmL1_Sapi_Pbcch,	"PBCCH" },
+	{ GsmL1_Sapi_Pagch,	"PAGCH" },
+	{ GsmL1_Sapi_Ppch,	"PPCH" },
+	{ GsmL1_Sapi_Pnch,	"PNCH" },
+	{ GsmL1_Sapi_Ptcch,	"PTCCH" },
+	{ GsmL1_Sapi_Prach,	"PRACH" },
+	{ 0, NULL }
+};
+
 static int action = ACTION_SCAN;
 static int band = GsmL1_FreqBand_900;
 static int calib = SuperFemto_ClkSrcId_Ocxo;
@@ -104,7 +132,7 @@ static void print_help(void)
 	printf("  -s --calibration-source "
 		"ocxo|tcxo|external|gps|trx|rx|edge|netlisten\n");
 	printf("  -b --band 850|900|1800|1900\n");
-	printf("  -m --mode scan|calibrate|bcch\n");
+	printf("  -m --mode scan|calibrate|bcch|bcch_ccch\n");
 	printf("  -a --arfcn NR arfcn for calibration\n");
 	printf("  -d --dsp-flags NR dsp mask for debug log\n");
 	printf("  -t --threshold level\n");
@@ -434,6 +462,12 @@ static int bcch_follow(void)
 	rc = follow_bcch(layer1);
 	CHECK_RC_MSG(rc, "Follow BCCH");
 
+	/* follow the pch */
+	if (action == ACTION_BCCH_CCCH) {
+		rc = follow_pch(layer1);
+		CHECK_RC_MSG(rc, "Follow BCCH/CCCH");
+	}
+
 	/* now wait for the PhDataInd */
 	for (;;) {
 		uint32_t fn;
@@ -441,15 +475,17 @@ static int bcch_follow(void)
 		uint8_t data[23];
 		size_t size;
 		struct gsm_time gsmtime;
+		GsmL1_Sapi_t sapi;
 
-		rc = wait_for_data(data, &size, &fn, &block);
+		rc = wait_for_data(data, &size, &fn, &block, &sapi);
 		if (rc == 1)
 			continue;
 		CHECK_RC_MSG(rc, "No Data Indication");
 
 		gsm_fn2gsmtime(&gsmtime, fn);
-		printf("%02u/%02u/%02u %s\n",
+		printf("%02u/%02u/%02u %6s %s\n",
 			gsmtime.t1, gsmtime.t2, gsmtime.t3,
+			get_value_string(sapi_names, sapi),
 			osmo_hexdump(data, size));
 	}
 
@@ -479,7 +515,7 @@ int main(int argc, char **argv)
 
 	if (action == ACTION_SCAN)
 		return scan_band();
-	else if (action == ACTION_BCCH)
+	else if (action == ACTION_BCCH || action == ACTION_BCCH_CCCH)
 		return bcch_follow();
 	else {
 		if (source == SuperFemto_ClkSrcId_NetList) 
