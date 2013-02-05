@@ -101,6 +101,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_NOTICE,
 		.enabled = 1,
 	},
+	[DTRX] = {
+		.name = "DTRX",
+		.description = "TRX interface",
+		.color = "\033[1;33m",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
 #if 0
 	[DNS] = {
 		.name = "DNS",

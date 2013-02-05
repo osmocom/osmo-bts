@@ -15,6 +15,7 @@ enum {
 	DL1P,
 	DDSP,
 	DPCU,
+	DTRX,
 	DABIS,
 	DRTP,
 	DSUM,
