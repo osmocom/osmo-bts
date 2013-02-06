@@ -159,11 +159,12 @@ static const uint8_t gsm_fr_map[] = {
 };
 
 static void
-tch_fr_reassemble(uint8_t *tch_data, ubit_t *d_bits)
+tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
 {
 	int i, j, k, l, o;
 
 	tch_data[0] = 0xd << 4;
+	memset(tch_data + 1, 0, 32);
 	/* reassemble d-bits */
 	i = 0; /* counts bits */
 	j = 4; /* counts output bits */
@@ -171,7 +172,7 @@ tch_fr_reassemble(uint8_t *tch_data, ubit_t *d_bits)
 	l = 0; /* counts element bits */
 	o = 0; /* offset input bits */
 	while (i < 260) {
-		tch_data[j>>3] |= (d_bits[k+o] << (7-(j&7)));
+		tch_data[j>>3] |= (b_bits[k+o] << (7-(j&7)));
 		if (--k < 0) {
 			o += gsm_fr_map[l];
 			k = gsm_fr_map[++l]-1;
@@ -179,10 +180,12 @@ tch_fr_reassemble(uint8_t *tch_data, ubit_t *d_bits)
 		i++;
 		j++;
 	}
+
+	/* rearrange according to Table 2 of TS 05.03 */
 }
 
 static void
-tch_fr_disassemble(ubit_t *d_bits, uint8_t *tch_data)
+tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
 {
 	int i, j, k, l, o;
 
@@ -192,7 +195,7 @@ tch_fr_disassemble(ubit_t *d_bits, uint8_t *tch_data)
 	l = 0; /* counts element bits */
 	o = 0; /* offset output bits */
 	while (i < 260) {
-		d_bits[k+o] = (tch_data[j>>3] >> (7-(j&7))) & 1;
+		b_bits[k+o] = (tch_data[j>>3] >> (7-(j&7))) & 1;
 		if (--k < 0) {
 			o += gsm_fr_map[l];
 			k = gsm_fr_map[++l]-1;
@@ -200,6 +203,48 @@ tch_fr_disassemble(ubit_t *d_bits, uint8_t *tch_data)
 		i++;
 		j++;
 	}
+
+}
+
+
+/* b(0..259) from d(0..259) according to (corrected) Table 2 of T 05.03 */
+static uint16_t d_to_b_index[260] = {
+	  5, 52,108,164,220,  4, 11, 16,  3, 10, 15, 21, 42, 98,154,210,
+	 51,107,163,219,  9, 25, 29, 41, 97,153,209, 40, 96,152,208, 39,
+	 95,151,207, 38, 94,150,206, 50,106,162,218,  2, 20, 32, 37, 93,
+	149,205, 24, 28, 44,100,156,212, 36, 92,148,204, 46,102,158,214,
+	  1,  8, 14, 35, 19, 23, 31, 43, 99,155,211, 49,105,161,217, 55,
+	 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 88, 91,111,114,117,120,
+	123,126,129,132,135,138,141,144,147,167,170,173,176,179,182,185,
+	188,191,194,197,200,203,223,226,229,232,235,238,241,244,247,250,
+	253,256,259, 45,101,157,213, 48,104,160,216, 54, 57, 60, 63, 66,
+	 69, 72, 75, 78, 81, 84, 87, 90,110,113,116,119,122,125,128,131,
+	134,137,140,143,146,166,169,172,175,178,181,184,187,190,193,196,
+	199,202,222,225,228,231,234,237,240,243,246,249,252,255,258,  0,
+	  7, 13, 27, 30, 34, 33, 12, 18, 17, 22, 47,103,159,215, 53, 56,
+	 59, 62, 65, 68, 71, 74, 77, 80, 83, 86, 89,109,112,115,118,121,
+	124,127,130,133,136,139,142,145,165,168,171,174,177,180,183,186,
+	189,192,195,198,201,221,224,227,230,233,236,239,242,245,248,251,
+	254,257,  6, 26,
+};
+
+
+static void
+tch_fr_d_to_b(ubit_t *b_bits, ubit_t *d_bits)
+{
+	int i;
+
+	for (i = 0; i < 260; i++)
+		b_bits[d_to_b_index[i]] = d_bits[i];
+}
+
+static void
+tch_fr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
+{
+	int i;
+
+	for (i = 0; i < 260; i++)
+		d_bits[i] = b_bits[d_to_b_index[i]];
 }
 
 static void
@@ -232,7 +277,7 @@ int
 tch_fr_decode(uint8_t *tch_data, sbit_t *bursts)
 {
 	sbit_t iB[912], cB[456], h;
-	ubit_t conv[185], d[260], p[3];
+	ubit_t conv[185], b[260], d[260], p[3];
 	int i, rv, len, steal = 0;
 
 	for (i=0; i<8; i++) {
@@ -255,7 +300,9 @@ tch_fr_decode(uint8_t *tch_data, sbit_t *bursts)
 		if (rv)
 			return -1;
 
-		tch_fr_reassemble(tch_data, d);
+		tch_fr_d_to_b(b, d);
+
+		tch_fr_reassemble(tch_data, b);
 
 		len = 33;
 	} else {
@@ -273,12 +320,14 @@ int
 tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
 {
 	ubit_t iB[912], cB[456], h;
-	ubit_t conv[185], d[260], p[3];
+	ubit_t conv[185], b[260], d[260], p[3];
 	int i;
 
 	switch (len) {
 	case 33: /* TCH FR */
-		tch_fr_disassemble(d, tch_data);
+		tch_fr_disassemble(b, tch_data);
+
+		tch_fr_b_to_d(d, b);
 
 		osmo_crc8gen_set_bits(&tch_fr_crc3, d, 50, p);
 
