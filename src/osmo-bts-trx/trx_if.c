@@ -183,6 +183,12 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	va_list ap;
 	int l, pending = 0;
 
+	if (!tranceiver_available) {
+		LOGP(DTRX, LOGL_ERROR, "CTRL ignored: No clock from "
+			"tranceiver, please fix!\n");
+		return -EIO;
+	}
+
 	if (!llist_empty(&l1h->trx_ctrl_list))
 		pending = 1;
 
