@@ -116,6 +116,7 @@ struct trx_l1h {
 struct trx_l1h *l1if_open(struct gsm_bts_trx *trx);
 void l1if_close(struct trx_l1h *l1h);
 void l1if_reset(struct trx_l1h *l1h);
+int check_tranceiver_availability(struct gsm_bts *bts, int avail);
 int l1if_provision_tranceiver_trx(struct trx_l1h *l1h);
 int l1if_provision_tranceiver(struct gsm_bts *bts);
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
