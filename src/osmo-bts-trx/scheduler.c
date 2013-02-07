@@ -1937,14 +1937,18 @@ static void trx_ctrl_timer_cb(void *data)
 
 		LOGP(DL1C, LOGL_NOTICE, "No more clock from traneiver\n");
 
+no_clock:
 		tranceiver_available = 0;
 
 		/* flush pending messages of transceiver */
-		llist_for_each_entry(trx, &bts->trx_list, list)
+		/* close all logical channels and reset timeslots */
+		llist_for_each_entry(trx, &bts->trx_list, list) {
 			trx_if_flush(trx_l1h_hdl(trx));
+			trx_sched_reset(trx_l1h_hdl(trx));
+		}
 
-		/* start over provisioning tranceiver */
-		l1if_provision_tranceiver(bts);
+		/* tell BSC */
+		check_tranceiver_availability(bts, 0);
 
 		return;
 	}
@@ -1958,10 +1962,10 @@ static void trx_ctrl_timer_cb(void *data)
 	if (elapsed > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "PC clock skew: elapsed uS %d\n",
 			elapsed);
-		tranceiver_available = 0;
-		return;
+		goto no_clock;
 	}
 
+	/* schedule next FN clock */
 	while (elapsed > FRAME_DURATION_uS / 2) {
 		tv_clock->tv_usec += FRAME_DURATION_uS;
 		if (tv_clock->tv_usec >= 1000000) {
@@ -1996,7 +2000,7 @@ new_clock:
 		tranceiver_last_fn = fn;
 		trx_sched_fn(tranceiver_last_fn);
 
-		/* schedule first FN to be transmitted */
+		/* schedule first FN clock */
 		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
 		tranceiver_available = 1;
 		memset(&tranceiver_clock_timer, 0,
@@ -2005,6 +2009,12 @@ new_clock:
 	        tranceiver_clock_timer.data = bts;
 		osmo_timer_schedule(&tranceiver_clock_timer, 0,
 			FRAME_DURATION_uS);
+
+		/* start provisioning tranceiver */
+		l1if_provision_tranceiver(bts);
+
+		/* tell BSC */
+		check_tranceiver_availability(bts, 1);
 
 		return 0;
 	}
