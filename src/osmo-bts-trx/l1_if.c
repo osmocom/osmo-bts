@@ -93,14 +93,14 @@ void l1if_reset(struct trx_l1h *l1h)
 {
 }
 
-void check_tranceiver_availability(struct trx_l1h *l1h)
+static void check_tranceiver_availability_trx(struct trx_l1h *l1h, int avail)
 {
 	struct gsm_bts_trx *trx = l1h->trx;
 	uint8_t tn;
 
 	/* HACK, we should change state when we receive first clock from
 	 * tranceiver */
-	if (1) {
+	if (avail) {
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
 		oml_mo_tx_sw_act_rep(&trx->mo);
@@ -117,7 +117,23 @@ void check_tranceiver_availability(struct trx_l1h *l1h)
 			NM_AVSTATE_OFF_LINE);
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED,
 			NM_AVSTATE_OFF_LINE);
+
+		for (tn = 0; tn < 8; tn++)
+			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED,
+				NM_AVSTATE_OFF_LINE);
 	}
+}
+
+int check_tranceiver_availability(struct gsm_bts *bts, int avail)
+{
+	struct gsm_bts_trx *trx;
+	struct trx_l1h *l1h;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		l1h = trx_l1h_hdl(trx);
+		check_tranceiver_availability_trx(l1h, avail);
+	}
+	return 0;
 }
 
 
@@ -127,6 +143,9 @@ void check_tranceiver_availability(struct trx_l1h *l1h)
 int l1if_provision_tranceiver_trx(struct trx_l1h *l1h)
 {
 	uint8_t tn;
+
+	if (!tranceiver_available)
+		return -EIO;
 
 	if (l1h->config.poweron
 	 && l1h->config.tsc_valid
@@ -250,7 +269,7 @@ static int trx_close(struct gsm_bts_trx *trx)
 	}
 
 	/* Set to Operational State: Disabled */
-	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+	check_tranceiver_availability_trx(l1h, 0);
 
 	return 0;
 }
@@ -268,9 +287,10 @@ static uint8_t trx_set_bts(struct gsm_bts *bts)
 			l1h->config.bsic = bsic;
 			l1h->config.bsic_valid = 1;
 			l1h->config.bsic_sent = 0;
+			l1if_provision_tranceiver_trx(l1h);
 		}
-		check_tranceiver_availability(l1h);
 	}
+	check_tranceiver_availability(bts, tranceiver_available);
 
 
 	return 0;
@@ -286,6 +306,7 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1h->config.arfcn = arfcn;
 		l1h->config.arfcn_valid = 1;
 		l1h->config.arfcn_sent = 0;
+		l1if_provision_tranceiver_trx(l1h);
 	}
 
 	return 0;
@@ -308,6 +329,7 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 		l1h->config.tsc = tsc;
 		l1h->config.tsc_valid = 1;
 		l1h->config.tsc_sent = 0;
+		l1if_provision_tranceiver_trx(l1h);
 	}
 
 	/* set physical channel */
