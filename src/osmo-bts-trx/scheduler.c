@@ -260,6 +260,12 @@ int trx_sched_ph_data_req(struct trx_l1h *l1h, struct osmo_phsap_prim *l1sap)
 	if (!l1sap->oph.msg)
 		abort();
 
+	/* ignore empty frame */
+	if (!msgb_l2len(l1sap->oph.msg)) {
+		msgb_free(l1sap->oph.msg);
+		return 0;
+	}
+
 	msgb_enqueue(&l1h->dl_prims[tn], l1sap->oph.msg);
 
 	return 0;
@@ -275,6 +281,12 @@ int trx_sched_tch_req(struct trx_l1h *l1h, struct osmo_phsap_prim *l1sap)
 
 	if (!l1sap->oph.msg)
 		abort();
+
+	/* ignore empty frame */
+	if (!msgb_l2len(l1sap->oph.msg)) {
+		msgb_free(l1sap->oph.msg);
+		return 0;
+	}
 
 	msgb_enqueue(&l1h->dl_prims[tn], l1sap->oph.msg);
 
@@ -825,7 +837,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t l2[23], l2_len;
 	int rc;
 
-	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	LOGP(DL1C, LOGL_NOTICE, "Data received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
 
 	/* alloc burst memory, if not already */
@@ -835,12 +847,15 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
+	/* store frame number of first burst */
+	if (bid == 0) {
+		memset(*bursts_p, 0, 464);
+		*mask = 0x0;
+		*first_fn = fn;
+	}
+
 	/* update mask */
 	*mask |= (1 << bid);
-
-	/* store frame number of first burst */
-	if (bid == 0)
-		*first_fn = fn;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -850,15 +865,30 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	// FIXME: decrypt burst
 
 	/* wait until complete set of bursts */
-	if ((*mask & 0xf) != 0xf)
+	if (bid != 3)
 		return 0;
+
+	/* check for complete set of bursts */
+	if ((*mask & 0xf) != 0xf) {
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete data frame at "
+			"fn=%u (%u/%u) for %s\n", *first_fn,
+			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+			trx_chan_desc[chan].name);
+		/* we require first burst to have correct FN */
+		if (!(*mask & 0x1)) {
+			*mask = 0x0;
+			return 0;
+		}
+	}
 	*mask = 0x0;
 
 	/* decode */
 	rc = xcch_decode(l2, *bursts_p);
 	if (rc) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad data frame at fn=%u for "
-			"%s\n", *first_fn, trx_chan_desc[chan].name);
+		LOGP(DL1C, LOGL_NOTICE, "Received bad data frame at fn=%u "
+			"(%u/%u) for %s\n", *first_fn,
+			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+			trx_chan_desc[chan].name);
 		l2_len = 0;
 	} else
 		l2_len = 23;
@@ -886,12 +916,15 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
+	/* store frame number of first burst */
+	if (bid == 0) {
+		memset(*bursts_p, 0, 464);
+		*mask = 0x0;
+		*first_fn = fn;
+	}
+
 	/* update mask */
 	*mask |= (1 << bid);
-
-	/* store frame number of first burst */
-	if (bid == 0)
-		*first_fn = fn;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -901,14 +934,27 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	// FIXME: decrypt burst
 
 	/* wait until complete set of bursts */
-	if ((*mask & 0xf) != 0xf)
+	if (bid != 3)
 		return 0;
+
+	/* check for complete set of bursts */
+	if ((*mask & 0xf) != 0xf) {
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete PDTCH block at "
+			"fn=%u (%u/%u) for %s\n", *first_fn,
+			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+			trx_chan_desc[chan].name);
+		/* we require first burst to have correct FN */
+		if (!(*mask & 0x1)) {
+			*mask = 0x0;
+			return 0;
+		}
+	}
 	*mask = 0x0;
 
 	/* decode */
 	rc = pdch_decode(l2 + 1, *bursts_p, NULL);
 	if (rc <= 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH frame at fn=%u for "
+		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block at fn=%u for "
 			"%s\n", *first_fn, trx_chan_desc[chan].name);
 		l2[0] = 0; /* bad frame */
 		rc = 0;
@@ -961,12 +1007,15 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
+	/* store frame number of first burst */
+	if (bid == 0) {
+		memset(*bursts_p, 0, 464);
+		*mask = 0x0;
+		*first_fn = fn;
+	}
+
 	/* update mask */
 	*mask |= (1 << bid);
-
-	/* store frame number of first burst */
-	if (bid == 0)
-		*first_fn = fn;
 
 	/* copy burst to end of buffer of 8 bursts */
 	burst = *bursts_p + bid * 116 + 464;
@@ -976,16 +1025,29 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	// FIXME: decrypt burst
 
 	/* wait until complete set of bursts */
-	if (*mask != 0xff)
+	if (bid != 3)
 		return 0;
-	*mask = 0xf0;
+
+	/* check for complete set of bursts */
+	if ((*mask & 0xf) != 0xf) {
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame at "
+			"fn=%u (%u/%u) for %s\n", *first_fn,
+			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+			trx_chan_desc[chan].name);
+		/* we require first burst to have correct FN */
+		if (!(*mask & 0x1)) {
+			*mask = 0x0;
+			return 0;
+		}
+	}
+	*mask = 0x0;
 
 	/* decode
 	 * also shift buffer by 4 bursts for interleaving */
 	rc = tch_fr_decode(tch_data, *bursts_p);
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad tch frame at fn=%u "
+		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame at fn=%u "
 			"for %s\n", *first_fn, trx_chan_desc[chan].name);
 		rc = 0;
 	}
@@ -1649,6 +1711,8 @@ int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,
 	for (i = 0; ARRAY_SIZE(trx_sched_multiframes); i++) {
 		if (trx_sched_multiframes[i].pchan == pchan) {
 			l1h->mf_index[tn] = i;
+			l1h->mf_period[tn] = trx_sched_multiframes[i].period;
+			l1h->mf_frames[tn] = trx_sched_multiframes[i].frames;
 			LOGP(DL1C, LOGL_NOTICE, "Configuring multiframe with "
 				"%s trx=%d ts=%d\n",
 				trx_sched_multiframes[i].name,
@@ -1704,9 +1768,9 @@ static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 		return 0;
 
 	/* get frame from multiframe */
-	period = trx_sched_multiframes[l1h->mf_index[tn]].period;
+	period = l1h->mf_period[tn];
 	offset = fn % period;
-	frame = trx_sched_multiframes[l1h->mf_index[tn]].frames + offset;
+	frame = l1h->mf_frames[tn] + offset;
 
 	chan = frame->dl_chan;
 	bid = frame->dl_bid;
@@ -1742,9 +1806,9 @@ static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 		goto no_data;
 
 	/* get frame from multiframe */
-	period = trx_sched_multiframes[l1h->mf_index[tn]].period;
+	period = l1h->mf_period[tn];
 	offset = fn % period;
-	frame = trx_sched_multiframes[l1h->mf_index[tn]].frames + offset;
+	frame = l1h->mf_frames[tn] + offset;
   
 	chan = frame->dl_chan;
 	bid = frame->dl_bid;
@@ -1781,13 +1845,13 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan;
 	int rc;
 
-	if (!l1h->mf_index)
+	if (!l1h->mf_index[tn])
 		return -EINVAL;
 
 	/* get frame from multiframe */
-	period = trx_sched_multiframes[l1h->mf_index[tn]].period;
+	period = l1h->mf_period[tn];
 	offset = fn % period;
-	frame = trx_sched_multiframes[l1h->mf_index[tn]].frames + offset;
+	frame = l1h->mf_frames[tn] + offset;
 
 	chan = frame->ul_chan;
 	bid = frame->ul_bid;
@@ -1935,6 +1999,8 @@ new_clock:
 		/* schedule first FN to be transmitted */
 		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
 		tranceiver_available = 1;
+		memset(&tranceiver_clock_timer, 0,
+			sizeof(tranceiver_clock_timer));
 		tranceiver_clock_timer.cb = trx_ctrl_timer_cb;
 	        tranceiver_clock_timer.data = bts;
 		osmo_timer_schedule(&tranceiver_clock_timer, 0,
