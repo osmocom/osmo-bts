@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <netdb.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 
@@ -1198,6 +1199,27 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 	return abis_rsl_sendmsg(msg);
 }
 
+static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
+{
+	struct sockaddr_storage ss;
+	socklen_t sa_len = sizeof(ss);
+	static char hostbuf[256];
+	int rc;
+
+	rc = getsockname(trx->rsl_link->bfd.fd, (struct sockaddr *) &ss,
+			 &sa_len);
+	if (rc < 0)
+		return NULL;
+
+	rc = getnameinfo((struct sockaddr *)&ss, sa_len,
+			 hostbuf, sizeof(hostbuf), NULL, 0,
+			 NI_NUMERICHOST);
+	if (rc < 0)
+		return NULL;
+
+	return hostbuf;
+}
+
 static int rsl_rx_ipac_XXcx(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
@@ -1207,7 +1229,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	const uint8_t *payload_type, *speech_mode, *payload_type2;
 	const uint32_t *connect_ip;
 	const uint16_t *connect_port;
-	int rc, inc_ip_port = 0;
+	int rc, inc_ip_port = 0, port;
 	char *name;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
@@ -1239,6 +1261,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
+		char *ipstr = NULL;
 		if (lchan->abis_ip.rtp_socket) {
 			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC CRCX, "
 				"but we already have socket!\n",
@@ -1263,8 +1286,22 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		lchan->abis_ip.rtp_socket->priv = lchan;
 		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
 
+		if (connect_ip && connect_port) {
+			/* if CRCX specifies a remote IP, we can bind()
+			 * here to 0.0.0.0 and wait for the connect()
+			 * below, after which the kernel will have
+			 * selected the local IP address.  */
+			ipstr = "0.0.0.0";
+		} else {
+			/* if CRCX does not specify a remote IP, we will
+			 * not do any connect() below, and thus the
+			 * local socket will remain bound to 0.0.0.0 -
+			 * which however we cannot legitimately report
+			 * back to the BSC in the CRCX_ACK */
+			ipstr = get_rsl_local_ip(lchan->ts->trx);
+		}
 		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
-					  "0.0.0.0", -1);
+					  ipstr, -1);
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
@@ -1289,7 +1326,6 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 	if (connect_ip && connect_port) {
 		struct in_addr ia;
-		int port;
 
 		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
 		 * address */
@@ -1315,17 +1351,19 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
 		lchan->abis_ip.connect_port = ntohs(*connect_port);
 
-		rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
-						&lchan->abis_ip.bound_ip,
-						&port);
-		if (rc < 0)
-			LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
-			     "locally bound IP/port: %d\n",
-			     gsm_lchan_name(lchan), rc);
-		lchan->abis_ip.bound_port = port;
 	} else {
 		/* FIXME: discard all codec frames */
 	}
+
+	rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
+					&lchan->abis_ip.bound_ip,
+					&port);
+	if (rc < 0)
+		LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
+		     "locally bound IP/port: %d\n",
+		     gsm_lchan_name(lchan), rc);
+	lchan->abis_ip.bound_port = port;
+
 	/* Everything has succeeded, we can store new values in lchan */
 	if (payload_type) {
 		lchan->abis_ip.rtp_payload = *payload_type;
