@@ -1289,6 +1289,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 	if (connect_ip && connect_port) {
 		struct in_addr ia;
+		int port;
+
 		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
 		 * address */
 		if (*connect_ip == 0) {
@@ -1315,11 +1317,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 		rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
 						&lchan->abis_ip.bound_ip,
-						&lchan->abis_ip.bound_port);
+						&port);
 		if (rc < 0)
 			LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
 			     "locally bound IP/port: %d\n",
 			     gsm_lchan_name(lchan), rc);
+		lchan->abis_ip.bound_port = port;
 	} else {
 		/* FIXME: discard all codec frames */
 	}
