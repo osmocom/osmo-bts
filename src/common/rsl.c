@@ -1,7 +1,7 @@
 /* GSM TS 08.58 RSL, BTS Side */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -1275,13 +1275,6 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
-		rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
-						&lchan->abis_ip.bound_ip,
-						&lchan->abis_ip.bound_port);
-		if (rc < 0)
-			LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
-			     "locally bound IP/port: %d\n",
-			     gsm_lchan_name(lchan), rc);
 		/* FIXME: multiplex connection, BSC proxy */
 	} else {
 		/* MDCX */
@@ -1319,6 +1312,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		/* save IP address and port number */
 		lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
 		lchan->abis_ip.connect_port = ntohs(*connect_port);
+
+		rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
+						&lchan->abis_ip.bound_ip,
+						&lchan->abis_ip.bound_port);
+		if (rc < 0)
+			LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
+			     "locally bound IP/port: %d\n",
+			     gsm_lchan_name(lchan), rc);
 	} else {
 		/* FIXME: discard all codec frames */
 	}
