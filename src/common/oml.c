@@ -1,7 +1,7 @@
 /* GSM TS 12.21 O&M / OML, BTS side */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -31,6 +31,8 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/abis/ipaccess.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -993,9 +995,9 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 				  struct tlv_parsed *tp)
 {
-	struct ipabis_link *oml_link = (struct ipabis_link *) trx->bts->oml_link;
+	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
 	uint16_t port = IPA_TCP_PORT_RSL;
-	uint32_t ip = oml_link->ip;
+	uint32_t ip;//FIXME = oml_link->ip;
 	struct in_addr in;
 	int rc;
 
@@ -1015,14 +1017,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
 		inet_ntoa(in), port, stream_id);
 
-	if (!trx->rsl_link) {
-		struct ipabis_link *rsl_link = talloc_zero(trx, struct ipabis_link);
-		rsl_link->trx = trx;
-		trx->rsl_link = rsl_link;
-	}
-
-	/* FIXME: we cannot even use a non-standard port here */
-	rc = abis_open(trx->rsl_link, ip);
+	rc = e1inp_ipa_bts_rsl_connect(oml_link->ts->line, inet_ntoa(in), port);
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Error in abis_open(RSL): %d\n", rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);

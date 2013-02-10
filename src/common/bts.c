@@ -182,15 +182,15 @@ int bts_link_estab(struct gsm_bts *bts)
 /* RSL link is established, send status report */
 int trx_link_estab(struct gsm_bts_trx *trx)
 {
-	struct ipabis_link *link = (struct ipabis_link *) trx->rsl_link;
-	uint8_t radio_state = (link->state == LINK_STATE_CONNECT) ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
+	struct e1inp_sign_link *link = trx->rsl_link;
+	uint8_t radio_state = link ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
 
 	LOGP(DSUM, LOGL_INFO, "RSL link (TRX %02x) state changed to %s, sending Status'.\n",
-		trx->nr, (link->state == LINK_STATE_CONNECT) ? "up" : "down");
+		trx->nr, link ? "up" : "down");
 
 	oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
 
-	if (link->state == LINK_STATE_CONNECT)
+	if (link)
 		rsl_tx_rf_res(trx);
 
 	return 0;

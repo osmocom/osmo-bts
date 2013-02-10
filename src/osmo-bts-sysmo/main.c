@@ -1,6 +1,6 @@
 /* Main program for Sysmocom BTS */
 
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -104,24 +104,6 @@ void clk_cal_use_eeprom(struct gsm_bts *bts)
 	hdl->clk_cal = rf_clk.iClkCor;
 	LOGP(DL1C, LOGL_NOTICE,
 		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
-}
-
-struct ipabis_link *link_init(struct gsm_bts *bts, const char *ip)
-{
-	struct ipabis_link *link = talloc_zero(bts, struct ipabis_link);
-	struct in_addr ia;
-	int rc;
-
-	inet_aton(ip, &ia);
-
-	link->bts = bts;
-	bts->oml_link = link;
-
-	rc = abis_open(link, ntohl(ia.s_addr));
-	if (rc < 0)
-		return NULL;
-
-	return link;
 }
 
 static void print_help()
@@ -270,7 +252,7 @@ int main(int argc, char **argv)
 	struct stat st;
 	struct sched_param param;
 	struct gsm_bts_role_bts *btsb;
-	struct ipabis_link *link;
+	struct e1inp_line *line;
 	void *tall_msgb_ctx;
 	int rc;
 
@@ -342,12 +324,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	link = link_init(bts, btsb->bsc_oml_host);
-	if (!link) {
+	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
+	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(1);
 	}
-	bts->oml_link = link;
 
 	if (daemonize) {
 		rc = osmo_daemonize();

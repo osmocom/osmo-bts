@@ -31,6 +31,7 @@
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
@@ -194,7 +195,9 @@ static struct msgb *rsl_msgb_alloc(int hdr_size)
 {
 	struct msgb *nmsg;
 
-	nmsg = abis_msgb_alloc(hdr_size);
+	hdr_size += sizeof(struct ipaccess_head);
+
+	nmsg = msgb_alloc_headroom(600+hdr_size, hdr_size, "RSL");
 	if (!nmsg)
 		return NULL;
 	nmsg->l3h = nmsg->data;
@@ -1222,12 +1225,13 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 
 static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
 {
+	struct e1inp_ts *ts = trx->rsl_link->ts;
 	struct sockaddr_storage ss;
 	socklen_t sa_len = sizeof(ss);
 	static char hostbuf[256];
 	int rc;
 
-	rc = getsockname(trx->rsl_link->bfd.fd, (struct sockaddr *) &ss,
+	rc = getsockname(ts->driver.ipaccess.fd.fd, (struct sockaddr *) &ss,
 			 &sa_len);
 	if (rc < 0)
 		return NULL;
@@ -1358,9 +1362,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
 	 * address */
 	if (connect_ip == 0) {
-			struct ipabis_link *link =
+		struct e1inp_sign_link *sign_link =
 					lchan->ts->trx->rsl_link;
-			ia.s_addr = htonl(link->ip);
+		int rsl_fd = sign_link->ts->driver.ipaccess.fd.fd;
+		struct sockaddr_in sin;
+		socklen_t slen = sizeof(sin);
+
+		getpeername(rsl_fd, (struct sockaddr *)&sin, &slen);
+		ia = sin.sin_addr;
 	} else
 		ia.s_addr = connect_ip;
 	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
