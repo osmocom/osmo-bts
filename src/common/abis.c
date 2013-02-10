@@ -209,6 +209,7 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 	g_bts = bts;
 
 	oml_init();
+	e1inp_vty_init();
 	libosmo_abis_init(NULL);
 
 	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
