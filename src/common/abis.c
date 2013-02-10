@@ -1,8 +1,7 @@
-/* Minimalistic Abis/IP interface routines, soon to be replaced by
- * libosmo-abis (Pablo) */
+/* Abis/IP interface routines utilizing libosmo-abis (Pablo) */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -34,495 +33,207 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
-#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/core/signal.h>
+#include <osmocom/abis/abis.h>
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/abis/ipaccess.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
-#include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 
-extern uint8_t abis_mac[6];
-
-/*
- * support
- */
-
-#define ABIS_ALLOC_SIZE	900
-
-/* send message to BSC */
-int abis_tx(struct ipabis_link *link, struct msgb *msg)
-{
-	if (!link || link->state != LINK_STATE_CONNECT) {
-		LOGP(DABIS, LOGL_NOTICE, "Link down, dropping message.\n");
-		msgb_free(msg);
-		return -EIO;
-	}
-	msgb_enqueue(&link->tx_queue, msg);
-	link->bfd.when |= BSC_FD_WRITE;
-
-	return 0;
-}
+static struct gsm_bts *g_bts;
 
 int abis_oml_sendmsg(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
 
-	abis_push_ipa(msg, 0xff);
-
-	if (!bts->oml_link) {
-		msgb_free(msg);
-		return 0;
-	}
-
-	return abis_tx((struct ipabis_link *) bts->oml_link, msg);
+	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
+	 * the signalling link at msg->dst */
+	msg->dst = bts->oml_link;
+	return abis_sendmsg(msg);
 }
 
 int abis_rsl_sendmsg(struct msgb *msg)
 {
-	struct gsm_bts_trx *trx = msg->trx;
-
-	abis_push_ipa(msg, 0);
-
-	return abis_tx((struct ipabis_link *) trx->rsl_link, msg);
+	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
+	 * the signalling link at msg->dst */
+	msg->dst = msg->trx->rsl_link;
+	return abis_sendmsg(msg);
 }
 
-struct msgb *abis_msgb_alloc(int headroom)
+static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
+					    enum e1inp_sign_type type)
 {
-	struct msgb *nmsg;
+	struct e1inp_sign_link *sign_link = NULL;
 
-	headroom += sizeof(struct ipaccess_head);
-
-	nmsg = msgb_alloc_headroom(ABIS_ALLOC_SIZE + headroom,
-		headroom, "Abis/IP");
-	if (!nmsg)
-		return NULL;
-	return nmsg;
-}
-
-void abis_push_ipa(struct msgb *msg, uint8_t proto)
-{
-	struct ipaccess_head *nhh;
-
-	msg->l2h = msg->data;
-	nhh = (struct ipaccess_head *) msgb_push(msg, sizeof(*nhh));
-	nhh->proto = proto;
-	nhh->len = htons(msgb_l2len(msg));
-}
-
-/*
- * IPA related messages
- */
-
-/* send ping/pong */
-static int abis_tx_ipa_pingpong(struct ipabis_link *link, uint8_t pingpong)
-{
-	struct msgb *nmsg;
-
-	nmsg = abis_msgb_alloc(0);
-	if (!nmsg)
-		return -ENOMEM;
-	*msgb_put(nmsg, 1) = pingpong;
-	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
-
-	return abis_tx(link, nmsg);
-}
-
-/* send ACK and ID RESP */
-static int abis_rx_ipa_id_get(struct ipabis_link *link, uint8_t *data, int len)
-{
-	struct gsm_bts *bts = link->bts;
-	struct msgb *nmsg, *nmsg2;
-	char str[64];
-	uint8_t *tag;
-
-	if (!link->bts)
-		bts = link->trx->bts;
-
-	LOGP(DABIS, LOGL_INFO, "Reply to ID_GET\n");
-
-	nmsg = abis_msgb_alloc(0);
-	if (!nmsg)
-		return -ENOMEM;
-	*msgb_put(nmsg, 1) = IPAC_MSGT_ID_RESP;
-	while (len) {
-		if (len < 2) {
-			LOGP(DABIS, LOGL_NOTICE,
-				"Short read of ipaccess tag\n");
-			msgb_free(nmsg);
-			return -EIO;
-		}
-		switch (data[1]) {
-		case IPAC_IDTAG_UNIT:
-			sprintf(str, "%u/%u/%u", 
-				bts->ip_access.site_id,
-				bts->ip_access.bts_id,
-				(link->trx) ? link->trx->nr : 0);
-			break;
-		case IPAC_IDTAG_MACADDR:
-			sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
-				abis_mac[0], abis_mac[1], abis_mac[2],
-				abis_mac[3], abis_mac[4], abis_mac[5]);
-			break;
-		case IPAC_IDTAG_LOCATION1:
-			strcpy(str, "osmoBTS");
-			break;
-		case IPAC_IDTAG_LOCATION2:
-			strcpy(str, "osmoBTS");
-			break;
-		case IPAC_IDTAG_EQUIPVERS:
-		case IPAC_IDTAG_SWVERSION:
-			strcpy(str, PACKAGE_VERSION);
-			break;
-		case IPAC_IDTAG_UNITNAME:
-			sprintf(str, "osmoBTS-%02x-%02x-%02x-%02x-%02x-%02x",
-				abis_mac[0], abis_mac[1], abis_mac[2],
-				abis_mac[3], abis_mac[4], abis_mac[5]);
-			break;
-		case IPAC_IDTAG_SERNR:
-			strcpy(str, "");
-			break;
-		default:
-			LOGP(DABIS, LOGL_NOTICE,
-				"Unknown ipaccess tag 0x%02x\n", *data);
-			msgb_free(nmsg);
-			return -EINVAL;
-		}
-		LOGP(DABIS, LOGL_INFO, " tag %d: %s\n", data[1], str);
-		tag = msgb_put(nmsg, 3 + strlen(str) + 1);
-		tag[0] = 0x00;
-		tag[1] = 1 + strlen(str) + 1;
-		tag[2] = data[1];
-		memcpy(tag + 3, str, strlen(str) + 1);
-		data += 2;
-		len -= 2;
-	}
-	abis_push_ipa(nmsg, IPAC_PROTO_IPACCESS);
-
-	nmsg2 = abis_msgb_alloc(0);
-	if (!nmsg2) {
-		msgb_free(nmsg);
-		return -ENOMEM;
-	}
-	*msgb_put(nmsg2, 1) = IPAC_MSGT_ID_ACK;
-	abis_push_ipa(nmsg2, IPAC_PROTO_IPACCESS);
-
-	link->id_resp = 1;
-
-	abis_tx(link, nmsg2);
-	return abis_tx(link, nmsg);
-}
-
-static int abis_rx_ipaccess(struct ipabis_link *link, struct msgb *msg)
-{
-	uint8_t *data = msgb_l2(msg);
-	int len = msgb_l2len(msg);
-	int ret = 0;
-
-	if (len < 1) {
-		LOGP(DABIS, LOGL_NOTICE, "Short read of ipaccess message\n");
-		msgb_free(msg);
-		return EIO;
-	}
-
-	switch (*data) {
-	case IPAC_MSGT_PONG:
-#if 0
-#warning HACK
-rsl_tx_chan_rqd(link->bts->trx[0]);
-#endif
-		LOGP(DABIS, LOGL_DEBUG, "PONG\n");
-		link->pong = 1;
+	switch (type) {
+	case E1INP_SIGN_OML:
+		LOGP(DABIS, LOGL_INFO, "OML Signalling link up\n");
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+		sign_link = g_bts->oml_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
+						E1INP_SIGN_OML, NULL, 255, 0);
+		sign_link->trx = g_bts->c0;
+		bts_link_estab(g_bts);
 		break;
-	case IPAC_MSGT_PING:
-		LOGP(DABIS, LOGL_DEBUG, "reply to ping request\n");
-		ret = abis_tx_ipa_pingpong(link, IPAC_MSGT_PONG);
-		break;
-	case IPAC_MSGT_ID_GET:
-		ret = abis_rx_ipa_id_get(link, data + 1, len - 1);
-		break;
-	case IPAC_MSGT_ID_ACK:
-		LOGP(DABIS, LOGL_DEBUG, "ID ACK\n");
-		if (link->id_resp && link->bts)
-			ret = bts_link_estab(link->bts);
-		if (link->id_resp && link->trx)
-			ret = trx_link_estab(link->trx);
-		link->id_resp = 0;
-
+	case E1INP_SIGN_RSL:
+		LOGP(DABIS, LOGL_INFO, "RSL Signalling link up\n");
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
+		sign_link = g_bts->c0->rsl_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL-1],
+						E1INP_SIGN_RSL, NULL, 0, 0);
+		/* FIXME: This assumes there is only one TRX! */
+		sign_link->trx = g_bts->c0;
+		trx_link_estab(sign_link->trx);
 		break;
 	default:
-		LOGP(DABIS, LOGL_NOTICE,
-			"Unknown ipaccess message type 0x%02x\n", *data);
-		ret = -EINVAL;
+		break;
 	}
 
-	msgb_free(msg);
-
-	return ret;
+	return sign_link;
 }
 
-/*
- * A-Bis over IP implementation
- */
-
-/* receive message from BSC */
-static int abis_rx(struct ipabis_link *link, struct msgb *msg)
+static void sign_link_down(struct e1inp_line *line)
 {
-	struct ipaccess_head *hh = (struct ipaccess_head *) msg->data;
-	int ret = 0;
+	LOGP(DABIS, LOGL_ERROR, "Signalling link down\n");
 
-	switch (hh->proto) {
-	case IPAC_PROTO_RSL:
-		if (!link->trx) {
-			LOGP(DABIS, LOGL_NOTICE,
-				"Received RSL message not on RSL link\n");
-			msgb_free(msg);
-			ret = EIO;
-			break;
-		}
-		msg->trx = link->trx;
-		ret = down_rsl(link->trx, msg);
+	if (g_bts->c0->rsl_link) {
+		e1inp_sign_link_destroy(g_bts->c0->rsl_link);
+		g_bts->c0->rsl_link = NULL;
+		trx_link_estab(g_bts->c0);
+	}
+
+	e1inp_sign_link_destroy(g_bts->oml_link);
+	g_bts->oml_link = NULL;
+
+	bts_shutdown(g_bts, "Abis close");
+}
+
+
+/* callback for incoming mesages from A-bis/IP */
+static int sign_link_cb(struct msgb *msg)
+{
+	struct e1inp_sign_link *link = msg->dst;
+
+	/* osmo-bts code assumes msg->trx is set, but libosmo-abis works
+	 * with the sign_link stored in msg->dst, so we have to convert
+	 * here */
+	msg->trx = link->trx;
+
+	switch (link->type) {
+	case E1INP_SIGN_OML:
+		down_oml(link->trx->bts, msg);
 		break;
-	case IPAC_PROTO_IPACCESS:
-		ret = abis_rx_ipaccess(link, msg);
-		break;
-	case IPAC_PROTO_SCCP:
-		LOGP(DABIS, LOGL_INFO, "Received SCCP message\n");
-		msgb_free(msg);
-		break;
-	case IPAC_PROTO_OML:
-		if (!link->bts) {
-			LOGP(DABIS, LOGL_NOTICE,
-				"Received OML message not on OML link\n");
-			msgb_free(msg);
-			ret = EIO;
-			break;
-		}
-		msg->trx = link->bts->c0;
-		ret = down_oml(link->bts, msg);
+	case E1INP_SIGN_RSL:
+		down_rsl(link->trx, msg);
 		break;
 	default:
-		LOGP(DABIS, LOGL_NOTICE, "Unknown Protocol %d\n", hh->proto);
 		msgb_free(msg);
-		ret = EINVAL;
-	}
-
-	return ret;
-}
-
-static void abis_timeout(void *arg)
-{
-	struct ipabis_link *link = arg;
-	int ret;
-
-	switch (link->state) {
-	case LINK_STATE_RETRYING:
-		ret = abis_open(link, link->ip);
-		if (ret <= 0)
-			osmo_timer_schedule(&link->timer, OML_RETRY_TIMER, 0);
 		break;
-	case LINK_STATE_CONNECT:
-		if (link->ping && !link->pong) {
-			LOGP(DABIS, LOGL_NOTICE,
-				"No reply to PING. Link is lost\n");
-			abis_close(link);
-			ret = abis_open(link, link->ip);
-			if (ret <= 0) {
-				osmo_timer_schedule(&link->timer,
-					OML_RETRY_TIMER, 0);
-				link->state = LINK_STATE_RETRYING;
-			}
-			break;
-		}
-		link->ping = 1;
-		link->pong = 0;
-		LOGP(DABIS, LOGL_DEBUG, "PING\n");
-		abis_tx_ipa_pingpong(link, IPAC_MSGT_PING);
-		osmo_timer_schedule(&link->timer, OML_PING_TIMER, 0);
-		break;
-	}	
-}
-
-static int abis_sock_cb(struct osmo_fd *bfd, unsigned int what)
-{
-	struct ipabis_link *link = bfd->data;
-	struct ipaccess_head *hh;
-	struct msgb *msg;
-	int ret = 0;
-
-	if ((what & BSC_FD_WRITE) && link->state == LINK_STATE_CONNECTING) {
-		if (link->bts) {
-			if (osmo_timer_pending(&link->timer))
-				osmo_timer_del(&link->timer);
-//			osmo_timer_schedule(&link->timer, OML_PING_TIMER, 0);
-#warning HACK
-			osmo_timer_schedule(&link->timer, 3, 0);
-			link->ping = link->pong = 0;
-		}
-		LOGP(DABIS, LOGL_INFO, "Abis socket now connected.\n");
-		link->state = LINK_STATE_CONNECT;
 	}
-//printf("what %d\n", what);
-
-	if ((what & BSC_FD_READ)) {
-		if (!link->rx_msg) {
-			link->rx_msg = abis_msgb_alloc(128);
-			if (!link->rx_msg)
-				return -ENOMEM;
-		}
-		msg = link->rx_msg;
-		hh = (struct ipaccess_head *) msg->data;
-		if (msg->len < sizeof(*hh)) {
-			ret = recv(link->bfd.fd, msg->data, sizeof(*hh), 0);
-			if (ret <= 0) {
-				goto close;
-			}
-			msgb_put(msg, ret);
-			if (msg->len < sizeof(*hh))
-				return 0;
-			msg->l2h = msg->data + sizeof(*hh);
-			if (ntohs(hh->len) > msgb_tailroom(msg)) {
-				LOGP(DABIS, LOGL_DEBUG, "Received packet from "
-					"Abis socket too large.\n");
-				goto close;
-			}
-		}
-		ret = recv(link->bfd.fd, msg->tail,
-			ntohs(hh->len) + sizeof(*hh) - msg->len, 0);
-		if (ret == 0)
-			goto close;
-		if (ret < 0 && errno != EAGAIN)
-			goto close;
-		msgb_put(msg, ret);
-		if (ntohs(hh->len) + sizeof(*hh) > msg->len)
-			return 0;
-		link->rx_msg = NULL;
-		LOGP(DABIS, LOGL_DEBUG, "Received messages from Abis socket.\n");
-		ret = abis_rx(link, msg);
-	}
-	if ((what & BSC_FD_WRITE)) {
-		msg = msgb_dequeue(&link->tx_queue);
-		if (msg) {
-			LOGP(DABIS, LOGL_DEBUG, "Sending messages to Abis socket.\n");
-			ret = send(link->bfd.fd, msg->data, msg->len, 0);
-			msgb_free(msg);
-			if (ret < 0)
-				goto close;
-		} else
-			link->bfd.when &= ~BSC_FD_WRITE;
-	}
-	if ((what & BSC_FD_EXCEPT)) {
-		LOGP(DABIS, LOGL_NOTICE, "Abis socket received exception\n");
-		goto close;
-	}
-
-	return ret;
-
-close:
-	abis_close(link);
-
-	/* RSL link will just close and BSC is notified */
-	if (link->trx) {
-		LOGP(DABIS, LOGL_NOTICE, "Connection to BSC failed\n");
-		return trx_link_estab(link->trx);
-	}
-
-	LOGP(DABIS, LOGL_NOTICE, "Connection to BSC failed, retrying in %d "
-		"seconds.\n", OML_RETRY_TIMER);
-	osmo_timer_schedule(&link->timer, OML_RETRY_TIMER, 0);
-	link->state = LINK_STATE_RETRYING;
 
 	return 0;
 }
 
-int abis_open(struct ipabis_link *link, uint32_t ip)
+
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/ip.h>
+
+static int get_mac_addr(const char *dev_name, uint8_t *mac_out)
 {
-	unsigned int on = 1;
-	struct sockaddr_in addr;
-	int sock;
-	int ret;
+	int fd, rc;
+	struct ifreq ifr;
 
-	oml_init();
+	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (fd < 0)
+		return fd;
 
-	if (link->bfd.fd > 0)
-		return -EBUSY;
+	memset(&ifr, 0, sizeof(ifr));
+	memcpy(&ifr.ifr_name, dev_name, sizeof(ifr.ifr_name));
+	rc = ioctl(fd, SIOCGIFHWADDR, &ifr);
+	if (rc < 0)
+		return rc;
 
-	INIT_LLIST_HEAD(&link->tx_queue);
+	memcpy(mac_out, ifr.ifr_hwaddr.sa_data, 6);
 
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
-		return sock;
+	close(fd);
 
-	ret = ioctl(sock, FIONBIO, (unsigned char *)&on);
-	if (ret < 0) {
-		close(sock);
-		return ret;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	if (link->bts)
-		addr.sin_port = htons(IPA_TCP_PORT_OML);
-	else
-		addr.sin_port = htons(IPA_TCP_PORT_RSL);
-	addr.sin_addr.s_addr = htonl(ip);
-
-	ret = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-	if (ret < 0 && errno != EINPROGRESS) {
-		close(sock);
-		return ret;
-	}
-
-	link->bfd.data = link;
-	link->bfd.when = BSC_FD_READ | BSC_FD_WRITE | BSC_FD_EXCEPT;
-	link->bfd.cb = abis_sock_cb;
-	link->bfd.fd = sock;
-	link->state = LINK_STATE_CONNECTING;
-	link->ip = ip;
-	link->timer.cb = abis_timeout;
-	link->timer.data = link;
-
-	osmo_fd_register(&link->bfd);
-
-	LOGP(DABIS, LOGL_INFO, "Abis socket trying to reach BSC.\n");
-
-	return sock;
+	return 0;
 }
 
-void abis_close(struct ipabis_link *link)
+static int inp_s_cbfn(unsigned int subsys, unsigned int signal,
+		      void *hdlr_data, void *signal_data)
 {
-	struct msgb *msg;
+	if (subsys != SS_L_INPUT)
+		return 0;
 
-	if (link->bfd.fd <= 0)
-		return;
-	
-	LOGP(DABIS, LOGL_NOTICE, "Abis socket closed.\n");
+	DEBUGP(DABIS, "Input Signal %u received\n", signal);
 
-	if (link->rx_msg) {
-		msgb_free(link->rx_msg);
-		link->rx_msg = NULL;
-	}
+	return 0;
+}
 
-	while ((msg = msgb_dequeue(&link->tx_queue)))
-		msgb_free(msg);
 
-	osmo_fd_unregister(&link->bfd);
-	
-	close(link->bfd.fd);
-	link->bfd.fd = -1; /* -1 or 0 indicates: 'close' */
-	link->state = LINK_STATE_IDLE;
+static struct ipaccess_unit bts_dev_info = {
+	.unit_name	= "sysmoBTS",
+	.equipvers	= "",	/* FIXME: read this from hw */
+	.swversion	= PACKAGE_VERSION,
+	.location1	= "",
+	.location2	= "",
+	.serno		= "",
+};
 
-	if (osmo_timer_pending(&link->timer))
-		osmo_timer_del(&link->timer);
+static struct e1inp_line_ops line_ops = {
+	.cfg = {
+		.ipa = {
+			.role	= E1INP_LINE_R_BTS,
+			.dev	= &bts_dev_info,
+		},
+	},
+	.sign_link_up	= sign_link_up,
+	.sign_link_down	= sign_link_down,
+	.sign_link	= sign_link_cb,
+};
 
-	/* for now, we simply terminate the program and re-spawn */
-	if (link->bts)
-		bts_shutdown(link->bts, "Abis close / OML");
-	else if (link->trx)
-		bts_shutdown(link->trx->bts, "Abis close / RSL");
-	else {
-		LOGP(DABIS, LOGL_FATAL, "Unable to connect to BSC\n");
-		exit(43);
-	}
+/* UGLY: we assume this function is only called once as it does some
+ * global initialization as well as the actual opening of the A-bis link
+ * */
+struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
+			     const char *model_name)
+{
+	struct e1inp_line *line;
+
+	g_bts = bts;
+
+	oml_init();
+	libosmo_abis_init(NULL);
+
+	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
+
+	/* patch in various data from VTY and othe sources */
+	line_ops.cfg.ipa.addr = dst_host;
+	get_mac_addr("eth0", bts_dev_info.mac_addr);
+	bts_dev_info.site_id = bts->ip_access.site_id;
+	bts_dev_info.bts_id = bts->ip_access.bts_id;
+	bts_dev_info.unit_name = model_name;
+	if (bts->description)
+		bts_dev_info.unit_name = bts->description;
+	bts_dev_info.location2 = model_name;
+
+	line = e1inp_line_create(0, "ipa");
+	if (!line)
+		return NULL;
+	e1inp_line_bind_ops(line, &line_ops);
+
+	/* This is what currently starts both the outbound OML and RSL
+	 * connections, which is wrong.
+	 * FIXME: It should only start OML and wait for the RLS IP
+	 * address to be set as part of the TRX attributes */
+	if (e1inp_line_update(line) < 0)
+		return NULL;
+
+	return line;
 }
