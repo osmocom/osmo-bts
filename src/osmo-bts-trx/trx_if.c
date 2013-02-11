@@ -368,7 +368,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	int len;
 	uint8_t tn;
 	int8_t rssi;
-	int16_t toa;
+	float toa;
 	uint32_t fn;
 	sbit_t bits[148];
 	int i;
@@ -384,7 +384,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	tn = buf[0];
 	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
 	rssi = (int8_t)buf[5];
-	toa = (int16_t)(buf[6] << 8) | buf[7];
+	toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
 
 	/* copy and convert bits {254..0} to sbits {-127..127} */
 	for (i = 0; i < 148; i++) {
@@ -403,7 +403,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EINVAL;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%d ",
+	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f ",
 		tn, fn, rssi, toa);
 
 	trx_sched_ul_burst(l1h, tn, fn, bits, rssi, toa);
