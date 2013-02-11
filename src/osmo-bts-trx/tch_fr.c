@@ -120,10 +120,10 @@ tch_fr_burst_unmap(sbit_t *iB, sbit_t *eB, sbit_t *h, int odd)
 		iB[i] = eB[i+2];
 
 	if (h && !odd)
-		*h = eB[57];
+		*h = eB[58];
 
 	if (h && odd)
-		*h = eB[58];
+		*h = eB[57];
 }
 
 static void
@@ -138,9 +138,9 @@ tch_fr_burst_map(ubit_t *iB, ubit_t *eB, ubit_t *h, int odd)
 		eB[i+2] = iB[i];
 
 	if (h && !odd)
-		eB[57] = *h;
-	if (h && odd)
 		eB[58] = *h;
+	if (h && odd)
+		eB[57] = *h;
 }
 
 /* this corresponds to the bit-lengths of the individual codec
