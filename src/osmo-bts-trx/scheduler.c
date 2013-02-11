@@ -42,6 +42,11 @@
 #include "pxxch.h"
 #include "trx_if.h"
 
+/* Enable this to multiply TOA of RACH by 10.
+ * This usefull to check tenth of timing advances with RSSI test tool.
+ * Note that regular phones will not work when using this test! */
+//#define TA_TEST
+
 void *tall_bts_ctx;
 
 static struct gsm_bts *bts;
@@ -63,7 +68,7 @@ typedef int trx_sched_rts_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 typedef const ubit_t *trx_sched_dl_func(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn, enum trx_chan_type chan, uint8_t bid);
 typedef int trx_sched_ul_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 
 static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
@@ -84,15 +89,15 @@ static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 static const ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 
 static const ubit_t dummy_burst[148] = {
 	0,0,0,
@@ -768,20 +773,20 @@ static const ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
  */
 
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
 	struct osmo_phsap_prim l1sap;
 	uint8_t ra;
 	int rc;
 
-	LOGP(DL1C, LOGL_DEBUG, "Received %s fn=%u\n", 
-		trx_chan_desc[chan].name, fn);
+	LOGP(DL1C, LOGL_NOTICE, "Received %s fn=%u toa=%.2f\n",
+		trx_chan_desc[chan].name, fn, toa);
 
 	/* decode */
 	rc = rach_decode(&ra, bits + 8 + 41, l1h->trx->bts->bsic);
 	if (rc) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad rach frame at fn=%u "
-			"ra=%u\n", fn, ra);
+			"(%u/51)\n", fn, fn % 51);
 		return 0;
 	}
 
@@ -791,7 +796,11 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
 		NULL);
 	l1sap.u.rach_ind.ra = ra;
-	l1sap.u.rach_ind.acc_delay = 0; //FIXME: TOA
+#ifdef TA_TEST
+#warning TIMING ADVANCE TEST-HACK IS ENABLED!!!
+	toa *= 10;
+#endif
+	l1sap.u.rach_ind.acc_delay = (toa >= 0) ? toa : 0;
 	l1sap.u.rach_ind.fn = fn;
 
 	/* forward primitive */
@@ -828,7 +837,7 @@ static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -837,7 +846,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t l2[23], l2_len;
 	int rc;
 
-	LOGP(DL1C, LOGL_NOTICE, "Data received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
 
 	/* alloc burst memory, if not already */
@@ -897,7 +906,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -988,7 +997,7 @@ static int compose_tch_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -1062,7 +1071,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int16_t toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H Received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -1192,6 +1201,7 @@ static struct trx_sched_frame frame_bcch_sdcch4[102] = {
       { TRXC_SACCH4_1,	2,	TRXC_SDCCH4_2,	1 },
       { TRXC_SACCH4_1,	3,	TRXC_SDCCH4_2,	2 },
       {	TRXC_IDLE,	0,	TRXC_SDCCH4_2,	3 },
+
       {	TRXC_FCCH,	0,	TRXC_SDCCH4_3,	0 },
       {	TRXC_SCH,	0,	TRXC_SDCCH4_3,	1 },
       { TRXC_BCCH,	0,	TRXC_SDCCH4_3,	2 },
@@ -1837,7 +1847,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 
 /* process uplink burst */
 int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	sbit_t *bits, int8_t rssi, int16_t toa)
+	sbit_t *bits, int8_t rssi, float toa)
 {
 	struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
@@ -1861,6 +1871,10 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (!trx_chan_desc[chan].auto_active
 	 && !l1h->chan_states[tn][chan].ul_active)
 	 	return -EINVAL;
+
+	/* omit bursts which have no handler, like IDLE bursts */
+	if (!func)
+		return 0;
 
 	/* put burst to function */
 	rc = func(l1h, tn, fn, chan, bid, bits, toa);
@@ -1976,7 +1990,8 @@ no_clock:
 		trx_sched_fn(tranceiver_last_fn);
 		elapsed -= FRAME_DURATION_uS;
 	}
-	osmo_timer_schedule(&tranceiver_clock_timer, 0, FRAME_DURATION_uS - elapsed);
+	osmo_timer_schedule(&tranceiver_clock_timer, 0,
+		FRAME_DURATION_uS - elapsed);
 }
 
 
@@ -2037,7 +2052,8 @@ new_clock:
 		goto new_clock;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d\n", elapsed_fn * FRAME_DURATION_uS - elapsed);
+	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d\n",
+		elapsed_fn * FRAME_DURATION_uS - elapsed);
 
 	/* too many frames have been processed already */
 	if (elapsed_fn < 0) {
