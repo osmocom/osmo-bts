@@ -1,6 +1,6 @@
 /* Layer1 handling for the DSP/FPGA */
 /*
- * (C) 2012 Holger Hans Peter Freyther
+ * (C) 2012-2013 Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -481,16 +481,16 @@ int follow_sch(int band, int arfcn, int clock, int ref, HANDLE *layer1)
 	return 0;
 }
 
-int follow_bcch(HANDLE layer1)
+static int follow_sapi(HANDLE layer1, const GsmL1_Sapi_t sapi)
 {
 	int rc;
 	GsmL1_Prim_t prim;
 
-	/* 1.) Activate BCCH... */
+	/* 1.) Activate BCCH or such... */
 	memset(&prim, 0, sizeof(prim));
 	prim.u.mphActivateReq.hLayer1 = layer1;
 	prim.u.mphActivateReq.u8Tn = 0;
-	prim.u.mphActivateReq.sapi = GsmL1_Sapi_Bcch;
+	prim.u.mphActivateReq.sapi = sapi;
 	prim.u.mphActivateReq.dir = GsmL1_Dir_RxDownlink;
 
 	rc = send_recv_sig_prim(GsmL1_PrimId_MphActivateReq, &prim);
@@ -511,21 +511,31 @@ int follow_bcch(HANDLE layer1)
 		return rc;
 	}
 
-	if (prim.u.phConnectInd.sapi != GsmL1_Sapi_Bcch) {
+	if (prim.u.phConnectInd.sapi != sapi) {
 		printf("Got a connect indication for the wrong type: %d\n",
 			prim.u.phConnectInd.sapi);
 		return -6;
 	}
 
 	/* 3.) Wait for PhDataInd... */
-	printf("Waiting for BCCH data.\n");
+	printf("Waiting for data.\n");
 	rc = wait_for_indication(GsmL1_PrimId_PhDataInd, &prim);
 	if (rc != 0) {
-		printf("Didn't get BCCH data.\n");
+		printf("Didn't get data.\n");
 		return rc;
 	}
 
 	return 0;
+}
+
+int follow_bcch(HANDLE layer1)
+{
+	return follow_sapi(layer1, GsmL1_Sapi_Bcch);
+}
+
+int follow_pch(HANDLE layer1)
+{
+	return follow_sapi(layer1, GsmL1_Sapi_Pch);
 }
 
 int find_bsic(void)
@@ -701,7 +711,7 @@ int wait_for_sync(HANDLE layer1, int cor, int calib, int source)
 	return 0;
 }
 
-int wait_for_data(uint8_t *data, size_t *size)
+int wait_for_data(uint8_t *data, size_t *size, uint32_t *fn, uint8_t *block, GsmL1_Sapi_t *sap)
 {
 	GsmL1_Prim_t prim;
 	int rc;
@@ -713,6 +723,9 @@ int wait_for_data(uint8_t *data, size_t *size)
 		return 1;
 
 	*size = prim.u.phDataInd.msgUnitParam.u8Size;
+	*fn = prim.u.phDataInd.u32Fn;
+	*block = prim.u.phDataInd.u8BlockNbr;
+	*sap = prim.u.phDataInd.sapi;
 	memcpy(data, prim.u.phDataInd.msgUnitParam.u8Buffer, *size);
 	return 0;
 }
