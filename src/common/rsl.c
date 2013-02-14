@@ -318,6 +318,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		if (len > sizeof(sysinfo_buf_t))
 			len = sizeof(sysinfo_buf_t);
 		bts->si_valid |= (1 << osmo_si);
+		memset(bts->si_buf[osmo_si], 0x2b, sizeof(sysinfo_buf_t));
 		memcpy(bts->si_buf[osmo_si],
 			TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
@@ -327,6 +328,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		if (len > sizeof(sysinfo_buf_t))
 			len = sizeof(sysinfo_buf_t);
 		bts->si_valid |= (1 << osmo_si);
+		memset(bts->si_buf[osmo_si], 0x2b, sizeof(sysinfo_buf_t));
 		memcpy(bts->si_buf[osmo_si],
 			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
@@ -441,6 +443,7 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 		bts->si_valid |= (1 << osmo_si);
 		bts->si_buf[osmo_si][0] = 0x03;	/* C/R + EA */
 		bts->si_buf[osmo_si][1] = 0x03;	/* UI frame */
+		memset(bts->si_buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
 		memcpy(bts->si_buf[osmo_si]+2,
 			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s)\n",
@@ -785,8 +788,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			if (copy_len > sizeof(sysinfo_buf_t)-2)
 				copy_len = sizeof(sysinfo_buf_t)-2;
 			lchan->si.valid |= (1 << osmo_si);
-			lchan->si.buf[osmo_si][0] = 0x00;
+			lchan->si.buf[osmo_si][0] = 0x03;
 			lchan->si.buf[osmo_si][1] = 0x03;
+			memset(lchan->si.buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
 			memcpy(lchan->si.buf[osmo_si]+2, cur, copy_len);
 
 			cur += si_len;
@@ -1115,8 +1119,9 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 		if (len > sizeof(sysinfo_buf_t)-2)
 			len = sizeof(sysinfo_buf_t)-2;
 		lchan->si.valid |= (1 << osmo_si);
-		lchan->si.buf[osmo_si][0] = 0x00;
+		lchan->si.buf[osmo_si][0] = 0x03;
 		lchan->si.buf[osmo_si][1] = 0x03;
+		memset(lchan->si.buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
 		memcpy(lchan->si.buf[osmo_si]+2,
 			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
 		LOGP(DRSL, LOGL_INFO, "%s Rx RSL SACCH FILLING (SI%s)\n",
