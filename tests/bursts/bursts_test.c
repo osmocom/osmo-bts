@@ -191,7 +191,7 @@ static void test_fr(uint8_t *speech, int len)
 	printd("Encoding: %s\n", osmo_hexdump(speech, len));
 
 	/* encode */
-	tch_fr_encode(bursts_u, speech, len);
+	tch_fr_encode(bursts_u, speech, len, 1);
 
 	printd("U-Bits:\n");
 	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
@@ -246,7 +246,7 @@ static void test_fr(uint8_t *speech, int len)
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 812, 57));
 
 	/* decode */
-	rc = tch_fr_decode(result, bursts_s);
+	rc = tch_fr_decode(result, bursts_s, 1);
 
 	ASSERT_TRUE(rc == len);
 

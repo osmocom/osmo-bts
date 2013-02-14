@@ -274,7 +274,7 @@ tch_fr_reorder(ubit_t *u, ubit_t *d, ubit_t *p)
 }
 
 int
-tch_fr_decode(uint8_t *tch_data, sbit_t *bursts)
+tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int network_order)
 {
 	sbit_t iB[912], cB[456], h;
 	ubit_t conv[185], b[260], d[260], p[3];
@@ -300,9 +300,12 @@ tch_fr_decode(uint8_t *tch_data, sbit_t *bursts)
 		if (rv)
 			return -1;
 
-		tch_fr_d_to_b(b, d);
+		if (network_order) {
+			tch_fr_d_to_b(b, d);
 
-		tch_fr_reassemble(tch_data, b);
+			tch_fr_reassemble(tch_data, b);
+		} else
+			tch_fr_d_to_b(tch_data, d);
 
 		len = 33;
 	} else {
@@ -317,7 +320,7 @@ tch_fr_decode(uint8_t *tch_data, sbit_t *bursts)
 }
 
 int
-tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
+tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int network_order)
 {
 	ubit_t iB[912], cB[456], h;
 	ubit_t conv[185], b[260], d[260], p[3];
@@ -325,9 +328,12 @@ tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
 
 	switch (len) {
 	case 33: /* TCH FR */
-		tch_fr_disassemble(b, tch_data);
+		if (network_order) {
+			tch_fr_disassemble(b, tch_data);
 
-		tch_fr_b_to_d(d, b);
+			tch_fr_b_to_d(d, b);
+		} else
+			tch_fr_b_to_d(d, tch_data);
 
 		osmo_crc8gen_set_bits(&tch_fr_crc3, d, 50, p);
 
