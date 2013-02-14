@@ -759,9 +759,10 @@ static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* encode bursts (priorize FACCH) */
 	if (msg_facch)
-		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
+		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
+			1);
 	else
-		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
+		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
 
 	/* unlink and free message */
 	if (msg_tch)
@@ -1079,7 +1080,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* decode
 	 * also shift buffer by 4 bursts for interleaving */
-	rc = tch_fr_decode(tch_data, *bursts_p);
+	rc = tch_fr_decode(tch_data, *bursts_p, 1);
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame at fn=%u "
