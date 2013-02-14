@@ -363,15 +363,6 @@ static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	return 0;
 }
 
-/* channel mode, encryption and/or multirate have changed */
-static int l1if_rsl_mode_modify(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	int downlink)
-{
-
-	// FIXME
-	return 0;
-}
-
 static int mph_info_chan_confirm(struct trx_l1h *l1h, uint8_t chan_nr,
 	enum osmo_mph_info_type type, uint8_t cause)
 {
@@ -460,6 +451,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				/* activate assoicated channel */
 				trx_sched_set_lchan(l1h, chan_nr, 0x40, 0, 1);
 				trx_sched_set_lchan(l1h, chan_nr, 0x40, 1, 1);
+				/* set mode */
+				trx_sched_set_mode(l1h, chan_nr,
+					lchan->rsl_cmode, lchan->tch_mode);
 				/* init lapdm */
 				lchan_init_lapdm(lchan);
 				/* confirm */
@@ -468,8 +462,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
-				l1if_rsl_mode_modify(l1h, lchan, 0);
-				l1if_rsl_mode_modify(l1h, lchan, 1);
+				/* change mode */
+				trx_sched_set_mode(l1h, chan_nr,
+					lchan->rsl_cmode, lchan->tch_mode);
 				break;
 			}
 			if ((chan_nr & 0x80)) {
