@@ -24,7 +24,7 @@
 
 const struct osmo_crc8gen_code tch_fr_crc3 = {
 	.bits = 3,
-	.poly = 0x2,
+	.poly = 0x3,
 	.init = 0x0,
 	.remainder = 0x7,
 };
