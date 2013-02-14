@@ -357,21 +357,9 @@ static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		return -ENODEV;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "TCH.ind: chan=%s chan_nr=0x%02x "
+	LOGP(DL1C, LOGL_INFO, "TCH RTS.ind: chan=%s chan_nr=0x%02x "
 		"fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, fn, tn, l1h->trx->nr);
-
-	/* generate prim */
-	msg = l1sap_msgb_alloc(200);
-	if (!msg)
-		return -ENOMEM;
-	l1sap = msgb_l1sap_prim(msg);
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
-	                                PRIM_OP_INDICATION, msg);
-	l1sap->u.tch.chan_nr = chan_nr | tn;
-	l1sap->u.tch.fn = fn;
-
-	l1sap_up(l1h->trx, l1sap);
 
 	/* generate prim */
 	msg = l1sap_msgb_alloc(200);
@@ -381,8 +369,23 @@ static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
 	                                PRIM_OP_INDICATION, msg);
 	l1sap->u.data.chan_nr = chan_nr;
-	l1sap->u.data.chan_nr = link_id;
+	l1sap->u.data.link_id = link_id;
 	l1sap->u.data.fn = fn;
+
+	/* stop here, if TCH is in signalling only mode */
+	if (l1h->chan_states[tn][chan].rsl_cmode == RSL_CMOD_SPD_SIGN)
+		return l1sap_up(l1h->trx, l1sap);
+	l1sap_up(l1h->trx, l1sap);
+
+	/* generate prim */
+	msg = l1sap_msgb_alloc(200);
+	if (!msg)
+		return -ENOMEM;
+	l1sap = msgb_l1sap_prim(msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
+	                                PRIM_OP_INDICATION, msg);
+	l1sap->u.tch.chan_nr = chan_nr;
+	l1sap->u.tch.fn = fn;
 
 	return l1sap_up(l1h->trx, l1sap);
 }
@@ -454,81 +457,69 @@ static const ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 static struct msgb *dequeue_prim(struct trx_l1h *l1h, int8_t tn,uint32_t fn,
 	enum trx_chan_type chan)
 {
-	struct msgb *found = NULL, *msg, *msg2; /* make GCC happy */
-	struct osmo_phsap_prim *l1sap = NULL; /* make GCC happy */
-	uint32_t check_fn;
+	struct msgb *msg, *msg2;
+	struct osmo_phsap_prim *l1sap;
+	uint32_t prim_fn;
+	uint8_t chan_nr, link_id;
 
-	/* get burst from queue */
+	/* get prim of current fn from queue */
 	llist_for_each_entry_safe(msg, msg2, &l1h->dl_prims[tn], list) {
 		l1sap = msgb_l1sap_prim(msg);
-		check_fn = ((l1sap->u.data.fn + 2715648 - fn) % 2715648);
-		if (check_fn > 20) {
+		if (l1sap->oph.operation != PRIM_OP_REQUEST) {
+wrong_type:
+			LOGP(DL1C, LOGL_ERROR, "Prim for ts=%u at fn=%u has "
+				"wrong type.\n", tn, fn);
+free_msg:
+			/* unlink and free message */
+			llist_del(&msg->list);
+			msgb_free(msg);
+			return NULL;
+		}
+		switch (l1sap->oph.primitive) {
+		case PRIM_PH_DATA:
+			chan_nr = l1sap->u.data.chan_nr;
+			link_id = l1sap->u.data.link_id;
+			prim_fn = ((l1sap->u.data.fn + 2715648 - fn) % 2715648);
+			break;
+		case PRIM_TCH:
+			chan_nr = l1sap->u.tch.chan_nr;
+			link_id = 0;
+			prim_fn = ((l1sap->u.tch.fn + 2715648 - fn) % 2715648);
+			break;
+		default:
+			goto wrong_type;
+		}
+		if (prim_fn > 20) {
 			LOGP(DL1C, LOGL_ERROR, "Prim for trx=%u ts=%u at fn=%u "
 				"is out of range. (current fn=%u)\n",
-				l1h->trx->nr, tn, l1sap->u.data.fn, fn);
+				l1h->trx->nr, tn, prim_fn, fn);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);
 			continue;
 		}
-		if (check_fn > 0)
+		if (prim_fn > 0)
 			continue;
 
-		/* found second message, check if we have TCH+FACCH */
-		if (found) {
-			/* we found a message earlier */
-			l1sap = msgb_l1sap_prim(found);
-			/* if we have TCH+something */
-			if (l1sap->oph.primitive == PRIM_TCH) {
-				/* unlink and free message */
-				llist_del(&found->list);
-				msgb_free(found);
-				found = msg;
-			} else {
-				l1sap = msgb_l1sap_prim(msg);
-				/* if we have TCH+something */
-				if (l1sap->oph.primitive == PRIM_TCH) {
-					/* unlink and free message */
-					llist_del(&msg->list);
-					msgb_free(msg);
-				}
-			}
-			break;
-		}
-		found = msg;
+		goto found_msg;
 	}
 
-	if (!found) {
-		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
-			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
-		return NULL;
-	}
+	return NULL;
 
-	l1sap = msgb_l1sap_prim(found);
-
-	if ((l1sap->oph.primitive != PRIM_PH_DATA
-	  && l1sap->oph.primitive != PRIM_TCH)
-	 || l1sap->oph.operation != PRIM_OP_REQUEST) {
-		LOGP(DL1C, LOGL_ERROR, "Prim for ts=%u at fn=%u has wrong "
-			"type.\n", tn, fn);
-free_msg:
-		/* unlink and free message */
-		llist_del(&found->list);
-		msgb_free(found);
-		return NULL;
-	}
-	if ((l1sap->u.data.chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
-	 || ((l1sap->u.data.link_id ^ trx_chan_desc[chan].link_id) & 0x40)) {
+found_msg:
+	if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
+	 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
 		LOGP(DL1C, LOGL_ERROR, "Prim for ts=%u at fn=%u has wrong "
 			"chan_nr=%02x link_id=%02x, expecting chan_nr=%02x "
-			"link_id=%02x.\n", tn, fn, l1sap->u.data.chan_nr,
-			l1sap->u.data.link_id, trx_chan_desc[chan].chan_nr | tn,
+			"link_id=%02x.\n", tn, fn, chan_nr, link_id,
+			trx_chan_desc[chan].chan_nr | tn,
 			trx_chan_desc[chan].link_id);
 		goto free_msg;
 	}
 
-	return found;
+	/* unlink and return message */
+	llist_del(&msg->list);
+	return msg;
 }
 
 static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -553,6 +544,10 @@ static const ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
+	LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+		"trx=%u ts=%u at fn=%u to transmit.\n", 
+		trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
+
 no_msg:
 	/* free burst memory */
 	if (*bursts_p) {
@@ -566,8 +561,7 @@ got_msg:
 	if (msgb_l2len(msg) != 23) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg));
-		/* unlink and free message */
-		llist_del(&msg->list);
+		/* free message */
 		msgb_free(msg);
 		goto no_msg;
 	}
@@ -589,8 +583,7 @@ got_msg:
 	/* encode bursts */
 	xcch_encode(*bursts_p, msg->l2h);
 
-	/* unlink and free message */
-	llist_del(&msg->list);
+	/* free message */
 	msgb_free(msg);
 
 send_burst:
@@ -628,6 +621,10 @@ static const ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
+	LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+		"trx=%u ts=%u at fn=%u to transmit.\n", 
+		trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
+
 no_msg:
 	/* free burst memory */
 	if (*bursts_p) {
@@ -651,14 +648,12 @@ got_msg:
 	if (rc) {
 		LOGP(DL1C, LOGL_FATAL, "Prim invalid length, please FIX! "
 			"(len=%d)\n", rc);
-		/* unlink and free message */
-		llist_del(&msg->list);
+		/* free message */
 		msgb_free(msg);
 		goto no_msg;
 	}
 
-	/* unlink and free message */
-	llist_del(&msg->list);
+	/* free message */
 	msgb_free(msg);
 
 send_burst:
@@ -679,7 +674,7 @@ send_burst:
 static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
-	struct msgb *msg = NULL; /* make GCC happy */
+	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
 	ubit_t *burst, **bursts_p = &l1h->chan_states[tn][chan].dl_bursts;
 	static ubit_t bits[148];
 	struct osmo_phsap_prim *l1sap;
@@ -691,41 +686,56 @@ static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* get burst from queue */
-	msg = dequeue_prim(l1h, tn, fn, chan);
-	if (msg)
-		goto got_msg;
-
-no_msg:
-	/* free burst memory */
-	if (*bursts_p) {
-		talloc_free(*bursts_p);
-		*bursts_p = NULL;
+	/* get frame and unlink from queue */
+	msg1 = dequeue_prim(l1h, tn, fn, chan);
+	msg2 = dequeue_prim(l1h, tn, fn, chan);
+	if (msg1) {
+		l1sap = msgb_l1sap_prim(msg1);
+		if (l1sap->oph.primitive == PRIM_TCH) {
+			msg_tch = msg1;
+			if (msg2) {
+				l1sap = msgb_l1sap_prim(msg2);
+				if (l1sap->oph.primitive == PRIM_TCH) {
+					LOGP(DL1C, LOGL_FATAL, "TCH twice, "
+						"please FIX! ");
+					msgb_free(msg2);
+				} else
+					msg_facch = msg2;
+			}
+		} else {
+			msg_facch = msg1;
+			if (msg2) {
+				l1sap = msgb_l1sap_prim(msg2);
+				if (l1sap->oph.primitive != PRIM_TCH) {
+					LOGP(DL1C, LOGL_FATAL, "FACCH twice, "
+						"please FIX! ");
+					msgb_free(msg2);
+				} else
+					msg_tch = msg2;
+			}
+		}
+	} else if (msg2) {
+		l1sap = msgb_l1sap_prim(msg2);
+		if (l1sap->oph.primitive == PRIM_TCH)
+			msg_tch = msg2;
+		else
+			msg_facch = msg2;
 	}
-	return NULL;
 
-got_msg:
-	l1sap = msgb_l1sap_prim(msg);
-	if (l1sap->oph.primitive == PRIM_TCH) {
-		/* check validity of message */
-		if (msgb_l2len(msg) != 33) {
-			LOGP(DL1C, LOGL_FATAL, "Prim not 33 bytes, please FIX! "
-				"(len=%d)\n", msgb_l2len(msg));
-			/* unlink and free message */
-			llist_del(&msg->list);
-			msgb_free(msg);
-			goto no_msg;
-		}
-	} else {
-		/* check validity of message */
-		if (msgb_l2len(msg) != 23) {
-			LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
-				"(len=%d)\n", msgb_l2len(msg));
-			/* unlink and free message */
-			llist_del(&msg->list);
-			msgb_free(msg);
-			goto no_msg;
-		}
+	/* check validity of message */
+	if (msg_tch && msgb_l2len(msg_tch) != 33) {
+		LOGP(DL1C, LOGL_FATAL, "Prim not 33 bytes, please FIX! "
+			"(len=%d)\n", msgb_l2len(msg_tch));
+		/* free message */
+		msgb_free(msg_tch);
+		msg_tch = NULL;
+	}
+	if (msg_facch && msgb_l2len(msg_facch) != 23) {
+		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
+			"(len=%d)\n", msgb_l2len(msg_facch));
+		/* free message */
+		msgb_free(msg_facch);
+		msg_facch = NULL;
 	}
 
 	/* alloc burst memory, if not already,
@@ -734,15 +744,30 @@ got_msg:
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 928);
 		if (!*bursts_p)
 			return NULL;
-	} else
+	} else {
 		memcpy(*bursts_p, *bursts_p + 464, 464);
+		memset(*bursts_p + 464, 0, 464);
+	}
 
-	/* encode bursts */
-	tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg));
+	/* mo message at all */
+	if (!msg_tch && !msg_facch) {
+		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+			"trx=%u ts=%u at fn=%u to transmit.\n", 
+			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
+		goto send_burst;
+	}
+
+	/* encode bursts (priorize FACCH) */
+	if (msg_facch)
+		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
+	else
+		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
 
 	/* unlink and free message */
-	llist_del(&msg->list);
-	msgb_free(msg);
+	if (msg_tch)
+		msgb_free(msg_tch);
+	if (msg_facch)
+		msgb_free(msg_facch);
 
 send_burst:
 	/* compose burst */
@@ -1018,7 +1043,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* store frame number of first burst */
 	if (bid == 0) {
-		memset(*bursts_p, 0, 464);
+		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
 		*first_fn = fn;
 	}
@@ -1046,7 +1071,8 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		/* we require first burst to have correct FN */
 		if (!(*mask & 0x1)) {
 			*mask = 0x0;
-			return 0;
+			rc = 0;
+			goto bfi;
 		}
 	}
 	*mask = 0x0;
@@ -1058,7 +1084,9 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame at fn=%u "
 			"for %s\n", *first_fn, trx_chan_desc[chan].name);
-		rc = 0;
+		memset(tch_data, 0, sizeof(tch_data));
+		// FIXME length depends on codec
+		rc = 33;
 	}
 
 	/* FACCH */
@@ -1066,6 +1094,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		return compose_ph_data_ind(l1h, tn, *first_fn, chan, tch_data,
 			23);
 
+bfi:
 	/* TCH or BFI */
 	return compose_tch_ind(l1h, tn, *first_fn, chan, tch_data, rc);
 }
@@ -1097,54 +1126,24 @@ static struct trx_sched_frame frame_bcch[51] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
-      { TRXC_BCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_BCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_BCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_BCCH,	3,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_BCCH,	0,	TRXC_RACH,	0 }, { TRXC_BCCH,	1,	TRXC_RACH,	0 }, { TRXC_BCCH,	2,	TRXC_RACH,	0 }, { TRXC_BCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	0,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	1,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	2,	TRXC_RACH,	0 },
-      { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
+      { TRXC_CCCH,	0,	TRXC_RACH,	0 }, { TRXC_CCCH,	1,	TRXC_RACH,	0 }, { TRXC_CCCH,	2,	TRXC_RACH,	0 }, { TRXC_CCCH,	3,	TRXC_RACH,	0 },
       {	TRXC_IDLE,	0,	TRXC_RACH,	0 },
 };
 
@@ -1308,6 +1307,7 @@ static struct trx_sched_frame frame_sdcch8[102] = {
       { TRXC_IDLE,	0,	TRXC_SACCH8_0,	1 },
       { TRXC_IDLE,	0,	TRXC_SACCH8_0,	2 },
       { TRXC_IDLE,	0,	TRXC_SACCH8_0,	3 },
+
       { TRXC_SDCCH8_0,	0,	TRXC_SACCH8_1,	0 },
       { TRXC_SDCCH8_0,	1,	TRXC_SACCH8_1,	1 },
       { TRXC_SDCCH8_0,	2,	TRXC_SACCH8_1,	2 },
@@ -1361,346 +1361,501 @@ static struct trx_sched_frame frame_sdcch8[102] = {
       { TRXC_IDLE,	0,	TRXC_SACCH8_4,	3 },
 };
 
-static struct trx_sched_frame frame_tchf[104] = {
+static struct trx_sched_frame frame_tchf_ts0[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
-      { TRXC_TCHF,	0,	TRXC_TCHF,	0 },
-      { TRXC_TCHF,	1,	TRXC_TCHF,	1 },
-      { TRXC_TCHF,	2,	TRXC_TCHF,	2 },
-      { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchh[104] = {
+static struct trx_sched_frame frame_tchf_ts1[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+};
+
+static struct trx_sched_frame frame_tchf_ts2[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+};
+
+static struct trx_sched_frame frame_tchf_ts3[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+};
+
+static struct trx_sched_frame frame_tchf_ts4[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+};
+
+static struct trx_sched_frame frame_tchf_ts5[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+};
+
+static struct trx_sched_frame frame_tchf_ts6[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+};
+
+static struct trx_sched_frame frame_tchf_ts7[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
+      { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
+};
+
+static struct trx_sched_frame frame_tchh_ts01[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_0,	0,	TRXC_SACCHTH_0,	0 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_0,	1,	TRXC_SACCHTH_0,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_0,	2,	TRXC_SACCHTH_0,	2 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_0,	3,	TRXC_SACCHTH_0,	3 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
-      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 },
-      { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 },
-      { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 },
-      { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
+};
+
+static struct trx_sched_frame frame_tchh_ts23[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	3,	TRXC_SACCHTH_0,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	0,	TRXC_SACCHTH_0,	0 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	1,	TRXC_SACCHTH_0,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	2,	TRXC_SACCHTH_0,	2 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
+};
+
+static struct trx_sched_frame frame_tchh_ts45[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	2,	TRXC_SACCHTH_0,	2 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	3,	TRXC_SACCHTH_0,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	0,	TRXC_SACCHTH_0,	0 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	1,	TRXC_SACCHTH_0,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
+};
+
+static struct trx_sched_frame frame_tchh_ts67[104] = {
+/*	dl_chan		dl_bid	ul_chan		ul_bid */
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	1,	TRXC_SACCHTH_0,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	2,	TRXC_SACCHTH_0,	2 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	3,	TRXC_SACCHTH_0,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_0,	0,	TRXC_SACCHTH_0,	0 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
+      { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
 };
 
 static struct trx_sched_frame frame_pdch[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PTCCH,	0,	TRXC_PTCCH,	0 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PTCCH,	1,	TRXC_PTCCH,	1 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PTCCH,	2,	TRXC_PTCCH,	2 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PTCCH,	3,	TRXC_PTCCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
-      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 },
-      { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 },
-      { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 },
-      { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
+      { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
 /* multiframe structure */
 struct trx_sched_multiframe {
 	enum gsm_phys_chan_config	pchan;
+	uint8_t				slotmask;
 	uint8_t				period;
 	struct trx_sched_frame		*frames;
 	const char 			*name;
 };
 
 static struct trx_sched_multiframe trx_sched_multiframes[] = {
-	{ GSM_PCHAN_NONE,		0,	NULL,			"NONE"},
-	{ GSM_PCHAN_CCCH,		51,	frame_bcch,		"BCCH+CCCH" },
-	{ GSM_PCHAN_CCCH_SDCCH4,	102,	frame_bcch_sdcch4,	"BCCH+CCCH+SDCCH/4+SACCH/4" },
-	{ GSM_PCHAN_SDCCH8_SACCH8C,	102,	frame_sdcch8,		"SDCCH/8+SACCH/8" },
-	{ GSM_PCHAN_TCH_F,		104,	frame_tchf,		"TCH/F+SACCH" },
-	{ GSM_PCHAN_TCH_H,		104,	frame_tchh,		"TCH/H+SACCH" },
-	{ GSM_PCHAN_PDCH,		104,	frame_pdch,		"PDCH" },
+	{ GSM_PCHAN_NONE,		0xff,	0,	NULL,			"NONE"},
+	{ GSM_PCHAN_CCCH,		0xff,	51,	frame_bcch,		"BCCH+CCCH" },
+	{ GSM_PCHAN_CCCH_SDCCH4,	0xff,	102,	frame_bcch_sdcch4,	"BCCH+CCCH+SDCCH/4+SACCH/4" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C,	0xff,	102,	frame_sdcch8,		"SDCCH/8+SACCH/8" },
+	{ GSM_PCHAN_TCH_F,		0x01,	104,	frame_tchf_ts0,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x02,	104,	frame_tchf_ts1,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x04,	104,	frame_tchf_ts2,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x08,	104,	frame_tchf_ts3,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x10,	104,	frame_tchf_ts4,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x20,	104,	frame_tchf_ts5,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x40,	104,	frame_tchf_ts6,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_F,		0x80,	104,	frame_tchf_ts7,		"TCH/F+SACCH" },
+	{ GSM_PCHAN_TCH_H,		0x03,	104,	frame_tchh_ts01,	"TCH/H+SACCH" },
+	{ GSM_PCHAN_TCH_H,		0x0c,	104,	frame_tchh_ts23,	"TCH/H+SACCH" },
+	{ GSM_PCHAN_TCH_H,		0x30,	104,	frame_tchh_ts45,	"TCH/H+SACCH" },
+	{ GSM_PCHAN_TCH_H,		0xc0,	104,	frame_tchh_ts67,	"TCH/H+SACCH" },
+	{ GSM_PCHAN_PDCH,		0xff,	104,	frame_pdch,		"PDCH" },
 };
 
 
@@ -1718,8 +1873,9 @@ int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,
 	if (!(l1h->config.slotmask & (1 << tn)))
 		return -ENOTSUP;
 
-	for (i = 0; ARRAY_SIZE(trx_sched_multiframes); i++) {
-		if (trx_sched_multiframes[i].pchan == pchan) {
+	for (i = 0; i < ARRAY_SIZE(trx_sched_multiframes); i++) {
+		if (trx_sched_multiframes[i].pchan == pchan
+		 && (trx_sched_multiframes[i].slotmask & (1 << tn))) {
 			l1h->mf_index[tn] = i;
 			l1h->mf_period[tn] = trx_sched_multiframes[i].period;
 			l1h->mf_frames[tn] = trx_sched_multiframes[i].frames;
@@ -1731,7 +1887,10 @@ int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,
 		}
 	}
 
-	return -EINVAL;
+	LOGP(DL1C, LOGL_NOTICE, "Failed to configuring multiframe "
+		"trx=%d ts=%d\n", l1h->trx->nr, tn);
+
+	return -ENOTSUP;
 }
 
 /* setting all logical channels given attributes to active/inactive */
@@ -1758,6 +1917,30 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 				l1h->chan_states[tn][i].ul_active = active;
 			}
 			l1h->chan_states[tn][i].sacch_lost = 0;
+			rc = 0;
+		}
+	}
+
+	return rc;
+}
+
+/* setting all logical channels given attributes to active/inactive */
+int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
+	uint8_t tch_mode)
+{
+	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
+	int i;
+	int rc = -EINVAL;
+
+	/* look for all matching chan_nr/link_id */
+	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
+		 && trx_chan_desc[i].link_id == 0x00) {
+			LOGP(DL1C, LOGL_NOTICE, "Set mode %u, %u on "
+				"%s of trx=%d ts=%d\n", rsl_cmode, tch_mode,
+				trx_chan_desc[i].name, l1h->trx->nr, tn);
+			l1h->chan_states[tn][i].rsl_cmode = rsl_cmode;
+			l1h->chan_states[tn][i].tch_mode = tch_mode;
 			rc = 0;
 		}
 	}
