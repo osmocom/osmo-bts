@@ -138,6 +138,7 @@ static const ubit_t sch_train[64] = {
  */
 
 struct trx_chan_desc {
+	int			pdch;
 	enum trx_chan_type	chan;
 	uint8_t			chan_nr;
 	uint8_t			link_id;
@@ -148,44 +149,44 @@ struct trx_chan_desc {
 	int			auto_active;
 };
 struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
-      {	TRXC_IDLE,	0,	0,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
-      {	TRXC_FCCH,	0,	0,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
-      {	TRXC_SCH,	0,	0,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
-      {	TRXC_BCCH,	0x80,	0x00,	"BCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-      {	TRXC_RACH,	0x88,	0x00,	"RACH",		NULL,		NULL,		rx_rach_fn,	1 },
-      {	TRXC_CCCH,	0x90,	0x00,	"CCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-      {	TRXC_TCHF,	0x08,	0x00,	"TCH/F",	rts_tch_fn,	tx_tchf_fn,	rx_tchf_fn,	0 },
-      {	TRXC_TCHH_0,	0x10,	0x00,	"TCH/H(0)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
-      {	TRXC_TCHH_1,	0x18,	0x00,	"TCH/H(1)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
-      {	TRXC_SDCCH4_0,	0x20,	0x00,	"SDCCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH4_1,	0x28,	0x00,	"SDCCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH4_2,	0x30,	0x00,	"SDCCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH4_3,	0x38,	0x00,	"SDCCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_0,	0x40,	0x00,	"SDCCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_1,	0x48,	0x00,	"SDCCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },    
-      {	TRXC_SDCCH8_2,	0x50,	0x00,	"SDCCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_3,	0x58,	0x00,	"SDCCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_4,	0x60,	0x00,	"SDCCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_5,	0x68,	0x00,	"SDCCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_6,	0x70,	0x00,	"SDCCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SDCCH8_7,	0x78,	0x00,	"SDCCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCHTF,	0x08,	0x40,	"SACCH/TF",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCHTH_0,	0x10,	0x40,	"SACCH/TH(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCHTH_1,	0x18,	0x40,	"SACCH/TH(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH4_0, 	0x20,	0x40,	"SACCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH4_1,	0x28,	0x40,	"SACCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH4_2,	0x30,	0x40,	"SACCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH4_3,	0x38,	0x40,	"SACCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_0,	0x40,	0x40,	"SACCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 }, 
-      {	TRXC_SACCH8_1,	0x48,	0x40,	"SACCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_2,	0x50,	0x40,	"SACCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_3,	0x58,	0x40,	"SACCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_4,	0x60,	0x40,	"SACCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_5,	0x68,	0x40,	"SACCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_6,	0x70,	0x40,	"SACCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_SACCH8_7,	0x68,	0x40,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	TRXC_PDTCH,	0x08,	0x00,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
-      {	TRXC_PTCCH,	0x08,	0x00,	"PTCCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
+      {	0,	TRXC_IDLE,	0,	0,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
+      {	0,	TRXC_FCCH,	0,	0,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
+      {	0,	TRXC_SCH,	0,	0,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
+      {	0,	TRXC_BCCH,	0x80,	0x00,	"BCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
+      {	0,	TRXC_RACH,	0x88,	0x00,	"RACH",		NULL,		NULL,		rx_rach_fn,	1 },
+      {	0,	TRXC_CCCH,	0x90,	0x00,	"CCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
+      {	0,	TRXC_TCHF,	0x08,	0x00,	"TCH/F",	rts_tch_fn,	tx_tchf_fn,	rx_tchf_fn,	0 },
+      {	0,	TRXC_TCHH_0,	0x10,	0x00,	"TCH/H(0)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
+      {	0,	TRXC_TCHH_1,	0x18,	0x00,	"TCH/H(1)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
+      {	0,	TRXC_SDCCH4_0,	0x20,	0x00,	"SDCCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH4_1,	0x28,	0x00,	"SDCCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH4_2,	0x30,	0x00,	"SDCCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH4_3,	0x38,	0x00,	"SDCCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_0,	0x40,	0x00,	"SDCCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_1,	0x48,	0x00,	"SDCCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },    
+      {	0,	TRXC_SDCCH8_2,	0x50,	0x00,	"SDCCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_3,	0x58,	0x00,	"SDCCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_4,	0x60,	0x00,	"SDCCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_5,	0x68,	0x00,	"SDCCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_6,	0x70,	0x00,	"SDCCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SDCCH8_7,	0x78,	0x00,	"SDCCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCHTF,	0x08,	0x40,	"SACCH/TF",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCHTH_0,	0x10,	0x40,	"SACCH/TH(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCHTH_1,	0x18,	0x40,	"SACCH/TH(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH4_0, 	0x20,	0x40,	"SACCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH4_1,	0x28,	0x40,	"SACCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH4_2,	0x30,	0x40,	"SACCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH4_3,	0x38,	0x40,	"SACCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_0,	0x40,	0x40,	"SACCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 }, 
+      {	0,	TRXC_SACCH8_1,	0x48,	0x40,	"SACCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_2,	0x50,	0x40,	"SACCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_3,	0x58,	0x40,	"SACCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_4,	0x60,	0x40,	"SACCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_5,	0x68,	0x40,	"SACCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_6,	0x70,	0x40,	"SACCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_7,	0x68,	0x40,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	1,	TRXC_PDTCH,	0x08,	0x00,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
+      {	1,	TRXC_PTCCH,	0x08,	0x00,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
 };
 
 
@@ -926,7 +927,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
-	/* store frame number of first burst */
+	/* clear burst & store frame number of first burst */
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
@@ -980,7 +981,6 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
-	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t l2[54+1];
 	int rc;
@@ -995,11 +995,10 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
-	/* store frame number of first burst */
+	/* clear burst */
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
-		*first_fn = fn;
 	}
 
 	/* update mask */
@@ -1018,29 +1017,26 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete PDTCH block at "
-			"fn=%u (%u/%u) for %s\n", *first_fn,
-			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete PDTCH block "
+			"ending at fn=%u (%u/%u) for %s\n", fn,
+			fn % l1h->mf_period[tn], l1h->mf_period[tn],
 			trx_chan_desc[chan].name);
-		/* we require first burst to have correct FN */
-		if (!(*mask & 0x1)) {
-			*mask = 0x0;
-			return 0;
-		}
 	}
 	*mask = 0x0;
 
 	/* decode */
-	rc = pdch_decode(l2 + 1, *bursts_p, NULL);
+	rc = pdtch_decode(l2 + 1, *bursts_p, NULL);
 	if (rc <= 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block at fn=%u for "
-			"%s\n", *first_fn, trx_chan_desc[chan].name);
-		l2[0] = 0; /* bad frame */
-		rc = 0;
-	} else
-		l2[0] = 7; /* valid frame */
+		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block ending at "
+			"fn=%u (%u/%u) for %s\n", fn, fn % l1h->mf_period[tn],
+			l1h->mf_period[tn], trx_chan_desc[chan].name);
+		return 0;
+	}
 
-	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, rc + 1);
+	l2[0] = 7; /* valid frame */
+
+	return compose_ph_data_ind(l1h, tn, (fn + 2715648 -3) % 2715648, chan,
+		l2, rc + 1);
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1927,6 +1923,11 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		/* skip if pchan type does not match pdch flag */
+		if ((trx_sched_multiframes[l1h->mf_index[tn]].pchan
+							== GSM_PCHAN_PDCH)
+						!= trx_chan_desc[i].pdch)
+			continue;
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == link_id) {
 			LOGP(DL1C, LOGL_NOTICE, "%s %s %s on trx=%d ts=%d\n",
