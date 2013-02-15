@@ -54,7 +54,7 @@ struct trx_chan_state {
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
-	uint8_t			sacch_lost;	/* SACCH loss detection */
+	uint8_t			lost;		/* (SACCH) loss detection */
 	uint8_t			rsl_cmode, tch_mode; /* mode for TCH channels */
 };
 
