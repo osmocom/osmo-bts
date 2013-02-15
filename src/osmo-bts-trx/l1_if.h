@@ -106,6 +106,7 @@ struct trx_l1h {
 	struct trx_config	config;
 
 	uint8_t			mf_index[8];	/* selected multiframe index */
+	uint32_t		mf_last_fn[8];	/* last received frame */
 	uint8_t			mf_period[8];	/* period of multiframe */
 	struct trx_sched_frame	*mf_frames[8];	/* pointer to frame layout */
 
