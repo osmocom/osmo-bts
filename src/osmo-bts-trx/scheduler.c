@@ -58,7 +58,7 @@ static struct timeval tranceiver_clock_tv;
 static struct osmo_timer_list tranceiver_clock_timer;
 
 /* clock advance for the tranceiver */
-uint32_t trx_clock_advance = 10;
+uint32_t trx_clock_advance = 20;
 
 /* advance RTS to give some time for data processing. (especially PCU) */
 uint32_t trx_rts_advance = 5; /* about 20ms */
