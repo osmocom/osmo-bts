@@ -523,7 +523,57 @@ found_msg:
 }
 
 static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len);
+	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len)
+{
+	struct msgb *msg;
+	struct osmo_phsap_prim *l1sap;
+
+	/* compose primitive */
+	msg = l1sap_msgb_alloc(l2_len);
+	l1sap = msgb_l1sap_prim(msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
+		PRIM_OP_INDICATION, msg);
+	l1sap->u.data.chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	l1sap->u.data.link_id = trx_chan_desc[chan].link_id;
+	l1sap->u.data.fn = fn;
+	msg->l2h = msgb_put(msg, l2_len);
+	if (l2_len)
+		memcpy(msg->l2h, l2, l2_len);
+
+	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
+		l1h->chan_states[tn][chan].lost = 0;
+
+	/* forward primitive */
+	l1sap_up(l1h->trx, l1sap);
+
+	return 0;
+}
+
+static int compose_tch_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len)
+{
+	struct msgb *msg;
+	struct osmo_phsap_prim *l1sap;
+
+	/* compose primitive */
+	msg = l1sap_msgb_alloc(tch_len);
+	l1sap = msgb_l1sap_prim(msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH,
+		PRIM_OP_INDICATION, msg);
+	l1sap->u.tch.chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	l1sap->u.tch.fn = fn;
+	msg->l2h = msgb_put(msg, tch_len);
+	if (tch_len)
+		memcpy(msg->l2h, tch, tch_len);
+
+	if (l1h->chan_states[tn][chan].lost)
+		l1h->chan_states[tn][chan].lost--;
+
+	/* forward primitive */
+	l1sap_up(l1h->trx, l1sap);
+
+	return 0;
+}
 
 static const ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
@@ -569,7 +619,7 @@ got_msg:
 	/* handle loss detection of sacch */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
-		if (++(l1h->chan_states[tn][chan].sacch_lost) > 1)
+		if (++(l1h->chan_states[tn][chan].lost) > 1)
 			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0);
 	}
 
@@ -686,6 +736,19 @@ static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
+	/* handle loss detection of received TCH frames */
+	if (++(l1h->chan_states[tn][chan].lost) > 5) {
+		uint8_t tch_data[33];
+
+		LOGP(DL1C, LOGL_NOTICE, "Missing TCH bursts detected, sending "
+			"BFI for %s\n", trx_chan_desc[chan].name);
+
+		/* indicate bad frame */
+		memset(tch_data, 0, sizeof(tch_data));
+		// FIXME length depends on codec
+		compose_tch_ind(l1h, tn, 0, chan, tch_data, 33);
+	}
+
 	/* get frame and unlink from queue */
 	msg1 = dequeue_prim(l1h, tn, fn, chan);
 	msg2 = dequeue_prim(l1h, tn, fn, chan);
@@ -753,6 +816,14 @@ static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (!msg_tch && !msg_facch) {
 		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
 			"trx=%u ts=%u at fn=%u to transmit.\n", 
+			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
+		goto send_burst;
+	}
+
+	/* bad frame */
+	if (msg_tch && !msg_facch && (msg_tch->l2h[0] >> 4) != 0xd) {
+		LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad frame' trx=%u "
+			"ts=%u at fn=%u to transmit.\n",
 			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
 		goto send_burst;
 	}
@@ -831,33 +902,6 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* forward primitive */
 	l1sap_up(l1h->trx, &l1sap);
-
-	return 0;
-}
-
-static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len)
-{
-	struct msgb *msg;
-	struct osmo_phsap_prim *l1sap;
-
-	/* compose primitive */
-	msg = l1sap_msgb_alloc(l2_len);
-	l1sap = msgb_l1sap_prim(msg);
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
-		PRIM_OP_INDICATION, msg);
-	l1sap->u.data.chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	l1sap->u.data.link_id = trx_chan_desc[chan].link_id;
-	l1sap->u.data.fn = fn;
-	msg->l2h = msgb_put(msg, l2_len);
-	if (l2_len)
-		memcpy(msg->l2h, l2, l2_len);
-
-	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
-		l1h->chan_states[tn][chan].sacch_lost = 0;
-
-	/* forward primitive */
-	l1sap_up(l1h->trx, l1sap);
 
 	return 0;
 }
@@ -999,29 +1043,6 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, rc + 1);
 }
 
-static int compose_tch_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len)
-{
-	struct msgb *msg;
-	struct osmo_phsap_prim *l1sap;
-
-	/* compose primitive */
-	msg = l1sap_msgb_alloc(tch_len);
-	l1sap = msgb_l1sap_prim(msg);
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH,
-		PRIM_OP_INDICATION, msg);
-	l1sap->u.tch.chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	l1sap->u.tch.fn = fn;
-	msg->l2h = msgb_put(msg, tch_len);
-	if (tch_len)
-		memcpy(msg->l2h, tch, tch_len);
-
-	/* forward primitive */
-	l1sap_up(l1h->trx, l1sap);
-
-	return 0;
-}
-
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
 {
@@ -1085,17 +1106,19 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame at fn=%u "
 			"for %s\n", *first_fn, trx_chan_desc[chan].name);
-		memset(tch_data, 0, sizeof(tch_data));
-		// FIXME length depends on codec
-		rc = 33;
+		goto bfi;
 	}
 
 	/* FACCH */
-	if (rc == 23)
-		return compose_ph_data_ind(l1h, tn, *first_fn, chan, tch_data,
-			23);
-
+	if (rc == 23) {
+		compose_ph_data_ind(l1h, tn, *first_fn, chan, tch_data, 23);
 bfi:
+		// FIXME length depends on codec
+		rc = 33;
+		/* indicate bad tch frame */
+		memset(tch_data, 0, sizeof(tch_data));
+	}
+
 	/* TCH or BFI */
 	return compose_tch_ind(l1h, tn, *first_fn, chan, tch_data, rc);
 }
@@ -1917,7 +1940,7 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 				l1h->chan_states[tn][i].ul_active = active;
 				l1h->chan_states[tn][i].ul_active = active;
 			}
-			l1h->chan_states[tn][i].sacch_lost = 0;
+			l1h->chan_states[tn][i].lost = 0;
 			rc = 0;
 		}
 	}
