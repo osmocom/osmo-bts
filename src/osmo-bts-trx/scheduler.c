@@ -207,6 +207,7 @@ int trx_sched_init(struct trx_l1h *l1h)
 
 	for (tn = 0; tn < 8; tn++) {
 		l1h->mf_index[tn] = 0;
+		l1h->mf_last_fn[tn] = 0;
 		INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			chan_state = &l1h->chan_states[tn][i];
@@ -1035,7 +1036,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	l2[0] = 7; /* valid frame */
 
-	return compose_ph_data_ind(l1h, tn, (fn + 2715648 -3) % 2715648, chan,
+	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
 		l2, rc + 1);
 }
 
@@ -1044,7 +1045,6 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
-	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t tch_data[33];
 	int rc;
@@ -1059,11 +1059,10 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			return -ENOMEM;
 	}
 
-	/* store frame number of first burst */
+	/* clear burst */
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
-		*first_fn = fn;
 	}
 
 	/* update mask */
@@ -1082,16 +1081,10 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame at "
-			"fn=%u (%u/%u) for %s\n", *first_fn,
-			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame ending "
+			"at fn=%u (%u/%u) for %s\n", fn,
+			fn % l1h->mf_period[tn], l1h->mf_period[tn],
 			trx_chan_desc[chan].name);
-		/* we require first burst to have correct FN */
-		if (!(*mask & 0x1)) {
-			*mask = 0x0;
-			rc = 0;
-			goto bfi;
-		}
 	}
 	*mask = 0x0;
 
@@ -1100,14 +1093,15 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	rc = tch_fr_decode(tch_data, *bursts_p, 1);
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame at fn=%u "
-			"for %s\n", *first_fn, trx_chan_desc[chan].name);
+		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
+			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
 		goto bfi;
 	}
 
 	/* FACCH */
 	if (rc == 23) {
-		compose_ph_data_ind(l1h, tn, *first_fn, chan, tch_data, 23);
+		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
+			tch_data, 23);
 bfi:
 		// FIXME length depends on codec
 		rc = 33;
@@ -1116,7 +1110,8 @@ bfi:
 	}
 
 	/* TCH or BFI */
-	return compose_tch_ind(l1h, tn, *first_fn, chan, tch_data, rc);
+	return compose_tch_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
+		tch_data, rc);
 }
 
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -2054,40 +2049,68 @@ if (0)		if (chan != TRXC_IDLE) // hack
 }
 
 /* process uplink burst */
-int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 	sbit_t *bits, int8_t rssi, float toa)
 {
 	struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_ul_func *func;
 	enum trx_chan_type chan;
-	int rc;
+	uint32_t fn, elapsed;
 
 	if (!l1h->mf_index[tn])
 		return -EINVAL;
 
-	/* get frame from multiframe */
-	period = l1h->mf_period[tn];
-	offset = fn % period;
-	frame = l1h->mf_frames[tn] + offset;
+	/* calculate how many frames have been elapsed */
+	elapsed = (current_fn + 2715648 - l1h->mf_last_fn[tn]) % 2715648;
 
-	chan = frame->ul_chan;
-	bid = frame->ul_bid;
-	func = trx_chan_desc[chan].ul_fn;
+	/* start counting from last fn + 1, but only if not too many fn have
+	 * been elapsed */
+	if (elapsed < 10)
+		fn = (l1h->mf_last_fn[tn] + 1) % 2715648;
+	else
+		fn = current_fn;
 
-	/* check if channel is active */
-	if (!trx_chan_desc[chan].auto_active
-	 && !l1h->chan_states[tn][chan].ul_active)
-	 	return -EINVAL;
+	while (42) {
+		/* get frame from multiframe */
+		period = l1h->mf_period[tn];
+		offset = fn % period;
+		frame = l1h->mf_frames[tn] + offset;
 
-	/* omit bursts which have no handler, like IDLE bursts */
-	if (!func)
-		return 0;
+		chan = frame->ul_chan;
+		bid = frame->ul_bid;
+		func = trx_chan_desc[chan].ul_fn;
 
-	/* put burst to function */
-	rc = func(l1h, tn, fn, chan, bid, bits, toa);
+		/* check if channel is active */
+		if (!trx_chan_desc[chan].auto_active
+		 && !l1h->chan_states[tn][chan].ul_active)
+			goto next_frame;
 
-	return rc;
+		/* omit bursts which have no handler, like IDLE bursts */
+		if (!func)
+			goto next_frame;
+
+		/* put burst to function */
+		if (fn == current_fn)
+			func(l1h, tn, fn, chan, bid, bits, toa);
+		else {
+			sbit_t spare[148];
+
+			memset(spare, 0, 148);
+			func(l1h, tn, fn, chan, bid, spare, toa);
+		}
+
+next_frame:
+		/* reached current fn */
+		if (fn == current_fn)
+			break;
+
+		fn = (fn + 1) % 2715648;
+	}
+
+	l1h->mf_last_fn[tn] = fn;
+
+	return 0;
 }
 
 /* schedule all frames of all TRX for given FN */
