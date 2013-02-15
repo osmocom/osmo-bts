@@ -30,6 +30,7 @@
 #include "../../src/osmo-bts-trx/rach.h"
 #include "../../src/osmo-bts-trx/sch.h"
 #include "../../src/osmo-bts-trx/tch_fr.h"
+#include "../../src/osmo-bts-trx/pxxch.h"
 
 
 #define ASSERT_TRUE(rc) \
@@ -257,6 +258,71 @@ static void test_fr(uint8_t *speech, int len)
 	printd("\n");
 }
 
+static void test_pdtch(uint8_t *l2, int len)
+{
+	uint8_t result[len];
+	ubit_t bursts_u[116 * 4];
+	sbit_t bursts_s[116 * 4];
+	int rc;
+
+	/* zero the not coded tail bits */
+	switch (len) {
+	case 34:
+	case 54:
+		l2[len - 1] &= 0x7f;
+		result[len - 1] &= 0x7f;
+		break;
+	case 40:
+		l2[len - 1] &= 0x07;
+		result[len - 1] &= 0x07;
+		break;
+	}
+
+	printd("Encoding: %s\n", osmo_hexdump(l2, len));
+
+	/* encode */
+	pdtch_encode(bursts_u, l2, len);
+
+	printd("U-Bits:\n");
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
+		bursts_u[57], bursts_u[58]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 116, 57),
+		bursts_u[57 + 116], bursts_u[58 + 116]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 116, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 232, 57),
+		bursts_u[57 + 232], bursts_u[58 + 232]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 232, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 348, 57),
+		bursts_u[57 + 348], bursts_u[58 + 348]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 348, 57));
+	ubits2sbits(bursts_u, bursts_s, 116 * 4);
+	printd("S-Bits:\n");
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s, 57),
+		(uint8_t)bursts_s[57], (uint8_t)bursts_s[58]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 116, 57),
+		(uint8_t)bursts_s[57 + 116], (uint8_t)bursts_s[58 + 116]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 116, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 232, 57),
+		(uint8_t)bursts_s[57 + 232], (uint8_t)bursts_s[58 + 232]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 232, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 348, 57),
+		(uint8_t)bursts_s[57 + 348], (uint8_t)bursts_s[58 + 348]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 348, 57));
+
+	/* decode */
+	rc = pdtch_decode(result, bursts_s, NULL);
+
+	ASSERT_TRUE(rc == len);
+
+	printd("Decoded: %s\n", osmo_hexdump(result, len));
+
+	ASSERT_TRUE(!memcmp(l2, result, len));
+
+	printd("\n");
+}
+
 uint8_t test_l2[][23] = {
 	/* dummy frame */
       {	0x03, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -266,6 +332,21 @@ uint8_t test_l2[][23] = {
       { 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
 	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
 	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0x59, 0xa8 },
+	/* jolly frame */
+      {	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+	0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+	0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 },
+};
+
+uint8_t test_macblock[][54] = {
+	/* random frame */
+      { 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
+	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
+	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0x59, 0xa8, 0x42,
+	0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
+	0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
+	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
+	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0xa8 },
 	/* jolly frame */
       {	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 	0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -296,6 +377,13 @@ int main(int argc, char **argv)
 	test_fr(test_speech, sizeof(test_speech));
 	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
 		test_fr(test_l2[i], sizeof(test_l2[0]));
+
+	for (i = 0; i < sizeof(test_macblock) / sizeof(test_macblock[0]); i++) {
+		test_pdtch(test_macblock[i], 23);
+		test_pdtch(test_macblock[i], 34);
+		test_pdtch(test_macblock[i], 40);
+		test_pdtch(test_macblock[i], 54);
+	}
 
 	printf("Success\n");
 
