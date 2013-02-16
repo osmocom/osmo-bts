@@ -7,6 +7,7 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/conv.h>
 #include <osmocom/core/crcgen.h>
+#include <osmocom/codec/codec.h>
 
 #include "gsm0503_conv.h"
 #include "gsm0503_parity.h"
@@ -302,12 +303,24 @@ int pdtch_encode(ubit_t *bursts, uint8_t *l2_data, uint8_t l2_len)
  * GSM TCH/F FR transcoding
  */
 
-static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
+static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits, int net_order)
 {
 	int i, j, k, l, o;
 
 	tch_data[0] = 0xd << 4;
 	memset(tch_data + 1, 0, 32);
+
+	if (net_order) {
+		i = 0; /* counts bits */
+		j = 4; /* counts output bits */
+		while (i < 260) {
+			tch_data[j>>3] |= (b_bits[i] << (7-(j&7)));
+			i++;
+			j++;
+		}
+		return;
+	}
+
 	/* reassemble d-bits */
 	i = 0; /* counts bits */
 	j = 4; /* counts output bits */
@@ -327,9 +340,20 @@ static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
 	/* rearrange according to Table 2 of TS 05.03 */
 }
 
-static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
+static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data, int net_order)
 {
 	int i, j, k, l, o;
+
+	if (net_order) {
+		i = 0; /* counts bits */
+		j = 4; /* counts output bits */
+		while (i < 260) {
+			b_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
+			i++;
+			j++;
+		}
+		return;
+	}
 
 	i = 0; /* counts bits */
 	j = 4; /* counts input bits */
@@ -353,7 +377,7 @@ static void tch_fr_d_to_b(ubit_t *b_bits, ubit_t *d_bits)
 	int i;
 
 	for (i = 0; i < 260; i++)
-		b_bits[gsm0503_d_to_b_index[i]] = d_bits[i];
+		b_bits[gsm610_bitorder[i]] = d_bits[i];
 }
 
 static void tch_fr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
@@ -361,7 +385,7 @@ static void tch_fr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
 	int i;
 
 	for (i = 0; i < 260; i++)
-		d_bits[i] = b_bits[gsm0503_d_to_b_index[i]];
+		d_bits[i] = b_bits[gsm610_bitorder[i]];
 }
 
 static void tch_fr_unreorder(ubit_t *d, ubit_t *p, ubit_t *u)
@@ -414,12 +438,9 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
 		if (rv)
 			return -1;
 
-		if (net_order) {
-			tch_fr_d_to_b(b, d);
+		tch_fr_d_to_b(b, d);
 
-			tch_fr_reassemble(tch_data, b);
-		} else
-			tch_fr_d_to_b(tch_data, d);
+		tch_fr_reassemble(tch_data, b, net_order);
 
 		len = 33;
 	} else {
@@ -441,12 +462,9 @@ int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 
 	switch (len) {
 	case 33: /* TCH FR */
-		if (net_order) {
-			tch_fr_disassemble(b, tch_data);
+		tch_fr_disassemble(b, tch_data, net_order);
 
-			tch_fr_b_to_d(d, b);
-		} else
-			tch_fr_b_to_d(d, tch_data);
+		tch_fr_b_to_d(d, b);
 
 		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d, 50, p);
 
