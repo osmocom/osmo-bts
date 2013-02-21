@@ -305,7 +305,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		else
 			rsp_len = strlen(buf) - 4;
 
-		LOGP(DTRX, LOGL_DEBUG, "Response message: '%s'\n", buf);
+		LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
 		/* abort timer and send next message, if any */
 		if (osmo_timer_pending(&l1h->trx_ctrl_timer))
@@ -323,10 +323,10 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		/* check if respose matches command */
 		if (rsp_len != tcm->cmd_len) {
 			notmatch:
-			LOGP(DTRX, LOGL_NOTICE, "Response message '%s' does "
-				"not match command message '%s'\n", buf,
-				tcm->cmd);
-			return -EINVAL;
+			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+				"Response message '%s' does not match command "
+				"message '%s'\n", buf, tcm->cmd);
+			goto rsp_error;
 		}
 		if (!!strncmp(buf + 4, tcm->cmd + 4, rsp_len))
 			goto notmatch;
@@ -337,6 +337,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 				"Tranceiver rejected TRX command with "
 				"response: '%s'\n", buf);
+rsp_error:
 			if (tcm->critical) {
 				bts_shutdown(l1h->trx->bts, "SIGINT");
 				/* keep tcm list, so process is stopped */
@@ -403,7 +404,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EINVAL;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f ",
+	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f\n",
 		tn, fn, rssi, toa);
 
 	trx_sched_ul_burst(l1h, tn, fn, bits, rssi, toa);
