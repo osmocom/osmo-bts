@@ -357,9 +357,29 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 
 /* enable ciphering */
 static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	int downlink)
+	uint8_t chan_nr, int downlink)
 {
-	// FIXME
+	/* ciphering already enabled in both directions */
+	if (lchan->ciph_state == LCHAN_CIPH_TXRX_CONF)
+		return -EINVAL;
+
+	if (!downlink) {
+		/* set uplink */
+		trx_sched_set_cipher(l1h, chan_nr, 0, lchan->encr.alg_id - 1,
+			lchan->encr.key, lchan->encr.key_len);
+		lchan->ciph_state = LCHAN_CIPH_RX_CONF;
+	} else {
+		/* set downlink and also set uplink, if not already */
+		if (lchan->ciph_state != LCHAN_CIPH_RX_CONF) {
+			trx_sched_set_cipher(l1h, chan_nr, 0,
+				lchan->encr.alg_id - 1, lchan->encr.key,
+				lchan->encr.key_len);
+		}
+		trx_sched_set_cipher(l1h, chan_nr, 1, lchan->encr.alg_id - 1,
+			lchan->encr.key, lchan->encr.key_len);
+		lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+	}
+
 	return 0;
 }
 
@@ -423,14 +443,10 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			tn = L1SAP_CHAN2TS(chan_nr);
 			ss = l1sap_chan2ss(chan_nr);
 			lchan = &trx->ts[tn].lchan[ss];
-			if (l1sap->u.info.u.ciph_req.downlink) {
- 				l1if_set_ciphering(l1h, lchan, 1);
-				lchan->ciph_state = LCHAN_CIPH_RX_REQ;
-			}
-			if (l1sap->u.info.u.ciph_req.uplink) {
-				l1if_set_ciphering(l1h, lchan, 0);
-				lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
-			}
+			if (l1sap->u.info.u.ciph_req.uplink)
+				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
+			if (l1sap->u.info.u.ciph_req.downlink)
+				l1if_set_ciphering(l1h, lchan, chan_nr, 1);
 			break;
 		case PRIM_INFO_ACTIVATE:
 		case PRIM_INFO_DEACTIVATE:

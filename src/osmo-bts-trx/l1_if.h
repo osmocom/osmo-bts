@@ -56,6 +56,12 @@ struct trx_chan_state {
 	uint8_t			ul_mask;	/* mask of received bursts */
 	uint8_t			lost;		/* (SACCH) loss detection */
 	uint8_t			rsl_cmode, tch_mode; /* mode for TCH channels */
+	int			ul_encr_algo;	/* A5/x encry algo downlink */
+	int			dl_encr_algo;	/* A5/x encry algo uplink */
+	int			ul_encr_key_len;
+	int			dl_encr_key_len;
+	uint8_t			ul_encr_key[8];
+	uint8_t			dl_encr_key[8];
 };
 
 struct trx_config {

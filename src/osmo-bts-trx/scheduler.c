@@ -27,6 +27,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/gsm/a5.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -61,7 +62,7 @@ uint32_t trx_rts_advance = 5; /* about 20ms */
 
 typedef int trx_sched_rts_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
-typedef const ubit_t *trx_sched_dl_func(struct trx_l1h *l1h, uint8_t tn,
+typedef ubit_t *trx_sched_dl_func(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn, enum trx_chan_type chan, uint8_t bid);
 typedef int trx_sched_ul_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
@@ -70,19 +71,19 @@ static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
 static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
-static const ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
-static const ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
@@ -95,7 +96,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
 
-static const ubit_t dummy_burst[148] = {
+static ubit_t dummy_burst[148] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
 	0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,0,
@@ -105,7 +106,7 @@ static const ubit_t dummy_burst[148] = {
 	0,0,0,
 };
 
-static const ubit_t fcch_burst[148] = {
+static ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -394,7 +395,7 @@ static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
  */
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-static const ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
@@ -403,7 +404,7 @@ static const ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return NULL;
 }
 
-static const ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
@@ -412,7 +413,7 @@ static const ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return fcch_burst;
 }
 
-static const ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	static ubit_t bits[148], burst[78];
@@ -573,7 +574,7 @@ static int compose_tch_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return 0;
 }
 
-static const ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
@@ -649,7 +650,7 @@ send_burst:
 	return bits;
 }
 
-static const ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
@@ -719,7 +720,7 @@ send_burst:
 	return bits;
 }
 
-static const ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
@@ -854,7 +855,7 @@ send_burst:
 	return bits;
 }
 
-static const ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
 	// FIXME
@@ -939,8 +940,6 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	memcpy(burst, bits + 3, 58);
 	memcpy(burst + 58, bits + 87, 58);
 
-	// FIXME: decrypt burst
-
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
@@ -1006,8 +1005,6 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	memcpy(burst, bits + 3, 58);
 	memcpy(burst + 58, bits + 87, 58);
 
-	// FIXME: decrypt burst
-
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
@@ -1068,8 +1065,6 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	burst = *bursts_p + bid * 116 + 464;
 	memcpy(burst, bits + 3, 58);
 	memcpy(burst + 58, bits + 87, 58);
-
-	// FIXME: decrypt burst
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
@@ -1964,6 +1959,48 @@ int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 	return rc;
 }
 
+/* setting cipher on logical channels */
+int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
+	int algo, uint8_t *key, int key_len)
+{
+	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
+	int i;
+	int rc = -EINVAL;
+	struct trx_chan_state *chan_state;
+
+	if (algo < 0 || key_len > 8 || (algo && key_len != 8)) {
+		LOGP(DL1C, LOGL_ERROR, "Algo A5/%d not supported with given "
+			"key len=%d\n", algo, key_len);
+		return -ENOTSUP;
+	}
+
+	/* look for all matching chan_nr */
+	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		/* skip if pchan type */
+		if (trx_chan_desc[i].pdch)
+			continue;
+		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)) {
+			chan_state = &l1h->chan_states[tn][i];
+			LOGP(DL1C, LOGL_NOTICE, "Set a5/%d %s for %s on trx=%d "
+				"ts=%d\n", algo,
+				(downlink) ? "downlink" : "uplink",
+				trx_chan_desc[i].name, l1h->trx->nr, tn);
+			if (downlink) {
+				chan_state->dl_encr_algo = algo;
+				memcpy(chan_state->dl_encr_key, key, key_len);
+				chan_state->dl_encr_key_len = key_len;
+			} else {
+				chan_state->ul_encr_algo = algo;
+				memcpy(chan_state->ul_encr_key, key, key_len);
+				chan_state->ul_encr_key_len = key_len;
+			}
+			rc = 0;
+		}
+	}
+
+	return rc;
+}
+
 /* process ready-to-send */
 static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 {
@@ -2009,7 +2046,7 @@ static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 	uint8_t offset, period, bid;
 	trx_sched_dl_func *func;
 	enum trx_chan_type chan;
-	const ubit_t *bits = NULL;
+	ubit_t *bits = NULL;
 
 	if (!l1h->mf_index[tn])
 		goto no_data;
@@ -2030,6 +2067,19 @@ static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 
 	/* get burst from function */
 	bits = func(l1h, tn, fn, chan, bid);
+
+	/* encrypt */
+	if (bits && l1h->chan_states[tn][chan].dl_encr_algo) {
+		ubit_t ks[114];
+		int i;
+
+		osmo_a5(l1h->chan_states[tn][chan].dl_encr_algo,
+			l1h->chan_states[tn][chan].dl_encr_key, fn, ks, NULL);
+		for (i = 0; i < 57; i++) {
+			bits[i + 3] ^= ks[i];
+			bits[i + 88] ^= ks[i + 57];
+		}
+	}
 
 no_data:
 	/* in case of C0, we need a dummy burst to maintain RF power */
@@ -2087,9 +2137,25 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 			goto next_frame;
 
 		/* put burst to function */
-		if (fn == current_fn)
+		if (fn == current_fn) {
+			/* decrypt */
+			if (bits && l1h->chan_states[tn][chan].ul_encr_algo) {
+				ubit_t ks[114];
+				int i;
+
+				osmo_a5(l1h->chan_states[tn][chan].ul_encr_algo,
+					l1h->chan_states[tn][chan].ul_encr_key,
+					fn, NULL, ks);
+				for (i = 0; i < 57; i++) {
+					if (ks[i])
+						bits[i + 3] = - bits[i + 3];
+					if (ks[i + 57])
+						bits[i + 88] = - bits[i + 88];
+				}
+			}
+
 			func(l1h, tn, fn, chan, bid, bits, toa);
-		else {
+		} else {
 			sbit_t spare[148];
 
 			memset(spare, 0, 148);
