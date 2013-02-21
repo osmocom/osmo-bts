@@ -437,7 +437,7 @@ static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		((t.t1 & 0x001) << 7) |
 		((t.t2 &  0x1f) << 2) |
 		((t3p  &   0x6) >> 1);
-	sb_info[2] = 
+	sb_info[3] =
 		 (t3p  &   0x1);
 
 	/* encode bursts */
