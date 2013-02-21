@@ -30,6 +30,10 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 	uint8_t tch_mode);
 
+/* setting cipher on logical channels */
+int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
+        int algo, uint8_t *key, int key_len);
+
 /* close all logical channels and reset timeslots */
 void trx_sched_reset(struct trx_l1h *l1h);
 

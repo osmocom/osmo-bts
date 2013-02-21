@@ -316,7 +316,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	btsb = bts_role_bts(bts);
-	btsb->support.ciphers = 0; // CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
 
         if (gsmtap_ip) {
 		gsmtap = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
