@@ -212,6 +212,7 @@ int l1if_provision_tranceiver(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
+	uint8_t tn;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		l1h = trx_l1h_hdl(trx);
@@ -222,6 +223,8 @@ int l1if_provision_tranceiver(struct gsm_bts *bts)
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
+		for (tn = 0; tn < 8; tn++)
+			l1h->config.slottype_sent[tn] = 0;
 		l1if_provision_tranceiver_trx(l1h);
 	}
 	return 0;

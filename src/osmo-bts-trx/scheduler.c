@@ -2252,6 +2252,8 @@ no_clock:
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			trx_if_flush(trx_l1h_hdl(trx));
 			trx_sched_reset(trx_l1h_hdl(trx));
+			if (trx->nr == 0)
+				trx_if_cmd_poweroff(trx_l1h_hdl(trx));
 		}
 
 		/* tell BSC */
@@ -2295,6 +2297,9 @@ int trx_sched_clock(uint32_t fn)
 	int32_t elapsed;
 	int32_t elapsed_fn;
 
+	if (quit)
+		return 0;
+
 	/* reset lost counter */
 	tranceiver_lost = 0;
 
@@ -2304,25 +2309,27 @@ int trx_sched_clock(uint32_t fn)
 	if (!tranceiver_available) {
 		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n",
 			fn);
-new_clock:
-		tranceiver_last_fn = fn;
-		trx_sched_fn(tranceiver_last_fn);
 
-		/* schedule first FN clock */
-		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
 		tranceiver_available = 1;
-		memset(&tranceiver_clock_timer, 0,
-			sizeof(tranceiver_clock_timer));
-		tranceiver_clock_timer.cb = trx_ctrl_timer_cb;
-	        tranceiver_clock_timer.data = bts;
-		osmo_timer_schedule(&tranceiver_clock_timer, 0,
-			FRAME_DURATION_uS);
 
 		/* start provisioning tranceiver */
 		l1if_provision_tranceiver(bts);
 
 		/* tell BSC */
 		check_tranceiver_availability(bts, 1);
+
+new_clock:
+		tranceiver_last_fn = fn;
+		trx_sched_fn(tranceiver_last_fn);
+
+		/* schedule first FN clock */
+		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
+		memset(&tranceiver_clock_timer, 0,
+			sizeof(tranceiver_clock_timer));
+		tranceiver_clock_timer.cb = trx_ctrl_timer_cb;
+	        tranceiver_clock_timer.data = bts;
+		osmo_timer_schedule(&tranceiver_clock_timer, 0,
+			FRAME_DURATION_uS);
 
 		return 0;
 	}
