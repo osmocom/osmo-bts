@@ -41,6 +41,9 @@
 #include "trx_if.h"
 #include "scheduler.h"
 
+/* enable to print RSSI level graph */
+//#define TOA_RSSI_DEBUG
+
 int tranceiver_available = 0;
 const char *tranceiver_ip = "127.0.0.1";
 
@@ -384,7 +387,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	}
 	tn = buf[0];
 	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
-	rssi = (int8_t)buf[5];
+	rssi = -(int8_t)buf[5];
 	toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
 
 	/* copy and convert bits {254..0} to sbits {-127..127} */
@@ -406,6 +409,15 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f\n",
 		tn, fn, rssi, toa);
+
+#ifdef TOA_RSSI_DEBUG
+	char deb[128];
+
+	sprintf(deb, "|                                0              "
+		"                 | rssi=%4d  toa=%4.2f fn=%u", rssi, toa, fn);
+	deb[1 + (128 + rssi) / 4] = '*';
+	fprintf(stderr, "%s\n", deb);
+#endif
 
 	trx_sched_ul_burst(l1h, tn, fn, bits, rssi, toa);
 

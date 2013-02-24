@@ -62,6 +62,15 @@ struct trx_chan_state {
 	int			dl_encr_key_len;
 	uint8_t			ul_encr_key[8];
 	uint8_t			dl_encr_key[8];
+	struct {
+		uint8_t		clock;		/* cyclic clock counter */
+		int8_t		rssi[32];	/* last RSSI values */
+		int		rssi_count;	/* received RSSI values */
+		int		rssi_valid_count; /* number of stored value */
+		int		rssi_got_burst; /* any burst received so far */
+		float		toa_sum;	/* sum of TOA values */
+		int		toa_num;	/* number of TOA value */
+	} meas;
 };
 
 struct trx_config {
