@@ -38,6 +38,7 @@
 #include "scheduler.h"
 #include "gsm0503_coding.h"
 #include "trx_if.h"
+#include "loops.h"
 
 /* Enable this to multiply TOA of RACH by 10.
  * This usefull to check tenth of timing advances with RSSI test tool.
@@ -65,7 +66,8 @@ typedef int trx_sched_rts_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 typedef ubit_t *trx_sched_dl_func(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn, enum trx_chan_type chan, uint8_t bid);
 typedef int trx_sched_ul_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 
 static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
@@ -86,15 +88,20 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa);
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa);
 
 static ubit_t dummy_burst[148] = {
 	0,0,0,
@@ -323,6 +330,10 @@ static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_INFO, "PH-RTS.ind: chan=%s chan_nr=0x%02x "
 		"link_id=0x%02x fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, link_id, fn, tn, l1h->trx->nr);
+
+	/* send clock information to loops process */
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		trx_loop_sacch_clock(l1h, chan_nr, &l1h->chan_states[tn][chan]);
 
 	/* generate prim */
 	msg = l1sap_msgb_alloc(200);
@@ -869,7 +880,8 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
  */
 
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa)
 {
 	struct osmo_phsap_prim l1sap;
 	uint8_t ra;
@@ -906,7 +918,8 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -940,6 +953,12 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	memcpy(burst, bits + 3, 58);
 	memcpy(burst + 58, bits + 87, 58);
 
+	/* send burst information to loops process */
+	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
+		trx_loop_input(l1h, trx_chan_desc[chan].chan_nr | tn,
+			chan_state, rssi, toa);
+	}
+
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
@@ -950,6 +969,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			"fn=%u (%u/%u) for %s\n", *first_fn,
 			(*first_fn) % l1h->mf_period[tn], l1h->mf_period[tn],
 			trx_chan_desc[chan].name);
+
 		/* we require first burst to have correct FN */
 		if (!(*mask & 0x1)) {
 			*mask = 0x0;
@@ -973,7 +993,8 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -1034,7 +1055,8 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -1106,7 +1128,8 @@ bfi:
 }
 
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, float toa)
+	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
+	float toa)
 {
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H Received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -1906,6 +1929,7 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	int i;
 	int rc = -EINVAL;
+	struct trx_chan_state *chan_state;
 
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
@@ -1916,18 +1940,23 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 			continue;
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == link_id) {
+			chan_state = &l1h->chan_states[tn][i];
 			LOGP(DL1C, LOGL_NOTICE, "%s %s %s on trx=%d ts=%d\n",
 				(active) ? "Activating" : "Deactivating",
 				(downlink) ? "downlink" : "uplink",
 				trx_chan_desc[i].name, l1h->trx->nr, tn);
 		 	if (downlink) {
-				l1h->chan_states[tn][i].dl_active = active;
-				l1h->chan_states[tn][i].dl_active = active;
+				chan_state->dl_active = active;
+				chan_state->dl_active = active;
 			} else {
-				l1h->chan_states[tn][i].ul_active = active;
-				l1h->chan_states[tn][i].ul_active = active;
+				chan_state->ul_active = active;
+				chan_state->ul_active = active;
 			}
-			l1h->chan_states[tn][i].lost = 0;
+			chan_state->lost = 0;
+			if (L1SAP_IS_LINK_SACCH(link_id)) {
+				memset(&chan_state->meas, 0,
+					sizeof(chan_state->meas));
+			}
 			rc = 0;
 		}
 	}
@@ -2154,12 +2183,12 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 				}
 			}
 
-			func(l1h, tn, fn, chan, bid, bits, toa);
-		} else {
+			func(l1h, tn, fn, chan, bid, bits, rssi, toa);
+		} else if (chan != TRXC_RACH) {
 			sbit_t spare[148];
 
 			memset(spare, 0, 148);
-			func(l1h, tn, fn, chan, bid, spare, toa);
+			func(l1h, tn, fn, chan, bid, spare, -128, 0);
 		}
 
 next_frame:
