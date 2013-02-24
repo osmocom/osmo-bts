@@ -26,11 +26,7 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/utils.h>
 
-#include "../../src/osmo-bts-trx/xcch.h"
-#include "../../src/osmo-bts-trx/rach.h"
-#include "../../src/osmo-bts-trx/sch.h"
-#include "../../src/osmo-bts-trx/tch_fr.h"
-#include "../../src/osmo-bts-trx/pxxch.h"
+#include "../../src/osmo-bts-trx/gsm0503_coding.h"
 
 
 #define ASSERT_TRUE(rc) \
