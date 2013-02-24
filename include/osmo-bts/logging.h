@@ -17,6 +17,7 @@ enum {
 	DPCU,
 	DHO,
 	DTRX,
+	DLOOP,
 	DABIS,
 	DRTP,
 	DSUM,

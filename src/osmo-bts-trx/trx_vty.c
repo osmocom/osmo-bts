@@ -43,6 +43,7 @@
 #include "l1_if.h"
 #include "scheduler.h"
 #include "trx_if.h"
+#include "loops.h"
 
 static struct gsm_bts *vty_bts;
 
@@ -122,6 +123,43 @@ DEFUN(cfg_bts_fn_advance, cfg_bts_fn_advance_cmd,
 	"Advance in frames\n")
 {
 	trx_clock_advance = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ms_power_loop, cfg_bts_ms_power_loop_cmd,
+	"ms-power-loop <-127-127>",
+	"Enable MS power control loop\nTarget RSSI value (tranceiver specific, "
+	"should be 6dB or more above noise floor)\n")
+{
+	trx_ms_power_loop = 1;
+	trx_target_rssi = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_ms_power_loop, cfg_bts_no_ms_power_loop_cmd,
+	"no ms-power-loop",
+	NO_STR "Disable MS power control loop\n")
+{
+	trx_ms_power_loop = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_timing_advance_loop, cfg_bts_timing_advance_loop_cmd,
+	"timing-advance-loop",
+	"Enable timing advance control loop\n")
+{
+	trx_ta_loop = 1;
+
+	return CMD_SUCCESS;
+}
+DEFUN(cfg_bts_no_timing_advance_loop, cfg_bts_no_timing_advance_loop_cmd,
+	"no timing-advance-loop",
+	NO_STR "Disable timing advance control loop\n")
+{
+	trx_ta_loop = 0;
 
 	return CMD_SUCCESS;
 }
@@ -236,6 +274,14 @@ DEFUN(cfg_trx_no_maxdly, cfg_trx_no_maxdly_cmd,
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	vty_out(vty, " fn-advance %d%s", trx_clock_advance, VTY_NEWLINE);
+
+	if (trx_ms_power_loop)
+		vty_out(vty, " ms-power-loop %d%s", trx_target_rssi,
+			VTY_NEWLINE);
+	else
+		vty_out(vty, " no ms-power-loop%s", VTY_NEWLINE);
+	vty_out(vty, " %stiming-advance-loop%s", (trx_ta_loop) ? "":"no ",
+		VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
@@ -268,6 +314,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&show_tranceiver_cmd);
 
 	install_element(BTS_NODE, &cfg_bts_fn_advance_cmd);
+	install_element(BTS_NODE, &cfg_bts_ms_power_loop_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_ms_power_loop_cmd);
+	install_element(BTS_NODE, &cfg_bts_timing_advance_loop_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_timing_advance_loop_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_rxgain_cmd);
 	install_element(TRX_NODE, &cfg_trx_power_cmd);
