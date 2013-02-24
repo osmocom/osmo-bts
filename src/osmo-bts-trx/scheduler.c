@@ -35,11 +35,7 @@
 
 #include "l1_if.h"
 #include "scheduler.h"
-#include "xcch.h"
-#include "tch_fr.h"
-#include "rach.h"
-#include "sch.h"
-#include "pxxch.h"
+#include "gsm0503_coding.h"
 #include "trx_if.h"
 
 /* Enable this to multiply TOA of RACH by 10.
