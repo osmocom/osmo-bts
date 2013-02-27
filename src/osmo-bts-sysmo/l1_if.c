@@ -181,9 +181,8 @@ static void l1if_req_timeout(void *data)
 	exit(23);
 }
 
-/* send a request primitive to the L1 and schedule completion call-back */
-int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   int is_system_prim, l1if_compl_cb *cb, void *data)
+static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+		   int is_system_prim, l1if_compl_cb *cb)
 {
 	struct wait_l1_conf *wlc;
 	struct osmo_wqueue *wqueue;
@@ -192,7 +191,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	/* allocate new wsc and store reference to mutex and conf_id */
 	wlc = talloc_zero(fl1h, struct wait_l1_conf);
 	wlc->cb = cb;
-	wlc->cb_data = data;
+	wlc->cb_data = NULL;
 
 	/* Make sure we actually have received a REQUEST type primitive */
 	if (is_system_prim == 0) {
@@ -241,10 +240,17 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	return 0;
 }
 
-int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   l1if_compl_cb *cb, void *data)
+/* send a request primitive to the L1 and schedule completion call-back */
+int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+		   l1if_compl_cb *cb)
 {
-	return l1if_req_compl(fl1h, msg, 0, cb, data);
+	return _l1if_req_compl(fl1h, msg, 1, cb);
+}
+
+int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+		   l1if_compl_cb *cb)
+{
+	return _l1if_req_compl(fl1h, msg, 0, cb);
 }
 
 /* allocate a msgb containing a GsmL1_Prim_t */
@@ -875,9 +881,11 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim == 0 && l1p->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(msg, wlc->cb_data);
-			else
+				rc = wlc->cb(fl1h->priv, msg);
+			else {
 				rc = 0;
+				msgb_free(msg);
+			}
 			release_wlc(wlc);
 			return rc;
 		}
@@ -903,9 +911,11 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(msg, wlc->cb_data);
-			else
+				rc = wlc->cb(fl1h->priv, msg);
+			else {
 				rc = 0;
+				msgb_free(msg);
+			}
 			release_wlc(wlc);
 			return rc;
 		}
@@ -930,11 +940,9 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 }
 #endif
 
-static int activate_rf_compl_cb(struct msgb *resp, void *data)
+static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
@@ -1014,16 +1022,15 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
 
-	return l1if_req_compl(hdl, msg, 1, activate_rf_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, activate_rf_compl_cb);
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
-static int info_compl_cb(struct msgb *resp, void *data)
+static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
 	fl1h->hw_info.dsp_version[1] = sic->dspVersion.minor;
@@ -1067,13 +1074,12 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 
 	sysp->id = SuperFemto_PrimId_SystemInfoReq;
 
-	return l1if_req_compl(hdl, msg, 1, info_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, info_compl_cb);
 }
 
-static int reset_compl_cb(struct msgb *resp, void *data)
+static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
-	struct femtol1_hdl *fl1h = data;
-	struct gsm_bts_trx *trx = fl1h->priv;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;
 
@@ -1116,7 +1122,7 @@ int l1if_reset(struct femtol1_hdl *hdl)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
 
-	return l1if_req_compl(hdl, msg, 1, reset_compl_cb, hdl);
+	return l1if_req_compl(hdl, msg, reset_compl_cb);
 }
 
 /* set the trace flags within the DSP */
