@@ -500,9 +500,10 @@ free_msg:
 			goto wrong_type;
 		}
 		if (prim_fn > 20) {
-			LOGP(DL1C, LOGL_ERROR, "Prim for trx=%u ts=%u at fn=%u "
-				"is out of range. (current fn=%u)\n",
-				l1h->trx->nr, tn, prim_fn, fn);
+			LOGP(DL1C, LOGL_NOTICE, "Prim for trx=%u ts=%u at fn=%u "
+				"is out of range, or channel already disabled. "
+				"(current fn=%u)\n", l1h->trx->nr, tn, prim_fn,
+				fn);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);
