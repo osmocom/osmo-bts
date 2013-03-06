@@ -147,7 +147,9 @@ static void ul_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
 
 		gsmtap_send(fl1h->gsmtap, trx->arfcn | GSMTAP_ARFCN_F_UPLINK,
 				data_ind->u8Tn, chan_type, ss, data_ind->u32Fn,
-				0, 0, data_ind->msgUnitParam.u8Buffer + skip,
+				data_ind->measParam.fRssi,
+				data_ind->measParam.fLinkQuality,
+				data_ind->msgUnitParam.u8Buffer + skip,
 				data_ind->msgUnitParam.u8Size - skip);
 	}
 }
