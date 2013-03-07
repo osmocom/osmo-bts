@@ -472,6 +472,10 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* resolve the L2 entity using rts_ind->hLayer2 */
 		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		le = &lchan->lapdm_ch.lapdm_acch;
+		/* if the DSP is taking care of power control
+		 * (ul_power_target==0), then this value will be
+		 * overridden. */
+		msu_param->u8Buffer[0] = lchan->ms_power;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
 			/* No SACCH data from LAPDM pending, send SACCH filling */
