@@ -278,11 +278,17 @@ static int trx_close(struct gsm_bts_trx *trx)
 }
 
 /* set bts attributes */
-static uint8_t trx_set_bts(struct gsm_bts *bts)
+static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 {
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
 	uint8_t bsic = bts->bsic;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	if (TLVP_PRESENT(new_attr, NM_ATT_CONN_FAIL_CRIT)) {
+		const uint8_t *val = TLVP_VAL(new_attr, NM_ATT_CONN_FAIL_CRIT);
+		btsb->radio_link_timeout = val[1];
+	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		l1h = trx_l1h_hdl(trx);
@@ -546,7 +552,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 	switch (foh->msg_type) {
 	case NM_MT_SET_BTS_ATTR:
-		cause = trx_set_bts(obj);
+		cause = trx_set_bts(obj, new_attr);
 		break;
 	case NM_MT_SET_RADIO_ATTR:
 		cause = trx_set_trx(obj);
