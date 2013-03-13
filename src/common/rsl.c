@@ -217,6 +217,7 @@ static void rsl_cch_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr
 	cch = (struct abis_rsl_cchan_hdr *) msgb_push(msg, sizeof(*cch));
 	cch->c.msg_discr = ABIS_RSL_MDISC_COM_CHAN;
 	cch->c.msg_type = msg_type;
+	cch->ie_chan = RSL_IE_CHAN_NR;
 	cch->chan_nr = chan_nr;
 }
 
