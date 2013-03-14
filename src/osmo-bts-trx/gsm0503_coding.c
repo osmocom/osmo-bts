@@ -300,7 +300,7 @@ int pdtch_encode(ubit_t *bursts, uint8_t *l2_data, uint8_t l2_len)
 
 
 /*
- * GSM TCH/F FR transcoding
+ * GSM TCH/F FR/EFR transcoding
  */
 
 static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits, int net_order)
@@ -333,6 +333,35 @@ static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits, int net_order)
 			o += gsm0503_gsm_fr_map[l];
 			k = gsm0503_gsm_fr_map[++l]-1;
 		}
+		i++;
+		j++;
+	}
+}
+
+static void tch_efr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
+{
+	int i, j;
+
+	tch_data[0] = 0xc << 4;
+	memset(tch_data + 1, 0, 30);
+
+	i = 0; /* counts bits */
+	j = 4; /* counts output bits */
+	while (i < 244) {
+		tch_data[j>>3] |= (b_bits[i] << (7-(j&7)));
+		i++;
+		j++;
+	}
+}
+
+static void tch_efr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
+{
+	int i, j;
+
+	i = 0; /* counts bits */
+	j = 4; /* counts output bits */
+	while (i < 244) {
+		b_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
 		i++;
 		j++;
 	}
@@ -386,6 +415,30 @@ static void tch_fr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
 		d_bits[i] = b_bits[gsm610_bitorder[i]];
 }
 
+static void tch_efr_d_to_w(ubit_t *b_bits, ubit_t *d_bits)
+{
+	int i;
+
+	for (i = 0; i < 260; i++)
+		b_bits[gsm660_bitorder[i]] = d_bits[i];
+}
+
+static void tch_efr_w_to_d(ubit_t *d_bits, ubit_t *b_bits)
+{
+	int i;
+
+	for (i = 0; i < 260; i++)
+		d_bits[i] = b_bits[gsm660_bitorder[i]];
+}
+
+static void tch_efr_protected(ubit_t *s_bits, ubit_t *b_bits)
+{
+	int i;
+
+	for (i = 0; i < 65; i++)
+		b_bits[i] = s_bits[gsm0503_gsm_efr_protected_bits[i]-1];
+}
+
 static void tch_fr_unreorder(ubit_t *d, ubit_t *p, ubit_t *u)
 {
 	int i;
@@ -410,10 +463,43 @@ static void tch_fr_reorder(ubit_t *u, ubit_t *d, ubit_t *p)
 		u[91+i] = p[i];
 }
 
-int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
+static void tch_efr_reorder(ubit_t *w, ubit_t *s, ubit_t *p)
+{
+	memcpy(w, s, 71);
+	w[71] = w[72] = s[69];
+	memcpy(w+73, s+71, 50);
+	w[123] = w[124] = s[119];
+	memcpy(w+125, s+121, 53);
+	w[178] = w[179] = s[172];
+	memcpy(w+180, s+174, 50);
+	w[230] = w[231] = s[222];
+	memcpy(w+232, s+224, 20);
+	memcpy(w+252, p, 8);
+}
+
+static void tch_efr_unreorder(ubit_t *s, ubit_t *p, ubit_t *w)
+{
+	int sum;
+
+	memcpy(s, w, 71);
+	sum = s[69] + w[71] + w[72];
+	s[69] = (sum > 2);
+	memcpy(s+71, w+73, 50);
+	sum = s[119] + w[123] + w[124];
+	s[119] = (sum > 2);
+	memcpy(s+121, w+125, 53);
+	sum = s[172] + w[178] + w[179];
+	s[172] = (sum > 2);
+	memcpy(s+174, w+180, 50);
+	sum = s[220] + w[230] + w[231];
+	s[222] = (sum > 2);
+	memcpy(s+224, w+232, 20);
+	memcpy(p, w+252, 8);
+}
+int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr)
 {
 	sbit_t iB[912], cB[456], h;
-	ubit_t conv[185], b[260], d[260], p[3];
+	ubit_t conv[185], s[244], w[260], b[65], d[260], p[8];
 	int i, rv, len, steal = 0;
 
 	for (i=0; i<8; i++) {
@@ -444,11 +530,28 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
 		return -1;
 
 
-	tch_fr_d_to_b(b, d);
+	if (efr) {
+		tch_efr_d_to_w(w, d);
 
-	tch_fr_reassemble(tch_data, b, net_order);
+		tch_efr_unreorder(s, p, w);
 
-	len = 33;
+		tch_efr_protected(s, b);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_tch_efr_crc8, b,
+			65, p);
+		if (rv)
+			return -1;
+
+		tch_efr_reassemble(tch_data, s);
+
+		len = 31;
+	} else {
+		tch_fr_d_to_b(w, d);
+
+		tch_fr_reassemble(tch_data, w, net_order);
+
+		len = 33;
+	}
 
 	return len;
 }
@@ -456,15 +559,29 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
 int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 {
 	ubit_t iB[912], cB[456], h;
-	ubit_t conv[185], w[260], d[260], p[8];
+	ubit_t conv[185], w[260], b[65], s[244], d[260], p[8];
 	int i;
 
 	switch (len) {
+	case 31: /* TCH EFR */
+
+		tch_efr_disassemble(s, tch_data);
+
+		tch_efr_protected(s, b);
+
+		osmo_crc8gen_set_bits(&gsm0503_tch_efr_crc8, b, 65, p);
+
+		tch_efr_reorder(w, s, p);
+
+		tch_efr_w_to_d(d, w);
+
+		goto coding_efr_fr;
 	case 33: /* TCH FR */
 		tch_fr_disassemble(w, tch_data, net_order);
 
 		tch_fr_b_to_d(d, w);
 
+coding_efr_fr:
 		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d, 50, p);
 
 		tch_fr_reorder(conv, d, p);
