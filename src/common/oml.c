@@ -447,10 +447,16 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		btsb->interference.intave = *TLVP_VAL(&tp, NM_ATT_INTAVE_PARAM);
 
 	/* 9.4.14 Connection Failure Criterion */
-	if (TLVP_PRESENT(&tp, NM_ATT_CONN_FAIL_CRIT) &&
-	    (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) >= 2) &&
-	    *TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT) == 0x01) {
+	if (TLVP_PRESENT(&tp, NM_ATT_CONN_FAIL_CRIT)) {
 		const uint8_t *val = TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT);
+
+		if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) < 2
+		 || val[0] != 0x01 || val[1] < 4 || val[1] > 64) {
+			LOGP(DOML, LOGL_NOTICE, "Given Conn. Failure Criterion "
+				"not supported. Please use critetion 0x01 with "
+				"RADIO_LINK_TIMEOUT value of 4..64\n");
+			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
+		}
 		btsb->radio_link_timeout = val[1];
 	}
 	/* if val[0] != 0x01: can be 'operator dependent' and needs to

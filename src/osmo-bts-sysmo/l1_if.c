@@ -647,11 +647,39 @@ static int process_meas_res(struct gsm_lchan *lchan, GsmL1_MeasParam_t *m)
 	return lchan_new_ul_meas(lchan, &ulm);
 }
 
+/* process radio link timeout counter S */
+static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
+{
+	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
+
+	/* if link loss criterion already reached */
+	if (lchan->s == 0)
+		return;
+
+	if (bad_frame) {
+		/* count down radio link counter S */
+		lchan->s--;
+		DEBUGP(DMEAS, "counting down radio link counter S=%d\n",
+			lchan->s);
+		if (lchan->s == 0)
+			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
+		return;
+	}
+
+	if (lchan->s < btsb->radio_link_timeout) {
+		/* count up radio link counter S */
+		lchan->s += 2;
+		if (lchan->s > btsb->radio_link_timeout)
+			lchan->s = btsb->radio_link_timeout;
+		DEBUGP(DMEAS, "counting up radio link counter S=%d\n",
+			lchan->s);
+	}
+}
+
 static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
-	struct gsm_bts_role_bts *btsb = trx->bts->role;
 	struct osmo_phsap_prim pp;
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
@@ -681,25 +709,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	switch (data_ind->sapi) {
 	case GsmL1_Sapi_Sacch:
-		/* process radio link timeout coniter S */
-		if (data_ind->msgUnitParam.u8Size == 0) {
-			/* count down radio link counter S */
-			lchan->s--;
-			DEBUGP(DMEAS, "counting down radio link counter S=%d\n",
-				lchan->s);
-			if (lchan->s == 0)
-				rsl_tx_conn_fail(lchan,
-					RSL_ERR_RADIO_LINK_FAIL);
+		radio_link_timeout(lchan, (data_ind->msgUnitParam.u8Size == 0));
+		if (data_ind->msgUnitParam.u8Size == 0)
 			break;
-		}
-		if (lchan->s < btsb->radio_link_timeout) {
-			/* count up radio link counter S */
-			lchan->s += 2;
-			if (lchan->s > btsb->radio_link_timeout)
-				lchan->s = btsb->radio_link_timeout;
-			DEBUGP(DMEAS, "counting up radio link counter S=%d\n",
-				lchan->s);
-		}
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (data_ind->msgUnitParam.u8Size < 2) {
 			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
