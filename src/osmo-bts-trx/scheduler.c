@@ -779,7 +779,14 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			memset(tch_data, 0, 33);
 			len = 33;
 			break;
+		case GSM48_CMODE_SPEECH_EFR: /* EFR */
+			if (chan != TRXC_TCHF)
+				goto inval_mode1;
+			memset(tch_data, 0, 31);
+			len = 31;
+			break;
 		default:
+inval_mode1:
 			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
 				"fix!\n");
 			len = 0;
@@ -857,7 +864,21 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				goto free_bad_msg;
 			}
 			break;
+		case GSM48_CMODE_SPEECH_EFR: /* EFR */
+			if (chan != TRXC_TCHF)
+				goto inval_mode2;
+			len = 31;
+			if (msgb_l2len(msg_tch) >= 1
+			 && (msg_tch->l2h[0] >> 4) != 0xc) {
+				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
+					"EFR frame' trx=%u ts=%u at fn=%u.\n",
+					trx_chan_desc[chan].name,
+					l1h->trx->nr, tn, fn);
+				goto free_bad_msg;
+			}
+			break;
 		default:
+inval_mode2:
 			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
 				"fix!\n");
 			goto free_bad_msg;
@@ -1185,7 +1206,10 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
 								: tch_mode) {
 	case GSM48_CMODE_SPEECH_V1: /* FR */
-		rc = tch_fr_decode(tch_data, *bursts_p, 1);
+		rc = tch_fr_decode(tch_data, *bursts_p, 1, 0);
+		break;
+	case GSM48_CMODE_SPEECH_EFR: /* EFR */
+		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1);
 		break;
 	default:
 		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
@@ -1216,6 +1240,10 @@ bfi:
 			case GSM48_CMODE_SPEECH_V1: /* FR */
 				memset(tch_data, 0, 33);
 				rc = 33;
+				break;
+			case GSM48_CMODE_SPEECH_EFR: /* EFR */
+				memset(tch_data, 0, 31);
+				rc = 31;
 				break;
 			default:
 				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
