@@ -243,7 +243,7 @@ static void test_fr(uint8_t *speech, int len)
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 812, 57));
 
 	/* decode */
-	rc = tch_fr_decode(result, bursts_s, 1);
+	rc = tch_fr_decode(result, bursts_s, 1, len == 31);
 
 	ASSERT_TRUE(rc == len);
 
@@ -349,7 +349,8 @@ uint8_t test_macblock[][54] = {
 	0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 },
 };
 
-uint8_t test_speech[33];
+uint8_t test_speech_fr[33];
+uint8_t test_speech_efr[31];
 
 int main(int argc, char **argv)
 {
@@ -367,10 +368,16 @@ int main(int argc, char **argv)
 	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
 		test_sch(test_l2[i]);
 
-	for (i = 0; i < sizeof(test_speech); i++)
-		test_speech[i] = i;
-	test_speech[0] = 0xd0;
-	test_fr(test_speech, sizeof(test_speech));
+	for (i = 0; i < sizeof(test_speech_fr); i++)
+		test_speech_fr[i] = i;
+	test_speech_fr[0] = 0xd0;
+	test_fr(test_speech_fr, sizeof(test_speech_fr));
+
+	for (i = 0; i < sizeof(test_speech_efr); i++)
+		test_speech_efr[i] = i;
+	test_speech_efr[0] = 0xc0;
+	test_fr(test_speech_efr, sizeof(test_speech_efr));
+
 	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
 		test_fr(test_l2[i], sizeof(test_l2[0]));
 

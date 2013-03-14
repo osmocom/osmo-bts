@@ -75,3 +75,16 @@ const struct osmo_crc8gen_code gsm0503_tch_fr_crc3 = {
 	.remainder = 0x7,
 };
 
+/*
+ * GSM TCH EFR parity
+ *
+ * g(x) = x^8 + x^4 + x^3 + x^2 + 1
+ */
+
+const struct osmo_crc8gen_code gsm0503_tch_efr_crc8 = {
+	.bits = 8,
+	.poly = 0x1d,
+	.init = 0x00,
+	.remainder = 0x00,
+};
+
