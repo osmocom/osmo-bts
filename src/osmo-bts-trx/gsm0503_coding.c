@@ -336,8 +336,6 @@ static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits, int net_order)
 		i++;
 		j++;
 	}
-
-	/* rearrange according to Table 2 of TS 05.03 */
 }
 
 static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data, int net_order)
@@ -419,37 +417,38 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
 	int i, rv, len, steal = 0;
 
 	for (i=0; i<8; i++) {
-		gsm0503_tch_fr_burst_unmap(&iB[i * 114], &bursts[i * 116], &h,
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], &h,
 			i>>2);
 		steal -= h;
 	}
 
 	gsm0503_tch_fr_deinterleave(cB, iB);
 
-	if (steal <= 0) {
-		osmo_conv_decode(&gsm0503_conv_tch_fr, cB, conv);
-
-		tch_fr_unreorder(d, p, conv);
-
-		for (i=0; i<78; i++)
-			d[i+182] = (cB[i+378] < 0) ? 1:0;
-
-		rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d, 50, p);
-		if (rv)
-			return -1;
-
-		tch_fr_d_to_b(b, d);
-
-		tch_fr_reassemble(tch_data, b, net_order);
-
-		len = 33;
-	} else {
+	if (steal > 0) {
 		rv = _xcch_decode_cB(tch_data, cB);
 		if (rv)
 			return -1;
 
-		len = 23;
+		return 23;
 	}
+
+	osmo_conv_decode(&gsm0503_conv_tch_fr, cB, conv);
+
+	tch_fr_unreorder(d, p, conv);
+
+	for (i=0; i<78; i++)
+		d[i+182] = (cB[i+378] < 0) ? 1:0;
+
+	rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d, 50, p);
+	if (rv)
+		return -1;
+
+
+	tch_fr_d_to_b(b, d);
+
+	tch_fr_reassemble(tch_data, b, net_order);
+
+	len = 33;
 
 	return len;
 }
@@ -457,14 +456,14 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order)
 int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 {
 	ubit_t iB[912], cB[456], h;
-	ubit_t conv[185], b[260], d[260], p[3];
+	ubit_t conv[185], w[260], d[260], p[8];
 	int i;
 
 	switch (len) {
 	case 33: /* TCH FR */
-		tch_fr_disassemble(b, tch_data, net_order);
+		tch_fr_disassemble(w, tch_data, net_order);
 
-		tch_fr_b_to_d(d, b);
+		tch_fr_b_to_d(d, w);
 
 		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d, 50, p);
 
@@ -490,12 +489,10 @@ int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 	gsm0503_tch_fr_interleave(cB, iB);
 
 	for (i=0; i<8; i++)
-		gsm0503_tch_fr_burst_map(&iB[i * 114], &bursts[i * 116], &h,
-			i>>2);
+		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i>>2);
 
 	return 0;
 }
-
 
 /*
  * GSM RACH transcoding

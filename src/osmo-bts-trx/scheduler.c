@@ -71,7 +71,9 @@ typedef int trx_sched_ul_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
-static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+static int rts_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan);
+static int rts_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
 static ubit_t *tx_idle_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
@@ -159,9 +161,9 @@ struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_BCCH,	0x80,	0x00,	"BCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
       {	0,	TRXC_RACH,	0x88,	0x00,	"RACH",		NULL,		NULL,		rx_rach_fn,	1 },
       {	0,	TRXC_CCCH,	0x90,	0x00,	"CCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-      {	0,	TRXC_TCHF,	0x08,	0x00,	"TCH/F",	rts_tch_fn,	tx_tchf_fn,	rx_tchf_fn,	0 },
-      {	0,	TRXC_TCHH_0,	0x10,	0x00,	"TCH/H(0)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
-      {	0,	TRXC_TCHH_1,	0x18,	0x00,	"TCH/H(1)",	rts_tch_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
+      {	0,	TRXC_TCHF,	0x08,	0x00,	"TCH/F",	rts_tchf_fn,	tx_tchf_fn,	rx_tchf_fn,	0 },
+      {	0,	TRXC_TCHH_0,	0x10,	0x00,	"TCH/H(0)",	rts_tchh_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
+      {	0,	TRXC_TCHH_1,	0x18,	0x00,	"TCH/H(1)",	rts_tchh_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
       {	0,	TRXC_SDCCH4_0,	0x20,	0x00,	"SDCCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH4_1,	0x28,	0x00,	"SDCCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH4_2,	0x30,	0x00,	"SDCCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
@@ -215,9 +217,7 @@ int trx_sched_init(struct trx_l1h *l1h)
 		INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			chan_state = &l1h->chan_states[tn][i];
-			chan_state->dl_active = 0;
-			chan_state->ul_active = 0;
-			chan_state->ul_mask = 0x00;
+			chan_state->active = 0;
 		}
 	}
 
@@ -349,13 +349,13 @@ static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return l1sap_up(l1h->trx, l1sap);
 }
 
-/* RTS for traffic frame */ 
-static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan)
+static int rts_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan, int facch)
 {
 	uint8_t chan_nr, link_id;
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
+	int rc = 0;
 
 	/* get data for RTS indication */
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
@@ -371,33 +371,55 @@ static int rts_tch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		"fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, fn, tn, l1h->trx->nr);
 
-	/* generate prim */
-	msg = l1sap_msgb_alloc(200);
-	if (!msg)
-		return -ENOMEM;
-	l1sap = msgb_l1sap_prim(msg);
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
-	                                PRIM_OP_INDICATION, msg);
-	l1sap->u.data.chan_nr = chan_nr;
-	l1sap->u.data.link_id = link_id;
-	l1sap->u.data.fn = fn;
+	/* only send, if FACCH is selected */
+	if (facch) {
+		/* generate prim */
+		msg = l1sap_msgb_alloc(200);
+		if (!msg)
+			return -ENOMEM;
+		l1sap = msgb_l1sap_prim(msg);
+		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
+						PRIM_OP_INDICATION, msg);
+		l1sap->u.data.chan_nr = chan_nr;
+		l1sap->u.data.link_id = link_id;
+		l1sap->u.data.fn = fn;
 
-	/* stop here, if TCH is in signalling only mode */
-	if (l1h->chan_states[tn][chan].rsl_cmode == RSL_CMOD_SPD_SIGN)
+		rc = l1sap_up(l1h->trx, l1sap);
+	}
+
+	/* dont send, if TCH is in signalling only mode */
+	if (l1h->chan_states[tn][chan].rsl_cmode != RSL_CMOD_SPD_SIGN) {
+		/* generate prim */
+		msg = l1sap_msgb_alloc(200);
+		if (!msg)
+			return -ENOMEM;
+		l1sap = msgb_l1sap_prim(msg);
+		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
+						PRIM_OP_INDICATION, msg);
+		l1sap->u.tch.chan_nr = chan_nr;
+		l1sap->u.tch.fn = fn;
+
 		return l1sap_up(l1h->trx, l1sap);
-	l1sap_up(l1h->trx, l1sap);
+	}
 
-	/* generate prim */
-	msg = l1sap_msgb_alloc(200);
-	if (!msg)
-		return -ENOMEM;
-	l1sap = msgb_l1sap_prim(msg);
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
-	                                PRIM_OP_INDICATION, msg);
-	l1sap->u.tch.chan_nr = chan_nr;
-	l1sap->u.tch.fn = fn;
+	return rc;
+}
 
-	return l1sap_up(l1h->trx, l1sap);
+/* RTS for full rate traffic frame */
+static int rts_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan)
+{
+	/* TCH/F may include FACCH on every 4th burst */
+	return rts_tch_common(l1h, tn, fn, chan, 1);
+}
+
+
+/* RTS for half rate traffic frame */
+static int rts_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan)
+{
+	// FIXME
+	return 0;
 }
 
 
@@ -732,32 +754,38 @@ send_burst:
 	return bits;
 }
 
-static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid)
+static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan, uint8_t bid, struct msgb **_msg_tch,
+	struct msgb **_msg_facch)
 {
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
-	ubit_t *burst, **bursts_p = &l1h->chan_states[tn][chan].dl_bursts;
-	static ubit_t bits[148];
+	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	uint8_t rsl_cmode = chan_state->rsl_cmode;
+	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
 
-	/* send burst, if we already got a frame */
-	if (bid > 0) {
-		if (!*bursts_p)
-			return NULL;
-		goto send_burst;
-	}
-
 	/* handle loss detection of received TCH frames */
-	if (++(l1h->chan_states[tn][chan].lost) > 5) {
+	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
+	 && ++(l1h->chan_states[tn][chan].lost) > 5) {
 		uint8_t tch_data[33];
+		int len;
 
 		LOGP(DL1C, LOGL_NOTICE, "Missing TCH bursts detected, sending "
 			"BFI for %s\n", trx_chan_desc[chan].name);
 
 		/* indicate bad frame */
-		memset(tch_data, 0, sizeof(tch_data));
-		// FIXME length depends on codec
-		compose_tch_ind(l1h, tn, 0, chan, tch_data, 33);
+		switch (tch_mode) {
+		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
+			memset(tch_data, 0, 33);
+			len = 33;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
+				"fix!\n");
+			len = 0;
+		}
+		if (len)
+			compose_tch_ind(l1h, tn, 0, chan, tch_data, len);
 	}
 
 	/* get frame and unlink from queue */
@@ -797,13 +825,6 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 
 	/* check validity of message */
-	if (msg_tch && msgb_l2len(msg_tch) != 33) {
-		LOGP(DL1C, LOGL_FATAL, "Prim not 33 bytes, please FIX! "
-			"(len=%d)\n", msgb_l2len(msg_tch));
-		/* free message */
-		msgb_free(msg_tch);
-		msg_tch = NULL;
-	}
 	if (msg_facch && msgb_l2len(msg_facch) != 23) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg_facch));
@@ -811,6 +832,69 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		msgb_free(msg_facch);
 		msg_facch = NULL;
 	}
+
+	/* check validity of message */
+	if (!msg_facch && msg_tch) {
+		int len;
+
+		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
+			LOGP(DL1C, LOGL_NOTICE, "%s Dropping speech frame, "
+				"because we are not in speech mode trx=%u "
+				"ts=%u at fn=%u.\n", trx_chan_desc[chan].name,
+				l1h->trx->nr, tn, fn);
+			goto free_bad_msg;
+		}
+
+		switch (tch_mode) {
+		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
+			len = 33;
+			if (msgb_l2len(msg_tch) >= 1
+			 && (msg_tch->l2h[0] >> 4) != 0xd) {
+				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
+					"FR frame' trx=%u ts=%u at fn=%u.\n",
+					trx_chan_desc[chan].name,
+					l1h->trx->nr, tn, fn);
+				goto free_bad_msg;
+			}
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
+				"fix!\n");
+			goto free_bad_msg;
+		}
+		if (msgb_l2len(msg_tch) != len) {
+			LOGP(DL1C, LOGL_ERROR, "Cannot send payload with "
+				"invalid length! (expecing %d, received %d)\n",
+				len, msgb_l2len(msg_tch));
+free_bad_msg:
+			/* free message */
+			msgb_free(msg_tch);
+			msg_tch = NULL;
+			goto send_frame;
+		}
+	}
+
+send_frame:
+	*_msg_tch = msg_tch;
+	*_msg_facch = msg_facch;
+}
+
+static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
+	enum trx_chan_type chan, uint8_t bid)
+{
+	struct msgb *msg_tch = NULL, *msg_facch = NULL;
+	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
+	static ubit_t bits[148];
+
+	/* send burst, if we already got a frame */
+	if (bid > 0) {
+		if (!*bursts_p)
+			return NULL;
+		goto send_burst;
+	}
+
+	tx_tch_common(l1h, tn, fn, chan, bid, &msg_tch, &msg_facch);
 
 	/* alloc burst memory, if not already,
 	 * otherwise shift buffer by 4 bursts for interleaving */
@@ -831,14 +915,6 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* bad frame */
-	if (msg_tch && !msg_facch && (msg_tch->l2h[0] >> 4) != 0xd) {
-		LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad frame' trx=%u "
-			"ts=%u at fn=%u to transmit.\n",
-			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
-		goto send_burst;
-	}
-
 	/* encode bursts (priorize FACCH) */
 	if (msg_facch)
 		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
@@ -846,7 +922,7 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	else
 		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
 
-	/* unlink and free message */
+	/* free message */
 	if (msg_tch)
 		msgb_free(msg_tch);
 	if (msg_facch)
@@ -956,7 +1032,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* send burst information to loops process */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
-		trx_loop_input(l1h, trx_chan_desc[chan].chan_nr | tn,
+		trx_loop_sacch_input(l1h, trx_chan_desc[chan].chan_nr | tn,
 			chan_state, rssi, toa);
 	}
 
@@ -1062,7 +1138,9 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
-	uint8_t tch_data[33];
+	uint8_t rsl_cmode = chan_state->rsl_cmode;
+	uint8_t tch_mode = chan_state->tch_mode;
+	uint8_t tch_data[128]; /* just to be safe */
 	int rc;
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
@@ -1104,11 +1182,26 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* decode
 	 * also shift buffer by 4 bursts for interleaving */
-	rc = tch_fr_decode(tch_data, *bursts_p, 1);
+	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
+								: tch_mode) {
+	case GSM48_CMODE_SPEECH_V1: /* FR */
+		rc = tch_fr_decode(tch_data, *bursts_p, 1);
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
+			tch_mode);
+		return -EINVAL;
+	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
 			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
+		goto bfi;
+	}
+	if (rc < 4) {
+		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
+			"fn=%u for %s with codec mode %d (out of range)\n",
+			fn, trx_chan_desc[chan].name, rc);
 		goto bfi;
 	}
 
@@ -1117,11 +1210,23 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
 			tch_data, 23);
 bfi:
-		// FIXME length depends on codec
-		rc = 33;
-		/* indicate bad tch frame */
-		memset(tch_data, 0, sizeof(tch_data));
+		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
+			/* indicate bad frame */
+			switch (tch_mode) {
+			case GSM48_CMODE_SPEECH_V1: /* FR */
+				memset(tch_data, 0, 33);
+				rc = 33;
+				break;
+			default:
+				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
+					"please fix!\n");
+				return -EINVAL;
+			}
+		}
 	}
+
+	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
+		return 0;
 
 	/* TCH or BFI */
 	return compose_tch_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
@@ -1925,7 +2030,7 @@ int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,
 
 /* setting all logical channels given attributes to active/inactive */
 int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
-	int downlink, int active)
+	int active)
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	int i;
@@ -1942,23 +2047,15 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == link_id) {
 			chan_state = &l1h->chan_states[tn][i];
-			LOGP(DL1C, LOGL_NOTICE, "%s %s %s on trx=%d ts=%d\n",
-				(active) ? "Activating" : "Deactivating",
-				(downlink) ? "downlink" : "uplink",
-				trx_chan_desc[i].name, l1h->trx->nr, tn);
-		 	if (downlink) {
-				chan_state->dl_active = active;
-				chan_state->dl_active = active;
-			} else {
-				chan_state->ul_active = active;
-				chan_state->ul_active = active;
-			}
-			chan_state->lost = 0;
-			if (L1SAP_IS_LINK_SACCH(link_id)) {
-				memset(&chan_state->meas, 0,
-					sizeof(chan_state->meas));
-			}
 			rc = 0;
+			if (chan_state->active == active)
+				continue;
+			LOGP(DL1C, LOGL_NOTICE, "%s %s on trx=%d ts=%d\n",
+				(active) ? "Activating" : "Deactivating",
+				trx_chan_desc[i].name, l1h->trx->nr, tn);
+			if (active)
+				memset(chan_state, 0, sizeof(*chan_state));
+			chan_state->active = active;
 		}
 	}
 
@@ -2062,7 +2159,7 @@ static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 
 	/* check if channel is active */
 	if (!trx_chan_desc[chan].auto_active
-	 && !l1h->chan_states[tn][chan].dl_active)
+	 && !l1h->chan_states[tn][chan].active)
 	 	return -EINVAL;
 
 	return func(l1h, tn, fn, frame->dl_chan);
@@ -2092,7 +2189,7 @@ static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 
 	/* check if channel is active */
 	if (!trx_chan_desc[chan].auto_active
-	 && !l1h->chan_states[tn][chan].dl_active)
+	 && !l1h->chan_states[tn][chan].active)
 	 	goto no_data;
 
 	/* get burst from function */
@@ -2159,7 +2256,7 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 
 		/* check if channel is active */
 		if (!trx_chan_desc[chan].auto_active
-		 && !l1h->chan_states[tn][chan].ul_active)
+		 && !l1h->chan_states[tn][chan].active)
 			goto next_frame;
 
 		/* omit bursts which have no handler, like IDLE bursts */

@@ -3,6 +3,7 @@
 
 #include <osmocom/core/bits.h>
 
+#include "gsm0503_tables.h"
 #include "gsm0503_interleaving.h"
 
 /*
@@ -55,7 +56,7 @@ void gsm0503_xcch_interleave(ubit_t *cB, ubit_t *iB)
  * Interleaving:
  *
  * Given 456 coded input bits, form 8 blocks of 114 bits,
- * where event bits of the first 4 block and off bits of the last 4 block
+ * where even bits of the first 4 blocks and odd bits of the last 4 blocks
  * are used:
  *
  *      i(B, j) = c(n, k)       k = 0, ..., 455

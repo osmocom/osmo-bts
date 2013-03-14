@@ -42,10 +42,6 @@
 int trx_ms_power_loop = 0;
 int8_t trx_target_rssi = -10;
 
-/* how much power levels do we raise/lower as maximum (1 level = 2 dB) */
-#define MS_RAISE_MAX 4
-#define MS_LOWER_MAX 4
-
 static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	uint8_t chan_nr, struct trx_chan_state *chan_state, int8_t diff)
 {
@@ -219,7 +215,7 @@ int ta_val(struct trx_l1h *l1h, struct gsm_lchan *lchan, uint8_t chan_nr,
 	return 0;
 }
 
-int trx_loop_input(struct trx_l1h *l1h, uint8_t chan_nr,
+int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
 	struct trx_chan_state *chan_state, int8_t rssi, float toa)
 {
 	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
