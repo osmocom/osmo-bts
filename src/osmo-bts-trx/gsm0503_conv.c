@@ -61,7 +61,7 @@ const struct osmo_conv_code gsm0503_conv_rach = {
 	.next_output = conv_xcch_next_output,
 	.next_state  = conv_xcch_next_state,
 };
- 
+
 
 const struct osmo_conv_code gsm0503_conv_sch = {
 	.N = 2,
@@ -70,7 +70,7 @@ const struct osmo_conv_code gsm0503_conv_sch = {
 	.next_output = conv_xcch_next_output,
 	.next_state  = conv_xcch_next_state,
 };
- 
+
 
 const struct osmo_conv_code gsm0503_conv_tch_fr = {
 	.N = 2,

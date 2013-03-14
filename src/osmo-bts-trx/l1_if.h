@@ -48,20 +48,28 @@ enum trx_chan_type {
 
 /* States each channel on a multiframe */
 struct trx_chan_state {
-	uint8_t			dl_active;	/* Channel is active for TX */
-	uint8_t			ul_active;	/* Channel is active for RX */
+	/* scheduler */
+	uint8_t			active;		/* Channel is active */
 	ubit_t			*dl_bursts;	/* burst buffer for TX */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
+
+	/* loss detection */
 	uint8_t			lost;		/* (SACCH) loss detection */
+
+	/* mode */
 	uint8_t			rsl_cmode, tch_mode; /* mode for TCH channels */
+
+	/* encryption */
 	int			ul_encr_algo;	/* A5/x encry algo downlink */
 	int			dl_encr_algo;	/* A5/x encry algo uplink */
 	int			ul_encr_key_len;
 	int			dl_encr_key_len;
 	uint8_t			ul_encr_key[8];
 	uint8_t			dl_encr_key[8];
+
+	/* measurements */
 	struct {
 		uint8_t		clock;		/* cyclic clock counter */
 		int8_t		rssi[32];	/* last RSSI values */
