@@ -30,36 +30,43 @@ void gsm0503_xcch_burst_map(ubit_t *iB, ubit_t *eB, const ubit_t *hl,
 		eB[58] = *hn;
 }
 
-void gsm0503_tch_fr_burst_unmap(sbit_t *iB, sbit_t *eB, sbit_t *h, int odd)
+void gsm0503_tch_burst_unmap(sbit_t *iB, sbit_t *eB, sbit_t *h, int odd)
 {
 	int i;
 
 	/* brainfuck: only copy even or odd bits */
-	for (i=odd; i<57; i+=2)
-		iB[i] = eB[i];
-	for (i=58-odd; i<114; i+=2)
-		iB[i] = eB[i+2];
+	if (iB) {
+		for (i=odd; i<57; i+=2)
+			iB[i] = eB[i];
+		for (i=58-odd; i<114; i+=2)
+			iB[i] = eB[i+2];
+	}
 
-	if (h && !odd)
-		*h = eB[58];
-
-	if (h && odd)
-		*h = eB[57];
+	if (h) {
+		if (!odd)
+			*h = eB[58];
+		else
+			*h = eB[57];
+	}
 }
 
-void gsm0503_tch_fr_burst_map(ubit_t *iB, ubit_t *eB, const ubit_t *h, int odd)
+void gsm0503_tch_burst_map(ubit_t *iB, ubit_t *eB, const ubit_t *h, int odd)
 {
 	int i;
 
 	/* brainfuck: only copy even or odd bits */
-	for (i=odd; i<57; i+=2)
-		eB[i] = iB[i];
-	for (i=58-odd; i<114; i+=2)
-		eB[i+2] = iB[i];
+	if (eB) {
+		for (i=odd; i<57; i+=2)
+			eB[i] = iB[i];
+		for (i=58-odd; i<114; i+=2)
+			eB[i+2] = iB[i];
+	}
 
-	if (h && !odd)
-		eB[58] = *h;
-	if (h && odd)
-		eB[57] = *h;
+	if (h) {
+		if (!odd)
+			eB[58] = *h;
+		else
+			eB[57] = *h;
+	}
 }
 
