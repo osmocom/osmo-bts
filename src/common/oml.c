@@ -440,6 +440,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		for (i = 0; i < 6; i++) {
 			int16_t boundary = *payload;
 			btsb->interference.boundary[i] = -1 * boundary;
+		}
 	}
 	/* 9.4.24 Intave Parameter */
 	if (TLVP_PRESENT(&tp, NM_ATT_INTAVE_PARAM))
@@ -485,7 +486,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.45 RACH Load Averaging Slots */
-	if (TLVP_PRESENT(&tp, NM_ATT_LDAVG_SLOTS))
+	if (TLVP_PRESENT(&tp, NM_ATT_LDAVG_SLOTS)) {
 		btsb->load.rach.averaging_slots =
 			ntohs(tlvp_val16_unal(&tp, NM_ATT_LDAVG_SLOTS));
 	}
