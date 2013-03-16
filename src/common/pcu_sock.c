@@ -330,6 +330,7 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	data_ind = &pcu_prim->u.data_ind;
 
 	data_ind->sapi = (is_ptcch) ? PCU_IF_SAPI_PTCCH : PCU_IF_SAPI_PDTCH;
+	data_ind->rssi = rssi;
 	data_ind->fn = fn;
 	data_ind->arfcn = arfcn;
 	data_ind->trx_nr = ts->trx->nr;

@@ -55,6 +55,10 @@ struct trx_chan_state {
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
 
+	/* RSSI */
+	uint8_t			rssi_num;	/* number of RSSI values */
+	float			rssi_sum;	/* sum of RSSI values */
+
 	/* loss detection */
 	uint8_t			lost;		/* (SACCH) loss detection */
 

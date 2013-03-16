@@ -757,6 +757,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	uint32_t fn;
 	uint8_t *data, len;
 	int rc = 0;
+	int8_t rssi;
 
 	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
@@ -793,6 +794,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
+	/* get rssi */
+	rssi = (int8_t) (data_ind->measParam.fRssi);
 	/* get data pointer and length */
 	data = data_ind->msgUnitParam.u8Buffer;
 	len = data_ind->msgUnitParam.u8Size;
@@ -812,6 +815,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	l1sap->u.data.link_id = link_id;
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
+	l1sap->u.data.rssi = rssi;
 
 	return l1sap_up(trx, l1sap);
 }
