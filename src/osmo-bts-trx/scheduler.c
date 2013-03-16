@@ -556,7 +556,7 @@ found_msg:
 }
 
 static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len)
+	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
@@ -569,6 +569,7 @@ static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	l1sap->u.data.chan_nr = trx_chan_desc[chan].chan_nr | tn;
 	l1sap->u.data.link_id = trx_chan_desc[chan].link_id;
 	l1sap->u.data.fn = fn;
+	l1sap->u.data.rssi = (int8_t) (rssi);
 	msg->l2h = msgb_put(msg, l2_len);
 	if (l2_len)
 		memcpy(msg->l2h, l2, l2_len);
@@ -653,7 +654,7 @@ got_msg:
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
 		if (++(l1h->chan_states[tn][chan].lost) > 1)
-			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0);
+			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0, -128);
 	}
 
 	/* alloc burst memory, if not already */
@@ -1023,6 +1024,8 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
+	float *rssi_sum = &chan_state->rssi_sum;
+	uint8_t *rssi_num = &chan_state->rssi_num;
 	uint8_t l2[23], l2_len;
 	int rc;
 
@@ -1041,10 +1044,14 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
 		*first_fn = fn;
+		*rssi_sum = 0;
+		*rssi_num = 0;
 	}
 
-	/* update mask */
+	/* update mask + rssi */
 	*mask |= (1 << bid);
+	*rssi_sum += rssi;
+	(*rssi_num)++;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -1087,7 +1094,8 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	} else
 		l2_len = 23;
 
-	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len);
+	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len,
+		*rssi_sum / *rssi_num);
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1097,6 +1105,8 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
+	float *rssi_sum = &chan_state->rssi_sum;
+	uint8_t *rssi_num = &chan_state->rssi_num;
 	uint8_t l2[54+1];
 	int rc;
 
@@ -1114,10 +1124,14 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
+		*rssi_sum = 0;
+		*rssi_num = 0;
 	}
 
-	/* update mask */
+	/* update mask + rssi */
 	*mask |= (1 << bid);
+	*rssi_sum += rssi;
+	(*rssi_num)++;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -1149,7 +1163,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	l2[0] = 7; /* valid frame */
 
 	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
-		l2, rc + 1);
+		l2, rc + 1, *rssi_sum / *rssi_num);
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1232,7 +1246,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == 23) {
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data, 23);
+			tch_data, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
