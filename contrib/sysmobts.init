@@ -11,10 +11,10 @@
 
 case "$1" in
         start)
-		/usr/bin/screen -d -m -c /etc/osmocom/screenrc-sysmobts
+		/usr/bin/screen -d -m -c /etc/osmocom/screenrc-sysmobts -S sysmobts
                 ;;
 	stop)
-		echo "This script doesn't support stop"
+		/usr/bin/screen -d -r sysmobts -X quit
                 exit 1
 		;;
         restart|reload|force-reload)

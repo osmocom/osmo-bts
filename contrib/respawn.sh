@@ -3,6 +3,8 @@
 PID=$$
 echo "-1000" > /proc/$PID/oom_score_adj
 
+trap "kill 0" EXIT
+
 while [ -e /etc/passwd ]; do
 	cat /lib/firmware/sysmobts-v?.bit > /dev/fpgadl_par0
 	sleep 2s
