@@ -787,7 +787,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			data_ind->u32Fn, data_ind->u16Arfcn,
 			data_ind->u8BlockNbr,
 			data_ind->msgUnitParam.u8Buffer + 1,
-			data_ind->msgUnitParam.u8Size - 1);
+			data_ind->msgUnitParam.u8Size - 1,
+			(int8_t) (data_ind->measParam.fRssi));
 		break;
 	case GsmL1_Sapi_Ptcch:
 		/* PTCCH frame handling */
@@ -795,7 +796,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			data_ind->u32Fn, data_ind->u16Arfcn,
 			data_ind->u8BlockNbr,
 			data_ind->msgUnitParam.u8Buffer,
-			data_ind->msgUnitParam.u8Size);
+			data_ind->msgUnitParam.u8Size,
+			(int8_t) (data_ind->measParam.fRssi));
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",

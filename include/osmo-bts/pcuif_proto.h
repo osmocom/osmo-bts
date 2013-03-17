@@ -1,7 +1,7 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
 
-#define PCU_IF_VERSION		0x04
+#define PCU_IF_VERSION		0x05
 
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
@@ -49,6 +49,7 @@ struct gsm_pcu_if_data {
 	uint8_t		trx_nr;
 	uint8_t		ts_nr;
 	uint8_t		block_nr;
+	int8_t		rssi;
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_rts_req {
