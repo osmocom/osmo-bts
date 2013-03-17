@@ -174,6 +174,32 @@ DEFUN(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_min_qual_rach, cfg_trx_min_qual_rach_cmd,
+	"min-qual-rach <-100-100>",
+	"Set the minimum quality level of RACH burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->min_qual_rach = atof(argv[0]) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_min_qual_norm, cfg_trx_min_qual_norm_cmd,
+	"min-qual-norm <-100-100>",
+	"Set the minimum quality level of normal burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->min_qual_rach = atof(argv[0]) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
 /* runtime */
 
 DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
@@ -429,6 +455,10 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		VTY_NEWLINE);
 	vty_out(vty, "  uplink-power-target %d%s", fl1h->ul_power_target,
 		VTY_NEWLINE);
+	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
+		VTY_NEWLINE);
+	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
+		VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
@@ -491,6 +521,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
+	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
+	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
 
 	return 0;
 }

@@ -60,7 +60,6 @@
 
 extern int pcu_direct;
 
-/* FIXME: make threshold configurable */
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
 
@@ -696,7 +695,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	process_meas_res(lchan, &data_ind->measParam);
 
-	if (data_ind->measParam.fLinkQuality < MIN_QUAL_NORM
+	if (data_ind->measParam.fLinkQuality < fl1->min_qual_norm
 	 && data_ind->msgUnitParam.u8Size != 0)
 		return 0;
 
@@ -823,7 +822,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	if (ra_ind->measParam.fLinkQuality < MIN_QUAL_RACH)
+	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach)
 		return 0;
 
 	/* increment number of RACH slots with valid RACH burst */
@@ -1251,6 +1250,8 @@ struct femtol1_hdl *l1if_open(void *priv)
 	fl1h->priv = priv;
 	fl1h->clk_cal = 0;
 	fl1h->ul_power_target = -75;	/* dBm default */
+	fl1h->min_qual_rach = MIN_QUAL_RACH;
+	fl1h->min_qual_norm = MIN_QUAL_NORM;
 	/* default clock source: OCXO */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
