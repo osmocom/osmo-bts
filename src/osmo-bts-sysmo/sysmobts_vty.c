@@ -195,7 +195,7 @@ DEFUN(cfg_trx_min_qual_norm, cfg_trx_min_qual_norm_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
-	fl1h->min_qual_rach = atof(argv[0]) / 10.0f;
+	fl1h->min_qual_norm = atof(argv[0]) / 10.0f;
 
 	return CMD_SUCCESS;
 }
