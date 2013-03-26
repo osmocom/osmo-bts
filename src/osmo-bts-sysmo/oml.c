@@ -742,6 +742,9 @@ static void set_payload_format(GsmL1_LogChParam_t *lch_par)
 
 static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 {
+	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
+	struct gsm48_multi_rate_conf *mr_conf =
+			(struct gsm48_multi_rate_conf *) amr_mrc->gsm48_ie;
 	int j;
 
 	LOGP(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
@@ -781,41 +784,41 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 			lch_par->tch.amrActiveCodecSet[j] = GsmL1_AmrCodec_Unset;
 
 		j = 0;
-		if (lchan->mr_conf.m4_75)
+		if (mr_conf->m4_75)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_4_75;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m5_15)
+		if (mr_conf->m5_15)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_5_15;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m5_90)
+		if (mr_conf->m5_90)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_5_9;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m6_70)
+		if (mr_conf->m6_70)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_6_7;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m7_40)
+		if (mr_conf->m7_40)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_7_4;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m7_95)
+		if (mr_conf->m7_95)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_7_95;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
 
-		if (lchan->mr_conf.m10_2)
+		if (mr_conf->m10_2)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_10_2;
 		if (j >= ARRAY_SIZE(lch_par->tch.amrActiveCodecSet))
 			break;
-		if (lchan->mr_conf.m12_2)
+		if (mr_conf->m12_2)
 			lch_par->tch.amrActiveCodecSet[j++] = GsmL1_AmrCodec_12_2;
 		break;
 	case GSM48_CMODE_DATA_14k5:
