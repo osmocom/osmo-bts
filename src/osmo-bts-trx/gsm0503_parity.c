@@ -88,3 +88,16 @@ const struct osmo_crc8gen_code gsm0503_tch_efr_crc8 = {
 	.remainder = 0x00,
 };
 
+/*
+ * GSM AMR parity
+ *
+ * g(x) = x^6 + x^5 + x^3 + x^2 + x^1 + 1
+ */
+
+const struct osmo_crc8gen_code gsm0503_amr_crc6 = {
+	.bits = 6,
+	.poly = 0x2f,
+	.init = 0x00,
+	.remainder = 0x3f,
+};
+

@@ -23,4 +23,9 @@ int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
 int trx_loop_sacch_clock(struct trx_l1h *l1h, uint8_t chan_nr,
         struct trx_chan_state *chan_state);
 
+int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
+        struct trx_chan_state *chan_state, float ber);
+
+int trx_loop_amr_set(struct trx_chan_state *chan_state, int loop);
+
 #endif /* _TRX_LOOPS_H */

@@ -245,3 +245,100 @@ int trx_loop_sacch_clock(struct trx_l1h *l1h, uint8_t chan_nr,
 	return 0;
 }
 
+int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
+	struct trx_chan_state *chan_state, float ber)
+{
+	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
+					.lchan[l1sap_chan2ss(chan_nr)];
+	int c_i;
+
+	/* check if loop is enabled */
+	if (!chan_state->amr_loop)
+		return 0;
+
+	/* wait for MS to use the requested codec */
+	if (chan_state->ul_ft != chan_state->dl_cmr)
+		return 0;
+
+	/* count bit errors */
+	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+		chan_state->ber_num += 2;
+		chan_state->ber_sum += (ber + ber);
+	} else {
+		chan_state->ber_num++;
+		chan_state->ber_sum += ber;
+	}
+
+	/* count frames */
+	if (chan_state->ber_num < 48)
+		return 0;
+
+	/* calculate average (reuse ber variable) */
+	ber = chan_state->ber_sum / chan_state->ber_num;
+
+	/* FIXME: calculate C/I from BER */
+	c_i = ber * 100;
+
+	/* reset bit errors */
+	chan_state->ber_num = 0;
+	chan_state->ber_sum = 0;
+
+	LOGP(DLOOP, LOGL_DEBUG, "Current bit error rate (BER) %.6f "
+		"codec id %d of trx=%u chan_nr=0x%02x\n", ber,
+		chan_state->ul_ft, l1h->trx->nr, chan_nr);
+
+	/* degrade */
+	if (chan_state->dl_cmr > 0) {
+		/* degrade, if ber is above threshold FIXME: C/I */
+		if (ber >
+		   lchan->tch.amr_mr.mode[chan_state->dl_cmr-1].threshold_bts) {
+			LOGP(DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
+				"from codec id %d to %d of trx=%u "
+				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
+				chan_state->dl_cmr - 1, l1h->trx->nr, chan_nr);
+			chan_state->dl_cmr--;
+		}
+
+		return 0;
+	}
+
+	/* upgrade */
+	if (chan_state->dl_cmr < chan_state->codecs - 1) {
+		/* degrade, if ber is above threshold  FIXME: C/I*/
+		if (ber <
+		    lchan->tch.amr_mr.mode[chan_state->dl_cmr].threshold_bts
+		  - lchan->tch.amr_mr.mode[chan_state->dl_cmr].hysteresis_bts) {
+			LOGP(DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
+				"from codec id %d to %d of trx=%u "
+				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
+				chan_state->dl_cmr + 1, l1h->trx->nr, chan_nr);
+			chan_state->dl_cmr++;
+		}
+
+		return 0;
+	}
+
+	return 0;
+}
+
+int trx_loop_amr_set(struct trx_chan_state *chan_state, int loop)
+{
+	if (chan_state->amr_loop && !loop) {
+		chan_state->amr_loop = 0;
+
+		return 0;
+	}
+
+	if (!chan_state->amr_loop && loop) {
+		chan_state->amr_loop = 1;
+
+		/* reset bit errors */
+		chan_state->ber_num = 0;
+		chan_state->ber_sum = 0;
+
+		return 0;
+	}
+
+	return 0;
+}
+

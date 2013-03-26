@@ -51,7 +51,7 @@ void gsm0503_xcch_interleave(ubit_t *cB, ubit_t *iB)
 }
 
 /*
- * GSM TCH FR/EFR interleaving and burst mapping
+ * GSM TCH FR/EFR/AFS interleaving and burst mapping
  *
  * Interleaving:
  *

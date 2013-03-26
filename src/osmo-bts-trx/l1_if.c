@@ -33,6 +33,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/amr.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
@@ -476,7 +477,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				trx_sched_set_lchan(l1h, chan_nr, 0x40, 1);
 				/* set mode */
 				trx_sched_set_mode(l1h, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode);
+					lchan->rsl_cmode, lchan->tch_mode,
+					lchan->tch.amr_mr.num_modes,
+					lchan->tch.amr_mr.mode[0].mode,
+					lchan->tch.amr_mr.mode[1].mode,
+					lchan->tch.amr_mr.mode[2].mode,
+					lchan->tch.amr_mr.mode[3].mode,
+					amr_get_initial_mode(lchan));
 				/* init lapdm */
 				lchan_init_lapdm(lchan);
 				/* confirm */
@@ -487,7 +494,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
 				/* change mode */
 				trx_sched_set_mode(l1h, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode);
+					lchan->rsl_cmode, lchan->tch_mode,
+					lchan->tch.amr_mr.num_modes,
+					lchan->tch.amr_mr.mode[0].mode,
+					lchan->tch.amr_mr.mode[1].mode,
+					lchan->tch.amr_mr.mode[2].mode,
+					lchan->tch.amr_mr.mode[3].mode,
+					amr_get_initial_mode(lchan));
 				break;
 			}
 			if ((chan_nr & 0x80)) {
