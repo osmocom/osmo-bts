@@ -16,8 +16,9 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 
 	for (i = 0; i < amr_mrc->num_modes; i++)
 		LOGPC(ss, logl, ", mode[%u] = %u/%u/%u",
-			i, amr_mrc->mode[i].mode, amr_mrc->mode[i].threshold,
-			amr_mrc->mode[i].hysteresis);
+			i, amr_mrc->mode[i].mode,
+			amr_mrc->mode[i].threshold_bts,
+			amr_mrc->mode[i].hysteresis_bts);
 	LOGPC(ss, logl, "\n");
 }
 
@@ -68,18 +69,18 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 	}
 
 	if (num_codecs >= 2) {
-		amr_mrc->mode[0].threshold = mr_conf[1] & 0x3F;
-		amr_mrc->mode[0].hysteresis = mr_conf[2] >> 4;
+		amr_mrc->mode[0].threshold_bts = mr_conf[1] & 0x3F;
+		amr_mrc->mode[0].hysteresis_bts = mr_conf[2] >> 4;
 	}
 	if (num_codecs >= 3) {
-		amr_mrc->mode[1].threshold =
+		amr_mrc->mode[1].threshold_bts =
 			((mr_conf[2] & 0xF) << 2) | (mr_conf[3] >> 6);
-		amr_mrc->mode[1].hysteresis = (mr_conf[3] >> 2) & 0x7;
+		amr_mrc->mode[1].hysteresis_bts = (mr_conf[3] >> 2) & 0xF;
 	}
 	if (num_codecs >= 4) {
-		amr_mrc->mode[3].threshold =
+		amr_mrc->mode[2].threshold_bts =
 			((mr_conf[3] & 0x3) << 4) | (mr_conf[4] >> 4);
-		amr_mrc->mode[3].hysteresis = mr_conf[4] & 0xF;
+		amr_mrc->mode[2].hysteresis_bts = mr_conf[4] & 0xF;
 	}
 
 	return num_codecs;
@@ -94,10 +95,12 @@ ret_einval:
 unsigned int amr_get_initial_mode(struct gsm_lchan *lchan)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
+	struct gsm48_multi_rate_conf *mr_conf =
+			(struct gsm48_multi_rate_conf *) amr_mrc->gsm48_ie;
 
-	if (lchan->mr_conf.icmi) {
+	if (mr_conf->icmi) {
 		/* initial mode given, coding in TS 05.09 3.4.1 */
-		return lchan->mr_conf.smod;
+		return mr_conf->smod;
 	} else {
 		/* implicit rule according to TS 05.09 Chapter 3.4.3 */
 		switch (amr_mrc->num_modes) {

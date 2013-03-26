@@ -837,12 +837,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 	/* 9.3.52 MultiRate Configuration */
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
-		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_conf)) {
+		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
 			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 		}
-		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
-		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
+		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
 		amr_parse_mr_conf(&lchan->tch.amr_mr, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
 				  TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
 		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
@@ -1094,12 +1094,12 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 
 	/* 9.3.52 MultiRate Configuration */
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
-		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_conf)) {
+		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
 			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 		}
-		memcpy(&lchan->mr_conf, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
-			TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
+		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
+			TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
 		amr_parse_mr_conf(&lchan->tch.amr_mr, TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
 				  TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
 		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
