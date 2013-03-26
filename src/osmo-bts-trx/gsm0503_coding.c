@@ -338,35 +338,6 @@ static void tch_fr_reassemble(uint8_t *tch_data, ubit_t *b_bits, int net_order)
 	}
 }
 
-static void tch_efr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
-{
-	int i, j;
-
-	tch_data[0] = 0xc << 4;
-	memset(tch_data + 1, 0, 30);
-
-	i = 0; /* counts bits */
-	j = 4; /* counts output bits */
-	while (i < 244) {
-		tch_data[j>>3] |= (b_bits[i] << (7-(j&7)));
-		i++;
-		j++;
-	}
-}
-
-static void tch_efr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
-{
-	int i, j;
-
-	i = 0; /* counts bits */
-	j = 4; /* counts output bits */
-	while (i < 244) {
-		b_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
-		i++;
-		j++;
-	}
-}
-
 static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data, int net_order)
 {
 	int i, j, k, l, o;
@@ -396,7 +367,63 @@ static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data, int net_order)
 		i++;
 		j++;
 	}
+}
 
+static void tch_efr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
+{
+	int i, j;
+
+	tch_data[0] = 0xc << 4;
+	memset(tch_data + 1, 0, 30);
+
+	i = 0; /* counts bits */
+	j = 4; /* counts output bits */
+	while (i < 244) {
+		tch_data[j>>3] |= (b_bits[i] << (7-(j&7)));
+		i++;
+		j++;
+	}
+}
+
+static void tch_efr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
+{
+	int i, j;
+
+	i = 0; /* counts bits */
+	j = 4; /* counts output bits */
+	while (i < 244) {
+		b_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
+		i++;
+		j++;
+	}
+}
+
+static void tch_amr_reassemble(uint8_t *tch_data, ubit_t *d_bits, int len)
+{
+	int i, j;
+
+	memset(tch_data, 0, (len + 7) >> 3);
+
+	i = 0; /* counts bits */
+	j = 0; /* counts output bits */
+	while (i < len) {
+		tch_data[j>>3] |= (d_bits[i] << (7-(j&7)));
+		i++;
+		j++;
+	}
+}
+
+static void tch_amr_disassemble(ubit_t *d_bits, uint8_t *tch_data, int len)
+{
+	int i, j;
+
+	i = 0; /* counts bits */
+	j = 0; /* counts output bits */
+	while (i < len) {
+		d_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
+		i++;
+		j++;
+	}
 }
 
 static void tch_fr_d_to_b(ubit_t *b_bits, ubit_t *d_bits)
@@ -496,6 +523,21 @@ static void tch_efr_unreorder(ubit_t *s, ubit_t *p, ubit_t *w)
 	memcpy(s+224, w+232, 20);
 	memcpy(p, w+252, 8);
 }
+
+static void tch_amr_merge(ubit_t *u, ubit_t *d, ubit_t *p, int len, int prot)
+{
+	memcpy(u, d, prot);
+	memcpy(u+prot, p, 6);
+	memcpy(u+prot+6, d+prot, len-prot);
+}
+
+static void tch_amr_unmerge(ubit_t *d, ubit_t *p, ubit_t *u, int len, int prot)
+{
+	memcpy(d, u, prot);
+	memcpy(p, u+prot, 6);
+	memcpy(d+prot, u+prot+6, len-prot);
+}
+
 int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr)
 {
 	sbit_t iB[912], cB[456], h;
@@ -603,6 +645,399 @@ coding_efr_fr:
 		return -1;
 	}
 
+	gsm0503_tch_fr_interleave(cB, iB);
+
+	for (i=0; i<8; i++)
+		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i>>2);
+
+	return 0;
+}
+
+static float amr_calc_ber(sbit_t *orig, ubit_t *test, int len)
+{
+	int i, err = 0;
+
+	/* count number of wrong bits (sbits with 0-value are omitted) */
+	for (i=0; i<len; i++) {
+		if ((*orig) > 0 && (*test))
+			err++;
+		else if ((*orig) < 0 && !(*test))
+			err++;
+		orig++;
+		test++;
+	}
+
+	return (float)err / (float)len;
+}
+
+int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
+	uint8_t *codec, int codecs, uint8_t *ft, uint8_t *cmr, float *ber)
+{
+	sbit_t iB[912], cB[456], h;
+	ubit_t test[456], d[244], p[6], conv[250];
+	int i, j, k, best = 0, rv, len, steal = 0, id = 0;
+
+	for (i=0; i<8; i++) {
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], &h,
+			i>>2);
+		steal -= h;
+	}
+
+	gsm0503_tch_fr_deinterleave(cB, iB);
+
+	if (steal > 0) {
+		rv = _xcch_decode_cB(tch_data, cB);
+		if (rv)
+			return -1;
+
+		return 23;
+	}
+
+	for (i=0; i<4; i++) {
+		for (j=0, k=0; j<8; j++)
+			k += abs(((int)gsm0503_afs_ic_sbit[i][j]) -
+							((int)cB[j]));
+		if (i == 0 || k < best) {
+			best = k;
+			id = i;
+		}
+	}
+
+	/* check if indicated codec fits into range of codecs */
+	if (id >= codecs) {
+		/* codec mode out of range, return id */
+		return id;
+	}
+
+	switch ((codec_mode_req) ? codec[*ft] : codec[id]) {
+	case 7: /* TCH/AFS12.2 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_12_2, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 244, 81);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 81, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 244);
+
+		len = 31;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_12_2, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 6: /* TCH/AFS10.2 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_10_2, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 204, 65);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 65, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 204);
+
+		len = 26;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_10_2, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 5: /* TCH/AFS7.95 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_7_95, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 159, 75);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 75, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 159);
+
+		len = 20;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_7_95, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 4: /* TCH/AFS7.4 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_7_4, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 148, 61);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 61, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 148);
+
+		len = 19;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_7_4, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 3: /* TCH/AFS6.7 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_6_7, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 134, 55);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 134);
+
+		len = 17;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_6_7, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 2: /* TCH/AFS5.9 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_5_9, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 118, 55);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 118);
+
+		len = 15;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_5_9, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 1: /* TCH/AFS5.15 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_5_15, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 103, 49);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 49, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 103);
+
+		len = 13;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_5_15, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	case 0: /* TCH/AFS4.75 */
+		osmo_conv_decode(&gsm0503_conv_tch_afs_4_75, cB+8, conv);
+
+		tch_amr_unmerge(d, p, conv, 95, 39);
+
+		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 39, p);
+		if (rv)
+			return -1;
+
+		tch_amr_reassemble(tch_data, d, 95);
+
+		len = 12;
+
+		if (ber) {
+			osmo_conv_encode(&gsm0503_conv_tch_afs_4_75, conv,
+				test+8);
+			*ber = amr_calc_ber(cB+8, test+8, 448);
+		}
+
+		break;
+	default:
+		fprintf(stderr, "FIXME: FT %d not supported!\n", *ft);
+
+		return -1;
+	}
+
+	/* change codec request / indication, if frame is valid */
+	if (codec_mode_req)
+		*cmr = id;
+	else
+		*ft = id;
+
+	return len;
+}
+
+int tch_afs_encode(ubit_t *bursts, uint8_t *tch_data, int len,
+	int codec_mode_req, uint8_t *codec, int codecs, uint8_t ft,
+	uint8_t cmr)
+{
+	ubit_t iB[912], cB[456], h;
+	ubit_t d[244], p[6], conv[250];
+	int i;
+	uint8_t id;
+
+	if (len == 23) { /* FACCH */
+		_xcch_encode_cB(cB, tch_data);
+
+		h = 1;
+
+		goto facch;
+	}
+
+	h = 0;
+
+	if (codec_mode_req) {
+		if (cmr >= codecs) {
+			fprintf(stderr, "FIXME: CMR ID %d not in codec list!\n",
+				cmr);
+			return -1;
+		}
+		id = cmr;
+	} else {
+		if (ft >= codecs) {
+			fprintf(stderr, "FIXME: FT ID %d not in codec list!\n",
+				ft);
+			return -1;
+		}
+		id = ft;
+	}
+
+	switch (codec[ft]) {
+	case 7: /* TCH/AFS12.2 */
+		if (len != 31) {
+invalid_length:
+			fprintf(stderr, "FIXME: payload length %d does not "
+				"comply with codec type %d!\n", len, ft);
+			return -1;
+		}
+
+		tch_amr_disassemble(d, tch_data, 244);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 81, p);
+
+		tch_amr_merge(conv, d, p, 244, 81);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_12_2, conv, cB+8);
+
+		break;
+	case 6: /* TCH/AFS10.2 */
+		if (len != 26)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 204);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 65, p);
+
+		tch_amr_merge(conv, d, p, 204, 65);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_10_2, conv, cB+8);
+
+		break;
+	case 5: /* TCH/AFS7.95 */
+		if (len != 20)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 159);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 75, p);
+
+		tch_amr_merge(conv, d, p, 159, 75);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_7_95, conv, cB+8);
+
+		break;
+	case 4: /* TCH/AFS7.4 */
+		if (len != 19)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 148);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 61, p);
+
+		tch_amr_merge(conv, d, p, 148, 61);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_7_4, conv, cB+8);
+
+		break;
+	case 3: /* TCH/AFS6.7 */
+		if (len != 17)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 134);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 55, p);
+
+		tch_amr_merge(conv, d, p, 134, 55);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_6_7, conv, cB+8);
+
+		break;
+	case 2: /* TCH/AFS5.9 */
+		if (len != 15)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 118);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 55, p);
+
+		tch_amr_merge(conv, d, p, 118, 55);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_5_9, conv, cB+8);
+
+		break;
+	case 1: /* TCH/AFS5.15 */
+		if (len != 13)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 103);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 49, p);
+
+		tch_amr_merge(conv, d, p, 103, 49);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_5_15, conv, cB+8);
+
+		break;
+	case 0: /* TCH/AFS4.75 */
+		if (len != 12)
+			goto invalid_length;
+
+		tch_amr_disassemble(d, tch_data, 95);
+
+		osmo_crc8gen_set_bits(&gsm0503_amr_crc6, d, 39, p);
+
+		tch_amr_merge(conv, d, p, 95, 39);
+
+		osmo_conv_encode(&gsm0503_conv_tch_afs_4_75, conv, cB+8);
+
+		break;
+	default:
+		fprintf(stderr, "FIXME: FT %d not supported!\n", ft);
+
+		return -1;
+	}
+
+	memcpy(cB, gsm0503_afs_ic_ubit[id], 8);
+
+facch:
 	gsm0503_tch_fr_interleave(cB, iB);
 
 	for (i=0; i<8; i++)
