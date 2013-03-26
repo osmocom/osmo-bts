@@ -33,11 +33,14 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/amr.h>
 
 #include "l1_if.h"
 #include "scheduler.h"
 #include "gsm0503_coding.h"
 #include "trx_if.h"
+#include "loops.h"
+#include "amr.h"
 #include "loops.h"
 
 /* Enable this to multiply TOA of RACH by 10.
@@ -757,7 +760,7 @@ send_burst:
 
 static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, struct msgb **_msg_tch,
-	struct msgb **_msg_facch)
+	struct msgb **_msg_facch, int codec_mode_request)
 {
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
@@ -785,6 +788,15 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				goto inval_mode1;
 			memset(tch_data, 0, 31);
 			len = 31;
+			break;
+		case GSM48_CMODE_SPEECH_AMR: /* AMR */
+			len = amr_compose_payload(tch_data,
+				chan_state->codec[chan_state->dl_cmr],
+				chan_state->codec[chan_state->dl_ft], 1);
+			if (len < 2)
+				break;
+			memset(tch_data + 2, 0, len - 2);
+			compose_tch_ind(l1h, tn, 0, chan, tch_data, len);
 			break;
 		default:
 inval_mode1:
@@ -841,9 +853,11 @@ inval_mode1:
 		msg_facch = NULL;
 	}
 
-	/* check validity of message */
+	/* check validity of message, get AMR ft and cmr */
 	if (!msg_facch && msg_tch) {
 		int len;
+		uint8_t bfi, cmr_codec, ft_codec;
+		int cmr, ft, i;
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
 			LOGP(DL1C, LOGL_NOTICE, "%s Dropping speech frame, "
@@ -878,10 +892,60 @@ inval_mode1:
 				goto free_bad_msg;
 			}
 			break;
+		case GSM48_CMODE_SPEECH_AMR: /* AMR */
+			len = amr_decompose_payload(msg_tch->l2h,
+				msgb_l2len(msg_tch), &cmr_codec, &ft_codec,
+				&bfi);
+			cmr = -1;
+			ft = -1;
+			for (i = 0; i < chan_state->codecs; i++) {
+				if (chan_state->codec[i] == cmr_codec)
+					cmr = i;
+				if (chan_state->codec[i] == ft_codec)
+					ft = i;
+			}
+			if (cmr >= 0) { /* new request */
+				chan_state->dl_cmr = cmr;
+				/* disable AMR loop */
+				trx_loop_amr_set(chan_state, 0);
+			} else {
+				/* enable AMR loop */
+				trx_loop_amr_set(chan_state, 1);
+			}
+			if (ft < 0) {
+				LOGP(DL1C, LOGL_ERROR, "%s Codec (FT = %d) "
+					" of RTP frame not in list. "
+					"trx=%u ts=%u\n",
+					trx_chan_desc[chan].name, ft_codec,
+					l1h->trx->nr, tn);
+				goto free_bad_msg;
+			}
+			if (codec_mode_request && chan_state->dl_ft != ft) {
+				LOGP(DL1C, LOGL_NOTICE, "%s Codec (FT = %d) "
+					" of RTP cannot be changed now, but in "
+					"next frame. trx=%u ts=%u\n",
+					trx_chan_desc[chan].name, ft_codec,
+					l1h->trx->nr, tn);
+				goto free_bad_msg;
+			}
+			chan_state->dl_ft = ft;
+			if (bfi) {
+				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
+					"AMR frame' trx=%u ts=%u at fn=%u.\n",
+					trx_chan_desc[chan].name,
+					l1h->trx->nr, tn, fn);
+				goto free_bad_msg;
+			}
+			break;
 		default:
 inval_mode2:
 			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
 				"fix!\n");
+			goto free_bad_msg;
+		}
+		if (len < 0) {
+			LOGP(DL1C, LOGL_ERROR, "Cannot send invalid AMR "
+				"payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
@@ -906,6 +970,7 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
 	static ubit_t bits[148];
 
@@ -916,7 +981,8 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	tx_tch_common(l1h, tn, fn, chan, bid, &msg_tch, &msg_facch);
+	tx_tch_common(l1h, tn, fn, chan, bid, &msg_tch, &msg_facch,
+		(((fn + 4) % 26) >> 2) & 1);
 
 	/* alloc burst memory, if not already,
 	 * otherwise shift buffer by 4 bursts for interleaving */
@@ -941,6 +1007,15 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (msg_facch)
 		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
 			1);
+	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+		/* the first FN 4,13,21 defines that CMI is included in frame,
+		 * the first FN 0,8,17 defines that CMR is included in frame.
+		 */
+		tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
+			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
+			chan_state->codec, chan_state->codecs,
+			chan_state->dl_ft,
+			chan_state->dl_cmr);
 	else
 		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
 
@@ -1176,7 +1251,8 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
-	int rc;
+	int rc, amr = 0;
+	float ber;
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -1225,6 +1301,27 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
 		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1);
 		break;
+	case GSM48_CMODE_SPEECH_AMR: /* AMR */
+		/* the first FN 0,8,17 defines that CMI is included in frame,
+		 * the first FN 4,13,21 defines that CMR is included in frame.
+		 * NOTE: A frame ends 7 FN after start.
+		 */
+		rc = tch_afs_decode(tch_data + 2, *bursts_p,
+			(((fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
+			chan_state->codecs, &chan_state->ul_ft,
+			&chan_state->ul_cmr, &ber);
+		if (rc)
+			trx_loop_amr_input(l1h,
+				trx_chan_desc[chan].chan_nr | tn, chan_state,
+				ber);
+		amr = 2; /* we store tch_data + 2 header bytes */
+		/* only good speech frames get rtp header */
+		if (rc != 23 && rc >= 4) {
+			rc = amr_compose_payload(tch_data,
+				chan_state->codec[chan_state->ul_cmr],
+				chan_state->codec[chan_state->ul_ft], 0);
+		}
+		break;
 	default:
 		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
 			tch_mode);
@@ -1246,7 +1343,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == 23) {
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data, 23, rssi);
+			tch_data + amr, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1258,6 +1355,15 @@ bfi:
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
 				memset(tch_data, 0, 31);
 				rc = 31;
+				break;
+			case GSM48_CMODE_SPEECH_AMR: /* AMR */
+				rc = amr_compose_payload(tch_data,
+					chan_state->codec[chan_state->dl_cmr],
+					chan_state->codec[chan_state->dl_ft],
+					1);
+				if (rc < 2)
+					break;
+				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
 				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
@@ -2106,21 +2212,38 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 
 /* setting all logical channels given attributes to active/inactive */
 int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
-	uint8_t tch_mode)
+	uint8_t tch_mode, int codecs, uint8_t codec0, uint8_t codec1,
+	uint8_t codec2, uint8_t codec3, uint8_t initial_id)
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	int i;
 	int rc = -EINVAL;
+	struct trx_chan_state *chan_state;
 
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == 0x00) {
+			chan_state = &l1h->chan_states[tn][i];
 			LOGP(DL1C, LOGL_NOTICE, "Set mode %u, %u on "
 				"%s of trx=%d ts=%d\n", rsl_cmode, tch_mode,
 				trx_chan_desc[i].name, l1h->trx->nr, tn);
-			l1h->chan_states[tn][i].rsl_cmode = rsl_cmode;
-			l1h->chan_states[tn][i].tch_mode = tch_mode;
+			chan_state->rsl_cmode = rsl_cmode;
+			chan_state->tch_mode = tch_mode;
+			if (rsl_cmode == RSL_CMOD_SPD_SPEECH
+			 && tch_mode == GSM48_CMODE_SPEECH_AMR) {
+				chan_state->codecs = codecs;
+				chan_state->codec[0] = codec0;
+				chan_state->codec[1] = codec1;
+				chan_state->codec[2] = codec2;
+				chan_state->codec[3] = codec3;
+				chan_state->ul_ft = initial_id;
+				chan_state->dl_ft = initial_id;
+				chan_state->ul_cmr = initial_id;
+				chan_state->dl_cmr = initial_id;
+				chan_state->ber_sum = 0;
+				chan_state->ber_num = 0;
+			}
 			rc = 0;
 		}
 	}
