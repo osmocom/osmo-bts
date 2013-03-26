@@ -65,6 +65,17 @@ struct trx_chan_state {
 	/* mode */
 	uint8_t			rsl_cmode, tch_mode; /* mode for TCH channels */
 
+	/* AMR */
+	uint8_t			codec[4];	/* 4 possible codecs for amr */
+	int			codecs;		/* number of possible codecs */
+	float			ber_sum;	/* sum of bit error rates */
+	int			ber_num;	/* number of bit error rates */
+	uint8_t			ul_ft;		/* current uplink FT index */
+	uint8_t			dl_ft;		/* current downlink FT index */
+	uint8_t			ul_cmr;		/* current uplink CMR index */
+	uint8_t			dl_cmr;		/* current downlink CMR index */
+	uint8_t			amr_loop;	/* if AMR loop is enabled */
+
 	/* encryption */
 	int			ul_encr_algo;	/* A5/x encry algo downlink */
 	int			dl_encr_algo;	/* A5/x encry algo uplink */
