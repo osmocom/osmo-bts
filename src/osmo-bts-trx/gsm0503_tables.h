@@ -12,5 +12,6 @@ extern const uint8_t gsm0503_gsm_fr_map[76];
 extern const uint8_t gsm0503_gsm_efr_protected_bits[65];
 extern const ubit_t gsm0503_afs_ic_ubit[4][8];
 extern const sbit_t gsm0503_afs_ic_sbit[4][8];
+extern const uint8_t gsm0503_tch_hr_interleaving[228][2];
 
 #endif /* _0503_TABLES_H */
