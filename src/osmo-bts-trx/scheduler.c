@@ -421,8 +421,8 @@ static int rts_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 static int rts_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan)
 {
-	// FIXME
-	return 0;
+	/* the FN 4/5, 13/14, 21/22 defines that FACCH may be included. */
+	return rts_tch_common(l1h, tn, fn, chan, ((fn % 26) >> 2) & 1);
 }
 
 
@@ -780,6 +780,12 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		/* indicate bad frame */
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
+			if (chan != TRXC_TCHF) { /* HR */
+				tch_data[0] = 0x70; /* F = 0, FT = 111 */
+				memset(tch_data + 1, 0, 14);
+				len = 15;
+				break;
+			}
 			memset(tch_data, 0, 33);
 			len = 33;
 			break;
@@ -869,6 +875,20 @@ inval_mode1:
 
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
+			if (chan != TRXC_TCHF) { /* HR */
+				len = 15;
+				if (msgb_l2len(msg_tch) >= 1
+				 && (msg_tch->l2h[0] & 0xf0) != 0x00) {
+					LOGP(DL1C, LOGL_NOTICE, "%s "
+						"Transmitting 'bad "
+						"HR frame' trx=%u ts=%u at "
+						"fn=%u.\n",
+						trx_chan_desc[chan].name,
+						l1h->trx->nr, tn, fn);
+					goto free_bad_msg;
+				}
+				break;
+			}
 			len = 33;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
@@ -1043,10 +1063,84 @@ send_burst:
 static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid)
 {
-	// FIXME
-	return NULL;
-}
+	struct msgb *msg_tch = NULL, *msg_facch = NULL;
+	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
+	static ubit_t bits[148];
 
+	/* send burst, if we already got a frame */
+	if (bid > 0) {
+		if (!*bursts_p)
+			return NULL;
+		goto send_burst;
+	}
+
+	/* get TCH and/or FACCH */
+	tx_tch_common(l1h, tn, fn, chan, bid, &msg_tch, &msg_facch,
+		(((fn + 4) % 26) >> 2) & 1);
+
+	/* check for FACCH alignment */
+	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
+		LOGP(DL1C, LOGL_ERROR, "%s Cannot transmit FACCH starting on "
+			"even frames, please fix RTS!\n",
+			trx_chan_desc[chan].name);
+		msgb_free(msg_facch);
+		msg_facch = NULL;
+	}
+
+	/* alloc burst memory, if not already,
+	 * otherwise shift buffer by 2 bursts for interleaving */
+	if (!*bursts_p) {
+		*bursts_p = talloc_zero_size(tall_bts_ctx, 696);
+		if (!*bursts_p)
+			return NULL;
+	} else {
+		memcpy(*bursts_p, *bursts_p + 232, 232);
+		if (chan_state->dl_ongoing_facch) {
+			memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+			memset(*bursts_p + 464, 0, 232);
+		} else {
+			memset(*bursts_p + 232, 0, 232);
+		}
+	}
+
+	/* mo message at all */
+	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
+		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+			"trx=%u ts=%u at fn=%u to transmit.\n", 
+			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
+		goto send_burst;
+	}
+
+	/* encode bursts (priorize FACCH) */
+	if (msg_facch) {
+		tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
+		chan_state->dl_ongoing_facch = 1; /* first of two tch frames */
+	} else if (chan_state->dl_ongoing_facch) /* second of two tch frames */
+		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
+	else
+		tch_hr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
+
+	/* free message */
+	if (msg_tch)
+		msgb_free(msg_tch);
+	if (msg_facch)
+		msgb_free(msg_facch);
+
+send_burst:
+	/* compose burst */
+	burst = *bursts_p + bid * 116;
+	memset(bits, 0, 3);
+	memcpy(bits + 3, burst, 58);
+	memcpy(bits + 61, tsc[l1h->config.tsc], 26);
+	memcpy(bits + 87, burst + 58, 58);
+	memset(bits + 145, 0, 3);
+
+	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u burst=%u\n",
+		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
+
+	return bits;
+}
 
 
 /*
@@ -1385,11 +1479,125 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa)
 {
-	LOGP(DL1C, LOGL_DEBUG, "TCH/H Received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	uint8_t *mask = &chan_state->ul_mask;
+	uint8_t rsl_cmode = chan_state->rsl_cmode;
+	uint8_t tch_mode = chan_state->tch_mode;
+	uint8_t tch_data[128]; /* just to be safe */
+	int rc, amr = 0;
+
+	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
 
-	// FIXME
-	return 0;
+	/* alloc burst memory, if not already */
+	if (!*bursts_p) {
+		*bursts_p = talloc_zero_size(tall_bts_ctx, 696);
+		if (!*bursts_p)
+			return -ENOMEM;
+	}
+
+	/* clear burst */
+	if (bid == 0) {
+		memset(*bursts_p + 464, 0, 232);
+		*mask = 0x0;
+	}
+
+	/* update mask */
+	*mask |= (1 << bid);
+
+	/* copy burst to end of buffer of 6 bursts */
+	burst = *bursts_p + bid * 116 + 464;
+	memcpy(burst, bits + 3, 58);
+	memcpy(burst + 58, bits + 87, 58);
+
+	/* wait until complete set of bursts */
+	if (bid != 1)
+		return 0;
+
+	/* check for complete set of bursts */
+	if ((*mask & 0x3) != 0x3) {
+		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame ending "
+			"at fn=%u (%u/%u) for %s\n", fn,
+			fn % l1h->mf_period[tn], l1h->mf_period[tn],
+			trx_chan_desc[chan].name);
+	}
+	*mask = 0x0;
+
+	/* skip second of two TCH frames of FACCH was received */
+	if (chan_state->ul_ongoing_facch) {
+		chan_state->ul_ongoing_facch = 0;
+		memcpy(*bursts_p, *bursts_p + 232, 232);
+		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+		goto bfi;
+	}
+
+	/* decode
+	 * also shift buffer by 4 bursts for interleaving */
+	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
+								: tch_mode) {
+	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
+		/* Note on FN-10: If we are at FN 10, we decoded an even aligned
+		 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
+		 * Even FN ending at: 10,11,19,20,2,3
+		 */
+		rc = tch_hr_decode(tch_data, *bursts_p,
+			(((fn + 26 - 10) % 26) >> 2) & 1);
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
+			tch_mode);
+		return -EINVAL;
+	}
+	memcpy(*bursts_p, *bursts_p + 232, 232);
+	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
+			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
+		goto bfi;
+	}
+	if (rc < 4) {
+		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
+			"fn=%u for %s with codec mode %d (out of range)\n",
+			fn, trx_chan_desc[chan].name, rc);
+		goto bfi;
+	}
+
+	/* FACCH */
+	if (rc == 23) {
+		chan_state->ul_ongoing_facch = 1;
+		compose_ph_data_ind(l1h, tn,
+			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
+			tch_data + amr, 23, rssi);
+bfi:
+		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
+			/* indicate bad frame */
+			switch (tch_mode) {
+			case GSM48_CMODE_SPEECH_V1: /* HR */
+				tch_data[0] = 0x70; /* F = 0, FT = 111 */
+				memset(tch_data + 1, 0, 14);
+				rc = 15;
+				break;
+			default:
+				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
+					"please fix!\n");
+				return -EINVAL;
+			}
+		}
+	}
+
+	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
+		return 0;
+
+	/* TCH or BFI */
+	/* Note on FN 19 or 20: If we received the last burst of a frame,
+	 * it actually starts at FN 8 or 9. A burst starting there, overlaps
+	 * with the slot 12, so an extra FN must be substracted to get correct
+	 * start of frame.
+	 */
+	return compose_tch_ind(l1h, tn,
+		(fn + 2715648 - 10 - ((fn%26)==19) - ((fn%26)==20)) % 2715648,
+		chan, tch_data, rc);
 }
 
 
