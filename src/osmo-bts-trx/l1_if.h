@@ -76,6 +76,10 @@ struct trx_chan_state {
 	uint8_t			dl_cmr;		/* current downlink CMR index */
 	uint8_t			amr_loop;	/* if AMR loop is enabled */
 
+	/* TCH/H */
+	uint8_t			dl_ongoing_facch; /* FACCH/H on downlink */
+	uint8_t			ul_ongoing_facch; /* FACCH/H on uplink */
+
 	/* encryption */
 	int			ul_encr_algo;	/* A5/x encry algo downlink */
 	int			dl_encr_algo;	/* A5/x encry algo uplink */

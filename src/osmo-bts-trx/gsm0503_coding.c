@@ -369,6 +369,35 @@ static void tch_fr_disassemble(ubit_t *b_bits, uint8_t *tch_data, int net_order)
 	}
 }
 
+static void tch_hr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
+{
+	int i, j;
+
+	tch_data[0] = 0x00; /* F = 0, FT = 000 */
+	memset(tch_data + 1, 0, 14);
+
+	i = 0; /* counts bits */
+	j = 8; /* counts output bits */
+	while (i < 112) {
+		tch_data[j>>3] |= (b_bits[i] << (7-(j&7)));
+		i++;
+		j++;
+	}
+}
+
+static void tch_hr_disassemble(ubit_t *b_bits, uint8_t *tch_data)
+{
+	int i, j;
+
+	i = 0; /* counts bits */
+	j = 8; /* counts output bits */
+	while (i < 112) {
+		b_bits[i] = (tch_data[j>>3] >> (7-(j&7))) & 1;
+		i++;
+		j++;
+	}
+}
+
 static void tch_efr_reassemble(uint8_t *tch_data, ubit_t *b_bits)
 {
 	int i, j;
@@ -442,6 +471,35 @@ static void tch_fr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
 		d_bits[i] = b_bits[gsm610_bitorder[i]];
 }
 
+static void tch_hr_d_to_b(ubit_t *b_bits, ubit_t *d_bits)
+{
+	int i;
+
+	const uint16_t *map;
+
+	if (!d_bits[93] && !d_bits[94])
+		map = gsm620_unvoiced_bitorder;
+	else
+		map = gsm620_voiced_bitorder;
+
+	for (i = 0; i < 112; i++)
+		b_bits[map[i]] = d_bits[i];
+}
+
+static void tch_hr_b_to_d(ubit_t *d_bits, ubit_t *b_bits)
+{
+	int i;
+	const uint16_t *map;
+
+	if (!b_bits[34] && !b_bits[35])
+		map = gsm620_unvoiced_bitorder;
+	else
+		map = gsm620_voiced_bitorder;
+
+	for (i = 0; i < 112; i++)
+		d_bits[i] = b_bits[map[i]];
+}
+
 static void tch_efr_d_to_w(ubit_t *b_bits, ubit_t *d_bits)
 {
 	int i;
@@ -488,6 +546,18 @@ static void tch_fr_reorder(ubit_t *u, ubit_t *d, ubit_t *p)
 	}
 	for (i=0; i<3; i++)
 		u[91+i] = p[i];
+}
+
+static void tch_hr_unreorder(ubit_t *d, ubit_t *p, ubit_t *u)
+{
+	memcpy(d, u, 95);
+	memcpy(p, u+95, 3);
+}
+
+static void tch_hr_reorder(ubit_t *u, ubit_t *d, ubit_t *p)
+{
+	memcpy(u, d, 95);
+	memcpy(u+95, p, 3);
 }
 
 static void tch_efr_reorder(ubit_t *w, ubit_t *s, ubit_t *p)
@@ -649,6 +719,117 @@ coding_efr_fr:
 
 	for (i=0; i<8; i++)
 		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i>>2);
+
+	return 0;
+}
+
+int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd)
+{
+	sbit_t iB[912], cB[456], h;
+	ubit_t conv[98], b[112], d[112], p[3];
+	int i, rv, steal = 0;
+
+	/* only unmap the stealing bits */
+	if (!odd) {
+		for (i=0; i<4; i++) {
+			gsm0503_tch_burst_unmap(NULL, &bursts[i * 116], &h, 0);
+			steal -= h;
+		}
+		for (i=2; i<5; i++) {
+			gsm0503_tch_burst_unmap(NULL, &bursts[i * 116], &h, 1);
+			steal -= h;
+		}
+	}
+
+	/* if we found a stole FACCH, but only at correct alignment */
+	if (steal > 0) {
+		for (i=0; i<6; i++)
+			gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116],
+				NULL, i>>2);
+		for (i=2; i<4; i++)
+			gsm0503_tch_burst_unmap(&iB[i * 114 + 456],
+				&bursts[i * 116], NULL, 1);
+
+		gsm0503_tch_fr_deinterleave(cB, iB);
+
+		rv = _xcch_decode_cB(tch_data, cB);
+		if (rv)
+			return -1;
+
+		return 23;
+	}
+
+	for (i=0; i<4; i++)
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], NULL,
+			i>>1);
+
+	gsm0503_tch_hr_deinterleave(cB, iB);
+
+	osmo_conv_decode(&gsm0503_conv_tch_hr, cB, conv);
+
+	tch_hr_unreorder(d, p, conv);
+
+	for (i=0; i<17; i++)
+		d[i+95] = (cB[i+211] < 0) ? 1:0;
+
+	rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d + 73, 22, p);
+	if (rv)
+		return -1;
+
+	tch_hr_d_to_b(b, d);
+
+	tch_hr_reassemble(tch_data, b);
+
+	return 15;
+}
+
+int tch_hr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
+{
+	ubit_t iB[912], cB[456], h;
+	ubit_t conv[98], b[112], d[112], p[3];
+	int i;
+
+	switch (len) {
+	case 15: /* TCH HR */
+		tch_hr_disassemble(b, tch_data);
+
+		tch_hr_b_to_d(d, b);
+
+		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d + 73, 22, p);
+
+		tch_hr_reorder(conv, d, p);
+
+		osmo_conv_encode(&gsm0503_conv_tch_hr, conv, cB);
+
+		memcpy(cB+211, d+95, 17);
+
+		h = 0;
+
+		gsm0503_tch_hr_interleave(cB, iB);
+
+		for (i=0; i<4; i++)
+			gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116],
+				&h, i>>1);
+
+		break;
+	case 23: /* FACCH */
+		_xcch_encode_cB(cB, tch_data);
+
+		h = 1;
+
+		gsm0503_tch_fr_interleave(cB, iB);
+
+		for (i=0; i<6; i++)
+			gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116],
+				&h, i>>2);
+		for (i=2; i<4; i++)
+			gsm0503_tch_burst_map(&iB[i * 114 + 456],
+				&bursts[i * 116], &h, 1);
+
+		break;
+	default:
+		return -1;
+	}
 
 	return 0;
 }
