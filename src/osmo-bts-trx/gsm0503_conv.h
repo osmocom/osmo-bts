@@ -16,5 +16,11 @@ extern const struct osmo_conv_code gsm0503_conv_tch_afs_6_7;
 extern const struct osmo_conv_code gsm0503_conv_tch_afs_5_9;
 extern const struct osmo_conv_code gsm0503_conv_tch_afs_5_15;
 extern const struct osmo_conv_code gsm0503_conv_tch_afs_4_75;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_7_95;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_7_4;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_6_7;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_5_9;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_5_15;
+extern const struct osmo_conv_code gsm0503_conv_tch_ahs_4_75;
 
 #endif /* _0503_CONV_H */

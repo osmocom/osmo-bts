@@ -1065,6 +1065,7 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
+	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
 	static ubit_t bits[148];
 
@@ -1118,6 +1119,15 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		chan_state->dl_ongoing_facch = 1; /* first of two tch frames */
 	} else if (chan_state->dl_ongoing_facch) /* second of two tch frames */
 		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
+	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
+		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
+		 * included in frame. */
+		tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
+			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
+			chan_state->codec, chan_state->codecs,
+			chan_state->dl_ft,
+			chan_state->dl_cmr);
 	else
 		tch_hr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
 
@@ -1486,6 +1496,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
+	float ber;
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -1544,6 +1555,28 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		rc = tch_hr_decode(tch_data, *bursts_p,
 			(((fn + 26 - 10) % 26) >> 2) & 1);
 		break;
+	case GSM48_CMODE_SPEECH_AMR: /* AMR */
+		/* the first FN 0,8,17 or 1,9,18 defines that CMI is included
+		 * in frame, the first FN 4,13,21 or 5,14,22 defines that CMR
+		 * is included in frame.
+		 */
+		rc = tch_ahs_decode(tch_data + 2, *bursts_p,
+			(((fn + 26 - 10) % 26) >> 2) & 1,
+			(((fn + 26 - 10) % 26) >> 2) & 1, chan_state->codec,
+			chan_state->codecs, &chan_state->ul_ft,
+			&chan_state->ul_cmr, &ber);
+		if (rc)
+			trx_loop_amr_input(l1h,
+				trx_chan_desc[chan].chan_nr | tn, chan_state,
+				ber);
+		amr = 2; /* we store tch_data + 2 two */
+		/* only good speech frames get rtp header */
+		if (rc != 23 && rc >= 4) {
+			rc = amr_compose_payload(tch_data,
+				chan_state->codec[chan_state->ul_cmr],
+				chan_state->codec[chan_state->ul_ft], 0);
+		}
+		break;
 	default:
 		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
 			tch_mode);
@@ -1577,6 +1610,15 @@ bfi:
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
 				rc = 15;
+				break;
+			case GSM48_CMODE_SPEECH_AMR: /* AMR */
+				rc = amr_compose_payload(tch_data,
+					chan_state->codec[chan_state->dl_cmr],
+					chan_state->codec[chan_state->dl_ft],
+					1);
+				if (rc < 2)
+					break;
+				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
 				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
