@@ -254,6 +254,73 @@ static void test_fr(uint8_t *speech, int len)
 	printd("\n");
 }
 
+static void test_hr(uint8_t *speech, int len)
+{
+	uint8_t result[23];
+	ubit_t bursts_u[116 * 6];
+	sbit_t bursts_s[116 * 6];
+	int rc;
+
+	memset(bursts_u, 0x23, sizeof(bursts_u));
+	memset(bursts_s, 0, sizeof(bursts_s));
+
+	printd("Encoding: %s\n", osmo_hexdump(speech, len));
+
+	/* encode */
+	tch_hr_encode(bursts_u, speech, len);
+
+	printd("U-Bits:\n");
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
+		bursts_u[57], bursts_u[58]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 116, 57),
+		bursts_u[57 + 116], bursts_u[58 + 116]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 116, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 232, 57),
+		bursts_u[57 + 232], bursts_u[58 + 232]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 232, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 348, 57),
+		bursts_u[57 + 348], bursts_u[58 + 348]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 348, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 464, 57),
+		bursts_u[57 + 464], bursts_u[58 + 464]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 464, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u + 580, 57),
+		bursts_u[57 + 580], bursts_u[58 + 580]);
+	printd("%s\n", osmo_hexdump(bursts_u + 59 + 580, 57));
+	ubits2sbits(bursts_u, bursts_s, 116 * 6);
+	printd("S-Bits:\n");
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s, 57),
+		(uint8_t)bursts_s[57], (uint8_t)bursts_s[58]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 116, 57),
+		(uint8_t)bursts_s[57 + 116], (uint8_t)bursts_s[58 + 116]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 116, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 232, 57),
+		(uint8_t)bursts_s[57 + 232], (uint8_t)bursts_s[58 + 232]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 232, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 348, 57),
+		(uint8_t)bursts_s[57 + 348], (uint8_t)bursts_s[58 + 348]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 348, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 464, 57),
+		(uint8_t)bursts_s[57 + 464], (uint8_t)bursts_s[58 + 464]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 464, 57));
+	printd("%s %02x  %02x  ", osmo_hexdump((uint8_t *)bursts_s + 580, 57),
+		(uint8_t)bursts_s[57 + 580], (uint8_t)bursts_s[58 + 580]);
+	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 580, 57));
+
+	/* decode */
+	rc = tch_hr_decode(result, bursts_s, 0);
+
+	ASSERT_TRUE(rc == len);
+
+	printd("Decoded: %s\n", osmo_hexdump(result, len));
+
+	ASSERT_TRUE(!memcmp(speech, result, len));
+
+	printd("\n");
+}
+
 static void test_pdtch(uint8_t *l2, int len)
 {
 	uint8_t result[len];
@@ -351,6 +418,7 @@ uint8_t test_macblock[][54] = {
 
 uint8_t test_speech_fr[33];
 uint8_t test_speech_efr[31];
+uint8_t test_speech_hr[15];
 
 int main(int argc, char **argv)
 {
@@ -380,6 +448,14 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
 		test_fr(test_l2[i], sizeof(test_l2[0]));
+
+	for (i = 0; i < sizeof(test_speech_hr); i++)
+		test_speech_hr[i] = i*17;
+	test_speech_hr[0] = 0x00;
+	test_hr(test_speech_hr, sizeof(test_speech_hr));
+
+	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
+		test_hr(test_l2[i], sizeof(test_l2[0]));
 
 	for (i = 0; i < sizeof(test_macblock) / sizeof(test_macblock[0]); i++) {
 		test_pdtch(test_macblock[i], 23);

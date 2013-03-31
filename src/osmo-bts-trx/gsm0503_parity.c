@@ -63,7 +63,7 @@ const struct osmo_crc16gen_code gsm0503_sch_crc10 = {
 
 
 /*
- * GSM TCH FR/EFR parity
+ * GSM TCH FR/HR/EFR parity
  *
  * g(x) = x^3 + x + 1
  */
