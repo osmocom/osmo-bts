@@ -14,6 +14,12 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 int tch_afs_encode(ubit_t *bursts, uint8_t *tch_data, int len,
 	int codec_mode_req, uint8_t *codec, int codecs, uint8_t ft,
 	uint8_t cmr);
+int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
+	int codec_mode_req, uint8_t *codec, int codecs, uint8_t *ft, 
+	uint8_t *cmr, float *ber);
+int tch_ahs_encode(ubit_t *bursts, uint8_t *tch_data, int len,
+	int codec_mode_req, uint8_t *codec, int codecs, uint8_t ft,
+	uint8_t cmr);
 int rach_decode(uint8_t *ra, sbit_t *burst, uint8_t bsic);
 int rach_encode(ubit_t *burst, uint8_t *ra, uint8_t bsic);
 int sch_decode(uint8_t *sb_info, sbit_t *burst);
