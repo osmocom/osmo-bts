@@ -460,6 +460,10 @@ static const struct sapi_dir pdtch_sapis[] = {
 #endif
 };
 
+static const struct sapi_dir ho_sapis[] = {
+	{ GsmL1_Sapi_Rach,	GsmL1_Dir_RxUplink },
+};
+
 struct lchan_sapis {
 	const struct sapi_dir *sapis;
 	unsigned int num_sapis;
@@ -486,6 +490,11 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 		.sapis = pdtch_sapis,
 		.num_sapis = ARRAY_SIZE(pdtch_sapis),
 	},
+};
+
+static const struct lchan_sapis sapis_for_ho = {
+	.sapis = ho_sapis,
+	.num_sapis = ARRAY_SIZE(ho_sapis),
 };
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
@@ -940,6 +949,11 @@ int lchan_activate(struct gsm_lchan *lchan)
 			"%s Trying to activate lchan, but commands in queue\n",
 			gsm_lchan_name(lchan));
 
+	/* override the regular SAPIs if this is the first hand-over
+	 * related activation of the LCHAN */
+	if (lchan->ho.active == 1)
+		s4l = &sapis_for_ho;
+
 	for (i = 0; i < s4l->num_sapis; i++) {
 		int sapi = s4l->sapis[i].sapi;
 		int dir = s4l->sapis[i].dir;
@@ -1297,6 +1311,7 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphDeactivateReq_t *deact_req;
+
 	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
 	deact_req->u8Tn = lchan->ts->nr;
 	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
