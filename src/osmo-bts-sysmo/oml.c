@@ -815,6 +815,7 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+
 	struct msgb *msg = l1p_msgb_alloc();
 	int sapi = cmd->sapi;
 	int dir = cmd->dir;
@@ -1296,7 +1297,6 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphDeactivateReq_t *deact_req;
-
 	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
 	deact_req->u8Tn = lchan->ts->nr;
 	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);

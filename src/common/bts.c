@@ -74,6 +74,7 @@ int bts_init(struct gsm_bts *bts)
 	load_timer_start(bts);
 	btsb->rtp_jitter_buf_ms = 100;
 	btsb->max_ta = 63;
+	btsb->ny1 = 4;
 
 	/* default RADIO_LINK_TIMEOUT */
 	btsb->radio_link_timeout = 32;

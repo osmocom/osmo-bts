@@ -711,6 +711,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		memset(&lchan->encr, 0, sizeof(lchan->encr));
 
 	/* 9.3.9 Handover Reference */
+	if ((type == RSL_ACT_INTER_ASYNC ||
+	     type == RSL_ACT_INTER_SYNC) &&
+	    TLVP_PRESENT(&tp, RSL_IE_HANDO_REF)) {
+		lchan->ho.active = 1;
+		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
+		LOGP(DRSL, LOGL_INFO, "Channel activation due to handover (id %i)", lchan->ho.ref);
+	}
 
 	/* 9.3.4 BS Power */
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
@@ -802,6 +809,10 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 		lchan->abis_ip.rtp_socket = NULL;
 		msgb_queue_flush(&lchan->dl_tch_queue);
 	}
+
+	/* deactivate handover RACH detection and timer */
+	lchan->ho.active = 0;
+	osmo_timer_del(&lchan->ho.t3105);
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	rc = bts_model_rsl_chan_rel(lchan);
