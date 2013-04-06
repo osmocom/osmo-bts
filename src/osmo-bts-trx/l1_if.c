@@ -516,6 +516,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				/* confirm only on dedicated channel */
 				mph_info_chan_confirm(l1h, chan_nr,
 					PRIM_INFO_DEACTIVATE, 0);
+				lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 			}
 			break;
 		default:
