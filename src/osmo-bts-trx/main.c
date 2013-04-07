@@ -309,7 +309,7 @@ int main(int argc, char **argv)
 	}
 
 	vty_init(&bts_vty_info);
-	bts_vty_init(bts, &bts_log_info);
+	bts_vty_init(bts, trx_num, &bts_log_info);
 
 	if (bts_init(bts) < 0) {
 		fprintf(stderr, "unable to to open bts\n");
