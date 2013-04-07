@@ -13,3 +13,6 @@ RestartSec=2
 # The msg queues must be read fast enough
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=1
+
+[Install]
+WantedBy=default.target
