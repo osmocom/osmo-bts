@@ -46,6 +46,8 @@
 
 int tranceiver_available = 0;
 const char *tranceiver_ip = "127.0.0.1";
+int settsc_enabled = 0;
+int setbsic_enabled = 0;
 
 /*
  * socket
@@ -230,12 +232,20 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h)
 
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETTSC", "%d", tsc);
+	if (!settsc_enabled)
+		return 0;
+	/* if TSC is enabled only, the positive response is mandatory */
+	return trx_ctrl_cmd(l1h, (setbsic_enabled) ? 0 : 1, "SETTSC", "%d",
+		tsc);
 }
 
 int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETBSIC", "%d", bsic);
+	if (!setbsic_enabled)
+		return 0;
+	/* if BSIC is enabled only, the positive response is mandatory */
+	return trx_ctrl_cmd(l1h, (settsc_enabled) ? 0 : 1, "SETBSIC", "%d",
+		bsic);
 }
 
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)

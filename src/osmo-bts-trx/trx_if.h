@@ -3,6 +3,9 @@
 
 extern int tranceiver_available;
 extern const char *tranceiver_ip;
+extern int settsc_enabled;
+extern int setbsic_enabled;
+
 
 struct trx_ctrl_msg {
 	struct llist_head	list;
