@@ -164,6 +164,50 @@ DEFUN(cfg_bts_no_timing_advance_loop, cfg_bts_no_timing_advance_loop_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_settsc, cfg_bts_settsc_cmd,
+	"settsc",
+	"Use SETTSC to configure transceiver\n")
+{
+	settsc_enabled = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_setbsic, cfg_bts_setbsic_cmd,
+	"setbsic",
+	"Use SETBSIC to configure transceiver\n")
+{
+	setbsic_enabled = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_settsc, cfg_bts_no_settsc_cmd,
+	"no settsc",
+	NO_STR "Disable SETTSC to configure transceiver\n")
+{
+	settsc_enabled = 0;
+	if (!setbsic_enabled) {
+		vty_out(vty, "%% Auto enabling SETBSIC.%s", VTY_NEWLINE);
+		setbsic_enabled = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_setbsic, cfg_bts_no_setbsic_cmd,
+	"no setbsic",
+	NO_STR "Disable SETBSIC to configure transceiver\n")
+{
+	setbsic_enabled = 0;
+	if (!settsc_enabled) {
+		vty_out(vty, "%% Auto enabling SETTSC.%s", VTY_NEWLINE);
+		settsc_enabled = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_rxgain, cfg_trx_rxgain_cmd,
 	"rxgain <0-50>",
 	"Set the receiver gain in dB\n"
@@ -282,6 +326,10 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, " no ms-power-loop%s", VTY_NEWLINE);
 	vty_out(vty, " %stiming-advance-loop%s", (trx_ta_loop) ? "":"no ",
 		VTY_NEWLINE);
+	if (settsc_enabled)
+		vty_out(vty, " settsc%s", VTY_NEWLINE);
+	if (setbsic_enabled)
+		vty_out(vty, " setbsic%s", VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
@@ -318,6 +366,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_no_ms_power_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_timing_advance_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timing_advance_loop_cmd);
+	install_element(BTS_NODE, &cfg_bts_settsc_cmd);
+	install_element(BTS_NODE, &cfg_bts_setbsic_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_settsc_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_setbsic_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_rxgain_cmd);
 	install_element(TRX_NODE, &cfg_trx_power_cmd);

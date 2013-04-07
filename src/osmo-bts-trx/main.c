@@ -333,6 +333,8 @@ int main(int argc, char **argv)
 			config_file);
 		exit(1);
 	}
+	if (!settsc_enabled && !setbsic_enabled)
+		settsc_enabled = setbsic_enabled = 1;
 
 	write_pid_file("osmo-bts");
 
