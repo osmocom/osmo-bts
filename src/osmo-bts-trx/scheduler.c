@@ -53,12 +53,12 @@ void *tall_bts_ctx;
 static struct gsm_bts *bts;
 
 /* clock states */
-static uint32_t tranceiver_lost;
-uint32_t tranceiver_last_fn;
-static struct timeval tranceiver_clock_tv;
-static struct osmo_timer_list tranceiver_clock_timer;
+static uint32_t transceiver_lost;
+uint32_t transceiver_last_fn;
+static struct timeval transceiver_clock_tv;
+static struct osmo_timer_list transceiver_clock_timer;
 
-/* clock advance for the tranceiver */
+/* clock advance for the transceiver */
 uint32_t trx_clock_advance = 20;
 
 /* advance RTS to give some time for data processing. (especially PCU) */
@@ -2729,7 +2729,7 @@ static int trx_sched_fn(uint32_t fn)
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
 
-	/* advance frame number, so the tranceiver has more time until
+	/* advance frame number, so the transceiver has more time until
 	 * it must be transmitted. */
 	fn = (fn + trx_clock_advance) % 2715648;
 
@@ -2777,17 +2777,17 @@ extern int quit;
 /* this timer fires for every FN to be processed */
 static void trx_ctrl_timer_cb(void *data)
 {
-	struct timeval tv_now, *tv_clock = &tranceiver_clock_tv;
+	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
 	int32_t elapsed;
 
-	/* check if tranceiver is still alive */
-	if (tranceiver_lost++ == TRX_LOSS_FRAMES) {
+	/* check if transceiver is still alive */
+	if (transceiver_lost++ == TRX_LOSS_FRAMES) {
 		struct gsm_bts_trx *trx;
 
 		LOGP(DL1C, LOGL_NOTICE, "No more clock from traneiver\n");
 
 no_clock:
-		tranceiver_available = 0;
+		transceiver_available = 0;
 
 		/* flush pending messages of transceiver */
 		/* close all logical channels and reset timeslots */
@@ -2799,7 +2799,7 @@ no_clock:
 		}
 
 		/* tell BSC */
-		check_tranceiver_availability(bts, 0);
+		check_transceiver_availability(bts, 0);
 
 		return;
 	}
@@ -2823,19 +2823,19 @@ no_clock:
 			tv_clock->tv_sec++;
 			tv_clock->tv_usec -= 1000000;
 		}
-		tranceiver_last_fn = (tranceiver_last_fn + 1) % 2715648;
-		trx_sched_fn(tranceiver_last_fn);
+		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		trx_sched_fn(transceiver_last_fn);
 		elapsed -= FRAME_DURATION_uS;
 	}
-	osmo_timer_schedule(&tranceiver_clock_timer, 0,
+	osmo_timer_schedule(&transceiver_clock_timer, 0,
 		FRAME_DURATION_uS - elapsed);
 }
 
 
-/* receive clock from tranceiver */
+/* receive clock from transceiver */
 int trx_sched_clock(uint32_t fn)
 {
-	struct timeval tv_now, *tv_clock = &tranceiver_clock_tv;
+	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
 	int32_t elapsed;
 	int32_t elapsed_fn;
 
@@ -2843,54 +2843,54 @@ int trx_sched_clock(uint32_t fn)
 		return 0;
 
 	/* reset lost counter */
-	tranceiver_lost = 0;
+	transceiver_lost = 0;
 
 	gettimeofday(&tv_now, NULL);
 
 	/* clock becomes valid */
-	if (!tranceiver_available) {
+	if (!transceiver_available) {
 		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n",
 			fn);
 
-		tranceiver_available = 1;
+		transceiver_available = 1;
 
-		/* start provisioning tranceiver */
-		l1if_provision_tranceiver(bts);
+		/* start provisioning transceiver */
+		l1if_provision_transceiver(bts);
 
 		/* tell BSC */
-		check_tranceiver_availability(bts, 1);
+		check_transceiver_availability(bts, 1);
 
 new_clock:
-		tranceiver_last_fn = fn;
-		trx_sched_fn(tranceiver_last_fn);
+		transceiver_last_fn = fn;
+		trx_sched_fn(transceiver_last_fn);
 
 		/* schedule first FN clock */
 		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
-		memset(&tranceiver_clock_timer, 0,
-			sizeof(tranceiver_clock_timer));
-		tranceiver_clock_timer.cb = trx_ctrl_timer_cb;
-	        tranceiver_clock_timer.data = bts;
-		osmo_timer_schedule(&tranceiver_clock_timer, 0,
+		memset(&transceiver_clock_timer, 0,
+			sizeof(transceiver_clock_timer));
+		transceiver_clock_timer.cb = trx_ctrl_timer_cb;
+	        transceiver_clock_timer.data = bts;
+		osmo_timer_schedule(&transceiver_clock_timer, 0,
 			FRAME_DURATION_uS);
 
 		return 0;
 	}
 
-	osmo_timer_del(&tranceiver_clock_timer);
+	osmo_timer_del(&transceiver_clock_timer);
 
 	/* calculate elapsed time since last_fn */
 	elapsed = (tv_now.tv_sec - tv_clock->tv_sec) * 1000000
 		+ (tv_now.tv_usec - tv_clock->tv_usec);
 
 	/* how much frames have been elapsed since last fn processed */
-	elapsed_fn = (fn + 2715648 - tranceiver_last_fn) % 2715648;
+	elapsed_fn = (fn + 2715648 - transceiver_last_fn) % 2715648;
 	if (elapsed_fn >= 135774)
 		elapsed_fn -= 2715648;
 
 	/* check for max clock skew */
 	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
 		LOGP(DL1C, LOGL_NOTICE, "GSM clock skew: old fn=%u, "
-			"new fn=%u\n", tranceiver_last_fn, fn);
+			"new fn=%u\n", transceiver_last_fn, fn);
 		goto new_clock;
 	}
 
@@ -2909,21 +2909,21 @@ new_clock:
 			tv_clock->tv_usec -= 1000000;
 		}
 		/* set time to the time our next FN hast to be transmitted */
-		osmo_timer_schedule(&tranceiver_clock_timer, 0,
+		osmo_timer_schedule(&transceiver_clock_timer, 0,
 			FRAME_DURATION_uS * (1 - elapsed_fn));
 
 		return 0;
 	}
 
 	/* transmit what we still need to transmit */
-	while (fn != tranceiver_last_fn) {
-		tranceiver_last_fn = (tranceiver_last_fn + 1) % 2715648;
-		trx_sched_fn(tranceiver_last_fn);
+	while (fn != transceiver_last_fn) {
+		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		trx_sched_fn(transceiver_last_fn);
 	}
 
 	/* schedule next FN to be transmitted */
 	memcpy(tv_clock, &tv_now, sizeof(struct timeval));
-	osmo_timer_schedule(&tranceiver_clock_timer, 0, FRAME_DURATION_uS);
+	osmo_timer_schedule(&transceiver_clock_timer, 0, FRAME_DURATION_uS);
 
 	return 0;
 }

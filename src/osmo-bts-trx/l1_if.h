@@ -144,7 +144,7 @@ struct trx_l1h {
 	struct osmo_timer_list	trx_ctrl_timer;
 	struct osmo_fd		trx_ofd_data;
 
-	/* tranceiver config */
+	/* transceiver config */
 	struct trx_config	config;
 
 	uint8_t			mf_index[8];	/* selected multiframe index */
@@ -160,9 +160,9 @@ struct trx_l1h {
 struct trx_l1h *l1if_open(struct gsm_bts_trx *trx);
 void l1if_close(struct trx_l1h *l1h);
 void l1if_reset(struct trx_l1h *l1h);
-int check_tranceiver_availability(struct gsm_bts *bts, int avail);
-int l1if_provision_tranceiver_trx(struct trx_l1h *l1h);
-int l1if_provision_tranceiver(struct gsm_bts *bts);
+int check_transceiver_availability(struct gsm_bts *bts, int avail);
+int l1if_provision_transceiver_trx(struct trx_l1h *l1h);
+int l1if_provision_transceiver(struct gsm_bts *bts);
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
 
 #endif /* L1_IF_H_TRX */
