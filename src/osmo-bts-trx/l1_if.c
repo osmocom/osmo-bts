@@ -80,6 +80,7 @@ struct trx_l1h *l1if_open(struct gsm_bts_trx *trx)
 
 err:
 	l1if_close(l1h);
+	trx->role_bts.l1h = NULL;
 	return NULL;
 }
 
