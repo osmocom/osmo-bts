@@ -155,8 +155,8 @@ static void print_help()
 		"  -t	--trx-num	Set number of TRX (default=%d)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
 		"  -H	--high-prio	Set realtime scheduler with maximum prio\n"
-		"  -I	--tranceiver-ip	Set IP of tranceiver (default=%s)\n"
-		,trx_num, tranceiver_ip);
+		"  -I	--local-trx-ip	Local IP for transceiver to connect (default=%s)\n"
+		,trx_num, transceiver_ip);
 }
 
 /* FIXME: finally get some option parsing code into libosmocore */
@@ -177,7 +177,7 @@ static void handle_options(int argc, char **argv)
 			{ "trx-num", 1, 0, 't' },
 			{ "gsmtap-ip", 1, 0, 'i' },
 			{ "high-prio", 0, 0, 'H' },
-			{ "tranceiver-ip", 1, 0, 'I' },
+			{ "local-trx-ip", 1, 0, 'I' },
 			{ 0, 0, 0, 0 }
 		};
 
@@ -225,7 +225,7 @@ static void handle_options(int argc, char **argv)
 			high_prio = 1;
 			break;
 		case 'I':
-			tranceiver_ip = strdup(optarg);
+			transceiver_ip = strdup(optarg);
 			break;
 		default:
 			break;

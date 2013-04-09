@@ -47,19 +47,19 @@
 
 static struct gsm_bts *vty_bts;
 
-DEFUN(show_tranceiver, show_tranceiver_cmd, "show tranceiver",
-	SHOW_STR "Display information about tranceivers\n")
+DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
+	SHOW_STR "Display information about transceivers\n")
 {
 	struct gsm_bts *bts = vty_bts;
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
 	uint8_t tn;
 
-	if (!tranceiver_available) {
-		vty_out(vty, "Tranceiver is not connected%s", VTY_NEWLINE);
+	if (!transceiver_available) {
+		vty_out(vty, "transceiver is not connected%s", VTY_NEWLINE);
 	} else {
-		vty_out(vty, "Tranceiver is connected, current fn=%u%s",
-			tranceiver_last_fn, VTY_NEWLINE);
+		vty_out(vty, "transceiver is connected, current fn=%u%s",
+			transceiver_last_fn, VTY_NEWLINE);
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -129,7 +129,7 @@ DEFUN(cfg_bts_fn_advance, cfg_bts_fn_advance_cmd,
 
 DEFUN(cfg_bts_ms_power_loop, cfg_bts_ms_power_loop_cmd,
 	"ms-power-loop <-127-127>",
-	"Enable MS power control loop\nTarget RSSI value (tranceiver specific, "
+	"Enable MS power control loop\nTarget RSSI value (transceiver specific, "
 	"should be 6dB or more above noise floor)\n")
 {
 	trx_ms_power_loop = 1;
@@ -219,7 +219,7 @@ DEFUN(cfg_trx_rxgain, cfg_trx_rxgain_cmd,
 	l1h->config.rxgain = atoi(argv[0]);
 	l1h->config.rxgain_valid = 1;
 	l1h->config.rxgain_sent = 0;
-	l1if_provision_tranceiver_trx(l1h);
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
@@ -235,7 +235,7 @@ DEFUN(cfg_trx_power, cfg_trx_power_cmd,
 	l1h->config.power = atoi(argv[0]);
 	l1h->config.power_valid = 1;
 	l1h->config.power_sent = 0;
-	l1if_provision_tranceiver_trx(l1h);
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
@@ -251,7 +251,7 @@ DEFUN(cfg_trx_maxdly, cfg_trx_maxdly_cmd,
 	l1h->config.maxdly = atoi(argv[0]);
 	l1h->config.maxdly_valid = 1;
 	l1h->config.maxdly_sent = 0;
-	l1if_provision_tranceiver_trx(l1h);
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
@@ -359,7 +359,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
 
-	install_element_ve(&show_tranceiver_cmd);
+	install_element_ve(&show_transceiver_cmd);
 
 	install_element(BTS_NODE, &cfg_bts_fn_advance_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_power_loop_cmd);

@@ -1,8 +1,8 @@
 #ifndef TRX_IF_H
 #define TRX_IF_H
 
-extern int tranceiver_available;
-extern const char *tranceiver_ip;
+extern int transceiver_available;
+extern const char *transceiver_ip;
 extern int settsc_enabled;
 extern int setbsic_enabled;
 
