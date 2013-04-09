@@ -44,8 +44,8 @@
 /* enable to print RSSI level graph */
 //#define TOA_RSSI_DEBUG
 
-int tranceiver_available = 0;
-const char *tranceiver_ip = "127.0.0.1";
+int transceiver_available = 0;
+const char *transceiver_ip = "127.0.0.1";
 int settsc_enabled = 0;
 int setbsic_enabled = 0;
 
@@ -71,7 +71,7 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
 	ofd->data = priv;
 
 	/* Listen / Binds */
-	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, 0, tranceiver_ip,
+	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, 0, transceiver_ip,
 		port, OSMO_SOCK_F_BIND);
 	if (rc < 0)
 		return rc;
@@ -175,7 +175,7 @@ static void trx_ctrl_timer_cb(void *data)
 {
 	struct trx_l1h *l1h = data;
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from tranceiver\n");
+	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver\n");
 
 	trx_ctrl_send(l1h);
 }
@@ -188,9 +188,9 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	va_list ap;
 	int l, pending = 0;
 
-	if (!tranceiver_available && !!strcmp(cmd, "POWEROFF")) {
+	if (!transceiver_available && !!strcmp(cmd, "POWEROFF")) {
 		LOGP(DTRX, LOGL_ERROR, "CTRL ignored: No clock from "
-			"tranceiver, please fix!\n");
+			"transceiver, please fix!\n");
 		return -EIO;
 	}
 
@@ -348,7 +348,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		sscanf(p + 1, "%d", &resp);
 		if (resp) {
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"Tranceiver rejected TRX command with "
+				"transceiver rejected TRX command with "
 				"response: '%s'\n", buf);
 rsp_error:
 			if (tcm->critical) {
@@ -453,10 +453,10 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 
 	/* we must be sure that we have clock, and we have sent all control
 	 * data */
-	if (tranceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
+	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
 		send(l1h->trx_ofd_data.fd, buf, 154, 0);
 	} else
-		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, tranceiver "
+		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, transceiver "
 			"offline.\n");
 
 	return 0;
@@ -471,7 +471,7 @@ int trx_if_open(struct trx_l1h *l1h)
 {
 	int rc;
 
-	LOGP(DTRX, LOGL_NOTICE, "Open tranceiver for trx=%u\n", l1h->trx->nr);
+	LOGP(DTRX, LOGL_NOTICE, "Open transceiver for trx=%u\n", l1h->trx->nr);
 
 	/* initialize ctrl queue */
 	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
@@ -482,7 +482,7 @@ int trx_if_open(struct trx_l1h *l1h)
 			trx_clk_read_cb);
 		if (rc < 0)
 			return rc;
-		LOGP(DTRX, LOGL_NOTICE, "Waiting for tranceiver send clock\n");
+		LOGP(DTRX, LOGL_NOTICE, "Waiting for transceiver send clock\n");
 	}
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
 		base_port_local + (l1h->trx->nr << 1) + 1, trx_ctrl_read_cb);
@@ -522,7 +522,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 
 void trx_if_close(struct trx_l1h *l1h)
 {
-	LOGP(DTRX, LOGL_NOTICE, "Close tranceiver for trx=%u\n", l1h->trx->nr);
+	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for trx=%u\n", l1h->trx->nr);
 
 	trx_if_flush(l1h);
 

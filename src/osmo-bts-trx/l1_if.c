@@ -40,7 +40,7 @@
 #include "scheduler.h"
 
 
-static const uint8_t tranceiver_chan_types[_GSM_PCHAN_MAX] = {
+static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE]                = 8,
 	[GSM_PCHAN_CCCH]                = 6,
 	[GSM_PCHAN_CCCH_SDCCH4]         = 5,
@@ -95,13 +95,13 @@ void l1if_reset(struct trx_l1h *l1h)
 {
 }
 
-static void check_tranceiver_availability_trx(struct trx_l1h *l1h, int avail)
+static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 {
 	struct gsm_bts_trx *trx = l1h->trx;
 	uint8_t tn;
 
 	/* HACK, we should change state when we receive first clock from
-	 * tranceiver */
+	 * transceiver */
 	if (avail) {
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
@@ -126,27 +126,27 @@ static void check_tranceiver_availability_trx(struct trx_l1h *l1h, int avail)
 	}
 }
 
-int check_tranceiver_availability(struct gsm_bts *bts, int avail)
+int check_transceiver_availability(struct gsm_bts *bts, int avail)
 {
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		l1h = trx_l1h_hdl(trx);
-		check_tranceiver_availability_trx(l1h, avail);
+		check_transceiver_availability_trx(l1h, avail);
 	}
 	return 0;
 }
 
 
 /*
- * tranceiver provisioning
+ * transceiver provisioning
  */
-int l1if_provision_tranceiver_trx(struct trx_l1h *l1h)
+int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 {
 	uint8_t tn;
 
-	if (!tranceiver_available)
+	if (!transceiver_available)
 		return -EIO;
 
 	if (l1h->config.poweron
@@ -210,7 +210,7 @@ int l1if_provision_tranceiver_trx(struct trx_l1h *l1h)
 	return 0;
 }
 
-int l1if_provision_tranceiver(struct gsm_bts *bts)
+int l1if_provision_transceiver(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
@@ -227,13 +227,13 @@ int l1if_provision_tranceiver(struct gsm_bts *bts)
 		l1h->config.maxdly_sent = 0;
 		for (tn = 0; tn < 8; tn++)
 			l1h->config.slottype_sent[tn] = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 	return 0;
 }
 
 /*
- * activation/configuration/deactivation of tranceiver's TRX
+ * activation/configuration/deactivation of transceiver's TRX
  */
 
 /* initialize the layer1 */
@@ -241,11 +241,11 @@ static int trx_init(struct gsm_bts_trx *trx)
 {
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
 
-	/* power on tranceiver, if not already */
+	/* power on transceiver, if not already */
 	if (!l1h->config.poweron) {
 		l1h->config.poweron = 1;
 		l1h->config.poweron_sent = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 
 	if (trx == trx->bts->c0)
@@ -258,7 +258,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	return oml_mo_opstart_ack(&trx->mo);
 }
 
-/* deactivate tranceiver */
+/* deactivate transceiver */
 static int trx_close(struct gsm_bts_trx *trx)
 {
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
@@ -266,15 +266,15 @@ static int trx_close(struct gsm_bts_trx *trx)
 	/* close all logical channels and reset timeslots */
 	trx_sched_reset(l1h);
 
-	/* power off tranceiver, if not already */
+	/* power off transceiver, if not already */
 	if (l1h->config.poweron) {
 		l1h->config.poweron = 0;
 		l1h->config.poweron_sent = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 
 	/* Set to Operational State: Disabled */
-	check_tranceiver_availability_trx(l1h, 0);
+	check_transceiver_availability_trx(l1h, 0);
 
 	return 0;
 }
@@ -298,10 +298,10 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 			l1h->config.bsic = bsic;
 			l1h->config.bsic_valid = 1;
 			l1h->config.bsic_sent = 0;
-			l1if_provision_tranceiver_trx(l1h);
+			l1if_provision_transceiver_trx(l1h);
 		}
 	}
-	check_tranceiver_availability(bts, tranceiver_available);
+	check_transceiver_availability(bts, transceiver_available);
 
 
 	return 0;
@@ -317,7 +317,7 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1h->config.arfcn = arfcn;
 		l1h->config.arfcn_valid = 1;
 		l1h->config.arfcn_sent = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 
 	return 0;
@@ -333,14 +333,14 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 	uint8_t slottype;
 	int rc;
 
-	/* all TSC of all timeslots must be equal, because tranceiver only
+	/* all TSC of all timeslots must be equal, because transceiver only
 	 * supports one TSC per TRX */
 
 	if (l1h->config.tsc != tsc || !l1h->config.tsc_valid) {
 		l1h->config.tsc = tsc;
 		l1h->config.tsc_valid = 1;
 		l1h->config.tsc_sent = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 
 	/* set physical channel */
@@ -348,14 +348,14 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 	if (rc)
 		return NM_NACK_RES_NOTAVAIL;
 
-	slottype = tranceiver_chan_types[pchan];
+	slottype = transceiver_chan_types[pchan];
 	
 	if (l1h->config.slottype[tn] != slottype
 	 || !l1h->config.slottype_valid[tn]) {
 		l1h->config.slottype[tn] = slottype;
 		l1h->config.slottype_valid[tn] = 1;
 		l1h->config.slottype_sent[tn] = 0;
-		l1if_provision_tranceiver_trx(l1h);
+		l1if_provision_transceiver_trx(l1h);
 	}
 
 	return 0;
@@ -584,7 +584,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 	switch (mo->obj_class) {
 	case NM_OC_RADIO_CARRIER:
-		/* activate tranceiver */
+		/* activate transceiver */
 		rc = trx_init(obj);
 		break;
 	case NM_OC_CHANNEL:
