@@ -473,6 +473,9 @@ int trx_if_open(struct trx_l1h *l1h)
 
 	LOGP(DTRX, LOGL_NOTICE, "Open tranceiver for trx=%u\n", l1h->trx->nr);
 
+	/* initialize ctrl queue */
+	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
+
 	/* open sockets */
 	if (l1h->trx->nr == 0) {
 		rc = trx_udp_open(NULL, &trx_ofd_clk, base_port_local,
@@ -489,9 +492,6 @@ int trx_if_open(struct trx_l1h *l1h)
 		base_port_local + (l1h->trx->nr << 1) + 2, trx_data_read_cb);
 	if (rc < 0)
 		goto err;
-
-	/* initialize ctrl queue */
-	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
 
 	/* enable all slots */
 	l1h->config.slotmask = 0xff;
