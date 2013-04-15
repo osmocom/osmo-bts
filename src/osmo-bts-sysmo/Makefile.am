@@ -4,11 +4,12 @@ LDADD = $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOTRAU_
 
 EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
 	misc/sysmobts_eeprom.h femtobts.h hw_misc.h l1_fwd.h l1_if.h \
-	l1_transp.h
+	l1_transp.h eeprom.h
 
 bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr
 
-COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c calib_file.c
+COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c calib_file.c \
+		 eeprom.c
 
 sysmobts_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
 sysmobts_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)

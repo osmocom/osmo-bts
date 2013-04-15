@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <osmocom/core/utils.h>
 
@@ -35,6 +36,7 @@
 
 #include "l1_if.h"
 #include "femtobts.h"
+#include "eeprom.h"
 
 struct calib_file_desc {
 	const char *fname;
@@ -201,6 +203,69 @@ static int calib_file_read(const char *path, const struct calib_file_desc *desc,
 	return 0;
 }
 
+static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim_t *prim)
+{
+	eeprom_Error_t eerr;
+	int i;
+
+	if (desc->rx) {
+		SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
+		eeprom_RxCal_t rx_cal;
+
+		memset(rx, 0, sizeof(*rx));
+
+		prim->id = SuperFemto_PrimId_SetRxCalibTblReq;
+
+		rx->freqBand = desc->band;
+		rx->bUplink = desc->uplink;
+
+		eerr = eeprom_ReadRxCal(desc->band, desc->uplink, &rx_cal);
+		if (eerr != EEPROM_SUCCESS)
+			return -EIO;
+
+		rx->fExtRxGain = rx_cal.fExtRxGain;
+		rx->fRxMixGainCorr = rx_cal.fRxMixGainCorr;
+
+		for (i = 0; i < ARRAY_SIZE(rx->fRxLnaGainCorr); i++)
+			rx->fRxLnaGainCorr[i] = rx_cal.fRxLnaGainCorr[i];
+
+		for (i = 0; i < arrsize_by_band[desc->band]; i++)
+			rx->fRxRollOffCorr[i] = rx_cal.fRxRollOffCorr[i];
+
+		if (desc->uplink) {
+			rx->u8IqImbalMode = rx_cal.u8IqImbalMode;
+
+			for (i = 0; i < ARRAY_SIZE(rx->u16IqImbalCorr); i++)
+				rx->u16IqImbalCorr[i] = rx_cal.u16IqImbalCorr[i];
+		}
+	} else {
+		SuperFemto_SetTxCalibTblReq_t *tx = &prim->u.setTxCalibTblReq;
+		eeprom_TxCal_t tx_cal;
+
+		memset(tx, 0, sizeof(*tx));
+
+		prim->id = SuperFemto_PrimId_SetTxCalibTblReq;
+		tx->freqBand = desc->band;
+
+		eerr = eeprom_ReadTxCal(desc->band, &tx_cal);
+		if (eerr != EEPROM_SUCCESS)
+			return -EIO;
+
+		for (i = 0; i < ARRAY_SIZE(tx->fTxGainGmsk); i++)
+			tx->fTxGainGmsk[i] = tx_cal.fTxGainGmsk[i];
+
+		tx->fTx8PskCorr = tx_cal.fTx8PskCorr;
+
+		for (i = 0; i < ARRAY_SIZE(tx->fTxExtAttCorr); i++)
+			tx->fTxExtAttCorr[i] = tx_cal.fTxExtAttCorr[i];
+
+		for (i = 0; i < arrsize_by_band[desc->band]; i++)
+			tx->fTxRollOffCorr[i] = tx_cal.fTxRollOffCorr[i];
+	}
+
+	return 0;
+}
+
 /* iteratively download the calibration data into the L1 */
 
 static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
@@ -214,7 +279,10 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 
 	msg = sysp_msgb_alloc();
 
-	rc = calib_file_read(fl1h->calib_path, desc, msgb_sysprim(msg));
+	if (fl1h->calib_path)
+		rc = calib_file_read(fl1h->calib_path, desc, msgb_sysprim(msg));
+	else
+		rc = calib_eeprom_read(desc, msgb_sysprim(msg));
 	if (rc < 0) {
 		msgb_free(msg);
 		return rc;
@@ -229,8 +297,9 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct calib_send_state *st = &fl1h->st;
 
-	LOGP(DL1C, LOGL_DEBUG, "L1 calibration table %s loaded\n",
-		calib_files[st->last_file_idx].fname);
+	LOGP(DL1C, LOGL_DEBUG, "L1 calibration table %s loaded (src: %s)\n",
+		calib_files[st->last_file_idx].fname,
+		fl1h->calib_path ? "file" : "eeprom");
 
 	st->last_file_idx++;
 
