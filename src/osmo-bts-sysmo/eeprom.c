@@ -65,6 +65,12 @@
 
 //#define DISP_ERROR  1
 
+#ifdef DISP_ERROR
+#define PERROR(x, args ...)	fprintf(stderr, x, ## args)
+#else
+#define PERROR(x, args ...)	do { } while (0)
+#endif
+
 /****************************************************************************
  *                            Private constants                             *
  ****************************************************************************/
@@ -317,18 +323,14 @@ eeprom_Error_t eeprom_ReadSysInfo( eeprom_SysInfo_t *pSysInfo )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
     // Validate the header magic ID
     if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Invalid EEPROM format\n" );
-#endif
+        PERROR( "Invalid EEPROM format\n" );
         return EEPROM_ERR_INVALID;
     }
 
@@ -340,27 +342,21 @@ eeprom_Error_t eeprom_ReadSysInfo( eeprom_SysInfo_t *pSysInfo )
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.sysInfo - (uint32_t)&ee), sizeof(ee.cfg.v1.sysInfo), (char *)&ee.cfg.v1.sysInfo );
             if ( err != sizeof(ee.cfg.v1.sysInfo) )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+                PERROR( "Error while reading the EEPROM content (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
             
             // Validate the ID
             if ( ee.cfg.v1.sysInfo.u16SectionID != EEPROM_SID_SYSINFO )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Uninitialized data section\n" );
-#endif
+                PERROR( "Uninitialized data section\n" );
                 return EEPROM_ERR_UNAVAILABLE;
             }
 
             // Validate the CRC
             if ( eeprom_crc( (uint8_t *)&ee.cfg.v1.sysInfo.u32Time, sizeof(ee.cfg.v1.sysInfo) - 2 * sizeof(uint16_t) ) != ee.cfg.v1.sysInfo.u16Crc )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Parity error\n" );
-#endif
+                PERROR( "Parity error\n" );
                 return EEPROM_ERR_PARITY;
             }
 
@@ -378,9 +374,7 @@ eeprom_Error_t eeprom_ReadSysInfo( eeprom_SysInfo_t *pSysInfo )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -410,9 +404,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
@@ -427,9 +419,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
         if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+            PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
         }
     }
@@ -459,9 +449,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
             err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.sysInfo - (uint32_t)&ee), sizeof(ee.cfg.v1.sysInfo), (const char *) &ee.cfg.v1.sysInfo );
             if ( err != sizeof(ee.cfg.v1.sysInfo) )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+                PERROR( "Error while writing to the EEPROM (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
             break;
@@ -469,9 +457,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -501,18 +487,14 @@ eeprom_Error_t eeprom_ReadRfClockCal( eeprom_RfClockCal_t *pRfClockCal )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee), (char *) &ee );
     if ( err != sizeof(ee) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
     // Validate the header magic ID
     if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Invalid EEPROM format\n" );
-#endif
+        PERROR( "Invalid EEPROM format\n" );
         return EEPROM_ERR_INVALID;
     }
 
@@ -524,27 +506,21 @@ eeprom_Error_t eeprom_ReadRfClockCal( eeprom_RfClockCal_t *pRfClockCal )
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.rfClk - (uint32_t)&ee), sizeof(ee.cfg.v1.rfClk), (char *)&ee.cfg.v1.rfClk );
             if ( err != sizeof(ee.cfg.v1.rfClk) )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+                PERROR( "Error while reading the EEPROM content (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
 
             // Validate the ID
             if ( ee.cfg.v1.rfClk.u16SectionID != EEPROM_SID_RFCLOCK_CAL )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Uninitialized data section\n" );
-#endif
+                PERROR( "Uninitialized data section\n" );
                 return EEPROM_ERR_UNAVAILABLE;
             }
 
             // Validate the CRC
             if ( eeprom_crc( (uint8_t *)&ee.cfg.v1.rfClk.u32Time, sizeof(ee.cfg.v1.rfClk) - 2 * sizeof(uint16_t) ) != ee.cfg.v1.rfClk.u16Crc )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Parity error\n" );
-#endif
+                PERROR( "Parity error\n" );
                 return EEPROM_ERR_PARITY;
             }
 
@@ -556,9 +532,7 @@ eeprom_Error_t eeprom_ReadRfClockCal( eeprom_RfClockCal_t *pRfClockCal )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -588,9 +562,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
@@ -605,9 +577,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
         if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+            PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
         }
     }
@@ -631,9 +601,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
             err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.rfClk - (uint32_t)&ee), sizeof(ee.cfg.v1.rfClk), (const char *) &ee.cfg.v1.rfClk );
             if ( err != sizeof(ee.cfg.v1.rfClk) )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+                PERROR( "Error while writing to the EEPROM (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
             break;
@@ -641,9 +609,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
            return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -682,18 +648,14 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *)&ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
     // Validate the header magic ID
     if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Invalid EEPROM format\n" );
-#endif
+        PERROR( "Invalid EEPROM format\n" );
         return EEPROM_ERR_INVALID;
     }
 
@@ -728,9 +690,7 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
                     size = sizeof(ee.cfg.v1.pcs1900TxCal) + sizeof(ee.cfg.v1.__pcs1900TxCalMem);
                     break;
                 default:
-#ifdef DISP_ERROR
-                    fprintf( stderr, "Invalid GSM band specified (%d)\n", iBand );
-#endif
+                    PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
             }
 
@@ -738,27 +698,21 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgTxCal - (uint32_t)&ee), size, (char *)pCfgTxCal );
             if ( err != size )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+                PERROR( "Error while reading the EEPROM content (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
 
             // Validate the ID
             if ( pCfgTxCal->u16SectionID != sId )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Uninitialized data section\n" );
-#endif
+                PERROR( "Uninitialized data section\n" );
                 return EEPROM_ERR_UNAVAILABLE;
             }
 
             // Validate the CRC
             if ( eeprom_crc( (uint8_t *)&pCfgTxCal->u32Time, size - 2 * sizeof(uint16_t) ) != pCfgTxCal->u16Crc )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Parity error\n" );
-#endif
+                PERROR( "Parity error\n" );
                 return EEPROM_ERR_PARITY;
             }
 
@@ -781,9 +735,7 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -822,9 +774,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
@@ -839,9 +789,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
         if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+            PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
         }
     }
@@ -879,9 +827,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
                     size = sizeof(ee.cfg.v1.pcs1900TxCal) + sizeof(ee.cfg.v1.__pcs1900TxCalMem);
                     break;
                 default:
-#ifdef DISP_ERROR
-                    fprintf( stderr, "Invalid GSM band specified (%d)\n", iBand );
-#endif
+                    PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
             }
 
@@ -923,9 +869,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
             err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgTxCal - (uint32_t)&ee), size, (const char *)pCfgTxCal );
             if ( err != size )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+                PERROR( "Error while writing to the EEPROM (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
             break;
@@ -933,9 +877,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -977,18 +919,14 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *)&ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
     // Validate the header magic ID
     if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Invalid EEPROM format\n" );
-#endif
+        PERROR( "Invalid EEPROM format\n" );
        return EEPROM_ERR_INVALID;
     }
 
@@ -1059,9 +997,7 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     }
                     break;
                 default:
-#ifdef DISP_ERROR
-                    fprintf( stderr, "Invalid GSM band specified (%d)\n", iBand );
-#endif
+                    PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
             }
 
@@ -1069,27 +1005,21 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgRxCal - (uint32_t)&ee), size, (char *)pCfgRxCal );
             if ( err != size )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+                PERROR( "Error while reading the EEPROM content (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
  
             // Validate the ID
             if ( pCfgRxCal->u16SectionID != sId )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Uninitialized data section\n" );
-#endif
+                PERROR( "Uninitialized data section\n" );
                 return EEPROM_ERR_UNAVAILABLE;
             }
 
             // Validate the CRC
             if ( eeprom_crc( (uint8_t *)&pCfgRxCal->u32Time, size - 2 * sizeof(uint16_t) ) != pCfgRxCal->u16Crc )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Parity error\n" );
-#endif
+                PERROR( "Parity error\n" );
                return EEPROM_ERR_PARITY;
             }
 
@@ -1124,9 +1054,7 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
@@ -1168,9 +1096,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
     if ( err != sizeof(ee.hdr) )
     {
-#ifdef DISP_ERROR
-        fprintf( stderr, "Error while reading the EEPROM content (%d)\n", err );
-#endif
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
         return EEPROM_ERR_DEVICE;
     }
 
@@ -1185,9 +1111,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
         if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+            PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
         }
     }
@@ -1261,9 +1185,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
                     }
                     break;
                 default:
-#ifdef DISP_ERROR
-                    fprintf( stderr, "Invalid GSM band specified (%d)\n", iBand );
-#endif
+                    PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
             }
 
@@ -1317,9 +1239,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
             err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgRxCal - (uint32_t)&ee), size, (const char *)pCfgRxCal );
             if ( err != size )
             {
-#ifdef DISP_ERROR
-                fprintf( stderr, "Error while writing to the EEPROM (%d)\n", err );
-#endif
+                PERROR( "Error while writing to the EEPROM (%d)\n", err );
                 return EEPROM_ERR_DEVICE;
             }
             break;
@@ -1327,9 +1247,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
 
         default:
         {
-#ifdef DISP_ERROR
-            fprintf( stderr, "Unsupported header version\n" );
-#endif
+            PERROR( "Unsupported header version\n" );
             return EEPROM_ERR_UNSUPPORTED;
         }
     }
