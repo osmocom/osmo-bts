@@ -1391,24 +1391,27 @@ int eeprom_dump( int addr, int size, int hex )
     return 0;
 }
 
+static FILE *g_file;
 
 /**
  * Read up to 'size' bytes of data from the EEPROM starting at offset 'addr'.
  */
 static int eeprom_read( int addr, int size, char *pBuff )
 {
-    FILE *f;
+    FILE *f = g_file;
     int n;
     
-    f = fopen( EEPROM_DEV, "r+" );
-    if ( f == NULL )
-    {
-        perror( "eeprom fopen" );
-        return -1;
+    if (!f) {
+    	f = fopen( EEPROM_DEV, "r+" );
+    	if ( f == NULL )
+        {
+            perror( "eeprom fopen" );
+            return -1;
+        }
+	g_file = f;
     }
     fseek( f, addr, SEEK_SET );
     n = fread( pBuff, 1, size, f );
-    fclose( f );
     return n;
 }
 
@@ -1418,14 +1421,17 @@ static int eeprom_read( int addr, int size, char *pBuff )
  */
 static int eeprom_write( int addr, int size, const char *pBuff )
 {
-    FILE *f;
+    FILE *f = g_file;
     int n;
 
-    f = fopen( EEPROM_DEV, "r+" );
-    if ( f == NULL )
-    {
-        perror( "eeprom fopen" );
-        return -1;
+    if (!f) {
+        f = fopen( EEPROM_DEV, "r+" );
+        if ( f == NULL )
+        {
+            perror( "eeprom fopen" );
+            return -1;
+        }
+	g_file = f;
     }
     fseek( f, addr, SEEK_SET );
     n = fwrite( pBuff, 1, size, f );
@@ -1454,4 +1460,3 @@ static uint16_t eeprom_crc( uint8_t *pu8Data, int len )
     crc = ~crc;
     return crc;
 }
-
