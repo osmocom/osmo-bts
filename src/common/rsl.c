@@ -1093,7 +1093,6 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
-	uint32_t *att_ip;
 	const char *name;
 	struct in_addr ia;
 
@@ -1120,8 +1119,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 
 	/* locally bound IP */
 	msgb_v_put(msg, RSL_IE_IPAC_LOCAL_IP);
-	att_ip = (uint32_t *) msgb_put(msg, sizeof(uint32_t));
-	*att_ip = htonl(lchan->abis_ip.bound_ip);
+	msgb_put_u32(msg, lchan->abis_ip.bound_ip);
 
 	/* locally bound port */
 	msgb_tv16_put(msg, RSL_IE_IPAC_LOCAL_PORT,
@@ -1203,11 +1201,9 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 		return -ENOMEM;
 
 	if (inc_ipport) {
-		uint32_t *att_ip;
 		/* remote IP */
 		msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
-		att_ip = (uint32_t *) msgb_put(msg, sizeof(uint32_t));
-		*att_ip = htonl(lchan->abis_ip.connect_ip);
+		msgb_put_u32(msg, lchan->abis_ip.connect_ip);
 
 		/* remote port */
 		msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT,
@@ -1252,8 +1248,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(msg->lchan->ts->trx->bts);
 	const uint8_t *payload_type, *speech_mode, *payload_type2;
-	const uint32_t *connect_ip;
-	const uint16_t *connect_port;
+	uint32_t connect_ip = 0;
+	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0, port;
 	char *name;
 
@@ -1271,8 +1267,16 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	speech_mode = TLVP_VAL(&tp, RSL_IE_IPAC_SPEECH_MODE);
 	payload_type = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD);
 	payload_type2 = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD2);
-	connect_ip = (uint32_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_IP);
-	connect_port = (uint16_t *) TLVP_VAL(&tp, RSL_IE_IPAC_REMOTE_PORT);
+
+	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_IP))
+		connect_ip = tlvp_val32_unal(&tp, RSL_IE_IPAC_REMOTE_IP);
+	else
+		LOGP(DRSL, LOGL_NOTICE, "CRCX does not specify a remote IP\n");
+
+	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_PORT))
+		connect_port = tlvp_val16_unal(&tp, RSL_IE_IPAC_REMOTE_PORT);
+	else
+		LOGP(DRSL, LOGL_NOTICE, "CRCX does not specify a remote port\n");
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX && connect_ip && connect_port)
 		inc_ip_port = 1;
@@ -1354,14 +1358,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
 		 * address */
-		if (*connect_ip == 0) {
+		if (connect_ip == 0) {
 			struct ipabis_link *link =
 				lchan->ts->trx->rsl_link;
 			ia.s_addr = htonl(link->ip);
 		} else
-			ia.s_addr = *connect_ip;
+			ia.s_addr = connect_ip;
 		rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
-					     inet_ntoa(ia), ntohs(*connect_port));
+					     inet_ntoa(ia), ntohs(connect_port));
 		if (rc < 0) {
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s Failed to connect RTP/RTCP sockets\n",
@@ -1374,7 +1378,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		}
 		/* save IP address and port number */
 		lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
-		lchan->abis_ip.connect_port = ntohs(*connect_port);
+		lchan->abis_ip.connect_port = ntohs(connect_port);
 
 	} else {
 		/* FIXME: discard all codec frames */
