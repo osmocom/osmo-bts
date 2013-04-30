@@ -528,7 +528,9 @@ int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending Channel Activated NACK: cause = 0x%02x\n", cause);
+	LOGP(DRSL, LOGL_NOTICE,
+		"%s Sending Channel Activated NACK: cause = 0x%02x\n",
+		gsm_lchan_name(lchan), cause);
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
@@ -548,7 +550,9 @@ int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause)
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "Sending Connection Failure: cause = 0x%02x\n", cause);
+	LOGP(DRSL, LOGL_NOTICE,
+		"%s Sending Connection Failure: cause = 0x%02x\n",
+		gsm_lchan_name(lchan), cause);
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
