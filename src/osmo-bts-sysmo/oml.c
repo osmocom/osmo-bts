@@ -819,12 +819,6 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 #warning Set BS_AG_BLKS_RES
 		lch_par->agch.u8NbrOfAgch = 1;
 		break;
-	case GsmL1_Sapi_Sacch:
-		/* Only if we use manual MS power control */
-		//act_req->logChPrm.sacch.u8MsPowerLevel = FIXME;
-		/* enable bad frame indication from >= -100dBm on SACCH */
-		act_req->fBFILevel = -100.0;
-		break;
 	case GsmL1_Sapi_TchH:
 	case GsmL1_Sapi_TchF:
 		lchan2lch_par(lch_par, lchan);
@@ -837,7 +831,12 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		break;
 	case GsmL1_Sapi_Pdtch:
 	case GsmL1_Sapi_Pacch:
-		/* Be sure that every packet is received, even if it
+	case GsmL1_Sapi_Sacch:
+		/*
+		 * TODO: For the SACCH we need to set the u8MsPowerLevel when
+		 * doing manual MS power control. */
+		/*
+		 * Be sure that every packet is received, even if it
 		 * fails. In this case the length might be lower or 0.
 		 */
 		act_req->fBFILevel = -200.0;
