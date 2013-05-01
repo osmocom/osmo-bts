@@ -1128,6 +1128,8 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 		"as software was compiled against old header files\n");
 #endif
 
+	msgb_free(resp);
+
 	/* FIXME: clock related */
 	return 0;
 }

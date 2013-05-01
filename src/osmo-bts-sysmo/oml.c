@@ -206,6 +206,7 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 		LOGP(DL1C, LOGL_ERROR, "Rx %s, status: %s\n",
 			get_value_string(femtobts_l1prim_names, l1p->id),
 			get_value_string(femtobts_l1status_names, status));
+		msgb_free(l1_msg);
 		return oml_mo_opstart_nack(mo, NM_NACK_CANT_PERFORM);
 	}
 
@@ -593,7 +594,7 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	if (!lchan) {
 		LOGP(DL1C, LOGL_ERROR,
 			"Failed to find lchan for hLayer3=0x%x\n", ic->hLayer3);
-		return -1;
+		goto err;
 	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (%s ",
@@ -1011,7 +1012,7 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	if (!lchan) {
 		LOGP(DL1C, LOGL_ERROR,
 			"Failed to find lchan for hLayer3=0x%x\n", cc->hLayer3);
-		return -1;
+		goto err;
 	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
@@ -1222,7 +1223,7 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	if (!lchan) {
 		LOGP(DL1C, LOGL_ERROR,
 			"Failed to find lchan for hLayer3=0x%x\n", ic->hLayer3);
-		return -1;
+		goto err;
 	}
 
 	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (%s ",
