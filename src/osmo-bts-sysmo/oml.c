@@ -554,7 +554,7 @@ static void sapi_queue_dispatch(struct gsm_lchan *lchan, int status)
 		cmd->callback(lchan, status);
 	talloc_free(cmd);
 
-	if (end) {
+	if (end || llist_empty(&lchan->sapi_cmds)) {
 		LOGP(DL1C, LOGL_NOTICE,
 			"%s End of queue encountered. Now empty? %d\n",
 			gsm_lchan_name(lchan), llist_empty(&lchan->sapi_cmds));
