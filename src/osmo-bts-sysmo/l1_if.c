@@ -652,14 +652,17 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
 
 	/* if link loss criterion already reached */
-	if (lchan->s == 0)
+	if (lchan->s == 0) {
+		DEBUGP(DMEAS, "%s radio link counter S already 0.\n",
+			gsm_lchan_name(lchan));
 		return;
+	}
 
 	if (bad_frame) {
 		/* count down radio link counter S */
 		lchan->s--;
-		DEBUGP(DMEAS, "counting down radio link counter S=%d\n",
-			lchan->s);
+		DEBUGP(DMEAS, "%s counting down radio link counter S=%d\n",
+			gsm_lchan_name(lchan), lchan->s);
 		if (lchan->s == 0)
 			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
 		return;
@@ -670,8 +673,8 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 		lchan->s += 2;
 		if (lchan->s > btsb->radio_link_timeout)
 			lchan->s = btsb->radio_link_timeout;
-		DEBUGP(DMEAS, "counting up radio link counter S=%d\n",
-			lchan->s);
+		DEBUGP(DMEAS, "%s counting up radio link counter S=%d\n",
+			gsm_lchan_name(lchan), lchan->s);
 	}
 }
 
