@@ -1035,7 +1035,7 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 	}
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	return 0;
 }
@@ -1140,7 +1140,7 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	LOGP(DL1C, LOGL_NOTICE, "Rx L1-RESET.conf (status=%s)\n",
 		get_value_string(femtobts_l1status_names, status));
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	/* If we're coming out of reset .. */
 	if (status != GsmL1_Status_Success) {
