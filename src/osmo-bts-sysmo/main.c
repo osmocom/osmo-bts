@@ -28,6 +28,7 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sched.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -56,6 +57,7 @@ int pcu_direct = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static unsigned int dsp_trace = 0x71c00020;
+static int rt_prio = -1;
 
 int bts_model_init(struct gsm_bts *bts)
 {
@@ -108,6 +110,7 @@ static void print_help()
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
 		"  -p	--dsp-trace	Set DSP trace flags\n"
+		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority\n"
 		"  -w	--hw-version	Print the targeted HW Version\n"
 		"  -M	--pcu-direct	Force PCU to access message queue for "
 			"PDCH dchannel directly\n"
@@ -141,10 +144,11 @@ static void handle_options(int argc, char **argv)
 			{ "dsp-trace", 1, 0, 'p' },
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu-direct", 0, 0, 'M' },
+			{ "realtime", 1, 0, 'r' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:M",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:Mr:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -185,6 +189,9 @@ static void handle_options(int argc, char **argv)
 		case 'w':
 			print_hwversion();
 			exit(0);
+			break;
+		case 'r':
+			rt_prio = atoi(optarg);
 			break;
 		default:
 			break;
@@ -235,6 +242,7 @@ static int write_pid_file(char *procname)
 int main(int argc, char **argv)
 {
 	struct stat st;
+	struct sched_param param;
 	struct gsm_bts_role_bts *btsb;
 	struct ipabis_link *link;
 	void *tall_msgb_ctx;
@@ -250,6 +258,18 @@ int main(int argc, char **argv)
 	bts_vty_init(&bts_log_info);
 
 	handle_options(argc, argv);
+
+	/* enable realtime priority for us */
+	if (rt_prio != -1) {
+		memset(&param, 0, sizeof(param));
+		param.sched_priority = rt_prio;
+		rc = sched_setscheduler(getpid(), SCHED_RR, &param);
+		if (rc != 0) {
+			fprintf(stderr, "Setting SCHED_RR priority(%d) failed: %s\n",
+				param.sched_priority, strerror(errno));
+			exit(1);
+		}
+	}
 
 	bts = gsm_bts_alloc(tall_bts_ctx);
 	if (bts_init(bts) < 0) {
