@@ -130,7 +130,7 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 	return 7;
 }
 
-int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
+static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 {
 	uint32_t ber_full_sum = 0;
 	uint32_t irssi_full_sum = 0;
@@ -207,7 +207,7 @@ int lchan_build_rsl_ul_meas(struct gsm_lchan *lchan, uint8_t *buf)
 	return 3;
 }
 
-int ts_meas_check_compute(struct gsm_bts_trx_ts *ts, uint32_t fn)
+static int ts_meas_check_compute(struct gsm_bts_trx_ts *ts, uint32_t fn)
 {
 	int i;
 
