@@ -88,6 +88,74 @@ static const char *wr_devnames[] = {
 osmo_static_assert(sizeof(GsmL1_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, l1_prim)
 osmo_static_assert(sizeof(SuperFemto_Prim_t) + 128 <= SYSMOBTS_PRIM_SIZE, super_prim)
 
+static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
+{
+	struct osmo_wqueue *queue;
+
+	queue = container_of(fd, struct osmo_wqueue, bfd);
+
+	if (what & BSC_FD_READ)
+		queue->read_cb(fd);
+
+	if (what & BSC_FD_EXCEPT)
+		queue->except_cb(fd);
+
+	if (what & BSC_FD_WRITE) {
+		struct iovec iov[5];
+		struct msgb *msg, *tmp;
+		int written, count = 0;
+
+		fd->when &= ~BSC_FD_WRITE;
+
+		llist_for_each_entry(msg, &queue->msg_queue, list) {
+			/* more writes than we have */
+			if (count >= ARRAY_SIZE(iov))
+				break;
+
+			iov[count].iov_base = msg->l1h;
+			iov[count].iov_len = msgb_l1len(msg);
+			count += 1;
+		}
+
+		/* TODO: check if all lengths are the same. */
+
+
+		/* Nothing scheduled? This should not happen. */
+		if (count == 0) {
+			if (!llist_empty(&queue->msg_queue))
+				fd->when |= BSC_FD_WRITE;
+			return 0;
+		}
+
+		written = writev(fd->fd, iov, count);
+		if (written < 0) {
+			/* nothing written?! */
+			if (!llist_empty(&queue->msg_queue))
+				fd->when |= BSC_FD_WRITE;
+			return 0;
+		}
+
+		/* now delete the written entries */
+		written = written / iov[0].iov_len;
+		count = 0;
+		llist_for_each_entry_safe(msg, tmp, &queue->msg_queue, list) {
+			queue->current_length -= 1;
+
+			llist_del(&msg->list);
+			msgb_free(msg);
+
+			count += 1;
+			if (count >= written)
+				break;
+		}
+
+		if (!llist_empty(&queue->msg_queue))
+			fd->when |= BSC_FD_WRITE;
+	}
+
+	return 0;
+}
+
 /* callback when there's something to read from the l1 msg_queue */
 static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 {
@@ -185,6 +253,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 	}
 	osmo_wqueue_init(wq, 10);
 	wq->write_cb = l1fd_write_cb;
+	write_ofd->cb = wqueue_vector_cb;
 	write_ofd->fd = rc;
 	write_ofd->priv_nr = q;
 	write_ofd->data = hdl;
