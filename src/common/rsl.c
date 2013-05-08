@@ -777,7 +777,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 
 	rc = bts_model_rsl_chan_rel(lchan);
 
-	lapdm_channel_reset(&lchan->lapdm_ch);
+	lapdm_channel_exit(&lchan->lapdm_ch);
 
 	return rc;
 }
