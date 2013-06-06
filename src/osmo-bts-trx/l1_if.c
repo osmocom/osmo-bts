@@ -425,6 +425,23 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 	return l1sap_up(bts->c0, &l1sap);
 }
 
+int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr, float qta,
+	float ber, float rssi)
+{
+	struct osmo_phsap_prim l1sap;
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+		PRIM_OP_INDICATION, NULL);
+	l1sap.u.info.type = PRIM_INFO_MEAS;
+	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
+	l1sap.u.info.u.meas_ind.ta_offs_qbits = qta;
+	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (ber * 100);
+	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
+
+	return l1sap_up(trx, &l1sap);
+}
+
 
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
@@ -487,6 +504,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					amr_get_initial_mode(lchan));
 				/* init lapdm */
 				lchan_init_lapdm(lchan);
+				/* set lchan active */
+				lchan_set_state(lchan, LCHAN_S_ACTIVE);
 				/* confirm */
 				mph_info_chan_confirm(l1h, chan_nr,
 					PRIM_INFO_ACTIVATE, 0);
@@ -511,6 +530,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			}
 			/* deactivate assoicated channel */
 			trx_sched_set_lchan(l1h, chan_nr, 0x40, 0);
+			/* set lchan inactive
+			 * (also if only sacch, so no meaurement is done) */
+			lchan_set_state(lchan, LCHAN_S_NONE);
 			/* deactivate dedicated channel */
 			if (!l1sap->u.info.u.act_req.sacch_only) {
 				trx_sched_set_lchan(l1h, chan_nr, 0x00, 0);
