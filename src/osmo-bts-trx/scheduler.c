@@ -559,17 +559,19 @@ found_msg:
 }
 
 static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi)
+	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float toa,
+	float ber, float rssi)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
+	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | tn;
 
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(l2_len);
 	l1sap = msgb_l1sap_prim(msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
 		PRIM_OP_INDICATION, msg);
-	l1sap->u.data.chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.link_id = trx_chan_desc[chan].link_id;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = (int8_t) (rssi);
@@ -582,6 +584,12 @@ static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* forward primitive */
 	l1sap_up(l1h->trx, l1sap);
+
+	/* process measurement */
+	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
+		l1if_process_meas_res(l1h->trx, chan_nr,
+			(l1h->trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)].rqd_ta + toa) * 4,
+			ber, rssi);
 
 	return 0;
 }
@@ -657,7 +665,8 @@ got_msg:
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
 		if (++(l1h->chan_states[tn][chan].lost) > 1)
-			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0, -128);
+			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0, 0, 0,
+				-110);
 	}
 
 	/* alloc burst memory, if not already */
@@ -1205,6 +1214,8 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t *mask = &chan_state->ul_mask;
 	float *rssi_sum = &chan_state->rssi_sum;
 	uint8_t *rssi_num = &chan_state->rssi_num;
+	float *toa_sum = &chan_state->toa_sum;
+	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[23], l2_len;
 	int rc;
 
@@ -1225,12 +1236,16 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		*first_fn = fn;
 		*rssi_sum = 0;
 		*rssi_num = 0;
+		*toa_sum = 0;
+		*toa_num = 0;
 	}
 
 	/* update mask + rssi */
 	*mask |= (1 << bid);
 	*rssi_sum += rssi;
 	(*rssi_num)++;
+	*toa_sum += toa;
+	(*toa_num)++;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -1274,7 +1289,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		l2_len = 23;
 
 	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len,
-		*rssi_sum / *rssi_num);
+		*toa_sum / *toa_num, 0, *rssi_sum / *rssi_num);
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1286,6 +1301,8 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t *mask = &chan_state->ul_mask;
 	float *rssi_sum = &chan_state->rssi_sum;
 	uint8_t *rssi_num = &chan_state->rssi_num;
+	float *toa_sum = &chan_state->toa_sum;
+	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[54+1];
 	int rc;
 
@@ -1305,12 +1322,16 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		*mask = 0x0;
 		*rssi_sum = 0;
 		*rssi_num = 0;
+		*toa_sum = 0;
+		*toa_num = 0;
 	}
 
 	/* update mask + rssi */
 	*mask |= (1 << bid);
 	*rssi_sum += rssi;
 	(*rssi_num)++;
+	*toa_sum += toa;
+	(*toa_num)++;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -1342,7 +1363,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	l2[0] = 7; /* valid frame */
 
 	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
-		l2, rc + 1, *rssi_sum / *rssi_num);
+		l2, rc + 1, *toa_sum / *toa_num, 0, *rssi_sum / *rssi_num);
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1447,7 +1468,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == 23) {
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, 23, 0, 0, 0);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1601,7 +1622,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
 			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, 23, 0, 0, 0); 
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
