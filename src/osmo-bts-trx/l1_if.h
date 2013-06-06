@@ -55,9 +55,11 @@ struct trx_chan_state {
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
 
-	/* RSSI */
+	/* RSSI / TOA */
 	uint8_t			rssi_num;	/* number of RSSI values */
 	float			rssi_sum;	/* sum of RSSI values */
+	uint8_t			toa_num;	/* number of TOA values */
+	float			toa_sum;	/* sum of TOA values */
 
 	/* loss detection */
 	uint8_t			lost;		/* (SACCH) loss detection */
@@ -164,5 +166,7 @@ int check_transceiver_availability(struct gsm_bts *bts, int avail);
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h);
 int l1if_provision_transceiver(struct gsm_bts *bts);
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
+int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr, float qta,
+        float ber, float rssi);
 
 #endif /* L1_IF_H_TRX */
