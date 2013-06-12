@@ -100,6 +100,9 @@ struct trx_chan_state {
 		float		toa_sum;	/* sum of TOA values */
 		int		toa_num;	/* number of TOA value */
 	} meas;
+
+	/* handover */
+	uint8_t			ho_rach_detect;	/* if rach detection is on */
 };
 
 struct trx_config {
@@ -157,6 +160,7 @@ struct trx_l1h {
 	/* Channel states for all channels on all timeslots */
 	struct trx_chan_state	chan_states[8][_TRX_CHAN_MAX];
 	struct llist_head	dl_prims[8];	/* Queue primitves for TX */
+	uint8_t			ho_rach_detect[8][8];
 };
 
 struct trx_l1h *l1if_open(struct gsm_bts_trx *trx);
