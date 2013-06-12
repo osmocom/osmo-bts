@@ -543,6 +543,28 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 	return abis_bts_rsl_sendmsg(msg);
 }
 
+/* 8.4.7 sending HANDOver DETection */
+int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
+{
+	struct msgb *msg;
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_INFO, "Sending HANDOver DETect\n");
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	/* 9.3.17 Access Delay */
+	if (ho_delay)
+		msgb_tv_put(msg, RSL_IE_ACCESS_DELAY, *ho_delay);
+
+	rsl_dch_push_hdr(msg, RSL_MT_HANDO_DET, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_bts_rsl_sendmsg(msg);
+}
+
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
 int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 {

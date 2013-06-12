@@ -510,7 +510,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.10 BTS Air Timer */
-	if (TLVP_PRESENT(&tp, NM_ATT_BTS_AIR_TIMER))
+	if (TLVP_PRESENT(&tp, NM_ATT_BTS_AIR_TIMER)
+	 && *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER) > 0)
 		btsb->t3105_ms = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER) * 10;
 
 	/* 9.4.37 NY1 */
