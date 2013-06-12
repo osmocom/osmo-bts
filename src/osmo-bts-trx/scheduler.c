@@ -2471,6 +2471,7 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 	int active)
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
+	uint8_t ss = l1sap_chan2ss(chan_nr);
 	int i;
 	int rc = -EINVAL;
 	struct trx_chan_state *chan_state;
@@ -2495,6 +2496,12 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 				memset(chan_state, 0, sizeof(*chan_state));
 			chan_state->active = active;
 		}
+	}
+
+	/* disable handover detection (on deactivation) */
+	if (l1h->ho_rach_detect[tn][ss]) {
+		l1h->ho_rach_detect[tn][ss] = 0;
+		trx_if_cmd_nohandover(l1h, tn, ss);
 	}
 
 	return rc;
