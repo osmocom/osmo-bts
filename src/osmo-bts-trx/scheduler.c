@@ -248,6 +248,9 @@ void trx_sched_exit(struct trx_l1h *l1h)
 				chan_state->ul_bursts = NULL;
 			}
 		}
+		/* clear lchan channel states */
+		for (i = 0; i < 8; i++)
+			l1h->trx->ts[tn].lchan[i].state = LCHAN_S_NONE;
 	}
 }
 
