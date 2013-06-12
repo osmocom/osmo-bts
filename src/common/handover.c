@@ -42,7 +42,9 @@ static int ho_tx_phys_info(struct gsm_lchan *lchan, uint8_t ta)
 	if (!msg)
 		return -ENOMEM;
 
-	LOGP(DHO, LOGL_INFO, "Sending PHYSICAL INFORMATION to MS.\n");
+	LOGP(DHO, LOGL_INFO,
+		"%s Sending PHYSICAL INFORMATION to MS.\n",
+		gsm_lchan_name(lchan));
 
 	/* Build RSL UNITDATA REQUEST message with 04.08 PHYS INFO */
 	msg->l3h = msg->data;
@@ -64,17 +66,20 @@ static void ho_t3105_cb(void *data)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	
-	LOGP(DHO, LOGL_INFO, "T3105 timeout (%d resends left)\n",
-		btsb->ny1 - lchan->ho.phys_info_count);
+	LOGP(DHO, LOGL_INFO, "%s T3105 timeout (%d resends left)\n",
+		gsm_lchan_name(lchan), btsb->ny1 - lchan->ho.phys_info_count);
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DHO, LOGL_NOTICE, "NY1 reached, sending CONNection "
-			"FAILure to BSC.\n");
+		LOGP(DHO, LOGL_NOTICE,
+			"%s is in not active. It is in state %s. Ignoring\n",
+			gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
 		return;
 	}
 
 	if (lchan->ho.phys_info_count >= btsb->ny1) {
 		/* HO Abort */
+		LOGP(DHO, LOGL_NOTICE, "%s NY1 reached, sending CONNection "
+			"FAILure to BSC.\n", gsm_lchan_name(lchan));
 		rsl_tx_conn_fail(lchan, RSL_ERR_HANDOVER_ACC_FAIL);
 		return;
 	}
@@ -93,14 +98,15 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 	/* Ignore invalid handover ref */
 	if (lchan->ho.ref != ra) {
-		LOGP(DHO, LOGL_INFO, "RACH on decicated channel received, but "
+		LOGP(DHO, LOGL_INFO, "%s RACH on dedicated channel received, but "
 			"ra=0x%02x != expected ref=0x%02x. (This is no bug)\n",
-			ra, lchan->ho.ref);
+			gsm_lchan_name(lchan), ra, lchan->ho.ref);
 		return;
 	}
 
-	LOGP(DHO, LOGL_NOTICE, "RACH on decicated channel received with "
-		"TA=%u\n", acc_delay);
+	LOGP(DHO, LOGL_NOTICE,
+		"%s RACH on dedicated channel received with TA=%u\n",
+		gsm_lchan_name(lchan), acc_delay);
 
 	/* Set timing advance */
 	lchan->rqd_ta = acc_delay;
@@ -117,7 +123,9 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	ho_tx_phys_info(lchan, acc_delay);
 
 	/* Start T3105 */
-	LOGP(DHO, LOGL_DEBUG, "Starting T3105 with %u ms\n", btsb->t3105_ms);
+	LOGP(DHO, LOGL_DEBUG,
+		"%s Starting T3105 with %u ms\n",
+		gsm_lchan_name(lchan), btsb->t3105_ms);
 	lchan->ho.t3105.cb = ho_t3105_cb;
 	lchan->ho.t3105.data = lchan;
 	osmo_timer_schedule(&lchan->ho.t3105, 0, btsb->t3105_ms * 1000);
@@ -126,11 +134,11 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 /* received frist valid data frame on dedicated channel */
 void handover_frame(struct gsm_lchan *lchan)
 {
-	LOGP(DHO, LOGL_INFO, "First valid frame detected\n");
+	LOGP(DHO, LOGL_INFO,
+		"%s First valid frame detected\n", gsm_lchan_name(lchan));
 
 	/* Stop T3105 */
-	if (osmo_timer_pending(&lchan->ho.t3105))
-		osmo_timer_del(&lchan->ho.t3105);
+	osmo_timer_del(&lchan->ho.t3105);
 
 	/* Handover process is done */
 	lchan->ho.active = 0;
