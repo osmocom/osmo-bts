@@ -294,6 +294,16 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 	return trx_ctrl_cmd(l1h, 1, "TXTUNE", "%d", freq10 * 100);
 }
 
+int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
+{
+	return trx_ctrl_cmd(l1h, 1, "HANDOVER", "%d %d", tn, ss);
+}
+
+int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
+{
+	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
+}
+
 /* get response from ctrl socket */
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {

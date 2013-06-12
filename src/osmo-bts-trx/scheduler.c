@@ -1173,17 +1173,20 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa)
 {
+	uint8_t chan_nr;
 	struct osmo_phsap_prim l1sap;
 	uint8_t ra;
 	int rc;
 
-	LOGP(DL1C, LOGL_NOTICE, "Received %s fn=%u toa=%.2f\n",
+	chan_nr = trx_chan_desc[chan].chan_nr | tn;
+
+	LOGP(DL1C, LOGL_NOTICE, "Received Access Burst on %s fn=%u toa=%.2f\n",
 		trx_chan_desc[chan].name, fn, toa);
 
 	/* decode */
 	rc = rach_decode(&ra, bits + 8 + 41, l1h->trx->bts->bsic);
 	if (rc) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad rach frame at fn=%u "
+		LOGP(DL1C, LOGL_NOTICE, "Received bad AB frame at fn=%u "
 			"(%u/51)\n", fn, fn % 51);
 		return 0;
 	}
@@ -1193,6 +1196,7 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
 		NULL);
+	l1sap.u.rach_ind.chan_nr = chan_nr;
 	l1sap.u.rach_ind.ra = ra;
 #ifdef TA_TEST
 #warning TIMING ADVANCE TEST-HACK IS ENABLED!!!
@@ -1221,6 +1225,10 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[23], l2_len;
 	int rc;
+
+	/* handle rach, if handover rach detection is turned on */
+	if (chan_state->ho_rach_detect == 1)
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
 
 	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -1382,6 +1390,10 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	int rc, amr = 0;
 	float ber;
 
+	/* handle rach, if handover rach detection is turned on */
+	if (chan_state->ho_rach_detect == 1)
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
+
 	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
 
@@ -1521,6 +1533,10 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
 	float ber;
+
+	/* handle rach, if handover rach detection is turned on */
+	if (chan_state->ho_rach_detect == 1)
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
@@ -2487,9 +2503,10 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 /* setting all logical channels given attributes to active/inactive */
 int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 	uint8_t tch_mode, int codecs, uint8_t codec0, uint8_t codec1,
-	uint8_t codec2, uint8_t codec3, uint8_t initial_id)
+	uint8_t codec2, uint8_t codec3, uint8_t initial_id, uint8_t handover)
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
+	uint8_t ss = l1sap_chan2ss(chan_nr);
 	int i;
 	int rc = -EINVAL;
 	struct trx_chan_state *chan_state;
@@ -2499,11 +2516,13 @@ int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == 0x00) {
 			chan_state = &l1h->chan_states[tn][i];
-			LOGP(DL1C, LOGL_NOTICE, "Set mode %u, %u on "
-				"%s of trx=%d ts=%d\n", rsl_cmode, tch_mode,
-				trx_chan_desc[i].name, l1h->trx->nr, tn);
+			LOGP(DL1C, LOGL_NOTICE, "Set mode %u, %u, handover %u "
+				"on %s of trx=%d ts=%d\n", rsl_cmode, tch_mode,
+				handover, trx_chan_desc[i].name, l1h->trx->nr,
+				tn);
 			chan_state->rsl_cmode = rsl_cmode;
 			chan_state->tch_mode = tch_mode;
+			chan_state->ho_rach_detect = handover;
 			if (rsl_cmode == RSL_CMOD_SPD_SPEECH
 			 && tch_mode == GSM48_CMODE_SPEECH_AMR) {
 				chan_state->codecs = codecs;
@@ -2520,6 +2539,19 @@ int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 			}
 			rc = 0;
 		}
+	}
+
+	/* command rach detection
+	 * always enable handover, even if state is still set (due to loss
+	 * of transceiver link).
+	 * disable handover, if state is still set, since we might not know
+	 * the actual state of transceiver (due to loss of link) */
+	if (handover) {
+		l1h->ho_rach_detect[tn][ss] = 1;
+		trx_if_cmd_handover(l1h, tn, ss);
+	} else if (l1h->ho_rach_detect[tn][ss]) {
+		l1h->ho_rach_detect[tn][ss] = 0;
+		trx_if_cmd_nohandover(l1h, tn, ss);
 	}
 
 	return rc;
@@ -2721,7 +2753,8 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 			}
 
 			func(l1h, tn, fn, chan, bid, bits, rssi, toa);
-		} else if (chan != TRXC_RACH) {
+		} else if (chan != TRXC_RACH
+		        && !l1h->chan_states[tn][chan].ho_rach_detect) {
 			sbit_t spare[148];
 
 			memset(spare, 0, 148);
