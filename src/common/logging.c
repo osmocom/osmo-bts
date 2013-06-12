@@ -58,6 +58,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 	[DMEAS] = {
 		.name = "DMEAS",
 		.description = "Radio Measurement Processing",
+		.color = "\033[1;38m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DPAG]	= {
@@ -111,6 +112,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.name = "DLOOP",
 		.description = "Control loops",
 		.color = "\033[0;34m",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DHO] = {
+		.name = "DHO",
+		.description = "Handover",
+		.color = "\033[0;37m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 #if 0

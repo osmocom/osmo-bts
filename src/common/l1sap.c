@@ -44,6 +44,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/handover.h>
 
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
@@ -701,6 +702,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		return -EINVAL;
 	}
 
+	/* report first valid received frame to handover process */
+	if (lchan->ho.active == 2)
+		handover_frame(lchan);
+
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		radio_link_timeout(lchan, 0);
 		le = &lchan->lapdm_ch.lapdm_acch;
@@ -792,6 +797,25 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	return 0;
 }
 
+/* special case where handover RACH is detected */
+static int l1sap_handover_rach(struct gsm_bts_trx *trx,
+	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
+{
+	struct gsm_lchan *lchan;
+	uint8_t chan_nr;
+	uint8_t tn, ss;
+
+	chan_nr = rach_ind->chan_nr;
+	tn = L1SAP_CHAN2TS(chan_nr);
+	ss = l1sap_chan2ss(chan_nr);
+	lchan = &trx->ts[tn].lchan[ss];
+
+	handover_rach(trx, chan_nr, lchan, rach_ind->ra, rach_ind->acc_delay);
+
+	/* must return 0, so in case of msg at l1sap, it will be freed */
+	return 0;
+}
+
 /* RACH received from bts model */
 static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
@@ -810,6 +834,10 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		     rach_ind->acc_delay, btsb->max_ta);
 		return 0;
 	}
+
+	/* check for handover rach */
+	if (trx != bts->c0 && rach_ind->chan_nr != 0x88)
+		return l1sap_handover_rach(trx, l1sap, rach_ind);
 
 	/* check for packet access */
 	if (trx == bts->c0
