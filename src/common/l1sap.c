@@ -703,7 +703,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	}
 
 	/* report first valid received frame to handover process */
-	if (lchan->ho.active == 2)
+	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
 		handover_frame(lchan);
 
 	if (L1SAP_IS_LINK_SACCH(link_id)) {

@@ -45,6 +45,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/handover.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -740,7 +741,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if ((type == RSL_ACT_INTER_ASYNC ||
 	     type == RSL_ACT_INTER_SYNC) &&
 	    TLVP_PRESENT(&tp, RSL_IE_HANDO_REF)) {
-		lchan->ho.active = 1;
+		lchan->ho.active = HANDOVER_ENABLED;
 		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
 	}
 
@@ -837,7 +838,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 
 	/* deactivate handover RACH detection and timer */
-	lchan->ho.active = 0;
+	lchan->ho.active = HANDOVER_NONE;
 	osmo_timer_del(&lchan->ho.t3105);
 
 	l1sap_chan_rel(lchan->ts->trx, chan_nr);

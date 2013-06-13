@@ -112,7 +112,7 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	lchan->rqd_ta = acc_delay;
 
 	/* Stop handover detection, wait for valid frame */
-	lchan->ho.active = 2;
+	lchan->ho.active = HANDOVER_WAIT_FRAME;
 	l1sap_chan_modify(trx, chan_nr);
 
 	/* Send HANDover DETect to BSC */
@@ -141,6 +141,6 @@ void handover_frame(struct gsm_lchan *lchan)
 	osmo_timer_del(&lchan->ho.t3105);
 
 	/* Handover process is done */
-	lchan->ho.active = 0;
+	lchan->ho.active = HANDOVER_NONE;
 }
 
