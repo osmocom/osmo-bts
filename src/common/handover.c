@@ -137,10 +137,15 @@ void handover_frame(struct gsm_lchan *lchan)
 	LOGP(DHO, LOGL_INFO,
 		"%s First valid frame detected\n", gsm_lchan_name(lchan));
 
+	reset_handover(lchan);
+}
+
+/* release handover starte */
+void reset_handover(struct gsm_lchan *lchan)
+{
 	/* Stop T3105 */
 	osmo_timer_del(&lchan->ho.t3105);
 
 	/* Handover process is done */
 	lchan->ho.active = HANDOVER_NONE;
 }
-
