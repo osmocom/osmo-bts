@@ -833,9 +833,8 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 		msgb_queue_flush(&lchan->dl_tch_queue);
 	}
 
-	/* deactivate handover RACH detection and timer */
-	lchan->ho.active = HANDOVER_NONE;
-	osmo_timer_del(&lchan->ho.t3105);
+	/* release handover state */
+	reset_handover(lchan);
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	rc = bts_model_rsl_chan_rel(lchan);
