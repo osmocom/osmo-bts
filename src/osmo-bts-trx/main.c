@@ -63,7 +63,7 @@ int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static char *gsmtap_ip = 0;
-static int high_prio = 0;
+static int rt_prio = -1;
 static int trx_num = 1;
 char *software_version = "0.0";
 uint8_t abis_mac[6] = { 0, 1, 2, 3, 4, 5 };
@@ -154,7 +154,7 @@ static void print_help()
 		"  -e	--log-level	Set a global log-level\n"
 		"  -t	--trx-num	Set number of TRX (default=%d)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
-		"  -H	--high-prio	Set realtime scheduler with maximum prio\n"
+		"  -r	--realtime PRIO	Set realtime scheduler with given prio\n"
 		"  -I	--local-trx-ip	Local IP for transceiver to connect (default=%s)\n"
 		,trx_num, transceiver_ip);
 }
@@ -176,12 +176,12 @@ static void handle_options(int argc, char **argv)
 			{ "log-level", 1, 0, 'e' },
 			{ "trx-num", 1, 0, 't' },
 			{ "gsmtap-ip", 1, 0, 'i' },
-			{ "high-prio", 0, 0, 'H' },
+			{ "realtime", 1, 0, 'r' },
 			{ "local-trx-ip", 1, 0, 'I' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:t:i:HI:",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:t:i:r:I:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -221,8 +221,8 @@ static void handle_options(int argc, char **argv)
 		case 'i':
 			gsmtap_ip = optarg;
 			break;
-		case 'H':
-			high_prio = 1;
+		case 'r':
+			rt_prio = atoi(optarg);
 			break;
 		case 'I':
 			transceiver_ip = strdup(optarg);
@@ -374,16 +374,16 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (high_prio) {
+	if (rt_prio != -1) {
 		struct sched_param schedp;
 
 		/* high priority scheduling required for handling bursts */
-		rc = sched_get_priority_max(SCHED_RR);
 		memset(&schedp, 0, sizeof(schedp));
-		schedp.sched_priority = rc;
+		schedp.sched_priority = rt_prio;
 		rc = sched_setscheduler(0, SCHED_RR, &schedp);
 		if (rc) {
-			fprintf(stderr, "Error setting scheduler\n");
+			fprintf(stderr, "Error setting SCHED_RR with prio %d\n",
+				rt_prio);
 		}
 	}
 
