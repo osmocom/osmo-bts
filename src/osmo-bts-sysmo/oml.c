@@ -968,8 +968,12 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 	mph_info_chan_confirm(lchan, PRIM_INFO_ACTIVATE, 0);
 
 	/* set the initial ciphering parameters for both directions */
-	l1if_set_ciphering(fl1h, lchan, 0);
 	l1if_set_ciphering(fl1h, lchan, 1);
+	l1if_set_ciphering(fl1h, lchan, 0);
+	if (lchan->encr.alg_id)
+		lchan->ciph_state = LCHAN_CIPH_RXTX_REQ;
+	else
+		lchan->ciph_state = LCHAN_CIPH_NONE;
 
 	return 0;
 }
@@ -1113,9 +1117,16 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 			LOGPC(DL1C, LOGL_INFO, "RX_REQ -> RX_CONF\n");
 			lchan->ciph_state = LCHAN_CIPH_RX_CONF;
 			break;
-		case LCHAN_CIPH_TXRX_REQ:
-			LOGPC(DL1C, LOGL_INFO, "TX_REQ -> TX_CONF\n");
-			lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+		case LCHAN_CIPH_RX_CONF_TX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "RX_CONF_TX_REQ -> RXTX_CONF\n");
+			lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
+			break;
+		case LCHAN_CIPH_RXTX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "RXTX_REQ -> RX_CONF_TX_REQ\n");
+			lchan->ciph_state = LCHAN_CIPH_RX_CONF_TX_REQ;
+			break;
+		case LCHAN_CIPH_NONE:
+			LOGPC(DL1C, LOGL_INFO, "\n");
 			break;
 		default:
 			LOGPC(DL1C, LOGL_INFO, "unhandled state %u\n", lchan->ciph_state);

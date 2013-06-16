@@ -90,8 +90,9 @@ enum lchan_ciph_state {
 	LCHAN_CIPH_NONE,
 	LCHAN_CIPH_RX_REQ,
 	LCHAN_CIPH_RX_CONF,
-	LCHAN_CIPH_TXRX_REQ,
-	LCHAN_CIPH_TXRX_CONF,
+	LCHAN_CIPH_RXTX_REQ,
+	LCHAN_CIPH_RX_CONF_TX_REQ,
+	LCHAN_CIPH_RXTX_CONF,
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
