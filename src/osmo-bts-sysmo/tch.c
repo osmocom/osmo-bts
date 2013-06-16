@@ -257,7 +257,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	if (!msg)
 		return NULL;
 
-#if 0
+#if 1
 	uint8_t cmr_idx = l1_payload[1];
 
 	/* CMR == Unset means CMR was not transmitted at this TDMA */
