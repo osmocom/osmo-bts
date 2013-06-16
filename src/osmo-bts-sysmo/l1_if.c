@@ -616,8 +616,11 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		}
 		if (l1sap->u.info.u.ciph_req.downlink) {
 			l1if_set_ciphering(fl1, lchan, 1);
-			lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+			lchan->ciph_state = LCHAN_CIPH_RX_CONF_TX_REQ;
 		}
+		if (l1sap->u.info.u.ciph_req.downlink
+		 && l1sap->u.info.u.ciph_req.uplink)
+			lchan->ciph_state = LCHAN_CIPH_RXTX_REQ;
 		break;
 	case PRIM_INFO_ACTIVATE:
 	case PRIM_INFO_DEACTIVATE:
