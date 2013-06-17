@@ -30,3 +30,9 @@ AT_KEYWORDS([bursts])
 cat $abs_srcdir/bursts/bursts_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bursts/bursts_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([handover])
+AT_KEYWORDS([handover])
+cat $abs_srcdir/handover/handover_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/handover/handover_test], [], [expout], [ignore])
+AT_CLEANUP
