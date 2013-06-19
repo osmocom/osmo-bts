@@ -507,6 +507,14 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				lchan_init_lapdm(lchan);
 				/* set lchan active */
 				lchan_set_state(lchan, LCHAN_S_ACTIVE);
+				/* set initial ciphering */
+				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
+				l1if_set_ciphering(l1h, lchan, chan_nr, 1);
+				if (lchan->encr.alg_id)
+					lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+				else
+					lchan->ciph_state = LCHAN_CIPH_NONE;
+
 				/* confirm */
 				mph_info_chan_confirm(l1h, chan_nr,
 					PRIM_INFO_ACTIVATE, 0);
