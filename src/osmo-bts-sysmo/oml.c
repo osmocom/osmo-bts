@@ -38,6 +38,7 @@
 
 #include "l1_if.h"
 #include "femtobts.h"
+#include "utils.h"
 
 enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
@@ -67,22 +68,6 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	//[GSM_PCHAN_TCH_F_PDCH]		= FIXME,
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 };
-
-static int band_osmo2femto(enum gsm_band osmo_band)
-{
-	switch (osmo_band) {
-	case GSM_BAND_850:
-		return GsmL1_FreqBand_850;
-	case GSM_BAND_900:
-		return GsmL1_FreqBand_900;
-	case GSM_BAND_1800:
-		return GsmL1_FreqBand_1800;
-	case GSM_BAND_1900:
-		return GsmL1_FreqBand_1900;
-	default:
-		return -1;
-	}
-}
 
 static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct femtol1_hdl *gl1)
 {
@@ -292,7 +277,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
 	}
 
-	femto_band = band_osmo2femto(trx->bts->band);
+	femto_band = sysmobts_select_femto_band(trx->bts, trx->arfcn);
 	if (femto_band < 0) {
 		LOGP(DL1C, LOGL_ERROR, "Unsupported GSM band %s\n",
 			gsm_band_name(trx->bts->band));

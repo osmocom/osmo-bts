@@ -59,6 +59,9 @@ struct gsm_bts_role_bts {
 		uint8_t tc4_ctr;
 	} si;
 	uint8_t radio_link_timeout;
+
+	/* used by the sysmoBTS to adjust band */
+	uint8_t auto_band;
 };
 
 enum lchan_ciph_state {

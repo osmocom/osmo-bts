@@ -1,7 +1,7 @@
 /* VTY interface for sysmoBTS */
 
 /* (C) 2011 by Harald Welte <laforge@gnumonks.org>
- * (C) 2012 by Holger Hans Peter Freyther
+ * (C) 2012,2013 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -56,6 +56,28 @@
 static struct gsm_bts *vty_bts;
 
 /* configuration */
+
+DEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
+	"auto-band",
+	"Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
+	"no auto-band",
+	NO_STR "Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 0;
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
@@ -412,6 +434,10 @@ DEFUN(no_loopback, no_loopback_cmd,
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	if (btsb->auto_band)
+		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 }
 
 /* FIXME: move to libosmocore ? */
@@ -514,6 +540,9 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(ENABLE_NODE, &loopback_cmd);
 	install_element(ENABLE_NODE, &no_loopback_cmd);
+
+	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
