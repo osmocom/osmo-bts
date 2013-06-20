@@ -2573,7 +2573,10 @@ int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
 	int rc = -EINVAL;
 	struct trx_chan_state *chan_state;
 
-	if (algo < 0 || key_len > 8 || (algo && key_len != 8)) {
+	/* no algorithm given means a5/0 */
+	if (algo <= 0)
+		algo = 0;
+	else if (key_len != 8) {
 		LOGP(DL1C, LOGL_ERROR, "Algo A5/%d not supported with given "
 			"key len=%d\n", algo, key_len);
 		return -ENOTSUP;
