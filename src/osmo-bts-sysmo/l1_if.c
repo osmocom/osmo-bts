@@ -1116,6 +1116,14 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
 		     gsm_band_name(trx->bts->band));
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
+	/* load calibration tables (if we know their path) */
+	if (fl1h->calib_path)
+		calib_load(fl1h);
+	else
+#endif
+		LOGP(DL1C, LOGL_NOTICE, "Operating without calibration tables!\n");
+
 	/* FIXME: clock related */
 	return 0;
 }
@@ -1155,14 +1163,6 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 
 	/* obtain version information on DSP/FPGA and band capabilities */
 	l1if_get_info(fl1h);
-
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
-	/* load calibration tables (if we know their path) */
-	if (fl1h->calib_path)
-		calib_load(fl1h);
-	else
-#endif
-		LOGP(DL1C, LOGL_NOTICE, "Operating without calibration tables!\n");
 
 	/* otherwise, request activation of RF board */
 	l1if_activate_rf(fl1h, 1);

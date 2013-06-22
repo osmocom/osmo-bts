@@ -132,6 +132,54 @@ static int read_int(FILE *in)
 	return i;
 }
 
+/* some particular units have calibration data that is incompatible with
+ * firmware >= 3.3, so we need to alter it as follows: */
+static const float delta_by_band[Num_GsmL1_FreqBand] = {
+	[GsmL1_FreqBand_850] = -2.5f,
+	[GsmL1_FreqBand_900] = -2.0f,
+	[GsmL1_FreqBand_1800] = -8.0f,
+	[GsmL1_FreqBand_1900] = -12.0f,
+};
+
+extern const uint8_t fixup_macs[95][6];
+
+static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
+{
+	SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
+	uint8_t macaddr[6];
+	int rc, i;
+	int fixup_needed = 0;
+
+	rc = eeprom_ReadEthAddr(macaddr);
+	if (rc != EEPROM_SUCCESS) {
+		LOGP(DL1C, LOGL_ERROR,
+			"Unable to read Ethenet MAC from EEPROM\n");
+		return;
+	}
+
+	if (fl1h->hw_info.dsp_version[0] < 3 ||
+	    (fl1h->hw_info.dsp_version[0] == 3 &&
+	     fl1h->hw_info.dsp_version[1] < 3)) {
+		LOGP(DL1C, LOGL_NOTICE, "No calibration table fix-up needed, "
+			"firmware < 3.3\n");
+		return;
+	}
+
+	for (i = 0; i < sizeof(fixup_macs)/6; i++) {
+		if (!memcmp(fixup_macs[i], macaddr, 6)) {
+			fixup_needed = 1;
+			break;
+		}
+	}
+
+	LOGP(DL1C, LOGL_NOTICE, "MAC Address is %02x:%02x:%02x:%02x:%02x:%02x -> %s\n",
+		macaddr[0], macaddr[1], macaddr[2], macaddr[3],
+		macaddr[4], macaddr[5], fixup_needed ? "FIXUP" : "NO FIXUP");
+
+	if (fixup_needed)
+		rx->fExtRxGain += delta_by_band[rx->freqBand];
+}
+
 static int calib_file_read(const char *path, const struct calib_file_desc *desc,
 		    SuperFemto_Prim_t *prim)
 {
@@ -287,6 +335,7 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 		msgb_free(msg);
 		return rc;
 	}
+	calib_fixup_rx(fl1h, msgb_sysprim(msg));
 
 	return l1if_req_compl(fl1h, msg, calib_send_compl_cb);
 }

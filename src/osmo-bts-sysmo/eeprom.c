@@ -298,6 +298,18 @@ eeprom_Error_t eeprom_ResetCfg( void )
 }
 
 
+eeprom_Error_t eeprom_ReadEthAddr( uint8_t *ethaddr )
+{
+    int err;
+
+    err = eeprom_read(0, 6, ethaddr);
+    if ( err != 6 )
+    {
+	return EEPROM_ERR_DEVICE;
+    }
+    return EEPROM_SUCCESS;
+}
+
 /****************************************************************************
  * Function : eeprom_ReadSysInfo
  ************************************************************************//**

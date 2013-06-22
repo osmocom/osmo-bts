@@ -9,7 +9,7 @@ EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
 bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr
 
 COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c calib_file.c \
-		 eeprom.c
+		 eeprom.c calib_fixup.c
 
 sysmobts_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
 sysmobts_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
