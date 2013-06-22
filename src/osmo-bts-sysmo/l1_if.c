@@ -1085,6 +1085,7 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	int rc;
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
 	fl1h->hw_info.dsp_version[1] = sic->dspVersion.minor;
@@ -1118,11 +1119,14 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	/* load calibration tables (if we know their path) */
-	if (fl1h->calib_path)
-		calib_load(fl1h);
-	else
+	rc = calib_load(fl1h);
+	if (rc < 0)
+		LOGP(DL1C, LOGL_ERROR, "Operating without calibration; "
+			"unable to load tables!\n");
+#else
+	LOGP(DL1C, LOGL_NOTICE, "Operating without calibration "
+		"as software was compiled against old header files\n");
 #endif
-		LOGP(DL1C, LOGL_NOTICE, "Operating without calibration tables!\n");
 
 	/* FIXME: clock related */
 	return 0;
