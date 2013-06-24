@@ -258,6 +258,7 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 	eeprom_Error_t eerr;
 	int i;
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	if (desc->rx) {
 		SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
 		eeprom_RxCal_t rx_cal;
@@ -312,6 +313,7 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 		for (i = 0; i < arrsize_by_band[desc->band]; i++)
 			tx->fTxRollOffCorr[i] = tx_cal.fTxRollOffCorr[i];
 	}
+#endif
 
 	return 0;
 }
