@@ -145,6 +145,7 @@ extern const uint8_t fixup_macs[95][6];
 
 static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
 {
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
 	uint8_t macaddr[6];
 	int rc, i;
@@ -178,6 +179,7 @@ static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
 
 	if (fixup_needed)
 		rx->fExtRxGain += delta_by_band[rx->freqBand];
+#endif
 }
 
 static int calib_file_read(const char *path, const struct calib_file_desc *desc,
