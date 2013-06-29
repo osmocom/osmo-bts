@@ -2518,6 +2518,10 @@ int trx_sched_set_mode(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t rsl_cmode,
 	int rc = -EINVAL;
 	struct trx_chan_state *chan_state;
 
+	/* no mode for PDCH */
+	if (trx_sched_multiframes[l1h->mf_index[tn]].pchan == GSM_PCHAN_PDCH)
+		return 0;
+
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
@@ -2572,6 +2576,10 @@ int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
 	int i;
 	int rc = -EINVAL;
 	struct trx_chan_state *chan_state;
+
+	/* no cipher for PDCH */
+	if (trx_sched_multiframes[l1h->mf_index[tn]].pchan == GSM_PCHAN_PDCH)
+		return 0;
 
 	/* no algorithm given means a5/0 */
 	if (algo <= 0)
