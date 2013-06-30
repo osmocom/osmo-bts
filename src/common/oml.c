@@ -229,6 +229,13 @@ int oml_tx_state_changed(struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, nmsg, NM_MT_STATECHG_EVENT_REP);
 }
 
+/* First initialization of MO, does _not_ generate state changes */
+int oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state)
+{
+	mo->nm_state.availability = avail_state;
+	mo->nm_state.operational = op_state;
+}
+
 int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 {
 	int rc = 0;
