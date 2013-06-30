@@ -176,7 +176,7 @@ int bts_link_estab(struct gsm_bts *bts)
 		}
 	}
 
-	return 0;
+	return bts_model_oml_estab(bts);
 }
 
 /* RSL link is established, send status report */
