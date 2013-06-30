@@ -74,9 +74,16 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->c0->role_bts.l1h = fl1h;
 	bts->c0->nominal_power = 23;
 
-	l1if_reset(fl1h);
-
 	bts_model_vty_init(bts);
+
+	return 0;
+}
+
+int bts_model_oml_estab(struct gsm_bts *bts)
+{
+	struct femtol1_hdl *fl1h = bts->c0->role_bts.l1h;
+
+	l1if_reset(fl1h);
 
 	return 0;
 }
