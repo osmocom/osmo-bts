@@ -991,13 +991,12 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	return oml_fom_ack_nack(msg, rc);
 }
 
-
 static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 				  struct tlv_parsed *tp)
 {
 	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
 	uint16_t port = IPA_TCP_PORT_RSL;
-	uint32_t ip;//FIXME = oml_link->ip;
+	uint32_t ip = get_signlink_remote_ip(oml_link);
 	struct in_addr in;
 	int rc;
 

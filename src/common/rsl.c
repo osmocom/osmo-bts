@@ -1364,12 +1364,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	if (connect_ip == 0) {
 		struct e1inp_sign_link *sign_link =
 					lchan->ts->trx->rsl_link;
-		int rsl_fd = sign_link->ts->driver.ipaccess.fd.fd;
-		struct sockaddr_in sin;
-		socklen_t slen = sizeof(sin);
 
-		getpeername(rsl_fd, (struct sockaddr *)&sin, &slen);
-		ia = sin.sin_addr;
+		ia.s_addr = htonl(get_signlink_remote_ip(sign_link));
 	} else
 		ia.s_addr = connect_ip;
 	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
