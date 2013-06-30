@@ -230,7 +230,7 @@ int oml_tx_state_changed(struct gsm_abis_mo *mo)
 }
 
 /* First initialization of MO, does _not_ generate state changes */
-int oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state)
+void oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state)
 {
 	mo->nm_state.availability = avail_state;
 	mo->nm_state.operational = op_state;

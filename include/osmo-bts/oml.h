@@ -15,7 +15,7 @@ int oml_mo_statechg_ack(struct gsm_abis_mo *mo);
 int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state);
 
 /* First initialization of MO, does _not_ generate state changes */
-int oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state);
+void oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state);
 
 /* Transmit STATE CHG REP even if there was no state change */
 int oml_tx_state_changed(struct gsm_abis_mo *mo);
