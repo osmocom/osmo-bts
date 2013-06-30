@@ -138,6 +138,27 @@ static int sign_link_cb(struct msgb *msg)
 	return 0;
 }
 
+uint32_t get_signlink_remote_ip(struct e1inp_sign_link *link)
+{
+	int fd = link->ts->driver.ipaccess.fd.fd;
+	struct sockaddr_in sin;
+	socklen_t slen = sizeof(sin);
+	int rc;
+
+	rc = getpeername(fd, (struct sockaddr *)&sin, &slen);
+	if (rc < 0) {
+		LOGP(DOML, LOGL_ERROR, "Cannot determine remote IP Addr: %s\n",
+			strerror(errno));
+		return 0;
+	}
+
+	/* we assume that the soket is AF_INET.  As Abis/IP contains
+	 * lots of hard-coded IPv4 addresses, this safe */
+	OSMO_ASSERT(sin.sin_family == AF_INET);
+
+	return ntohl(sin.sin_addr.s_addr);
+}
+
 
 #include <sys/ioctl.h>
 #include <net/if.h>
