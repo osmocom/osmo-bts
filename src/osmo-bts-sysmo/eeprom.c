@@ -260,6 +260,7 @@ typedef struct
 static int eeprom_read( int addr, int size, char *pBuff );
 static int eeprom_write( int addr, int size, const char *pBuff );
 static uint16_t eeprom_crc( uint8_t *pu8Data, int len );
+static eeprom_Cfg_t *eeprom_cached_config(void);
 
 
 /****************************************************************************
@@ -649,29 +650,20 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
 eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
 {
     int i;
-    int err;
     int size;
     int nArfcn;
-    eeprom_Cfg_t ee;
+    eeprom_Cfg_t *ee = eeprom_cached_config();
     eeprom_SID_t sId;
     eeprom_CfgTxCal_t *pCfgTxCal = NULL;
 
     // Get a copy of the EEPROM header
-    err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *)&ee.hdr );
-    if ( err != sizeof(ee.hdr) )
+    if (!ee)
     {
-        PERROR( "Error while reading the EEPROM content (%d)\n", err );
+        PERROR( "Reading cached content failed.\n" );
         return EEPROM_ERR_DEVICE;
     }
 
-    // Validate the header magic ID
-    if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
-    {
-        PERROR( "Invalid EEPROM format\n" );
-        return EEPROM_ERR_INVALID;
-    }
-
-    switch ( ee.hdr.u16Version )
+    switch ( ee->hdr.u16Version )
     {
         case 1:
         {
@@ -680,38 +672,30 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
                 case 0:
                     nArfcn = 124;
                     sId = EEPROM_SID_GSM850_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.gsm850TxCal;
-                    size = sizeof(ee.cfg.v1.gsm850TxCal) + sizeof(ee.cfg.v1.__gsm850TxCalMem);
+                    pCfgTxCal = &ee->cfg.v1.gsm850TxCal;
+                    size = sizeof(ee->cfg.v1.gsm850TxCal) + sizeof(ee->cfg.v1.__gsm850TxCalMem);
                     break;
                 case 1:
                     nArfcn = 194;
                     sId = EEPROM_SID_GSM900_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.gsm900TxCal;
-                    size = sizeof(ee.cfg.v1.gsm900TxCal) + sizeof(ee.cfg.v1.__gsm900TxCalMem);
+                    pCfgTxCal = &ee->cfg.v1.gsm900TxCal;
+                    size = sizeof(ee->cfg.v1.gsm900TxCal) + sizeof(ee->cfg.v1.__gsm900TxCalMem);
                     break;
                 case 2:
                     nArfcn = 374;
                     sId = EEPROM_SID_DCS1800_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.dcs1800TxCal;
-                    size = sizeof(ee.cfg.v1.dcs1800TxCal) + sizeof(ee.cfg.v1.__dcs1800TxCalMem);
+                    pCfgTxCal = &ee->cfg.v1.dcs1800TxCal;
+                    size = sizeof(ee->cfg.v1.dcs1800TxCal) + sizeof(ee->cfg.v1.__dcs1800TxCalMem);
                     break;
                 case 3:
                     nArfcn = 299;
                     sId = EEPROM_SID_PCS1900_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.pcs1900TxCal;
-                    size = sizeof(ee.cfg.v1.pcs1900TxCal) + sizeof(ee.cfg.v1.__pcs1900TxCalMem);
+                    pCfgTxCal = &ee->cfg.v1.pcs1900TxCal;
+                    size = sizeof(ee->cfg.v1.pcs1900TxCal) + sizeof(ee->cfg.v1.__pcs1900TxCalMem);
                     break;
                 default:
                     PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
-            }
-
-            // Get a copy of the EEPROM section
-            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgTxCal - (uint32_t)&ee), size, (char *)pCfgTxCal );
-            if ( err != size )
-            {
-                PERROR( "Error while reading the EEPROM content (%d)\n", err );
-                return EEPROM_ERR_DEVICE;
             }
 
             // Validate the ID
@@ -920,29 +904,20 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
 eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal )
 {
     int i;
-    int err;
     int size;
     int nArfcn;
-    eeprom_Cfg_t ee;
+    eeprom_Cfg_t *ee = eeprom_cached_config();
     eeprom_SID_t sId;
     eeprom_CfgRxCal_t *pCfgRxCal = NULL;
 
-    // Get a copy of the EEPROM header
-    err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *)&ee.hdr );
-    if ( err != sizeof(ee.hdr) )
+
+    if (!ee)
     {
-        PERROR( "Error while reading the EEPROM content (%d)\n", err );
+        PERROR( "Reading cached content failed.\n" );
         return EEPROM_ERR_DEVICE;
     }
 
-    // Validate the header magic ID
-    if ( ee.hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
-    {
-        PERROR( "Invalid EEPROM format\n" );
-       return EEPROM_ERR_INVALID;
-    }
-
-    switch ( ee.hdr.u16Version )
+    switch ( ee->hdr.u16Version )
     {
         case 1:
         {
@@ -953,14 +928,14 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_GSM850_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm850RxuCal;
-                        size = sizeof(ee.cfg.v1.gsm850RxuCal) + sizeof(ee.cfg.v1.__gsm850RxuCalMem);
+                        pCfgRxCal = &ee->cfg.v1.gsm850RxuCal;
+                        size = sizeof(ee->cfg.v1.gsm850RxuCal) + sizeof(ee->cfg.v1.__gsm850RxuCalMem);
                     }
                     else
                     {
                         sId = EEPROM_SID_GSM850_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm850RxdCal;
-                        size = sizeof(ee.cfg.v1.gsm850RxdCal) + sizeof(ee.cfg.v1.__gsm850RxdCalMem);
+                        pCfgRxCal = &ee->cfg.v1.gsm850RxdCal;
+                        size = sizeof(ee->cfg.v1.gsm850RxdCal) + sizeof(ee->cfg.v1.__gsm850RxdCalMem);
                     }
                     break;
                 case 1:
@@ -968,14 +943,14 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_GSM900_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm900RxuCal;
-                        size = sizeof(ee.cfg.v1.gsm900RxuCal) + sizeof(ee.cfg.v1.__gsm900RxuCalMem);
+                        pCfgRxCal = &ee->cfg.v1.gsm900RxuCal;
+                        size = sizeof(ee->cfg.v1.gsm900RxuCal) + sizeof(ee->cfg.v1.__gsm900RxuCalMem);
                     }
                     else
                     {
                         sId = EEPROM_SID_GSM900_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm900RxdCal;
-                        size = sizeof(ee.cfg.v1.gsm900RxdCal) + sizeof(ee.cfg.v1.__gsm900RxdCalMem);
+                        pCfgRxCal = &ee->cfg.v1.gsm900RxdCal;
+                        size = sizeof(ee->cfg.v1.gsm900RxdCal) + sizeof(ee->cfg.v1.__gsm900RxdCalMem);
                     }
                     break;
                 case 2:
@@ -983,14 +958,14 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_DCS1800_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.dcs1800RxuCal;
-                        size = sizeof(ee.cfg.v1.dcs1800RxuCal) + sizeof(ee.cfg.v1.__dcs1800RxuCalMem);
+                        pCfgRxCal = &ee->cfg.v1.dcs1800RxuCal;
+                        size = sizeof(ee->cfg.v1.dcs1800RxuCal) + sizeof(ee->cfg.v1.__dcs1800RxuCalMem);
                     }
                     else
                     {
                         sId = EEPROM_SID_DCS1800_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.dcs1800RxdCal;
-                        size = sizeof(ee.cfg.v1.dcs1800RxdCal) + sizeof(ee.cfg.v1.__dcs1800RxdCalMem);
+                        pCfgRxCal = &ee->cfg.v1.dcs1800RxdCal;
+                        size = sizeof(ee->cfg.v1.dcs1800RxdCal) + sizeof(ee->cfg.v1.__dcs1800RxdCalMem);
                     }
                     break;
                 case 3:
@@ -998,14 +973,14 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_PCS1900_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.pcs1900RxuCal;
-                        size = sizeof(ee.cfg.v1.pcs1900RxuCal) + sizeof(ee.cfg.v1.__pcs1900RxuCalMem);
+                        pCfgRxCal = &ee->cfg.v1.pcs1900RxuCal;
+                        size = sizeof(ee->cfg.v1.pcs1900RxuCal) + sizeof(ee->cfg.v1.__pcs1900RxuCalMem);
                     }
                     else
                     {
                         sId = EEPROM_SID_PCS1900_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.pcs1900RxdCal;
-                        size = sizeof(ee.cfg.v1.pcs1900RxdCal) + sizeof(ee.cfg.v1.__pcs1900RxdCalMem);
+                        pCfgRxCal = &ee->cfg.v1.pcs1900RxdCal;
+                        size = sizeof(ee->cfg.v1.pcs1900RxdCal) + sizeof(ee->cfg.v1.__pcs1900RxdCalMem);
                     }
                     break;
                 default:
@@ -1013,14 +988,6 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
                     return EEPROM_ERR_INVALID;
             }
 
-            // Get a copy of the EEPROM section 
-            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgRxCal - (uint32_t)&ee), size, (char *)pCfgRxCal );
-            if ( err != size )
-            {
-                PERROR( "Error while reading the EEPROM content (%d)\n", err );
-                return EEPROM_ERR_DEVICE;
-            }
- 
             // Validate the ID
             if ( pCfgRxCal->u16SectionID != sId )
             {
@@ -1322,12 +1289,17 @@ int eeprom_dump( int addr, int size, int hex )
 }
 
 static FILE *g_file;
+static eeprom_Cfg_t *g_cached_cfg;
 
 void eeprom_free_resources(void)
 {
 	if (g_file)
 		fclose(g_file);
 	g_file = NULL;
+
+	/* release the header */
+	free(g_cached_cfg);
+	g_cached_cfg = NULL;
 }
 
 /**
@@ -1352,6 +1324,42 @@ static int eeprom_read( int addr, int size, char *pBuff )
     return n;
 }
 
+static void eeprom_cache_cfg(void)
+{
+    int err;
+
+    free(g_cached_cfg);
+    g_cached_cfg = malloc(sizeof(*g_cached_cfg));
+
+    if (!g_cached_cfg)
+        return;
+
+    err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(*g_cached_cfg), (char *) g_cached_cfg );
+    if ( err != sizeof(*g_cached_cfg) )
+    {
+        PERROR( "Error while reading the EEPROM content (%d)\n", err );
+        goto error;
+    }
+
+    if ( g_cached_cfg->hdr.u32MagicId != EEPROM_CFG_MAGIC_ID )
+    {
+        PERROR( "Invalid EEPROM format\n" );
+        goto error;
+    }
+
+    return;
+
+error:
+    free(g_cached_cfg);
+    g_cached_cfg = NULL;
+}
+
+static eeprom_Cfg_t *eeprom_cached_config(void)
+{
+    if (!g_cached_cfg)
+        eeprom_cache_cfg();
+    return g_cached_cfg;
+}
     
 /**
  * Write up to 'size' bytes of data to the EEPROM starting at offset 'addr'.
