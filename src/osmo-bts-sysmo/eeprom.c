@@ -1323,6 +1323,13 @@ int eeprom_dump( int addr, int size, int hex )
 
 static FILE *g_file;
 
+void eeprom_free_resources(void)
+{
+	if (g_file)
+		fclose(g_file);
+	g_file = NULL;
+}
+
 /**
  * Read up to 'size' bytes of data from the EEPROM starting at offset 'addr'.
  */
