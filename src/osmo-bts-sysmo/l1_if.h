@@ -32,6 +32,12 @@ struct calib_send_state {
 	int last_file_idx;
 };
 
+enum {
+	FIXUP_UNITILIAZED,
+	FIXUP_NEEDED,
+	FIXUP_NOT_NEEDED,
+};
+
 struct femtol1_hdl {
 	struct gsm_time gsm_time;
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
@@ -60,6 +66,8 @@ struct femtol1_hdl {
 		uint8_t fpga_version[3];
 		uint32_t band_support;	/* bitmask of GSM_BAND_* */
 	} hw_info;
+
+	int fixup_needed;
 
 	struct calib_send_state st;
 };
