@@ -379,6 +379,7 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 				       &calib_files[st->last_file_idx]);
 
 	LOGP(DL1C, LOGL_INFO, "L1 calibration table loading complete!\n");
+	eeprom_free_resources();
 
 	return 0;
 }

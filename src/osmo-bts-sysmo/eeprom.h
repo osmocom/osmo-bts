@@ -291,5 +291,6 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
  ****************************************************************************/
 eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *pRxCal );
 
+void eeprom_free_resources(void);
 
 #endif  // EEPROM_H__
