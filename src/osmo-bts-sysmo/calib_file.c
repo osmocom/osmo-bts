@@ -143,20 +143,21 @@ static const float delta_by_band[Num_GsmL1_FreqBand] = {
 
 extern const uint8_t fixup_macs[95][6];
 
-static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
+
+static void determine_fixup(struct femtol1_hdl *fl1h)
 {
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
-	SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
 	uint8_t macaddr[6];
 	int rc, i;
-	int fixup_needed = 0;
 
 	rc = eeprom_ReadEthAddr(macaddr);
 	if (rc != EEPROM_SUCCESS) {
 		LOGP(DL1C, LOGL_ERROR,
-			"Unable to read Ethenet MAC from EEPROM\n");
+		"Unable to read Ethenet MAC from EEPROM\n");
 		return;
 	}
+
+	/* assume no fixup is needed */
+	fl1h->fixup_needed = FIXUP_NOT_NEEDED;
 
 	if (fl1h->hw_info.dsp_version[0] < 3 ||
 	    (fl1h->hw_info.dsp_version[0] == 3 &&
@@ -168,16 +169,31 @@ static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
 
 	for (i = 0; i < sizeof(fixup_macs)/6; i++) {
 		if (!memcmp(fixup_macs[i], macaddr, 6)) {
-			fixup_needed = 1;
+			fl1h->fixup_needed = FIXUP_NEEDED;
 			break;
 		}
 	}
 
 	LOGP(DL1C, LOGL_NOTICE, "MAC Address is %02x:%02x:%02x:%02x:%02x:%02x -> %s\n",
 		macaddr[0], macaddr[1], macaddr[2], macaddr[3],
-		macaddr[4], macaddr[5], fixup_needed ? "FIXUP" : "NO FIXUP");
+		macaddr[4], macaddr[5],
+		fl1h->fixup_needed == FIXUP_NEEDED ? "FIXUP" : "NO FIXUP");
+}
 
-	if (fixup_needed)
+static int fixup_needed(struct femtol1_hdl *fl1h)
+{
+	if (fl1h->fixup_needed == FIXUP_UNITILIAZED)
+		determine_fixup(fl1h);
+
+	return fl1h->fixup_needed == FIXUP_NEEDED;
+}
+
+static void calib_fixup_rx(struct femtol1_hdl *fl1h, SuperFemto_Prim_t *prim)
+{
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
+	SuperFemto_SetRxCalibTblReq_t *rx = &prim->u.setRxCalibTblReq;
+
+	if (fixup_needed(fl1h))
 		rx->fExtRxGain += delta_by_band[rx->freqBand];
 #endif
 }
