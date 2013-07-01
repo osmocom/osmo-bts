@@ -302,7 +302,7 @@ eeprom_Error_t eeprom_ReadEthAddr( uint8_t *ethaddr )
 {
     int err;
 
-    err = eeprom_read(0, 6, ethaddr);
+    err = eeprom_read(0, 6, (char *) ethaddr);
     if ( err != 6 )
     {
 	return EEPROM_ERR_DEVICE;

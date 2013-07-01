@@ -46,6 +46,10 @@
 #include "femtobts.h"
 #include "l1_if.h"
 
+
+extern int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state);
+extern int lchan_deactivate(struct gsm_lchan *lchan);
+
 #define TRX_STR "Transceiver related commands\n" "TRX number\n"
 
 #define SHOW_TRX_STR				\
