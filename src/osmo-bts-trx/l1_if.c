@@ -259,7 +259,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 }
 
 /* deactivate transceiver */
-static int trx_close(struct gsm_bts_trx *trx)
+int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
 
@@ -655,7 +655,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
-	return trx_close(trx);
+	return 0;
 }
 
 int bts_model_oml_estab(struct gsm_bts *bts)
