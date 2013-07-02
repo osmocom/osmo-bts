@@ -371,7 +371,7 @@ static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	uint8_t chan_nr, int downlink)
 {
 	/* ciphering already enabled in both directions */
-	if (lchan->ciph_state == LCHAN_CIPH_TXRX_CONF)
+	if (lchan->ciph_state == LCHAN_CIPH_RXTX_CONF)
 		return -EINVAL;
 
 	if (!downlink) {
@@ -388,7 +388,7 @@ static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 		}
 		trx_sched_set_cipher(l1h, chan_nr, 1, lchan->encr.alg_id - 1,
 			lchan->encr.key, lchan->encr.key_len);
-		lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+		lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
 	}
 
 	return 0;
@@ -511,7 +511,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
 				l1if_set_ciphering(l1h, lchan, chan_nr, 1);
 				if (lchan->encr.alg_id)
-					lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+					lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
 				else
 					lchan->ciph_state = LCHAN_CIPH_NONE;
 

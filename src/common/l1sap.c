@@ -96,6 +96,7 @@ static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 	/* only do this if we are in the right state */
 	switch (lchan->ciph_state) {
 	case LCHAN_CIPH_NONE:
+	case LCHAN_CIPH_RX_REQ:
 		break;
 	default:
 		return 0;
