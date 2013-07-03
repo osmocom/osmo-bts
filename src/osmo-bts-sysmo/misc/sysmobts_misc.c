@@ -64,7 +64,7 @@ int sysmobts_temp_get(enum sysmobts_temp_sensor sensor,
 	    sensor > SYSMOBTS_TEMP_RF)
 		return -EINVAL;
 
-	if (type > _NUM_TEMP_TYPES)
+	if (type >= ARRAY_SIZE(temp_type_str))
 		return -EINVAL;
 
 	snprintf(buf, sizeof(buf)-1, TEMP_PATH, sensor, temp_type_str[type]);
