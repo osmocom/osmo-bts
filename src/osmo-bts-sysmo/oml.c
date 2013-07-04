@@ -1170,9 +1170,9 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 		return -1;
 
 	if (dir_downlink)
-		dir = GsmL1_Dir_RxUplink;
-	else
 		dir = GsmL1_Dir_TxDownlink;
+	else
+		dir = GsmL1_Dir_RxUplink;
 
 	enqueue_sapi_ciphering_cmd(lchan, dir);
 
