@@ -127,6 +127,7 @@ struct trx_config {
 
 	int			power_valid;
 	int			power;
+	int			power_oml;
 	int			power_sent;
 
 	int			maxdly_valid;

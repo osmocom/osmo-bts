@@ -330,6 +330,13 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1if_provision_transceiver_trx(l1h);
 	}
 
+	if (l1h->config.power_oml) {
+		l1h->config.power = trx->max_power_red;
+		l1h->config.power_valid = 1;
+		l1h->config.power_sent = 0;
+		l1if_provision_transceiver_trx(l1h);
+	}
+
 	return 0;
 }
 

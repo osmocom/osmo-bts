@@ -233,6 +233,24 @@ DEFUN(cfg_trx_power, cfg_trx_power_cmd,
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
 
 	l1h->config.power = atoi(argv[0]);
+	l1h->config.power_oml = 0;
+	l1h->config.power_valid = 1;
+	l1h->config.power_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_poweroml_, cfg_trx_power_oml_cmd,
+	"power oml",
+	"Set the transmitter power dampening\n"
+	"Given by NM_ATT_RF_MAXPOWR_R (max power reduction) via OML\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+
+	l1h->config.power = trx->max_power_red;
+	l1h->config.power_oml = 1;
 	l1h->config.power_valid = 1;
 	l1h->config.power_sent = 0;
 	l1if_provision_transceiver_trx(l1h);
@@ -338,8 +356,13 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 
 	if (l1h->config.rxgain_valid)
 		vty_out(vty, "  rxgain %d%s", l1h->config.rxgain, VTY_NEWLINE);
-	if (l1h->config.power_valid)
-		vty_out(vty, "  power %d%s", l1h->config.power, VTY_NEWLINE);
+	if (l1h->config.power_valid) {
+		if (l1h->config.power_oml)
+			vty_out(vty, "  power oml%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "  power %d%s", l1h->config.power,
+				VTY_NEWLINE);
+	}
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, "  maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
 	if (l1h->config.slotmask != 0xff)
@@ -373,6 +396,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(TRX_NODE, &cfg_trx_rxgain_cmd);
 	install_element(TRX_NODE, &cfg_trx_power_cmd);
+	install_element(TRX_NODE, &cfg_trx_power_oml_cmd);
 	install_element(TRX_NODE, &cfg_trx_maxdly_cmd);
 	install_element(TRX_NODE, &cfg_trx_slotmask_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_rxgain_cmd);
