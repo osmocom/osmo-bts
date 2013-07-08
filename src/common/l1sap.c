@@ -279,11 +279,11 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 }
 
 /* time information received from bts model */
-static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
+static int l1sap_info_time_ind(struct gsm_bts *bts,
 	struct osmo_phsap_prim *l1sap,
 	struct info_time_ind_param *info_time_ind)
 {
-	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_trx *trx;
 	struct gsm_bts_role_bts *btsb = bts->role;
 
 	DEBUGP(DL1P, "MPH_INFO time ind %u\n", info_time_ind->fn);
@@ -296,7 +296,8 @@ static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 
 	/* check if the measurement period of some lchan has ended
 	 * and pre-compute the respective measurement */
-	trx_meas_check_compute(trx, info_time_ind->fn - 1);
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		trx_meas_check_compute(trx, info_time_ind->fn - 1);
 
 	/* increment 'total' for every possible rach */
 	if (bts->c0->ts[0].pchan != GSM_PCHAN_CCCH_SDCCH4
@@ -343,7 +344,7 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 
 	switch (info->type) {
 	case PRIM_INFO_TIME:
-		rc = l1sap_info_time_ind(trx, l1sap, &info->u.time_ind);
+		rc = l1sap_info_time_ind(trx->bts, l1sap, &info->u.time_ind);
 		break;
 	case PRIM_INFO_MEAS:
 		rc = l1sap_info_meas_ind(trx, l1sap, &info->u.meas_ind);
