@@ -2827,9 +2827,14 @@ static int trx_sched_fn(uint32_t fn)
 			/* get burst for FN */
 			bits = trx_sched_dl_burst(l1h, tn, fn);
 			if (!bits) {
+#if 0
 				/* if no bits, send dummy burst with no gain */
 				bits = dummy_burst;
 				gain = 128;
+#else
+				/* if no bits, send no burst */
+				continue;
+#endif
 			} else
 				gain = 0;
 			trx_if_data(l1h, tn, fn, gain, bits);
