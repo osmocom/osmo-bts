@@ -590,6 +590,25 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		trx->arfcn_num = length;
 	} else
 		trx->arfcn_num = 0;
+#else
+	if (trx != trx->bts->c0 && TLVP_PRESENT(&tp, NM_ATT_ARFCN_LIST)) {
+		const uint8_t *value = TLVP_VAL(&tp, NM_ATT_ARFCN_LIST);
+		uint16_t _value;
+		uint16_t length = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST);
+		uint16_t arfcn;
+		if (length != 2) {
+			LOGP(DOML, LOGL_ERROR, "Expecting only one ARFCN, "
+				"because hopping not supported\n");
+			/* FIXME: send NACK */
+			return -ENOTSUP;
+		}
+		memcpy(&_value, value, 2);
+		arfcn = ntohs(_value);
+		value += 2;
+		if (arfcn > 1024)
+			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
+		trx->arfcn = arfcn;
+	}
 #endif
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(trx->bts, msg, tp_merged, NM_OC_RADIO_CARRIER, trx);
