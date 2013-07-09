@@ -1252,6 +1252,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0, port;
 	char *name;
+	struct in_addr ia;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
 		name = "CRCX";
@@ -1353,36 +1354,30 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		}
 	}
 
-	if (connect_ip && connect_port) {
-		struct in_addr ia;
 
-		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
-		 * address */
-		if (connect_ip == 0) {
+	/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
+	 * address */
+	if (connect_ip == 0) {
 			struct ipabis_link *link =
-				lchan->ts->trx->rsl_link;
+					lchan->ts->trx->rsl_link;
 			ia.s_addr = htonl(link->ip);
-		} else
-			ia.s_addr = connect_ip;
-		rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
-					     inet_ntoa(ia), ntohs(connect_port));
-		if (rc < 0) {
-			LOGP(DRSL, LOGL_ERROR,
-			     "%s Failed to connect RTP/RTCP sockets\n",
-			     gsm_lchan_name(lchan));
-			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
-			msgb_queue_flush(&lchan->dl_tch_queue);
-			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
-						 inc_ip_port, dch->c.msg_type);
-		}
-		/* save IP address and port number */
-		lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
-		lchan->abis_ip.connect_port = ntohs(connect_port);
-
-	} else {
-		/* FIXME: discard all codec frames */
+	} else
+		ia.s_addr = connect_ip;
+	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
+				     inet_ntoa(ia), ntohs(connect_port));
+	if (rc < 0) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Failed to connect RTP/RTCP sockets\n",
+		     gsm_lchan_name(lchan));
+		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+		msgb_queue_flush(&lchan->dl_tch_queue);
+		return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+					 inc_ip_port, dch->c.msg_type);
 	}
+	/* save IP address and port number */
+	lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
+	lchan->abis_ip.connect_port = ntohs(connect_port);
 
 	rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
 					&lchan->abis_ip.bound_ip,
