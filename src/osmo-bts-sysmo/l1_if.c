@@ -1267,6 +1267,7 @@ struct femtol1_hdl *l1if_open(void *priv)
 
 	fl1h->priv = priv;
 	fl1h->clk_cal = 0;
+	fl1h->clk_use_eeprom = 1;
 	fl1h->ul_power_target = -75;	/* dBm default */
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
 	fl1h->min_qual_norm = MIN_QUAL_NORM;

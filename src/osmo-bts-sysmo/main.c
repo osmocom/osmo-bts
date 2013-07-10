@@ -48,6 +48,7 @@
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
+#include "eeprom.h"
 #include "l1_if.h"
 
 /* FIXME: read from real hardware */
@@ -78,6 +79,31 @@ int bts_model_init(struct gsm_bts *bts)
 	bts_model_vty_init(bts);
 
 	return 0;
+}
+
+/* Set the clock calibration to the value
+ * read from the eeprom.
+ */
+void clk_cal_use_eeprom(struct gsm_bts *bts)
+{
+	int rc;
+	struct femtol1_hdl *hdl;
+	eeprom_RfClockCal_t rf_clk;
+
+	hdl = bts->c0->role_bts.l1h;
+
+	if (!hdl || !hdl->clk_use_eeprom)
+		return;
+
+	rc = eeprom_ReadRfClockCal(&rf_clk);
+	if (rc != EEPROM_SUCCESS) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to read from EEPROM.\n");
+		return;
+	}
+
+	hdl->clk_cal = rf_clk.iClkCor;
+	LOGP(DL1C, LOGL_NOTICE,
+		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
 }
 
 struct ipabis_link *link_init(struct gsm_bts *bts, const char *ip)
@@ -285,6 +311,8 @@ int main(int argc, char **argv)
 			config_file);
 		exit(1);
 	}
+
+	clk_cal_use_eeprom(bts);
 
 	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");

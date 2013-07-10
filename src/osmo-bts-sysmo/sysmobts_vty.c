@@ -111,6 +111,18 @@ DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_clkcal_eeprom, cfg_trx_clkcal_eeprom_cmd,
+	"clock-calibration eeprom",
+	"Use the eeprom clock calibration value\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	fl1h->clk_use_eeprom = 1;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
 	"clock-calibration default",
 	"Set the clock calibration value\n" "Default Clock DAC value\n")
@@ -118,6 +130,7 @@ DEFUN(cfg_trx_clkcal_def, cfg_trx_clkcal_def_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
+	fl1h->clk_use_eeprom = 0;
 	fl1h->clk_cal = 0xffff;
 
 	return CMD_SUCCESS;
@@ -132,6 +145,7 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
+	fl1h->clk_use_eeprom = 0;
 	fl1h->clk_cal = clkcal & 0xfff;
 
 	return CMD_SUCCESS;
@@ -145,6 +159,7 @@ DEFUN(cfg_trx_clkcal, cfg_trx_clkcal_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
+	fl1h->clk_use_eeprom = 0;
 	fl1h->clk_cal = clkcal;
 
 	return CMD_SUCCESS;
@@ -476,7 +491,10 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	int i;
 
-	vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
+	if (fl1h->clk_use_eeprom)
+		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
 			VTY_NEWLINE);
 	if (fl1h->calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
@@ -549,6 +567,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
+	install_element(TRX_NODE, &cfg_trx_clkcal_eeprom_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
 	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
