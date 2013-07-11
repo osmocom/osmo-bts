@@ -1018,8 +1018,7 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
 				get_value_string(femtobts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
-		} else
-			sysmobts_led_set(LED_RF_ACTIVE, 1);
+		}
 
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
