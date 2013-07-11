@@ -39,6 +39,7 @@
 #include "l1_if.h"
 #include "femtobts.h"
 #include "utils.h"
+#include "hw_misc.h"
 
 enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
@@ -235,8 +236,10 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	if (ic->status != GsmL1_Status_Success) {
 		LOGP(DL1C, LOGL_FATAL, "Rx MPH-INIT.conf status=%s\n",
 			get_value_string(femtobts_l1status_names, ic->status));
+		sysmobts_led_set(LED_RF_ACTIVE, 0);
 		bts_shutdown(trx->bts, "MPH-INIT failure");
-	}
+	} else
+		sysmobts_led_set(LED_RF_ACTIVE, 1);
 
 	fl1h->hLayer1 = ic->hLayer1;
 
