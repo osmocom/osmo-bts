@@ -353,7 +353,6 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
-	struct abis_om_fom_hdr *nofh;
 
 	LOGP(DOML, LOGL_INFO, "%s Tx SW ACT REP\n", gsm_abis_mo_name(mo));
 
@@ -361,8 +360,7 @@ int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
 	if (!nmsg)
 		return -ENOMEM;
 
-	nofh = (struct abis_om_fom_hdr *) msgb_put(nmsg, sizeof(*nofh));
-
+	msgb_put(nmsg, sizeof(struct abis_om_fom_hdr));
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
