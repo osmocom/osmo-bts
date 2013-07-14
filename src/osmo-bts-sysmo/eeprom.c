@@ -1253,7 +1253,11 @@ int eeprom_dump( int addr, int size, int hex )
         perror( "eeprom fopen" );
         return -1;
     }
-    fseek( f, addr, SEEK_SET );
+    if (fseek( f, addr, SEEK_SET ) != 0)
+    {
+        perror( "eeprom fseek" );
+        return -1;
+    }
     
     for ( i = 0; i < size; ++i, ++addr )
     {
@@ -1319,7 +1323,12 @@ static int eeprom_read( int addr, int size, char *pBuff )
         }
 	g_file = f;
     }
-    fseek( f, addr, SEEK_SET );
+    if (fseek( f, addr, SEEK_SET ) != 0)
+    {
+        perror( "eeprom fseek" );
+        return -1;
+    }
+
     n = fread( pBuff, 1, size, f );
     return n;
 }
@@ -1378,8 +1387,16 @@ static int eeprom_write( int addr, int size, const char *pBuff )
         }
 	g_file = f;
     }
-    fseek( f, addr, SEEK_SET );
+    if (fseek( f, addr, SEEK_SET ) == 0)
+    {
+        perror( "eeprom fseek" );
+        n = -1;
+        goto error;
+    }
+
     n = fwrite( pBuff, 1, size, f );
+
+error:
     fclose( f );
     g_file = NULL;
     return n;
