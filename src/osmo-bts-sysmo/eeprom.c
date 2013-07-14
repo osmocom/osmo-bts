@@ -1381,6 +1381,7 @@ static int eeprom_write( int addr, int size, const char *pBuff )
     fseek( f, addr, SEEK_SET );
     n = fwrite( pBuff, 1, size, f );
     fclose( f );
+    g_file = NULL;
     return n;
 }
 
