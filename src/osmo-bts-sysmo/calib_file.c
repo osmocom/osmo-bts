@@ -120,15 +120,25 @@ static const unsigned int arrsize_by_band[] = {
 
 static float read_float(FILE *in)
 {
-	float f;
-	fscanf(in, "%f\n", &f);
+	int rc;
+	float f = 0.0f;
+
+	rc = fscanf(in, "%f\n", &f);
+	if (rc != 1)
+		LOGP(DL1C, LOGL_ERROR,
+			"Reading a float from calib data failed.\n");
 	return f;
 }
 
 static int read_int(FILE *in)
 {
-	int i;
-	fscanf(in, "%d\n", &i);
+	int rc;
+	int i = 0;
+
+	rc = fscanf(in, "%d\n", &i);
+	if (rc != 1)
+		LOGP(DL1C, LOGL_ERROR,
+			"Reading an int from calib data failed.\n");
 	return i;
 }
 
