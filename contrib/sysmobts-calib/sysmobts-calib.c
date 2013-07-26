@@ -318,6 +318,16 @@ static int calib_get_clock_error(void)
 		return -1;
 	}
 
+	/*
+	 * Empiric gps error determination. With revE and firmware v3.3
+	 * the clock error for TCXO to GPS appears to have a different
+	 * sign. The device in question doesn't have a networklisten mode
+	 * so it is impossible to verify that this only applies to GPS.
+	 */
+	if (source == SuperFemto_ClkSrcId_GpsPps)
+		clkErr *= -1;
+
+
 	/* this is an absolute clock error */
 	printf("The calibration value is: %d\n", clkErr);
 	return 0;
