@@ -95,7 +95,7 @@ static int fwd_read_cb(struct osmo_fd *ofd)
 static int prim_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 {
 	/* write to the fd */
-	return write(ofd->fd, msg->head, msg->len);
+	return write(ofd->fd, msg->l1h, msgb_l1len(msg));
 }
 
 int l1if_transport_open(int q, struct femtol1_hdl *fl1h)
