@@ -46,4 +46,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx);
 
 int bts_model_oml_estab(struct gsm_bts *bts);
 
+int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
+
 #endif
