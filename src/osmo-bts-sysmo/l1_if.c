@@ -51,6 +51,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/l1sap.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -422,8 +423,135 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x2B, 0x2B, 0x2B
 };
 
+static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		       struct osmo_phsap_prim *l1sap)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	uint32_t u32Fn;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi;
+	uint8_t chan_nr, link_id;
+	GsmL1_Prim_t *l1p;
+	int len;
+
+	if (!msg) {
+		LOGP(DL1C, LOGL_FATAL, "PH-DATA.req without msg. "
+			"Please fix!\n");
+		abort();
+	}
+	chan_nr = l1sap->u.data.chan_nr;
+	link_id = l1sap->u.data.link_id;
+	u32Fn = l1sap->u.data.fn;
+	u8Tn = L1SAP_CHAN2TS(chan_nr);
+	subCh = 0x1f;
+	if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
+		sapi = GsmL1_Sapi_Bcch;
+	} else {
+		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
+			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
+			l1sap->oph.operation, chan_nr, link_id);
+		return -EINVAL;
+	}
+
+	/* pull and trim msg to start of payload */
+	msgb_pull(msg, sizeof(*l1sap));
+	len = msg->len;
+	msgb_trim(msg, 0);
+
+	/* convert l1sap message to GsmL1 primitive, keep payload */
+	if (len) {
+		/* data request */
+		GsmL1_PhDataReq_t *data_req;
+		GsmL1_MsgUnitParam_t *msu_param;
+		uint8_t *temp;
+
+		/* wrap zeroed l1p structure arrount payload
+		 * this must be done in three steps, since the actual
+		 * payload is not at the end but inside the l1p structure. */
+		temp = l1p->u.phDataReq.msgUnitParam.u8Buffer;
+		msgb_push(msg, temp - (uint8_t *)l1p);
+		memset(msg->data, 0, msg->len);
+		msgb_put(msg, len);
+		memset(msg->tail, 0, sizeof(*l1p) - msg->len);
+		msgb_put(msg, sizeof(*l1p) - msg->len);
+		msg->l1h = msg->data;
+
+		l1p = msgb_l1prim(msg);
+		l1p->id = GsmL1_PrimId_PhDataReq;
+		data_req = &l1p->u.phDataReq;
+		data_req->hLayer1 = fl1->hLayer1;
+		data_req->u8Tn = u8Tn;
+		data_req->u32Fn = u32Fn;
+		data_req->sapi = sapi;
+		data_req->subCh = subCh;
+		data_req->u8BlockNbr = u8BlockNbr;
+		msu_param = &data_req->msgUnitParam;
+		msu_param->u8Size = len;
+	} else {
+		/* empty frame */
+		GsmL1_PhEmptyFrameReq_t *empty_req;
+
+		/* put l1p structure */
+		msgb_put(msg, sizeof(*l1p));
+		memset(msg->data, 0, msg->len);
+		msg->l1h = msg->data;
+
+		l1p = msgb_l1prim(msg);
+		l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+		empty_req = &l1p->u.phEmptyFrameReq;
+		empty_req->hLayer1 = fl1->hLayer1;
+		empty_req->u8Tn = u8Tn;
+		empty_req->u32Fn = u32Fn;
+		empty_req->sapi = sapi;
+		empty_req->subCh = subCh;
+		empty_req->u8BlockNbr = u8BlockNbr;
+	}
+
+	/* send message to DSP's queue */
+	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], msg);
+
+	return 0;
+}
+
+/* primitive from common part */
+int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+{
+	struct msgb *msg = l1sap->oph.msg;
+	int rc = 0;
+
+	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
+		rc = ph_data_req(trx, msg, l1sap);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d\n",
+			l1sap->oph.primitive, l1sap->oph.operation);
+		rc = -EINVAL;
+	}
+
+	if (rc)
+		msgb_free(msg);
+	return rc;
+}
+
+static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
+			       GsmL1_Sapi_t sapi, GsmL1_SubCh_t subCh,
+			       uint8_t u8Tn, uint32_t u32Fn)
+{
+	uint8_t cbits = 0;
+	switch (sapi) {
+	case GsmL1_Sapi_Bcch:
+		cbits = 0x10;
+		break;
+	default:
+		return 0;
+	}
+
+	return (cbits << 3) | u8Tn;
+}
+
 static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
-				     GsmL1_PhReadyToSendInd_t *rts_ind)
+				     GsmL1_PhReadyToSendInd_t *rts_ind,
+				     struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
@@ -434,9 +562,31 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	struct gsm_lchan *lchan;
 	struct gsm_time g_time;
 	uint32_t t3p;
-	uint8_t *si;
 	struct osmo_phsap_prim pp;
 	int rc;
+	struct osmo_phsap_prim *l1sap;
+	uint8_t chan_nr, link_id;
+	uint32_t fn;
+
+
+	/* check if primitive should be handled by common part */
+	chan_nr = chan_nr_by_sapi(trx->ts[rts_ind->u8Tn].pchan, rts_ind->sapi,
+		rts_ind->subCh, rts_ind->u8Tn, rts_ind->u32Fn);
+	if (chan_nr) {
+		fn = rts_ind->u32Fn;
+		link_id = 0;
+		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
+		if (rc < 0)
+			MSGB_ABORT(l1p_msg, "No room for primitive\n");
+		l1sap = msgb_l1sap_prim(l1p_msg);
+		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
+			PRIM_OP_INDICATION, l1p_msg);
+		l1sap->u.data.link_id = link_id;
+		l1sap->u.data.chan_nr = chan_nr;
+		l1sap->u.data.fn = fn;
+
+		return l1sap_up(trx, l1sap);
+	}
 
 	gsm_fn2gsmtime(&g_time, rts_ind->u32Fn);
 
@@ -514,14 +664,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		msu_param->u8Buffer[1] = (g_time.t1 >> 1);
 		msu_param->u8Buffer[2] = (g_time.t1 << 7) | (g_time.t2 << 2) | (t3p >> 1);
 		msu_param->u8Buffer[3] = (t3p & 1);
-		break;
-	case GsmL1_Sapi_Bcch:
-		/* get them from bts->si_buf[] */
-		si = bts_sysinfo_get(bts, &g_time);
-		if (si)
-			memcpy(msu_param->u8Buffer, si, GSM_MACBLOCK_LEN);
-		else
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;
 	case GsmL1_Sapi_Sacch:
 		/* resolve the L2 entity using rts_ind->hLayer2 */
@@ -613,6 +755,7 @@ tx:
 		msgb_free(resp_msg);
 	}
 
+	msgb_free(l1p_msg);
 	return 0;
 
 empty_frame:
@@ -975,8 +1118,8 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 	case GsmL1_PrimId_PhConnectInd:
 		break;
 	case GsmL1_PrimId_PhReadyToSendInd:
-		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd);
-		break;
+		return handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
+					       msg);
 	case GsmL1_PrimId_PhDataInd:
 		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 		break;
