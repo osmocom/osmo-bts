@@ -115,6 +115,167 @@ static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 	return 1;
 }
 
+struct gsmtap_inst *gsmtap = NULL;
+uint32_t gsmtap_sapi_mask = 0;
+uint8_t gsmtap_sapi_acch = 0;
+
+const struct value_string gsmtap_sapi_names[] = {
+	{ GSMTAP_CHANNEL_BCCH,	"BCCH" },
+	{ GSMTAP_CHANNEL_CCCH,	"CCCH" },
+	{ GSMTAP_CHANNEL_RACH,	"RACH" },
+	{ GSMTAP_CHANNEL_AGCH,	"AGCH" },
+	{ GSMTAP_CHANNEL_PCH,	"PCH" },
+	{ GSMTAP_CHANNEL_SDCCH,	"SDCCH" },
+	{ GSMTAP_CHANNEL_TCH_F,	"TCH/F" },
+	{ GSMTAP_CHANNEL_TCH_H,	"TCH/H" },
+	{ GSMTAP_CHANNEL_PACCH,	"PACCH" },
+	{ GSMTAP_CHANNEL_PDCH,	"PDTCH" },
+	{ GSMTAP_CHANNEL_PTCCH,	"PTCCH" },
+	{ GSMTAP_CHANNEL_CBCH51,"CBCH" },
+	{ GSMTAP_CHANNEL_ACCH,  "SACCH" },
+	{ 0, NULL }
+};
+
+/* send primitive as gsmtap */
+static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
+	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+{
+	struct msgb *msg = l1sap->oph.msg;
+	uint8_t chan_nr, link_id;
+
+	*data = msg->data + sizeof(struct osmo_phsap_prim);
+	*len = msg->len - sizeof(struct osmo_phsap_prim);
+	*fn = l1sap->u.data.fn;
+	*tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
+	chan_nr = l1sap->u.data.chan_nr;
+	link_id = l1sap->u.data.link_id;
+
+	if (L1SAP_IS_CHAN_TCHF(chan_nr)) {
+		*chan_type = GSMTAP_CHANNEL_TCH_F;
+	} else if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+		*ss = L1SAP_CHAN2SS_TCHH(chan_nr);
+		*chan_type = GSMTAP_CHANNEL_TCH_H;
+	} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr)) {
+		*ss = L1SAP_CHAN2SS_SDCCH4(chan_nr);
+		*chan_type = GSMTAP_CHANNEL_SDCCH;
+	} else if (L1SAP_IS_CHAN_SDCCH8(chan_nr)) {
+		*ss = L1SAP_CHAN2SS_SDCCH8(chan_nr);
+		*chan_type = GSMTAP_CHANNEL_SDCCH;
+	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
+		*chan_type = GSMTAP_CHANNEL_BCCH;
+	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
+#warning Set BS_AG_BLKS_RES
+		/* The sapi depends on DSP configuration, not
+		 * on the actual SYSTEM INFORMATION 3. */
+		if (L1SAP_FN2CCCHBLOCK(*fn) >= 1)
+			*chan_type = GSMTAP_CHANNEL_PCH;
+		else
+			*chan_type = GSMTAP_CHANNEL_AGCH;
+	}
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		*chan_type |= GSMTAP_CHANNEL_ACCH;
+
+	return 0;
+}
+
+static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
+	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+{
+	struct msgb *msg = l1sap->oph.msg;
+
+	*data = msg->data + sizeof(struct osmo_phsap_prim);
+	*len = msg->len - sizeof(struct osmo_phsap_prim);
+	*fn = l1sap->u.data.fn;
+	*tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
+
+	if (L1SAP_IS_PTCCH(*fn)) {
+		*chan_type = GSMTAP_CHANNEL_PTCCH;
+		*ss = L1SAP_FN2PTCCHBLOCK(*fn);
+		if (l1sap->oph.primitive
+				== PRIM_OP_INDICATION) {
+			if ((*data[0]) == 7)
+				return -EINVAL;
+			(*data)++;
+			(*len)--;
+		}
+	} else
+		*chan_type = GSMTAP_CHANNEL_PACCH;
+
+	return 0;
+}
+
+static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
+	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+{
+	uint8_t chan_nr;
+
+	*chan_type = GSMTAP_CHANNEL_RACH;
+	*fn = l1sap->u.rach_ind.fn;
+	*tn = L1SAP_CHAN2TS(l1sap->u.rach_ind.chan_nr);
+	chan_nr = l1sap->u.rach_ind.chan_nr;
+	if (L1SAP_IS_CHAN_TCHH(chan_nr))
+		*ss = L1SAP_CHAN2SS_TCHH(chan_nr);
+	else if (L1SAP_IS_CHAN_SDCCH4(chan_nr))
+		*ss = L1SAP_CHAN2SS_SDCCH4(chan_nr);
+	else if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
+		*ss = L1SAP_CHAN2SS_SDCCH8(chan_nr);
+	*data = &l1sap->u.rach_ind.ra;
+	*len = 1;
+
+	return 0;
+}
+
+static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+{
+	uint8_t *data;
+	int len;
+	uint8_t chan_type = 0, tn = 0, ss = 0;
+	uint32_t fn;
+	uint16_t uplink = GSMTAP_ARFCN_F_UPLINK;
+	int rc;
+
+	if (!gsmtap)
+		return 0;
+
+	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
+		uplink = 0;
+		/* fall through */
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
+		if (trx->ts[tn].pchan == GSM_PCHAN_PDCH)
+			rc = gsmtap_pdch(l1sap, &chan_type, &tn, &ss, &fn, &data,
+				&len);
+		else
+			rc = gsmtap_ph_data(l1sap, &chan_type, &tn, &ss, &fn,
+				&data, &len);
+		break;
+	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
+		rc = gsmtap_ph_rach(l1sap, &chan_type, &tn, &ss, &fn, &data,
+			&len);
+		break;
+	default:
+		rc = -ENOTSUP;
+	}
+
+	if (rc)
+		return rc;
+
+	if (len == 0)
+		return 0;
+	if ((chan_type & GSMTAP_CHANNEL_ACCH)) {
+		if (!gsmtap_sapi_acch)
+			return 0;
+	} else {
+		if (!((1 << (chan_type & 31)) & gsmtap_sapi_mask))
+			return 0;
+	}
+
+	gsmtap_send(gsmtap, trx->arfcn | uplink, tn, chan_type, ss, fn, 0, 0,
+		data, len);
+
+	return 0;
+}
+
 /* time information received from bts model */
 static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
@@ -707,12 +868,14 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		rc = l1sap_tch_rts_ind(trx, l1sap, &l1sap->u.tch);
 		break;
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
+		to_gsmtap(trx, l1sap);
 		rc = l1sap_ph_data_ind(trx, l1sap, &l1sap->u.data);
 		break;
 	case OSMO_PRIM(PRIM_TCH, PRIM_OP_INDICATION):
 		rc = l1sap_tch_ind(trx, l1sap, &l1sap->u.tch);
 		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
+		to_gsmtap(trx, l1sap);
 		rc = l1sap_ph_rach_ind(trx, l1sap, &l1sap->u.rach_ind);
 		break;
 	default:
@@ -731,6 +894,10 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 /* any L1 prim sent to bts model */
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
+	if (OSMO_PRIM_HDR(&l1sap->oph) ==
+				 OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST))
+		to_gsmtap(trx, l1sap);
+
 	return bts_model_l1sap_down(trx, l1sap);
 }
 
