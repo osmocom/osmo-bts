@@ -193,7 +193,7 @@ struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_SACCH8_4,	0x60,	0x40,	"SACCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_5,	0x68,	0x40,	"SACCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_6,	0x70,	0x40,	"SACCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_7,	0x68,	0x40,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_SACCH8_7,	0x78,	0x40,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	1,	TRXC_PDTCH,	0x08,	0x00,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
       {	1,	TRXC_PTCCH,	0x08,	0x00,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
 };
