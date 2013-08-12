@@ -642,7 +642,7 @@ static ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
-	LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 		"trx=%u ts=%u at fn=%u to transmit.\n", 
 		trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
 
@@ -720,7 +720,7 @@ static ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
-	LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 		"trx=%u ts=%u at fn=%u to transmit.\n", 
 		trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
 
@@ -1029,7 +1029,7 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* mo message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 			"trx=%u ts=%u at fn=%u to transmit.\n", 
 			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
 		goto send_burst;
@@ -1119,7 +1119,7 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* mo message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGP(DL1C, LOGL_NOTICE, "%s has not been served !! No prim for "
+		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 			"trx=%u ts=%u at fn=%u to transmit.\n", 
 			trx_chan_desc[chan].name, l1h->trx->nr, tn, fn);
 		goto send_burst;
