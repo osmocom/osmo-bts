@@ -57,6 +57,8 @@ static int ho_tx_phys_info(struct gsm_lchan *lchan, uint8_t ta)
 		0x00, 0);
 
 	lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+
+	return 0;
 }
 
 /* timer call-back for T3105 (handover PHYS INFO re-transmit) */
