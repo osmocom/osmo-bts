@@ -55,7 +55,7 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 
 
 /*
- * create destroy trx l1 instance
+ * create/destroy trx l1 instance
  */
 
 struct trx_l1h *l1if_open(struct gsm_bts_trx *trx)
@@ -508,7 +508,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				}
 				/* activate dedicated channel */
 				trx_sched_set_lchan(l1h, chan_nr, 0x00, 1);
-				/* activate assoicated channel */
+				/* activate associated channel */
 				trx_sched_set_lchan(l1h, chan_nr, 0x40, 1);
 				/* set mode */
 				trx_sched_set_mode(l1h, chan_nr,
@@ -555,7 +555,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					"chan_nr 0x%02x\n", chan_nr);
 				break;
 			}
-			/* deactivate assoicated channel */
+			/* deactivate associated channel */
 			trx_sched_set_lchan(l1h, chan_nr, 0x40, 0);
 			/* set lchan inactive
 			 * (also if only sacch, so no meaurement is done) */
