@@ -155,9 +155,8 @@ static struct cmd_node trx_node = {
 	1,
 };
 
-static char cfg_bts_trx_cmd_string[16];
 DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
-	cfg_bts_trx_cmd_string,
+	"trx <0-254>",
 	"Select a TRX to configure\n" "TRX number\n")
 {
 	int trx_nr = atoi(argv[0]);
@@ -166,7 +165,8 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 
 	trx = gsm_bts_trx_num(bts, trx_nr);
 	if (!trx) {
-		vty_out(vty, "Unknown TRX %u%s", trx_nr, VTY_NEWLINE);
+		vty_out(vty, "Unknown TRX %u. Aavialable TRX are: 0..%d%s",
+			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -661,7 +661,7 @@ DEFUN(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
-int bts_vty_init(struct gsm_bts *bts, int trx_num, const struct log_info *cat)
+int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 {
 	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
 						"gsmtap-sapi (",
@@ -700,7 +700,6 @@ int bts_vty_init(struct gsm_bts *bts, int trx_num, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 
 	/* add and link to TRX config node */
-	sprintf(cfg_bts_trx_cmd_string, "trx <0-%d>", trx_num - 1);
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
 	install_node(&trx_node, config_write_dummy);
 	install_default(TRX_NODE);
