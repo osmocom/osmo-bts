@@ -1,4 +1,8 @@
-SUBDIRS = paging cipher sysmobts bursts handover
+SUBDIRS = paging cipher bursts handover
+
+if ENABLE_SYSMOBTS
+SUBDIRS += sysmobts
+endif
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
 $(srcdir)/package.m4: $(top_srcdir)/configure.ac
