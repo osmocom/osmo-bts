@@ -44,7 +44,7 @@
 #include "loops.h"
 
 /* Enable this to multiply TOA of RACH by 10.
- * This usefull to check tenth of timing advances with RSSI test tool.
+ * This is usefull to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */
 //#define TA_TEST
 
@@ -430,7 +430,7 @@ static int rts_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 
 /*
- * TX on donlink
+ * TX on downlink
  */
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
@@ -1027,7 +1027,7 @@ static ubit_t *tx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		memset(*bursts_p + 464, 0, 464);
 	}
 
-	/* mo message at all */
+	/* no message at all */
 	if (!msg_tch && !msg_facch) {
 		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 			"trx=%u ts=%u at fn=%u to transmit.\n", 
@@ -1117,7 +1117,7 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		}
 	}
 
-	/* mo message at all */
+	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
 		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
 			"trx=%u ts=%u at fn=%u to transmit.\n", 
@@ -2988,7 +2988,7 @@ new_clock:
 			tv_clock->tv_sec++;
 			tv_clock->tv_usec -= 1000000;
 		}
-		/* set time to the time our next FN hast to be transmitted */
+		/* set time to the time our next FN has to be transmitted */
 		osmo_timer_schedule(&transceiver_clock_timer, 0,
 			FRAME_DURATION_uS * (1 - elapsed_fn));
 
