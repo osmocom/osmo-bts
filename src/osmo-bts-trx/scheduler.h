@@ -2,6 +2,7 @@
 #define TRX_SCHEDULER_H
 
 extern uint32_t trx_clock_advance;
+extern uint32_t trx_rts_advance;
 extern uint32_t transceiver_last_fn;
 
 
