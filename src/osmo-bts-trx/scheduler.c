@@ -527,11 +527,12 @@ free_msg:
 		default:
 			goto wrong_type;
 		}
-		if (prim_fn > 20) {
+		if (prim_fn > 100) {
 			LOGP(DL1C, LOGL_NOTICE, "Prim for trx=%u ts=%u at fn=%u "
 				"is out of range, or channel already disabled. "
-				"(current fn=%u)\n", l1h->trx->nr, tn, prim_fn,
-				fn);
+				"If this happens in conjunction with PCU, "
+				"increase 'rts-advance' by 5. (current fn=%u)\n",
+				l1h->trx->nr, tn, l1sap->u.data.fn, fn);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);

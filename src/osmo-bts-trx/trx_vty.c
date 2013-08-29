@@ -119,10 +119,22 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 
 DEFUN(cfg_bts_fn_advance, cfg_bts_fn_advance_cmd,
 	"fn-advance <0-30>",
-	"Set the number of frames to be transmitted in advance of current FN\n"
+	"Set the number of frames to be transmitted to transceiver in advance "
+	"of current FN\n"
 	"Advance in frames\n")
 {
 	trx_clock_advance = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rts_advance, cfg_bts_rts_advance_cmd,
+	"rts-advance <0-30>",
+	"Set the number of frames to be requested (PCU) in advance of current "
+	"FN. Do not change this, unless you have a good reason!\n"
+	"Advance in frames\n")
+{
+	trx_rts_advance = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -336,6 +348,7 @@ DEFUN(cfg_trx_no_maxdly, cfg_trx_no_maxdly_cmd,
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	vty_out(vty, " fn-advance %d%s", trx_clock_advance, VTY_NEWLINE);
+	vty_out(vty, " rts-advance %d%s", trx_rts_advance, VTY_NEWLINE);
 
 	if (trx_ms_power_loop)
 		vty_out(vty, " ms-power-loop %d%s", trx_target_rssi,
@@ -385,6 +398,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&show_transceiver_cmd);
 
 	install_element(BTS_NODE, &cfg_bts_fn_advance_cmd);
+	install_element(BTS_NODE, &cfg_bts_rts_advance_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_power_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_ms_power_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_timing_advance_loop_cmd);
