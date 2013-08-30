@@ -389,7 +389,17 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	u32Fn = l1sap->u.data.fn;
 	u8Tn = L1SAP_CHAN2TS(chan_nr);
 	subCh = 0x1f;
-	if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
+	if (L1SAP_IS_CHAN_TCHF(chan_nr)) {
+		if (trx->ts[u8Tn].pchan == GSM_PCHAN_PDCH) {
+			if (L1SAP_IS_PTCCH(u32Fn)) {
+				sapi = GsmL1_Sapi_Ptcch;
+				u8BlockNbr = L1SAP_FN2PTCCHBLOCK(u32Fn);
+			} else {
+				sapi = GsmL1_Sapi_Pdtch;
+				u8BlockNbr = L1SAP_FN2MACBLOCK(u32Fn);
+			}
+		}
+	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		sapi = GsmL1_Sapi_Bcch;
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		/* The sapi depends on DSP configuration, not
@@ -500,6 +510,35 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 	case GsmL1_Sapi_Pch:
 		cbits = 0x12;
 		break;
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
+		switch(pchan) {
+		case GSM_PCHAN_PDCH:
+			cbits = 0x01;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "PDTCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
+	case GsmL1_Sapi_Ptcch:
+		if (!L1SAP_IS_PTCCH(u32Fn)) {
+			LOGP(DL1C, LOGL_FATAL, "Not expecting PTCCH at frame "
+				"number other than 12, got it at %u (%u). "
+				"Please fix!\n", u32Fn % 52, u32Fn);
+			abort();
+		}
+		switch(pchan) {
+		case GSM_PCHAN_PDCH:
+			cbits = 0x01;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "PTCCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
 	default:
 		return 0;
 	}
@@ -592,13 +631,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* actually transmit it */
 		goto tx;
 		break;
-	case GsmL1_Sapi_Pdtch:
-	case GsmL1_Sapi_Pacch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 0,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
-	case GsmL1_Sapi_Ptcch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 1,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
 	default:
 		break;
 	}
@@ -827,6 +859,10 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct gsm_lchan *lchan;
 	struct lapdm_entity *le;
 	struct msgb *msg;
+	uint8_t chan_nr, link_id;
+	struct osmo_phsap_prim *l1sap;
+	uint32_t fn;
+	uint8_t *data, len;
 	int rc = 0;
 
 	ul_to_gsmtap(fl1, l1p_msg);
@@ -834,14 +870,22 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	lchan = l1if_hLayer_to_lchan(fl1->priv, data_ind->hLayer2);
 	if (!lchan) {
 		LOGP(DL1C, LOGL_ERROR, "unable to resolve lchan by hLayer2\n");
+		msgb_free(l1p_msg);
 		return -ENODEV;
 	}
+
+	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
+		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
+	fn = data_ind->u32Fn;
+	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? 0x40 : 0x00;
 
 	process_meas_res(lchan, &data_ind->measParam);
 
 	if (data_ind->measParam.fLinkQuality < fl1->min_qual_norm
-	 && data_ind->msgUnitParam.u8Size != 0)
+	 && data_ind->msgUnitParam.u8Size != 0) {
+		msgb_free(l1p_msg);
 		return 0;
+	}
 
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
@@ -920,27 +964,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		break;
 	case GsmL1_Sapi_Pdtch:
 	case GsmL1_Sapi_Pacch:
-		/* drop incomplete UL block */
-		if (!data_ind->msgUnitParam.u8Size
-		 || data_ind->msgUnitParam.u8Buffer[0]
-			!= GsmL1_PdtchPlType_Full)
-			break;
-		/* PDTCH / PACCH frame handling */
-		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 0,
-			data_ind->u32Fn, data_ind->u16Arfcn,
-			data_ind->u8BlockNbr,
-			data_ind->msgUnitParam.u8Buffer + 1,
-			data_ind->msgUnitParam.u8Size - 1,
-			(int8_t) (data_ind->measParam.fRssi));
-		break;
 	case GsmL1_Sapi_Ptcch:
-		/* PTCCH frame handling */
-		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 1,
-			data_ind->u32Fn, data_ind->u16Arfcn,
-			data_ind->u8BlockNbr,
-			data_ind->msgUnitParam.u8Buffer,
-			data_ind->msgUnitParam.u8Size,
-			(int8_t) (data_ind->measParam.fRssi));
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
@@ -948,7 +972,32 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		break;
 	}
 
-	return rc;
+	if (!chan_nr) {
+		msgb_free(l1p_msg);
+		return rc;
+	}
+
+	/* get data pointer and length */
+	data = data_ind->msgUnitParam.u8Buffer;
+	len = data_ind->msgUnitParam.u8Size;
+	/* pull lower header part before data */
+	msgb_pull(l1p_msg, data - l1p_msg->data);
+	/* trim remaining data to it's size, to get rid of upper header part */
+	rc = msgb_trim(l1p_msg, len);
+	if (rc < 0)
+		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
+	l1p_msg->l2h = l1p_msg->data;
+	/* push new l1 header */
+	l1p_msg->l1h = msgb_push(l1p_msg, sizeof(*l1sap));
+	/* fill header */
+	l1sap = msgb_l1sap_prim(l1p_msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
+		PRIM_OP_INDICATION, l1p_msg);
+	l1sap->u.data.link_id = link_id;
+	l1sap->u.data.chan_nr = chan_nr;
+	l1sap->u.data.fn = fn;
+
+	return l1sap_up(trx, l1sap);
 }
 
 
@@ -1024,8 +1073,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		return handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
 					       msg);
 	case GsmL1_PrimId_PhDataInd:
-		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
-		break;
+		return handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 	case GsmL1_PrimId_PhRaInd:
 		return handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
@@ -1437,46 +1485,6 @@ int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 
 	/* There is no confirmation we could wait for */
 	return osmo_wqueue_enqueue(&hdl->write_q[MQ_SYS_WRITE], msg);
-}
-
-/* send packet data request to L1 */
-int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
-{
-	struct gsm_bts_trx *trx = ts->trx;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	struct msgb *msg;
-	GsmL1_Prim_t *l1p;
-	GsmL1_PhDataReq_t *data_req;
-	GsmL1_MsgUnitParam_t *msu_param;
-	struct gsm_time g_time;
-
-	gsm_fn2gsmtime(&g_time, fn);
-
-	DEBUGP(DL1P, "TX packet data %02u/%02u/%02u is_ptcch=%d trx=%d ts=%d "
-		"block_nr=%d, arfcn=%d, len=%d\n", g_time.t1, g_time.t2,
-		g_time.t3, is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
-
-	msg = l1p_msgb_alloc();
-	l1p = msgb_l1prim(msg);
-	l1p->id = GsmL1_PrimId_PhDataReq;
-	data_req = &l1p->u.phDataReq;
-	data_req->hLayer1 = fl1h->hLayer1;
-	data_req->sapi = (is_ptcch) ? GsmL1_Sapi_Ptcch : GsmL1_Sapi_Pdtch;
-	data_req->subCh = GsmL1_SubCh_NA;
-	data_req->u8BlockNbr = block_nr;
-	data_req->u8Tn = ts->nr;
-	data_req->u32Fn = fn;
-	msu_param = &data_req->msgUnitParam;
-	msu_param->u8Size = len;
-	memcpy(msu_param->u8Buffer, data, len);
-
-	tx_to_gsmtap(fl1h, msg);
-
-	/* transmit */
-	osmo_wqueue_enqueue(&fl1h->write_q[MQ_L1_WRITE], msg);
-
-	return 0;
 }
 
 /* get those femtol1_hdl.hw_info elements that sre in EEPROM */
