@@ -78,6 +78,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	uint8_t tn;
 	uint32_t fn;
 	uint8_t *p, *si;
+	int rc;
 
 	chan_nr = rts_ind->chan_nr;
 	link_id = rts_ind->link_id;
@@ -107,6 +108,13 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		if (si)
 			memcpy(p, si, GSM_MACBLOCK_LEN);
 		else
+			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
+		p = msgb_put(msg, GSM_MACBLOCK_LEN);
+		/* if CCCH block is 0, it is AGCH */
+		rc = bts_ccch_copy_msg(trx->bts, p, &g_time,
+			(L1SAP_FN2CCCHBLOCK(fn) < 1));
+		if (rc <= 0)
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
 

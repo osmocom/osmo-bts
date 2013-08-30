@@ -392,6 +392,14 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	subCh = 0x1f;
 	if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		sapi = GsmL1_Sapi_Bcch;
+	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
+		/* The sapi depends on DSP configuration, not
+		 * on the actual SYSTEM INFORMATION 3. */
+		u8BlockNbr = L1SAP_FN2CCCHBLOCK(u32Fn);
+		if (u8BlockNbr >= 1)
+			sapi = GsmL1_Sapi_Pch;
+		else
+			sapi = GsmL1_Sapi_Agch;
 	} else {
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
 			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
@@ -488,6 +496,10 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 	switch (sapi) {
 	case GsmL1_Sapi_Bcch:
 		cbits = 0x10;
+		break;
+	case GsmL1_Sapi_Agch:
+	case GsmL1_Sapi_Pch:
+		cbits = 0x12;
 		break;
 	default:
 		return 0;
@@ -651,13 +663,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
 			msgb_free(pp.oph.msg);
 		}
-		break;
-	case GsmL1_Sapi_Agch:
-	case GsmL1_Sapi_Pch:
-		rc = bts_ccch_copy_msg(bts, msu_param->u8Buffer, &g_time,
-				       rts_ind->sapi == GsmL1_Sapi_Agch);
-		if (rc <= 0)
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
