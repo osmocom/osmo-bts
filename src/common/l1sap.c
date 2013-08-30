@@ -119,6 +119,41 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
+/* RACH received from bts model */
+static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
+	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
+{
+	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_role_bts *btsb = bts->role;
+	struct lapdm_channel *lc;
+
+	DEBUGP(DL1P, "Rx PH-RA.ind");
+
+	lc = &trx->ts[0].lchan[4].lapdm_ch;
+
+	/* check for under/overflow / sign */
+	if (rach_ind->acc_delay > btsb->max_ta) {
+		LOGP(DL1P, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
+		     rach_ind->acc_delay, btsb->max_ta);
+		return 0;
+	}
+
+	/* check for packet access */
+	if (trx == bts->c0
+	 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) {
+		LOGP(DL1P, LOGL_INFO, "RACH for packet access\n");
+		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
+			rach_ind->ra, rach_ind->fn);
+		return 0;
+	}
+
+	LOGP(DL1P, LOGL_INFO, "RACH for RR access (toa=%d, ra=%d)\n",
+		rach_ind->acc_delay, rach_ind->ra);
+	lapdm_phsap_up(&l1sap->oph, &lc->lapdm_dcch);
+
+	return 0;
+}
+
 /* any L1 prim received from bts model */
 int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
@@ -128,6 +163,9 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rts_ind(trx, l1sap, &l1sap->u.data);
+		break;
+	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
+		rc = l1sap_ph_rach_ind(trx, l1sap, &l1sap->u.rach_ind);
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown prim %d op %d\n",
