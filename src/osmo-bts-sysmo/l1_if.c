@@ -958,91 +958,58 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	return rc;
 }
 
-static int check_acc_delay(GsmL1_PhRaInd_t *ra_ind, struct gsm_bts_role_bts *btsb,
-				uint8_t *acc_delay)
-{
-	if (ra_ind->measParam.i16BurstTiming < 0)
-		*acc_delay = 0;
-	else
-		*acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-	return *acc_delay <= btsb->max_ta;
-}
-
-static int handle_handover(struct gsm_lchan *lchan, struct gsm_bts_role_bts *btsb,
-				GsmL1_PhRaInd_t *ra_ind)
-{
-	uint8_t acc_delay;
-	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
-		LOGP(DHO, LOGL_INFO, "%s ignoring RACH request %u > max_ta(%u)\n",
-			gsm_lchan_name(lchan), acc_delay, btsb->max_ta);
-		return 0;
-	}
-
-	handover_rach(lchan, ra_ind->msgUnitParam.u8Buffer[0], acc_delay);
-	return 0;
-}
-
-static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
+static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
+			    struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
-	struct osmo_phsap_prim pp;
-	struct lapdm_channel *lc;
-	uint8_t acc_delay;
+	struct osmo_phsap_prim *l1sap;
+	uint32_t fn;
+	uint8_t ra, acc_delay = 0;
+	int rc;
 
 	/* increment number of busy RACH slots, if required */
 	if (trx == bts->c0 &&
 	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach)
+	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach) {
+		msgb_free(l1p_msg);
 		return 0;
+	}
 
-	/*
-	 * Check if this is a handover
-	 */
+	if (ra_ind->measParam.i16BurstTiming > 0)
+		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+
+	/* increment number of RACH slots with valid non-handover RACH burst */
 	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
-	if (lchan && lchan->ho.active == HANDOVER_ENABLED)
-		return handle_handover(lchan, btsb, ra_ind);
-
-	/* increment number of RACH slots with valid RACH burst */
-	if (trx == bts->c0)
+	if (trx == bts->c0 && !(lchan && lchan->ho.active == HANDOVER_ENABLED))
 		btsb->load.rach.access++;
 
-	DEBUGP(DL1C, "Rx PH-RA.ind");
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 
-	lc = get_lapdm_chan_by_hl2(fl1->priv, ra_ind->hLayer2);
-	if (!lc) {
-		LOGP(DL1C, LOGL_ERROR, "unable to resolve LAPD channel by hLayer2\n");
-		return -ENODEV;
-	}
-
-	/* check for under/overflow / sign */
-	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
-		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
-		     acc_delay, btsb->max_ta);
+	if (ra_ind->msgUnitParam.u8Size != 1) {
+		LOGP(DL1C, LOGL_ERROR, "PH-RACH-INDICATION has %d bits\n",
+			ra_ind->sapi);
+		msgb_free(l1p_msg);
 		return 0;
 	}
 
-	/* check for packet access */
-	if (trx == bts->c0
-	 && (ra_ind->msgUnitParam.u8Buffer[0] & 0xf0) == 0x70) {
-		LOGP(DL1C, LOGL_INFO, "RACH for packet access\n");
-		return pcu_tx_rach_ind(bts, ra_ind->measParam.i16BurstTiming,
-			ra_ind->msgUnitParam.u8Buffer[0], ra_ind->u32Fn);
-	}
+	fn = ra_ind->u32Fn;
+	ra = ra_ind->msgUnitParam.u8Buffer[0];
+	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
+	if (rc < 0)
+		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
+	l1sap = msgb_l1sap_prim(l1p_msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
+		l1p_msg);
+	l1sap->u.rach_ind.ra = ra;
+	l1sap->u.rach_ind.acc_delay = acc_delay;
+	l1sap->u.rach_ind.fn = fn;
 
-	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_RACH,
-			PRIM_OP_INDICATION, NULL);
-
-	pp.u.rach_ind.ra = ra_ind->msgUnitParam.u8Buffer[0];
-	pp.u.rach_ind.fn = ra_ind->u32Fn;
-	pp.u.rach_ind.acc_delay = acc_delay;
-
-	return lapdm_phsap_up(&pp.oph, &lc->lapdm_dcch);
+	return l1sap_up(trx, l1sap);
 }
 
 /* handle any random indication from the L1 */
@@ -1066,7 +1033,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 		break;
 	case GsmL1_PrimId_PhRaInd:
-		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd);
+		return handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
 	default:
 		break;
