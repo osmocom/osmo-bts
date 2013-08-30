@@ -91,6 +91,19 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
 
+	if (trx->ts[tn].pchan == GSM_PCHAN_PDCH) {
+		if (L1SAP_IS_PTCCH(rts_ind->fn)) {
+			pcu_tx_rts_req(&trx->ts[tn], 1, fn, 1 /* ARFCN */,
+				L1SAP_FN2PTCCHBLOCK(fn));
+
+			return 0;
+		}
+		pcu_tx_rts_req(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+			L1SAP_FN2MACBLOCK(fn));
+
+		return 0;
+	}
+
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {
 		LOGP(DL1P, LOGL_FATAL, "RTS without msg to be reused. Please "
@@ -155,6 +168,54 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+/* DATA received from bts model */
+static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
+	 struct osmo_phsap_prim *l1sap, struct ph_data_param *data_ind)
+{
+	struct msgb *msg = l1sap->oph.msg;
+	struct gsm_time g_time;
+	uint8_t *data = msg->l2h;
+	int len = msgb_l2len(msg);
+	uint8_t chan_nr, link_id;
+	uint8_t tn, ss;
+	uint32_t fn;
+	int8_t rssi;
+
+	rssi = data_ind->rssi;
+	chan_nr = data_ind->chan_nr;
+	link_id = data_ind->link_id;
+	fn = data_ind->fn;
+	tn = L1SAP_CHAN2TS(chan_nr);
+	ss = l1sap_chan2ss(chan_nr);
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "Rx PH-DATA.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
+		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
+
+	if (trx->ts[tn].pchan == GSM_PCHAN_PDCH) {
+		if (len == 0)
+			return -EINVAL;
+		if (L1SAP_IS_PTCCH(fn)) {
+			pcu_tx_data_ind(&trx->ts[tn], 1, fn,
+				0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
+				data, len, rssi);
+
+			return 0;
+		}
+		/* drop incomplete UL block */
+		if (data[0] != 7)
+			return 0;
+		/* PDTCH / PACCH frame handling */
+		pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+			L1SAP_FN2MACBLOCK(fn), data + 1, len - 1, rssi);
+
+		return 0;
+	}
+
+	return 0;
+}
+
 /* RACH received from bts model */
 static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
@@ -204,6 +265,9 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rts_ind(trx, l1sap, &l1sap->u.data);
 		break;
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
+		rc = l1sap_ph_data_ind(trx, l1sap, &l1sap->u.data);
+		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rach_ind(trx, l1sap, &l1sap->u.rach_ind);
 		break;
@@ -226,3 +290,29 @@ static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	return bts_model_l1sap_down(trx, l1sap);
 }
 
+/* pcu (socket interface) sends us a data request primitive */
+int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
+	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
+{
+	struct msgb *msg;
+	struct osmo_phsap_prim *l1sap;
+	struct gsm_time g_time;
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "TX packet data %02u/%02u/%02u is_ptcch=%d trx=%d ts=%d "
+		"block_nr=%d, arfcn=%d, len=%d\n", g_time.t1, g_time.t2,
+		g_time.t3, is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
+
+	msg = l1sap_msgb_alloc(len);
+	l1sap = msgb_l1sap_prim(msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA, PRIM_OP_REQUEST,
+		msg);
+	l1sap->u.data.chan_nr = 0x08 | ts->nr;
+	l1sap->u.data.link_id = 0x00;
+	l1sap->u.data.fn = fn;
+	msg->l2h = msgb_put(msg, len);
+	memcpy(msg->l2h, data, len);
+
+	return l1sap_down(ts->trx, l1sap);
+}
