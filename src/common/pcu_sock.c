@@ -40,6 +40,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/l1sap.h>
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
 
@@ -56,10 +57,6 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
 };
-
-/* FIXME: common l1if include ? */
-int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-        uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len);
 
 static int pcu_sock_send(struct gsm_network *net, struct msgb *msg);
 /* FIXME: move this to libosmocore */
@@ -512,7 +509,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		}
 		ts = &trx->ts[data_req->ts_nr];
 		is_ptcch = (data_req->sapi == PCU_IF_SAPI_PTCCH);
-		rc = l1if_pdch_req(ts, is_ptcch, data_req->fn, data_req->arfcn,
+		rc = l1sap_pdch_req(ts, is_ptcch, data_req->fn, data_req->arfcn,
 			data_req->block_nr, data_req->data, data_req->len);
 		break;
 	default:
