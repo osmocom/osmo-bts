@@ -108,6 +108,23 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, si, GSM_MACBLOCK_LEN);
 		else
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
+		p = msgb_put(msg, GSM_MACBLOCK_LEN);
+		if (L1SAP_FN2CCCHBLOCK(fn) >= 1) {
+			/* PCH */
+			struct gsm_bts_role_bts *btsb = trx->bts->role;
+			paging_gen_msg(btsb->paging_state, p, &g_time);
+		} else {
+			/* AGCH */
+			/* special queue of messages from IMM ASS CMD */
+			struct msgb *amsg = bts_agch_dequeue(trx->bts);
+			if (!amsg)
+				memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+			else {
+				memcpy(p, amsg->data, amsg->len);
+				msgb_free(amsg);
+			}
+		}
 	}
 
 	DEBUGP(DL1P, "Tx PH-DATA.req %02u/%02u/%02u chan_nr=%d link_id=%d\n",
