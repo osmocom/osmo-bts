@@ -497,6 +497,33 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	return rc;
 }
 
+static int handle_mph_time_ind(struct femtol1_hdl *fl1,
+				GsmL1_MphTimeInd_t *time_ind)
+{
+	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts *bts = trx->bts;
+	struct osmo_phsap_prim l1sap;
+	uint32_t fn;
+
+	/* increment the primitive count for the alive timer */
+	fl1->alive_prim_cnt++;
+
+	/* ignore every time indication, except for c0 */
+	if (trx != bts->c0) {
+		return 0;
+	}
+
+	fn = time_ind->u32Fn;
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+		PRIM_OP_INDICATION, NULL);
+	l1sap.u.info.type = PRIM_INFO_TIME;
+	l1sap.u.info.u.time_ind.fn = fn;
+
+	return l1sap_up(trx, &l1sap);
+}
+
 static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 			       GsmL1_Sapi_t sapi, GsmL1_SubCh_t subCh,
 			       uint8_t u8Tn, uint32_t u32Fn)
@@ -735,44 +762,6 @@ empty_frame:
 	empty_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
 
 	goto tx;
-}
-
-static int handle_mph_time_ind(struct femtol1_hdl *fl1,
-				GsmL1_MphTimeInd_t *time_ind)
-{
-	struct gsm_bts_trx *trx = fl1->priv;
-	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
-
-	int frames_expired = time_ind->u32Fn - fl1->gsm_time.fn;
-
-	/* update time on PCU interface */
-	pcu_tx_time_ind(time_ind->u32Fn);
-
-	/* Update our data structures with the current GSM time */
-	gsm_fn2gsmtime(&fl1->gsm_time, time_ind->u32Fn);
-
-	/* check if the measurement period of some lchan has ended
-	 * and pre-compute the respective measurement */
-	trx_meas_check_compute(fl1->priv, time_ind->u32Fn -1);
-
-	/* increment the primitive count for the alive timer */
-	fl1->alive_prim_cnt++;
-
-	/* increment number of RACH slots that have passed by since the
-	 * last time indication */
-	if (trx == bts->c0) {
-		unsigned int num_rach_per_frame;
-		/* 27 / 51 taken from TS 05.01 Figure 3 */
-		if (bts->c0->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4)
-			num_rach_per_frame = 27;
-		else
-			num_rach_per_frame = 51;
-
-		btsb->load.rach.total += frames_expired * num_rach_per_frame;
-	}
-
-	return 0;
 }
 
 /* determine LAPDm entity inside LAPDm channel for given L1 sapi */
