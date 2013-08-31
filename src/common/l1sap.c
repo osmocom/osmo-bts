@@ -68,6 +68,53 @@ struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 	return msg;
 }
 
+/* time information received from bts model */
+static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap,
+	struct info_time_ind_param *info_time_ind)
+{
+	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_role_bts *btsb = bts->role;
+
+	DEBUGP(DL1P, "MPH_INFO time ind %u\n", info_time_ind->fn);
+
+	/* Update our data structures with the current GSM time */
+	gsm_fn2gsmtime(&btsb->gsm_time, info_time_ind->fn);
+
+	/* Update time on PCU interface */
+	pcu_tx_time_ind(info_time_ind->fn);
+
+	/* check if the measurement period of some lchan has ended
+	 * and pre-compute the respective measurement */
+	trx_meas_check_compute(trx, info_time_ind->fn - 1);
+
+	/* increment 'total' for every possible rach */
+	if (bts->c0->ts[0].pchan != GSM_PCHAN_CCCH_SDCCH4
+	 || (info_time_ind->fn % 51) < 27)
+		btsb->load.rach.total++;
+
+	return 0;
+}
+
+/* any L1 MPH_INFO indication prim recevied from bts model */
+static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
+	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
+{
+	int rc = 0;
+
+	switch (info->type) {
+	case PRIM_INFO_TIME:
+		rc = l1sap_info_time_ind(trx, l1sap, &info->u.time_ind);
+		break;
+	default:
+		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO ind type %d\n",
+			info->type);
+		break;
+	}
+
+	return rc;
+}
+
 /* PH-RTS-IND prim recevied from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -261,6 +308,9 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	int rc = 0;
 
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
+	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_INDICATION):
+		rc = l1sap_mph_info_ind(trx, l1sap, &l1sap->u.info);
+		break;
 	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rts_ind(trx, l1sap, &l1sap->u.data);
 		break;

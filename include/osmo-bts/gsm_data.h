@@ -79,6 +79,7 @@ struct gsm_bts_role_bts {
 	struct {
 		uint8_t tc4_ctr;
 	} si;
+	struct gsm_time gsm_time;
 	uint8_t radio_link_timeout;
 
 	/* used by the sysmoBTS to adjust band */
