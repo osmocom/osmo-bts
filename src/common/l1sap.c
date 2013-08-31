@@ -144,6 +144,35 @@ static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+/* measurement information received from bts model */
+static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap,
+	struct info_meas_ind_param *info_meas_ind)
+{
+	struct bts_ul_meas ulm;
+	struct gsm_lchan *lchan;
+
+	DEBUGP(DL1P, "MPH_INFO meas ind chan_nr=%02x\n",
+		info_meas_ind->chan_nr);
+
+	lchan = &trx->ts[L1SAP_CHAN2TS(info_meas_ind->chan_nr)]
+				.lchan[l1sap_chan2ss(info_meas_ind->chan_nr)];
+
+	/* in the GPRS case we are not interested in measurement
+	 * processing.  The PCU will take care of it */
+	if (lchan->type == GSM_LCHAN_PDTCH)
+		return 0;
+
+	memset(&ulm, 0, sizeof(ulm));
+	ulm.ta_offs_qbits = info_meas_ind->ta_offs_qbits;
+	ulm.ber10k = info_meas_ind->ber10k;
+	ulm.inv_rssi = info_meas_ind->inv_rssi;
+
+	lchan_new_ul_meas(lchan, &ulm);
+
+	return 0;
+}
+
 /* any L1 MPH_INFO indication prim recevied from bts model */
 static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
@@ -153,6 +182,9 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	switch (info->type) {
 	case PRIM_INFO_TIME:
 		rc = l1sap_info_time_ind(trx, l1sap, &info->u.time_ind);
+		break;
+	case PRIM_INFO_MEAS:
+		rc = l1sap_info_meas_ind(trx, l1sap, &info->u.meas_ind);
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO ind type %d\n",
