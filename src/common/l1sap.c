@@ -274,6 +274,72 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+/* TCH-RTS-IND prim recevied from bts model */
+static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap, struct ph_tch_param *rts_ind)
+{
+	struct msgb *resp_msg;
+	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
+	struct gsm_time g_time;
+	struct gsm_lchan *lchan;
+	uint8_t chan_nr;
+	uint8_t tn, ss;
+	uint32_t fn;
+
+	chan_nr = rts_ind->chan_nr;
+	fn = rts_ind->fn;
+	tn = L1SAP_CHAN2TS(chan_nr);
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "Rx TCH-RTS.ind %02u/%02u/%02u chan_nr=%d\n",
+		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+
+	/* get timeslot and subslot */
+	tn = L1SAP_CHAN2TS(chan_nr);
+	if (L1SAP_IS_CHAN_TCHH(chan_nr))
+		ss = L1SAP_CHAN2SS_TCHH(chan_nr); /* TCH/H */
+	else
+		ss = 0; /* TCH/F */
+	lchan = &trx->ts[tn].lchan[ss];
+
+	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
+		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
+		/* FIXME: we _assume_ that we never miss TDMA
+		 * frames and that we always get to this point
+		 * for every to-be-transmitted voice frame.  A
+		 * better solution would be to compute
+		 * rx_user_ts based on how many TDMA frames have
+		 * elapsed since the last call */
+		lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
+	}
+	/* get a msgb from the dl_tx_queue */
+	resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
+	if (!resp_msg) {
+		LOGP(DL1P, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
+			gsm_lchan_name(lchan));
+		resp_l1sap = &empty_l1sap;
+	} else {
+		resp_msg->l2h = resp_msg->data;
+		msgb_push(resp_msg, sizeof(*resp_l1sap));
+		resp_msg->l1h = resp_msg->data;
+		resp_l1sap = msgb_l1sap_prim(resp_msg);
+	}
+
+	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
+	osmo_prim_init(&resp_l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_REQUEST,
+		resp_msg);
+	resp_l1sap->u.tch.chan_nr = chan_nr;
+	resp_l1sap->u.tch.fn = fn;
+
+	DEBUGP(DL1P, "Tx TCH.req %02u/%02u/%02u chan_nr=%d\n",
+		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+
+	l1sap_down(trx, resp_l1sap);
+
+	return 0;
+}
+
 /* DATA received from bts model */
 static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_data_param *data_ind)
@@ -317,6 +383,57 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			L1SAP_FN2MACBLOCK(fn), data + 1, len - 1, rssi);
 
 		return 0;
+	}
+
+	return 0;
+}
+
+/* TCH received from bts model */
+static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
+	struct ph_tch_param *tch_ind)
+{
+	struct msgb *msg = l1sap->oph.msg;
+	struct gsm_time g_time;
+	struct gsm_lchan *lchan;
+	uint8_t tn, ss, chan_nr;
+	uint32_t fn;
+
+	chan_nr = tch_ind->chan_nr;
+	fn = tch_ind->fn;
+	tn = L1SAP_CHAN2TS(chan_nr);
+	if (L1SAP_IS_CHAN_TCHH(chan_nr))
+		ss = L1SAP_CHAN2SS_TCHH(chan_nr);
+	else
+		ss = 0;
+	lchan = &trx->ts[tn].lchan[ss];
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "Rx TCH.ind %02u/%02u/%02u chan_nr=%d\n",
+		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+
+	msgb_pull(msg, sizeof(*l1sap));
+
+	/* hand msg to RTP code for transmission */
+	if (lchan->abis_ip.rtp_socket)
+		osmo_rtp_send_frame(lchan->abis_ip.rtp_socket,
+			msg->data, msg->len, 160);
+
+	/* if loopback is enabled, also queue received RTP data */
+	if (lchan->loopback) {
+		struct msgb *tmp;
+		int count = 0;
+
+		 /* make sure the queue doesn't get too long */
+		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
+		count++;
+		while (count >= 1) {
+			tmp = msgb_dequeue(&lchan->dl_tch_queue);
+			msgb_free(tmp);
+			count--;
+		}
+
+		msgb_enqueue(&lchan->dl_tch_queue, msg);
 	}
 
 	return 0;
@@ -378,8 +495,14 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rts_ind(trx, l1sap, &l1sap->u.data);
 		break;
+	case OSMO_PRIM(PRIM_TCH_RTS, PRIM_OP_INDICATION):
+		rc = l1sap_tch_rts_ind(trx, l1sap, &l1sap->u.tch);
+		break;
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
 		rc = l1sap_ph_data_ind(trx, l1sap, &l1sap->u.data);
+		break;
+	case OSMO_PRIM(PRIM_TCH, PRIM_OP_INDICATION):
+		rc = l1sap_tch_ind(trx, l1sap, &l1sap->u.tch);
 		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rach_ind(trx, l1sap, &l1sap->u.rach_ind);
@@ -428,6 +551,34 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	memcpy(msg->l2h, data, len);
 
 	return l1sap_down(ts->trx, l1sap);
+}
+
+/*! \brief call-back function for incoming RTP */
+void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
+                     unsigned int rtp_pl_len)
+{
+	struct gsm_lchan *lchan = rs->priv;
+	struct msgb *msg, *tmp;
+	struct osmo_phsap_prim *l1sap;
+	int count = 0;
+
+	msg = l1sap_msgb_alloc(rtp_pl_len);
+	if (!msg)
+		return;
+	memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
+	msgb_pull(msg, sizeof(*l1sap));
+
+
+	 /* make sure the queue doesn't get too long */
+	llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
+	count++;
+	while (count >= 2) {
+		tmp = msgb_dequeue(&lchan->dl_tch_queue);
+		msgb_free(tmp);
+		count--;
+	}
+
+	msgb_enqueue(&lchan->dl_tch_queue, msg);
 }
 
 static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
