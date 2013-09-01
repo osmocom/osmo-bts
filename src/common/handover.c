@@ -33,6 +33,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/l1sap.h>
 
 /* Transmit a handover related PHYS INFO on given lchan */
 static int ho_tx_phys_info(struct gsm_lchan *lchan)
@@ -114,7 +115,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 
 	/* Stop handover detection, wait for valid frame */
 	lchan->ho.active = HANDOVER_WAIT_FRAME;
-	if (bts_model_rsl_chan_mod(lchan) != 0) {
+	if (l1sap_chan_modify(lchan->ts->trx, gsm_lchan2chan_nr(lchan)) != 0) {
 		LOGP(DHO, LOGL_ERROR,
 			"%s failed to modify channel after handover\n",
 			gsm_lchan_name(lchan));
