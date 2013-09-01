@@ -40,6 +40,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/amr.h>
+#include <osmo-bts/l1sap.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -425,7 +426,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 
 #define RTP_MSGB_ALLOC_SIZE	512
 
-/*! \brief call-back function for incoming RTP 
+/*! \brief function for incoming RTP via TCH.req
  *  \param rs RTP Socket
  *  \param[in] rtp_pl buffer containing RTP payload
  *  \param[in] rtp_pl_len length of \a rtp_pl
@@ -437,34 +438,18 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * yet, as things like the frame number, etc. are unknown at the time we
  * pre-fill the primtive.
  */
-void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-			 unsigned int rtp_pl_len)
+void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
+	const uint8_t *rtp_pl, unsigned int rtp_pl_len)
 {
-	struct gsm_lchan *lchan = rs->priv;
-	struct msgb *msg;
-	GsmL1_Prim_t *l1p;
-	GsmL1_PhDataReq_t *data_req;
-	GsmL1_MsgUnitParam_t *msu_param;
 	uint8_t *payload_type;
 	uint8_t *l1_payload;
 	int rc;
 
-	/* skip processing of incoming RTP frames if we are in loopback mode */
-	if (lchan->loopback)
-		return;
+	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
+		osmo_hexdump(rtp_pl, rtp_pl_len));
 
-	msg = l1p_msgb_alloc();
-	if (!msg) {
-		LOGP(DRTP, LOGL_ERROR, "%s: Failed to allocate Rx payload.\n",
-			gsm_lchan_name(lchan));
-		return;
-	}
-
-	l1p = msgb_l1prim(msg);
-	data_req = &l1p->u.phDataReq;
-	msu_param = &data_req->msgUnitParam;
-	payload_type = &msu_param->u8Buffer[0];
-	l1_payload = &msu_param->u8Buffer[1];
+	payload_type = &data[0];
+	l1_payload = &data[1];
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
@@ -499,38 +484,17 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	if (rc < 0) {
 		LOGP(DRTP, LOGL_ERROR, "%s unable to parse RTP payload\n",
 		     gsm_lchan_name(lchan));
-		msgb_free(msg);
 		return;
 	}
 
-	msu_param->u8Size = rc + 1;
+	*len = rc + 1;
 
-
-	/* make sure the number of entries in the dl_tch_queue is never
-	 * more than 3 */
-	{
-		struct msgb *tmp;
-		int count = 0;
-
-		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-			count++;
-
-		DEBUGP(DL1C, "%s DL TCH queue length = %u\n",
-			gsm_lchan_name(lchan), count);
-
-		while (count >= 2) {
-			tmp = msgb_dequeue(&lchan->dl_tch_queue);
-			msgb_free(tmp);
-			count--;
-		}
-	}
-
-	/* enqueue msgb to be transmitted to L1 */
-	msgb_enqueue(&lchan->dl_tch_queue, msg);
+	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
+		osmo_hexdump(data, *len));
 }
 
 /*! \brief receive a traffic L1 primitive for a given lchan */
-int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
+int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1p_msg);
 	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
@@ -538,49 +502,14 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 	uint8_t *payload = data_ind->msgUnitParam.u8Buffer + 1;
 	uint8_t payload_len;
 	struct msgb *rmsg = NULL;
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
 	if (data_ind->msgUnitParam.u8Size < 1) {
-		LOGP(DL1C, LOGL_ERROR, "%s Rx Payload size 0\n",
-			gsm_lchan_name(lchan));
+		LOGP(DL1C, LOGL_ERROR, "chan_nr %d Rx Payload size 0\n",
+			chan_nr);
 		return -EINVAL;
 	}
 	payload_len = data_ind->msgUnitParam.u8Size - 1;
-
-	if (lchan->loopback) {
-		GsmL1_Prim_t *rl1p;
-		GsmL1_PhDataReq_t *data_req;
-		GsmL1_MsgUnitParam_t *msu_param;
-
-		struct msgb *tmp;
-		int count = 0;
-
-		/* generate a new msgb from the paylaod */
-		rmsg = l1p_msgb_alloc();
-		if (!rmsg)
-			return -ENOMEM;
-
-		rl1p = msgb_l1prim(rmsg);
-		data_req = &rl1p->u.phDataReq;
-		msu_param = &data_req->msgUnitParam;
-
-		memcpy(msu_param->u8Buffer,
-			data_ind->msgUnitParam.u8Buffer,
-			data_ind->msgUnitParam.u8Size);
-		msu_param->u8Size = data_ind->msgUnitParam.u8Size;
-
-		/* make sure the queue doesn't get too long */
-		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-			count++;
-		while (count >= 1) {
-			tmp = msgb_dequeue(&lchan->dl_tch_queue);
-			msgb_free(tmp);
-			count--;
-		}
-
-		msgb_enqueue(&lchan->dl_tch_queue, rmsg);
-
-		return 0;
-	}
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:
@@ -625,11 +554,20 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 	}
 
 	if (rmsg) {
-		/* hand rmsg to RTP code for transmission */
-		if (lchan->abis_ip.rtp_socket)
-			osmo_rtp_send_frame(lchan->abis_ip.rtp_socket,
-					    rmsg->data, rmsg->len, 160);
-		msgb_free(rmsg);
+		struct osmo_phsap_prim *l1sap;
+
+		LOGP(DL1C, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
+			gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
+
+		/* add l1sap header */
+		rmsg->l2h = rmsg->data;
+		msgb_push(rmsg, sizeof(*l1sap));
+		rmsg->l1h = rmsg->data;
+		l1sap = msgb_l1sap_prim(rmsg);
+		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, rmsg);
+		l1sap->u.tch.chan_nr = chan_nr;
+
+		return l1sap_up(trx, l1sap);
 	}
 
 	return 0;

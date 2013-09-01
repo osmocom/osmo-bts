@@ -38,8 +38,6 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/lapdm.h>
 
-#include <osmocom/trau/osmo_ortp.h>
-
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/oml.h>
@@ -542,6 +540,93 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	return 0;
 }
 
+static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		       struct osmo_phsap_prim *l1sap)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct gsm_lchan *lchan;
+	uint32_t u32Fn;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi, ss;
+	uint8_t chan_nr;
+	GsmL1_Prim_t *l1p;
+	struct msgb *nmsg;
+
+	chan_nr = l1sap->u.tch.chan_nr;
+	u32Fn = l1sap->u.tch.fn;
+	u8Tn = L1SAP_CHAN2TS(chan_nr);
+	u8BlockNbr = (u32Fn % 13) >> 2;
+	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+		ss = subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+		sapi = GsmL1_Sapi_TchH;
+	} else {
+		subCh = 0x1f;
+		ss = 0;
+		sapi = GsmL1_Sapi_TchF;
+	}
+
+	lchan = &trx->ts[u8Tn].lchan[ss];
+
+	/* create new message and fill data */
+	if (msg) {
+		msgb_pull(msg, sizeof(*l1sap));
+		/* create new message */
+		nmsg = l1p_msgb_alloc();
+		if (!nmsg)
+			return -ENOMEM;
+		l1p = msgb_l1prim(nmsg);
+		l1if_tch_encode(lchan,
+			l1p->u.phDataReq.msgUnitParam.u8Buffer,
+			&l1p->u.phDataReq.msgUnitParam.u8Size,
+			msg->data, msg->len);
+	}
+
+	/* no message/data, we generate an empty traffic msg */
+	if (!nmsg)
+		nmsg = gen_empty_tch_msg(lchan);
+
+	/* no traffic message, we generate an empty msg */
+	if (!nmsg) {
+		nmsg = l1p_msgb_alloc();
+		if (!nmsg)
+			return -ENOMEM;
+	}
+
+	l1p = msgb_l1prim(nmsg);
+
+	/* if we provide data, or if data is already in nmsg */
+	if (l1p->u.phDataReq.msgUnitParam.u8Size) {
+		/* data request */
+		GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+
+		l1p->id = GsmL1_PrimId_PhDataReq;
+
+		data_req->hLayer1 = fl1->hLayer1;
+		data_req->u8Tn = u8Tn;
+		data_req->u32Fn = u32Fn;
+		data_req->sapi = sapi;
+		data_req->subCh = subCh;
+		data_req->u8BlockNbr = u8BlockNbr;
+	} else {
+		/* empty frame */
+		GsmL1_PhEmptyFrameReq_t *empty_req =
+						&l1p->u.phEmptyFrameReq;
+
+		l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+
+		empty_req->hLayer1 = fl1->hLayer1;
+		empty_req->u8Tn = u8Tn;
+		empty_req->u32Fn = u32Fn;
+		empty_req->sapi = sapi;
+		empty_req->subCh = subCh;
+		empty_req->u8BlockNbr = u8BlockNbr;
+	}
+	/* send message to DSP's queue */
+	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
+
+	msgb_free(msg);
+	return 0;
+}
+
 static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		        struct osmo_phsap_prim *l1sap)
 {
@@ -589,6 +674,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
 		rc = ph_data_req(trx, msg, l1sap);
+		break;
+	case OSMO_PRIM(PRIM_TCH, PRIM_OP_REQUEST):
+		rc = ph_tch_req(trx, msg, l1sap);
 		break;
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
 		rc = mph_info_req(trx, msg, l1sap);
@@ -656,6 +744,12 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 			return 0;
 		}
 		break;
+	case GsmL1_Sapi_TchF:
+		cbits = 0x01;
+		break;
+	case GsmL1_Sapi_TchH:
+		cbits = 0x02 + subCh;
+		break;
 	case GsmL1_Sapi_Ptcch:
 		if (!L1SAP_IS_PTCCH(u32Fn)) {
 			LOGP(DL1C, LOGL_FATAL, "Not expecting PTCCH at frame "
@@ -700,7 +794,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	uint8_t chan_nr, link_id;
 	uint32_t fn;
 
-
 	/* check if primitive should be handled by common part */
 	chan_nr = chan_nr_by_sapi(trx->ts[rts_ind->u8Tn].pchan, rts_ind->sapi,
 		rts_ind->subCh, rts_ind->u8Tn, rts_ind->u32Fn);
@@ -711,11 +804,19 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		if (rc < 0)
 			MSGB_ABORT(l1p_msg, "No room for primitive\n");
 		l1sap = msgb_l1sap_prim(l1p_msg);
-		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
-			PRIM_OP_INDICATION, l1p_msg);
-		l1sap->u.data.link_id = link_id;
-		l1sap->u.data.chan_nr = chan_nr;
-		l1sap->u.data.fn = fn;
+		if (rts_ind->sapi == GsmL1_Sapi_TchF
+		 || rts_ind->sapi == GsmL1_Sapi_TchH) {
+			osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
+				PRIM_OP_INDICATION, l1p_msg);
+			l1sap->u.tch.chan_nr = chan_nr;
+			l1sap->u.tch.fn = fn;
+		} else {
+			osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
+				PRIM_OP_INDICATION, l1p_msg);
+			l1sap->u.data.link_id = link_id;
+			l1sap->u.data.chan_nr = chan_nr;
+			l1sap->u.data.fn = fn;
+		}
 
 		return l1sap_up(trx, l1sap);
 	}
@@ -725,50 +826,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u SAPI=%s\n",
 		g_time.t1, g_time.t2, g_time.t3,
 		get_value_string(femtobts_l1sapi_names, rts_ind->sapi));
-
-	/* In case of TCH downlink trasnmission, we already have a l1
-	 * primitive msgb pre-allocated and pre-formatted in the
-	 * dl_tch_queue.  All we need to do is to pull it off the queue
-	 * and transmit it */
-	switch (rts_ind->sapi) {
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		if (!lchan)
-			break;
-
-		if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
-			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
-			/* FIXME: we _assume_ that we never miss TDMA
-			 * frames and that we always get to this point
-			 * for every to-be-transmitted voice frame.  A
-			 * better solution would be to compute
-			 * rx_user_ts based on how many TDMA frames have
-			 * elapsed since the last call */
-			lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
-		}
-		/* get a msgb from the dl_tx_queue */
-		resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
-		/* if there is none, try to generate empty TCH frame
-		 * like AMR SID_BAD */
-		if (!resp_msg) {
-			LOGP(DL1C, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
-				gsm_lchan_name(lchan));
-			resp_msg = gen_empty_tch_msg(lchan);
-			/* if there really is none, break here and send empty */
-			if (!resp_msg)
-				break;
-		}
-
-		/* fill header */
-		data_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
-		/* actually transmit it */
-		goto tx;
-		break;
-	default:
-		break;
-	}
 
 	/* in all other cases, we need to allocate a new PH-DATA.ind
 	 * primitive msgb and start to fill it */
@@ -830,12 +887,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
 			msgb_free(pp.oph.msg);
 		}
-		break;
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
-		/* only hit in case we have a RTP underflow, as real TCH
-		 * frames are handled way above */
-		goto empty_frame;
 		break;
 	case GsmL1_Sapi_FacchF:
 	case GsmL1_Sapi_FacchH:
@@ -1070,7 +1121,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
 		/* TCH speech frame handling */
-		rc = l1if_tch_rx(lchan, l1p_msg);
+		rc = l1if_tch_rx(trx, chan_nr, l1p_msg);
 		break;
 	case GsmL1_Sapi_Pdtch:
 	case GsmL1_Sapi_Pacch:

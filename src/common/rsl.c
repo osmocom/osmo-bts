@@ -42,7 +42,6 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/signal.h>
-#include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/handover.h>
@@ -1446,7 +1445,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 					  OSMO_RTP_P_JITBUF,
 					  btsb->rtp_jitter_buf_ms);
 		lchan->abis_ip.rtp_socket->priv = lchan;
-		lchan->abis_ip.rtp_socket->rx_cb = &bts_model_rtp_rx_cb;
+		lchan->abis_ip.rtp_socket->rx_cb = &l1sap_rtp_rx_cb;
 
 		if (connect_ip && connect_port) {
 			/* if CRCX specifies a remote IP, we can bind()
