@@ -24,12 +24,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ctype.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/misc.h>
+#include <osmocom/core/gsmtap.h>
 
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -44,7 +47,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
-
+#include <osmo-bts/l1sap.h>
 
 enum node_type bts_vty_go_parent(struct vty *vty)
 {
@@ -173,10 +176,38 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	return CMD_SUCCESS;
 }
 
+/* FIXME: move to libosmocore ? */
+static char buf_casecnvt[256];
+char *osmo_str_tolower(const char *in)
+{
+	int len, i;
+
+	if (!in)
+		return NULL;
+
+	len = strlen(in);
+	if (len > sizeof(buf_casecnvt))
+		len = sizeof(buf_casecnvt);
+
+	for (i = 0; i < len; i++) {
+		buf_casecnvt[i] = tolower(in[i]);
+		if (in[i] == '\0')
+			break;
+	}
+	if (i < sizeof(buf_casecnvt))
+		buf_casecnvt[i] = '\0';
+
+	/* just to make sure we're always zero-terminated */
+	buf_casecnvt[sizeof(buf_casecnvt)-1] = '\0';
+
+	return buf_casecnvt;
+}
+
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm_bts_trx *trx;
+	int i;
 
 	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
 	if (bts->description)
@@ -197,6 +228,17 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, " agch-queue-mgmt threshold %d low %d high %d%s",
 			btsb->agch_queue_thresh_level, btsb->agch_queue_low_level,
 			btsb->agch_queue_high_level, VTY_NEWLINE);
+
+	for (i = 0; i < 32; i++) {
+		if (gsmtap_sapi_mask & (1 << i)) {
+			const char *name = get_value_string(gsmtap_sapi_names, i);
+			vty_out(vty, " gsmtap-sapi %s%s", osmo_str_tolower(name), VTY_NEWLINE);
+		}
+	}
+	if (gsmtap_sapi_acch) {
+		const char *name = get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH);
+		vty_out(vty, " gsmtap-sapi %s%s", osmo_str_tolower(name), VTY_NEWLINE);
+	}
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -526,6 +568,36 @@ static struct gsm_lchan *resolve_lchan(struct gsm_network *net,
 	"logical channel commands\n"	\
 	"logical channel number\n"
 
+DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
+	"HIDDEN", "HIDDEN")
+{
+	int sapi;
+
+	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
+
+	if (sapi == GSMTAP_CHANNEL_ACCH)
+		gsmtap_sapi_acch = 1;
+	else
+		gsmtap_sapi_mask |= (1 << sapi);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
+	"HIDDEN", "HIDDEN")
+{
+	int sapi;
+
+	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
+
+	if (sapi == GSMTAP_CHANNEL_ACCH)
+		gsmtap_sapi_acch = 0;
+	else
+		gsmtap_sapi_mask &= ~(1 << sapi);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(bts_t_t_l_jitter_buf,
 	bts_t_t_l_jitter_buf_cmd,
 	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> rtp jitter-buffer <0-10000>",
@@ -588,8 +660,22 @@ DEFUN(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
-int bts_vty_init(const struct log_info *cat)
+int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 {
+	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+						"gsmtap-sapi (",
+						"|",")", VTY_DO_LOWER);
+	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+						"GSMTAP SAPI\n",
+						"\n", "", 0);
+
+	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+						"no gsmtap-sapi (",
+						"|",")", VTY_DO_LOWER);
+	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+						NO_STR "GSMTAP SAPI\n",
+						"\n", "", 0);
+
 	install_element_ve(&show_bts_cmd);
 
 	logging_vty_add_cmds(cat);
@@ -608,6 +694,9 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_paging_lifetime_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
+
+	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
+	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
