@@ -552,6 +552,42 @@ DEFUN(bts_t_t_l_jitter_buf,
 	return CMD_SUCCESS;
 }
 
+DEFUN(bts_t_t_l_loopback,
+	bts_t_t_l_loopback_cmd,
+	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> loopback",
+	BTS_T_T_L_STR "Set loopback\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_lchan *lchan;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	lchan->loopback = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(no_bts_t_t_l_loopback,
+	no_bts_t_t_l_loopback_cmd,
+	"no bts <0-0> trx <0-0> ts <0-7> lchan <0-1> loopback",
+	NO_STR BTS_T_T_L_STR "Set loopback\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_lchan *lchan;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	lchan->loopback = 0;
+
+	return CMD_SUCCESS;
+}
+
 int bts_vty_init(const struct log_info *cat)
 {
 	install_element_ve(&show_bts_cmd);
@@ -579,6 +615,8 @@ int bts_vty_init(const struct log_info *cat)
 	install_default(TRX_NODE);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
+	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
 
 	return 0;
 }
