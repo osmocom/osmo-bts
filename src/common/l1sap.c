@@ -69,6 +69,54 @@ struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 	return msg;
 }
 
+static int l1sap_tx_ciph_req(struct gsm_bts_trx *trx, uint8_t chan_nr,
+	uint8_t downlink, uint8_t uplink)
+{
+	struct osmo_phsap_prim l1sap_ciph;
+
+	osmo_prim_init(&l1sap_ciph.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+		PRIM_OP_REQUEST, NULL);
+	l1sap_ciph.u.info.type = PRIM_INFO_ACT_CIPH;
+	l1sap_ciph.u.info.u.ciph_req.chan_nr = chan_nr;
+	l1sap_ciph.u.info.u.ciph_req.downlink = downlink;
+	l1sap_ciph.u.info.u.ciph_req.uplink = uplink;
+
+	return l1sap_down(trx, &l1sap_ciph);
+}
+
+
+/* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
+ * uni-directional de-cryption on the uplink. We need this ugly layering
+ * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
+ * to this point in L1 */
+static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
+	uint8_t chan_nr)
+{
+
+	/* only do this if we are in the right state */
+	switch (lchan->ciph_state) {
+	case LCHAN_CIPH_NONE:
+	case LCHAN_CIPH_RX_REQ:
+		break;
+	default:
+		return 0;
+	}
+
+	/* First byte (Address Field) of LAPDm header) */
+	if (msg->data[0] != 0x03)
+		return 0;
+	/* First byte (protocol discriminator) of RR */
+	if ((msg->data[3] & 0xF) != GSM48_PDISC_RR)
+		return 0;
+	/* 2nd byte (msg type) of RR */
+	if ((msg->data[4] & 0x3F) != GSM48_MT_RR_CIPH_M_CMD)
+		return 0;
+
+	l1sap_tx_ciph_req(lchan->ts->trx, chan_nr, 0, 1);
+
+	return 1;
+}
+
 /* time information received from bts model */
 static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
@@ -193,10 +241,13 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 {
 	struct msgb *msg = l1sap->oph.msg;
 	struct gsm_time g_time;
+	struct gsm_lchan *lchan;
 	uint8_t chan_nr, link_id;
-	uint8_t tn;
+	uint8_t tn, ss;
 	uint32_t fn;
 	uint8_t *p, *si;
+	struct lapdm_entity *le;
+	struct osmo_phsap_prim pp;
 	int rc;
 
 	chan_nr = rts_ind->chan_nr;
@@ -241,6 +292,52 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, si, GSM_MACBLOCK_LEN);
 		else
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
+		if (L1SAP_IS_CHAN_TCHH(chan_nr))
+			ss = L1SAP_CHAN2SS_TCHH(chan_nr); /* TCH/H */
+		else if (L1SAP_IS_CHAN_SDCCH4(chan_nr))
+			ss = L1SAP_CHAN2SS_SDCCH4(chan_nr); /* SDCCH/4 */
+		else if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
+			ss = L1SAP_CHAN2SS_SDCCH8(chan_nr); /* SDCCH/8 */
+		else
+			ss = 0; /* TCH/F */
+		lchan = &trx->ts[tn].lchan[ss];
+		if (L1SAP_IS_LINK_SACCH(link_id)) {
+			p = msgb_put(msg, GSM_MACBLOCK_LEN);
+			/* L1-header, if not set/modified by layer 1 */
+			p[0] = lchan->ms_power;
+			p[1] = lchan->rqd_ta;
+			le = &lchan->lapdm_ch.lapdm_acch;
+		} else
+			le = &lchan->lapdm_ch.lapdm_dcch;
+		rc = lapdm_phsap_dequeue_prim(le, &pp);
+		if (rc < 0) {
+			if (L1SAP_IS_LINK_SACCH(link_id)) {
+				/* No SACCH data from LAPDM pending, send SACCH filling */
+				uint8_t *si = lchan_sacch_get(lchan);
+				if (si) {
+					/* The +2 is empty space where the DSP inserts the L1 hdr */
+					memcpy(p + 2, si, GSM_MACBLOCK_LEN - 2);
+				} else
+					memcpy(p + 2, fill_frame, GSM_MACBLOCK_LEN - 2);
+			} else if ((!L1SAP_IS_CHAN_TCHF(chan_nr) && !L1SAP_IS_CHAN_TCHH(chan_nr))
+				|| lchan->rsl_cmode == RSL_CMOD_SPD_SIGN) {
+				/* send fill frame only, if not TCH/x != Signalling, otherwise send empty frame */
+				p = msgb_put(msg, GSM_MACBLOCK_LEN);
+				memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+			} /* else the message remains empty, so TCH frames are sent */
+		} else {
+			/* The +2 is empty space where the DSP inserts the L1 hdr */
+			if (L1SAP_IS_LINK_SACCH(link_id))
+				memcpy(p + 2, pp.oph.msg->data + 2, GSM_MACBLOCK_LEN - 2);
+			else {
+				p = msgb_put(msg, GSM_MACBLOCK_LEN);
+				memcpy(p, pp.oph.msg->data, GSM_MACBLOCK_LEN);
+				/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
+				check_for_ciph_cmd(pp.oph.msg, lchan, chan_nr);
+			}
+			msgb_free(pp.oph.msg);
+		}
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
 #warning "TODO: Yet another assumption that BS_AG_BLKS_RES=1"
@@ -352,12 +449,46 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+/* process radio link timeout counter S */
+static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
+{
+	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
+
+	/* if link loss criterion already reached */
+	if (lchan->s == 0) {
+		DEBUGP(DMEAS, "%s radio link counter S already 0.\n",
+			gsm_lchan_name(lchan));
+		return;
+	}
+
+	if (bad_frame) {
+		/* count down radio link counter S */
+		lchan->s--;
+		DEBUGP(DMEAS, "%s counting down radio link counter S=%d\n",
+			gsm_lchan_name(lchan), lchan->s);
+		if (lchan->s == 0)
+			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
+		return;
+	}
+
+	if (lchan->s < btsb->radio_link_timeout) {
+		/* count up radio link counter S */
+		lchan->s += 2;
+		if (lchan->s > btsb->radio_link_timeout)
+			lchan->s = btsb->radio_link_timeout;
+		DEBUGP(DMEAS, "%s counting up radio link counter S=%d\n",
+			gsm_lchan_name(lchan), lchan->s);
+	}
+}
+
 /* DATA received from bts model */
 static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_data_param *data_ind)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	struct gsm_time g_time;
+	struct gsm_lchan *lchan;
+	struct lapdm_entity *le;
 	uint8_t *data = msg->l2h;
 	int len = msgb_l2len(msg);
 	uint8_t chan_nr, link_id;
@@ -397,7 +528,53 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		return 0;
 	}
 
-	return 0;
+	lchan = &trx->ts[tn].lchan[ss];
+
+	/* bad frame */
+	if (len == 0) {
+		if (L1SAP_IS_LINK_SACCH(link_id))
+			radio_link_timeout(lchan, 1);
+		return -EINVAL;
+	}
+
+	if (L1SAP_IS_LINK_SACCH(link_id)) {
+		radio_link_timeout(lchan, 0);
+		le = &lchan->lapdm_ch.lapdm_acch;
+		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
+		if (len < 2) {
+			LOGP(DL1P, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
+				len);
+			return -EINVAL;
+		}
+		/* Some brilliant engineer decided that the ordering of
+		 * fields on the Um interface is different from the
+		 * order of fields in RLS. See TS 04.04 (Chapter 7.2)
+		 * vs. TS 08.58 (Chapter 9.3.10). */
+		lchan->meas.l1_info[0] = data[0] << 3;
+		lchan->meas.l1_info[0] |= ((data[0] >> 5) & 1) << 2;
+		lchan->meas.l1_info[1] = data[1];
+		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
+	} else
+		le = &lchan->lapdm_ch.lapdm_dcch;
+
+	/* if this is the first valid message after enabling Rx
+	 * decryption, we have to enable Tx encryption */
+	if (lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
+		/* HACK: check if it's an I frame, in order to
+		 * ignore some still buffered/queued UI frames received
+		 * before decryption was enabled */
+		if (data[0] == 0x01 && (data[1] & 0x01) == 0) {
+			l1sap_tx_ciph_req(trx, chan_nr, 1, 0);
+		}
+	}
+
+	/* SDCCH, SACCH and FACCH all go to LAPDm */
+	msgb_pull(msg, (msg->l2h - msg->data));
+	msg->l1h = NULL;
+	lapdm_phsap_up(&l1sap->oph, le);
+
+	/* don't free, because we forwarded data */
+	return 1;
 }
 
 /* TCH received from bts model */
