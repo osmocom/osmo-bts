@@ -948,10 +948,8 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 	if (lchan->state != LCHAN_S_ACT_REQ)
 		return 0;
 
-	struct gsm_time *time;
 	lchan_set_state(lchan, LCHAN_S_ACTIVE);
-	time = bts_model_get_time(lchan->ts->trx->bts);
-	rsl_tx_chan_act_ack(lchan, time);
+	rsl_tx_chan_act_ack(lchan);
 
 	/* set the initial ciphering parameters for both directions */
 	l1if_set_ciphering(fl1h, lchan, 0);
@@ -1498,13 +1496,6 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
 	enqueue_sacch_rel_marker(lchan);
 	return 0;
-}
-
-struct gsm_time *bts_model_get_time(struct gsm_bts *bts)
-{
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(bts->c0);
-
-	return &fl1h->gsm_time;
 }
 
 /* callback from OML */

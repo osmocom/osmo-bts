@@ -39,5 +39,7 @@ void load_timer_start(struct gsm_bts *bts);
 
 void bts_update_status(enum bts_global_status which, int on);
 
+struct gsm_time *get_time(struct gsm_bts *bts);
+
 #endif /* _BTS_H */
 

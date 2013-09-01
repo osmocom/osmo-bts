@@ -517,8 +517,9 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 }
 
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
-int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
+int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 {
+	struct gsm_time *gtime = get_time(lchan->ts->trx->bts);
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];

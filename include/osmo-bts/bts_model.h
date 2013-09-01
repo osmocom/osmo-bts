@@ -12,8 +12,6 @@
 
 int bts_model_init(struct gsm_bts *bts);
 
-struct gsm_time *bts_model_get_time(struct gsm_bts *bts);
-
 int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 			struct tlv_parsed *old_attr, struct tlv_parsed *new_attr,
 			void *obj);

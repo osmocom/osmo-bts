@@ -595,3 +595,11 @@ int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
 	sup =  (1 << (rsl_cipher - 2)) & bts->support.ciphers;
 	return sup > 0;
 }
+
+struct gsm_time *get_time(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts->role;
+
+	return &btsb->gsm_time;
+}
+
