@@ -28,9 +28,6 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx);
 int bts_model_trx_close(struct gsm_bts_trx *trx);
 
-void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-			 unsigned int rtp_pl_len);
-
 int bts_model_vty_init(struct gsm_bts *bts);
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts);
