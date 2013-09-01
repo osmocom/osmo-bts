@@ -39,7 +39,6 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/signal.h>
-#include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
@@ -542,9 +541,9 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 		return -EINVAL;
 	}
 	if (act_req->activate)
-		bts_model_rsl_chan_act(lchan, NULL);
+		l1sap_chan_act(trx, gsm_lchan2chan_nr(lchan));
 	else
-		bts_model_rsl_chan_rel(lchan);
+		l1sap_chan_rel(trx, gsm_lchan2chan_nr(lchan));
 
 	return 0;
 }
@@ -648,7 +647,8 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
 			 && ts->pchan == GSM_PCHAN_PDCH)
-				bts_model_rsl_chan_rel(ts->lchan);
+				l1sap_chan_rel(trx,
+					gsm_lchan2chan_nr(ts->lchan));
 		}
 	}
 

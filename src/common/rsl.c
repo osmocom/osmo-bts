@@ -45,6 +45,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/l1sap.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -789,14 +790,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* actually activate the channel in the BTS */
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
-	return  bts_model_rsl_chan_act(msg->lchan, &tp);
+	return l1sap_chan_act(lchan->ts->trx, dch->chan_nr);
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
-static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
+static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 {
-	int rc;
-
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
 		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
@@ -805,9 +804,11 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 	}
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
-	rc = bts_model_rsl_chan_rel(lchan);
+	l1sap_chan_rel(lchan->ts->trx, chan_nr);
 
-	return rc;
+	lapdm_channel_exit(&lchan->lapdm_ch);
+
+	return 0;
 }
 
 #ifdef FAKE_CIPH_MODE_COMPL
@@ -990,10 +991,10 @@ static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
 /* 8.4.9 MODE MODIFY */
 static int rsl_rx_mode_modif(struct msgb *msg)
 {
+	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
-	int rc;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1033,12 +1034,12 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
-	rc = bts_model_rsl_mode_modify(msg->lchan);
+	l1sap_chan_modify(lchan->ts->trx, dch->chan_nr);
 
 	/* FIXME: delay this until L1 says OK? */
-	rsl_tx_mode_modif_ack(msg->lchan);
+	rsl_tx_mode_modif_ack(lchan);
 
-	return rc;
+	return 0;
 }
 
 /* 8.4.20 SACCH INFO MODify */
@@ -1683,13 +1684,13 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		ret = rsl_rx_chan_activ(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL:
-		ret = rsl_rx_rf_chan_rel(msg->lchan);
+		ret = rsl_rx_rf_chan_rel(msg->lchan, dch->chan_nr);
 		break;
 	case RSL_MT_SACCH_INFO_MODIFY:
 		ret = rsl_rx_sacch_inf_mod(msg);
 		break;
 	case RSL_MT_DEACTIVATE_SACCH:
-		ret = bts_model_rsl_deact_sacch(msg->lchan);
+		ret = l1sap_chan_deact_sacch(trx, dch->chan_nr);
 		break;
 	case RSL_MT_ENCR_CMD:
 		ret = rsl_rx_encr_cmd(msg);
