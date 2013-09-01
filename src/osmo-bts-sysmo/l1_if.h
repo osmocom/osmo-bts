@@ -117,6 +117,13 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 			  struct gsm_lchan *lchan,
 			  int dir_downlink);
 
+/* channel control */
+int l1if_rsl_chan_act(struct gsm_lchan *lchan);
+int l1if_rsl_chan_rel(struct gsm_lchan *lchan);
+int l1if_rsl_chan_mod(struct gsm_lchan *lchan);
+int l1if_rsl_deact_sacch(struct gsm_lchan *lchan);
+int l1if_rsl_mode_modify(struct gsm_lchan *lchan);
+
 /* calibration loading */
 int calib_load(struct femtol1_hdl *fl1h);
 

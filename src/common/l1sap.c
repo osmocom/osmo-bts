@@ -115,6 +115,67 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	return rc;
 }
 
+/* activation confirm received from bts model */
+static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap,
+	struct info_act_cnf_param *info_act_cnf)
+{
+	struct gsm_lchan *lchan;
+
+	LOGP(DL1P, LOGL_INFO, "activate confirm chan_nr=%02x trx=%d\n",
+		info_act_cnf->chan_nr, trx->nr);
+
+	lchan = &trx->ts[L1SAP_CHAN2TS(info_act_cnf->chan_nr)]
+				.lchan[l1sap_chan2ss(info_act_cnf->chan_nr)];
+
+	if (info_act_cnf->cause)
+		rsl_tx_chan_act_nack(lchan, info_act_cnf->cause);
+	else
+		rsl_tx_chan_act_ack(lchan);
+
+	return 0;
+}
+
+/* activation confirm received from bts model */
+static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap,
+	struct info_act_cnf_param *info_act_cnf)
+{
+	struct gsm_lchan *lchan;
+
+	LOGP(DL1P, LOGL_INFO, "deactivate confirm chan_nr=%02x trx=%d\n",
+		info_act_cnf->chan_nr, trx->nr);
+
+	lchan = &trx->ts[L1SAP_CHAN2TS(info_act_cnf->chan_nr)]
+				.lchan[l1sap_chan2ss(info_act_cnf->chan_nr)];
+
+	rsl_tx_rf_rel_ack(lchan);
+
+	return 0;
+}
+
+/* any L1 MPH_INFO confirm prim recevied from bts model */
+static int l1sap_mph_info_cnf(struct gsm_bts_trx *trx,
+	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
+{
+	int rc = 0;
+
+	switch (info->type) {
+	case PRIM_INFO_ACTIVATE:
+		rc = l1sap_info_act_cnf(trx, l1sap, &info->u.act_cnf);
+		break;
+	case PRIM_INFO_DEACTIVATE:
+		rc = l1sap_info_rel_cnf(trx, l1sap, &info->u.act_cnf);
+		break;
+	default:
+		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO cnf type %d\n",
+			info->type);
+		break;
+	}
+
+	return rc;
+}
+
 /* PH-RTS-IND prim recevied from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -311,6 +372,9 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_INDICATION):
 		rc = l1sap_mph_info_ind(trx, l1sap, &l1sap->u.info);
 		break;
+	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_CONFIRM):
+		rc = l1sap_mph_info_cnf(trx, l1sap, &l1sap->u.info);
+		break;
 	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l1sap_ph_rts_ind(trx, l1sap, &l1sap->u.data);
 		break;
@@ -364,4 +428,85 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	memcpy(msg->l2h, data, len);
 
 	return l1sap_down(ts->trx, l1sap);
+}
+
+static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
+		enum osmo_mph_info_type type, uint8_t sacch_only)
+{
+	struct osmo_phsap_prim l1sap;
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_REQUEST,
+		NULL);
+	l1sap.u.info.type = type;
+	l1sap.u.info.u.act_req.chan_nr = chan_nr;
+	l1sap.u.info.u.act_req.sacch_only = sacch_only;
+
+	return l1sap_down(trx, &l1sap);
+}
+
+int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp)
+{
+	struct gsm_bts_role_bts *btsb = trx->bts->role;
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
+				.lchan[l1sap_chan2ss(chan_nr)];
+	struct gsm48_chan_desc *cd;
+	int rc;
+
+	LOGP(DL1P, LOGL_INFO, "activating channel chan_nr=%02x trx=%d\n",
+		chan_nr, trx->nr);
+
+	if (tp && TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
+	    TLVP_LEN(tp, GSM48_IE_CHANDESC_2) >= sizeof(*cd)) {
+		cd = (struct gsm48_chan_desc *)
+		TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
+
+		/* our L1 only supports one global TSC for all channels
+		 * one one TRX, so we need to make sure not to activate
+		 * channels with a different TSC!! */
+		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
+			LOGP(DRSL, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
+				cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
+			return -RSL_ERR_SERV_OPT_UNIMPL;
+		}
+	}
+
+	lchan->sacch_deact = 0;
+	lchan->s = btsb->radio_link_timeout;
+
+	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
+	if (rc)
+		return -RSL_ERR_EQUIPMENT_FAIL;
+	return 0;
+}
+
+int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
+{
+	LOGP(DL1P, LOGL_INFO, "deactivating channel chan_nr=%02x trx=%d\n",
+		chan_nr, trx->nr);
+
+	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
+		0);
+}
+
+int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
+{
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
+				.lchan[l1sap_chan2ss(chan_nr)];
+
+	LOGP(DL1P, LOGL_INFO, "deactivating sacch chan_nr=%02x trx=%d\n",
+		chan_nr, trx->nr);
+
+	lchan->sacch_deact = 1;
+
+	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
+		1);
+}
+
+int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
+{
+	LOGP(DL1P, LOGL_INFO, "modifying channel chan_nr=%02x trx=%d\n",
+		chan_nr, trx->nr);
+
+	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
 }
