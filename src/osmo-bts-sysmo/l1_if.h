@@ -53,9 +53,6 @@ struct femtol1_hdl {
 	char *calib_path;
 	struct llist_head wlc_list;
 
-	struct gsmtap_inst *gsmtap;
-	uint32_t gsmtap_sapi_mask;
-
 	void *priv;			/* user reference */
 
 	struct osmo_timer_list alive_timer;
