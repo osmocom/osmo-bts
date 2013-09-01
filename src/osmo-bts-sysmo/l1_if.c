@@ -542,6 +542,44 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	return 0;
 }
 
+static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		        struct osmo_phsap_prim *l1sap)
+{
+	uint8_t u8Tn, ss;
+	uint8_t chan_nr;
+	struct gsm_lchan *lchan;
+	int rc = 0;
+
+	switch (l1sap->u.info.type) {
+	case PRIM_INFO_ACTIVATE:
+	case PRIM_INFO_DEACTIVATE:
+	case PRIM_INFO_MODIFY:
+		chan_nr = l1sap->u.info.u.act_req.chan_nr;
+		u8Tn = L1SAP_CHAN2TS(chan_nr);
+		ss = l1sap_chan2ss(chan_nr);
+		lchan = &trx->ts[u8Tn].lchan[ss];
+		if (l1sap->u.info.type == PRIM_INFO_ACTIVATE)
+			l1if_rsl_chan_act(lchan);
+		else if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
+			if (lchan->ho.active == HANDOVER_WAIT_FRAME)
+				l1if_rsl_chan_mod(lchan);
+			else
+				l1if_rsl_mode_modify(lchan);
+		} else if (l1sap->u.info.u.act_req.sacch_only)
+			l1if_rsl_deact_sacch(lchan);
+		else
+			l1if_rsl_chan_rel(lchan);
+		msgb_free(msg);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
+			l1sap->u.info.type);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
@@ -551,6 +589,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
 		rc = ph_data_req(trx, msg, l1sap);
+		break;
+	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
+		rc = mph_info_req(trx, msg, l1sap);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d\n",
