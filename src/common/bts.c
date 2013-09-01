@@ -611,3 +611,10 @@ int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
 {
 	return trx->ms_power_control == 1;
 }
+
+struct gsm_time *get_time(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts->role;
+
+	return &btsb->gsm_time;
+}
