@@ -17,7 +17,7 @@ int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
 		    uint8_t ra, uint8_t acc_delay);
 int rsl_tx_est_ind(struct gsm_lchan *lchan, uint8_t link_id, uint8_t *data, int len);
 
-int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime);
+int rsl_tx_chan_act_ack(struct gsm_lchan *lchan);
 int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan);
