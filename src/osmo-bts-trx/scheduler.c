@@ -2496,6 +2496,15 @@ int trx_sched_set_lchan(struct trx_l1h *l1h, uint8_t chan_nr, uint8_t link_id,
 			if (active)
 				memset(chan_state, 0, sizeof(*chan_state));
 			chan_state->active = active;
+			/* free burst memory, to cleanly start with burst 0 */
+			if (chan_state->dl_bursts) {
+				talloc_free(chan_state->dl_bursts);
+				chan_state->dl_bursts = NULL;
+			}
+			if (chan_state->ul_bursts) {
+				talloc_free(chan_state->ul_bursts);
+				chan_state->ul_bursts = NULL;
+			}
 		}
 	}
 
