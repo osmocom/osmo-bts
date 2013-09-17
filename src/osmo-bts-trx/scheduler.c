@@ -1189,7 +1189,7 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (rc) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad AB frame at fn=%u "
 			"(%u/51)\n", fn, fn % 51);
-		return 0;
+//		return 0;
 	}
 
 	/* compose primitive */

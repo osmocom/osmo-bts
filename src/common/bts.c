@@ -216,8 +216,11 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	/* FIXME: implement max queue length */
+	if (btsb->agch_queue_count >= 30)
+		return -ENOMEM;
+
 	msgb_enqueue(&btsb->agch_queue, msg);
+	btsb->agch_queue_count++;
 
 	return 0;
 }
@@ -225,8 +228,11 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct msgb *msg = msgb_dequeue(&btsb->agch_queue);
 
-	return msgb_dequeue(&btsb->agch_queue);
+	if (msg)
+		btsb->agch_queue_count--;
+	return msg;
 }
 
 int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
