@@ -6,7 +6,7 @@ EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
 	misc/sysmobts_eeprom.h femtobts.h hw_misc.h l1_fwd.h l1_if.h \
 	l1_transp.h eeprom.h utils.h
 
-bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr
+bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr sysmobts-util
 
 COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c calib_file.c \
 		 eeprom.c calib_fixup.c utils.c
@@ -21,3 +21,5 @@ l1fwd_proxy_SOURCES = l1_fwd_main.c l1_transp_hw.c
 l1fwd_proxy_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
 
 sysmobts_mgr_SOURCES = misc/sysmobts_mgr.c misc/sysmobts_misc.c misc/sysmobts_par.c
+
+sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c
