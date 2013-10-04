@@ -112,6 +112,15 @@ int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 	case SYSMOBTS_PAR_BOOTS:
 		*ret = ee->boot_count;
 		break;
+	case SYSMOBTS_PAR_MODEL_NR:
+		*ret = ee->model_nr;
+		break;
+	case SYSMOBTS_PAR_MODEL_FLAGS:
+		*ret = ee->model_flags;
+		break;
+	case SYSMOBTS_PAR_TRX_NR:
+		*ret = ee->trx_nr;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -147,6 +156,15 @@ int sysmobts_par_set_int(enum sysmobts_par par, int val)
 		break;
 	case SYSMOBTS_PAR_BOOTS:
 		ee->boot_count = val;
+		break;
+	case SYSMOBTS_PAR_MODEL_NR:
+		ee->model_nr = val;
+		break;
+	case SYSMOBTS_PAR_MODEL_FLAGS:
+		ee->model_flags = val;
+		break;
+	case SYSMOBTS_PAR_TRX_NR:
+		ee->trx_nr = val;
 		break;
 	default:
 		return -EINVAL;
