@@ -114,7 +114,9 @@ void sysmobts_check_temp(void)
 	int i, rc;
 
 	for (i = 0; i < ARRAY_SIZE(temp_data); i++) {
-		temp_old[i] = sysmobts_par_get_int(temp_data[i].ee_par) * 1000;
+		int ret;
+		rc = sysmobts_par_get_int(temp_data[i].ee_par, &ret);
+		temp_old[i] = ret * 1000;
 		temp_hi[i] = sysmobts_temp_get(temp_data[i].sensor,
 						SYSMOBTS_TEMP_HIGHEST);
 		temp_cur[i] = sysmobts_temp_get(temp_data[i].sensor,
@@ -151,18 +153,18 @@ static time_t last_update;
 int sysmobts_update_hours(void)
 {
 	time_t now = time(NULL);
-	int op_hrs;
+	int rc, op_hrs;
 
 	/* first time after start of manager program */
 	if (last_update == 0) {
 		last_update = now;
 
-		op_hrs = sysmobts_par_get_int(SYSMOBTS_PAR_HOURS);
-		if (op_hrs < 0) {
+		rc = sysmobts_par_get_int(SYSMOBTS_PAR_HOURS, &op_hrs);
+		if (rc < 0) {
 			LOGP(DTEMP, LOGL_ERROR, "Unable to read "
-			     "operational hours: %d (%s)\n", op_hrs,
+			     "operational hours: %d (%s)\n", rc,
 			     strerror(errno));
-			return op_hrs;
+			return rc;
 		}
 
 		LOGP(DTEMP, LOGL_INFO, "Total hours of Operation: %u\n",
@@ -172,13 +174,12 @@ int sysmobts_update_hours(void)
 	}
 
 	if (now >= last_update + 3600) {
-		int rc;
-		op_hrs = sysmobts_par_get_int(SYSMOBTS_PAR_HOURS);
-		if (op_hrs < 0) {
+		rc = sysmobts_par_get_int(SYSMOBTS_PAR_HOURS, &op_hrs);
+		if (rc < 0) {
 			LOGP(DTEMP, LOGL_ERROR, "Unable to read "
-			     "operational hours: %d (%s)\n", op_hrs,
+			     "operational hours: %d (%s)\n", rc,
 			     strerror(errno));
-			return op_hrs;
+			return rc;
 		}
 
 		/* number of hours to increase */

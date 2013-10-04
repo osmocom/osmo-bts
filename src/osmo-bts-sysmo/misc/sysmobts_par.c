@@ -83,9 +83,8 @@ static int set_eeprom(struct sysmobts_eeprom *ee)
 	return 0;
 }
 
-int sysmobts_par_get_int(enum sysmobts_par par)
+int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 {
-	int ret;
 	struct sysmobts_eeprom *ee = get_eeprom(0);
 
 	if (!ee)
@@ -96,31 +95,31 @@ int sysmobts_par_get_int(enum sysmobts_par par)
 
 	switch (par) {
 	case SYSMOBTS_PAR_CLK_FACTORY:
-		ret = ee->clk_cal_fact;
+		*ret = ee->clk_cal_fact;
 		break;
 	case SYSMOBTS_PAR_TEMP_DIG_MAX:
-		ret = ee->temp1_max;
+		*ret = ee->temp1_max;
 		break;
 	case SYSMOBTS_PAR_TEMP_RF_MAX:
-		ret = ee->temp2_max;
+		*ret = ee->temp2_max;
 		break;
 	case SYSMOBTS_PAR_SERNR:
-		ret = ee->serial_nr;
+		*ret = ee->serial_nr;
 		break;
 	case SYSMOBTS_PAR_HOURS:
-		ret = ee->operational_hours;
+		*ret = ee->operational_hours;
 		break;
 	case SYSMOBTS_PAR_BOOTS:
-		ret = ee->boot_count;
+		*ret = ee->boot_count;
 		break;
 	default:
 		return -EINVAL;
 	}
 
-	return ret;
+	return 0;
 }
 
-int sysmobts_par_set_int(enum sysmobts_par par, unsigned int val)
+int sysmobts_par_set_int(enum sysmobts_par par, int val)
 {
 	struct sysmobts_eeprom *ee = get_eeprom(1);
 
