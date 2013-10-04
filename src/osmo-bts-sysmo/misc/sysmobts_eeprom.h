@@ -12,8 +12,16 @@ struct sysmobts_eeprom {		/* offset */
 	uint32_t serial_nr;		/* 20-23 */
 	uint32_t operational_hours;	/* 24-27 */
 	uint32_t boot_count;		/* 28-31 */
-	uint8_t _pad1[89];		/* 32-127 */
+	uint16_t model_nr;		/* 32-33 */
+	uint16_t model_flags;		/* 34-35 */
+	uint8_t trx_nr;			/* 36 */
+	uint8_t _pad1[84];		/* 37-120 */
 	uint8_t gpg_key[128];		/* 121-249 */
 } __attribute__((packed));
+
+enum sysmobts_model_number {
+	MODEL_SYSMOBTS_1020	= 1002,
+	MODEL_SYSMOBTS_2050	= 2050,
+};
 
 #endif
