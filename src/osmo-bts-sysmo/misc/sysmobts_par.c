@@ -29,11 +29,27 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <osmocom/core/utils.h>
+
 #include "sysmobts_eeprom.h"
 #include "sysmobts_par.h"
 
 #define EEPROM_PATH	"/sys/devices/platform/i2c_davinci.1/i2c-1/1-0050/eeprom"
 
+const struct value_string sysmobts_par_names[_NUM_SYSMOBTS_PAR+1] = {
+	{ SYSMOBTS_PAR_MAC,		"ethaddr" },
+	{ SYSMOBTS_PAR_CLK_FACTORY,	"clk-factory" },
+	{ SYSMOBTS_PAR_TEMP_DIG_MAX,	"temp-dig-max" },
+	{ SYSMOBTS_PAR_TEMP_RF_MAX,	"temp-rf-max" },
+	{ SYSMOBTS_PAR_SERNR,		"serial-nr" },
+	{ SYSMOBTS_PAR_HOURS, 		"hours-running" },
+	{ SYSMOBTS_PAR_BOOTS, 		"boot-count" },
+	{ SYSMOBTS_PAR_KEY, 		"key" },
+	{ SYSMOBTS_PAR_MODEL_NR, 	"model-nr" },
+	{ SYSMOBTS_PAR_MODEL_FLAGS, 	"model-flags" },
+	{ SYSMOBTS_PAR_TRX_NR, 		"trx-nr" },
+	{ 0, NULL }
+};
 
 static struct {
 	int read;

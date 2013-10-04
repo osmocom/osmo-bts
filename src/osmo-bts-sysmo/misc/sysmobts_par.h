@@ -1,7 +1,7 @@
 #ifndef _SYSMOBTS_PAR_H
 #define _SYSMOBTS_PAR_H
 
-#include <stdint.h>
+#include <osmocom/core/utils.h>
 
 enum sysmobts_par {
 	SYSMOBTS_PAR_MAC,
@@ -18,6 +18,7 @@ enum sysmobts_par {
 	_NUM_SYSMOBTS_PAR
 };
 
+extern const struct value_string sysmobts_par_names[_NUM_SYSMOBTS_PAR+1];
 
 int sysmobts_par_get_int(enum sysmobts_par par, int *ret);
 int sysmobts_par_set_int(enum sysmobts_par par, int val);
