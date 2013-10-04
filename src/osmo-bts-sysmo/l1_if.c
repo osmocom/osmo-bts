@@ -57,6 +57,7 @@
 #include "l1_if.h"
 #include "l1_transp.h"
 #include "hw_misc.h"
+#include "misc/sysmobts_par.h"
 
 extern int pcu_direct;
 
@@ -1243,6 +1244,29 @@ int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	return 0;
 }
 
+/* get those femtol1_hdl.hw_info elements that sre in EEPROM */
+static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
+{
+	int val, rc;
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
+	if (rc < 0)
+		return rc;
+	fl1h->hw_info.model_nr = val;
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_FLAGS, &val);
+	if (rc < 0)
+		return rc;
+	fl1h->hw_info.model_flags = val;
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val);
+	if (rc < 0)
+		return rc;
+	fl1h->hw_info.trx_nr = val;
+
+	return 0;
+}
+
 struct femtol1_hdl *l1if_open(void *priv)
 {
 	struct femtol1_hdl *fl1h;
@@ -1271,9 +1295,18 @@ struct femtol1_hdl *l1if_open(void *priv)
 	fl1h->ul_power_target = -75;	/* dBm default */
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
 	fl1h->min_qual_norm = MIN_QUAL_NORM;
-	/* default clock source: OCXO */
+	get_hwinfo_eeprom(fl1h);
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
-	fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
+	if (fl1h->hw_info.model_nr == 2050) {
+		/* On the sysmoBTS 2050, we don't have an OCXO but
+		 * always slave our clock to the GPS receiver */
+		fl1h->clk_src = SuperFemto_ClkSrcId_GpsPps;
+		LOGP(DL1C, LOGL_INFO, "Clock source defaulting to GPS 1PPS "
+			"on sysmoBTS 2050\n");
+	} else {
+		/* default clock source: OCXO */
+		fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
+	}
 #else
 	fl1h->clk_src = SF_CLKSRC_OCXO;
 #endif

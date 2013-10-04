@@ -63,9 +63,14 @@ struct femtol1_hdl {
 	struct osmo_wqueue write_q[_NUM_MQ_WRITE];
 
 	struct {
+		/* from DSP/FPGA after L1 Init */
 		uint8_t dsp_version[3];
 		uint8_t fpga_version[3];
 		uint32_t band_support;	/* bitmask of GSM_BAND_* */
+		/* from EEPROM */
+		uint16_t model_nr;
+		uint16_t model_flags;
+		uint8_t trx_nr;
 	} hw_info;
 
 	int fixup_needed;
