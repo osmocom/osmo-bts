@@ -277,7 +277,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
 	}
 
-	femto_band = sysmobts_select_femto_band(trx->bts, trx->arfcn);
+	femto_band = sysmobts_select_femto_band(trx, trx->arfcn);
 	if (femto_band < 0) {
 		LOGP(DL1C, LOGL_ERROR, "Unsupported GSM band %s\n",
 			gsm_band_name(trx->bts->band));
