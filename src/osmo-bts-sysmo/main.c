@@ -48,6 +48,7 @@
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
+#include "utils.h"
 #include "eeprom.h"
 #include "l1_if.h"
 
@@ -63,6 +64,7 @@ static int rt_prio = -1;
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct femtol1_hdl *fl1h;
+	int rc;
 
 	fl1h = l1if_open(bts->c0);
 	if (!fl1h) {
@@ -72,7 +74,14 @@ int bts_model_init(struct gsm_bts *bts)
 	fl1h->dsp_trace_f = dsp_trace;
 
 	bts->c0->role_bts.l1h = fl1h;
-	bts->c0->nominal_power = 23;
+
+	rc = sysmobts_get_nominal_power(bts->c0);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot determine nominal "
+		     "ansmit power\n");
+		return -EIO;
+	}
+	bts->c0->nominal_power = sysmobts_get_nominal_power(bts->c0);
 
 	bts_model_vty_init(bts);
 

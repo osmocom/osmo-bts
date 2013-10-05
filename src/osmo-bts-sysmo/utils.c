@@ -95,3 +95,23 @@ int sysmobts_select_femto_band(struct gsm_bts_trx *trx, uint16_t arfcn)
 	/* give up */
 	return -1;
 }
+
+int sysmobts_get_nominal_power(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	switch (fl1h->hw_info.model_nr) {
+	case 0:
+	case 0xffff:
+		/* old units have empty flash where the model number is
+		 * stored in later units */
+	case 1002:
+		/* 200mW (23 dBm) nominal power */
+		return 23;
+	case 2050:
+		/* 5W(39dBm) per TRX. This could be raiesd to 10W(40dBm)
+		 * if the second TRX is not used. */
+		return 37;
+	}
+	return -1;
+}
