@@ -58,6 +58,7 @@
 #include "l1_transp.h"
 #include "hw_misc.h"
 #include "misc/sysmobts_par.h"
+#include "eeprom.h"
 
 extern int pcu_direct;
 
@@ -1110,8 +1111,6 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 		fl1h->hw_info.band_support |= GSM_BAND_1800;
 	if (sic->rfBand.pcs1900)
 		fl1h->hw_info.band_support |= GSM_BAND_1900;
-#else
-	fl1h->hw_info.band_support |= GSM_BAND_850 | GSM_BAND_900 | GSM_BAND_1800 | GSM_BAND_1900;
 #endif
 
 	if (!(fl1h->hw_info.band_support & trx->bts->band))
@@ -1247,6 +1246,7 @@ int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 /* get those femtol1_hdl.hw_info elements that sre in EEPROM */
 static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 {
+	eeprom_SysInfo_t sysinfo;
 	int val, rc;
 
 	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
@@ -1263,6 +1263,25 @@ static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 	if (rc < 0)
 		return rc;
 	fl1h->hw_info.trx_nr = val;
+
+	rc = eeprom_ReadSysInfo(&sysinfo);
+	if (rc != EEPROM_SUCCESS) {
+		/* some early units don't yet have the EEPROM
+		 * information structure */
+		LOGP(DL1C, LOGL_ERROR, "Unable to read band support "
+			"from EEPROM, assuming all bands\n");
+		fl1h->hw_info.band_support = GSM_BAND_850 | GSM_BAND_900 | GSM_BAND_1800 | GSM_BAND_1900;
+		return 0;
+	}
+
+	if (sysinfo.u8GSM850)
+		fl1h->hw_info.band_support |= GSM_BAND_850;
+	if (sysinfo.u8GSM900)
+		fl1h->hw_info.band_support |= GSM_BAND_900;
+	if (sysinfo.u8DCS1800)
+	        fl1h->hw_info.band_support |= GSM_BAND_1800;
+	if (sysinfo.u8PCS1900)
+		fl1h->hw_info.band_support |= GSM_BAND_1900;
 
 	return 0;
 }
