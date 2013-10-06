@@ -25,6 +25,7 @@ PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.3.9)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty)
 PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 0.0.7)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
 
 AC_MSG_CHECKING([whether to enable sysmocom-bts hardware support])
 AC_ARG_ENABLE(sysmocom-bts,
