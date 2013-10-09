@@ -411,7 +411,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 }
 
 DEFUN(set_tx_power, set_tx_power_cmd,
-	"trx <0-0> tx-power <-110-23>",
+	"trx <0-0> tx-power <-110-100>",
 	TRX_STR
 	"Set transmit power (override BSC)\n"
 	"Transmit power in dBm\n")
