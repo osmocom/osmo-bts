@@ -45,6 +45,7 @@
 
 #include "femtobts.h"
 #include "l1_if.h"
+#include "utils.h"
 
 
 extern int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state);
@@ -240,6 +241,19 @@ DEFUN(cfg_trx_min_qual_norm, cfg_trx_min_qual_norm_cmd,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
+	"nominal-tx-power <0-100>",
+	"Set the nominal transmit output power in dBm\n"
+	"Nominal transmit output power level in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->nominal_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* runtime */
 
@@ -508,6 +522,9 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
+	if (trx->nominal_power != sysmobts_get_nominal_power(trx))
+		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
+			VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
@@ -576,6 +593,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 
 	return 0;
 }
