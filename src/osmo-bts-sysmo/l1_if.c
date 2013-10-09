@@ -1042,6 +1042,24 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	return 0;
 }
 
+static int get_clk_cal(struct femtol1_hdl *hdl)
+{
+	switch (hdl->clk_src) {
+	case SuperFemto_ClkSrcId_Ocxo:
+	case SuperFemto_ClkSrcId_Tcxo:
+		/* only for those on-board clocks it makes sense to use
+		 * the calibration value */
+		return hdl->clk_cal;
+	default:
+		/* external clocks like GPS are taken 1:1 without any
+		 * modification by a local calibration value */
+		LOGP(DL1C, LOGL_INFO, "Ignoring Clock Calibration for "
+		     "selected %s clock\n",
+		     get_value_string(femtobts_clksrc_names, hdl->clk_src));
+		return 0;
+	}
+}
+
 /* activate or de-activate the entire RF-Frontend */
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
@@ -1051,7 +1069,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 	if (on) {
 		sysp->id = SuperFemto_PrimId_ActivateRfReq;
 #ifdef HW_SYSMOBTS_V1
-		sysp->u.activateRfReq.u12ClkVc = hdl->clk_cal;
+		sysp->u.activateRfReq.u12ClkVc = get_clk_cal(hdl);
 #else
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(0,2,0)
 		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
@@ -1064,14 +1082,14 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 #else
 		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
 #endif /* 2.1.0 */
-		sysp->u.activateRfReq.rfTrx.iClkCor = hdl->clk_cal;
+		sysp->u.activateRfReq.rfTrx.iClkCor = get_clk_cal(hdl);
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
 		sysp->u.activateRfReq.rfRx.u8ClkSrc = hdl->clk_src;
 #else
 		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
 #endif /* 2.1.0 */
-		sysp->u.activateRfReq.rfRx.iClkCor = hdl->clk_cal;
+		sysp->u.activateRfReq.rfRx.iClkCor = get_clk_cal(hdl);
 #endif /* API 2.4.0 */
 #endif /* !HW_SYSMOBTS_V1 */
 	} else {
