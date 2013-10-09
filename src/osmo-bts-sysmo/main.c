@@ -81,7 +81,7 @@ int bts_model_init(struct gsm_bts *bts)
 		     "ansmit power\n");
 		return -EIO;
 	}
-	bts->c0->nominal_power = sysmobts_get_nominal_power(bts->c0);
+	bts->c0->nominal_power = rc;
 
 	bts_model_vty_init(bts);
 
