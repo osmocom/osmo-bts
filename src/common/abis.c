@@ -177,12 +177,12 @@ static int get_mac_addr(const char *dev_name, uint8_t *mac_out)
 	memset(&ifr, 0, sizeof(ifr));
 	memcpy(&ifr.ifr_name, dev_name, sizeof(ifr.ifr_name));
 	rc = ioctl(fd, SIOCGIFHWADDR, &ifr);
+	close(fd);
+
 	if (rc < 0)
 		return rc;
 
 	memcpy(mac_out, ifr.ifr_hwaddr.sa_data, 6);
-
-	close(fd);
 
 	return 0;
 }
