@@ -1044,6 +1044,9 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 
 static int get_clk_cal(struct femtol1_hdl *hdl)
 {
+#ifdef FEMTOBTS_API_VERSION
+	return hdl->clk_cal;
+#else
 	switch (hdl->clk_src) {
 	case SuperFemto_ClkSrcId_Ocxo:
 	case SuperFemto_ClkSrcId_Tcxo:
@@ -1058,6 +1061,7 @@ static int get_clk_cal(struct femtol1_hdl *hdl)
 		     get_value_string(femtobts_clksrc_names, hdl->clk_src));
 		return 0;
 	}
+#endif
 }
 
 /* activate or de-activate the entire RF-Frontend */
