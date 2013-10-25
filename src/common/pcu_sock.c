@@ -538,6 +538,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 		return -EINVAL;
 
 	lchan = trx->ts[act_req->ts_nr].lchan;
+	lchan->rel_act_kind = LCHAN_REL_ACT_PCU;
 	if (lchan->type != GSM_LCHAN_PDTCH) {
 		LOGP(DPCU, LOGL_ERROR, "Lchan is not of type PDCH, but %d.\n",
 			lchan->type);

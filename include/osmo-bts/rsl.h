@@ -1,6 +1,15 @@
 #ifndef _RSL_H
 #define _RSL_H
 
+/**
+ * What kind of release/activation is done? A silent one for
+ * the PDCH or one triggered through RSL?
+ */
+enum {
+	LCHAN_REL_ACT_RSL,
+	LCHAN_REL_ACT_PCU,
+};
+
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg);
 int rsl_tx_rf_res(struct gsm_bts_trx *trx);
 int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,

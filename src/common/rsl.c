@@ -489,6 +489,12 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
+		LOGP(DRSL, LOGL_NOTICE, "%s not sending REL ACK\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
+
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx RF CHAN REL ACK\n", gsm_lchan_name(lchan));
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
@@ -507,6 +513,12 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
+
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
+		LOGP(DRSL, LOGL_NOTICE, "%s not sending CHAN ACT ACK\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
 
@@ -530,6 +542,12 @@ int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
+		LOGP(DRSL, LOGL_DEBUG, "%s not sending CHAN ACT NACK.\n",
+			gsm_lchan_name(lchan));
+		return 0;
+	}
 
 	LOGP(DRSL, LOGL_NOTICE,
 		"%s Sending Channel Activated NACK: cause = 0x%02x\n",
@@ -763,6 +781,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		dch->chan_nr, type, lchan->tch_mode);
 
 	/* actually activate the channel in the BTS */
+	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	return  bts_model_rsl_chan_act(msg->lchan, &tp);
 }
 
@@ -778,6 +797,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 		msgb_queue_flush(&lchan->dl_tch_queue);
 	}
 
+	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	rc = bts_model_rsl_chan_rel(lchan);
 
 	lapdm_channel_exit(&lchan->lapdm_ch);
