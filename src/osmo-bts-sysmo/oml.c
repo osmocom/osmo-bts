@@ -1472,8 +1472,12 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 {
 	/* A duplicate RF Release Request, ignore it */
-	if (lchan->state == LCHAN_S_REL_REQ)
+	if (lchan->state == LCHAN_S_REL_REQ) {
+		LOGP(DL1C, LOGL_ERROR, "%s already in release request state.\n",
+			gsm_lchan_name(lchan));
 		return 0;
+	}
+
 	lchan_deactivate(lchan);
 	return 0;
 }
