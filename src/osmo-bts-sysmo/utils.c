@@ -29,6 +29,22 @@
 #include "femtobts.h"
 #include "l1_if.h"
 
+int band_femto2osmo(GsmL1_FreqBand_t band)
+{
+	switch (band) {
+	case GsmL1_FreqBand_850:
+		return GSM_BAND_850;
+	case GsmL1_FreqBand_900:
+		return GSM_BAND_900;
+	case GsmL1_FreqBand_1800:
+		return GSM_BAND_1800;
+	case GsmL1_FreqBand_1900:
+		return GSM_BAND_1900;
+	default:
+		return -1;
+	}
+}
+
 static int band_osmo2femto(struct gsm_bts_trx *trx, enum gsm_band osmo_band)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);

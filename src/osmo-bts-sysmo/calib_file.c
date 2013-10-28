@@ -117,6 +117,20 @@ static const unsigned int arrsize_by_band[] = {
 	[GsmL1_FreqBand_1900] = 299
 };
 
+/* determine next calibration file index based on supported bands */
+static int next_calib_file_idx(uint32_t band_mask, int last_idx)
+{
+	int i;
+
+	for (i = last_idx+1; i < ARRAY_SIZE(calib_files); i++) {
+		int band = band_femto2osmo(calib_files[i].band);
+		if (band < 0)
+			continue;
+		if (band_mask & band);
+			return i;
+	}
+	return -1;
+}
 
 static float read_float(FILE *in)
 {
@@ -384,15 +398,15 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct calib_send_state *st = &fl1h->st;
 
-	LOGP(DL1C, LOGL_DEBUG, "L1 calibration table %s loaded (src: %s)\n",
+	LOGP(DL1C, LOGL_NOTICE, "L1 calibration table %s loaded (src: %s)\n",
 		calib_files[st->last_file_idx].fname,
 		fl1h->calib_path ? "file" : "eeprom");
 
 	msgb_free(l1_msg);
 
-	st->last_file_idx++;
-
-	if (st->last_file_idx < ARRAY_SIZE(calib_files))
+	st->last_file_idx = next_calib_file_idx(fl1h->hw_info.band_support,
+						st->last_file_idx);
+	if (st->last_file_idx >= 0)
 		return calib_file_send(fl1h,
 				       &calib_files[st->last_file_idx]);
 
@@ -409,7 +423,12 @@ int calib_load(struct femtol1_hdl *fl1h)
 	LOGP(DL1C, LOGL_ERROR, "L1 calibration is not supported on pre 2.4.0 firmware.\n");
 	return -1;
 #else
-	return calib_file_send(fl1h, &calib_files[0]);
+	int idx = next_calib_file_idx(fl1h->hw_info.band_support, -1);
+	if (idx < 0) {
+		LOGP(DL1C, LOGL_ERROR, "No band_support?!?\n");
+		return -1;
+	}
+	return calib_file_send(fl1h, &calib_files[idx]);
 #endif
 }
 
