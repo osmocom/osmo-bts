@@ -297,8 +297,12 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 		rx->bUplink = desc->uplink;
 
 		eerr = eeprom_ReadRxCal(desc->band, desc->uplink, &rx_cal);
-		if (eerr != EEPROM_SUCCESS)
+		if (eerr != EEPROM_SUCCESS) {
+			LOGP(DL1C, LOGL_ERROR, "Error reading RxCalibration "
+			     "from EEPROM, band=%d, ul=%d, err=%d\n",
+			     desc->band, desc->uplink, eerr);
 			return -EIO;
+		}
 
 		rx->fExtRxGain = rx_cal.fExtRxGain;
 		rx->fRxMixGainCorr = rx_cal.fRxMixGainCorr;
@@ -325,8 +329,12 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 		tx->freqBand = desc->band;
 
 		eerr = eeprom_ReadTxCal(desc->band, &tx_cal);
-		if (eerr != EEPROM_SUCCESS)
+		if (eerr != EEPROM_SUCCESS) {
+			LOGP(DL1C, LOGL_ERROR, "Error reading TxCalibration "
+			     "from EEPROM, band=%d, err=%d\n",
+			     desc->band, eerr);
 			return -EIO;
+		}
 
 		for (i = 0; i < ARRAY_SIZE(tx->fTxGainGmsk); i++)
 			tx->fTxGainGmsk[i] = tx_cal.fTxGainGmsk[i];
