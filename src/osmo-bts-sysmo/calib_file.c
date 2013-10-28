@@ -374,6 +374,7 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
 static int calib_file_send(struct femtol1_hdl *fl1h,
 			   const struct calib_file_desc *desc)
 {
+	struct calib_send_state *st = &fl1h->st;
 	struct msgb *msg;
 	int rc;
 
@@ -385,7 +386,16 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 		rc = calib_eeprom_read(desc, msgb_sysprim(msg));
 	if (rc < 0) {
 		msgb_free(msg);
-		return rc;
+
+		/* still, we'd like to continue trying to load
+		 * calibration for all other bands */
+		st->last_file_idx = next_calib_file_idx(fl1h->hw_info.band_support,
+						st->last_file_idx);
+		if (st->last_file_idx >= 0)
+			return calib_file_send(fl1h,
+					       &calib_files[st->last_file_idx]);
+		else
+			return rc;
 	}
 	calib_fixup_rx(fl1h, msgb_sysprim(msg));
 
