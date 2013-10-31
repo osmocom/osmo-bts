@@ -1,4 +1,4 @@
 chdir /tmp
 screen -t BTS 0 /etc/osmocom/respawn.sh /usr/bin/sysmobts -c /etc/osmocom/osmo-bts.cfg -r 1 -M
-screen -t PCU 1 /etc/osmocom/respawn-only.sh /usr/bin/osmo-pcu -c /etc/osmocom/osmo-pcu.cfg
+screen -t PCU 1 /etc/osmocom/respawn-only.sh /usr/bin/osmo-pcu -c /etc/osmocom/osmo-pcu.cfg -e
 detach
