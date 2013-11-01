@@ -497,6 +497,12 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx RF CHAN REL ACK\n", gsm_lchan_name(lchan));
 
+	/*
+	 * Free the LAPDm resources now that the BTS
+	 * has released all the resources.
+	 */
+	lapdm_channel_exit(&lchan->lapdm_ch);
+
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
 		return -ENOMEM;
@@ -799,8 +805,6 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	rc = bts_model_rsl_chan_rel(lchan);
-
-	lapdm_channel_exit(&lchan->lapdm_ch);
 
 	return rc;
 }
@@ -1569,6 +1573,13 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 {
 	struct gsm_lchan *lchan = ctx;
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
+
+	if (lchan->state != LCHAN_S_ACTIVE) {
+		LOGP(DRSL, LOGL_INFO, "%s(%s) is not active . Dropping message.\n",
+			gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
+		msgb_free(msg);
+		return 0;
+	}
 
 	msg->trx = lchan->ts->trx;
 
