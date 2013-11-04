@@ -44,6 +44,7 @@
 	(OSMO_MAX(sizeof(SuperFemto_Prim_t), sizeof(GsmL1_Prim_t)) + 128)
 
 enum l1prim_type {
+	L1P_T_INVALID, /* this must be 0 to detect uninitialized elements */
 	L1P_T_REQ,
 	L1P_T_CONF,
 	L1P_T_IND,

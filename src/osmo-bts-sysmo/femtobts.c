@@ -106,6 +106,16 @@ const enum l1prim_type femtobts_sysprim_type[SuperFemto_PrimId_NUM] = {
 	[SuperFemto_PrimId_RfClockSetupCnf]	= L1P_T_CONF,
 	[SuperFemto_PrimId_Layer1ResetReq]	= L1P_T_REQ,
 	[SuperFemto_PrimId_Layer1ResetCnf]	= L1P_T_CONF,
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
+	[SuperFemto_PrimId_GetTxCalibTblReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_GetTxCalibTblCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_SetTxCalibTblReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_SetTxCalibTblCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_GetRxCalibTblReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_GetRxCalibTblCnf]	= L1P_T_CONF,
+	[SuperFemto_PrimId_SetRxCalibTblReq]	= L1P_T_REQ,
+	[SuperFemto_PrimId_SetRxCalibTblCnf]	= L1P_T_CONF,
+#endif
 };
 
 const struct value_string femtobts_sysprim_names[SuperFemto_PrimId_NUM+1] = {
