@@ -17,6 +17,10 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state);
 /* First initialization of MO, does _not_ generate state changes */
 void oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state);
 
+/* Update admin state and send ACK/NACK */
+int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
+		       int success);
+
 /* Transmit STATE CHG REP even if there was no state change */
 int oml_tx_state_changed(struct gsm_abis_mo *mo);
 

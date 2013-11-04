@@ -1103,6 +1103,56 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 	return l1if_req_compl(hdl, msg, activate_rf_compl_cb);
 }
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	GsmL1_Status_t status;
+
+	status = sysp->u.muteRfCnf.status;
+
+	if (status != GsmL1_Status_Success) {
+		LOGP(DL1C, LOGL_ERROR, "Rx RF-MUTE.conf with status %s\n",
+		     get_value_string(femtobts_l1status_names, status));
+		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 0);
+	} else {
+		LOGP(DL1C, LOGL_INFO, "Rx RF-MUTE.conf with status=%s\n",
+		     get_value_string(femtobts_l1status_names, status));
+		sysmobts_led_set(LED_RF_ACTIVE, !fl1h->last_rf_mute[0]);
+		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 1);
+	}
+
+	msgb_free(resp);
+
+	return 0;
+}
+#endif
+
+/* mute/unmute RF time slots */
+int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8])
+{
+	struct msgb *msg = sysp_msgb_alloc();
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+
+	LOGP(DL1C, LOGL_INFO, "Tx RF-MUTE.req (%d, %d, %d, %d, %d, %d, %d, %d)\n",
+	     mute[0], mute[1], mute[2], mute[3],
+	     mute[4], mute[5], mute[6], mute[7]
+	    );
+
+#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(3,6,0)
+	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
+	return -ENOTSUP;
+#else
+	sysp->id = SuperFemto_PrimId_MuteRfReq;
+	memcpy(sysp->u.muteRfReq.u8Mute, mute, sizeof(sysp->u.muteRfReq.u8Mute));
+	/* save for later use */
+	memcpy(hdl->last_rf_mute, mute, sizeof(hdl->last_rf_mute));
+
+	return l1if_req_compl(hdl, msg, mute_rf_compl_cb);
+#endif /* < 3.6.0 */
+}
+
 /* call-back on arrival of DSP+FPGA version + band capability */
 static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {

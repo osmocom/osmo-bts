@@ -326,6 +326,12 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb);
 }
 
+int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
+		       int success)
+{
+	return 0;
+}
+
 static int ts_connect(struct gsm_bts_trx_ts *ts)
 {
 	struct msgb *msg = l1p_msgb_alloc();
