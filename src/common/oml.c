@@ -299,6 +299,11 @@ int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, msg, NM_MT_CHG_ADM_STATE_ACK);
 }
 
+int oml_mo_statechg_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
+{
+	return oml_mo_fom_ack_nack(mo, NM_MT_CHG_ADM_STATE, nack_cause);
+}
+
 int oml_mo_opstart_ack(struct gsm_abis_mo *mo)
 {
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, 0);

@@ -326,10 +326,31 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb);
 }
 
+static int trx_rf_lock(struct gsm_bts_trx *trx, int locked)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	uint8_t mute[8];
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mute); ++i)
+		mute[i] = locked ? 1 : 0;
+
+	return l1if_mute_rf(fl1h, mute);
+}
+
 int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
 		       int success)
 {
-	return 0;
+	if (success) {
+		/* assume mute_state[i] == mute_state[k] */
+		mo->nm_state.administrative =
+			mute_state[0] ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+		mo->procedure_pending = 0;
+		return oml_mo_statechg_ack(mo);
+	} else {
+		mo->procedure_pending = 0;
+		return oml_mo_statechg_nack(mo, NM_NACK_REQ_NOT_GRANT);
+	}
 }
 
 static int ts_connect(struct gsm_bts_trx_ts *ts)
@@ -1461,9 +1482,50 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			    void *obj, uint8_t adm_state)
 {
-	/* blindly accept all state changes */
-	mo->nm_state.administrative = adm_state;
-	return oml_mo_statechg_ack(mo);
+	int rc = -EINVAL;
+	int granted = 0;
+
+	switch (mo->obj_class) {
+	case NM_OC_RADIO_CARRIER:
+
+		if (mo->procedure_pending) {
+			LOGP(DL1C, LOGL_ERROR, "Discarding adm change command: "
+			     "pending procedure on RC %d\n",
+			     ((struct gsm_bts_trx *)obj)->nr);
+			return 0;
+		}
+		mo->procedure_pending = 1;
+		switch (adm_state) {
+		case NM_STATE_LOCKED:
+			rc = trx_rf_lock(obj, 1);
+			break;
+		case NM_STATE_UNLOCKED:
+			rc = trx_rf_lock(obj, 0);
+			break;
+		default:
+			granted = 1;
+			break;
+		}
+
+		if (!granted && rc == 0)
+			/* in progress, will send ack/nack after completion */
+			return 0;
+
+		mo->procedure_pending = 0;
+
+		break;
+	default:
+		/* blindly accept all state changes */
+		granted = 1;
+		break;
+	}
+
+	if (granted) {
+		mo->nm_state.administrative = adm_state;
+		return oml_mo_statechg_ack(mo);
+	} else
+		return oml_mo_statechg_nack(mo, NM_NACK_REQ_NOT_GRANT);
+
 }
 int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 {
