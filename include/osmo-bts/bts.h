@@ -3,6 +3,12 @@
 
 #include <osmo-bts/gsm_data.h>
 
+enum bts_global_status {
+	BTS_STATUS_RF_ACTIVE,
+	BTS_STATUS_RF_MUTE,
+	BTS_STATUS_LAST,
+};
+
 extern void *tall_bts_ctx;
 
 int bts_init(struct gsm_bts *bts);
@@ -26,6 +32,8 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan, struct gsm_time *g_time);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);
+
+void bts_update_status(enum bts_global_status which, int on);
 
 #endif /* _BTS_H */
 

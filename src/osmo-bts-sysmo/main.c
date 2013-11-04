@@ -51,6 +51,7 @@
 #include "utils.h"
 #include "eeprom.h"
 #include "l1_if.h"
+#include "hw_misc.h"
 
 /* FIXME: read from real hardware */
 const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
@@ -120,6 +121,30 @@ void clk_cal_use_eeprom(struct gsm_bts *bts)
 	hdl->clk_cal = rf_clk.iClkCor;
 	LOGP(DL1C, LOGL_NOTICE,
 		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
+}
+
+void bts_update_status(enum bts_global_status which, int on)
+{
+	static uint64_t states = 0;
+	uint64_t old_states = states;
+	int led_rf_active_on;
+
+	if (on)
+		states |= (1ULL << which);
+	else
+		states &= ~(1ULL << which);
+
+	led_rf_active_on =
+		(states & (1ULL << BTS_STATUS_RF_ACTIVE)) &&
+		!(states & (1ULL << BTS_STATUS_RF_MUTE));
+
+	LOGP(DL1C, LOGL_INFO,
+	     "Set global status #%d to %d (%04llx -> %04llx), LEDs: ACT %d\n",
+	     which, on,
+	     (long long)old_states, (long long)states,
+	     led_rf_active_on);
+
+	sysmobts_led_set(LED_RF_ACTIVE, led_rf_active_on);
 }
 
 static void print_help()
