@@ -116,6 +116,10 @@ const enum l1prim_type femtobts_sysprim_type[SuperFemto_PrimId_NUM] = {
 	[SuperFemto_PrimId_SetRxCalibTblReq]	= L1P_T_REQ,
 	[SuperFemto_PrimId_SetRxCalibTblCnf]	= L1P_T_CONF,
 #endif
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+	[SuperFemto_PrimId_MuteRfReq]	        = L1P_T_REQ,
+	[SuperFemto_PrimId_MuteRfCnf]	        = L1P_T_CONF,
+#endif
 };
 
 const struct value_string femtobts_sysprim_names[SuperFemto_PrimId_NUM+1] = {
@@ -143,6 +147,10 @@ const struct value_string femtobts_sysprim_names[SuperFemto_PrimId_NUM+1] = {
 	{ SuperFemto_PrimId_SetRxCalibTblReq,	"SET-RX-CALIB.req" },
 	{ SuperFemto_PrimId_SetRxCalibTblCnf,	"SET-RX-CALIB.cnf" },
 #endif
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+	{ SuperFemto_PrimId_MuteRfReq,	        "MUTE-RF.req" },
+	{ SuperFemto_PrimId_MuteRfCnf,	        "MUTE-RF.cnf" },
+#endif
 	{ 0, NULL }
 };
 
@@ -158,6 +166,9 @@ const SuperFemto_PrimId_t femtobts_sysprim_req2conf[SuperFemto_PrimId_NUM] = {
 	[SuperFemto_PrimId_SetTxCalibTblReq]	= SuperFemto_PrimId_SetTxCalibTblCnf,
 	[SuperFemto_PrimId_GetRxCalibTblReq]	= SuperFemto_PrimId_GetRxCalibTblCnf,
 	[SuperFemto_PrimId_SetRxCalibTblReq]	= SuperFemto_PrimId_SetRxCalibTblCnf,
+#endif
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+	[SuperFemto_PrimId_MuteRfReq]	        = SuperFemto_PrimId_MuteRfCnf,
 #endif
 };
 
