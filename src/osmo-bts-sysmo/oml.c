@@ -342,9 +342,15 @@ int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
 		       int success)
 {
 	if (success) {
-		/* assume mute_state[i] == mute_state[k] */
+		int i;
+		int is_locked = 1;
+
+		for (i = 0; i < ARRAY_SIZE(mute_state); ++i)
+			if (!mute_state[i])
+				is_locked = 0;
+
 		mo->nm_state.administrative =
-			mute_state[0] ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+			is_locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
 		mo->procedure_pending = 0;
 		return oml_mo_statechg_ack(mo);
 	} else {
