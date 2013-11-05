@@ -1104,6 +1104,27 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 }
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ts->lchan); i++) {
+		struct gsm_lchan *lchan = &ts->lchan[i];
+
+		if (!is_muted)
+			continue;
+
+		if (lchan->state != LCHAN_S_ACTIVE)
+			continue;
+
+		if (lchan->s <= 0)
+			continue;
+
+		lchan->s = 0;
+		rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
+	}
+}
+
 static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
@@ -1117,10 +1138,19 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 		     get_value_string(femtobts_l1status_names, status));
 		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 0);
 	} else {
+		int i;
+
 		LOGP(DL1C, LOGL_INFO, "Rx RF-MUTE.conf with status=%s\n",
 		     get_value_string(femtobts_l1status_names, status));
 		bts_update_status(BTS_STATUS_RF_MUTE, fl1h->last_rf_mute[0]);
 		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 1);
+
+		osmo_static_assert(
+			ARRAY_SIZE(trx->ts) >= ARRAY_SIZE(fl1h->last_rf_mute),
+			ts_array_size);
+
+		for (i = 0; i < ARRAY_SIZE(fl1h->last_rf_mute); ++i)
+			mute_handle_ts(&trx->ts[i], fl1h->last_rf_mute[i]);
 	}
 
 	msgb_free(resp);
