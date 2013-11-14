@@ -264,7 +264,7 @@ static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause)
 	rsl_trx_push_hdr(nmsg, RSL_MT_ERROR_REPORT);
 	nmsg->trx = trx;
 
-	return abis_rsl_sendmsg(nmsg);
+	return abis_bts_rsl_sendmsg(nmsg);
 }
 
 /* 8.6.1 sending RF RESOURCE INDICATION */
@@ -281,7 +281,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	rsl_trx_push_hdr(nmsg, RSL_MT_RF_RES_IND);
 	nmsg->trx = trx;
 
-	return abis_rsl_sendmsg(nmsg);
+	return abis_bts_rsl_sendmsg(nmsg);
 }
 
 /* 
@@ -352,7 +352,7 @@ int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail)
 	msgb_tv16_put(msg, RSL_IE_PAGING_LOAD, paging_avail);
 	msg->trx = bts->c0;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.5.2 CCCH Load Indication (RACH) */
@@ -374,7 +374,7 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 
 	msg->trx = bts->c0;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.5.5 PAGING COMMAND */
@@ -504,7 +504,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	rsl_dch_push_hdr(msg, RSL_MT_RF_CHAN_REL_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
@@ -534,7 +534,7 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime)
 	/* since activation was successful, do some lchan initialization */
 	lchan->meas.res_nr = 0;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
@@ -562,7 +562,7 @@ int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_NACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.4.4 sending CONNection FAILure */
@@ -584,7 +584,7 @@ int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause)
 	rsl_dch_push_hdr(msg, RSL_MT_CONN_FAIL, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.5.3 sending CHANnel ReQuireD */
@@ -611,7 +611,7 @@ int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
 	rsl_cch_push_hdr(nmsg, RSL_MT_CHAN_RQD, 0x88); // FIXME
 	nmsg->trx = trx;
 
-	return abis_rsl_sendmsg(nmsg);
+	return abis_bts_rsl_sendmsg(nmsg);
 }
 
 /* copy the SACCH related sysinfo from BTS global buffer to lchan specific buffer */
@@ -842,7 +842,7 @@ static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id,
 	fake_msg->trx = lchan->ts->trx;
 
 	/* send it back to the BTS */
-	return abis_rsl_sendmsg(fake_msg);
+	return abis_bts_rsl_sendmsg(fake_msg);
 }
 
 struct ciph_mod_compl {
@@ -961,7 +961,7 @@ static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_NACK, chan_nr);
 	msg->lchan = lchan;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.4.10 MODE MODIFY ACK */
@@ -979,7 +979,7 @@ static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
 	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* 8.4.9 MODE MODIFY */
@@ -1107,7 +1107,7 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 
 	nmsg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(nmsg);
+	return abis_bts_rsl_sendmsg(nmsg);
 }
 
 /* transmit an CRCX ACK for the lchan */
@@ -1158,7 +1158,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	rsl_ipa_push_hdr(msg, orig_msgt + 1, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
@@ -1179,7 +1179,7 @@ static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 	rsl_ipa_push_hdr(msg, RSL_MT_IPAC_DLCX_ACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
@@ -1203,7 +1203,7 @@ static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 	rsl_ipa_push_hdr(msg, RSL_MT_IPAC_DLCX_NACK, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 
 }
 
@@ -1240,7 +1240,7 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 	rsl_ipa_push_hdr(msg, orig_msgtype + 2, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
@@ -1561,7 +1561,7 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 	rsl_dch_push_hdr(msg, RSL_MT_MEAS_RES, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_rsl_sendmsg(msg);
+	return abis_bts_rsl_sendmsg(msg);
 }
 
 /* call-back for LAPDm code, called when it wants to send msgs UP */
@@ -1587,7 +1587,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 		LOGP(DRSL, LOGL_INFO, "%s Fwd RLL msg %s from LAPDm to A-bis\n",
 			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
 
-		return abis_rsl_sendmsg(msg);
+		return abis_bts_rsl_sendmsg(msg);
 	}
 }
 

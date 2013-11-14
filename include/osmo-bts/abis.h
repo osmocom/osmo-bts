@@ -21,7 +21,7 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 
 
 int abis_oml_sendmsg(struct msgb *msg);
-int abis_rsl_sendmsg(struct msgb *msg);
+int abis_bts_rsl_sendmsg(struct msgb *msg);
 
 uint32_t get_signlink_remote_ip(struct e1inp_sign_link *link);
 

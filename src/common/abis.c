@@ -56,7 +56,7 @@ int abis_oml_sendmsg(struct msgb *msg)
 	return abis_sendmsg(msg);
 }
 
-int abis_rsl_sendmsg(struct msgb *msg)
+int abis_bts_rsl_sendmsg(struct msgb *msg)
 {
 	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
 	 * the signalling link at msg->dst */
