@@ -78,9 +78,9 @@ int bts_model_init(struct gsm_bts *bts)
 
 	rc = sysmobts_get_nominal_power(bts->c0);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot determine nominal "
-		     "transmit power\n");
-		return -EIO;
+		LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
+		     "transmit power. Assuming 23dBm.\n");
+		rc = 23;
 	}
 	bts->c0->nominal_power = rc;
 
