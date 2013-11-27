@@ -8,6 +8,7 @@
 enum {
 	LCHAN_REL_ACT_RSL,
 	LCHAN_REL_ACT_PCU,
+	LCHAN_REL_ACT_OML,
 };
 
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg);

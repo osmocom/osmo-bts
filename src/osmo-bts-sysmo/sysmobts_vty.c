@@ -48,7 +48,7 @@
 #include "utils.h"
 
 
-extern int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state);
+extern int lchan_activate(struct gsm_lchan *lchan);
 extern int lchan_deactivate(struct gsm_lchan *lchan);
 
 #define TRX_STR "Transceiver related commands\n" "TRX number\n"
@@ -403,7 +403,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
 	if (!strcmp(argv[2], "activate"))
-		lchan_activate(lchan, LCHAN_S_ACT_REQ);
+		lchan_activate(lchan);
 	else
 		lchan_deactivate(lchan);
 

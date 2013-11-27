@@ -180,7 +180,7 @@ static int compl_cb_send_oml_msg(struct msgb *l1_msg, void *data)
 }
 #endif
 
-int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state);
+int lchan_activate(struct gsm_lchan *lchan);
 
 static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 {
@@ -204,7 +204,8 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
 	    mo->obj_inst.ts_nr == 0) {
 		DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
-		lchan_activate(&mo->bts->c0->ts[0].lchan[4], LCHAN_S_NONE);
+		mo->bts->c0->ts[0].lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
+		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
 	}
 
 	/* Send OPSTART ack */
@@ -924,14 +925,14 @@ static void enqueue_sapi_act_cmd(struct gsm_lchan *lchan, int sapi, int dir)
 	queue_sapi_command(lchan, cmd);
 }
 
-int lchan_activate(struct gsm_lchan *lchan, enum gsm_lchan_state lchan_state)
+int lchan_activate(struct gsm_lchan *lchan)
 {
 	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	unsigned int i;
 
-	lchan_set_state(lchan, lchan_state);
+	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	if (!llist_empty(&lchan->sapi_cmds))
 		LOGP(DL1C, LOGL_ERROR,
@@ -1539,7 +1540,7 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
 
 	lchan->sacch_deact = 0;
-	lchan_activate(lchan, LCHAN_S_ACT_REQ);
+	lchan_activate(lchan);
 	return 0;
 }
 
