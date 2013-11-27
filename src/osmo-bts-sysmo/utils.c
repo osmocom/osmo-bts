@@ -25,6 +25,7 @@
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/logging.h>
 
 #include "femtobts.h"
 #include "l1_if.h"
@@ -128,6 +129,10 @@ int sysmobts_get_nominal_power(struct gsm_bts_trx *trx)
 		/* 5W(39dBm) per TRX. This could be raiesd to 10W(40dBm)
 		 * if the second TRX is not used. */
 		return 37;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "Model number %u/0x%x not known.\n",
+			fl1h->hw_info.model_nr, fl1h->hw_info.model_nr);
+		break;
 	}
 	return -1;
 }
