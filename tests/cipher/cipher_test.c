@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(tall_bts_ctx);
 	if (bts_init(bts) < 0) {
-		fprintf(stderr, "unable to to open bts\n");
+		fprintf(stderr, "unable to open bts\n");
 		exit(1);
 	}
 
