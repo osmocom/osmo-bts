@@ -346,7 +346,7 @@ int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
 		int i;
 		int is_locked = 1;
 
-		for (i = 0; i < ARRAY_SIZE(mute_state); ++i)
+		for (i = 0; i < 8; ++i)
 			if (!mute_state[i])
 				is_locked = 0;
 
