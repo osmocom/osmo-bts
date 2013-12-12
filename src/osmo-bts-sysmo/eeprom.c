@@ -1256,6 +1256,7 @@ int eeprom_dump( int addr, int size, int hex )
     if (fseek( f, addr, SEEK_SET ) != 0)
     {
         perror( "eeprom fseek" );
+        fclose( f );
         return -1;
     }
     
