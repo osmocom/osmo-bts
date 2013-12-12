@@ -126,7 +126,7 @@ static int next_calib_file_idx(uint32_t band_mask, int last_idx)
 		int band = band_femto2osmo(calib_files[i].band);
 		if (band < 0)
 			continue;
-		if (band_mask & band);
+		if (band_mask & band)
 			return i;
 	}
 	return -1;
