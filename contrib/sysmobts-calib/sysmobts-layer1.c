@@ -420,7 +420,6 @@ int follow_sch(int band, int arfcn, int clock, int ref, HANDLE *layer1)
 	prim.u.mphConnectReq.hLayer1 = *layer1;
 	prim.u.mphConnectReq.u8Tn = 0;
 	prim.u.mphConnectReq.logChComb = GsmL1_LogChComb_IV;
-	printf("FIVE\n");
 	rc = send_recv_sig_prim(GsmL1_PrimId_MphConnectReq, &prim);
 	if (rc != 0) {
 		printf("Failed to connect.\n");
