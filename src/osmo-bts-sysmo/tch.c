@@ -440,9 +440,6 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	uint8_t *l1_payload;
 	int rc;
 
-	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
-		osmo_hexdump(rtp_pl, rtp_pl_len));
-
 	/* skip processing of incoming RTP frames if we are in loopback mode */
 	if (lchan->loopback)
 		return;
@@ -499,8 +496,6 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 
 	msu_param->u8Size = rc + 1;
 
-	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
-		osmo_hexdump(msu_param->u8Buffer, msu_param->u8Size));
 
 	/* make sure the number of entries in the dl_tch_queue is never
 	 * more than 3 */
@@ -602,8 +597,6 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 		break;
 	}
 
-	LOGP(DL1C, LOGL_DEBUG, "%s Rx codec frame (%u): %s\n", gsm_lchan_name(lchan),
-		payload_len, osmo_hexdump(payload, payload_len));
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:
@@ -624,8 +617,6 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 	}
 
 	if (rmsg) {
-		LOGP(DL1C, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
-			gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
 		/* hand rmsg to RTP code for transmission */
 		if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_send_frame(lchan->abis_ip.rtp_socket,
