@@ -1012,21 +1012,21 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
             }
 
             // Expand the External RX gain
-            pRxCal->fExtRxGain = (float)pCfgRxCal->sfixExtRxGain * 0.001953125;
+            pRxCal->fExtRxGain = (float)pCfgRxCal->sfixExtRxGain * 0.001953125f;
 
             // Expand the Mixer gain error compensation
-            pRxCal->fRxMixGainCorr = (float)pCfgRxCal->sfixRxMixGainCorr * 0.001953125;
+            pRxCal->fRxMixGainCorr = (float)pCfgRxCal->sfixRxMixGainCorr * 0.001953125f;
 
             // Expand the LNA gain error compensation (1:@-12 dB, 2:@-24 dB, 3:@-36 dB)
             for ( i = 0; i < 3; i++ )
             {
-                pRxCal->fRxLnaGainCorr[i] = (float)pCfgRxCal->sfixRxLnaGainCorr[i] * 0.001953125;
+                pRxCal->fRxLnaGainCorr[i] = (float)pCfgRxCal->sfixRxLnaGainCorr[i] * 0.001953125f;
             }
 
             // Expand the Frequency roll-off compensation
             for ( i = 0; i < nArfcn; i++ )
             {
-                pRxCal->fRxRollOffCorr[i] = (float)pCfgRxCal->sfixRxRollOffCorr[i] * 0.001953125;
+                pRxCal->fRxRollOffCorr[i] = (float)pCfgRxCal->sfixRxRollOffCorr[i] * 0.001953125f;
             }
             break;
         }
