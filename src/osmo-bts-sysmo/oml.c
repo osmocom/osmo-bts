@@ -858,7 +858,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		 * Be sure that every packet is received, even if it
 		 * fails. In this case the length might be lower or 0.
 		 */
-		act_req->fBFILevel = -200.0;
+		act_req->fBFILevel = -200.0f;
 		break;
 	default:
 		break;
