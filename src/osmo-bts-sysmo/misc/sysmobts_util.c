@@ -38,7 +38,15 @@ static char *write_arg;
 
 static void print_help()
 {
+	const struct value_string *par = sysmobts_par_names;
+
 	printf("sysmobts-util [-r | -w value] param_name\n");
+	printf("Possible param names:\n");
+
+	while (par->str != NULL) {
+		printf(" %s\n", par->str);
+		par += 1;
+	}
 }
 
 static int parse_options(int argc, char **argv)
