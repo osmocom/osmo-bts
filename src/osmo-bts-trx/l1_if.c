@@ -287,6 +287,9 @@ void bts_model_abis_close(struct gsm_bts *bts)
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		bts_model_trx_close(trx);
+
+	/* for now, we simply terminate the program and re-spawn */
+        bts_shutdown(bts, "Abis close");
 }
 
 /* set bts attributes */
