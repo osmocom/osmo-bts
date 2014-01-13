@@ -75,7 +75,6 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 	switch (type) {
 	case E1INP_SIGN_OML:
 		LOGP(DABIS, LOGL_INFO, "OML Signalling link up\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
 		sign_link = g_bts->oml_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
 						E1INP_SIGN_OML, NULL, 255, 0);
@@ -84,7 +83,6 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		break;
 	case E1INP_SIGN_RSL:
 		LOGP(DABIS, LOGL_INFO, "RSL Signalling link up\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
 		sign_link = g_bts->c0->rsl_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL-1],
 						E1INP_SIGN_RSL, NULL, 0, 0);
@@ -252,6 +250,9 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 	if (!line)
 		return NULL;
 	e1inp_line_bind_ops(line, &line_ops);
+	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+	for (i = 0; i < num_trx; i++)
+		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1+i], line);
 
 	/* This is what currently starts both the outbound OML and RSL
 	 * connections, which is wrong.
