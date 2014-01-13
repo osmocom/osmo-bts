@@ -263,9 +263,15 @@ static int trx_init(struct gsm_bts_trx *trx)
 int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	enum gsm_phys_chan_config pchan = trx->ts[0].pchan;
 
 	/* close all logical channels and reset timeslots */
 	trx_sched_reset(l1h);
+
+	/* deactivate lchan for CCCH */
+	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
+		lchan_set_state(&trx->ts[0].lchan[4], LCHAN_S_INACTIVE);
+	}
 
 	/* power off transceiver, if not already */
 	if (l1h->config.poweron) {
@@ -367,6 +373,12 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 	rc = trx_sched_set_pchan(l1h, tn, pchan);
 	if (rc)
 		return NM_NACK_RES_NOTAVAIL;
+
+	/* activate lchan for CCCH */
+	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
+		ts->lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
+		lchan_set_state(&ts->lchan[4], LCHAN_S_ACTIVE);
+	}
 
 	slottype = transceiver_chan_types[pchan];
 	
