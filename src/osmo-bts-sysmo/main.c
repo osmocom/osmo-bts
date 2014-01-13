@@ -314,6 +314,7 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(tall_bts_ctx);
 	vty_init(&bts_vty_info);
+	e1inp_vty_init();
 	bts_vty_init(bts, &bts_log_info);
 
 	handle_options(argc, argv);
