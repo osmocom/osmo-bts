@@ -1058,6 +1058,11 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
 		inet_ntoa(in), port, stream_id);
 
+	if (trx->rsl_link) {
+		LOGP(DOML, LOGL_INFO, "Sign Link already up\n");
+		return oml_fom_ack_nack(msg, 0);
+	}
+
 	rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port,
 		trx->nr);
 	if (rc < 0) {
