@@ -106,7 +106,7 @@ static const struct {
 	}
 };
 
-void sysmobts_check_temp(void)
+void sysmobts_check_temp(int no_eeprom_write)
 {
 	int temp_old[ARRAY_SIZE(temp_data)];
 	int temp_hi[ARRAY_SIZE(temp_data)];
@@ -135,12 +135,15 @@ void sysmobts_check_temp(void)
 			LOGP(DTEMP, LOGL_NOTICE, "New maximum %s "
 			     "temperature: %d.%d C\n", temp_data[i].name,
 			     temp_hi[i]/1000, temp_hi[i]%1000);
-			rc = sysmobts_par_set_int(SYSMOBTS_PAR_TEMP_DIG_MAX,
+
+			if (!no_eeprom_write) {
+				rc = sysmobts_par_set_int(SYSMOBTS_PAR_TEMP_DIG_MAX,
 						  temp_hi[0]/1000);
-			if (rc < 0)
-				LOGP(DTEMP, LOGL_ERROR, "error writing new %s "
-			     	     "max temp %d (%s)\n", temp_data[i].name,
-				     rc, strerror(errno));
+				if (rc < 0)
+					LOGP(DTEMP, LOGL_ERROR, "error writing new %s "
+					     "max temp %d (%s)\n", temp_data[i].name,
+					     rc, strerror(errno));
+			}
 		}
 	}
 }
@@ -150,7 +153,7 @@ void sysmobts_check_temp(void)
  *********************************************************************/
 static time_t last_update;
 
-int sysmobts_update_hours(void)
+int sysmobts_update_hours(int no_eeprom_write)
 {
 	time_t now = time(NULL);
 	int rc, op_hrs;
@@ -188,9 +191,11 @@ int sysmobts_update_hours(void)
 		LOGP(DTEMP, LOGL_INFO, "Total hours of Operation: %u\n",
 		     op_hrs);
 
-		rc = sysmobts_par_set_int(SYSMOBTS_PAR_HOURS, op_hrs);
-		if (rc < 0)
-			return rc;
+		if (!no_eeprom_write) {
+			rc = sysmobts_par_set_int(SYSMOBTS_PAR_HOURS, op_hrs);
+			if (rc < 0)
+				return rc;
+		}
 
 		last_update = now;
 	}

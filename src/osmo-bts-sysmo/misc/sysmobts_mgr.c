@@ -1,6 +1,7 @@
 /* Main program for SysmoBTS management daemon */
 
 /* (C) 2012 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -39,6 +40,7 @@
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
 
+static int no_eeprom_write = 0;
 static int daemonize = 0;
 void *tall_mgr_ctx;
 
@@ -51,7 +53,7 @@ void *tall_mgr_ctx;
 static struct osmo_timer_list temp_timer;
 static void check_temp_timer_cb(void *unused)
 {
-	sysmobts_check_temp();
+	sysmobts_check_temp(no_eeprom_write);
 
 	osmo_timer_schedule(&temp_timer, TEMP_TIMER_SECS, 0);
 }
@@ -59,9 +61,35 @@ static void check_temp_timer_cb(void *unused)
 static struct osmo_timer_list hours_timer;
 static void hours_timer_cb(void *unused)
 {
-	sysmobts_update_hours();
+	sysmobts_update_hours(no_eeprom_write);
 
 	osmo_timer_schedule(&hours_timer, HOURS_TIMER_SECS, 0);
+}
+
+static void print_help(void)
+{
+	printf("sysmobts-mgr [-n]\n");
+	printf(" -n Do not write to EEPROM\n");
+}
+
+static int parse_options(int argc, char **argv)
+{
+	int opt;
+
+	while ((opt = getopt(argc, argv, "nh")) != -1) {
+		switch (opt) {
+		case 'n':
+			no_eeprom_write = 1;
+			break;
+		case 'h':
+			print_help();
+			return -1;
+		default:
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 static void signal_handler(int signal)
@@ -70,8 +98,8 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		sysmobts_check_temp();
-		sysmobts_update_hours();
+		sysmobts_check_temp(no_eeprom_write);
+		sysmobts_update_hours(no_eeprom_write);
 		exit(0);
 		break;
 	case SIGABRT:
@@ -126,11 +154,13 @@ int main(int argc, char **argv)
 	void *tall_msgb_ctx;
 	int rc;
 
+	rc = parse_options(argc, argv);
+	if (rc < 0)
+		exit(2);
+
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
 	tall_msgb_ctx = talloc_named_const(tall_mgr_ctx, 1, "msgb");
 	msgb_set_talloc_ctx(tall_msgb_ctx);
-
-	//handle_options(argc, argv);
 
 	mgr_log_init(NULL);
 

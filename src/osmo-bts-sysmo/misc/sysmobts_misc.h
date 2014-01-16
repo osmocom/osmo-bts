@@ -16,9 +16,9 @@ enum sysmobts_temp_type {
 int sysmobts_temp_get(enum sysmobts_temp_sensor sensor,
 		      enum sysmobts_temp_type type);
 
-void sysmobts_check_temp(void);
+void sysmobts_check_temp(int no_eeprom_write);
 
-int sysmobts_update_hours(void);
+int sysmobts_update_hours(int no_epprom_write);
 
 enum sysmobts_firmware_type {
 	SYSMOBTS_FW_FPGA,
