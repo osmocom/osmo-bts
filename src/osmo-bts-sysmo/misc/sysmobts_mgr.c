@@ -68,10 +68,11 @@ static void hours_timer_cb(void *unused)
 
 static void print_help(void)
 {
-	printf("sysmobts-mgr [-ns] [-d cat]\n");
+	printf("sysmobts-mgr [-nsD] [-d cat]\n");
 	printf(" -n Do not write to EEPROM\n");
 	printf(" -s Disable color\n");
 	printf(" -d CAT enable debugging\n");
+	printf(" -D daemonize\n");
 }
 
 static int parse_options(int argc, char **argv)
@@ -91,6 +92,9 @@ static int parse_options(int argc, char **argv)
 			break;
 		case 'd':
 			log_parse_category_mask(osmo_stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		default:
 			return -1;
