@@ -68,15 +68,17 @@ static void hours_timer_cb(void *unused)
 
 static void print_help(void)
 {
-	printf("sysmobts-mgr [-n]\n");
+	printf("sysmobts-mgr [-ns] [-d cat]\n");
 	printf(" -n Do not write to EEPROM\n");
+	printf(" -s Disable color\n");
+	printf(" -d CAT enable debugging\n");
 }
 
 static int parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "nh")) != -1) {
+	while ((opt = getopt(argc, argv, "nhsd:")) != -1) {
 		switch (opt) {
 		case 'n':
 			no_eeprom_write = 1;
@@ -84,6 +86,12 @@ static int parse_options(int argc, char **argv)
 		case 'h':
 			print_help();
 			return -1;
+		case 's':
+			log_set_use_color(osmo_stderr_target, 0);
+			break;
+		case 'd':
+			log_parse_category_mask(osmo_stderr_target, optarg);
+			break;
 		default:
 			return -1;
 		}
@@ -139,13 +147,9 @@ static const struct log_info mgr_log_info = {
 	.num_cat = ARRAY_SIZE(mgr_log_info_cat),
 };
 
-static int mgr_log_init(const char *category_mask)
+static int mgr_log_init(void)
 {
 	osmo_init_logging(&mgr_log_info);
-
-	if (category_mask)
-		log_parse_category_mask(osmo_stderr_target, category_mask);
-
 	return 0;
 }
 
@@ -154,21 +158,21 @@ int main(int argc, char **argv)
 	void *tall_msgb_ctx;
 	int rc;
 
-	rc = parse_options(argc, argv);
-	if (rc < 0)
-		exit(2);
 
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
 	tall_msgb_ctx = talloc_named_const(tall_mgr_ctx, 1, "msgb");
 	msgb_set_talloc_ctx(tall_msgb_ctx);
 
-	mgr_log_init(NULL);
+	mgr_log_init();
 
+	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);
-	//signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	osmo_init_ignore_signals();
+
+	rc = parse_options(argc, argv);
+	if (rc < 0)
+		exit(2);
 
 	if (daemonize) {
 		rc = osmo_daemonize();
