@@ -4,6 +4,7 @@
 enum {
 	DTEMP,
 	DFW,
+	DFIND,
 };
 
 #endif
