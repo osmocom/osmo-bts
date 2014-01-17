@@ -210,6 +210,7 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 	static char mac_str[20] = { };
 
 	struct sockaddr_in loc_addr;
+	int rc;
 	char loc_ip[INET_ADDRSTRLEN];
 	struct msgb *msg = msgb_alloc_headroom(512, 128, "ipa get response");
 	if (!msg) {
@@ -242,7 +243,10 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 
 	/* ip.access nanoBTS would reply to port==3006 */
 	ipaccess_prepend_header_quirk(msg, IPAC_PROTO_IPACCESS);
-	sendto(fd->fd, msg->data, msg->len, 0, (struct sockaddr *)src, sizeof(*src));
+	rc = sendto(fd->fd, msg->data, msg->len, 0, (struct sockaddr *)src, sizeof(*src));
+	if (rc != msg->len)
+		LOGP(DFIND, LOGL_ERROR,
+			"Failed to send with rc(%d) errno(%d)\n", rc, errno);
 }
 
 static int ipaccess_bcast(struct osmo_fd *fd, unsigned int what)
