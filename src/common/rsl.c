@@ -675,6 +675,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
 	uint8_t type;
+	int rc;
 
 	if (lchan->state != LCHAN_S_NONE) {
 		LOGP(DRSL, LOGL_ERROR,
@@ -788,7 +789,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* actually activate the channel in the BTS */
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
-	return  bts_model_rsl_chan_act(msg->lchan, &tp);
+	rc = bts_model_rsl_chan_act(msg->lchan, &tp);
+	if (rc < 0)
+		return rsl_tx_chan_act_nack(lchan, -rc);
+
+	return 0;
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
