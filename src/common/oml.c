@@ -436,8 +436,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	rc = bts_model_check_oml(bts, foh->msg_type, bts->mo.nm_attr, tp_merged, bts);
 	if (rc < 0) {
 		talloc_free(tp_merged);
-		/* FIXME: send nack? */
-		return rc;
+		return oml_fom_ack_nack(msg, -rc);
 	}
 
 	/* Success: replace old BTS attributes with new */
@@ -551,8 +550,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	rc = bts_model_check_oml(trx->bts, foh->msg_type, trx->mo.nm_attr, tp_merged, trx);
 	if (rc < 0) {
 		talloc_free(tp_merged);
-		/* FIXME: send NACK */
-		return rc;
+		return oml_fom_ack_nack(msg, -rc);
 	}
 
 	/* Success: replace old BTS attributes with new */
@@ -671,8 +669,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	rc = bts_model_check_oml(bts, foh->msg_type, ts->mo.nm_attr, tp_merged, ts);
 	if (rc < 0) {
 		talloc_free(tp_merged);
-		/* FIXME: Send NACK */
-		return rc;
+		/* Send NACK */
+		return oml_fom_ack_nack(msg, -rc);
 	}
 
 	/* Success: replace old BTS attributes with new */
