@@ -1446,7 +1446,22 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 			struct tlv_parsed *old_attr, struct tlv_parsed *new_attr,
 			void *obj)
 {
-	/* FIXME: check if the attributes are valid */
+	/* FIXME: more checks if the attributes are valid */
+
+	switch (msg_type) {
+	case NM_MT_SET_CHAN_ATTR:
+		/* our L1 only supports one global TSC for all channels
+		 * one one TRX, so we need to make sure not to activate
+		 * channels with a different TSC!! */
+		if (TLVP_PRESENT(new_attr, NM_ATT_TSC) &&
+		    TLVP_LEN(new_attr, NM_ATT_TSC) >= 1 &&
+		    *TLVP_VAL(new_attr, NM_ATT_TSC) != (bts->bsic & 7)) {
+			LOGP(DOML, LOGL_ERROR, "Channel TSC %u != BSIC-TSC %u\n",
+				*TLVP_VAL(new_attr, NM_ATT_TSC), bts->bsic & 7);
+			return -NM_NACK_PARAM_RANGE;
+		}
+		break;
+	}
 	return 0;
 }
 
@@ -1538,6 +1553,22 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 {
 	//uint8_t mode = *TLVP_VAL(tp, RSL_IE_CHAN_MODE);
 	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
+	struct gsm48_chan_desc *cd;
+
+	if (TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
+	    TLVP_LEN(tp, GSM48_IE_CHANDESC_2) >= sizeof(*cd)) {
+		cd = (struct gsm48_chan_desc *)
+				TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
+
+		/* our L1 only supports one global TSC for all channels
+		 * one one TRX, so we need to make sure not to activate
+		 * channels with a different TSC!! */
+		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
+			LOGP(DRSL, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
+				cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
+			return -RSL_ERR_SERV_OPT_UNIMPL;
+		}
+	}
 
 	lchan->sacch_deact = 0;
 	lchan_activate(lchan);
