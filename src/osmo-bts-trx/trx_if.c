@@ -175,7 +175,8 @@ static void trx_ctrl_timer_cb(void *data)
 {
 	struct trx_l1h *l1h = data;
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver\n");
+	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for trx=%d\n",
+		l1h->trx->nr);
 
 	trx_ctrl_send(l1h);
 }
@@ -358,8 +359,8 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		sscanf(p + 1, "%d", &resp);
 		if (resp) {
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"transceiver rejected TRX command with "
-				"response: '%s'\n", buf);
+				"transceiver (trx=%d) rejected TRX command "
+				"with response: '%s'\n", l1h->trx->nr, buf);
 rsp_error:
 			if (tcm->critical) {
 				bts_shutdown(l1h->trx->bts, "SIGINT");
