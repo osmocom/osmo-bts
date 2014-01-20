@@ -1021,7 +1021,8 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
 		inet_ntoa(in), port, stream_id);
 
-	rc = e1inp_ipa_bts_rsl_connect(oml_link->ts->line, inet_ntoa(in), port);
+	rc = e1inp_ipa_bts_rsl_connect(oml_link->ts->line, inet_ntoa(in), port,
+		trx->nr);
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Error in abis_open(RSL): %d\n", rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
