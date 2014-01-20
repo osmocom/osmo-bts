@@ -73,6 +73,8 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 					    enum e1inp_sign_type type)
 {
 	struct e1inp_sign_link *sign_link = NULL;
+	struct gsm_bts_trx *trx;
+	int trx_nr;
 
 	switch (type) {
 	case E1INP_SIGN_OML:
@@ -84,17 +86,22 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		sign_link->trx = g_bts->c0;
 		bts_link_estab(g_bts);
 		break;
-	case E1INP_SIGN_RSL:
-		LOGP(DABIS, LOGL_INFO, "RSL Signalling link up\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
-		sign_link = g_bts->c0->rsl_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL-1],
-						E1INP_SIGN_RSL, NULL, 0, 0);
-		/* FIXME: This assumes there is only one TRX! */
-		sign_link->trx = g_bts->c0;
-		trx_link_estab(sign_link->trx);
-		break;
 	default:
+		trx_nr = type - E1INP_SIGN_RSL;
+		LOGP(DABIS, LOGL_INFO, "RSL Signalling link for TRX%d up\n",
+			trx_nr);
+		trx = gsm_bts_trx_num(g_bts, trx_nr);
+		if (!trx) {
+			LOGP(DABIS, LOGL_ERROR, "TRX%d does not exixt!\n",
+				trx_nr);
+			break;
+		}
+		e1inp_ts_config_sign(&line->ts[type-1], line);
+		sign_link = trx->rsl_link =
+			e1inp_sign_link_create(&line->ts[type-1],
+						E1INP_SIGN_RSL, NULL, 0, 0);
+		sign_link->trx = trx;
+		trx_link_estab(trx);
 		break;
 	}
 
@@ -103,12 +110,15 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 
 static void sign_link_down(struct e1inp_line *line)
 {
+	struct gsm_bts_trx *trx;
 	LOGP(DABIS, LOGL_ERROR, "Signalling link down\n");
 
-	if (g_bts->c0->rsl_link) {
-		e1inp_sign_link_destroy(g_bts->c0->rsl_link);
-		g_bts->c0->rsl_link = NULL;
-		trx_link_estab(g_bts->c0);
+	llist_for_each_entry(trx, &g_bts->trx_list, list) {
+		if (trx->rsl_link) {
+			e1inp_sign_link_destroy(trx->rsl_link);
+			trx->rsl_link = NULL;
+			trx_link_estab(trx);
+		}
 	}
 
 	if (g_bts->oml_link)
