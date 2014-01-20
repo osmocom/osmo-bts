@@ -1041,8 +1041,8 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 
 	in.s_addr = htonl(ip);
-	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
-		inet_ntoa(in), port, stream_id);
+	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT TRX=%d IP=%s PORT=%u "
+		"STREAM=0x%02x\n", trx->nr, inet_ntoa(in), port, stream_id);
 
 	if (trx->rsl_link) {
 		LOGP(DOML, LOGL_INFO, "Sign Link already up\n");
