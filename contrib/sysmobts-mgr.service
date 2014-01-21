@@ -1,0 +1,12 @@
+[Unit]
+Description=sysmocom sysmoBTS manager
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/sysmobts-mgr -n
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+
