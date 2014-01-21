@@ -1069,6 +1069,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	struct gsm_bts_trx *trx = hdl->priv;
 
 	if (on) {
 		sysp->id = SuperFemto_PrimId_ActivateRfReq;
@@ -1095,6 +1096,11 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 #endif /* 2.1.0 */
 		sysp->u.activateRfReq.rfRx.iClkCor = get_clk_cal(hdl);
 #endif /* API 2.4.0 */
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,2,0)
+		sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
+		sysp->u.activateRfReq.rfTrx.fMaxTxPower =
+				sysmobts_get_nominal_power(trx);
+#endif /* 2.2.0 */
 #endif /* !HW_SYSMOBTS_V1 */
 	} else {
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
