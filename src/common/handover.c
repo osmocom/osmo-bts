@@ -29,7 +29,6 @@
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
-#include <osmo-bts/l1sap.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/handover.h>
 
