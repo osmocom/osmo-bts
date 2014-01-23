@@ -816,9 +816,27 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	return rc;
 }
 
-static int handle_handover(struct gsm_lchan *lchan, GsmL1_PhRaInd_t *ra_ind)
+static int check_acc_delay(GsmL1_PhRaInd_t *ra_ind, struct gsm_bts_role_bts *btsb,
+				uint8_t *acc_delay)
 {
-	handover_rach(lchan, ra_ind->msgUnitParam.u8Buffer[0]);
+	if (ra_ind->measParam.i16BurstTiming < 0)
+		*acc_delay = 0;
+	else
+		*acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+	return *acc_delay <= btsb->max_ta;
+}
+
+static int handle_handover(struct gsm_lchan *lchan, struct gsm_bts_role_bts *btsb,
+				GsmL1_PhRaInd_t *ra_ind)
+{
+	uint8_t acc_delay;
+	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
+		LOGP(DHO, LOGL_INFO, "%s ignoring RACH request %u > max_ta(%u)\n",
+			gsm_lchan_name(lchan), acc_delay, btsb->max_ta);
+		return 0;
+	}
+
+	handover_rach(lchan, ra_ind->msgUnitParam.u8Buffer[0], acc_delay);
 	return 0;
 }
 
@@ -845,7 +863,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	 */
 	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
 	if (lchan && lchan->ho.active == HANDOVER_ENABLED)
-		return handle_handover(lchan, ra_ind);
+		return handle_handover(lchan, btsb, ra_ind);
 
 	/* increment number of RACH slots with valid RACH burst */
 	if (trx == bts->c0)
@@ -861,11 +879,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	}
 
 	/* check for under/overflow / sign */
-	if (ra_ind->measParam.i16BurstTiming < 0)
-		acc_delay = 0;
-	else
-		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-	if (acc_delay > btsb->max_ta) {
+	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
 		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
 		     acc_delay, btsb->max_ta);
 		return 0;

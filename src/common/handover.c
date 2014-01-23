@@ -92,7 +92,7 @@ static void ho_t3105_cb(void *data)
 }
 
 /* received random access on dedicated channel */
-void handover_rach(struct gsm_lchan *lchan, uint8_t ra)
+void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
@@ -106,8 +106,11 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra)
 	}
 
 	LOGP(DHO, LOGL_NOTICE,
-		"%s RACH on dedicated channel received\n",
-		gsm_lchan_name(lchan));
+		"%s RACH on dedicated channel received with TA=%u\n",
+		gsm_lchan_name(lchan), acc_delay);
+
+	/* Set timing advance */
+	lchan->rqd_ta = acc_delay;
 
 	/* Stop handover detection, wait for valid frame */
 	lchan->ho.active = HANDOVER_WAIT_FRAME;
@@ -120,7 +123,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra)
 	}
 
 	/* Send HANDover DETect to BSC */
-	rsl_tx_hando_det(lchan, NULL);
+	rsl_tx_hando_det(lchan, &lchan->rqd_ta);
 
 	/* Send PHYS INFO */
 	lchan->ho.phys_info_count = 1;
