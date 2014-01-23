@@ -1555,7 +1555,9 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
 	struct gsm48_chan_desc *cd;
 
-	if (TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
+	/* osmo-pcu calls this without a valid 'tp' parameter, so we
+	 * need to make sure we don't crash here */
+	if (tp && TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
 	    TLVP_LEN(tp, GSM48_IE_CHANDESC_2) >= sizeof(*cd)) {
 		cd = (struct gsm48_chan_desc *)
 				TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
