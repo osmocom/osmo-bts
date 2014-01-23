@@ -806,6 +806,15 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	return rc;
 }
 
+static int check_acc_delay(GsmL1_PhRaInd_t *ra_ind, struct gsm_bts_role_bts *btsb,
+				uint8_t *acc_delay)
+{
+	if (ra_ind->measParam.i16BurstTiming < 0)
+		*acc_delay = 0;
+	else
+		*acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+	return *acc_delay <= btsb->max_ta;
+}
 
 static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 {
@@ -838,11 +847,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 	}
 
 	/* check for under/overflow / sign */
-	if (ra_ind->measParam.i16BurstTiming < 0)
-		acc_delay = 0;
-	else
-		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-	if (acc_delay > btsb->max_ta) {
+	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
 		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
 		     acc_delay, btsb->max_ta);
 		return 0;
