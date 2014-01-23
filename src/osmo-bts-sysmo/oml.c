@@ -1,5 +1,5 @@
 /* (C) 2011 by Harald Welte <laforge@gnumonks.org>
- * (C) 2013 by Holger Hans Peter Freyther
+ * (C) 2013-2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -35,6 +35,7 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/handover.h>
 
 #include "l1_if.h"
 #include "femtobts.h"
@@ -951,7 +952,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 
 	/* override the regular SAPIs if this is the first hand-over
 	 * related activation of the LCHAN */
-	if (lchan->ho.active == 1)
+	if (lchan->ho.active == HANDOVER_ENABLED)
 		s4l = &sapis_for_ho;
 
 	for (i = 0; i < s4l->num_sapis; i++) {
@@ -1385,6 +1386,16 @@ static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir)
 	return enqueue_sapi_deact_cmd(lchan, sapi, dir);
 }
 
+static int release_sapis_for_ho(struct gsm_lchan *lchan)
+{
+	int res = 0;
+	unsigned int i;
+
+	for (i = sapis_for_ho.num_sapis - 1; i >= 0; --i)
+		res |= check_sapi_release(lchan,
+				sapis_for_ho.sapis[i].sapi, sapis_for_ho.sapis[i].dir);
+	return res;
+}
 
 static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 {
@@ -1403,6 +1414,9 @@ static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 		/* Release if it was allocated */
 		res |= check_sapi_release(lchan, s4l->sapis[i].sapi, s4l->sapis[i].dir);
 	}
+
+	/* always attempt to disable the RACH burst */
+	res |= release_sapis_for_ho(lchan);
 
 	/* nothing was queued */
 	if (res == 0) {
@@ -1556,6 +1570,31 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 
 	lchan->sacch_deact = 0;
 	lchan_activate(lchan);
+	return 0;
+}
+
+/**
+ * Modify the given lchan in the handover scenario. This is a lot like
+ * second channel activation but with some additional activation.
+ */
+int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
+{
+	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
+	unsigned int i;
+
+	if (lchan->ho.active == HANDOVER_NONE)
+		return -1;
+
+	/* Give up listening to RACH bursts */
+	release_sapis_for_ho(lchan);
+
+	/* Activate the normal SAPIs */
+	for (i = 0; i < s4l->num_sapis; i++) {
+		int sapi = s4l->sapis[i].sapi;
+		int dir = s4l->sapis[i].dir;
+		enqueue_sapi_act_cmd(lchan, sapi, dir);
+	}
+
 	return 0;
 }
 

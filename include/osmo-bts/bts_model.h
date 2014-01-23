@@ -29,6 +29,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp);
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan);
+int bts_model_rsl_chan_mod(struct gsm_lchan *lchan);
 int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan);
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan);
 

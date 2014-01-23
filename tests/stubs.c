@@ -37,6 +37,8 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 { return 0; }
 int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 { return 0; }
+int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
+{ return 0; }
 void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			 unsigned int rtp_pl_len) {}
 

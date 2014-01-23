@@ -2,6 +2,7 @@
 
 /* (C) 2012-2013 by Harald Welte <laforge@gnumonks.org>
  *                  Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -28,6 +29,7 @@
 #include <osmocom/gsm/rsl.h>
 
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_model.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/handover.h>
@@ -56,6 +58,7 @@ static int ho_tx_phys_info(struct gsm_lchan *lchan, uint8_t ta)
 		0x00, 0);
 
 	lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+	return 0;
 }
 
 /* timer call-back for T3105 (handover PHYS INFO re-transmit) */
@@ -112,7 +115,13 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 	/* Stop handover detection, wait for valid frame */
 	lchan->ho.active = HANDOVER_WAIT_FRAME;
-	l1sap_chan_modify(trx, chan_nr);
+	if (bts_model_rsl_chan_mod(lchan) != 0) {
+		LOGP(DHO, LOGL_ERROR,
+			"%s failed to modify channel after handover\n",
+			gsm_lchan_name(lchan));
+		rsl_tx_conn_fail(lchan, RSL_ERR_HANDOVER_ACC_FAIL);
+		return;
+	}
 
 	/* Send HANDover DETect to BSC */
 	rsl_tx_hando_det(lchan, &acc_delay);
