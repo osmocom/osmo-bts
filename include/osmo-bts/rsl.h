@@ -21,6 +21,7 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan, struct gsm_time *gtime);
 int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan);
+int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay);
 
 /* call-back for LAPDm code, called when it wants to send msgs UP */
 int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx);
