@@ -1577,6 +1577,15 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 	return 0;
 }
 
+/**
+ * Modify the given lchan in the handover scenario. This is a lot like
+ * second channel activation but with some additional activation.
+ */
+int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
+{
+	return -1;
+}
+
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 {
 	/* A duplicate RF Release Request, ignore it */
