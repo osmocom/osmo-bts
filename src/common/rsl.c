@@ -1292,6 +1292,11 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	else
 		name = "MDCX";
 
+	/* check the kind of channel and reject */
+	if (lchan->type != GSM_LCHAN_TCH_F && lchan->type != GSM_LCHAN_TCH_H)
+		return tx_ipac_XXcx_nack(lchan, 0x52,
+					 0, dch->c.msg_type);
+
 	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 	if (rc < 0)
 		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
