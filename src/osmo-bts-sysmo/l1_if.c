@@ -797,6 +797,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			data_ind->msgUnitParam.u8Size,
 			(int8_t) (data_ind->measParam.fRssi));
 		break;
+	case GsmL1_Sapi_Idle:
+		/* nothing to send */
+		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
 			get_value_string(femtobts_l1sapi_names, data_ind->sapi));
