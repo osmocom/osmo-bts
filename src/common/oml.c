@@ -509,8 +509,15 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.10 BTS Air Timer */
-	if (TLVP_PRESENT(&tp, NM_ATT_BTS_AIR_TIMER))
-		btsb->t3105_ms = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER) * 10;
+	if (TLVP_PRESENT(&tp, NM_ATT_BTS_AIR_TIMER)) {
+		uint8_t t3105 = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER);
+		if (t3105 == 0) {
+			LOGP(DOML, LOGL_NOTICE,
+				"T3105 must have a value != 0.\n");
+			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
+		}
+		btsb->t3105_ms = t3105 * 10;
+	}
 
 	/* 9.4.37 NY1 */
 	if (TLVP_PRESENT(&tp, NM_ATT_NY1))

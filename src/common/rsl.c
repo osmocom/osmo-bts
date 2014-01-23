@@ -45,6 +45,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/handover.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -736,6 +737,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		memset(&lchan->encr, 0, sizeof(lchan->encr));
 
 	/* 9.3.9 Handover Reference */
+	if ((type == RSL_ACT_INTER_ASYNC ||
+	     type == RSL_ACT_INTER_SYNC) &&
+	    TLVP_PRESENT(&tp, RSL_IE_HANDO_REF)) {
+		lchan->ho.active = HANDOVER_ENABLED;
+		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
+	}
 
 	/* 9.3.4 BS Power */
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
@@ -831,6 +838,9 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan)
 		lchan->abis_ip.rtp_socket = NULL;
 		msgb_queue_flush(&lchan->dl_tch_queue);
 	}
+
+	/* release handover state */
+	handover_reset(lchan);
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 	rc = bts_model_rsl_chan_rel(lchan);
