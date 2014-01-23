@@ -739,7 +739,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	    TLVP_PRESENT(&tp, RSL_IE_HANDO_REF)) {
 		lchan->ho.active = HANDOVER_ENABLED;
 		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
-		LOGP(DRSL, LOGL_INFO, "Channel activation due to handover (id %i)", lchan->ho.ref);
+		LOGP(DRSL, LOGL_INFO,
+			"Channel activation due to handover (id %i)\n", lchan->ho.ref);
 	}
 
 	/* 9.3.4 BS Power */

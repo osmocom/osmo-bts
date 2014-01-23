@@ -173,6 +173,7 @@ const SuperFemto_PrimId_t femtobts_sysprim_req2conf[SuperFemto_PrimId_NUM] = {
 };
 
 const struct value_string femtobts_l1sapi_names[GsmL1_Sapi_NUM+1] = {
+	{ GsmL1_Sapi_Idle,	"IDLE" },
 	{ GsmL1_Sapi_Fcch,	"FCCH" },
 	{ GsmL1_Sapi_Sch,	"SCH" },
 	{ GsmL1_Sapi_Sacch,	"SACCH" },

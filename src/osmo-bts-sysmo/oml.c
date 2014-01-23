@@ -1389,11 +1389,13 @@ static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir)
 static int release_sapis_for_ho(struct gsm_lchan *lchan)
 {
 	int res = 0;
-	unsigned int i;
+	int i;
 
-	for (i = sapis_for_ho.num_sapis - 1; i >= 0; --i)
+	const struct lchan_sapis *s4l = &sapis_for_ho;
+
+	for (i = s4l->num_sapis-1; i >= 0; i--)
 		res |= check_sapi_release(lchan,
-				sapis_for_ho.sapis[i].sapi, sapis_for_ho.sapis[i].dir);
+				s4l->sapis[i].sapi, s4l->sapis[i].dir);
 	return res;
 }
 
@@ -1584,6 +1586,9 @@ int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
 
 	if (lchan->ho.active == HANDOVER_NONE)
 		return -1;
+
+	LOGP(DHO, LOGL_ERROR, "%s modifying channel for handover\n",
+		gsm_lchan_name(lchan));
 
 	/* Give up listening to RACH bursts */
 	release_sapis_for_ho(lchan);

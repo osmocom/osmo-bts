@@ -35,7 +35,7 @@
 #include <osmo-bts/handover.h>
 
 /* Transmit a handover related PHYS INFO on given lchan */
-static int ho_tx_phys_info(struct gsm_lchan *lchan, uint8_t ta)
+static int ho_tx_phys_info(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = msgb_alloc_headroom(1024, 128, "PHYS INFO");
 	struct gsm48_hdr *gh;
@@ -52,7 +52,7 @@ static int ho_tx_phys_info(struct gsm_lchan *lchan, uint8_t ta)
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_HANDO_INFO;
-	msgb_put_u8(msg, ta);
+	msgb_put_u8(msg, lchan->rqd_ta);
 
 	rsl_rll_push_l3(msg, RSL_MT_UNIT_DATA_REQ, gsm_lchan2chan_nr(lchan),
 		0x00, 0);
@@ -86,16 +86,15 @@ static void ho_t3105_cb(void *data)
 		return;
 	}
 
-	ho_tx_phys_info(lchan, lchan->rqd_ta);
+	ho_tx_phys_info(lchan);
 	lchan->ho.phys_info_count++;
 	osmo_timer_schedule(&lchan->ho.t3105, 0, btsb->t3105_ms * 1000);
 }
 
 /* received random access on dedicated channel */
-void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
-	struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
+void handover_rach(struct gsm_lchan *lchan, uint8_t ra)
 {
-	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 
 	/* Ignore invalid handover ref */
@@ -107,11 +106,8 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	}
 
 	LOGP(DHO, LOGL_NOTICE,
-		"%s RACH on dedicated channel received with TA=%u\n",
-		gsm_lchan_name(lchan), acc_delay);
-
-	/* Set timing advance */
-	lchan->rqd_ta = acc_delay;
+		"%s RACH on dedicated channel received\n",
+		gsm_lchan_name(lchan));
 
 	/* Stop handover detection, wait for valid frame */
 	lchan->ho.active = HANDOVER_WAIT_FRAME;
@@ -124,11 +120,11 @@ void handover_rach(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	}
 
 	/* Send HANDover DETect to BSC */
-	rsl_tx_hando_det(lchan, &acc_delay);
+	rsl_tx_hando_det(lchan, NULL);
 
 	/* Send PHYS INFO */
 	lchan->ho.phys_info_count = 1;
-	ho_tx_phys_info(lchan, acc_delay);
+	ho_tx_phys_info(lchan);
 
 	/* Start T3105 */
 	LOGP(DHO, LOGL_DEBUG,
@@ -144,7 +140,6 @@ void handover_frame(struct gsm_lchan *lchan)
 {
 	LOGP(DHO, LOGL_INFO,
 		"%s First valid frame detected\n", gsm_lchan_name(lchan));
-
 	reset_handover(lchan);
 }
 

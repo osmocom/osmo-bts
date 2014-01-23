@@ -47,6 +47,7 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/handover.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -711,6 +712,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 
+	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
+		handover_frame(lchan);
+
 	switch (data_ind->sapi) {
 	case GsmL1_Sapi_Sacch:
 		radio_link_timeout(lchan, (data_ind->msgUnitParam.u8Size == 0));
@@ -812,12 +816,18 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	return rc;
 }
 
+static int handle_handover(struct gsm_lchan *lchan, GsmL1_PhRaInd_t *ra_ind)
+{
+	handover_rach(lchan, ra_ind->msgUnitParam.u8Buffer[0]);
+	return 0;
+}
 
 static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
+	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim pp;
 	struct lapdm_channel *lc;
 	uint8_t acc_delay;
@@ -829,6 +839,13 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
 
 	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach)
 		return 0;
+
+	/*
+	 * Check if this is a handover
+	 */
+	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
+	if (lchan && lchan->ho.active == HANDOVER_ENABLED)
+		return handle_handover(lchan, ra_ind);
 
 	/* increment number of RACH slots with valid RACH burst */
 	if (trx == bts->c0)
