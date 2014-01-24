@@ -478,6 +478,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		 * (ul_power_target==0), then this value will be
 		 * overridden. */
 		msu_param->u8Buffer[0] = lchan->ms_power;
+		msu_param->u8Buffer[1] = lchan->rqd_ta;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
 			/* No SACCH data from LAPDM pending, send SACCH filling */
