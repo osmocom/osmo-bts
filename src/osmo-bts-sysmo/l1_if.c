@@ -483,13 +483,16 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			/* No SACCH data from LAPDM pending, send SACCH filling */
 			uint8_t *si = lchan_sacch_get(lchan, &g_time);
 			if (si) {
-				/* The +2 is empty space where the DSP inserts the L1 hdr */
+				/* +2 to not overwrite the ms_power/ta values */
+				LOGP(DL1C, LOGL_NOTICE, "Data from SI pointer.\n");
 				memcpy(msu_param->u8Buffer+2, si, GSM_MACBLOCK_LEN-2);
-			} else
+			} else {
+				/* +2 to not overwrite the ms_power/ta values */
 				memcpy(msu_param->u8Buffer+2, fill_frame, GSM_MACBLOCK_LEN-2);
+			}
 		} else {
-			/* The +2 is empty space where the DSP inserts the L1 hdr */
-			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data, GSM_MACBLOCK_LEN-2);
+			/* +2 to not overwrite the ms_power/ta values */
+			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data + 2, GSM_MACBLOCK_LEN-2);
 			msgb_free(pp.oph.msg);
 		}
 		break;
