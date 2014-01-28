@@ -161,6 +161,17 @@ int main(int argc, char **argv)
 
 	bts_log_init(NULL);
 
+	/*
+	 * hack and prevent that two l1fwd-proxy/sysmobts run at the same
+	 * time. This is done by binding to the same VTY port.
+	 */
+	rc = osmo_sock_init(AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP,
+				"127.0.0.1", 4241, OSMO_SOCK_F_BIND);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to bind to the BTS VTY port.\n");
+		return EXIT_FAILURE;
+	}
+
 	/* allocate new femtol1_handle */
 	fl1h = talloc_zero(NULL, struct femtol1_hdl);
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
