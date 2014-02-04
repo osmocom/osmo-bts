@@ -3,7 +3,7 @@ Description=sysmocom sysmoBTS manager
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/sysmobts-mgr -n
+ExecStart=/usr/bin/sysmobts-mgr -ns
 Restart=always
 RestartSec=2
 
