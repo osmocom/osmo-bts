@@ -380,6 +380,21 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 	return abis_bts_rsl_sendmsg(msg);
 }
 
+/* 8.5.4 DELETE INDICATION */
+int rsl_tx_delete_ind(struct gsm_bts *bts, uint8_t len, uint8_t *val)
+{
+	struct msgb *msg;
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+	rsl_cch_push_hdr(msg, RSL_MT_DELETE_IND, RSL_CHAN_PCH_AGCH);
+	msgb_tlv_put(msg, RSL_IE_FULL_IMM_ASS_INFO, len, val);
+	msg->trx = bts->c0;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* 8.5.5 PAGING COMMAND */
 static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 {
@@ -476,7 +491,8 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* put into the AGCH queue of the BTS */
 	if (bts_agch_enqueue(trx->bts, msg) < 0) {
 		/* if there is no space in the queue: send DELETE IND */
-		msgb_free(msg);
+		rsl_tx_delete_ind(trx->bts, msg->len, msg->data);
+		return -ENOMEM;
 	}
 
 	/* return 1 means: don't msgb_free() the msg */
