@@ -49,6 +49,15 @@ struct gsm_network bts_gsmnet = {
 	.num_bts = 0,
 };
 
+/* Table 3.1 TS 04.08: Values of parameter S */
+static const uint8_t tx_integer[] = {
+	3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 25, 32, 50,
+};
+
+static const uint8_t s_values[][2] = {
+	{ 55, 41 }, { 76, 52 }, { 109, 58 }, { 163, 86 }, { 217, 115 },
+};
+
 void *tall_bts_ctx;
 
 int bts_init(struct gsm_bts *bts)
@@ -215,9 +224,37 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct gsm48_system_information_type_3 *si3;
+	uint8_t T, S, agch_num, i;
+	uint8_t T_group = 0;
+	uint8_t ccch_comb = 0;
 
-	if (btsb->agch_queue_count >= 30)
+	/* calculate length of agch queue
+	agch_queue_len =  ( min( T3126 ) / 51 ) * bs_ag_blks_res
+	min(T3126) = T + 2*S defined in 04.08 11.1.1
+	S and T are defined in  04.08 3.3.1.1.2 */
+
+	si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
+	T = si3->rach_control.tx_integer;
+	for (i = 0; i < 15; i++) {
+		if (tx_integer[i] == T) {
+			T_group = i % 5;
+			break;
+		}
+	}
+	if (si3->control_channel_desc.ccch_conf == 1) {
+		ccch_comb = 1;
+	}
+	S = s_values[T_group][ccch_comb];
+	agch_num = si3->control_channel_desc.bs_ag_blks_res;
+
+	btsb->agch_queue_len = ((T + 2 * S) / 51) * agch_num;
+
+	if (btsb->agch_queue_count >= btsb->agch_queue_len) {
+		LOGP(DRSL, LOGL_NOTICE, "AGCH enqueue count = %d >= %d (drop message)\n",
+								 btsb->agch_queue_count, btsb->agch_queue_len);
 		return -ENOMEM;
+	}
 
 	msgb_enqueue(&btsb->agch_queue, msg);
 	btsb->agch_queue_count++;
