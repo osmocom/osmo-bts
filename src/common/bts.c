@@ -42,6 +42,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/signal.h>
 
 
 struct gsm_network bts_gsmnet = {
@@ -51,11 +52,32 @@ struct gsm_network bts_gsmnet = {
 
 void *tall_bts_ctx;
 
+/* Table 3.1 TS 04.08: Values of parameter S */
+static const uint8_t tx_integer[] = {
+	3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 25, 32, 50,
+};
+
+static const uint8_t s_values[][2] = {
+	{ 55, 41 }, { 76, 52 }, { 109, 58 }, { 163, 86 }, { 217, 115 },
+};
+
+static int bts_signal_cbfn(unsigned int subsys, unsigned int signal,
+			   void *hdlr_data, void *signal_data)
+{
+	if (subsys == SS_GLOBAL && signal == S_NEW_SYSINFO) {
+		struct gsm_bts *bts = signal_data;
+
+		bts_update_agch_max_queue_length(bts);
+	}
+	return 0;
+}
+
 int bts_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
 	int rc;
+	static int initialized = 0;
 
 	/* add to list of BTSs */
 	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
@@ -109,6 +131,11 @@ int bts_init(struct gsm_bts *bts)
 	}
 
 	bts_gsmnet.num_bts++;
+
+	if (!initialized) {
+		osmo_signal_register_handler(SS_GLOBAL, bts_signal_cbfn, NULL);
+		initialized = 1;
+	}
 
 	return rc;
 }
@@ -209,11 +236,72 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 	return 0;
 }
 
+#define CCCH_RACH_RATIO_COMBINED256      (256*1/9)
+#define CCCH_RACH_RATIO_SEPARATE256      (256*10/55)
+
+int bts_agch_max_queue_length(int T, int bcch_conf)
+{
+	int S, ccch_rach_ratio256, i;
+	int T_group = 0;
+	int is_ccch_comb = 0;
+
+	if (bcch_conf == RSL_BCCH_CCCH_CONF_1_C)
+		is_ccch_comb = 1;
+
+	/*
+	 * The calculation is based on the ratio of the number RACH slots and
+	 * CCCH blocks per time:
+	 *   Lmax = (T + 2*S) / R_RACH * R_CCCH
+	 * where
+	 *   T3126_min = (T + 2*S) / R_RACH, as defined in GSM 04.08, 11.1.1
+	 *   R_RACH is the RACH slot rate (e.g. RACHs per multiframe)
+	 *   R_CCCH is the CCCH block rate (same time base like R_RACH)
+	 *   S and T are defined in GSM 04.08, 3.3.1.1.2
+	 * The ratio is mainly influenced by the downlink only channels
+	 * (BCCH, FCCH, SCH, CBCH) that can not be used for CCCH.
+	 * An estimation with an error of < 10% is used:
+	 *   ~ 1/9 if CCCH is combined with SDCCH, and
+	 *   ~ 1/5.5 otherwise.
+	 */
+	ccch_rach_ratio256 = is_ccch_comb ?
+		CCCH_RACH_RATIO_COMBINED256 :
+		CCCH_RACH_RATIO_SEPARATE256;
+
+	for (i = 0; i < ARRAY_SIZE(tx_integer); i++) {
+		if (tx_integer[i] == T) {
+			T_group = i % 5;
+			break;
+		}
+	}
+	S = s_values[T_group][is_ccch_comb];
+
+	return (T + 2 * S) * ccch_rach_ratio256 / 256;
+}
+
+void bts_update_agch_max_queue_length(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct gsm48_system_information_type_3 *si3;
+	int old_max_length = btsb->agch_max_queue_length;
+
+	if (!(bts->si_valid & (1<<SYSINFO_TYPE_3)))
+		return;
+
+	si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
+
+	btsb->agch_max_queue_length =
+		bts_agch_max_queue_length(si3->rach_control.tx_integer,
+					  si3->control_channel_desc.ccch_conf);
+
+	if (btsb->agch_max_queue_length != old_max_length)
+		LOGP(DRSL, LOGL_INFO, "Updated AGCH max queue length to %d\n",
+		     btsb->agch_max_queue_length);
+}
+
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	/* FIXME: implement max queue length */
 	msgb_enqueue(&btsb->agch_queue, msg);
 	btsb->agch_queue_length++;
 
