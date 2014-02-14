@@ -326,8 +326,13 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	struct gsm_bts_role_bts *btsb = bts->role;
 	int rc;
 
-	if (!is_ag_res)
-		return paging_gen_msg(btsb->paging_state, out_buf, gt);
+	if (!is_ag_res) {
+		int is_empty = 1;
+		rc = paging_gen_msg(btsb->paging_state, out_buf, gt, &is_empty);
+
+		if (!is_empty)
+			return rc;
+	}
 
 	/* special queue of messages from IMM ASS CMD */
 	msg = bts_agch_dequeue(bts);
@@ -337,7 +342,11 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));
 	rc = msgb_l3len(msg);
 	msgb_free(msg);
-	btsb->agch_queue_agch_msgs++;
+
+	if (is_ag_res)
+		btsb->agch_queue_agch_msgs++;
+	else
+		btsb->agch_queue_pch_msgs++;
 
 	return rc;
 }

@@ -40,7 +40,8 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
                        uint8_t len);
 
 /* generate paging message for given gsm time */
-int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt);
+int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
+		   int *is_empty);
 
 
 /* inspection methods below */
