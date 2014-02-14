@@ -122,6 +122,10 @@ static void test_agch_queue(void)
 	printf("Testing AGCH messages queue handling.\n");
 	btsb->agch_max_queue_length = 32;
 
+	btsb->agch_queue_low_level = 30;
+	btsb->agch_queue_high_level = 30;
+	btsb->agch_queue_thresh_level = 60;
+
 	for (round = 1; round <= num_rounds; round++) {
 		for (idx = 0; idx < num_ima_per_round; idx++) {
 			msg = msgb_alloc(GSM_MACBLOCK_LEN, __FUNCTION__);

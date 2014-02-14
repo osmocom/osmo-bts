@@ -19,5 +19,5 @@ T		BCCH slots
 50	28	14	28	28	28
 Testing AGCH messages queue handling.
 AGCH filled: count 720, imm.ass 80, imm.ass.rej 640 (refs 640), queue limit 32, occupied 720, dropped 0, merged 0, rejected 0, ag-res 0, non-res 0
-AGCH drained: multiframes 241, imm.ass 80, imm.ass.rej 641 (refs 641), queue limit 32, occupied 0, dropped 0, merged 0, rejected 0, ag-res 240, non-res 480
+AGCH drained: multiframes 33, imm.ass 80, imm.ass.rej 17 (refs 17), queue limit 32, occupied 0, dropped 624, merged 0, rejected 0, ag-res 32, non-res 64
 Success

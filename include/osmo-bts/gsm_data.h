@@ -7,6 +7,11 @@
 
 #include <osmo-bts/paging.h>
 
+#define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT 41
+#define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE 999999
+#define GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT 41
+#define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
+
 struct pcu_sock_state;
 
 struct gsm_network {
@@ -53,6 +58,10 @@ struct gsm_bts_role_bts {
 	struct llist_head agch_queue;
 	int agch_queue_length;
 	int agch_max_queue_length;
+
+	int agch_queue_thresh_level;	/* Cleanup threshold in percent of max len */
+	int agch_queue_low_level;	/* Low water mark in percent of max len */
+	int agch_queue_high_level;	/* High water mark in percent of max len */
 
 	/* TODO: Use a rate counter group instead */
 	uint64_t agch_queue_dropped_msgs;

@@ -89,6 +89,14 @@ int bts_init(struct gsm_bts *bts)
 	INIT_LLIST_HEAD(&btsb->agch_queue);
 	btsb->agch_queue_length = 0;
 
+	/* enable management with default levels,
+	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
+	 * disable this feature.
+	 */
+	btsb->agch_queue_low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	btsb->agch_queue_high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+	btsb->agch_queue_thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+
 	/* configurable via VTY */
 	btsb->paging_state = paging_init(btsb, 200, 0);
 
@@ -301,6 +309,18 @@ void bts_update_agch_max_queue_length(struct gsm_bts *bts)
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	int hard_limit = 1000;
+
+	if (btsb->agch_queue_length > hard_limit) {
+		LOGP(DSUM, LOGL_ERROR,
+		     "AGCH: too many messages in queue, "
+		     "refusing message type 0x%02x, length = %d/%d\n",
+		     ((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type,
+		     btsb->agch_queue_length, btsb->agch_max_queue_length);
+
+		btsb->agch_queue_rejected_msgs++;
+		return -ENOMEM;
+	}
 
 	msgb_enqueue(&btsb->agch_queue, msg);
 	btsb->agch_queue_length++;
@@ -319,26 +339,95 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 	return msg;
 }
 
+/*
+ * Remove lower prio messages if the queue has grown too long.
+ *
+ * \return 0 iff the number of messages in the queue would fit into the AGCH
+ *         reserved part of the CCCH.
+ */
+static void compact_agch_queue(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct msgb *msg, *msg2;
+	int max_len, slope, offs;
+	int level_low = btsb->agch_queue_low_level;
+	int level_high = btsb->agch_queue_high_level;
+	int level_thres = btsb->agch_queue_thresh_level;
+
+	max_len = btsb->agch_max_queue_length;
+
+	if (max_len == 0)
+		max_len = 1;
+
+	/* TODO: Make the constants configurable */
+	if (btsb->agch_queue_length < max_len * level_thres / 100)
+		return;
+
+	/* p^
+	 * 1+      /'''''
+	 *  |     /
+	 *  |    /
+	 * 0+---/--+----+--> Q length
+	 *    low high max_len
+	 */
+
+	offs = max_len * level_low / 100;
+	if (level_high > level_low)
+		slope = 0x10000 * 100 / (level_high - level_low);
+	else
+		slope = 0x10000 * max_len; /* p_drop >= 1 if len > offs */
+
+	llist_for_each_entry_safe(msg, msg2, &btsb->agch_queue, list) {
+		struct gsm48_imm_ass *imm_ass_cmd = msgb_l3(msg);
+		int p_drop;
+
+		if (imm_ass_cmd->msg_type != GSM48_MT_RR_IMM_ASS_REJ)
+			return;
+
+		/* IMMEDIATE ASSIGN REJECT */
+
+		p_drop = (btsb->agch_queue_length - offs) * slope / max_len;
+
+		if ((random() & 0xffff) >= p_drop)
+			return;
+
+		llist_del(&msg->list);
+		btsb->agch_queue_length--;
+		msgb_free(msg);
+
+		btsb->agch_queue_dropped_msgs++;
+	}
+	return;
+}
+
 int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt,
 		      int is_ag_res)
 {
-	struct msgb *msg;
+	struct msgb *msg = NULL;
 	struct gsm_bts_role_bts *btsb = bts->role;
-	int rc;
+	int rc = 0;
+	int is_empty = 1;
 
-	if (!is_ag_res) {
-		int is_empty = 1;
+	/* Do queue house keeping.
+	 * This needs to be done every time a CCCH message is requested, since
+	 * the queue max length is calculated based on the CCCH block rate and
+	 * PCH messages also reduce the drain of the AGCH queue.
+	 */
+	compact_agch_queue(bts);
+
+	/* Check for paging messages first if this is PCH */
+	if (!is_ag_res)
 		rc = paging_gen_msg(btsb->paging_state, out_buf, gt, &is_empty);
 
-		if (!is_empty)
-			return rc;
-	}
+	/* Check whether the block may be overwritten */
+	if (!is_empty)
+		return rc;
 
-	/* special queue of messages from IMM ASS CMD */
 	msg = bts_agch_dequeue(bts);
 	if (!msg)
-		return 0;
+		return rc;
 
+	/* Copy AGCH message */
 	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));
 	rc = msgb_l3len(msg);
 	msgb_free(msg);
