@@ -331,7 +331,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	} else {
-		bts->si_valid &= (1 << osmo_si);
+		bts->si_valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, " RX RSL Disabling BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	}
@@ -445,7 +445,7 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	} else {
-		bts->si_valid &= (1 << osmo_si);
+		bts->si_valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL Disabling SACCH FILLING (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	}
