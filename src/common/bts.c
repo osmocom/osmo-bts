@@ -337,6 +337,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));
 	rc = msgb_l3len(msg);
 	msgb_free(msg);
+	btsb->agch_queue_agch_msgs++;
 
 	return rc;
 }

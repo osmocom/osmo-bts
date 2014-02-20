@@ -48,9 +48,19 @@ struct gsm_bts_role_bts {
 	} load;
 	uint8_t ny1;
 	uint8_t max_ta;
+
+	/* AGCH queuing */
 	struct llist_head agch_queue;
 	int agch_queue_length;
 	int agch_max_queue_length;
+
+	/* TODO: Use a rate counter group instead */
+	uint64_t agch_queue_dropped_msgs;
+	uint64_t agch_queue_merged_msgs;
+	uint64_t agch_queue_rejected_msgs;
+	uint64_t agch_queue_agch_msgs;
+	uint64_t agch_queue_pch_msgs;
+
 	struct paging_state *paging_state;
 	char *bsc_oml_host;
 	unsigned int rtp_jitter_buf_ms;
