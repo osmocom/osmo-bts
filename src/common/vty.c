@@ -189,6 +189,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
 		VTY_NEWLINE);
+	if (btsb->agch_queue_thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
+		 || btsb->agch_queue_low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
+		 || btsb->agch_queue_high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
+		vty_out(vty, " agch-queue-mgmt threshold %d low %d high %d%s",
+			btsb->agch_queue_thresh_level, btsb->agch_queue_low_level,
+			btsb->agch_queue_high_level, VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -355,6 +361,41 @@ DEFUN(cfg_bts_paging_lifetime,
 	return CMD_SUCCESS;
 }
 
+#define AGCH_QUEUE_STR "AGCH queue mgmt\n"
+
+DEFUN(cfg_bts_agch_queue_mgmt_params,
+	cfg_bts_agch_queue_mgmt_params_cmd,
+	"agch-queue-mgmt threshold <0-100> low <0-100> high <0-100000>",
+	AGCH_QUEUE_STR
+	"Threshold to start cleanup\nin %% of the maximum queue length\n"
+	"Low water mark for cleanup\nin %% of the maximum queue length\n"
+	"High water mark for cleanup\nin %% of the maximum queue length\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->agch_queue_thresh_level = atoi(argv[0]);
+	btsb->agch_queue_low_level = atoi(argv[1]);
+	btsb->agch_queue_high_level = atoi(argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_agch_queue_mgmt_default,
+	cfg_bts_agch_queue_mgmt_default_cmd,
+	"agch-queue-mgmt default",
+	AGCH_QUEUE_STR
+	"Reset clean parameters to default values\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->agch_queue_thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+	btsb->agch_queue_low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	btsb->agch_queue_high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+
+	return CMD_SUCCESS;
+}
 
 
 /* ======================================================================
@@ -527,6 +568,8 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_no_description_cmd);
 	install_element(BTS_NODE, &cfg_bts_paging_queue_size_cmd);
 	install_element(BTS_NODE, &cfg_bts_paging_lifetime_cmd);
+	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
+	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
 
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
