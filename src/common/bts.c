@@ -306,10 +306,138 @@ void bts_update_agch_max_queue_length(struct gsm_bts *bts)
 		     btsb->agch_max_queue_length);
 }
 
+#define REQ_REFS_PER_IMM_ASS_REJ 4
+static int store_imm_ass_rej_refs(struct gsm48_imm_ass_rej *rej,
+				    struct gsm48_req_ref *req_refs,
+				    uint8_t *wait_inds,
+				    int count)
+{
+	switch (count) {
+	case 0:
+		/* TODO: Warning ? */
+		return 0;
+	default:
+		count = 4;
+		rej->req_ref4 = req_refs[3];
+		rej->wait_ind4 = wait_inds[3];
+		/* fall through */
+	case 3:
+		rej->req_ref3 = req_refs[2];
+		rej->wait_ind3 = wait_inds[2];
+		/* fall through */
+	case 2:
+		rej->req_ref2 = req_refs[1];
+		rej->wait_ind2 = wait_inds[1];
+		/* fall through */
+	case 1:
+		rej->req_ref1 = req_refs[0];
+		rej->wait_ind1 = wait_inds[0];
+		break;
+	}
+
+	switch (count) {
+	case 1:
+		rej->req_ref2 = req_refs[0];
+		rej->wait_ind2 = wait_inds[0];
+		/* fall through */
+	case 2:
+		rej->req_ref3 = req_refs[0];
+		rej->wait_ind3 = wait_inds[0];
+		/* fall through */
+	case 3:
+		rej->req_ref4 = req_refs[0];
+		rej->wait_ind4 = wait_inds[0];
+		/* fall through */
+	default:
+		break;
+	}
+
+	return count;
+}
+
+static int extract_imm_ass_rej_refs(struct gsm48_imm_ass_rej *rej,
+				    struct gsm48_req_ref *req_refs,
+				    uint8_t *wait_inds)
+{
+	int count = 0;
+	req_refs[count] = rej->req_ref1;
+	wait_inds[count] = rej->wait_ind1;
+	count++;
+
+	if (memcmp(&rej->req_ref1, &rej->req_ref2, sizeof(rej->req_ref2))) {
+		req_refs[count] = rej->req_ref2;
+		wait_inds[count] = rej->wait_ind2;
+		count++;
+	}
+
+	if (memcmp(&rej->req_ref1, &rej->req_ref3, sizeof(rej->req_ref3)) &&
+	    memcmp(&rej->req_ref2, &rej->req_ref3, sizeof(rej->req_ref3))) {
+		req_refs[count] = rej->req_ref3;
+		wait_inds[count] = rej->wait_ind3;
+		count++;
+	}
+
+	if (memcmp(&rej->req_ref1, &rej->req_ref4, sizeof(rej->req_ref4)) &&
+	    memcmp(&rej->req_ref2, &rej->req_ref4, sizeof(rej->req_ref4)) &&
+	    memcmp(&rej->req_ref3, &rej->req_ref4, sizeof(rej->req_ref4))) {
+		req_refs[count] = rej->req_ref4;
+		wait_inds[count] = rej->wait_ind4;
+		count++;
+	}
+
+	return count;
+}
+
+static int try_merge_imm_ass_rej(struct gsm48_imm_ass_rej *old_rej,
+				 struct gsm48_imm_ass_rej *new_rej)
+{
+	struct gsm48_req_ref req_refs[2 * REQ_REFS_PER_IMM_ASS_REJ];
+	uint8_t wait_inds[2 * REQ_REFS_PER_IMM_ASS_REJ];
+	int count = 0;
+	int stored = 0;
+
+	if (new_rej->msg_type != GSM48_MT_RR_IMM_ASS_REJ)
+		return 0;
+	if (old_rej->msg_type != GSM48_MT_RR_IMM_ASS_REJ)
+		return 0;
+
+	/* GSM 08.58, 5.7
+	 * -> The BTS may combine serveral IMM.ASS.REJ messages
+	 * -> Identical request refs in one message may be squeezed
+	 *
+	 * GSM 04.08, 9.1.20.2
+	 * -> Request ref and wait ind are duplicated to fill the message
+	 */
+
+	/* Extract all entries */
+	count = extract_imm_ass_rej_refs(old_rej,
+					 &req_refs[count], &wait_inds[count]);
+	if (count == REQ_REFS_PER_IMM_ASS_REJ)
+		return 0;
+
+	count += extract_imm_ass_rej_refs(new_rej,
+					  &req_refs[count], &wait_inds[count]);
+
+	/* Store entries into old message */
+	stored = store_imm_ass_rej_refs(old_rej,
+					&req_refs[stored], &wait_inds[stored],
+					count);
+	count -= stored;
+	if (count == 0)
+		return 1;
+
+	/* Store remaining entries into new message */
+	stored += store_imm_ass_rej_refs(new_rej,
+					 &req_refs[stored], &wait_inds[stored],
+					 count);
+	return 0;
+}
+
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	int hard_limit = 1000;
+	struct gsm48_imm_ass_rej *imm_ass_cmd = msgb_l3(msg);
 
 	if (btsb->agch_queue_length > hard_limit) {
 		LOGP(DSUM, LOGL_ERROR,
@@ -320,6 +448,17 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 
 		btsb->agch_queue_rejected_msgs++;
 		return -ENOMEM;
+	}
+
+	if (btsb->agch_queue_length > 0) {
+		struct msgb *last_msg =
+			llist_entry(btsb->agch_queue.prev, struct msgb, list);
+		struct gsm48_imm_ass_rej *last_imm_ass_rej = msgb_l3(last_msg);
+
+		if (try_merge_imm_ass_rej(last_imm_ass_rej, imm_ass_cmd)) {
+			btsb->agch_queue_merged_msgs++;
+			return 0;
+		}
 	}
 
 	msgb_enqueue(&btsb->agch_queue, msg);
