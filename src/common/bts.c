@@ -65,6 +65,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
 
 	INIT_LLIST_HEAD(&btsb->agch_queue);
+	btsb->agch_queue_length = 0;
 
 	/* configurable via VTY */
 	btsb->paging_state = paging_init(btsb, 200, 0);
@@ -214,6 +215,7 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 
 	/* FIXME: implement max queue length */
 	msgb_enqueue(&btsb->agch_queue, msg);
+	btsb->agch_queue_length++;
 
 	return 0;
 }
@@ -221,8 +223,12 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct msgb *msg = msgb_dequeue(&btsb->agch_queue);
+	if (!msg)
+		return NULL;
 
-	return msgb_dequeue(&btsb->agch_queue);
+	btsb->agch_queue_length--;
+	return msg;
 }
 
 int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
