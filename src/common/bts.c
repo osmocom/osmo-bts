@@ -231,6 +231,28 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 	return msg;
 }
 
+int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt,
+		      int is_ag_res)
+{
+	struct msgb *msg;
+	struct gsm_bts_role_bts *btsb = bts->role;
+	int rc;
+
+	if (!is_ag_res)
+		return paging_gen_msg(btsb->paging_state, out_buf, gt);
+
+	/* special queue of messages from IMM ASS CMD */
+	msg = bts_agch_dequeue(bts);
+	if (!msg)
+		return 0;
+
+	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));
+	rc = msgb_l3len(msg);
+	msgb_free(msg);
+
+	return rc;
+}
+
 int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
 {
 	int sup;

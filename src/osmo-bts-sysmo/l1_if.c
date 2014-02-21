@@ -373,7 +373,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
 	GsmL1_MsgUnitParam_t *msu_param;
@@ -511,19 +510,11 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		}
 		break;
 	case GsmL1_Sapi_Agch:
-		/* special queue of messages from IMM ASS CMD */
-		{
-			struct msgb *msg = bts_agch_dequeue(bts);
-			if (!msg)
-				memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-			else {
-				memcpy(msu_param->u8Buffer, msgb_l3(msg), msgb_l3len(msg));
-				msgb_free(msg);
-			}
-		}
-		break;
 	case GsmL1_Sapi_Pch:
-		rc = paging_gen_msg(btsb->paging_state, msu_param->u8Buffer, &g_time);
+		rc = bts_ccch_copy_msg(bts, msu_param->u8Buffer, &g_time,
+				       rts_ind->sapi == GsmL1_Sapi_Agch);
+		if (rc <= 0)
+			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;
 	case GsmL1_Sapi_TchF:
 	case GsmL1_Sapi_TchH:
