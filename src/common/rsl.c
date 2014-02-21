@@ -466,7 +466,9 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
 
 	/* cut down msg to the 04.08 RR part */
-	msg->data = (uint8_t *) TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO);
+	msg->l3h = (uint8_t *) TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO);
+	msg->data = msg->l3h;
+	msg->l2h = NULL;
 	msg->len = TLVP_LEN(&tp, RSL_IE_FULL_IMM_ASS_INFO);
 
 	/* put into the AGCH queue of the BTS */

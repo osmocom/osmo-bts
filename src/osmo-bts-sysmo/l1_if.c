@@ -517,7 +517,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			if (!msg)
 				memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 			else {
-				memcpy(msu_param->u8Buffer, msg->data, msg->len);
+				memcpy(msu_param->u8Buffer, msgb_l3(msg), msgb_l3len(msg));
 				msgb_free(msg);
 			}
 		}
