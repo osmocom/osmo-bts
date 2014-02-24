@@ -650,8 +650,10 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
-			 && ts->pchan == GSM_PCHAN_PDCH)
+			 && ts->pchan == GSM_PCHAN_PDCH) {
+				ts->lchan->rel_act_kind = LCHAN_REL_ACT_PCU;
 				bts_model_rsl_chan_rel(ts->lchan);
+			}
 		}
 	}
 
