@@ -45,7 +45,7 @@
  * Temperature handling
  *********************************************************************/
 
-#define TEMP_PATH	"/sys/class/hwmon/hwmon0/device%u_%s"
+#define TEMP_PATH	"/sys/class/hwmon/hwmon0/device/temp%u_%s"
 
 static const char *temp_type_str[_NUM_TEMP_TYPES] = {
 	[SYSMOBTS_TEMP_INPUT] = "input",
