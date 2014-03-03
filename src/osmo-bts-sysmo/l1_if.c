@@ -1117,6 +1117,12 @@ static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 		if (lchan->state != LCHAN_S_ACTIVE)
 			continue;
 
+		/* skip channels that might be active for another reason */
+		if (lchan->type == GSM_LCHAN_CCCH)
+			continue;
+		if (lchan->type == GSM_LCHAN_PDTCH)
+			continue;
+
 		if (lchan->s <= 0)
 			continue;
 
