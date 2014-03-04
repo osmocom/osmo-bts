@@ -97,7 +97,7 @@ int l1if_reset(struct femtol1_hdl *hdl);
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on);
 int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags);
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power);
-int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8]);
+int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb);
 
 struct msgb *l1p_msgb_alloc(void);
 struct msgb *sysp_msgb_alloc(void);

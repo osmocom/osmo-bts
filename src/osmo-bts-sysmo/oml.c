@@ -27,6 +27,7 @@
 #include <sysmocom/femtobts/gsml1prim.h>
 #include <sysmocom/femtobts/gsml1const.h>
 #include <sysmocom/femtobts/gsml1types.h>
+#include <sysmocom/femtobts/superfemto.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -68,6 +69,8 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	//[GSM_PCHAN_TCH_F_PDCH]		= FIXME,
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 };
+
+static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
 
 static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct femtol1_hdl *gl1)
 {
@@ -222,6 +225,26 @@ static int opstart_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	return opstart_compl(mo, l1_msg);
 }
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+static int trx_mute_on_init_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+{
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	GsmL1_Status_t status;
+
+	status = sysp->u.muteRfCnf.status;
+
+	if (status != GsmL1_Status_Success) {
+		LOGP(DL1C, LOGL_FATAL, "Rx RF-MUTE.conf status=%s\n",
+			get_value_string(femtobts_l1status_names, status));
+		bts_shutdown(trx->bts, "RF-MUTE failure");
+	}
+
+	msgb_free(resp);
+
+	return 0;
+}
+#endif
+
 static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
@@ -240,6 +263,12 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	}
 
 	fl1h->hLayer1 = ic->hLayer1;
+
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
+	/* If the TRX was already locked the MphInit would have undone it */
+	if (trx->mo.nm_state.administrative == NM_STATE_LOCKED)
+		trx_rf_lock(trx, 1, trx_mute_on_init_cb);
+#endif
 
 	return opstart_compl(&trx->mo, l1_msg);
 }
@@ -327,7 +356,7 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb);
 }
 
-static int trx_rf_lock(struct gsm_bts_trx *trx, int locked)
+static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	uint8_t mute[8];
@@ -336,7 +365,7 @@ static int trx_rf_lock(struct gsm_bts_trx *trx, int locked)
 	for (i = 0; i < ARRAY_SIZE(mute); ++i)
 		mute[i] = locked ? 1 : 0;
 
-	return l1if_mute_rf(fl1h, mute);
+	return l1if_mute_rf(fl1h, mute, cb);
 }
 
 int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
@@ -1519,10 +1548,10 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		mo->procedure_pending = 1;
 		switch (adm_state) {
 		case NM_STATE_LOCKED:
-			rc = trx_rf_lock(obj, 1);
+			rc = trx_rf_lock(obj, 1, NULL);
 			break;
 		case NM_STATE_UNLOCKED:
-			rc = trx_rf_lock(obj, 0);
+			rc = trx_rf_lock(obj, 0, NULL);
 			break;
 		default:
 			granted = 1;
