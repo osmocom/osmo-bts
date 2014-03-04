@@ -1200,7 +1200,7 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 #endif
 
 /* mute/unmute RF time slots */
-int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8])
+int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 {
 	struct msgb *msg = sysp_msgb_alloc();
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
@@ -1219,7 +1219,7 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8])
 	/* save for later use */
 	memcpy(hdl->last_rf_mute, mute, sizeof(hdl->last_rf_mute));
 
-	return l1if_req_compl(hdl, msg, mute_rf_compl_cb);
+	return l1if_req_compl(hdl, msg, cb ? cb : mute_rf_compl_cb);
 #endif /* < 3.6.0 */
 }
 
