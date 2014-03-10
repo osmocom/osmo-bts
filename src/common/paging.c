@@ -377,12 +377,14 @@ static void sort_pr_tmsi_imsi(struct paging_record *pr[], unsigned int n)
 }
 
 /* generate paging message for given gsm time */
-int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt)
+int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
+		   int *is_empty)
 {
 	struct llist_head *group_q;
 	int group;
 	int len;
 
+	*is_empty = 0;
 	ps->btsb->load.ccch.pch_total += 1;
 
 	group = get_pag_subch_nr(ps, gt);
@@ -400,6 +402,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		//DEBUGP(DPAG, "Tx PAGING TYPE 1 (empty)\n");
 		len = fill_paging_type_1(out_buf, empty_id_lv, 0,
 					 NULL, 0);
+		*is_empty = 1;
 	} else {
 		struct paging_record *pr[4];
 		unsigned int num_pr = 0, imm_ass = 0;

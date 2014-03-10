@@ -59,6 +59,7 @@ AC_OUTPUT(
     include/osmo-bts/Makefile
     tests/Makefile
     tests/paging/Makefile
+    tests/agch/Makefile
     tests/cipher/Makefile
     tests/sysmobts/Makefile
     Makefile)
