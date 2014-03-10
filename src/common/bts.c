@@ -501,7 +501,6 @@ static void compact_agch_queue(struct gsm_bts *bts)
 	if (max_len == 0)
 		max_len = 1;
 
-	/* TODO: Make the constants configurable */
 	if (btsb->agch_queue_length < max_len * level_thres / 100)
 		return;
 
