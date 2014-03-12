@@ -4,14 +4,21 @@ Makefile.in
 Makefile
 .deps
 
+btsconfig.h
+btsconfig.h.in
+
 aclocal.m4
 autom4te.cache
 config.log
 config.status
+config.guess
+config.sub
 configure
+compile
 depcomp
 install-sh
 missing
+stamp-h1
 core
 core.*
 
@@ -25,6 +32,7 @@ src/osmo-bts-sysmo/sysmobts-mgr
 
 tests/atconfig
 tests/package.m4
+tests/agch/agch_test
 tests/paging/paging_test
 tests/cipher/cipher_test
 tests/sysmobts/sysmobts_test
