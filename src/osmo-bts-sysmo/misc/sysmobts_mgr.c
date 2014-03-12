@@ -39,6 +39,7 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
+#include "btsconfig.h"
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
 #include "misc/sysmobts_nl.h"
