@@ -52,8 +52,11 @@ AC_CHECK_HEADER([openbsc/gsm_data_shared.h],[],
 CPPFLAGS=$oldCPPFLAGS
 
 # Check for the sbts2050_header.h that was added after the 3.6 release
+oldCPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CPPFLAGS -I$OPENBSC_INCDIR $LIBOSMOCORE_CFLAGS"
 AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
 		[sysmo_uc_header="yes"],[])
+CPPFLAGS=$oldCPPFLAGS
 
 if test "$sysmo_uc_header" = "yes" ; then
 	AC_DEFINE(BUILD_SBTS2050, 1, [Define if we want to build SBTS2050])
