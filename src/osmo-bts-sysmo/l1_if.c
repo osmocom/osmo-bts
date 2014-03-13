@@ -750,8 +750,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			 * before decryption was enabled */
 			if (data_ind->msgUnitParam.u8Buffer[0] == 0x01 &&
 			    (data_ind->msgUnitParam.u8Buffer[1] & 0x01) == 0) {
-				l1if_set_ciphering(fl1, lchan, 1);
 				lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+				l1if_set_ciphering(fl1, lchan, 1);
 			}
 		}
 
