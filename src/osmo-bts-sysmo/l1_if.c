@@ -689,7 +689,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	lchan = l1if_hLayer_to_lchan(fl1->priv, data_ind->hLayer2);
 	if (!lchan) {
-		LOGP(DL1C, LOGL_ERROR, "unable to resolve lchan by hLayer2\n");
+		LOGP(DL1C, LOGL_ERROR,
+			"unable to resolve lchan by hLayer2 for 0x%x\n",
+			data_ind->hLayer2);
 		return -ENODEV;
 	}
 
