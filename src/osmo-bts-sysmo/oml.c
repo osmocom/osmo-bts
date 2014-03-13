@@ -704,16 +704,23 @@ err:
 
 uint32_t l1if_lchan_to_hLayer(struct gsm_lchan *lchan)
 {
-	return (lchan->nr << 8) | (lchan->ts->nr << 16) | (lchan->ts->trx->nr << 24);
+	return 0xBB
+		| (lchan->nr << 8)
+		| (lchan->ts->nr << 16)
+		| (lchan->ts->trx->nr << 24);
 }
 
 /* obtain a ptr to the lapdm_channel for a given hLayer */
 struct gsm_lchan *
 l1if_hLayer_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer2)
 {
+	uint8_t magic = hLayer2 & 0xff;
 	uint8_t ts_nr = (hLayer2 >> 16) & 0xff;
 	uint8_t lchan_nr = (hLayer2 >> 8)& 0xff;
 	struct gsm_bts_trx_ts *ts;
+
+	if (magic != 0xBB)
+		return NULL;
 
 	/* FIXME: if we actually run on the BTS, the 32bit field is large
 	 * enough to simply put a pointer inside. */
