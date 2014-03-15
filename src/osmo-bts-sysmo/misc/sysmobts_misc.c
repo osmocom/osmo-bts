@@ -120,6 +120,12 @@ static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
 	case SBTS2050_TEMP_RQT:
 		num = sizeof(command->cmd.tempGet);
 		break;
+	case SBTS2050_PWR_RQT:
+		num = sizeof(command->cmd.pwrSetState);
+		break;
+	case SBTS2050_PWR_STATUS:
+		num = sizeof(command->cmd.pwrGetStatus);
+		break;
 	default:
 		return NULL;
 	}
@@ -137,6 +143,17 @@ static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
 	case SBTS2050_TEMP_RQT:
 		command->u8Id = info.id;
 		command->u8Len = sizeof(command->cmd.tempGet);
+		break;
+	case SBTS2050_PWR_RQT:
+		command->u8Id = info.id;
+		command->u8Len = sizeof(command->cmd.pwrSetState);
+		command->cmd.pwrSetState.u1MasterEn = !!info.master;
+		command->cmd.pwrSetState.u1SlaveEn  = !!info.slave;
+		command->cmd.pwrSetState.u1PwrAmpEn = !!info.pa;
+		break;
+	case SBTS2050_PWR_STATUS:
+		command->u8Id     = info.id;
+		command->u8Len    = sizeof(command->cmd.pwrGetStatus);
 		break;
 	default:
 		goto err;
@@ -180,6 +197,82 @@ err:
 	return NULL;
 }
 #endif
+
+/**********************************************************************
+ *	Get power status function
+ *********************************************************************/
+int sbts2050_uc_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
+{
+#ifdef BUILD_SBTS2050
+	struct msgb *msg;
+	struct ucinfo info = {
+		.id = SBTS2050_PWR_STATUS,
+	};
+	rsppkt_t *response;
+	int val_status;
+
+	msg = sbts2050_ucinfo_get(ucontrol, info);
+
+	if (msg == NULL) {
+		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit");
+		return -1;
+	}
+
+	response = (rsppkt_t *)msg->data;
+
+	switch (status) {
+	case SBTS2050_STATUS_MASTER:
+		val_status = response->rsp.pwrGetStatus.u1MasterEn;
+		break;
+	case SBTS2050_STATUS_SLAVE:
+		val_status = response->rsp.pwrGetStatus.u1SlaveEn;
+		break;
+	case SBTS2050_STATUS_PA:
+		val_status = response->rsp.pwrGetStatus.u1PwrAmpEn;
+		break;
+	default:
+		msgb_free(msg);
+		return -1;
+	}
+	msgb_free(msg);
+	return val_status;
+#else
+	return -1;
+#endif
+}
+
+/**********************************************************************
+ *	Uc Power Switching handling
+ *********************************************************************/
+void sbts2050_uc_power(struct uc *ucontrol, int pmaster, int pslave, int ppa)
+{
+#ifdef BUILD_SBTS2050
+	struct msgb *msg;
+	struct ucinfo info = {
+		.id = 0x00,
+		.master = pmaster,
+		.slave = pslave,
+		.pa = ppa
+	};
+
+	msg = sbts2050_ucinfo_get(ucontrol, info);
+
+	if (msg == NULL) {
+		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit");
+		return;
+	}
+
+	LOGP(DTEMP, LOGL_DEBUG, "Switch off/on success:\n"
+				"MASTER %s\n"
+				"SLAVE %s\n"
+				"PA %s\n",
+				pmaster ? "ON" : "OFF",
+				pslave ? "ON" : "OFF",
+				ppa ? "ON" : "OFF");
+
+	msgb_free(msg);
+#endif
+}
 
 /**********************************************************************
  *	Uc temperature handling
