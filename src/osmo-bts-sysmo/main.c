@@ -351,7 +351,7 @@ int main(int argc, char **argv)
 
 	if (pcu_sock_init()) {
 		fprintf(stderr, "PCU L1 socket failed\n");
-		exit(-1);
+		exit(1);
 	}
 
 	signal(SIGINT, &signal_handler);
