@@ -1535,6 +1535,15 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 {
+	if (kind == NM_OC_RADIO_CARRIER) {
+		struct gsm_bts_trx *trx = obj;
+		struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+		/* Did we go through MphInit yet? If yes fire and forget */
+		if (fl1h->hLayer1)
+			l1if_set_txpower(fl1h, trx->nominal_power - trx->max_power_red);
+	}
+
 	/* FIXME: we actaully need to send a ACK or NACK for the OML message */
 	return oml_fom_ack_nack(msg, 0);
 }
