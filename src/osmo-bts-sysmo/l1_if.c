@@ -1094,6 +1094,16 @@ static int get_clk_cal(struct femtol1_hdl *hdl)
 #endif
 }
 
+/*
+ * RevC was the last HW revision without an external
+ * attenuator. Check for that.
+ */
+static int has_external_atten(struct femtol1_hdl *hdl)
+{
+	/* older version doesn't have an attenuator */
+	return hdl->hw_info.ver_major > 2;
+}
+
 /* activate or de-activate the entire RF-Frontend */
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
@@ -1127,9 +1137,12 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->u.activateRfReq.rfRx.iClkCor = get_clk_cal(hdl);
 #endif /* API 2.4.0 */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,2,0)
-		sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
-		sysp->u.activateRfReq.rfTrx.fMaxTxPower =
-				sysmobts_get_nominal_power(trx);
+		if (has_external_atten(hdl)) {
+			LOGP(DL1C, LOGL_INFO, "Using external attenuator.\n");
+			sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
+			sysp->u.activateRfReq.rfTrx.fMaxTxPower =
+					sysmobts_get_nominal_power(trx);
+		}
 #endif /* 2.2.0 */
 #endif /* !HW_SYSMOBTS_V1 */
 	} else {
@@ -1241,7 +1254,10 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	fl1h->hw_info.fpga_version[1] = sic->fpgaVersion.minor;
 	fl1h->hw_info.fpga_version[2] = sic->fpgaVersion.build;
 
-	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\n",
+	fl1h->hw_info.ver_major = sic->boardVersion.rev;
+	fl1h->hw_info.ver_minor = sic->boardVersion.option;
+
+	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\nn",
 		sic->dspVersion.major, sic->dspVersion.minor,
 		sic->dspVersion.build, sic->fpgaVersion.major,
 		sic->fpgaVersion.minor, sic->fpgaVersion.build);
@@ -1260,6 +1276,9 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	if (!(fl1h->hw_info.band_support & trx->bts->band))
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
 		     gsm_band_name(trx->bts->band));
+
+	/* Request the activation */
+	l1if_activate_rf(fl1h, 1);
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	/* load calibration tables (if we know their path) */
@@ -1313,9 +1332,6 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 
 	/* obtain version information on DSP/FPGA and band capabilities */
 	l1if_get_info(fl1h);
-
-	/* otherwise, request activation of RF board */
-	l1if_activate_rf(fl1h, 1);
 
 	return 0;
 }

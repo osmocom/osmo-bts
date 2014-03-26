@@ -67,6 +67,8 @@ struct femtol1_hdl {
 		uint8_t dsp_version[3];
 		uint8_t fpga_version[3];
 		uint32_t band_support;	/* bitmask of GSM_BAND_* */
+		uint8_t ver_major;
+		uint8_t ver_minor;
 		/* from EEPROM */
 		uint16_t model_nr;
 		uint16_t model_flags;
