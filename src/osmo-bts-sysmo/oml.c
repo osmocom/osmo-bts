@@ -1533,7 +1533,7 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 
 /* callback from OML */
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
-			struct tlv_parsed *new_attr, void *obj)
+			struct tlv_parsed *new_attr, int kind, void *obj)
 {
 	/* FIXME: we actaully need to send a ACK or NACK for the OML message */
 	return oml_fom_ack_nack(msg, 0);

@@ -14,7 +14,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 int bts_model_init(struct gsm_bts *bts)
 { return 0; }
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
-			struct tlv_parsed *new_attr, void *obj)
+			struct tlv_parsed *new_attr, int kind, void *obj)
 { return 0; }
 int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 { return 0;}

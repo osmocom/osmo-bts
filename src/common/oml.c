@@ -532,7 +532,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		bts->bsic = *TLVP_VAL(&tp, NM_ATT_BSIC);
 
 	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(bts, msg, tp_merged, bts);
+	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_BTS, bts);
 }
 
 /* 8.6.2 Set Radio Attributes has been received */
@@ -594,7 +594,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		trx->arfcn_num = 0;
 #endif
 	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(trx->bts, msg, tp_merged, trx);
+	return bts_model_apply_oml(trx->bts, msg, tp_merged, NM_OC_RADIO_CARRIER, trx);
 }
 
 static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
@@ -704,7 +704,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		gsm_abis_mo_name(&ts->mo), ts->tsc);
 
 	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(bts, msg, tp_merged, ts);
+	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);
 }
 
 /* 8.9.2 Opstart has been received */
