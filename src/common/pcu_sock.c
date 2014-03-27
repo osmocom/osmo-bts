@@ -494,7 +494,8 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			rc = -ENOMEM;
 			break;
 		}
-		memcpy(msgb_put(msg, data_req->len), data_req->data, data_req->len);
+		msg->l3h = msgb_put(msg, data_req->len);
+		memcpy(msg->l3h, data_req->data, data_req->len);
 		if (bts_agch_enqueue(bts, msg) < 0) {
 			msgb_free(msg);
 			rc = -EIO;
