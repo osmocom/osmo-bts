@@ -1254,8 +1254,10 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	fl1h->hw_info.fpga_version[1] = sic->fpgaVersion.minor;
 	fl1h->hw_info.fpga_version[2] = sic->fpgaVersion.build;
 
+#ifndef HW_SYSMOBTS_V1
 	fl1h->hw_info.ver_major = sic->boardVersion.rev;
 	fl1h->hw_info.ver_minor = sic->boardVersion.option;
+#endif
 
 	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\nn",
 		sic->dspVersion.major, sic->dspVersion.minor,
