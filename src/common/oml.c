@@ -765,11 +765,10 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
 	/* Step 2: Do some global dependency/consistency checking */
-	if (mo->nm_state.administrative == adm_state) {
-		DEBUGP(DOML, "... automatic ACK, ADM state already was %s\n",
-			get_value_string(abis_nm_adm_state_names, adm_state));
-		return oml_mo_statechg_ack(mo);
-	}
+	if (mo->nm_state.administrative == adm_state)
+		LOGP(DOML, LOGL_NOTICE,
+		     "ADM state already was %s\n",
+		     get_value_string(abis_nm_adm_state_names, adm_state));
 
 	/* Step 3: Ask BTS driver to apply the state chg */
 	return bts_model_chg_adm_state(bts, mo, obj, adm_state);
