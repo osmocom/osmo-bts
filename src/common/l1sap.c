@@ -44,6 +44,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/handover.h>
 
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
@@ -716,6 +717,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			radio_link_timeout(lchan, 1);
 		return -EINVAL;
 	}
+
+	/* report first valid received frame to handover process */
+	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
+		handover_frame(lchan);
 
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		radio_link_timeout(lchan, 0);
