@@ -836,21 +836,11 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
-	struct gsm_lchan *lchan;
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
 	uint8_t *data, len;
 	int rc = 0;
-
-	lchan = l1if_hLayer_to_lchan(fl1->priv, data_ind->hLayer2);
-	if (!lchan) {
-		LOGP(DL1C, LOGL_ERROR,
-			"unable to resolve lchan by hLayer2 for 0x%x\n",
-			data_ind->hLayer2);
-		msgb_free(l1p_msg);
-		return -ENODEV;
-	}
 
 	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
@@ -877,9 +867,6 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
-
-	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
-		handover_frame(lchan);
 
 	switch (data_ind->sapi) {
 	case GsmL1_Sapi_Sacch:

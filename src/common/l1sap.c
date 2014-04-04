@@ -762,6 +762,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		return -EINVAL;
 	}
 
+	/* report first valid received frame to handover process */
+	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
+		handover_frame(lchan);
+
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		radio_link_timeout(lchan, 0);
 		le = &lchan->lapdm_ch.lapdm_acch;
