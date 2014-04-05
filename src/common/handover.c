@@ -144,7 +144,7 @@ void handover_frame(struct gsm_lchan *lchan)
 {
 	LOGP(DHO, LOGL_INFO,
 		"%s First valid frame detected\n", gsm_lchan_name(lchan));
-	handover_frame(lchan);
+	handover_reset(lchan);
 }
 
 /* release handover state */
