@@ -123,21 +123,29 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	char buf[1500];
 	int len;
+	uint32_t fn;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
 	if (len <= 0)
 		return len;
 	buf[len] = '\0';
 
-	if (!strncmp(buf, "IND CLOCK ", 10)) {
-		uint32_t fn;
-
-		sscanf(buf, "IND CLOCK %u", &fn);
-		LOGP(DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
-		trx_sched_clock(fn);
-	} else
+	if (!!strncmp(buf, "IND CLOCK ", 10)) {
 		LOGP(DTRX, LOGL_NOTICE, "Unknown message on clock port: %s\n",
 			buf);
+		return 0;
+	}
+
+	sscanf(buf, "IND CLOCK %u", &fn);
+	LOGP(DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
+
+	if (fn >= 2715648) {
+		fn %= 2715648;
+		LOGP(DTRX, LOGL_ERROR, "Indicated clock's FN is not wrapping "
+			"correctly, correcting to fn=%u\n", fn);
+	}
+
+	trx_sched_clock(fn);
 
 	return 0;
 }
