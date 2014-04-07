@@ -938,7 +938,7 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 	if (status != GsmL1_Status_Success) {
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
-		rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+		rsl_tx_chan_act_nack(lchan, RSL_ERR_PROCESSOR_OVERLOAD);
 		return -1;
 	}
 
