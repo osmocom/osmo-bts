@@ -936,6 +936,9 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 
 	/* FIXME: Error handling */
 	if (status != GsmL1_Status_Success) {
+		LOGP(DL1C, LOGL_ERROR,
+			"%s act failed mark broken due status: %d\n",
+			gsm_lchan_name(lchan), status);
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
 		rsl_tx_chan_act_nack(lchan, RSL_ERR_PROCESSOR_OVERLOAD);
