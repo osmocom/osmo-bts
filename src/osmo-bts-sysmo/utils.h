@@ -12,4 +12,5 @@ int sysmobts_select_femto_band(struct gsm_bts_trx *trx, uint16_t arfcn);
 
 int sysmobts_get_nominal_power(struct gsm_bts_trx *trx);
 
+int sysmobts_get_power_trx(struct gsm_bts_trx *trx);
 #endif
