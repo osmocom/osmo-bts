@@ -60,6 +60,7 @@
 #include "hw_misc.h"
 #include "misc/sysmobts_par.h"
 #include "eeprom.h"
+#include "utils.h"
 
 extern int pcu_direct;
 
