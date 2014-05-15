@@ -328,6 +328,8 @@ int main(int argc, char **argv)
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
+	abis_init(bts);
+
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n",

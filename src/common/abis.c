@@ -222,14 +222,8 @@ static struct e1inp_line_ops line_ops = {
 	.sign_link	= sign_link_cb,
 };
 
-/* UGLY: we assume this function is only called once as it does some
- * global initialization as well as the actual opening of the A-bis link
- * */
-struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
-			     const char *model_name)
+void abis_init(struct gsm_bts *bts)
 {
-	struct e1inp_line *line;
-
 	g_bts = bts;
 
 	oml_init();
@@ -237,6 +231,12 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 	libosmo_abis_init(NULL);
 
 	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
+}
+
+struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
+			     const char *model_name)
+{
+	struct e1inp_line *line;
 
 	/* patch in various data from VTY and othe sources */
 	line_ops.cfg.ipa.addr = dst_host;
@@ -248,15 +248,14 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 		bts_dev_info.unit_name = bts->description;
 	bts_dev_info.location2 = model_name;
 
-	line = e1inp_line_create(0, "ipa");
+	line = e1inp_line_find(0);
+	if (!line)
+		line = e1inp_line_create(0, "ipa");
 	if (!line)
 		return NULL;
 	e1inp_line_bind_ops(line, &line_ops);
 
-	/* This is what currently starts both the outbound OML and RSL
-	 * connections, which is wrong.
-	 * FIXME: It should only start OML and wait for the RLS IP
-	 * address to be set as part of the TRX attributes */
+	/* This will open the OML connection now */
 	if (e1inp_line_update(line) < 0)
 		return NULL;
 

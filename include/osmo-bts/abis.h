@@ -16,6 +16,7 @@ enum {
 	LINK_STATE_CONNECT,
 };
 
+void abis_init(struct gsm_bts *bts);
 struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 			     const char *model_name);
 
