@@ -49,6 +49,25 @@
 static int no_eeprom_write = 0;
 static int daemonize = 0;
 void *tall_mgr_ctx;
+static struct sbts2050_config_info confinfo;
+
+static struct sysmobts_mgr_instance sysmobts_mgr_inst = {
+	.config_file = "osmobts-mgr.cfg",
+};
+
+const char *sysmomgr_copyright =
+	"(C) 2012 by Harald Welte <laforge@gnumonks.org>\r\n"
+	"(C) 2014 by Holger Hans Peter Freyther\r\n"
+	"License AGPLv3+: GNU AGPL version 2 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
+
+static struct vty_app_info vty_info = {
+	.name           = "SysmoMgr",
+	.version        = PACKAGE_VERSION,
+	.go_parent_cb   = mgr_vty_go_parent,
+	.is_config_node = mgr_vty_is_config_node,
+};
 
 /* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
 #define TEMP_TIMER_SECS		(6 * 3600)
@@ -63,7 +82,6 @@ void *tall_mgr_ctx;
 static int fd_unix = -1;
 static int trx_nr = -1;
 static int state_connection;
-static struct sbts2050_config_info confinfo;
 
 static struct osmo_timer_list temp_uc_timer;
 static struct osmo_timer_list connect_timer;
@@ -222,13 +240,14 @@ static void print_help(void)
 	printf(" -s Disable color\n");
 	printf(" -d CAT enable debugging\n");
 	printf(" -D daemonize\n");
+	printf(" -c Specify the filename of the config file\n");
 }
 
 static int parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "nhsd:")) != -1) {
+	while ((opt = getopt(argc, argv, "nhsd:c:")) != -1) {
 		switch (opt) {
 		case 'n':
 			no_eeprom_write = 1;
@@ -244,6 +263,9 @@ static int parse_options(int argc, char **argv)
 			break;
 		case 'D':
 			daemonize = 1;
+			break;
+		case 'c':
+			sysmobts_mgr_inst.config_file = optarg;
 			break;
 		default:
 			return -1;
@@ -446,6 +468,25 @@ int main(int argc, char **argv)
 	rc = parse_options(argc, argv);
 	if (rc < 0)
 		exit(2);
+
+	vty_info.copyright = sysmomgr_copyright;
+	vty_init(&vty_info);
+	logging_vty_add_cmds(&mgr_log_info);
+
+	sysmobts_mgr_vty_init();
+
+	rc = sysmobts_mgr_parse_config(sysmobts_mgr_inst.config_file,
+				       &confinfo);
+	if (rc < 0) {
+		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");
+		exit(1);
+	}
+
+	rc = telnet_init(tall_msgb_ctx, NULL, 4252);
+	if (rc < 0) {
+		fprintf(stderr, "Error initializing telnet\n");
+		exit(1);
+	}
 
 	/* start temperature check timer */
 	temp_timer.cb = check_temp_timer_cb;
