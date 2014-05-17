@@ -39,6 +39,7 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/gsm/abis_nm.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -294,10 +295,106 @@ static int write_pid_file(char *procname)
 	return 0;
 }
 
+#define oml_tlv_parse(dec, buf, len)	\
+	tlv_parse(dec, &abis_nm_att_tlvdef, buf, len, 0, 0)
+
+static int send_oml_fom_ack_nack(int fd_unix, struct msgb *old_msg,
+				 uint8_t cause, int is_manuf)
+{
+	struct abis_om_hdr *old_om = msgb_l2(old_msg);
+	struct abis_om_fom_hdr *old_foh = msgb_l3(old_msg);
+	struct msgb *msg;
+	struct abis_om_fom_hdr *foh;
+	struct abis_om_hdr *om;
+	int rc;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	msg->l3h = msgb_push(msg, sizeof(*foh));
+	foh = (struct abis_om_fom_hdr *) msg->l3h;
+	memcpy(foh, old_foh, sizeof(*foh));
+
+	if (is_manuf)
+		add_manufacturer_id_label(msg, OSMOCOM_MANUF_ID);
+
+	msg->l2h = msgb_push(msg, sizeof(*om));
+	om = (struct abis_om_hdr *) msg->l2h;
+	memcpy(om, old_om, sizeof(*om));
+
+	/* alter message type */
+	if (cause) {
+		LOGP(DOML, LOGL_ERROR, "Sending FOM NACK with cause %s.\n",
+		     abis_nm_nack_cause_name(cause));
+		foh->msg_type += 2; /* nack */
+		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
+	} else {
+		LOGP(DOML, LOGL_DEBUG, "Sending FOM ACK.\n");
+		foh->msg_type++; /* ack */
+	}
+
+	prepend_oml_ipa_header(msg);
+
+	rc = send(fd_unix, msg->data, msg->len, 0);
+	if (rc < 0 || rc != msg->len) {
+		LOGP(DTEMP, LOGL_ERROR,
+		     "send error %s during ACK/NACK message send\n",
+		     strerror(errno));
+		close(fd_unix);
+		msgb_free(msg);
+		return -1;
+	}
+
+	msgb_free(msg);
+	return rc;
+}
+
+static void update_transmiter_power(struct gsm_bts_trx *trx)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	if (fl1h->hLayer1)
+		l1if_set_txpower(fl1h, sysmobts_get_power_trx(trx));
+}
+
+static int take_reduce_power(struct msgb *msg)
+{
+	int recv_reduce_power;
+	struct tlv_parsed tlv_out;
+	struct gsm_bts_trx *trx = bts->c0;
+	int rc, abis_oml_hdr_len;
+
+	abis_oml_hdr_len = sizeof(struct abis_om_hdr);
+	abis_oml_hdr_len += sizeof(struct abis_om_fom_hdr);
+	abis_oml_hdr_len += sizeof(osmocom_magic) + 1;
+
+	rc = oml_tlv_parse(&tlv_out, msg->data + abis_oml_hdr_len,
+			   msg->len - abis_oml_hdr_len);
+
+	if (rc < 0) {
+		msgb_free(msg);
+		return -1;
+	}
+
+	if (TLVP_PRESENT(&tlv_out, NM_ATT_O_REDUCEPOWER))
+		recv_reduce_power = *TLVP_VAL(&tlv_out,
+					      NM_ATT_O_REDUCEPOWER);
+	else
+		return -1;
+
+	trx->power_reduce = recv_reduce_power;
+
+	update_transmiter_power(trx);
+
+	return 0;
+}
+
 static int read_sock(struct osmo_fd *fd, unsigned int what)
 {
 	struct msgb *msg;
 	struct gsm_abis_mo *mo;
+	struct abis_om_fom_hdr *fom;
 	int rc;
 
 	msg = oml_msgb_alloc();
@@ -324,9 +421,32 @@ static int read_sock(struct osmo_fd *fd, unsigned int what)
 
 	mo = &bts->mo;
 	msg->trx = mo->bts->c0;
+	fom = (struct abis_om_fom_hdr *) msg->l3h;
 
-	return abis_oml_sendmsg(msg);
+	switch (fom->msg_type) {
+	case NM_MT_SET_RADIO_ATTR:
+		rc = take_reduce_power(msg);
+		if (rc < 0) {
+			rc = send_oml_fom_ack_nack(fd->fd, msg,
+						   NM_NACK_INCORR_STRUCT, 1);
+		} else {
+			rc = send_oml_fom_ack_nack(fd->fd, msg, 0, 1);
+		}
+		msgb_free(msg);
+		break;
+	case NM_MT_FAILURE_EVENT_REP:
+		rc = abis_oml_sendmsg(msg);
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "Unknown Fom message type %d\n",
+		     fom->msg_type);
+		goto err;
+	}
 
+	if (rc < 0)
+		goto err;
+
+	return rc;
 err:
 	msgb_free(msg);
 	return -1;

@@ -15,6 +15,11 @@ enum {
 	SYSMO_MGR_CONNECTED,
 };
 
+enum {
+	SBTS2050_DISABLE_CHANGE_POWER = 0,
+	SBTS2050_ENABLE_CHANGE_POWER,
+};
+
 #define SOCKET_PATH		"/var/run/bts_oml"
 
 struct sbts2050_config_info;

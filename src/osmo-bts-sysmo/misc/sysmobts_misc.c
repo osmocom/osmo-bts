@@ -58,6 +58,23 @@
 #define OM_HEADROOM_SIZE	128
 
 #ifdef BUILD_SBTS2050
+
+static int check_manufacturer_reduce_nach_ack(struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+
+	if (foh->msg_type == NM_MT_SET_RADIO_ATTR + 2) { /* NACK */
+		LOGP(DTEMP, LOGL_ERROR, "Reduce Power: Received a BTS NACK\n");
+		return -1;
+	} else if (foh->msg_type != NM_MT_SET_RADIO_ATTR + 1) { /* ACK */
+		LOGP(DTEMP, LOGL_ERROR, "Unknown message type %d\n",
+		     foh->msg_type);
+		return -1;
+	}
+
+	return 0;
+}
+
 static void add_sw_descr(struct msgb *msg)
 {
 	char file_version[255];
@@ -110,6 +127,61 @@ static void add_oml_hdr_msg(struct msgb *msg, uint8_t msg_type,
 	omh->placement = ABIS_OM_PLACEMENT_ONLY;
 	omh->sequence = 0;
 	omh->length = msgb_l3len(msg);
+}
+
+int send_manufacturer_reduce_msg(int fd_unix, int reduce_power, int trx_nr)
+{
+	int rc;
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE, "OML");
+	if (msg == NULL) {
+		LOGP(DTEMP, LOGL_ERROR, "Error creating oml msg\n");
+		return -1;
+	}
+
+	add_oml_hdr_msg(msg, NM_MT_SET_RADIO_ATTR, 2, 0, trx_nr, 255, 1);
+
+	msgb_tv_put(msg, NM_ATT_O_REDUCEPOWER, reduce_power);
+
+	prepend_oml_ipa_header(msg);
+
+	rc = send(fd_unix, msg->data, msg->len, 0);
+	if (rc < 0 || rc != msg->len) {
+		LOGP(DTEMP, LOGL_ERROR,
+		     "send error %s during Reduce Manufacturer O&M msg send\n",
+		     strerror(errno));
+		goto err;
+	}
+
+	msgb_reset(msg);
+	rc = recv(fd_unix, msg->tail, msg->data_len, 0);
+	if (rc <= 0) {
+		LOGP(DTEMP, LOGL_ERROR, "recv error %s during ACK/NACK recv\n",
+		     strerror(errno));
+		goto err;
+	}
+	msgb_put(msg, rc);
+
+	if (check_oml_msg(msg) < 0) {
+		close(fd_unix);
+		msgb_free(msg);
+		return -1;
+	}
+
+	if (check_manufacturer_reduce_nach_ack(msg) < 0) {
+		close(fd_unix);
+		msgb_free(msg);
+		return -1;
+	}
+
+	msgb_free(msg);
+	return SYSMO_MGR_CONNECTED;
+
+err:
+	close(fd_unix);
+	msgb_free(msg);
+	return SYSMO_MGR_DISCONNECTED;
 }
 
 int send_omlfailure(int fd_unix, enum sbts2050_alert_lvl alert,
