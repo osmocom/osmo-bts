@@ -1145,6 +1145,10 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 					sysmobts_get_nominal_power(trx);
 		}
 #endif /* 2.2.0 */
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,8,1)
+		/* maximum cell size in quarter-bits, 90 == 12.456 km */
+		sysp->u.activateRfReq.u8MaxCellSize = 90;
+#endif
 #endif /* !HW_SYSMOBTS_V1 */
 	} else {
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
