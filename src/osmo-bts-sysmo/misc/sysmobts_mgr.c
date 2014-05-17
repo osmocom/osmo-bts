@@ -36,6 +36,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/serial.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
@@ -55,14 +56,100 @@ void *tall_mgr_ctx;
 /* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
 #define HOURS_TIMER_SECS	(1 * 3600)
 
+/* every 5 minutes try to reconnect if we have a problem in the communication*/
+#define CONNECT_TIMER_SECS	300
+
 #ifdef BUILD_SBTS2050
+static int fd_unix = -1;
+static int trx_nr = -1;
+static int state_connection;
+static struct sbts2050_config_info confinfo;
+
 static struct osmo_timer_list temp_uc_timer;
+static struct osmo_timer_list connect_timer;
+static void socket_connect_cb(void *data)
+{
+	fd_unix = osmo_sock_unix_init(SOCK_SEQPACKET, 0, SOCKET_PATH,
+				      OSMO_SOCK_F_CONNECT);
+	if (fd_unix < 0) {
+		osmo_timer_schedule(&connect_timer, CONNECT_TIMER_SECS, 0);
+		return;
+	}
+
+	osmo_timer_del(&connect_timer);
+	state_connection = SYSMO_MGR_CONNECTED;
+}
+
+static int check_temperature(struct uc *ucontrol0, int lowlimit, int highlimit,
+			      int current_temp,
+			      enum sbts2050_temp_sensor sensor,
+			      enum sbts2050_alert_lvl alert)
+{
+	int rc;
+
+	if (lowlimit >= current_temp || highlimit <= current_temp) {
+		switch (alert) {
+		case SBTS2050_WARN_ALERT:
+			rc = send_omlfailure(fd_unix, alert, sensor, &confinfo,
+					     trx_nr);
+			break;
+		case SBTS2050_SEVERE_ALERT:
+			rc = send_omlfailure(fd_unix, alert, sensor,
+					     &confinfo, trx_nr);
+			sbts2050_uc_power(ucontrol0, confinfo.master_power_act,
+					  confinfo.slave_power_act,
+					  confinfo.pa_power_act);
+			break;
+		default:
+			LOGP(DFIND, LOGL_ERROR, "Unknown alert type %d\n",
+			     alert);
+			return -1;
+		}
+	} else {
+		return 0;
+	}
+
+	state_connection = rc;
+
+	if (state_connection == SYSMO_MGR_DISCONNECTED)
+		socket_connect_cb(NULL);
+
+	return 1;
+}
+
 static void check_uctemp_timer_cb(void *data)
 {
 	int temp_pa = 0, temp_board = 0;
 	struct uc *ucontrol0 = data;
 
 	sbts2050_uc_check_temp(ucontrol0, &temp_pa, &temp_board);
+
+	confinfo.temp_pa_cur = temp_pa;
+	confinfo.temp_board_cur = temp_board;
+
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_pa_warn_limit,
+			  confinfo.temp_max_pa_warn_limit,
+			  temp_pa, SBTS2050_TEMP_PA,
+			  SBTS2050_WARN_ALERT);
+
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_pa_severe_limit,
+			  confinfo.temp_max_pa_severe_limit,
+			  temp_pa, SBTS2050_TEMP_PA,
+			  SBTS2050_SEVERE_ALERT);
+
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_board_warn_limit,
+			  confinfo.temp_max_board_warn_limit,
+			  temp_board, SBTS2050_TEMP_BOARD,
+			  SBTS2050_WARN_ALERT);
+
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_board_severe_limit,
+			  confinfo.temp_max_board_severe_limit,
+			  temp_board, SBTS2050_TEMP_BOARD,
+			  SBTS2050_SEVERE_ALERT);
 
 	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
 }
@@ -93,6 +180,7 @@ static void initialize_sbts2050(void)
 		if (val != 0)
 			return;
 	}
+	trx_nr = val;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
 	if (ucontrol0.fd < 0) {
@@ -100,6 +188,10 @@ static void initialize_sbts2050(void)
 		     "Failed to open the serial interface\n");
 		return;
 	}
+
+	/* start handle for reconnect the socket in case of error */
+	connect_timer.cb = socket_connect_cb;
+	socket_connect_cb(NULL);
 
 	temp_uc_timer.cb = check_uctemp_timer_cb;
 	temp_uc_timer.data = &ucontrol0;

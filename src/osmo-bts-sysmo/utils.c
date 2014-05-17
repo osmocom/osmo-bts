@@ -27,6 +27,9 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+
 #include "femtobts.h"
 #include "l1_if.h"
 
@@ -146,4 +149,161 @@ int sysmobts_get_power_trx(struct gsm_bts_trx *trx)
 		power_transmitter = 0;
 
 	return power_transmitter;
+}
+
+void prepend_oml_ipa_header(struct msgb *msg)
+{
+	struct ipaccess_head *hh;
+
+	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
+	hh->proto = IPAC_PROTO_OML;
+	hh->len = htons(msg->len - sizeof(struct ipaccess_head));
+}
+
+/**
+ * \brief Check that the data in \param msg is a proper OML message
+ *
+ * This function verifies that the data in \param in msg is a proper
+ * OML message and can be handled by later functions. In the successful
+ * case the msg->l2h will now point to the OML header and the msg->l3h
+ * will point to the FOM header. The value of l2h/l3h is undefined in
+ * case the verification of the \param msg is failing.
+ *
+ * \param msg The message to analyze. msg->len starting from msg->data
+ * will be analyzed.
+ * \return This function returns the msg with the l2h/l3h pointers in the right
+ * direction on success and on failure, in the case that the msg doesn't contain
+ * the OML header or the OML header values aren't the expect, the function
+ * doesn't set the l2h and l3h. In the case that the msg don't contains the FOM
+ * header or the FOM header values aren't the expect, the function set the l2h
+ * but doesn't set the l3h.
+ */
+
+int check_oml_msg(struct msgb *msg)
+{
+	struct ipaccess_head *hh;
+	struct abis_om_hdr *omh;
+	int abis_oml_hdr_len;
+	char label_id[255];
+
+	if (msg->len < sizeof(struct ipaccess_head)) {
+		LOGP(DL1C, LOGL_ERROR, "Ipa header insufficient space %d %d\n",
+					msg->len, sizeof(struct ipaccess_head));
+		return -1;
+	}
+
+	hh = (struct ipaccess_head *)msg->data;
+
+	if (hh->proto != IPAC_PROTO_OML) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header protocol %x %x\n",
+		     hh->proto, IPAC_PROTO_OML);
+		return -1;
+	}
+
+	if (ntohs(hh->len) != msg->len - sizeof(struct ipaccess_head)) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header msg size %d %d\n",
+		     ntohs(hh->len), msg->len - sizeof(struct ipaccess_head));
+		return -1;
+	}
+
+	msgb_pull(msg, sizeof(struct ipaccess_head));
+
+	abis_oml_hdr_len = sizeof(struct abis_om_hdr);
+
+	if (msg->len < abis_oml_hdr_len) {
+		LOGP(DL1C, LOGL_ERROR, "Om header insufficient space %d %d\n",
+		     msg->len, abis_oml_hdr_len);
+		return -1;
+	}
+
+	msg->l2h = msg->data;
+
+	omh = (struct abis_om_hdr *) msg->l2h;
+
+	if (omh->mdisc != ABIS_OM_MDISC_FOM &&
+	    omh->mdisc != ABIS_OM_MDISC_MANUF) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om mdisc value %x\n",
+		     omh->mdisc);
+		return -1;
+	}
+
+	if (omh->placement != ABIS_OM_PLACEMENT_ONLY) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om placement value %x %x\n",
+		     omh->placement, ABIS_OM_PLACEMENT_ONLY);
+		return -1;
+	}
+
+	if (omh->sequence != 0) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om sequence value %d\n",
+		     omh->sequence);
+		return -1;
+	}
+
+	if (omh->length != sizeof(struct abis_om_fom_hdr)) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om length value %d %d\n",
+		     omh->length, sizeof(struct abis_om_fom_hdr));
+		return -1;
+	}
+
+	if (omh->mdisc == ABIS_OM_MDISC_MANUF) {
+		abis_oml_hdr_len += sizeof(ipaccess_magic);
+
+		if (msg->len < abis_oml_hdr_len) {
+			LOGP(DL1C, LOGL_ERROR,
+			     "ID manuf label insufficient space %d %d\n",
+			     msg->len, abis_oml_hdr_len);
+			return -1;
+		}
+	}
+
+	abis_oml_hdr_len += sizeof(struct abis_om_fom_hdr);
+
+	if (msg->len < abis_oml_hdr_len) {
+		LOGP(DL1C, LOGL_ERROR, "Fom header insufficient space %d %d\n",
+		     msg->len, abis_oml_hdr_len);
+		return -1;
+	}
+
+	msg->l3h = msg->data + sizeof(struct abis_om_hdr);
+
+	if (omh->mdisc == ABIS_OM_MDISC_MANUF) {
+		strncpy(label_id, (const char *) msg->l3h + 1,
+			sizeof(ipaccess_magic) + 1);
+
+		if (strncmp(ipaccess_magic, label_id,
+			    sizeof(ipaccess_magic) + 1) == 0)
+			msg->l3h = msg->l3h + sizeof(ipaccess_magic) + 1;
+		else if (strncmp(osmocom_magic, label_id,
+				 sizeof(osmocom_magic) + 1) == 0)
+			msg->l3h = msg->l3h + sizeof(osmocom_magic) + 1;
+		else {
+			msg->l3h = NULL;
+			LOGP(DL1C, LOGL_ERROR,
+			     "Manuf Label Unknown %s\n", label_id);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int add_manufacturer_id_label(struct msgb *msg, int manuf_type_id)
+{
+	uint8_t *manuf;
+
+	switch (manuf_type_id) {
+	case IPACCESS_MANUF_ID:
+		manuf = msgb_push(msg, 1 + sizeof(ipaccess_magic));
+		manuf[0] = sizeof(ipaccess_magic);
+		memcpy(manuf+1, ipaccess_magic, sizeof(ipaccess_magic));
+		break;
+	case OSMOCOM_MANUF_ID:
+		manuf = msgb_push(msg, 1 + sizeof(osmocom_magic));
+		manuf[0] = sizeof(osmocom_magic);
+		memcpy(manuf+1, osmocom_magic, sizeof(osmocom_magic));
+		break;
+	default:
+		return -1;
+	}
+	return 0;
 }

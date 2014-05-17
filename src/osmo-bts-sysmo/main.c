@@ -35,8 +35,10 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -45,6 +47,9 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/oml.h>
+
+#include "misc/sysmobts_mgr.h"
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
@@ -258,6 +263,7 @@ static void signal_handler(int signal)
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		bts_shutdown(bts, "SIGINT");
+		unlink(SOCKET_PATH);
 		break;
 	case SIGABRT:
 	case SIGUSR1:
@@ -288,6 +294,88 @@ static int write_pid_file(char *procname)
 	return 0;
 }
 
+static int read_sock(struct osmo_fd *fd, unsigned int what)
+{
+	struct msgb *msg;
+	struct gsm_abis_mo *mo;
+	int rc;
+
+	msg = oml_msgb_alloc();
+	if (msg == NULL) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Failed to allocate oml msgb.\n");
+		return -1;
+	}
+
+	rc = recv(fd->fd, msg->tail, msg->data_len, 0);
+	if (rc <= 0) {
+		close(fd->fd);
+		osmo_fd_unregister(fd);
+		fd->fd = -1;
+		goto err;
+	}
+
+	msgb_put(msg, rc);
+
+	if (check_oml_msg(msg) < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Malformed receive message\n");
+		goto err;
+	}
+
+	mo = &bts->mo;
+	msg->trx = mo->bts->c0;
+
+	return abis_oml_sendmsg(msg);
+
+err:
+	msgb_free(msg);
+	return -1;
+}
+
+static int accept_unix_sock(struct osmo_fd *fd, unsigned int what)
+{
+	int sfd = fd->fd, cl;
+	struct osmo_fd *read_fd = (struct osmo_fd *)fd->data;
+
+	if (read_fd->fd > -1) {
+		close(read_fd->fd);
+		osmo_fd_unregister(read_fd);
+		read_fd->fd = -1;
+	}
+
+	cl = accept(sfd, NULL, NULL);
+	if (cl < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to accept. errno: %s.\n",
+		     strerror(errno));
+		return -1;
+	}
+
+	read_fd->fd = cl;
+	if (osmo_fd_register(read_fd) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "Register the read file desc.\n");
+		close(cl);
+		read_fd->fd = -1;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int oml_sock_unix_init(struct osmo_fd *accept, struct osmo_fd *read)
+{
+	int rc;
+
+	accept->cb = accept_unix_sock;
+	read->cb = read_sock;
+	read->when = BSC_FD_READ;
+	read->fd = -1;
+	accept->data = read;
+
+	rc = osmo_sock_unix_init_ofd(accept, SOCK_SEQPACKET, 0, SOCKET_PATH,
+				     OSMO_SOCK_F_BIND | OSMO_SOCK_F_NONBLOCK);
+	return rc;
+}
+
 int main(int argc, char **argv)
 {
 	struct stat st;
@@ -295,6 +383,7 @@ int main(int argc, char **argv)
 	struct gsm_bts_role_bts *btsb;
 	struct e1inp_line *line;
 	void *tall_msgb_ctx;
+	struct osmo_fd accept_fd, read_fd;
 	int rc;
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
@@ -370,6 +459,12 @@ int main(int argc, char **argv)
 	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
+		exit(1);
+	}
+
+	rc = oml_sock_unix_init(&accept_fd, &read_fd);
+	if (rc < 0) {
+		perror("Error creating socket domain creation");
 		exit(1);
 	}
 

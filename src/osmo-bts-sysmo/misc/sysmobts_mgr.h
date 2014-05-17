@@ -7,4 +7,11 @@ enum {
 	DFIND,
 };
 
+enum {
+	SYSMO_MGR_DISCONNECTED = 0,
+	SYSMO_MGR_CONNECTED,
+};
+
+#define SOCKET_PATH		"/var/run/bts_oml"
+
 #endif
