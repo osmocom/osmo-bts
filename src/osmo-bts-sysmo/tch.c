@@ -247,18 +247,20 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 					 struct amr_multirate_conf *amr_mrc)
 {
 	struct msgb *msg;
-	uint8_t *cur;
-	u_int8_t cmr;
-	uint8_t ft = l1_payload[2] & 0xF;
 	uint8_t amr_if2_len = payload_len - 2;
+	uint8_t *cur;
 
 	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
 	if (!msg)
 		return NULL;
 
-#if 0
+#ifdef USE_L1_RTP_MODE
+	cur = msgb_put(msg, amr_if2_len);
+	memcpy(cur, l1_payload+2, amr_if2_len);
+#else
+	u_int8_t cmr;
+	uint8_t ft = l1_payload[2] & 0xF;
 	uint8_t cmr_idx = l1_payload[1];
-
 	/* CMR == Unset means CMR was not transmitted at this TDMA */
 	if (cmr_idx >= GsmL1_AmrCodecMode_Unset)
 		cmr = AMR_CMR_NONE;
@@ -269,14 +271,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	} else {
 		cmr = amr_mrc->mode[cmr_idx].mode;
 	}
-#else
-	cmr = AMR_CMR_NONE;
-#endif
 
-#ifdef USE_L1_RTP_MODE
-	cur = msgb_put(msg, amr_if2_len);
-	memcpy(cur, l1_payload+2, amr_if2_len);
-#else
 	/* RFC 3267  4.4.1 Payload Header */
 	msgb_put_u8(msg, (cmr << 4));
 
