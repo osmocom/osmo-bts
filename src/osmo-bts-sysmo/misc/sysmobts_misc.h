@@ -75,8 +75,6 @@ int send_omlfailure(int fd_unix, enum sbts2050_alert_lvl alert,
 		   enum sbts2050_temp_sensor sensor,
 		   struct sbts2050_config_info *add_info, int trx_nr);
 
-int send_manufacturer_reduce_msg(int fd_unix, int reduce_power, int trx_nr);
-
 int sysmobts_update_hours(int no_epprom_write);
 
 enum sysmobts_firmware_type {

@@ -82,7 +82,6 @@ static struct vty_app_info vty_info = {
 static int fd_unix = -1;
 static int trx_nr = -1;
 static int state_connection;
-static int status_change_power_red;
 
 static struct osmo_timer_list temp_uc_timer;
 static struct osmo_timer_list connect_timer;
@@ -136,39 +135,21 @@ static int check_temperature(struct uc *ucontrol0, int lowlimit, int highlimit,
 	return 1;
 }
 
-static int check_warning_state(int pa_warning, int board_warning)
-{
-	if ((pa_warning || board_warning) &&
-	    status_change_power_red == SBTS2050_DISABLE_CHANGE_POWER) {
-		status_change_power_red = SBTS2050_ENABLE_CHANGE_POWER;
-		send_manufacturer_reduce_msg(fd_unix, confinfo.reduce_max_power,
-					     trx_nr);
-	} else if (!pa_warning && !board_warning &&
-		   status_change_power_red == SBTS2050_ENABLE_CHANGE_POWER) {
-		status_change_power_red = SBTS2050_DISABLE_CHANGE_POWER;
-		send_manufacturer_reduce_msg(fd_unix, 0, trx_nr);
-	} else
-		return -1;
-
-	return 0;
-}
-
 static void check_uctemp_timer_cb(void *data)
 {
 	int temp_pa = 0, temp_board = 0;
 	struct uc *ucontrol0 = data;
-	int pa_warning, board_warning;
 
 	sbts2050_uc_check_temp(ucontrol0, &temp_pa, &temp_board);
 
 	confinfo.temp_pa_cur = temp_pa;
 	confinfo.temp_board_cur = temp_board;
 
-	pa_warning = check_temperature(ucontrol0,
-				       confinfo.temp_min_pa_warn_limit,
-				       confinfo.temp_max_pa_warn_limit,
-				       temp_pa, SBTS2050_TEMP_PA,
-				       SBTS2050_WARN_ALERT);
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_pa_warn_limit,
+			  confinfo.temp_max_pa_warn_limit,
+			  temp_pa, SBTS2050_TEMP_PA,
+			  SBTS2050_WARN_ALERT);
 
 	check_temperature(ucontrol0,
 			  confinfo.temp_min_pa_severe_limit,
@@ -176,19 +157,17 @@ static void check_uctemp_timer_cb(void *data)
 			  temp_pa, SBTS2050_TEMP_PA,
 			  SBTS2050_SEVERE_ALERT);
 
-	board_warning = check_temperature(ucontrol0,
-					  confinfo.temp_min_board_warn_limit,
-					  confinfo.temp_max_board_warn_limit,
-					  temp_board, SBTS2050_TEMP_BOARD,
-					  SBTS2050_WARN_ALERT);
+	check_temperature(ucontrol0,
+			  confinfo.temp_min_board_warn_limit,
+			  confinfo.temp_max_board_warn_limit,
+			  temp_board, SBTS2050_TEMP_BOARD,
+			  SBTS2050_WARN_ALERT);
 
 	check_temperature(ucontrol0,
 			  confinfo.temp_min_board_severe_limit,
 			  confinfo.temp_max_board_severe_limit,
 			  temp_board, SBTS2050_TEMP_BOARD,
 			  SBTS2050_SEVERE_ALERT);
-
-	check_warning_state(pa_warning, board_warning);
 
 	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
 }
