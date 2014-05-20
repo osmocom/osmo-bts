@@ -29,4 +29,5 @@ int add_manufacturer_id_label(struct msgb *msg, int manuf_type_id);
 void prepend_oml_ipa_header(struct msgb *msg);
 
 int check_oml_msg(struct msgb *msg);
+int check_ipa_header(struct msgb *msg);
 #endif

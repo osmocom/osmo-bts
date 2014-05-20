@@ -181,32 +181,9 @@ void prepend_oml_ipa_header(struct msgb *msg)
 
 int check_oml_msg(struct msgb *msg)
 {
-	struct ipaccess_head *hh;
 	struct abis_om_hdr *omh;
 	int abis_oml_hdr_len;
 	char label_id[255];
-
-	if (msg->len < sizeof(struct ipaccess_head)) {
-		LOGP(DL1C, LOGL_ERROR, "Ipa header insufficient space %d %d\n",
-					msg->len, sizeof(struct ipaccess_head));
-		return -1;
-	}
-
-	hh = (struct ipaccess_head *)msg->data;
-
-	if (hh->proto != IPAC_PROTO_OML) {
-		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header protocol %x %x\n",
-		     hh->proto, IPAC_PROTO_OML);
-		return -1;
-	}
-
-	if (ntohs(hh->len) != msg->len - sizeof(struct ipaccess_head)) {
-		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header msg size %d %d\n",
-		     ntohs(hh->len), msg->len - sizeof(struct ipaccess_head));
-		return -1;
-	}
-
-	msgb_pull(msg, sizeof(struct ipaccess_head));
 
 	abis_oml_hdr_len = sizeof(struct abis_om_hdr);
 
@@ -282,6 +259,33 @@ int check_oml_msg(struct msgb *msg)
 			     "Manuf Label Unknown %s\n", label_id);
 			return -1;
 		}
+	}
+
+	return 0;
+}
+
+int check_ipa_header(struct msgb *msg)
+{
+	struct ipaccess_head *hh;
+
+	if (msg->len < sizeof(struct ipaccess_head)) {
+		LOGP(DL1C, LOGL_ERROR, "Ipa header insufficient space %d %d\n",
+					msg->len, sizeof(struct ipaccess_head));
+		return -1;
+	}
+
+	hh = (struct ipaccess_head *)msg->data;
+
+	if (hh->proto != IPAC_PROTO_OML) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header protocol %x %x\n",
+		     hh->proto, IPAC_PROTO_OML);
+		return -1;
+	}
+
+	if (ntohs(hh->len) != msg->len - sizeof(struct ipaccess_head)) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect ipa header msg size %d %d\n",
+		     ntohs(hh->len), msg->len - sizeof(struct ipaccess_head));
+		return -1;
 	}
 
 	return 0;

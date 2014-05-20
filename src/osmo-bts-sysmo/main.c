@@ -317,7 +317,16 @@ static int read_sock(struct osmo_fd *fd, unsigned int what)
 
 	msgb_put(msg, rc);
 
-	if (check_oml_msg(msg) < 0) {
+	rc = check_ipa_header(msg);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Malformed receive message: Ipa hdr\n");
+		goto err;
+	}
+
+	msgb_pull(msg, sizeof(struct ipaccess_head));
+
+	rc = check_oml_msg(msg);
+	if (rc < 0) {
 		LOGP(DL1C, LOGL_ERROR, "Malformed receive message\n");
 		goto err;
 	}
