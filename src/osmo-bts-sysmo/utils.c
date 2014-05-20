@@ -248,12 +248,14 @@ int check_oml_msg(struct msgb *msg)
 			sizeof(ipaccess_magic));
 
 		if (strncmp(ipaccess_magic, label_id,
-			    sizeof(ipaccess_magic)) == 0)
+			    sizeof(ipaccess_magic)) == 0) {
 			msg->l3h = msg->l3h + sizeof(ipaccess_magic) + 1;
-		else if (strncmp(osmocom_magic, label_id,
-				 sizeof(osmocom_magic)) == 0)
+			return OML_MSG_TYPE_IPA;
+		} else if (strncmp(osmocom_magic, label_id,
+				 sizeof(osmocom_magic)) == 0) {
 			msg->l3h = msg->l3h + sizeof(osmocom_magic) + 1;
-		else {
+			return OML_MSG_TYPE_OSMO;
+		} else {
 			msg->l3h = NULL;
 			LOGP(DL1C, LOGL_ERROR,
 			     "Manuf Label Unknown %s\n", label_id);
@@ -261,7 +263,7 @@ int check_oml_msg(struct msgb *msg)
 		}
 	}
 
-	return 0;
+	return OML_MSG_TYPE_ETSI;
 }
 
 int check_ipa_header(struct msgb *msg)

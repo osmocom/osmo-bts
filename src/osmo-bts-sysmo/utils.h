@@ -21,6 +21,12 @@ enum manuf_type_id {
 	OSMOCOM_MANUF_ID,
 };
 
+enum oml_message_type {
+	OML_MSG_TYPE_ETSI,
+	OML_MSG_TYPE_IPA,
+	OML_MSG_TYPE_OSMO,
+};
+
 static const char osmocom_magic[] = "org.osmocom";
 static const char ipaccess_magic[] = "com.ipaccess";
 
