@@ -245,13 +245,13 @@ int check_oml_msg(struct msgb *msg)
 
 	if (omh->mdisc == ABIS_OM_MDISC_MANUF) {
 		strncpy(label_id, (const char *) msg->l3h + 1,
-			sizeof(ipaccess_magic) + 1);
+			sizeof(ipaccess_magic));
 
 		if (strncmp(ipaccess_magic, label_id,
-			    sizeof(ipaccess_magic) + 1) == 0)
+			    sizeof(ipaccess_magic)) == 0)
 			msg->l3h = msg->l3h + sizeof(ipaccess_magic) + 1;
 		else if (strncmp(osmocom_magic, label_id,
-				 sizeof(osmocom_magic) + 1) == 0)
+				 sizeof(osmocom_magic)) == 0)
 			msg->l3h = msg->l3h + sizeof(osmocom_magic) + 1;
 		else {
 			msg->l3h = NULL;
