@@ -30,7 +30,7 @@ enum oml_message_type {
 static const char osmocom_magic[] = "org.osmocom";
 static const char ipaccess_magic[] = "com.ipaccess";
 
-int add_manufacturer_id_label(struct msgb *msg, int manuf_type_id);
+int add_manufacturer_id_label(struct msgb *msg, enum manuf_type_id type_id);
 
 void prepend_oml_ipa_header(struct msgb *msg);
 

@@ -293,11 +293,11 @@ int check_ipa_header(struct msgb *msg)
 	return 0;
 }
 
-int add_manufacturer_id_label(struct msgb *msg, int manuf_type_id)
+int add_manufacturer_id_label(struct msgb *msg, enum manuf_type_id type_id)
 {
 	uint8_t *manuf;
 
-	switch (manuf_type_id) {
+	switch (type_id) {
 	case IPACCESS_MANUF_ID:
 		manuf = msgb_push(msg, 1 + sizeof(ipaccess_magic));
 		manuf[0] = sizeof(ipaccess_magic);
