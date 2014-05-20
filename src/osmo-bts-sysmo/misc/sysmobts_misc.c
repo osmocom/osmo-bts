@@ -98,7 +98,7 @@ static void add_oml_hdr_msg(struct msgb *msg, uint8_t msg_type,
 	foh->obj_inst.ts_nr = ts_nr;
 
 	if (is_manuf)
-		add_manufacturer_id_label(msg, OSMOCOM_MANUF_ID);
+		add_manufacturer_id_label(msg, MANUF_ID_OSMO);
 
 	msg->l2h = msgb_push(msg, sizeof(*omh));
 	omh = (struct abis_om_hdr *) msg->l2h;

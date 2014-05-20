@@ -298,12 +298,12 @@ int add_manufacturer_id_label(struct msgb *msg, enum manuf_type_id type_id)
 	uint8_t *manuf;
 
 	switch (type_id) {
-	case IPACCESS_MANUF_ID:
+	case MANUF_ID_IPA:
 		manuf = msgb_push(msg, 1 + sizeof(ipaccess_magic));
 		manuf[0] = sizeof(ipaccess_magic);
 		memcpy(manuf+1, ipaccess_magic, sizeof(ipaccess_magic));
 		break;
-	case OSMOCOM_MANUF_ID:
+	case MANUF_ID_OSMO:
 		manuf = msgb_push(msg, 1 + sizeof(osmocom_magic));
 		manuf[0] = sizeof(osmocom_magic);
 		memcpy(manuf+1, osmocom_magic, sizeof(osmocom_magic));

@@ -17,8 +17,8 @@ int sysmobts_get_power_trx(struct gsm_bts_trx *trx);
 struct msgb;
 
 enum manuf_type_id {
-	IPACCESS_MANUF_ID,
-	OSMOCOM_MANUF_ID,
+	MANUF_ID_IPA,
+	MANUF_ID_OSMO,
 };
 
 enum oml_message_type {
