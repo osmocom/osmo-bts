@@ -160,6 +160,53 @@ void prepend_oml_ipa_header(struct msgb *msg)
 	hh->len = htons(msg->len - sizeof(struct ipaccess_head));
 }
 
+static int check_oml_fom(struct abis_om_hdr *omh, size_t len)
+{
+	if (omh->length != len) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om length value %d %d\n",
+		     omh->length, len);
+		return -1;
+	}
+
+	if (len < sizeof(struct abis_om_fom_hdr)) {
+		LOGP(DL1C, LOGL_ERROR, "Fom header insufficient space %d %d\n",
+		     len, sizeof(struct abis_om_fom_hdr));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int check_oml_manuf(struct abis_om_hdr *hdr, size_t msg_size)
+{
+	if (msg_size < 1) {
+		LOGP(DL1C, LOGL_ERROR, "No ManId Length Indicator %d\n",
+		     msg_size);
+		return -1;
+	}
+
+	if (hdr->data[0] >= msg_size - 1) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Insuficient message space for this ManId Lenght %d %d\n",
+		     hdr->data[0], msg_size - 1);
+		return -1;
+	}
+
+	if (hdr->data[0] == sizeof(ipaccess_magic) &&
+	    strncmp(ipaccess_magic, (const char *)hdr->data + 1,
+		    sizeof(ipaccess_magic)) == 0) {
+		return OML_MSG_TYPE_IPA;
+	} else if (hdr->data[0] == sizeof(osmocom_magic) &&
+		   strncmp(osmocom_magic, (const char *) hdr->data + 1,
+			   sizeof(osmocom_magic)) == 0) {
+		return OML_MSG_TYPE_OSMO;
+	} else {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Manuf Label Unknown\n");
+		return -1;
+	}
+}
+
 /**
  * \brief Check that the data in \param msg is a proper OML message
  *
@@ -182,14 +229,11 @@ void prepend_oml_ipa_header(struct msgb *msg)
 int check_oml_msg(struct msgb *msg)
 {
 	struct abis_om_hdr *omh;
-	int abis_oml_hdr_len;
-	char label_id[255];
+	int ret = OML_MSG_TYPE_ETSI;
 
-	abis_oml_hdr_len = sizeof(struct abis_om_hdr);
-
-	if (msg->len < abis_oml_hdr_len) {
+	if (msg->len < sizeof(*omh)) {
 		LOGP(DL1C, LOGL_ERROR, "Om header insufficient space %d %d\n",
-		     msg->len, abis_oml_hdr_len);
+		     msg->len, sizeof(*omh));
 		return -1;
 	}
 
@@ -216,54 +260,24 @@ int check_oml_msg(struct msgb *msg)
 		return -1;
 	}
 
-	if (omh->length != sizeof(struct abis_om_fom_hdr)) {
-		LOGP(DL1C, LOGL_ERROR, "Incorrect om length value %d %d\n",
-		     omh->length, sizeof(struct abis_om_fom_hdr));
+	if (omh->mdisc == ABIS_OM_MDISC_MANUF)
+		ret = check_oml_manuf(omh, msgb_l2len(msg) - sizeof(*omh));
+
+	if (ret == OML_MSG_TYPE_OSMO)
+		msg->l3h = omh->data + sizeof(osmocom_magic) + 1;
+	else if (ret == OML_MSG_TYPE_IPA)
+		msg->l3h = omh->data + sizeof(ipaccess_magic) + 1;
+	else if (ret == OML_MSG_TYPE_ETSI)
+		msg->l3h = omh->data;
+	else
+		msg->l3h = NULL;
+
+	if (ret < 0)
 		return -1;
-	}
 
-	if (omh->mdisc == ABIS_OM_MDISC_MANUF) {
-		abis_oml_hdr_len += sizeof(ipaccess_magic);
+	check_oml_fom(omh, msgb_l3len(msg));
 
-		if (msg->len < abis_oml_hdr_len) {
-			LOGP(DL1C, LOGL_ERROR,
-			     "ID manuf label insufficient space %d %d\n",
-			     msg->len, abis_oml_hdr_len);
-			return -1;
-		}
-	}
-
-	abis_oml_hdr_len += sizeof(struct abis_om_fom_hdr);
-
-	if (msg->len < abis_oml_hdr_len) {
-		LOGP(DL1C, LOGL_ERROR, "Fom header insufficient space %d %d\n",
-		     msg->len, abis_oml_hdr_len);
-		return -1;
-	}
-
-	msg->l3h = msg->data + sizeof(struct abis_om_hdr);
-
-	if (omh->mdisc == ABIS_OM_MDISC_MANUF) {
-		strncpy(label_id, (const char *) msg->l3h + 1,
-			sizeof(ipaccess_magic));
-
-		if (strncmp(ipaccess_magic, label_id,
-			    sizeof(ipaccess_magic)) == 0) {
-			msg->l3h = msg->l3h + sizeof(ipaccess_magic) + 1;
-			return OML_MSG_TYPE_IPA;
-		} else if (strncmp(osmocom_magic, label_id,
-				 sizeof(osmocom_magic)) == 0) {
-			msg->l3h = msg->l3h + sizeof(osmocom_magic) + 1;
-			return OML_MSG_TYPE_OSMO;
-		} else {
-			msg->l3h = NULL;
-			LOGP(DL1C, LOGL_ERROR,
-			     "Manuf Label Unknown %s\n", label_id);
-			return -1;
-		}
-	}
-
-	return OML_MSG_TYPE_ETSI;
+	return ret;
 }
 
 int check_ipa_header(struct msgb *msg)
