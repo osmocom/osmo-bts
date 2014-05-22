@@ -222,7 +222,7 @@ static void handle_options(int argc, char **argv)
 			daemonize = 1;
 			break;
 		case 'c':
-			config_file = strdup(optarg);
+			config_file = optarg;
 			break;
 		case 'T':
 			log_set_print_timestamp(osmo_stderr_target, 1);
