@@ -75,4 +75,5 @@ AC_OUTPUT(
     tests/agch/Makefile
     tests/cipher/Makefile
     tests/sysmobts/Makefile
+    tests/misc/Makefile
     Makefile)
