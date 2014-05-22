@@ -483,7 +483,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
 			/* No SACCH data from LAPDM pending, send SACCH filling */
-			uint8_t *si = lchan_sacch_get(lchan, &g_time);
+			uint8_t *si = lchan_sacch_get(lchan);
 			if (si) {
 				/* +2 to not overwrite the ms_power/ta values */
 				memcpy(msu_param->u8Buffer+2, si, GSM_MACBLOCK_LEN-2);

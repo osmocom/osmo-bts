@@ -32,7 +32,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 		      int is_ag_res);
 
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time);
-uint8_t *lchan_sacch_get(struct gsm_lchan *lchan, struct gsm_time *g_time);
+uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);

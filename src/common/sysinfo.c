@@ -131,7 +131,7 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 	return NULL;
 }
 
-uint8_t *lchan_sacch_get(struct gsm_lchan *lchan, struct gsm_time *g_time)
+uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 {
 	uint32_t tmp;
 
