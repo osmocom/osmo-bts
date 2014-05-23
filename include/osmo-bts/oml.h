@@ -1,8 +1,17 @@
 #ifndef _OML_H
 #define _OML_H
 
+enum oml_message_type {
+	OML_MSG_TYPE_ETSI,
+	OML_MSG_TYPE_IPA,
+	OML_MSG_TYPE_OSMO,
+};
+
 int oml_init(void);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
+
+int oml_check_manuf(struct abis_om_hdr *hdr, size_t msg_size);
+int oml_check_msg(struct msgb *msg);
 
 struct msgb *oml_msgb_alloc(void);
 int oml_send_msg(struct msgb *msg, int is_mauf);

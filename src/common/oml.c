@@ -93,6 +93,7 @@ static struct tlv_definition abis_nm_att_tlvdef_ipa = {
 
 /* ip.access nanoBTS specific commands */
 static const char ipaccess_magic[] = "com.ipaccess";
+static const char osmocom_magic[] = "org.osmocom";
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
 /*
@@ -157,6 +158,126 @@ static int oml_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int len)
 struct msgb *oml_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(1024, 128, "OML");
+}
+
+int oml_check_manuf(struct abis_om_hdr *hdr, size_t msg_size)
+{
+	if (msg_size < 1) {
+		LOGP(DL1C, LOGL_ERROR, "No ManId Length Indicator %d\n",
+		     msg_size);
+		return -1;
+	}
+
+	if (hdr->data[0] >= msg_size - 1) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Insuficient message space for this ManId Lenght %d %d\n",
+		     hdr->data[0], msg_size - 1);
+		return -1;
+	}
+
+	if (hdr->data[0] == sizeof(ipaccess_magic) &&
+	    strncmp(ipaccess_magic, (const char *)hdr->data + 1,
+		    sizeof(ipaccess_magic)) == 0) {
+		return OML_MSG_TYPE_IPA;
+	} else if (hdr->data[0] == sizeof(osmocom_magic) &&
+		   strncmp(osmocom_magic, (const char *) hdr->data + 1,
+			   sizeof(osmocom_magic)) == 0) {
+		return OML_MSG_TYPE_OSMO;
+	} else {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Manuf Label Unknown\n");
+		return -1;
+	}
+}
+
+static int oml_check_fom(struct abis_om_hdr *omh, size_t len)
+{
+	if (omh->length != len) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om length value %d %d\n",
+		     omh->length, len);
+		return -1;
+	}
+
+	if (len < sizeof(struct abis_om_fom_hdr)) {
+		LOGP(DL1C, LOGL_ERROR, "Fom header insufficient space %d %d\n",
+		     len, sizeof(struct abis_om_fom_hdr));
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * \brief Check that the data in \param msg is a proper OML message
+ *
+ * This function verifies that the data in \param in msg is a proper
+ * OML message and can be handled by later functions. In the successful
+ * case the msg->l2h will now point to the OML header and the msg->l3h
+ * will point to the FOM header. The value of l2h/l3h is undefined in
+ * case the verification of the \param msg is failing.
+ *
+ * \param msg The message to analyze. msg->len starting from msg->data
+ * will be analyzed.
+ * \return This function returns the msg with the l2h/l3h pointers in the right
+ * direction on success and on failure, in the case that the msg doesn't contain
+ * the OML header or the OML header values aren't the expect, the function
+ * doesn't set the l2h and l3h. In the case that the msg don't contains the FOM
+ * header or the FOM header values aren't the expect, the function set the l2h
+ * but doesn't set the l3h.
+ */
+
+int oml_check_msg(struct msgb *msg)
+{
+	struct abis_om_hdr *omh;
+	int ret = OML_MSG_TYPE_ETSI;
+
+	if (msg->len < sizeof(*omh)) {
+		LOGP(DL1C, LOGL_ERROR, "Om header insufficient space %d %d\n",
+		     msg->len, sizeof(*omh));
+		return -1;
+	}
+
+	msg->l2h = msg->data;
+
+	omh = (struct abis_om_hdr *) msg->l2h;
+
+	if (omh->mdisc != ABIS_OM_MDISC_FOM &&
+	    omh->mdisc != ABIS_OM_MDISC_MANUF) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om mdisc value %x\n",
+		     omh->mdisc);
+		return -1;
+	}
+
+	if (omh->placement != ABIS_OM_PLACEMENT_ONLY) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om placement value %x %x\n",
+		     omh->placement, ABIS_OM_PLACEMENT_ONLY);
+		return -1;
+	}
+
+	if (omh->sequence != 0) {
+		LOGP(DL1C, LOGL_ERROR, "Incorrect om sequence value %d\n",
+		     omh->sequence);
+		return -1;
+	}
+
+	if (omh->mdisc == ABIS_OM_MDISC_MANUF)
+		ret = oml_check_manuf(omh, msgb_l2len(msg) - sizeof(*omh));
+
+	if (ret == OML_MSG_TYPE_OSMO)
+		msg->l3h = omh->data + sizeof(osmocom_magic) + 1;
+	else if (ret == OML_MSG_TYPE_IPA)
+		msg->l3h = omh->data + sizeof(ipaccess_magic) + 1;
+	else if (ret == OML_MSG_TYPE_ETSI)
+		msg->l3h = omh->data;
+	else
+		msg->l3h = NULL;
+
+	if (ret < 0)
+		return -1;
+
+	oml_check_fom(omh, msgb_l3len(msg));
+
+	return ret;
 }
 
 int oml_send_msg(struct msgb *msg, int is_manuf)

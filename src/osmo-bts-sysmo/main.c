@@ -325,7 +325,7 @@ static int read_sock(struct osmo_fd *fd, unsigned int what)
 
 	msgb_pull(msg, sizeof(struct ipaccess_head));
 
-	rc = check_oml_msg(msg);
+	rc = oml_check_msg(msg);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_ERROR, "Malformed receive message\n");
 		goto err;
