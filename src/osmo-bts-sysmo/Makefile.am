@@ -24,7 +24,7 @@ sysmobts_mgr_SOURCES = \
 		misc/sysmobts_mgr.c misc/sysmobts_misc.c \
 		misc/sysmobts_par.c misc/sysmobts_nl.c utils.c \
 		misc/sysmobts_mgr_vty.c
-sysmobts_mgr_LDADD = $(COMMON_LDADD)
+sysmobts_mgr_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
 
 sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c
 sysmobts_util_LDADD = $(LIBOSMOCORE_LIBS)

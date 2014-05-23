@@ -160,6 +160,29 @@ struct msgb *oml_msgb_alloc(void)
 	return msgb_alloc_headroom(1024, 128, "OML");
 }
 
+int oml_add_manufacturer_id_label(struct msgb *msg,
+				  enum oml_message_type vendor_type)
+{
+	uint8_t *manuf;
+
+	switch (vendor_type) {
+	case OML_MSG_TYPE_IPA:
+		manuf = msgb_push(msg, 1 + sizeof(ipaccess_magic));
+		manuf[0] = sizeof(ipaccess_magic);
+		memcpy(manuf+1, ipaccess_magic, sizeof(ipaccess_magic));
+		break;
+	case OML_MSG_TYPE_OSMO:
+		manuf = msgb_push(msg, 1 + sizeof(osmocom_magic));
+		manuf[0] = sizeof(osmocom_magic);
+		memcpy(manuf+1, osmocom_magic, sizeof(osmocom_magic));
+		break;
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
 int oml_check_manuf(struct abis_om_hdr *hdr, size_t msg_size)
 {
 	if (msg_size < 1) {

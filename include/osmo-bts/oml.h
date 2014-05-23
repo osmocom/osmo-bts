@@ -10,6 +10,8 @@ enum oml_message_type {
 int oml_init(void);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
 
+int oml_add_manufacturer_id_label(struct msgb *msg,
+				  enum oml_message_type vendor_type);
 int oml_check_manuf(struct abis_om_hdr *hdr, size_t msg_size);
 int oml_check_msg(struct msgb *msg);
 
