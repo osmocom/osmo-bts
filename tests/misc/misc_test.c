@@ -43,6 +43,11 @@ static const uint8_t osmo_rsl_power[] = {
 	0xff, 0xfe, 0x04
 };
 
+static const uint8_t etsi_oml_opstart[] = {
+	0x00, 0x09, 0xff, 0x80, 0x80, 0x00, 0x05, 0x74,
+	0x00, 0xff, 0xff, 0xff
+};
+
 static void test_msg_utils_ipa(void)
 {
 	struct msgb *msg;
@@ -100,6 +105,7 @@ static void test_msg_utils_oml(void)
 	printf("Testing OML structure\n");
 
 	/* test with IPA message */
+	printf(" Testing IPA messages.\n");
 	test_oml_data(ipa_rsl_connect + hh_size,
 			sizeof(ipa_rsl_connect) - hh_size,
 			OML_MSG_TYPE_IPA);
@@ -109,11 +115,20 @@ static void test_msg_utils_oml(void)
 		test_oml_data(ipa_rsl_connect + hh_size, size, -1);
 
 	/* test with Osmo message */
+	printf(" Testing Osmo messages.\n");
 	test_oml_data(osmo_rsl_power + hh_size,
 			sizeof(osmo_rsl_power) - hh_size,
 			OML_MSG_TYPE_OSMO);
 	for (size = sizeof(osmo_rsl_power) - hh_size - 1; size >=0; --size)
 		test_oml_data(osmo_rsl_power + hh_size, size, -1);
+
+	/* test with plain ETSI message */
+	printf(" Testing ETSI messages.\n");
+	test_oml_data(etsi_oml_opstart + hh_size,
+			sizeof(etsi_oml_opstart) - hh_size,
+			OML_MSG_TYPE_ETSI);
+	for (size = sizeof(etsi_oml_opstart) - hh_size - 1; size >=0; --size)
+		test_oml_data(etsi_oml_opstart + hh_size, size, -1);
 }
 
 static void test_sacch_get(void)
