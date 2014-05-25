@@ -139,11 +139,11 @@ int sysmobts_get_nominal_power(struct gsm_bts_trx *trx)
 
 int sysmobts_get_power_trx(struct gsm_bts_trx *trx)
 {
-	int power_transmitter = trx->nominal_power - trx->max_power_red;
-	power_transmitter -= trx->power_reduce;
+	int transmit_power = trx->nominal_power - trx->max_power_red;
+	transmit_power -= trx->power_reduce;
 
-	if (power_transmitter < 0)
-		power_transmitter = 0;
+	if (transmit_power < 0)
+		transmit_power = 0;
 
-	return power_transmitter;
+	return transmit_power;
 }
