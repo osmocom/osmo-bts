@@ -36,7 +36,6 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/serial.h>
-#include <osmocom/core/socket.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
@@ -49,25 +48,6 @@
 static int no_eeprom_write = 0;
 static int daemonize = 0;
 void *tall_mgr_ctx;
-static struct sbts2050_config_info confinfo;
-
-static struct sysmobts_mgr_instance sysmobts_mgr_inst = {
-	.config_file = "osmobts-mgr.cfg",
-};
-
-const char *sysmomgr_copyright =
-	"(C) 2012 by Harald Welte <laforge@gnumonks.org>\r\n"
-	"(C) 2014 by Holger Hans Peter Freyther\r\n"
-	"License AGPLv3+: GNU AGPL version 2 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
-	"This is free software: you are free to change and redistribute it.\r\n"
-	"There is NO WARRANTY, to the extent permitted by law.\r\n";
-
-static struct vty_app_info vty_info = {
-	.name           = "SysmoMgr",
-	.version        = PACKAGE_VERSION,
-	.go_parent_cb   = mgr_vty_go_parent,
-	.is_config_node = mgr_vty_is_config_node,
-};
 
 /* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
 #define TEMP_TIMER_SECS		(6 * 3600)
@@ -75,99 +55,14 @@ static struct vty_app_info vty_info = {
 /* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
 #define HOURS_TIMER_SECS	(1 * 3600)
 
-/* every 5 minutes try to reconnect if we have a problem in the communication*/
-#define CONNECT_TIMER_SECS	300
-
 #ifdef BUILD_SBTS2050
-static int fd_unix = -1;
-static int trx_nr = -1;
-static int state_connection;
-
 static struct osmo_timer_list temp_uc_timer;
-static struct osmo_timer_list connect_timer;
-static void socket_connect_cb(void *data)
-{
-	fd_unix = osmo_sock_unix_init(SOCK_SEQPACKET, 0, SOCKET_PATH,
-				      OSMO_SOCK_F_CONNECT);
-	if (fd_unix < 0) {
-		osmo_timer_schedule(&connect_timer, CONNECT_TIMER_SECS, 0);
-		return;
-	}
-
-	osmo_timer_del(&connect_timer);
-	state_connection = SYSMO_MGR_CONNECTED;
-}
-
-static int check_temperature(struct uc *ucontrol0, int lowlimit, int highlimit,
-			      int current_temp,
-			      enum sbts2050_temp_sensor sensor,
-			      enum sbts2050_alert_lvl alert)
-{
-	int rc;
-
-	if (lowlimit >= current_temp || highlimit <= current_temp) {
-		switch (alert) {
-		case SBTS2050_WARN_ALERT:
-			rc = send_omlfailure(fd_unix, alert, sensor, &confinfo,
-					     trx_nr);
-			break;
-		case SBTS2050_SEVERE_ALERT:
-			rc = send_omlfailure(fd_unix, alert, sensor,
-					     &confinfo, trx_nr);
-			sbts2050_uc_power(ucontrol0, confinfo.master_power_act,
-					  confinfo.slave_power_act,
-					  confinfo.pa_power_act);
-			break;
-		default:
-			LOGP(DFIND, LOGL_ERROR, "Unknown alert type %d\n",
-			     alert);
-			return -1;
-		}
-	} else {
-		return 0;
-	}
-
-	state_connection = rc;
-
-	if (state_connection == SYSMO_MGR_DISCONNECTED)
-		socket_connect_cb(NULL);
-
-	return 1;
-}
-
 static void check_uctemp_timer_cb(void *data)
 {
 	int temp_pa = 0, temp_board = 0;
 	struct uc *ucontrol0 = data;
 
 	sbts2050_uc_check_temp(ucontrol0, &temp_pa, &temp_board);
-
-	confinfo.temp_pa_cur = temp_pa;
-	confinfo.temp_board_cur = temp_board;
-
-	check_temperature(ucontrol0,
-			  confinfo.temp_min_pa_warn_limit,
-			  confinfo.temp_max_pa_warn_limit,
-			  temp_pa, SBTS2050_TEMP_PA,
-			  SBTS2050_WARN_ALERT);
-
-	check_temperature(ucontrol0,
-			  confinfo.temp_min_pa_severe_limit,
-			  confinfo.temp_max_pa_severe_limit,
-			  temp_pa, SBTS2050_TEMP_PA,
-			  SBTS2050_SEVERE_ALERT);
-
-	check_temperature(ucontrol0,
-			  confinfo.temp_min_board_warn_limit,
-			  confinfo.temp_max_board_warn_limit,
-			  temp_board, SBTS2050_TEMP_BOARD,
-			  SBTS2050_WARN_ALERT);
-
-	check_temperature(ucontrol0,
-			  confinfo.temp_min_board_severe_limit,
-			  confinfo.temp_max_board_severe_limit,
-			  temp_board, SBTS2050_TEMP_BOARD,
-			  SBTS2050_SEVERE_ALERT);
 
 	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
 }
@@ -198,7 +93,6 @@ static void initialize_sbts2050(void)
 		if (val != 0)
 			return;
 	}
-	trx_nr = val;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
 	if (ucontrol0.fd < 0) {
@@ -206,10 +100,6 @@ static void initialize_sbts2050(void)
 		     "Failed to open the serial interface\n");
 		return;
 	}
-
-	/* start handle for reconnect the socket in case of error */
-	connect_timer.cb = socket_connect_cb;
-	socket_connect_cb(NULL);
 
 	temp_uc_timer.cb = check_uctemp_timer_cb;
 	temp_uc_timer.data = &ucontrol0;
@@ -240,14 +130,13 @@ static void print_help(void)
 	printf(" -s Disable color\n");
 	printf(" -d CAT enable debugging\n");
 	printf(" -D daemonize\n");
-	printf(" -c Specify the filename of the config file\n");
 }
 
 static int parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "nhsd:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "nhsd:")) != -1) {
 		switch (opt) {
 		case 'n':
 			no_eeprom_write = 1;
@@ -263,9 +152,6 @@ static int parse_options(int argc, char **argv)
 			break;
 		case 'D':
 			daemonize = 1;
-			break;
-		case 'c':
-			sysmobts_mgr_inst.config_file = optarg;
 			break;
 		default:
 			return -1;
@@ -468,25 +354,6 @@ int main(int argc, char **argv)
 	rc = parse_options(argc, argv);
 	if (rc < 0)
 		exit(2);
-
-	vty_info.copyright = sysmomgr_copyright;
-	vty_init(&vty_info);
-	logging_vty_add_cmds(&mgr_log_info);
-
-	sysmobts_mgr_vty_init();
-
-	rc = sysmobts_mgr_parse_config(sysmobts_mgr_inst.config_file,
-				       &confinfo);
-	if (rc < 0) {
-		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");
-		exit(1);
-	}
-
-	rc = telnet_init(tall_msgb_ctx, NULL, 4252);
-	if (rc < 0) {
-		fprintf(stderr, "Error initializing telnet\n");
-		exit(1);
-	}
 
 	/* start temperature check timer */
 	temp_timer.cb = check_temp_timer_cb;

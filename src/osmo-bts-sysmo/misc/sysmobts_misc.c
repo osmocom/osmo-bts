@@ -29,19 +29,14 @@
 #include <sys/signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <arpa/inet.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/msgb.h>
-#include <osmocom/core/socket.h>
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
-#include <osmocom/gsm/abis_nm.h>
-#include <osmocom/gsm/protocol/ipaccess.h>
 
-#include "utils.h"
 #include "btsconfig.h"
 #include "sysmobts_misc.h"
 #include "sysmobts_par.h"
@@ -54,140 +49,9 @@
 #define SERIAL_ALLOC_SIZE	300
 #define SIZE_HEADER_RSP		5
 #define SIZE_HEADER_CMD		4
-#define OM_ALLOC_SIZE		1024
-#define OM_HEADROOM_SIZE	128
+
 
 #ifdef BUILD_SBTS2050
-static void add_sw_descr(struct msgb *msg)
-{
-	char file_version[255];
-	char file_id[255];
-
-	strncpy(file_id, "sysmomgr", strlen("sysmomgr"));
-	file_id[sizeof(file_id) - 1] = '\0';
-	strncpy(file_version, PACKAGE_VERSION, strlen(PACKAGE_VERSION));
-	file_version[sizeof(file_version) - 1] = '\0';
-	msgb_v_put(msg, NM_ATT_SW_DESCR);
-	msgb_tl16v_put(msg, NM_ATT_FILE_ID, strlen(file_id),
-		       (uint8_t *)file_id);
-	msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, strlen(file_version),
-		       (uint8_t *)file_version);
-}
-
-static void add_probable_cause(struct msgb *msg)
-{
-	msgb_tv_put(msg, NM_ATT_PROB_CAUSE, NM_PCAUSE_T_MANUF);
-	msgb_v_put(msg, 0);
-	msgb_v_put(msg, 0);
-}
-
-static void add_oml_hdr_msg(struct msgb *msg, uint8_t msg_type,
-			    uint8_t obj_class, uint8_t bts_nr,
-			    uint8_t trx_nr, uint8_t ts_nr, int is_manuf)
-{
-	struct abis_om_fom_hdr *foh;
-	struct abis_om_hdr *omh;
-
-	msg->l3h = msgb_push(msg, sizeof(*foh));
-	foh = (struct abis_om_fom_hdr *) msg->l3h;
-
-	foh->msg_type = msg_type;
-	foh->obj_class = obj_class;
-	foh->obj_inst.bts_nr = bts_nr;
-	foh->obj_inst.trx_nr = trx_nr;
-	foh->obj_inst.ts_nr = ts_nr;
-
-	if (is_manuf)
-		add_manufacturer_id_label(msg, MANUF_ID_OSMO);
-
-	msg->l2h = msgb_push(msg, sizeof(*omh));
-	omh = (struct abis_om_hdr *) msg->l2h;
-
-	if (is_manuf)
-		omh->mdisc = ABIS_OM_MDISC_MANUF;
-	else
-		omh->mdisc = ABIS_OM_MDISC_FOM;
-	omh->placement = ABIS_OM_PLACEMENT_ONLY;
-	omh->sequence = 0;
-	omh->length = msgb_l3len(msg);
-}
-
-int send_omlfailure(int fd_unix, enum sbts2050_alert_lvl alert,
-		   enum sbts2050_temp_sensor sensor,
-		   struct sbts2050_config_info *add_info, int trx_nr)
-{
-	int rc;
-	struct msgb *msg;
-	const char *buf, *nsensor;
-
-	msg = msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE, "OML");
-	if (msg == NULL) {
-		LOGP(DTEMP, LOGL_ERROR, "Failed to allocate oml msgb\n");
-		return -1;
-	}
-
-	add_oml_hdr_msg(msg, NM_MT_FAILURE_EVENT_REP, 0, 0, trx_nr, 255, 0);
-
-	msgb_tv_put(msg, NM_ATT_EVENT_TYPE, NM_EVT_ENV_FAIL);
-
-	switch (alert) {
-	case SBTS2050_WARN_ALERT:
-		msgb_tv_put(msg, NM_ATT_SEVERITY, NM_SEVER_WARNING);
-		break;
-	case SBTS2050_SEVERE_ALERT:
-		msgb_tv_put(msg, NM_ATT_SEVERITY, NM_SEVER_CRITICAL);
-		break;
-	default:
-		LOGP(DTEMP, LOGL_ERROR, "Unknown attr severity type %d\n",
-		     alert);
-		goto err;
-	}
-
-	add_probable_cause(msg);
-
-	add_sw_descr(msg);
-
-	switch (sensor) {
-	case SBTS2050_TEMP_BOARD:
-		buf = "Unusual temperature on the Board";
-		nsensor = "Board";
-		break;
-	case SBTS2050_TEMP_PA:
-		buf = "Unusual temperature on the PA";
-		nsensor = "PA";
-		break;
-	default:
-		LOGP(DTEMP, LOGL_ERROR, "Unknown sensor type %d\n", sensor);
-		goto err;
-	}
-	strncpy(add_info->name_sensor, nsensor, sizeof(add_info->name_sensor));
-	add_info->name_sensor[sizeof(add_info->name_sensor) - 1] = '\0';
-
-	msgb_tl16v_put(msg, NM_ATT_ADD_TEXT, strlen(buf), (const uint8_t *)buf);
-
-	msgb_tl16v_put(msg, NM_ATT_ADD_INFO,
-		       sizeof(struct sbts2050_config_info),
-		       (const uint8_t *)add_info);
-
-	prepend_oml_ipa_header(msg);
-
-	rc = send(fd_unix, msg->data, msg->len, 0);
-	if (rc < 0 || rc != msg->len) {
-		LOGP(DTEMP, LOGL_ERROR,
-		     "send error %s during send the Failure Event Report msg\n",
-		     strerror(errno));
-		close(fd_unix);
-		msgb_free(msg);
-		return SYSMO_MGR_DISCONNECTED;
-	}
-
-	msgb_free(msg);
-	return SYSMO_MGR_CONNECTED;
-err:
-	msgb_free(msg);
-	return -1;
-}
-
 /**********************************************************************
  *	Functions read/write from serial interface
  *********************************************************************/
