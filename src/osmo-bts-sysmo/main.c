@@ -52,6 +52,7 @@
 #include "eeprom.h"
 #include "l1_if.h"
 #include "hw_misc.h"
+#include "oml_router.h"
 
 /* FIXME: read from real hardware */
 const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
@@ -300,6 +301,7 @@ int main(int argc, char **argv)
 	struct gsm_bts_role_bts *btsb;
 	struct e1inp_line *line;
 	void *tall_msgb_ctx;
+	struct osmo_fd accept_fd, read_fd;
 	int rc;
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
@@ -366,6 +368,12 @@ int main(int argc, char **argv)
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
+
+	rc = oml_router_init(bts, &accept_fd, &read_fd);
+	if (rc < 0) {
+		perror("Error creating the OML router\n");
+		exit(1);
+	}
 
 	if (!btsb->bsc_oml_host) {
 		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
