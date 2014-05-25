@@ -36,6 +36,13 @@ static const uint8_t ipa_rsl_connect[] = {
 	0x00, 0xff, 0x85, 0x00, 0x81, 0x0b, 0xbb
 };
 
+static const uint8_t osmo_rsl_power[] = {
+	0x00, 0x18, 0xff, 0x10, 0x80, 0x00, 0x07, 0x0c,
+	0x6f, 0x72, 0x67, 0x2e, 0x6f, 0x73, 0x6d, 0x6f,
+	0x63, 0x6f, 0x6d, 0x00, 0x44, 0x02, 0x00, 0x00,
+	0xff, 0xfe, 0x04
+};
+
 static void test_msg_utils_ipa(void)
 {
 	struct msgb *msg;
@@ -70,30 +77,43 @@ static void test_msg_utils_ipa(void)
 	msgb_free(msg);
 }
 
+static void test_oml_data(const uint8_t *data, const size_t len, const int exp)
+{
+	int rc;
+	struct msgb *msg;
+
+	msg = msgb_alloc(len, "IPA test");
+	msg->l2h = msgb_put(msg, len);
+	memcpy(msg->l2h, data, len);
+	rc = msg_verify_oml_structure(msg);
+	if (rc >= 0)
+		OSMO_ASSERT(msg->l3h > msg->l2h);
+	OSMO_ASSERT(rc == exp);
+	msgb_free(msg);
+}
+
 static void test_msg_utils_oml(void)
 {
 	static const size_t hh_size = sizeof(struct ipaccess_head);
-	struct msgb *msg;
-	int rc, size;
+	int size;
 
 	printf("Testing OML structure\n");
 
-	msg = msgb_alloc(sizeof(ipa_rsl_connect) - hh_size, "IPA test");
-	msg->l2h = msgb_put(msg, sizeof(ipa_rsl_connect) - hh_size);
-	memcpy(msg->l2h, ipa_rsl_connect + hh_size, sizeof(ipa_rsl_connect) - hh_size);
-	rc = msg_verify_oml_structure(msg);
-	OSMO_ASSERT(rc == OML_MSG_TYPE_IPA);
-	msgb_free(msg);
+	/* test with IPA message */
+	test_oml_data(ipa_rsl_connect + hh_size,
+			sizeof(ipa_rsl_connect) - hh_size,
+			OML_MSG_TYPE_IPA);
 
 	/* test truncated messages and they should fail */
-	for (size = sizeof(ipa_rsl_connect) - hh_size - 1; size >=0; --size) {
-		msg = msgb_alloc(size, "IPA test");
-		msg->l2h = msgb_put(msg, size);
-		memcpy(msg->l2h, ipa_rsl_connect + hh_size, size);
-		rc = msg_verify_oml_structure(msg);
-		OSMO_ASSERT(rc == -1);
-		msgb_free(msg);
-	}
+	for (size = sizeof(ipa_rsl_connect) - hh_size - 1; size >=0; --size)
+		test_oml_data(ipa_rsl_connect + hh_size, size, -1);
+
+	/* test with Osmo message */
+	test_oml_data(osmo_rsl_power + hh_size,
+			sizeof(osmo_rsl_power) - hh_size,
+			OML_MSG_TYPE_OSMO);
+	for (size = sizeof(osmo_rsl_power) - hh_size - 1; size >=0; --size)
+		test_oml_data(osmo_rsl_power + hh_size, size, -1);
 }
 
 static void test_sacch_get(void)
