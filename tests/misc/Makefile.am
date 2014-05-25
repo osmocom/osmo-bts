@@ -5,4 +5,5 @@ noinst_PROGRAMS = misc_test
 EXTRA_DIST = misc_test.ok
 
 misc_test_SOURCES = misc_test.c $(srcdir)/../stubs.c
-misc_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
+misc_test_LDADD = $(top_builddir)/src/common/libbts.a \
+		$(LIBOSMOABIS_LIBS) $(LIBOSMOTRAU_LIBS) $(LDADD)
