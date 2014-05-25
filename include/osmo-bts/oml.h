@@ -1,6 +1,10 @@
 #ifndef _OML_H
 #define _OML_H
 
+struct gsm_bts;
+struct gsm_abis_mo;
+struct msgb;
+
 int oml_init(void);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
 
