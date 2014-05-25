@@ -24,6 +24,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/msg_utils.h>
 
 #include <osmocom/core/socket.h>
 #include <osmocom/core/select.h>
@@ -51,9 +52,22 @@ static int oml_router_read_cb(struct osmo_fd *fd, unsigned int what)
 		goto err;
 	}
 
-	msgb_put(msg, rc);
+	msg->l1h = msgb_put(msg, rc);
+	rc = msg_verify_ipa_structure(msg);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR,
+			"OML Router: Invalid IPA message rc(%d)\n", rc);
+		goto err;
+	}
 
-	/* todo analyze and dispatch message */
+	rc = msg_verify_oml_structure(msg);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR,
+			"OML Router: Invalid OML message rc(%d)\n", rc);
+		goto err;
+	}
+
+	/* todo dispatch message */
 
 err:
 	msgb_free(msg);
