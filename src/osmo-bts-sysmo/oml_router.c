@@ -25,6 +25,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/msg_utils.h>
+#include <osmo-bts/abis.h>
 
 #include <osmocom/core/socket.h>
 #include <osmocom/core/select.h>
@@ -32,6 +33,12 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+
+static int oml_dispatch_msg(struct gsm_bts *bts, struct msgb *msg)
+{
+	msg->trx = bts->c0;
+	return abis_oml_sendmsg(msg);
+}
 
 static int oml_router_read_cb(struct osmo_fd *fd, unsigned int what)
 {
@@ -67,8 +74,7 @@ static int oml_router_read_cb(struct osmo_fd *fd, unsigned int what)
 		goto err;
 	}
 
-	/* todo dispatch message */
-
+	return oml_dispatch_msg(fd->data, msg);
 err:
 	msgb_free(msg);
 	return -1;
