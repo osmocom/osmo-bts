@@ -29,7 +29,6 @@
 
 static struct gsm_bts *bts;
 static struct gsm_bts_role_bts *btsb;
-int pcu_direct = 0;
 
 #define ASSERT_TRUE(rc) \
 	if (!(rc)) { \

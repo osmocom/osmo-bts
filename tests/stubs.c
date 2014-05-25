@@ -7,6 +7,7 @@
  */
 const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
 const char *software_version = "0815";
+int pcu_direct = 0;
 
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			    void *obj, uint8_t adm_state)
