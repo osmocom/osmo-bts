@@ -83,16 +83,16 @@ static void initialize_sbts2050(void)
 		return;
 	}
 
-	if (val == 2050) {
-		if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
-			LOGP(DFIND, LOGL_ERROR,
-			     "Failed to get the TRX number\n");
-			return;
-		}
+	if (val != 2050)
+		return;
 
-		if (val != 0)
-			return;
+	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
+		LOGP(DFIND, LOGL_ERROR, "Failed to get the TRX number\n");
+		return;
 	}
+
+	if (val != 0)
+		return;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
 	if (ucontrol0.fd < 0) {
