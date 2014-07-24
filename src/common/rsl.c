@@ -811,6 +811,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 				  TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
 		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
 				&lchan->tch.amr_mr);
+		lchan->tch.last_cmr = AMR_CMR_NONE;
 	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
@@ -1067,6 +1068,7 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 				  TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
 		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan),
 				&lchan->tch.amr_mr);
+		lchan->tch.last_cmr = AMR_CMR_NONE;
 	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */

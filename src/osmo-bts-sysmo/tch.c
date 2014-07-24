@@ -39,6 +39,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/measurement.h>
+#include <osmo-bts/amr.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -240,12 +241,10 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	return GSM_HR_BYTES;
 }
 
-#define AMR_TOC_QBIT	0x04
-#define AMR_CMR_NONE	0xF
-
 static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_len,
-					 struct amr_multirate_conf *amr_mrc)
+					 struct gsm_lchan *lchan)
 {
+	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 	struct msgb *msg;
 	uint8_t amr_if2_len = payload_len - 2;
 	uint8_t *cur;
@@ -262,14 +261,16 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	uint8_t ft = l1_payload[2] & 0xF;
 	uint8_t cmr_idx = l1_payload[1];
 	/* CMR == Unset means CMR was not transmitted at this TDMA */
-	if (cmr_idx >= GsmL1_AmrCodecMode_Unset)
-		cmr = AMR_CMR_NONE;
-	else if (cmr_idx >= amr_mrc->num_modes) {
+	if (cmr_idx == GsmL1_AmrCodecMode_Unset)
+		cmr = lchan->tch.last_cmr;
+	else if (cmr_idx >= amr_mrc->num_modes ||
+		 cmr_idx > GsmL1_AmrCodecMode_Unset) {
 		/* Make sure the CMR of the phone is in the active codec set */
 		LOGP(DL1C, LOGL_NOTICE, "L1->RTP: overriding CMR IDX %u\n", cmr_idx);
 		cmr = AMR_CMR_NONE;
 	} else {
 		cmr = amr_mrc->mode[cmr_idx].mode;
+		lchan->tch.last_cmr = cmr;
 	}
 
 	/* RFC 3267  4.4.1 Payload Header */
@@ -606,8 +607,7 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 		break;
 #endif
 	case GsmL1_TchPlType_Amr:
-		rmsg = l1_to_rtppayload_amr(payload, payload_len,
-					    &lchan->tch.amr_mr);
+		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
 		break;
 	}
 

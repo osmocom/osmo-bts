@@ -3,6 +3,9 @@
 
 #include <osmo-bts/gsm_data.h>
 
+#define AMR_TOC_QBIT	0x04
+#define AMR_CMR_NONE	0xF
+
 void amr_log_mr_conf(int ss, int logl, const char *pfx,
 		     struct amr_multirate_conf *amr_mrc);
 
