@@ -262,6 +262,7 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 {
 	static int fetched_info = 0;
 	static char mac_str[20] = { };
+	static char *model_name;
 
 	struct sockaddr_in loc_addr;
 	int rc;
@@ -274,10 +275,37 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 
 	if (!fetched_info) {
 		uint8_t mac[6];
+		int val;
+
+		/* fetch the MAC */
 		sysmobts_par_get_buf(SYSMOBTS_PAR_MAC, mac, sizeof(mac));
 		snprintf(mac_str, sizeof(mac_str), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5]);
+
+		/* fetch the model and trx number */
+		sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
+		switch(val) {
+		case 0:
+		case 0xffff:
+		case 1002:
+			model_name = "sysmoBTS 1002";
+			break;
+		case 2050:
+			sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val);
+			if (val == 0)
+				model_name = "sysmoBTS 2050 (master)";
+			else if (val == 1)
+				model_name = "sysmoBTS 2050 (slave)";
+			else
+				model_name = "sysmoBTS 2050 (unknown)";
+			break;
+		default:
+			model_name = "Unknown";
+			break;
+		}
+
+
 		fetched_info = 1;
 	}
 
@@ -294,6 +322,9 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 	/* append ip address */
 	inet_ntop(AF_INET, &loc_addr.sin_addr, loc_ip, sizeof(loc_ip));
 	quirk_l16tv_put(msg, strlen(loc_ip) + 1, IPAC_IDTAG_IPADDR, (uint8_t *) loc_ip);
+
+	/* abuse some flags */
+	quirk_l16tv_put(msg, strlen(model_name) + 1, IPAC_IDTAG_UNIT, (uint8_t *) model_name);
 
 	/* ip.access nanoBTS would reply to port==3006 */
 	ipaccess_prepend_header_quirk(msg, IPAC_PROTO_IPACCESS);
