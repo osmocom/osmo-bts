@@ -137,13 +137,88 @@ int sysmobts_get_nominal_power(struct gsm_bts_trx *trx)
 	return -1;
 }
 
-int sysmobts_get_power_trx(struct gsm_bts_trx *trx)
+int sysmobts_get_target_power(struct gsm_bts_trx *trx)
 {
-	int power_transmitter = trx->nominal_power - trx->max_power_red;
-	power_transmitter -= trx->power_reduce;
+	int target_power = trx->nominal_power - trx->max_power_red;
+	target_power -= trx->power_reduce;
 
-	if (power_transmitter < 0)
-		power_transmitter = 0;
+	if (target_power < 0)
+		target_power = 0;
 
-	return power_transmitter;
+	return target_power;
+}
+
+void sysmobts_pa_pwr_init(struct gsm_bts_trx *trx)
+{
+	int target_power = sysmobts_get_target_power(trx);
+
+	/* Cancel any pending request */
+	osmo_timer_del(&trx->pa.step_timer);
+
+	/* is this below our initial target */
+	if (target_power <= trx->pa.max_initial_power) {
+		LOGP(DL1C, LOGL_NOTICE,
+			"PA target_power(%d) is below initial power.\n",
+			target_power);
+		trx->pa.current_power = target_power;
+		return;
+	}
+
+	/* is this below our current value? */
+	if (target_power <= trx->pa.current_power) {
+		LOGP(DL1C, LOGL_NOTICE,
+			"PA target_power(%d) is below current_power.\n",
+			target_power);
+		trx->pa.current_power = target_power;
+		return;
+	}
+
+	if (trx->pa.current_power > trx->pa.max_initial_power) {
+		LOGP(DL1C, LOGL_NOTICE,
+			"PA target_power(%d) starting from current_power.\n",
+			target_power);
+		return;
+	}
+
+	/* We need to step it up. Start from the initial value */
+	trx->pa.current_power = trx->pa.max_initial_power;
+	LOGP(DL1C, LOGL_NOTICE,
+		"PA target_power(%d) starting with %d dBm.\n",
+		target_power, trx->pa.current_power);
+}
+
+static void pa_trx_cb(void *_trx)
+{
+	struct gsm_bts_trx *trx = _trx;
+
+	LOGP(DL1C, LOGL_NOTICE,
+		"PA raising power to %d dBm.\n", trx->pa.current_power);
+	l1if_set_txpower(trx_femtol1_hdl(trx), (float) trx->pa.current_power);
+}
+
+void sysmobts_pa_maybe_step(struct gsm_bts_trx *trx)
+{
+	/* it can not have changed */
+	int target_power = sysmobts_get_target_power(trx);
+
+	/* We are done */
+	if (trx->pa.current_power >= target_power) {
+		LOGP(DL1C, LOGL_NOTICE,
+			"PA have reached target power: %d dBm.\n",
+			target_power);
+		return;
+	}
+
+	/* Step up the current power but clamp it */
+	trx->pa.current_power += trx->pa.step_size;
+	if (trx->pa.current_power > target_power)
+		trx->pa.current_power = target_power;
+
+	LOGP(DL1C, LOGL_NOTICE,
+		"PA scheduling to step to %d dBm.\n",
+		trx->pa.current_power);
+
+	trx->pa.step_timer.data = trx;
+	trx->pa.step_timer.cb = pa_trx_cb;
+	osmo_timer_schedule(&trx->pa.step_timer, trx->pa.step_interval, 0);
 }

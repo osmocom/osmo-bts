@@ -5,5 +5,6 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_
 noinst_PROGRAMS = sysmobts_test
 EXTRA_DIST = sysmobts_test.ok
 
-sysmobts_test_SOURCES = sysmobts_test.c $(top_srcdir)/src/osmo-bts-sysmo/utils.c
+sysmobts_test_SOURCES = sysmobts_test.c $(top_srcdir)/src/osmo-bts-sysmo/utils.c \
+		$(srcdir)/../stubs.c
 sysmobts_test_LDADD = $(LDADD)

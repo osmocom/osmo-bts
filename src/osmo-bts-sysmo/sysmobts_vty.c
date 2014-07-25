@@ -254,6 +254,39 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	return CMD_SUCCESS;
 }
 
+#define PA_STR "Power-Amplifier settings"
+DEFUN(cfg_trx_pa_max_initial, cfg_trx_pa_max_initial_cmd,
+	"power-amplifier max-initial <0-100>",
+	PA_STR "Maximum initial power\n"
+	"Value in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->pa.max_initial_power = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_pa_step_size, cfg_trx_pa_step_size_cmd,
+	"power-amplifier step-size <1-100>",
+	PA_STR "Power increase by step\n"
+	"Step size in dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->pa.step_size = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_pa_step_interval, cfg_trx_pa_step_interval_cmd,
+	"power-amplifier step-interval <1-100>",
+	PA_STR "Power increase by step\n"
+	"Step time in seconds\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->pa.step_interval = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 /* runtime */
 
@@ -421,7 +454,9 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
-	l1if_set_txpower(fl1h, (float) power);
+	trx->pa.current_power = power;
+	osmo_timer_del(&trx->pa.step_timer);
+	l1if_set_txpower(fl1h, (float) trx->pa.current_power);
 
 	return CMD_SUCCESS;
 }
@@ -551,6 +586,12 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	if (trx->nominal_power != sysmobts_get_nominal_power(trx))
 		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
 			VTY_NEWLINE);
+	vty_out(vty, "  power-amplifier max-initial %d%s",
+			trx->pa.max_initial_power, VTY_NEWLINE);
+	vty_out(vty, "  power-amplifier step-size %d%s",
+			trx->pa.step_size, VTY_NEWLINE);
+	vty_out(vty, "  power-amplifier step-interval %d%s",
+			trx->pa.step_interval, VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
@@ -622,6 +663,9 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
+	install_element(TRX_NODE, &cfg_trx_pa_max_initial_cmd);
+	install_element(TRX_NODE, &cfg_trx_pa_step_size_cmd);
+	install_element(TRX_NODE, &cfg_trx_pa_step_interval_cmd);
 
 	return 0;
 }

@@ -51,3 +51,6 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 int bts_model_oml_estab(struct gsm_bts *bts)
 { return 0; }
+
+int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
+{ return 0; }

@@ -271,6 +271,9 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 		trx_rf_lock(trx, 1, trx_mute_on_init_cb);
 #endif
 
+	/* Begin to ramp up the power */
+	sysmobts_pa_maybe_step(trx);
+
 	return opstart_compl(&trx->mo, l1_msg);
 }
 
@@ -323,7 +326,10 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
 	dev_par->fRxPowerLevel = fl1h->ul_power_target;
-	dev_par->fTxPowerLevel = sysmobts_get_power_trx(trx);
+
+	/* initialize the power */
+	sysmobts_pa_pwr_init(trx);
+	dev_par->fTxPowerLevel = trx->pa.current_power;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "
 		"TxPower % 2.2f dBm\n", dev_par->u16Arfcn, dev_par->u8NbTsc,
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
@@ -1068,7 +1074,11 @@ static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	LOGPC(DL1C, LOGL_INFO, "setTxPower %f dBm\n",
 		cc->cfgParams.setTxPowerLevel.fTxPowerLevel);
 
+	trx->pa.current_power = cc->cfgParams.setTxPowerLevel.fTxPowerLevel;
 	msgb_free(l1_msg);
+
+	/* Schedule the next step up */
+	sysmobts_pa_maybe_step(trx);
 
 	return 0;
 }
@@ -1543,8 +1553,10 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 		struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 		/* Did we go through MphInit yet? If yes fire and forget */
-		if (fl1h->hLayer1)
-			l1if_set_txpower(fl1h, sysmobts_get_power_trx(trx));
+		if (fl1h->hLayer1) {
+			sysmobts_pa_pwr_init(trx);
+			l1if_set_txpower(fl1h, (float) trx->pa.current_power);
+		}
 	}
 
 	/* FIXME: we actaully need to send a ACK or NACK for the OML message */
