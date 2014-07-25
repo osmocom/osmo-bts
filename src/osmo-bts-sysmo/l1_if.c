@@ -1232,6 +1232,7 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(3,6,0)
 	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
+	msgb_free(msg);
 	return -ENOTSUP;
 #else
 	sysp->id = SuperFemto_PrimId_MuteRfReq;
