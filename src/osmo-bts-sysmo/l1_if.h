@@ -120,4 +120,8 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 /* calibration loading */
 int calib_load(struct femtol1_hdl *fl1h);
 
+/* on-line re-calibration */
+int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h);
+int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
+
 #endif /* _FEMTO_L1_H */

@@ -1,6 +1,7 @@
 /* Interface handler for Sysmocom L1 */
 
 /* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -1486,8 +1487,9 @@ struct femtol1_hdl *l1if_open(void *priv)
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	if (fl1h->hw_info.model_nr == 2050) {
 		/* On the sysmoBTS 2050, we don't have an OCXO but
-		 * always slave our clock to the GPS receiver */
-		fl1h->clk_src = SuperFemto_ClkSrcId_GpsPps;
+		 * start with the TCXO and will sync it with the PPS
+		 * of the GPS in case there is a fix. */
+		fl1h->clk_src = SuperFemto_ClkSrcId_Tcxo;
 		LOGP(DL1C, LOGL_INFO, "Clock source defaulting to GPS 1PPS "
 			"on sysmoBTS 2050\n");
 	} else {
@@ -1524,3 +1526,117 @@ int l1if_close(struct femtol1_hdl *fl1h)
 	l1if_transport_close(MQ_SYS_WRITE, fl1h);
 	return 0;
 }
+
+#ifdef HW_SYSMOBTS_V1
+int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
+{
+	LOGP(DL1C, LOGL_ERROR, "RfClock calibration not supported on v1 hw.\n");
+	return -ENOTSUP;
+}
+
+int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
+{
+	LOGP(DL1C, LOGL_ERROR, "RfClock calibration not supported on v1 hw.\n");
+	return -ENOTSUP;
+}
+
+#else
+static int clock_reset_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+{
+	msgb_free(resp);
+	return 0;
+}
+
+static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+{
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+
+	if (sysp->u.rfClockSetupCnf.status != GsmL1_Status_Success)
+		LOGP(DL1C, LOGL_ERROR, "Rx RfClockSetupConf failed with: %d\n",
+			sysp->u.rfClockSetupCnf.status);
+	msgb_free(resp);
+	return 0;
+}
+
+static int clock_correct_info_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+{
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+
+	LOGP(DL1C, LOGL_NOTICE,
+		"RfClockInfo iClkCor=%d/clkSrc=%s Err=%d/ErrRes=%d/clkSrc=%s\n",
+		sysp->u.rfClockInfoCnf.rfTrx.iClkCor,
+		get_value_string(femtobts_clksrc_names,
+				sysp->u.rfClockInfoCnf.rfTrx.clkSrc),
+		sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErr,
+		sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErrRes,
+		get_value_string(femtobts_clksrc_names,
+				sysp->u.rfClockInfoCnf.rfTrxClkCal.clkSrc));
+
+	if (sysp->u.rfClockInfoCnf.rfTrx.clkSrc == SuperFemto_ClkSrcId_GpsPps) {
+		LOGP(DL1C, LOGL_ERROR,
+		"Calibrating GPS against GPS doesn not make sense.\n");
+		msgb_free(resp);
+		return -1;
+	}
+
+	if (sysp->u.rfClockInfoCnf.rfTrxClkCal.clkSrc == SuperFemto_ClkSrcId_None) {
+		LOGP(DL1C, LOGL_ERROR,
+		"No reference clock set. Please reset first.\n");
+		msgb_free(resp);
+		return -1;
+	}
+
+	if (sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErrRes == 0) {
+		LOGP(DL1C, LOGL_ERROR,
+		"Couldn't determine the clock difference.\n");
+		msgb_free(resp);
+		return -1;
+	}
+
+	fl1h->clk_cal = sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErr;
+	fl1h->clk_use_eeprom = 0;
+	msgb_free(resp);
+
+	/*
+	 * Let's reset the counter and this will lead to applying the
+	 * new calibration.
+	 */
+	l1if_rf_clock_info_reset(fl1h);
+
+	return 0;
+}
+
+int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
+{
+	struct msgb *msg = sysp_msgb_alloc();
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+
+	/* Set GPS/PPS as reference */
+	sysp->id = SuperFemto_PrimId_RfClockSetupReq;
+	sysp->u.rfClockSetupReq.rfTrx.iClkCor = get_clk_cal(fl1h);
+	sysp->u.rfClockSetupReq.rfTrx.clkSrc = fl1h->clk_src;
+	sysp->u.rfClockSetupReq.rfTrxClkCal.clkSrc = SuperFemto_ClkSrcId_GpsPps;
+	l1if_req_compl(fl1h, msg, clock_setup_cb);
+
+	/* Reset the error counters */
+	msg = sysp_msgb_alloc();
+	sysp = msgb_sysprim(msg);
+
+	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
+	sysp->u.rfClockInfoReq.u8RstClkCal = 1;
+
+	return l1if_req_compl(fl1h, msg, clock_reset_cb);
+}
+
+int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
+{
+	struct msgb *msg = sysp_msgb_alloc();
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+
+	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
+	sysp->u.rfClockInfoReq.u8RstClkCal = 0;
+
+	return l1if_req_compl(fl1h, msg, clock_correct_info_cb);
+}
+#endif

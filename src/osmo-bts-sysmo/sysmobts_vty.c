@@ -426,6 +426,32 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(reset_rf_clock_ctr, reset_rf_clock_ctr_cmd,
+      "trx <0-0> rf-clock-info reset",
+      TRX_STR
+      "RF Clock Information\n" "Reset the counter\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	l1if_rf_clock_info_reset(fl1h);
+	return CMD_SUCCESS;
+}
+
+DEFUN(correct_rf_clock_ctr, correct_rf_clock_ctr_cmd,
+      "trx <0-0> rf-clock-info correct",
+      TRX_STR
+      "RF Clock Information\n" "Apply\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+
+	l1if_rf_clock_info_correct(fl1h);
+	return CMD_SUCCESS;
+}
+
 DEFUN(loopback, loopback_cmd,
 	"trx <0-0> <0-7> loopback <0-1>",
 	TRX_STR
@@ -576,6 +602,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(ENABLE_NODE, &activate_lchan_cmd);
 	install_element(ENABLE_NODE, &set_tx_power_cmd);
+	install_element(ENABLE_NODE, &reset_rf_clock_ctr_cmd);
+	install_element(ENABLE_NODE, &correct_rf_clock_ctr_cmd);
 
 	install_element(ENABLE_NODE, &loopback_cmd);
 	install_element(ENABLE_NODE, &no_loopback_cmd);
