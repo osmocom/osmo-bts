@@ -256,6 +256,16 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 #ifdef USE_L1_RTP_MODE
 	cur = msgb_put(msg, amr_if2_len);
 	memcpy(cur, l1_payload+2, amr_if2_len);
+
+	/*
+	 * Audiocode's MGW doesn't like receiving CMRs that are not
+	 * the same as the previous one. This means we need to patch
+	 * the content here.
+	 */
+	if ((cur[0] & 0xF0) == 0xF0)
+		cur[0]= lchan->tch.last_cmr << 4;
+	else
+		lchan->tch.last_cmr = cur[0] >> 4;
 #else
 	u_int8_t cmr;
 	uint8_t ft = l1_payload[2] & 0xF;
