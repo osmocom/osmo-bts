@@ -369,9 +369,10 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	rc = oml_router_init(bts, &accept_fd, &read_fd);
+	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {
-		perror("Error creating the OML router\n");
+		fprintf(stderr, "Error creating the OML router: %s rc=%d\n",
+			OML_ROUTER_PATH, rc);
 		exit(1);
 	}
 

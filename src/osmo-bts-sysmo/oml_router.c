@@ -106,7 +106,7 @@ static int oml_router_accept_cb(struct osmo_fd *accept_fd, unsigned int what)
 	return 0;
 }
 
-int oml_router_init(struct gsm_bts *bts,
+int oml_router_init(struct gsm_bts *bts, const char *path,
 			struct osmo_fd *accept_fd, struct osmo_fd *read_fd)
 {
 	int rc;
@@ -123,7 +123,7 @@ int oml_router_init(struct gsm_bts *bts,
 	read_fd->fd = -1;
 
 	rc = osmo_sock_unix_init_ofd(accept_fd, SOCK_SEQPACKET, 0,
-					OML_ROUTER_PATH,
+					path,
 					OSMO_SOCK_F_BIND | OSMO_SOCK_F_NONBLOCK);
 	return rc;
 }
