@@ -47,6 +47,7 @@
 
 static int no_eeprom_write = 0;
 static int daemonize = 0;
+static const char *cfgfile = "sysmobts-mgr.cfg";
 void *tall_mgr_ctx;
 
 /* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
@@ -130,13 +131,14 @@ static void print_help(void)
 	printf(" -s Disable color\n");
 	printf(" -d CAT enable debugging\n");
 	printf(" -D daemonize\n");
+	printf(" -c Specify the filename of the config file\n");
 }
 
 static int parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "nhsd:")) != -1) {
+	while ((opt = getopt(argc, argv, "nhsd:c:")) != -1) {
 		switch (opt) {
 		case 'n':
 			no_eeprom_write = 1;
@@ -152,6 +154,9 @@ static int parse_options(int argc, char **argv)
 			break;
 		case 'D':
 			daemonize = 1;
+			break;
+		case 'c':
+			cfgfile = optarg;
 			break;
 		default:
 			return -1;
@@ -385,6 +390,20 @@ int main(int argc, char **argv)
 	rc = parse_options(argc, argv);
 	if (rc < 0)
 		exit(2);
+
+	sysmobts_mgr_vty_init();
+	logging_vty_add_cmds(&mgr_log_info);
+	rc = sysmobts_mgr_parse_config(cfgfile);
+	if (rc < 0) {
+		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");
+		exit(1);
+	}
+
+	rc = telnet_init(tall_msgb_ctx, NULL, 4252);
+	if (rc < 0) {
+		fprintf(stderr, "Error initializing telnet\n");
+		exit(1);
+	}
 
 	/* start temperature check timer */
 	temp_timer.cb = check_temp_timer_cb;
