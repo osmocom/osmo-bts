@@ -49,8 +49,31 @@ static int trx_number;
 
 static int no_eeprom_write = 0;
 static int daemonize = 0;
-static const char *cfgfile = "sysmobts-mgr.cfg";
 void *tall_mgr_ctx;
+
+/* the initial state */
+static struct sysmobts_mgr_instance manager = {
+	.config_file	= "sysmobts-mgr.cfg",
+	.rf_limit	= {
+		.thresh_warn	= 60,
+		.thresh_crit	= 78,
+	},
+	.digital_limit = {
+		.thresh_warn	= 60,
+		.thresh_crit	= 78,
+	},
+	.board_limit	= {
+		.thresh_warn	= 60,
+		.thresh_crit	= 78,
+	},
+	.pa_limit	= {
+		.thresh_warn	= 60,
+		.thresh_crit	= 100,
+	},
+	.action_warn		= 0,
+	.action_crit		= 0,
+	.state			= STATE_NORMAL,
+};
 
 
 static int classify_bts(void)
@@ -149,7 +172,7 @@ static int parse_options(int argc, char **argv)
 			daemonize = 1;
 			break;
 		case 'c':
-			cfgfile = optarg;
+			manager.config_file = optarg;
 			break;
 		default:
 			return -1;
@@ -247,7 +270,7 @@ int main(int argc, char **argv)
 
 	sysmobts_mgr_vty_init();
 	logging_vty_add_cmds(&mgr_log_info);
-	rc = sysmobts_mgr_parse_config(cfgfile);
+	rc = sysmobts_mgr_parse_config(&manager);
 	if (rc < 0) {
 		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");
 		exit(1);
