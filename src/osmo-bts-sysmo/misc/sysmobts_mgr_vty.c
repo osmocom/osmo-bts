@@ -96,6 +96,22 @@ DEFUN(cfg_mgr, cfg_mgr_cmd,
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
+	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
+	vty_out(vty, " Digital: %f Celcius%s",
+		sysmobts_temp_get(SYSMOBTS_TEMP_DIGITAL,
+					SYSMOBTS_TEMP_INPUT) / 1000.0f,
+		VTY_NEWLINE);
+	vty_out(vty, " RF:      %f Celcius%s",
+		sysmobts_temp_get(SYSMOBTS_TEMP_RF,
+					SYSMOBTS_TEMP_INPUT) / 1000.0f,
+		VTY_NEWLINE);
+	if (is_sbts2050_master()) {
+		int temp_pa, temp_board;
+		sbts2050_uc_check_temp(&temp_pa, &temp_board);
+		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_pa, VTY_NEWLINE);
+		vty_out(vty, " sysmoBTS 2050 PA: %d CelciusC%s", temp_board, VTY_NEWLINE);
+	}
+
 	return CMD_SUCCESS;
 }
 
