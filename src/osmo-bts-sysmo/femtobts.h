@@ -36,7 +36,6 @@
  * this on 3.11.
  */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3, 11, 0)
-#warning "Using RTP mode.."
 #define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
 #endif
 #endif
