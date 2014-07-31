@@ -44,10 +44,43 @@
 #include "misc/sysmobts_nl.h"
 #include "misc/sysmobts_par.h"
 
+static int bts_type;
+static int trx_number;
+
 static int no_eeprom_write = 0;
 static int daemonize = 0;
 static const char *cfgfile = "sysmobts-mgr.cfg";
 void *tall_mgr_ctx;
+
+
+static int classify_bts(void)
+{
+	int rc;
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &bts_type);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to get model number.\n");
+		return -1;
+	}
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &trx_number);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to get the trx number.\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int is_sbts2050(void)
+{
+	return bts_type == 2050;
+}
+
+int is_sbts2050_trx(int trx)
+{
+	return trx_number == trx;
+}
 
 static struct osmo_timer_list temp_timer;
 static void check_temp_timer_cb(void *unused)
@@ -221,7 +254,6 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 
 	if (!fetched_info) {
 		uint8_t mac[6];
-		int val;
 
 		/* fetch the MAC */
 		sysmobts_par_get_buf(SYSMOBTS_PAR_MAC, mac, sizeof(mac));
@@ -230,18 +262,16 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 				mac[3], mac[4], mac[5]);
 
 		/* fetch the model and trx number */
-		sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
-		switch(val) {
+		switch(bts_type) {
 		case 0:
 		case 0xffff:
 		case 1002:
 			model_name = "sysmoBTS 1002";
 			break;
 		case 2050:
-			sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val);
-			if (val == 0)
+			if (trx_number == 0)
 				model_name = "sysmoBTS 2050 (master)";
-			else if (val == 1)
+			else if (trx_number == 1)
 				model_name = "sysmoBTS 2050 (slave)";
 			else
 				model_name = "sysmoBTS 2050 (unknown)";
@@ -322,6 +352,8 @@ int main(int argc, char **argv)
 	msgb_set_talloc_ctx(tall_msgb_ctx);
 
 	mgr_log_init();
+	if (classify_bts() != 0)
+		exit(2);
 
 	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);

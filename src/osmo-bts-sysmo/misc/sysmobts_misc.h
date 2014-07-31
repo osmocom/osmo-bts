@@ -43,6 +43,9 @@ enum sysmobts_firmware_type {
 int sysmobts_firmware_reload(enum sysmobts_firmware_type type);
 
 
+int is_sbts2050(void);
+int is_sbts2050_trx(int);
+
 void sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
 void sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
 int sbts2050_uc_get_status(enum sbts2050_status_rqt status);

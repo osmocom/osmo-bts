@@ -313,23 +313,10 @@ static void check_uctemp_timer_cb(void *data)
 
 void sbts2050_uc_initialize(void)
 {
-	int val;
-
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val) < 0) {
-		LOGP(DTEMP, LOGL_ERROR,
-		     "Failed to get Model number\n");
-		return;
-	}
-
-	if (val != 2050)
+	if (!is_sbts2050())
 		return;
 
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
-		LOGP(DTEMP, LOGL_ERROR, "Failed to get the TRX number\n");
-		return;
-	}
-
-	if (val != 0)
+	if (!is_sbts2050_trx(0))
 		return;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
