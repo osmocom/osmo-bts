@@ -31,8 +31,14 @@
 #endif
 
 #ifdef L1_HAS_RTP_MODE
-/* This is temporarily disabled, as AMR has some bugs in RTP mode */
-//#define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
+/*
+ * The bit ordering has been fixed on >= 3.10 but I am verifying
+ * this on 3.11.
+ */
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3, 11, 0)
+#warning "Using RTP mode.."
+#define USE_L1_RTP_MODE		/* Tell L1 to use RTP mode */
+#endif
 #endif
 
 /*
