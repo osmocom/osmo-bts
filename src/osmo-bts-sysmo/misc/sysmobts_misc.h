@@ -1,6 +1,8 @@
 #ifndef _SYSMOBTS_MISC_H
 #define _SYSMOBTS_MISC_H
 
+#include <stdint.h>
+
 enum sysmobts_temp_sensor {
 	SYSMOBTS_TEMP_DIGITAL = 1,
 	SYSMOBTS_TEMP_RF = 2,

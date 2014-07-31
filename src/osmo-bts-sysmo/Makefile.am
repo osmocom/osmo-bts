@@ -23,6 +23,7 @@ l1fwd_proxy_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
 sysmobts_mgr_SOURCES = \
 		misc/sysmobts_mgr.c misc/sysmobts_misc.c \
 		misc/sysmobts_par.c misc/sysmobts_nl.c \
+		misc/sysmobts_mgr_2050.c \
 		misc/sysmobts_mgr_vty.c
 sysmobts_mgr_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS)
 
