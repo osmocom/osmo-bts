@@ -107,9 +107,32 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		VTY_NEWLINE);
 	if (is_sbts2050_master()) {
 		int temp_pa, temp_board;
+		struct sbts2050_power_status status;
+
 		sbts2050_uc_check_temp(&temp_pa, &temp_board);
 		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_pa, VTY_NEWLINE);
 		vty_out(vty, " sysmoBTS 2050 PA: %d CelciusC%s", temp_board, VTY_NEWLINE);
+
+		sbts2050_uc_get_status(&status);
+		vty_out(vty, "Power Status%s", VTY_NEWLINE);
+		vty_out(vty, " Main Supply :(ON)  [(24.00)Vdc, %4.2f A]%s",
+			status.main_supply_current, VTY_NEWLINE);
+		vty_out(vty, " Master SF   : %s  [%6.2f Vdc, %4.2f A]%s",
+			status.master_enabled ? "ON " : "OFF",
+			status.master_voltage, status.master_current,
+			VTY_NEWLINE);
+		vty_out(vty, " Slave SF    : %s   [%6.2f Vdc, %4.2f A]%s",
+			status.slave_enabled ? "ON" : "OFF",
+			status.slave_voltage, status.slave_current,
+			VTY_NEWLINE);
+		vty_out(vty, " Power Amp   : %s  [%6.2f Vdc, %4.2f A]%s",
+			status.pa_enabled ? "ON" : "OFF",
+			status.pa_voltage, status.pa_current,
+			VTY_NEWLINE);
+		vty_out(vty, " PA Bias     : %s  [%6.2f Vdc, ---- A]%s",
+			status.pa_enabled ? "ON" : "OFF",
+			status.pa_bias_voltage,
+			VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

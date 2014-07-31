@@ -21,12 +21,6 @@ enum sysmobts_temp_type {
 	_NUM_TEMP_TYPES
 };
 
-enum sbts2050_status_rqt {
-	SBTS2050_STATUS_MASTER,
-	SBTS2050_STATUS_SLAVE,
-	SBTS2050_STATUS_PA
-};
-
 int sysmobts_temp_get(enum sysmobts_temp_sensor sensor,
 		      enum sysmobts_temp_type type);
 
@@ -47,9 +41,27 @@ int is_sbts2050(void);
 int is_sbts2050_trx(int);
 int is_sbts2050_master(void);
 
+struct sbts2050_power_status {
+	float main_supply_current;
+
+	int master_enabled;
+	float master_voltage;
+	float master_current;
+
+	int slave_enabled;
+	float slave_voltage;
+	float slave_current;
+
+	int pa_enabled;
+	float pa_voltage;
+	float pa_current;
+
+	float pa_bias_voltage;
+};
+
 void sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
 void sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
-int sbts2050_uc_get_status(enum sbts2050_status_rqt status);
+int sbts2050_uc_get_status(struct sbts2050_power_status *status);
 void sbts2050_uc_initialize();
 
 #endif
