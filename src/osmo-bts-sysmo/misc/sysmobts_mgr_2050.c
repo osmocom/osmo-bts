@@ -35,6 +35,12 @@
 #define SIZE_HEADER_RSP		5
 #define SIZE_HEADER_CMD		4
 
+struct ucinfo {
+	uint16_t id;
+	int master;
+	int slave;
+	int pa;
+};
 
 /**********************************************************************
  *	Functions read/write from serial interface
@@ -89,7 +95,7 @@ static void add_parity(cmdpkt_t *command)
 	command->cmd.raw[command->u8Len] = parity;
 }
 
-static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
+static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, const struct ucinfo *info)
 {
 	int num, rc;
 	cmdpkt_t *command;
@@ -100,7 +106,7 @@ static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
 		.tv_sec = 10,
 	};
 
-	switch (info.id) {
+	switch (info->id) {
 	case SBTS2050_TEMP_RQT:
 		num = sizeof(command->cmd.tempGet);
 		break;
@@ -123,20 +129,20 @@ static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
 	command = (cmdpkt_t *) msgb_put(msg, num);
 
 	command->u16Magic = 0xCAFE;
-	switch (info.id) {
+	switch (info->id) {
 	case SBTS2050_TEMP_RQT:
-		command->u8Id = info.id;
+		command->u8Id = info->id;
 		command->u8Len = sizeof(command->cmd.tempGet);
 		break;
 	case SBTS2050_PWR_RQT:
-		command->u8Id = info.id;
+		command->u8Id = info->id;
 		command->u8Len = sizeof(command->cmd.pwrSetState);
-		command->cmd.pwrSetState.u1MasterEn = !!info.master;
-		command->cmd.pwrSetState.u1SlaveEn  = !!info.slave;
-		command->cmd.pwrSetState.u1PwrAmpEn = !!info.pa;
+		command->cmd.pwrSetState.u1MasterEn = !!info->master;
+		command->cmd.pwrSetState.u1SlaveEn  = !!info->slave;
+		command->cmd.pwrSetState.u1PwrAmpEn = !!info->pa;
 		break;
 	case SBTS2050_PWR_STATUS:
-		command->u8Id     = info.id;
+		command->u8Id     = info->id;
 		command->u8Len    = sizeof(command->cmd.pwrGetStatus);
 		break;
 	default:
@@ -162,7 +168,7 @@ static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, struct ucinfo info)
 
 			response = (rsppkt_t *)msg->data;
 
-			if (response->u8Id != info.id || msg->len <= 0 ||
+			if (response->u8Id != info->id || msg->len <= 0 ||
 			    response->i8Error != RQT_SUCCESS)
 				goto err;
 
@@ -184,19 +190,20 @@ err:
 /**********************************************************************
  *	Get power status function
  *********************************************************************/
-int sbts2050_uc_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
+int sbts2050_uc_get_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
 {
 	struct msgb *msg;
-	struct ucinfo info = {
+	const struct ucinfo info = {
 		.id = SBTS2050_PWR_STATUS,
 	};
 	rsppkt_t *response;
 	int val_status;
 
-	msg = sbts2050_ucinfo_get(ucontrol, info);
+	msg = sbts2050_ucinfo_get(ucontrol, &info);
 
 	if (msg == NULL) {
-		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit");
+		LOGP(DTEMP, LOGL_ERROR,
+			"Error requesting power status: %d\n", status);
 		return -1;
 	}
 
@@ -223,20 +230,20 @@ int sbts2050_uc_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
 /**********************************************************************
  *	Uc Power Switching handling
  *********************************************************************/
-void sbts2050_uc_power(struct uc *ucontrol, int pmaster, int pslave, int ppa)
+void sbts2050_uc_set_power(struct uc *ucontrol, int pmaster, int pslave, int ppa)
 {
 	struct msgb *msg;
-	struct ucinfo info = {
-		.id = 0x00,
+	const struct ucinfo info = {
+		.id = SBTS2050_PWR_RQT,
 		.master = pmaster,
 		.slave = pslave,
 		.pa = ppa
 	};
 
-	msg = sbts2050_ucinfo_get(ucontrol, info);
+	msg = sbts2050_ucinfo_get(ucontrol, &info);
 
 	if (msg == NULL) {
-		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit");
+		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit.\n");
 		return;
 	}
 
@@ -258,11 +265,11 @@ void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board)
 {
 	rsppkt_t *response;
 	struct msgb *msg;
-	struct ucinfo info = {
+	const struct ucinfo info = {
 		.id = SBTS2050_TEMP_RQT,
 	};
 
-	msg = sbts2050_ucinfo_get(ucontrol, info);
+	msg = sbts2050_ucinfo_get(ucontrol, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");

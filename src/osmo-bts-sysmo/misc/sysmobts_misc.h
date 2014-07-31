@@ -21,29 +21,10 @@ enum sbts2050_status_rqt {
 	SBTS2050_STATUS_PA
 };
 
-struct uc {
-	int id;
-	int fd;
-	const char *path;
-};
-
-struct ucinfo {
-	uint16_t id;
-	int master;
-	int slave;
-	int pa;
-};
-
 int sysmobts_temp_get(enum sysmobts_temp_sensor sensor,
 		      enum sysmobts_temp_type type);
 
 void sysmobts_check_temp(int no_eeprom_write);
-
-void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board);
-
-void sbts2050_uc_power(struct uc *ucontrol, int pmaster, int pslave, int ppa);
-
-int sbts2050_uc_status(struct uc *ucontrol, enum sbts2050_status_rqt status);
 
 int sysmobts_update_hours(int no_epprom_write);
 
@@ -54,5 +35,15 @@ enum sysmobts_firmware_type {
 };
 
 int sysmobts_firmware_reload(enum sysmobts_firmware_type type);
+
+
+struct uc {
+	int id;
+	int fd;
+	const char *path;
+};
+void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board);
+void sbts2050_uc_set_power(struct uc *ucontrol, int pmaster, int pslave, int ppa);
+int sbts2050_uc_get_status(struct uc *ucontrol, enum sbts2050_status_rqt status);
 
 #endif
