@@ -24,6 +24,7 @@
 
 #include <osmocom/core/logging.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
 
 #include <errno.h>
 #include <unistd.h>
@@ -35,11 +36,22 @@
 #define SIZE_HEADER_RSP		5
 #define SIZE_HEADER_CMD		4
 
+struct uc {
+	int id;
+	int fd;
+	const char *path;
+};
+
 struct ucinfo {
 	uint16_t id;
 	int master;
 	int slave;
 	int pa;
+};
+
+static struct uc ucontrol0 = {
+	.id = 0,
+	.path = "/dev/ttyS0"
 };
 
 /**********************************************************************
@@ -190,7 +202,7 @@ err:
 /**********************************************************************
  *	Get power status function
  *********************************************************************/
-int sbts2050_uc_get_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
+int sbts2050_uc_get_status(enum sbts2050_status_rqt status)
 {
 	struct msgb *msg;
 	const struct ucinfo info = {
@@ -199,7 +211,7 @@ int sbts2050_uc_get_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
 	rsppkt_t *response;
 	int val_status;
 
-	msg = sbts2050_ucinfo_get(ucontrol, &info);
+	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR,
@@ -230,7 +242,7 @@ int sbts2050_uc_get_status(struct uc *ucontrol, enum sbts2050_status_rqt status)
 /**********************************************************************
  *	Uc Power Switching handling
  *********************************************************************/
-void sbts2050_uc_set_power(struct uc *ucontrol, int pmaster, int pslave, int ppa)
+void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 {
 	struct msgb *msg;
 	const struct ucinfo info = {
@@ -240,7 +252,7 @@ void sbts2050_uc_set_power(struct uc *ucontrol, int pmaster, int pslave, int ppa
 		.pa = ppa
 	};
 
-	msg = sbts2050_ucinfo_get(ucontrol, &info);
+	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit.\n");
@@ -261,7 +273,7 @@ void sbts2050_uc_set_power(struct uc *ucontrol, int pmaster, int pslave, int ppa
 /**********************************************************************
  *	Uc temperature handling
  *********************************************************************/
-void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board)
+void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 {
 	rsppkt_t *response;
 	struct msgb *msg;
@@ -269,7 +281,7 @@ void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board)
 		.id = SBTS2050_TEMP_RQT,
 	};
 
-	msg = sbts2050_ucinfo_get(ucontrol, &info);
+	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
@@ -286,5 +298,52 @@ void sbts2050_uc_check_temp(struct uc *ucontrol, int *temp_pa, int *temp_board)
 				 response->rsp.tempGet.i8BrdTemp,
 				 response->rsp.tempGet.i8PaTemp);
 	msgb_free(msg);
+}
+
+static struct osmo_timer_list temp_uc_timer;
+static void check_uctemp_timer_cb(void *data)
+{
+	int temp_pa = 0, temp_board = 0;
+
+	sbts2050_uc_check_temp(&temp_pa, &temp_board);
+
+	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
+}
+
+void sbts2050_uc_initialize(void)
+{
+	int val;
+
+	if (sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val) < 0) {
+		LOGP(DFIND, LOGL_ERROR,
+		     "Failed to get Model number\n");
+		return;
+	}
+
+	if (val != 2050)
+		return;
+
+	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
+		LOGP(DFIND, LOGL_ERROR, "Failed to get the TRX number\n");
+		return;
+	}
+
+	if (val != 0)
+		return;
+
+	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
+	if (ucontrol0.fd < 0) {
+		LOGP(DFIND, LOGL_ERROR,
+		     "Failed to open the serial interface\n");
+		return;
+	}
+
+	temp_uc_timer.cb = check_uctemp_timer_cb;
+	check_uctemp_timer_cb(NULL);
+}
+#else
+void sbts2050_uc_initialize(void)
+{
+	LOGP(DTEMP, LOGL_NOTICE, "sysmoBTS2050 was not enabled at compile time.\n");
 }
 #endif
