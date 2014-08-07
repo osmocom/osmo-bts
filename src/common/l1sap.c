@@ -305,7 +305,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
-			p[0] = lchan->ms_power;
+			p[0] = lchan->ms_power_ctrl.current;
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
 		} else

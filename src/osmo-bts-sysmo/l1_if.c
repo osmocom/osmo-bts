@@ -902,62 +902,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		msu_param->u8Buffer[2] = (g_time.t1 << 7) | (g_time.t2 << 2) | (t3p >> 1);
 		msu_param->u8Buffer[3] = (t3p & 1);
 		break;
-	case GsmL1_Sapi_Sacch:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_acch;
-		/*
-		 * if the DSP is taking care of power control,
-		 * then this value will be overridden.
-		 */
-		msu_param->u8Buffer[0] = lchan->ms_power_ctrl.current;
-		msu_param->u8Buffer[1] = lchan->rqd_ta;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0) {
-			/* No SACCH data from LAPDM pending, send SACCH filling */
-			uint8_t *si = lchan_sacch_get(lchan);
-			if (si) {
-				/* +2 to not overwrite the ms_power/ta values */
-				memcpy(msu_param->u8Buffer+2, si, GSM_MACBLOCK_LEN-2);
-			} else {
-				/* +2 to not overwrite the ms_power/ta values */
-				memcpy(msu_param->u8Buffer+2, fill_frame, GSM_MACBLOCK_LEN-2);
-			}
-		} else {
-			/* +2 to not overwrite the ms_power/ta values */
-			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data + 2, GSM_MACBLOCK_LEN-2);
-			msgb_free(pp.oph.msg);
-		}
-		break;
-	case GsmL1_Sapi_Sdcch:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_dcch;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0)
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-		else {
-			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
-			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
-			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
-			msgb_free(pp.oph.msg);
-		}
-		break;
-	case GsmL1_Sapi_FacchF:
-	case GsmL1_Sapi_FacchH:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_dcch;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0)
-			goto empty_frame;
-		else {
-			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
-			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
-			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
-			msgb_free(pp.oph.msg);
-		}
-		break;
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
 		break;
