@@ -339,6 +339,7 @@ get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
 static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan)
 {
+	uint8_t n_s;
 
 	/* only do this if we are in the right state */
 	switch (lchan->ciph_state) {
@@ -359,10 +360,39 @@ static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 	if ((msg->data[4] & 0x3F) != GSM48_MT_RR_CIPH_M_CMD)
 		return 0;
 
+	/* Remember N(S) + 1 to find the first ciphered frame */
+	n_s = (msg->data[1] >> 1) & 0x7;
+	lchan->ciph_ns = (n_s + 1) % 8;
+
 	lchan->ciph_state = LCHAN_CIPH_RX_REQ;
 	l1if_set_ciphering(fl1h, lchan, 0);
 
 	return 1;
+}
+
+static inline void check_for_first_ciphrd(struct femtol1_hdl *fl1h,
+					GsmL1_MsgUnitParam_t *msgUnitParam,
+					struct gsm_lchan *lchan)
+{
+	uint8_t n_s;
+
+	/* if this is the first valid message after enabling Rx
+	 * decryption, we have to enable Tx encryption */
+	if (lchan->ciph_state != LCHAN_CIPH_RX_CONF)
+		return;
+
+	/* HACK: check if it's an I frame, in order to
+	 * ignore some still buffered/queued UI frames received
+	 * before decryption was enabled */
+	if (msgUnitParam->u8Buffer[0] != 0x01)
+		return;
+	if ((msgUnitParam->u8Buffer[1] & 0x01) != 0)
+		return;
+	n_s = msgUnitParam->u8Buffer[1] >> 5;
+	if (lchan->ciph_ns != n_s)
+		return;
+	lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
+	l1if_set_ciphering(fl1h, lchan, 1);
 }
 
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
@@ -744,18 +774,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			break;
 		}
 
-		/* if this is the first valid message after enabling Rx
-		 * decryption, we have to enable Tx encryption */
-		if (lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
-			/* HACK: check if it's an I frame, in order to
-			 * ignore some still buffered/queued UI frames received
-			 * before decryption was enabled */
-			if (data_ind->msgUnitParam.u8Buffer[0] == 0x01 &&
-			    (data_ind->msgUnitParam.u8Buffer[1] & 0x01) == 0) {
-				lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
-				l1if_set_ciphering(fl1, lchan, 1);
-			}
-		}
+		check_for_first_ciphrd(fl1, &data_ind->msgUnitParam, lchan);
 
 		/* SDCCH, SACCH and FACCH all go to LAPDm */
 		le = le_by_l1_sapi(&lchan->lapdm_ch, data_ind->sapi);
