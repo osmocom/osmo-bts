@@ -395,6 +395,20 @@ static inline void check_for_first_ciphrd(struct femtol1_hdl *fl1h,
 	l1if_set_ciphering(fl1h, lchan, 1);
 }
 
+/* public helpers for the test */
+int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
+			      struct msgb *msg, struct gsm_lchan *lchan)
+{
+	return check_for_ciph_cmd(fl1h, msg, lchan);
+}
+
+void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
+				GsmL1_MsgUnitParam_t *msgUnitParam,
+				struct gsm_lchan *lchan)
+{
+	return check_for_first_ciphrd(fl1h, msgUnitParam, lchan);
+}
+
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
 	0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,

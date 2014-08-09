@@ -7,6 +7,8 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/gsm_utils.h>
 
+#include <sysmocom/femtobts/gsml1prim.h>
+
 enum {
 	MQ_SYS_READ,
 	MQ_L1_READ,
@@ -124,4 +126,10 @@ int calib_load(struct femtol1_hdl *fl1h);
 int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h);
 int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
 
+/* public helpers for test */
+int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
+			      struct msgb *msg, struct gsm_lchan *lchan);
+void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
+				GsmL1_MsgUnitParam_t *msgUnitParam,
+				struct gsm_lchan *lchan);
 #endif /* _FEMTO_L1_H */

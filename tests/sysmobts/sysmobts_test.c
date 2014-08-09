@@ -1,5 +1,5 @@
 /*
- * (C) 2013 by Holger Hans Peter Freyther
+ * (C) 2013,2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -23,7 +23,11 @@
 #include "l1_if.h"
 #include "utils.h"
 
+#include <sysmocom/femtobts/gsml1prim.h>
+
 #include <stdio.h>
+
+int pcu_direct = 0;
 
 static int direct_map[][3] = {
 	{ GSM_BAND_850,		GsmL1_FreqBand_850,	128	},
@@ -125,9 +129,73 @@ static void test_sysmobts_auto_band(void)
 	}
 }
 
+static void test_sysmobts_cipher(void)
+{
+ 	static const uint8_t cipher_cmd[] = {
+		0x03, 0x00, 0x0d, 0x06, 0x35, 0x11, 0x2b, 0x2b,
+		0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
+		0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b };
+	static const uint8_t too_early_classmark[] = {
+		0x01, 0x00, 0x4d, 0x06, 0x16, 0x03, 0x30, 0x18,
+		0xa2, 0x20, 0x0b, 0x60, 0x14, 0x4c, 0xa7, 0x7b,
+		0x29, 0x11, 0xdc, 0x40, 0x04, 0x00, 0x2b };
+	static const uint8_t first_ciphered_cipher_cmpl[] = {
+		0x01, 0x30, 0x4d, 0x06, 0x16, 0x03, 0x30, 0x18,
+		0xa2, 0x20, 0x0b, 0x60, 0x14, 0x4c, 0xa7, 0x7b,
+		0x29, 0x11, 0xdc, 0x40, 0x04, 0x00, 0x2b };
+
+	struct gsm_lchan lchan;
+	struct femtol1_hdl fl1h;
+	struct msgb *msg;
+	GsmL1_MsgUnitParam_t unit;
+	int rc;
+
+	memset(&lchan, 0, sizeof(lchan));
+	memset(&fl1h, 0, sizeof(fl1h));
+
+	/* Inject the cipher mode command */
+	msg = msgb_alloc_headroom(128, 64, "ciphering mode command");
+	lchan.ciph_state = LCHAN_CIPH_NONE;
+	memcpy(msgb_put(msg, ARRAY_SIZE(cipher_cmd)), cipher_cmd, ARRAY_SIZE(cipher_cmd));
+	rc = bts_check_for_ciph_cmd(&fl1h, msg, &lchan);
+	OSMO_ASSERT(rc == 1);
+	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_RX_REQ);
+	OSMO_ASSERT(lchan.ciph_ns == 1);
+	msgb_free(msg);
+
+	/* Move to the confirmed state */
+	lchan.ciph_state = LCHAN_CIPH_RX_CONF;
+
+	/* Handle message sent before ciphering was received */
+	memcpy(&unit.u8Buffer[0], too_early_classmark, ARRAY_SIZE(too_early_classmark));
+	unit.u8Size = ARRAY_SIZE(too_early_classmark);
+	bts_check_for_first_ciphrd(&fl1h, &unit, &lchan);
+	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_RX_CONF);
+
+	/* Now send the first ciphered message */
+	memcpy(&unit.u8Buffer[0], first_ciphered_cipher_cmpl, ARRAY_SIZE(first_ciphered_cipher_cmpl));
+	unit.u8Size = ARRAY_SIZE(first_ciphered_cipher_cmpl);
+	bts_check_for_first_ciphrd(&fl1h, &unit, &lchan);
+	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_TXRX_REQ);
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing sysmobts routines\n");
 	test_sysmobts_auto_band();
+	test_sysmobts_cipher();
 	return 0;
 }
+
+
+/*
+ * some local stubs. We need to pull in a lot more code and can't
+ * use the generic stubs unless we make all of them weak
+ */
+void bts_update_status(enum bts_global_status which, int on)
+{}
+
+int bts_model_init(struct gsm_bts *bts)
+{ return 0; }
+int bts_model_oml_estab(struct gsm_bts *bts)
+{ return 0; }
