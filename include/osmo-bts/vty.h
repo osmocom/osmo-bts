@@ -7,6 +7,7 @@
 enum bts_vty_node {
 	BTS_NODE = _LAST_OSMOVTY_NODE + 1,
 	TRX_NODE,
+	OMLR_NODE,
 };
 
 extern struct cmd_element ournode_exit_cmd;

@@ -24,6 +24,7 @@ core.*
 
 contrib/sysmobts-calib/sysmobts-calib
 
+src/common/osmobts-omlrouter
 src/osmo-bts-sysmo/l1fwd-proxy
 src/osmo-bts-sysmo/sysmobts
 src/osmo-bts-sysmo/sysmobts-remote
