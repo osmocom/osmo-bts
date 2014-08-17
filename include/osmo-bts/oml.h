@@ -6,9 +6,6 @@ struct gsm_abis_mo;
 struct msgb;
 
 
-extern const char oml_ipa_magic[13];
-extern const char oml_osmo_magic[12];
-
 int oml_init(void);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
 

@@ -23,6 +23,7 @@
 
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/msgb.h>
 
 #include <arpa/inet.h>
@@ -63,16 +64,16 @@ static int check_manuf(struct msgb *msg, struct abis_om_hdr *omh, size_t msg_siz
 		return -1;
 	}
 
-	if (omh->data[0] == sizeof(oml_ipa_magic) &&
-		strncmp(oml_ipa_magic, (const char *)omh->data + 1,
-			sizeof(oml_ipa_magic)) == 0) {
+	if (omh->data[0] == sizeof(abis_nm_ipa_magic) &&
+		strncmp(abis_nm_ipa_magic, (const char *)omh->data + 1,
+			sizeof(abis_nm_ipa_magic)) == 0) {
 		type = OML_MSG_TYPE_IPA;
-		size = sizeof(oml_ipa_magic) + 1;
-	} else if (omh->data[0] == sizeof(oml_osmo_magic) &&
-		strncmp(oml_osmo_magic, (const char *) omh->data + 1,
-			sizeof(oml_osmo_magic)) == 0) {
+		size = sizeof(abis_nm_ipa_magic) + 1;
+	} else if (omh->data[0] == sizeof(abis_nm_osmo_magic) &&
+		strncmp(abis_nm_osmo_magic, (const char *) omh->data + 1,
+			sizeof(abis_nm_osmo_magic)) == 0) {
 		type = OML_MSG_TYPE_OSMO;
-		size = sizeof(oml_osmo_magic) + 1;
+		size = sizeof(abis_nm_osmo_magic) + 1;
 	} else {
 		LOGP(DL1C, LOGL_ERROR, "Manuf Label Unknown\n");
 		return -1;

@@ -91,10 +91,6 @@ static struct tlv_definition abis_nm_att_tlvdef_ipa = {
 	},
 };
 
-/* ip.access nanoBTS specific commands */
-const char oml_ipa_magic[] = "com.ipaccess";
-const char oml_osmo_magic[] = "org.osmocom";
-
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
 /*
@@ -167,9 +163,9 @@ int oml_send_msg(struct msgb *msg, int is_manuf)
 
 	if (is_manuf) {
 		/* length byte, string + 0 termination */
-		uint8_t *manuf = msgb_push(msg, 1 + sizeof(oml_ipa_magic));
-		manuf[0] = strlen(oml_ipa_magic)+1;
-		memcpy(manuf+1, oml_ipa_magic, strlen(oml_ipa_magic));
+		uint8_t *manuf = msgb_push(msg, 1 + sizeof(abis_nm_ipa_magic));
+		manuf[0] = strlen(abis_nm_ipa_magic)+1;
+		memcpy(manuf+1, abis_nm_ipa_magic, strlen(abis_nm_ipa_magic));
 	}
 
 	/* Push the main OML header and send it off */
@@ -1050,7 +1046,7 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		return -EIO;
 	}
 
-	if (strncmp((char *)&oh->data[1], oml_ipa_magic, idstrlen)) {
+	if (strncmp((char *)&oh->data[1], abis_nm_ipa_magic, idstrlen)) {
 		LOGP(DOML, LOGL_ERROR, "Manufacturer OML message != ipaccess not supported\n");
 		return -EINVAL;
 	}
