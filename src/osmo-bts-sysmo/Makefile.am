@@ -4,7 +4,7 @@ COMMON_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOS
 
 EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
 	misc/sysmobts_eeprom.h misc/sysmobts_nl.h femtobts.h hw_misc.h \
-	l1_fwd.h l1_if.h l1_transp.h eeprom.h utils.h oml_router.h
+	l1_fwd.h l1_if.h l1_transp.h eeprom.h utils.h
 
 bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr sysmobts-util
 
