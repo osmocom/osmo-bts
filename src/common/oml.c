@@ -828,8 +828,10 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
  * manufacturer related messages
  */
 
+#ifndef TLVP_PRES_LEN /* old libosmocore */
 #define TLVP_PRES_LEN(tp, tag, min_len) \
 	(TLVP_PRESENT(tp, tag) && TLVP_LEN(tp, tag) >= min_len)
+#endif
 
 static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
 {
