@@ -36,6 +36,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/signal.h>
+#include <osmocom/core/macaddr.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipaccess.h>
@@ -163,32 +164,6 @@ uint32_t get_signlink_remote_ip(struct e1inp_sign_link *link)
 }
 
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <netinet/ip.h>
-
-static int get_mac_addr(const char *dev_name, uint8_t *mac_out)
-{
-	int fd, rc;
-	struct ifreq ifr;
-
-	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if (fd < 0)
-		return fd;
-
-	memset(&ifr, 0, sizeof(ifr));
-	memcpy(&ifr.ifr_name, dev_name, sizeof(ifr.ifr_name));
-	rc = ioctl(fd, SIOCGIFHWADDR, &ifr);
-	close(fd);
-
-	if (rc < 0)
-		return rc;
-
-	memcpy(mac_out, ifr.ifr_hwaddr.sa_data, 6);
-
-	return 0;
-}
-
 static int inp_s_cbfn(unsigned int subsys, unsigned int signal,
 		      void *hdlr_data, void *signal_data)
 {
@@ -240,7 +215,7 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
 
 	/* patch in various data from VTY and othe sources */
 	line_ops.cfg.ipa.addr = dst_host;
-	get_mac_addr("eth0", bts_dev_info.mac_addr);
+	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
 	bts_dev_info.site_id = bts->ip_access.site_id;
 	bts_dev_info.bts_id = bts->ip_access.bts_id;
 	bts_dev_info.unit_name = model_name;
