@@ -384,7 +384,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
+	line = abis_open(bts, btsb->bsc_oml_host, btsb->bsc_oml_port, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(1);

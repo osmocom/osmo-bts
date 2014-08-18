@@ -210,12 +210,13 @@ void abis_init(struct gsm_bts *bts)
 }
 
 struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
-			     const char *model_name)
+			     uint16_t dst_port, const char *model_name)
 {
 	struct e1inp_line *line;
 
 	/* patch in various data from VTY and othe sources */
 	line_ops.cfg.ipa.addr = dst_host;
+	line_ops.cfg.ipa.oml_port = dst_port;
 	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
 	bts_dev_info.site_id = bts->ip_access.site_id;
 	bts_dev_info.bts_id = bts->ip_access.bts_id;

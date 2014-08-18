@@ -33,6 +33,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -88,6 +89,7 @@ int bts_init(struct gsm_bts *bts)
 
 	INIT_LLIST_HEAD(&btsb->agch_queue);
 	btsb->agch_queue_length = 0;
+	btsb->bsc_oml_port = IPA_TCP_PORT_OML;
 
 	/* enable management with default levels,
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to

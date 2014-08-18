@@ -170,6 +170,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
+	vty_out(vty, " oml remote-port %u%s", btsb->bsc_oml_port, VTY_NEWLINE);
 	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
 		VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(btsb->paging_state),
@@ -304,6 +305,20 @@ DEFUN(cfg_bts_oml_ip,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_oml_port,
+      cfg_bts_oml_port_cmd,
+      "oml remote-port <0-65535>",
+      "OML Parameters\n" "OML TCP Port\n" "OML TCP Port\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->bsc_oml_port = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 #define RTP_STR "RTP parameters\n"
 
@@ -625,6 +640,7 @@ int bts_vty_init(const struct log_info *cat)
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
+	install_element(BTS_NODE, &cfg_bts_oml_port_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_bind_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_jitbuf_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
