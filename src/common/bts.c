@@ -199,25 +199,35 @@ int bts_link_estab(struct gsm_bts *bts)
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending Status'.\n");
 
 	/* BTS and SITE MGR are EAABLED, BTS is DEPENDENCY */
+	orc_add_route_mo(&bts->site_mgr.mo);
 	oml_tx_state_changed(&bts->site_mgr.mo);
+	orc_add_route_mo(&bts->mo);
 	oml_tx_state_changed(&bts->mo);
 
 	/* those should all be in DEPENDENCY */
+	orc_add_route_mo(&bts->gprs.nse.mo);
 	oml_tx_state_changed(&bts->gprs.nse.mo);
+	orc_add_route_mo(&bts->gprs.cell.mo);
 	oml_tx_state_changed(&bts->gprs.cell.mo);
+	orc_add_route_mo(&bts->gprs.nsvc[0].mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
+	orc_add_route_mo(&bts->gprs.nsvc[1].mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
 
+		orc_add_route_mo(&trx->mo);
 		oml_tx_state_changed(&trx->mo);
+
+		orc_add_route_mo(&trx->bb_transc.mo);
 		oml_tx_state_changed(&trx->bb_transc.mo);
 
 		for (j = 0; j < ARRAY_SIZE(trx->ts); j++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[j];
 
+			orc_add_route_mo(&ts->mo);
 			oml_tx_state_changed(&ts->mo);
 		}
 	}

@@ -27,4 +27,11 @@ struct osmo_omlrctrl_register_req {
 	char name[0];
 } __attribute__((packed));
 
+#include <osmocom/core/msgb.h>
+#include <osmo-bts/oml_routing.h>
+
+struct msgb *gen_orc_route_add(const struct oml_route *rt_in);
+struct msgb *gen_orc_route_del(const struct oml_route *rt_in);
+int abis_orc_sendmsg(struct msgb *msg);
+
 #endif

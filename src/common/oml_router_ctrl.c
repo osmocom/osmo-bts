@@ -1,3 +1,24 @@
+/* OML Router Control (client side) */
+
+/* (C) 2014 by Harald Welte <laforge@gnumonks.org>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
@@ -6,11 +27,13 @@
 #include <osmo-bts/oml_router_ctrl.h>
 #include <osmo-bts/gsm_data.h>
 
+/* send a OML Router Control message via Abis */
 int abis_orc_sendmsg(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
 	struct ipaccess_head_ext *he;
 
+	/* push the extended IPA header to the front of the msgb */
 	he = (struct ipaccess_head_ext *) msgb_push(msg, sizeof(*he));
 	he->proto = IPAC_PROTO_EXT_ORC;
 
@@ -46,16 +69,19 @@ static struct msgb *__gen_orc_route(const struct oml_route *rt_in, int del)
 	return msg;
 }
 
+/* generate msgb with OML Router Control ROUTE_ADD_REQ */
 struct msgb *gen_orc_route_add(const struct oml_route *rt_in)
 {
 	return __gen_orc_route(rt_in, 0);
 }
 
+/* generate msgb with OML Router Control ROUTE_DEL_REQ */
 struct msgb *gen_orc_route_del(const struct oml_route *rt_in)
 {
 	return __gen_orc_route(rt_in, 1);
 }
 
+/* Request a route for the given MO from the OML router */
 int orc_add_route_mo(struct gsm_abis_mo *mo)
 {
 	struct oml_route rt;

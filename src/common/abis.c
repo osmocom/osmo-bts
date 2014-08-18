@@ -77,6 +77,15 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 	case E1INP_SIGN_OML:
 		LOGP(DABIS, LOGL_INFO, "OML Signalling link up\n");
 		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
+		/* Create OSMO signalling link to talk with OML router */
+		/* Create this first, before the OML link, to ensure OSMO
+		 * messages get dequeued on transmit before OML messages */
+		g_bts->osmo_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
+						E1INP_SIGN_OSMO, g_bts->c0,
+						IPAC_PROTO_OSMO, 0);
+
+		/* Create OML signalling link */
 		sign_link = g_bts->oml_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
 						E1INP_SIGN_OML, NULL, 255, 0);
