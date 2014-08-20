@@ -40,6 +40,7 @@
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipaccess.h>
+#include <osmocom/gsm/ipa.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
