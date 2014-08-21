@@ -66,5 +66,6 @@ int sysmobts_mgr_vty_init(void);
 int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *mgr);
 int sysmobts_mgr_nl_init(void);
 int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr);
+const char *sysmobts_mgr_temp_get_state(enum sysmobts_temp_state state);
 
 #endif

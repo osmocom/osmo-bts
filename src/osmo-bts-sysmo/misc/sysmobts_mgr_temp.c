@@ -39,6 +39,11 @@ static const struct value_string state_names[] = {
 	{ 0, NULL }
 };
 
+const char *sysmobts_mgr_temp_get_state(enum sysmobts_temp_state state)
+{
+	return get_value_string(state_names, state);
+}
+
 static int next_state(enum sysmobts_temp_state current_state, int critical, int warning)
 {
 	int next_state = -1;

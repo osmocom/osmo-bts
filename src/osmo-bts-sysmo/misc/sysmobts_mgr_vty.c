@@ -242,6 +242,8 @@ CFG_ACTION(critical, "Critical Actions\n", ACT_CRIT_NODE, action_crit)
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
+	vty_out(vty, "Temperature control state: %s%s",
+		sysmobts_mgr_temp_get_state(s_mgr->state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
 	vty_out(vty, " Digital: %f Celcius%s",
 		sysmobts_temp_get(SYSMOBTS_TEMP_DIGITAL,
