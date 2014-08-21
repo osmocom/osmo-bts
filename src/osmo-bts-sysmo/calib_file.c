@@ -369,7 +369,8 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 
 /* iteratively download the calibration data into the L1 */
 
-static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
+static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			       void *data);
 
 /* send the calibration table for a single specified file */
 static int calib_file_send(struct femtol1_hdl *fl1h,
@@ -400,11 +401,12 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 	}
 	calib_fixup_rx(fl1h, msgb_sysprim(msg));
 
-	return l1if_req_compl(fl1h, msg, calib_send_compl_cb);
+	return l1if_req_compl(fl1h, msg, calib_send_compl_cb, NULL);
 }
 
 /* completion callback after every SetCalibTbl is confirmed */
-static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+				void *data)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct calib_send_state *st = &fl1h->st;

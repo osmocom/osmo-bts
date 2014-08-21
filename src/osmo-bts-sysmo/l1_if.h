@@ -87,13 +87,13 @@ struct femtol1_hdl {
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
 #define msgb_sysprim(msg)	((SuperFemto_Prim_t *)(msg)->l1h)
 
-typedef int l1if_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg);
+typedef int l1if_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg, void *data);
 
 /* send a request primitive to the L1 and schedule completion call-back */
 int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   l1if_compl_cb *cb);
+		   l1if_compl_cb *cb, void *cb_data);
 int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		l1if_compl_cb *cb);
+		l1if_compl_cb *cb, void *cb_data);
 
 struct femtol1_hdl *l1if_open(void *priv);
 int l1if_close(struct femtol1_hdl *hdl);

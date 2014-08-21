@@ -189,7 +189,7 @@ static void l1if_req_timeout(void *data)
 }
 
 static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   int is_system_prim, l1if_compl_cb *cb)
+		   int is_system_prim, l1if_compl_cb *cb, void *data)
 {
 	struct wait_l1_conf *wlc;
 	struct osmo_wqueue *wqueue;
@@ -198,7 +198,7 @@ static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	/* allocate new wsc and store reference to mutex and conf_id */
 	wlc = talloc_zero(fl1h, struct wait_l1_conf);
 	wlc->cb = cb;
-	wlc->cb_data = NULL;
+	wlc->cb_data = data;
 
 	/* Make sure we actually have received a REQUEST type primitive */
 	if (is_system_prim == 0) {
@@ -249,15 +249,15 @@ static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 
 /* send a request primitive to the L1 and schedule completion call-back */
 int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   l1if_compl_cb *cb)
+		   l1if_compl_cb *cb, void *data)
 {
-	return _l1if_req_compl(fl1h, msg, 1, cb);
+	return _l1if_req_compl(fl1h, msg, 1, cb, data);
 }
 
 int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
-		   l1if_compl_cb *cb)
+		   l1if_compl_cb *cb, void *data)
 {
-	return _l1if_req_compl(fl1h, msg, 0, cb);
+	return _l1if_req_compl(fl1h, msg, 0, cb, data);
 }
 
 /* allocate a msgb containing a GsmL1_Prim_t */
@@ -1002,7 +1002,7 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (is_prim_compat(l1p, wlc)) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(fl1h->priv, msg);
+				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
 			else {
 				rc = 0;
 				msgb_free(msg);
@@ -1032,7 +1032,7 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(fl1h->priv, msg);
+				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
 			else {
 				rc = 0;
 				msgb_free(msg);
@@ -1061,7 +1061,8 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 }
 #endif
 
-static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+				void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status;
@@ -1188,7 +1189,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
 	}
 
-	return l1if_req_compl(hdl, msg, activate_rf_compl_cb);
+	return l1if_req_compl(hdl, msg, activate_rf_compl_cb, NULL);
 }
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
@@ -1219,7 +1220,8 @@ static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 	}
 }
 
-static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			    void *data)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
@@ -1274,12 +1276,13 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 	/* save for later use */
 	memcpy(hdl->last_rf_mute, mute, sizeof(hdl->last_rf_mute));
 
-	return l1if_req_compl(hdl, msg, cb ? cb : mute_rf_compl_cb);
+	return l1if_req_compl(hdl, msg, cb ? cb : mute_rf_compl_cb, NULL);
 #endif /* < 3.6.0 */
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
-static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			 void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
@@ -1347,10 +1350,11 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 
 	sysp->id = SuperFemto_PrimId_SystemInfoReq;
 
-	return l1if_req_compl(hdl, msg, info_compl_cb);
+	return l1if_req_compl(hdl, msg, info_compl_cb, NULL);
 }
 
-static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			  void *data)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
@@ -1384,7 +1388,7 @@ int l1if_reset(struct femtol1_hdl *hdl)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
 
-	return l1if_req_compl(hdl, msg, reset_compl_cb);
+	return l1if_req_compl(hdl, msg, reset_compl_cb, NULL);
 }
 
 /* set the trace flags within the DSP */
@@ -1574,13 +1578,15 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 }
 
 #else
-static int clock_reset_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int clock_reset_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			  void *data)
 {
 	msgb_free(resp);
 	return 0;
 }
 
-static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			  void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 
@@ -1591,7 +1597,8 @@ static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 	return 0;
 }
 
-static int clock_correct_info_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int clock_correct_info_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+				 void *data)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
@@ -1650,7 +1657,7 @@ int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
 	sysp->u.rfClockSetupReq.rfTrx.iClkCor = get_clk_cal(fl1h);
 	sysp->u.rfClockSetupReq.rfTrx.clkSrc = fl1h->clk_src;
 	sysp->u.rfClockSetupReq.rfTrxClkCal.clkSrc = SuperFemto_ClkSrcId_GpsPps;
-	l1if_req_compl(fl1h, msg, clock_setup_cb);
+	l1if_req_compl(fl1h, msg, clock_setup_cb, NULL);
 
 	/* Reset the error counters */
 	msg = sysp_msgb_alloc();
@@ -1659,7 +1666,7 @@ int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
 	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
 	sysp->u.rfClockInfoReq.u8RstClkCal = 1;
 
-	return l1if_req_compl(fl1h, msg, clock_reset_cb);
+	return l1if_req_compl(fl1h, msg, clock_reset_cb, NULL);
 }
 
 int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
@@ -1670,6 +1677,7 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
 	sysp->u.rfClockInfoReq.u8RstClkCal = 0;
 
-	return l1if_req_compl(fl1h, msg, clock_correct_info_cb);
+	return l1if_req_compl(fl1h, msg, clock_correct_info_cb, NULL);
 }
+
 #endif

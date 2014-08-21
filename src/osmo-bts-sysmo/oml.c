@@ -216,7 +216,8 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 	return oml_mo_opstart_ack(mo);
 }
 
-static int opstart_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int opstart_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			    void *data)
 {
 	struct gsm_abis_mo *mo;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
@@ -227,7 +228,8 @@ static int opstart_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 }
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
-static int trx_mute_on_init_cb(struct gsm_bts_trx *trx, struct msgb *resp)
+static int trx_mute_on_init_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			       void *data)
 {
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status;
@@ -246,7 +248,8 @@ static int trx_mute_on_init_cb(struct gsm_bts_trx *trx, struct msgb *resp)
 }
 #endif
 
-static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			     void *data)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
@@ -333,7 +336,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
 	
 	/* send MPH-INIT-REQ, wait for MPH-INIT-CNF */
-	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb, NULL);
 }
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
@@ -343,7 +346,8 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 	return fl1h->hLayer1;
 }
 
-static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			      void *data)
 {
 	msgb_free(l1_msg);
 	return 0;
@@ -358,7 +362,7 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h);
 	LOGP(DL1C, LOGL_NOTICE, "Close TRX %u\n", trx->nr);
 
-	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb, NULL);
 }
 
 static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb)
@@ -404,7 +408,7 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[ts->pchan];
 	
-	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, NULL);
 }
 
 GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
@@ -643,7 +647,8 @@ static int queue_sapi_command(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	return 1;
 }
 
-static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			      void *data)
 {
 	enum lchan_sapi_state status;
 	struct sapi_cmd *cmd;
@@ -921,7 +926,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		get_value_string(femtobts_dir_names, act_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-	return l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, lchan_act_compl_cb, NULL);
 }
 
 static void sapi_clear_queue(struct llist_head *queue)
@@ -1060,7 +1065,8 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 	LOGPC(DL1C, logl, ")\n");
 }
 
-static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+				  void *data)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
 	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
@@ -1077,7 +1083,8 @@ static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
 	return 0;
 }
 
-static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+				void *data)
 {
 	struct gsm_lchan *lchan;
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
@@ -1173,7 +1180,7 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 			&conf_req->cfgParams.setLogChParams.logChParams,
 			conf_req->cfgParams.setLogChParams.sapi);
 
-	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb, NULL);
 }
 
 static void enqueue_sapi_logchpar_cmd(struct gsm_lchan *lchan, int dir)
@@ -1201,7 +1208,7 @@ int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetTxPowerLevel;
 	conf_req->cfgParams.setTxPowerLevel.fTxPowerLevel = tx_power;
 
-	return l1if_gsm_req_compl(fl1h, msg, chmod_txpower_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_txpower_compl_cb, NULL);
 }
 
 const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
@@ -1239,7 +1246,7 @@ static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *c
 	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
 	       lchan->encr.key, lchan->encr.key_len);
 
-	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb, NULL);
 }
 
 static void enqueue_sapi_ciphering_cmd(struct gsm_lchan *lchan, int dir)
@@ -1287,7 +1294,8 @@ int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
 	return 0;
 }
 
-static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg)
+static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+				void *data)
 {
 	enum lchan_sapi_state status;
 	struct sapi_cmd *cmd;
@@ -1369,7 +1377,7 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 		get_value_string(femtobts_dir_names, deact_req->dir));
 
 	/* send the primitive for all GsmL1_Sapi_* that match the LCHAN */
-	return l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb);
+	return l1if_gsm_req_compl(fl1h, msg, lchan_deact_compl_cb, NULL);
 }
 
 static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
