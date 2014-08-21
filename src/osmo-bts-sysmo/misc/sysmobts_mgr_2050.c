@@ -315,7 +315,7 @@ void sbts2050_uc_initialize(void)
 	int val;
 
 	if (sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val) < 0) {
-		LOGP(DFIND, LOGL_ERROR,
+		LOGP(DTEMP, LOGL_ERROR,
 		     "Failed to get Model number\n");
 		return;
 	}
@@ -324,7 +324,7 @@ void sbts2050_uc_initialize(void)
 		return;
 
 	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
-		LOGP(DFIND, LOGL_ERROR, "Failed to get the TRX number\n");
+		LOGP(DTEMP, LOGL_ERROR, "Failed to get the TRX number\n");
 		return;
 	}
 
@@ -333,7 +333,7 @@ void sbts2050_uc_initialize(void)
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
 	if (ucontrol0.fd < 0) {
-		LOGP(DFIND, LOGL_ERROR,
+		LOGP(DTEMP, LOGL_ERROR,
 		     "Failed to open the serial interface\n");
 		return;
 	}
