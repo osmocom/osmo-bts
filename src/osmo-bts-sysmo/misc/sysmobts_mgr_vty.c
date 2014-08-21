@@ -167,9 +167,9 @@ static void write_action(struct vty *vty, const char *name, int actions)
 		(actions & TEMP_ACT_MASTER_OFF) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %sslave-off%s",
 		(actions & TEMP_ACT_MASTER_OFF) ? "" : "no ", VTY_NEWLINE);
+#endif
 	vty_out(vty, "  %spa-off%s",
 		(actions & TEMP_ACT_PA_OFF) ? "" : "no ", VTY_NEWLINE);
-#endif
 }
 
 static int config_write_mgr(struct vty *vty)
@@ -239,6 +239,24 @@ CFG_ACTION(warn, "Warning Actions\n", ACT_WARN_NODE, action_warn)
 CFG_ACTION(critical, "Critical Actions\n", ACT_CRIT_NODE, action_crit)
 #undef CFG_ACTION
 
+DEFUN(cfg_action_pa_off, cfg_action_pa_off_cmd,
+	"pa-off",
+	"Switch the Power Amplifier off\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_PA_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_pa_off, cfg_no_action_pa_off_cmd,
+	"no pa-off",
+	NO_STR "Do not switch off the Power Amplifier\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_PA_OFF;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
@@ -303,9 +321,9 @@ static void register_action(int act)
 	install_element(act, &cfg_no_action_master_off_cmd);
 	install_element(act, &cfg_action_slave_off_cmd);
 	install_element(act, &cfg_no_action_slave_off_cmd);
+#endif
 	install_element(act, &cfg_action_pa_off_cmd);
 	install_element(act, &cfg_no_action_pa_off_cmd);
-#endif
 }
 
 int sysmobts_mgr_vty_init(void)

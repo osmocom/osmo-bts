@@ -73,7 +73,7 @@ static struct sysmobts_mgr_instance manager = {
 		.thresh_crit	= 100,
 	},
 	.action_warn		= 0,
-	.action_crit		= 0,
+	.action_crit		= TEMP_ACT_PA_OFF,
 	.state			= STATE_NORMAL,
 };
 

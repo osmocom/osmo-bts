@@ -247,7 +247,7 @@ int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 /**********************************************************************
  *	Uc Power Switching handling
  *********************************************************************/
-void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
+int sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 {
 	struct msgb *msg;
 	const struct ucinfo info = {
@@ -261,7 +261,7 @@ void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit.\n");
-		return;
+		return -1;
 	}
 
 	LOGP(DTEMP, LOGL_DEBUG, "Switch off/on success:\n"
@@ -273,6 +273,7 @@ void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 				ppa ? "ON" : "OFF");
 
 	msgb_free(msg);
+	return 0;
 }
 
 /**********************************************************************
@@ -317,6 +318,20 @@ void sbts2050_uc_initialize(void)
 		     "Failed to open the serial interface\n");
 		return;
 	}
+
+	LOGP(DTEMP, LOGL_NOTICE, "Going to enable the PA.\n");
+	sbts2050_uc_set_pa_power(1);
+}
+
+int sbts2050_uc_set_pa_power(int on_off)
+{
+	struct sbts2050_power_status status;
+	if (sbts2050_uc_get_status(&status) != 0) {
+		LOGP(DTEMP, LOGL_ERROR, "Failed to read current power status.\n");
+		return -1;
+	}
+
+	return sbts2050_uc_set_power(status.master_enabled, status.slave_enabled, on_off);
 }
 #else
 void sbts2050_uc_initialize(void)
@@ -335,6 +350,12 @@ int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 {
 	memset(status, 0, sizeof(*status));
 	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without status support.\n");
+	return -1;
+}
+
+int sbts2050_uc_set_pa_power(int on_off)
+{
+	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without PA support.\n");
 	return -1;
 }
 

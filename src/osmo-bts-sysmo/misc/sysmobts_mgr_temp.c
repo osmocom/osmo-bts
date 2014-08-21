@@ -96,6 +96,26 @@ static void execute_warning_act(struct sysmobts_mgr_instance *manager)
 static void execute_critical_act(struct sysmobts_mgr_instance *manager)
 {
 	LOGP(DTEMP, LOGL_NOTICE, "System has reached critical warning.\n");
+
+	/* switch off the PA */
+	if (manager->action_crit & TEMP_ACT_PA_OFF) {
+		if (!is_sbts2050_master()) {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"PA can only be switched-off on the master\n");
+		} else if (sbts2050_uc_set_pa_power(0) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch off the PA. Stop BTS?\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched off the PA due temperature.\n");
+		}
+		/*
+		 * TODO: remember we switched off things so we could switch
+		 * it back on. But we would need to make sure that the BTS
+		 * will not transmit with full power at that time. This
+		 * requires the control protocol.
+		 */
+	}
 }
 
 static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
