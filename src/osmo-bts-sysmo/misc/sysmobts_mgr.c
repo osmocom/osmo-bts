@@ -26,22 +26,18 @@
 #include <errno.h>
 #include <getopt.h>
 #include <limits.h>
-#include <arpa/inet.h>
 #include <sys/signal.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
-#include <osmocom/core/serial.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
-#include "misc/sysmobts_nl.h"
 #include "misc/sysmobts_par.h"
 
 static int bts_type;
@@ -201,17 +197,6 @@ static void signal_handler(int signal)
 		break;
 	}
 }
-
-#include <osmocom/core/logging.h>
-#include <osmocom/core/application.h>
-#include <osmocom/core/utils.h>
-#include <osmocom/core/socket.h>
-
-#include <osmocom/gsm/protocol/ipaccess.h>
-#include <osmocom/gsm/tlv.h>
-
-#include <osmo-bts/bts.h>
-#include <osmo-bts/logging.h>
 
 static struct log_info_cat mgr_log_info_cat[] = {
 	[DTEMP] = {

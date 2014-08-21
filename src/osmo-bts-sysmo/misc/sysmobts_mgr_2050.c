@@ -25,6 +25,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/serial.h>
 
 #include <errno.h>
 #include <unistd.h>

@@ -42,10 +42,6 @@
 #include "sysmobts_par.h"
 #include "sysmobts_mgr.h"
 
-#ifdef BUILD_SBTS2050
-#include <sysmocom/femtobts/sbts2050_header.h>
-#endif
-
 /*********************************************************************
  * Temperature handling
  *********************************************************************/
