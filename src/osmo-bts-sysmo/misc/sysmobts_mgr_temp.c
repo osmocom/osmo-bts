@@ -26,9 +26,18 @@
 #include <osmo-bts/logging.h>
 
 #include <osmocom/core/timer.h>
+#include <osmocom/core/utils.h>
 
 static struct sysmobts_mgr_instance *s_mgr;
 static struct osmo_timer_list temp_ctrl_timer;
+
+static const struct value_string state_names[] = {
+	{ STATE_NORMAL,			"NORMAL" },
+	{ STATE_WARNING_HYST,		"WARNING (HYST)" },
+	{ STATE_WARNING,		"WARNING" },
+	{ STATE_CRITICAL,		"CRITICAL" },
+	{ 0, NULL }
+};
 
 static int next_state(enum sysmobts_temp_state current_state, int critical, int warning)
 {
@@ -93,6 +102,9 @@ static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
 	if (new_state < 0)
 		return;
 
+	LOGP(DTEMP, LOGL_NOTICE, "Moving from state %s to %s.\n",
+		get_value_string(state_names, manager->state),
+		get_value_string(state_names, new_state));
 	manager->state = new_state;
 	switch (manager->state) {
 	case STATE_NORMAL:
