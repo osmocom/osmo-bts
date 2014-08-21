@@ -51,7 +51,8 @@ struct ucinfo {
 
 static struct uc ucontrol0 = {
 	.id = 0,
-	.path = "/dev/ttyS0"
+	.path = "/dev/ttyS0",
+	.fd = -1,
 };
 
 /**********************************************************************
