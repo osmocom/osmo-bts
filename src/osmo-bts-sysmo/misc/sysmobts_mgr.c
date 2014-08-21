@@ -288,6 +288,9 @@ int main(int argc, char **argv)
 	if (sysmobts_mgr_nl_init() != 0)
 		exit(3);
 
+	/* Initialize the temperature control */
+	sysmobts_mgr_temp_init(&manager);
+
 	if (daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {

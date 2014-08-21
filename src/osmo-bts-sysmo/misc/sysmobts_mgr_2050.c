@@ -278,7 +278,7 @@ void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 /**********************************************************************
  *	Uc temperature handling
  *********************************************************************/
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 {
 	rsppkt_t *response;
 	struct msgb *msg;
@@ -290,7 +290,7 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
-		return;
+		return -1;
 	}
 
 	response = (rsppkt_t *)msg->data;
@@ -303,6 +303,7 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 				 response->rsp.tempGet.i8BrdTemp,
 				 response->rsp.tempGet.i8PaTemp);
 	msgb_free(msg);
+	return 0;
 }
 
 void sbts2050_uc_initialize(void)
@@ -323,10 +324,11 @@ void sbts2050_uc_initialize(void)
 	LOGP(DTEMP, LOGL_NOTICE, "sysmoBTS2050 was not enabled at compile time.\n");
 }
 
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 {
 	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without temp support.\n");
 	*temp_pa = *temp_board = 99999;
+	return -1;
 }
 
 int sbts2050_uc_get_status(struct sbts2050_power_status *status)

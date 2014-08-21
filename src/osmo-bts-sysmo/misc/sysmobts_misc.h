@@ -55,7 +55,7 @@ struct sbts2050_power_status {
 	float pa_bias_voltage;
 };
 
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
 void sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
 int sbts2050_uc_get_status(struct sbts2050_power_status *status);
 void sbts2050_uc_initialize();

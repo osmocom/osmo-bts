@@ -25,7 +25,8 @@ sysmobts_mgr_SOURCES = \
 		misc/sysmobts_par.c misc/sysmobts_nl.c \
 		misc/sysmobts_mgr_2050.c \
 		misc/sysmobts_mgr_vty.c \
-		misc/sysmobts_mgr_nl.c
+		misc/sysmobts_mgr_nl.c \
+		misc/sysmobts_mgr_temp.c
 sysmobts_mgr_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS)
 
 sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c

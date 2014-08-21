@@ -18,8 +18,9 @@ enum {
 	TEMP_ACT_PA_OFF		=	0x8,
 };
 
-enum {
+enum sysmobts_temp_state {
 	STATE_NORMAL,		/* Everything is fine */
+	STATE_WARNING_HYST,	/* Go back to normal next? */
 	STATE_WARNING,		/* We are above the warning threshold */
 	STATE_CRITICAL,		/* We have an issue. Wait for below warning */
 };
@@ -58,11 +59,12 @@ struct sysmobts_mgr_instance {
 	int action_warn;
 	int action_crit;
 
-	int state;
+	enum sysmobts_temp_state state;
 };
 
 int sysmobts_mgr_vty_init(void);
 int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *mgr);
 int sysmobts_mgr_nl_init(void);
+int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr);
 
 #endif
