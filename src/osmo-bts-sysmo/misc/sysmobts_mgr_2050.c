@@ -334,4 +334,18 @@ void sbts2050_uc_initialize(void)
 {
 	LOGP(DTEMP, LOGL_NOTICE, "sysmoBTS2050 was not enabled at compile time.\n");
 }
+
+void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
+{
+	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without temp support.\n");
+	*temp_pa = *temp_board = 99999;
+}
+
+int sbts2050_uc_get_status(struct sbts2050_power_status *status)
+{
+	memset(status, 0, sizeof(*status));
+	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without status support.\n");
+	return -1;
+}
+
 #endif
