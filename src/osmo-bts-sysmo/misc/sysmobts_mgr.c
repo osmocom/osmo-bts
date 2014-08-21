@@ -82,6 +82,15 @@ int is_sbts2050_trx(int trx)
 	return trx_number == trx;
 }
 
+int is_sbts2050_master(void)
+{
+	if (!is_sbts2050())
+		return 0;
+	if (!is_sbts2050_trx(0))
+		return 0;
+	return 1;
+}
+
 static struct osmo_timer_list temp_timer;
 static void check_temp_timer_cb(void *unused)
 {

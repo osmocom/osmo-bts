@@ -313,10 +313,7 @@ static void check_uctemp_timer_cb(void *data)
 
 void sbts2050_uc_initialize(void)
 {
-	if (!is_sbts2050())
-		return;
-
-	if (!is_sbts2050_trx(0))
+	if (!is_sbts2050_master())
 		return;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);

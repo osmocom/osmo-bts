@@ -45,6 +45,7 @@ int sysmobts_firmware_reload(enum sysmobts_firmware_type type);
 
 int is_sbts2050(void);
 int is_sbts2050_trx(int);
+int is_sbts2050_master(void);
 
 void sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
 void sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
