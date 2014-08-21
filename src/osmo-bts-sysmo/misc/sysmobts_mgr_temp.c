@@ -99,7 +99,7 @@ static void execute_critical_act(struct sysmobts_mgr_instance *manager)
 
 	/* switch off the PA */
 	if (manager->action_crit & TEMP_ACT_PA_OFF) {
-		if (!is_sbts2050_master()) {
+		if (!is_sbts2050()) {
 			LOGP(DTEMP, LOGL_NOTICE,
 				"PA can only be switched-off on the master\n");
 		} else if (sbts2050_uc_set_pa_power(0) != 0) {
@@ -185,7 +185,7 @@ static void temp_ctrl_check()
 		LOGP(DTEMP, LOGL_DEBUG, "RF temperature is: %d\n", temp);
 	}
 
-	if (is_sbts2050_master()) {
+	if (is_sbts2050()) {
 		int temp_pa, temp_board;
 
 		rc = sbts2050_uc_check_temp(&temp_pa, &temp_board);

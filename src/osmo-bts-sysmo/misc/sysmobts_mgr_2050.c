@@ -309,7 +309,7 @@ int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 
 void sbts2050_uc_initialize(void)
 {
-	if (!is_sbts2050_master())
+	if (!is_sbts2050())
 		return;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
@@ -319,8 +319,10 @@ void sbts2050_uc_initialize(void)
 		return;
 	}
 
-	LOGP(DTEMP, LOGL_NOTICE, "Going to enable the PA.\n");
-	sbts2050_uc_set_pa_power(1);
+	if (is_sbts2050_master()) {
+		LOGP(DTEMP, LOGL_NOTICE, "Going to enable the PA.\n");
+		sbts2050_uc_set_pa_power(1);
+	}
 }
 
 int sbts2050_uc_set_pa_power(int on_off)

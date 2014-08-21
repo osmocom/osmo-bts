@@ -271,9 +271,12 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		sysmobts_temp_get(SYSMOBTS_TEMP_RF,
 					SYSMOBTS_TEMP_INPUT) / 1000.0f,
 		VTY_NEWLINE);
-	if (is_sbts2050_master()) {
+	if (is_sbts2050()) {
 		int temp_pa, temp_board;
 		struct sbts2050_power_status status;
+
+		vty_out(vty, " sysmoBTS 2050 is %s%s",
+			is_sbts2050_master() ? "master" : "slave", VTY_NEWLINE);
 
 		sbts2050_uc_check_temp(&temp_pa, &temp_board);
 		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_pa, VTY_NEWLINE);
