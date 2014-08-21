@@ -25,6 +25,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/serial.h>
 
 #include <errno.h>
 #include <unistd.h>
@@ -246,7 +247,7 @@ int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 /**********************************************************************
  *	Uc Power Switching handling
  *********************************************************************/
-void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
+int sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 {
 	struct msgb *msg;
 	const struct ucinfo info = {
@@ -260,7 +261,7 @@ void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit.\n");
-		return;
+		return -1;
 	}
 
 	LOGP(DTEMP, LOGL_DEBUG, "Switch off/on success:\n"
@@ -272,12 +273,13 @@ void sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 				ppa ? "ON" : "OFF");
 
 	msgb_free(msg);
+	return 0;
 }
 
 /**********************************************************************
  *	Uc temperature handling
  *********************************************************************/
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 {
 	rsppkt_t *response;
 	struct msgb *msg;
@@ -289,7 +291,7 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
-		return;
+		return -1;
 	}
 
 	response = (rsppkt_t *)msg->data;
@@ -297,21 +299,12 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 	*temp_board = response->rsp.tempGet.i8BrdTemp;
 	*temp_pa = response->rsp.tempGet.i8PaTemp;
 
-	LOGP(DTEMP, LOGL_DEBUG, "Temperature Board: %+3d C\n"
+	LOGP(DTEMP, LOGL_DEBUG, "Temperature Board: %+3d C, "
 				"Tempeture PA: %+3d C\n",
 				 response->rsp.tempGet.i8BrdTemp,
 				 response->rsp.tempGet.i8PaTemp);
 	msgb_free(msg);
-}
-
-static struct osmo_timer_list temp_uc_timer;
-static void check_uctemp_timer_cb(void *data)
-{
-	int temp_pa = 0, temp_board = 0;
-
-	sbts2050_uc_check_temp(&temp_pa, &temp_board);
-
-	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
+	return 0;
 }
 
 void sbts2050_uc_initialize(void)
@@ -326,8 +319,19 @@ void sbts2050_uc_initialize(void)
 		return;
 	}
 
-	temp_uc_timer.cb = check_uctemp_timer_cb;
-	check_uctemp_timer_cb(NULL);
+	LOGP(DTEMP, LOGL_NOTICE, "Going to enable the PA.\n");
+	sbts2050_uc_set_pa_power(1);
+}
+
+int sbts2050_uc_set_pa_power(int on_off)
+{
+	struct sbts2050_power_status status;
+	if (sbts2050_uc_get_status(&status) != 0) {
+		LOGP(DTEMP, LOGL_ERROR, "Failed to read current power status.\n");
+		return -1;
+	}
+
+	return sbts2050_uc_set_power(status.master_enabled, status.slave_enabled, on_off);
 }
 #else
 void sbts2050_uc_initialize(void)
@@ -335,16 +339,23 @@ void sbts2050_uc_initialize(void)
 	LOGP(DTEMP, LOGL_NOTICE, "sysmoBTS2050 was not enabled at compile time.\n");
 }
 
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 {
 	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without temp support.\n");
 	*temp_pa = *temp_board = 99999;
+	return -1;
 }
 
 int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 {
 	memset(status, 0, sizeof(*status));
 	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without status support.\n");
+	return -1;
+}
+
+int sbts2050_uc_set_pa_power(int on_off)
+{
+	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without PA support.\n");
 	return -1;
 }
 

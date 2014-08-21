@@ -39,6 +39,8 @@
 #include "sysmobts_mgr.h"
 #include "btsconfig.h"
 
+static struct sysmobts_mgr_instance *s_mgr;
+
 static const char copyright[] =
 	"(C) 2012 by Harald Welte <laforge@gnumonks.org>\r\n"
 	"(C) 2014 by Holger Hans Peter Freyther\r\n"
@@ -52,6 +54,14 @@ static enum node_type go_to_parent(struct vty *vty)
 	case MGR_NODE:
 		vty->node = CONFIG_NODE;
 		break;
+	case ACT_WARN_NODE:
+	case ACT_CRIT_NODE:
+	case LIMIT_RF_NODE:
+	case LIMIT_DIGITAL_NODE:
+	case LIMIT_BOARD_NODE:
+	case LIMIT_PA_NODE:
+		vty->node = MGR_NODE;
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -62,6 +72,12 @@ static int is_config_node(struct vty *vty, int node)
 {
 	switch (node) {
 	case MGR_NODE:
+	case ACT_WARN_NODE:
+	case ACT_CRIT_NODE:
+	case LIMIT_RF_NODE:
+	case LIMIT_DIGITAL_NODE:
+	case LIMIT_BOARD_NODE:
+	case LIMIT_PA_NODE:
 		return 1;
 	default:
 		return 0;
@@ -85,6 +101,42 @@ static struct cmd_node mgr_node = {
 	1,
 };
 
+static struct cmd_node act_warn_node = {
+	ACT_WARN_NODE,
+	"%s(action-warn)# ",
+	1,
+};
+
+static struct cmd_node act_crit_node = {
+	ACT_CRIT_NODE,
+	"%s(action-critical)# ",
+	1,
+};
+
+static struct cmd_node limit_rf_node = {
+	LIMIT_RF_NODE,
+	"%s(limit-rf)# ",
+	1,
+};
+
+static struct cmd_node limit_digital_node = {
+	LIMIT_DIGITAL_NODE,
+	"%s(limit-digital)# ",
+	1,
+};
+
+static struct cmd_node limit_board_node = {
+	LIMIT_BOARD_NODE,
+	"%s(limit-board)# ",
+	1,
+};
+
+static struct cmd_node limit_pa_node = {
+	LIMIT_PA_NODE,
+	"%s(limit-pa)# ",
+	1,
+};
+
 DEFUN(cfg_mgr, cfg_mgr_cmd,
 	"sysmobts-mgr",
 	MGR_STR)
@@ -93,9 +145,123 @@ DEFUN(cfg_mgr, cfg_mgr_cmd,
 	return CMD_SUCCESS;
 }
 
+static void write_temp_limit(struct vty *vty, const char *name,
+				struct sysmobts_temp_limit *limit)
+{
+	vty_out(vty, " %s%s", name, VTY_NEWLINE);
+	vty_out(vty, "   threshold warning %d%s",
+		limit->thresh_warn, VTY_NEWLINE);
+	vty_out(vty, "   threshold critical %d%s",
+		limit->thresh_crit, VTY_NEWLINE);
+}
+
+static void write_action(struct vty *vty, const char *name, int actions)
+{
+	vty_out(vty, " %s%s", name, VTY_NEWLINE);
+#if 0
+	vty_out(vty, "  %spower-control%s",
+		(actions & TEMP_ACT_PWR_CONTRL) ? "" : "no ", VTY_NEWLINE);
+
+	/* only on the sysmobts 2050 */
+	vty_out(vty, "  %smaster-off%s",
+		(actions & TEMP_ACT_MASTER_OFF) ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %sslave-off%s",
+		(actions & TEMP_ACT_MASTER_OFF) ? "" : "no ", VTY_NEWLINE);
+#endif
+	vty_out(vty, "  %spa-off%s",
+		(actions & TEMP_ACT_PA_OFF) ? "" : "no ", VTY_NEWLINE);
+}
+
+static int config_write_mgr(struct vty *vty)
+{
+	vty_out(vty, "sysmobts-mgr%s", VTY_NEWLINE);
+
+	write_temp_limit(vty, "limits rf", &s_mgr->rf_limit);
+	write_temp_limit(vty, "limits digital", &s_mgr->digital_limit);
+	write_temp_limit(vty, "limits board", &s_mgr->board_limit);
+	write_temp_limit(vty, "limits pa", &s_mgr->pa_limit);
+
+	write_action(vty, "actions warn", s_mgr->action_warn);
+	write_action(vty, "actions critical", s_mgr->action_crit);
+
+	return CMD_SUCCESS;
+}
+
+static int config_write_dummy(struct vty *vty)
+{
+	return CMD_SUCCESS;
+}
+
+#define CFG_LIMIT(name, expl, switch_to, variable)			\
+DEFUN(cfg_limit_##name, cfg_limit_##name##_cmd,				\
+	"limits " #name,						\
+	"Configure Limits\n" expl)					\
+{									\
+	vty->node = switch_to;						\
+	vty->index = &s_mgr->variable;					\
+	return CMD_SUCCESS;						\
+}
+
+CFG_LIMIT(rf, "RF\n", LIMIT_RF_NODE, rf_limit)
+CFG_LIMIT(digital, "Digital\n", LIMIT_DIGITAL_NODE, digital_limit)
+CFG_LIMIT(board, "Board\n", LIMIT_BOARD_NODE, board_limit)
+CFG_LIMIT(pa, "Power Amplifier\n", LIMIT_PA_NODE, pa_limit)
+#undef CFG_LIMIT
+
+DEFUN(cfg_limit_warning, cfg_thresh_warning_cmd,
+	"threshold warning <0-200>",
+	"Threshold to reach\n" "Warning level\n" "Range\n")
+{
+	struct sysmobts_temp_limit *limit = vty->index;
+	limit->thresh_warn = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_limit_crit, cfg_thresh_crit_cmd,
+	"threshold critical <0-200>",
+	"Threshold to reach\n" "Severe level\n" "Range\n")
+{
+	struct sysmobts_temp_limit *limit = vty->index;
+	limit->thresh_crit = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+#define CFG_ACTION(name, expl, switch_to, variable)			\
+DEFUN(cfg_action_##name, cfg_action_##name##_cmd,			\
+	"actions " #name,						\
+	"Configure Actions\n" expl)					\
+{									\
+	vty->node = switch_to;						\
+	vty->index = &s_mgr->variable;					\
+	return CMD_SUCCESS;						\
+}
+CFG_ACTION(warn, "Warning Actions\n", ACT_WARN_NODE, action_warn)
+CFG_ACTION(critical, "Critical Actions\n", ACT_CRIT_NODE, action_crit)
+#undef CFG_ACTION
+
+DEFUN(cfg_action_pa_off, cfg_action_pa_off_cmd,
+	"pa-off",
+	"Switch the Power Amplifier off\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_PA_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_pa_off, cfg_no_action_pa_off_cmd,
+	"no pa-off",
+	NO_STR "Do not switch off the Power Amplifier\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_PA_OFF;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
+	vty_out(vty, "Temperature control state: %s%s",
+		sysmobts_mgr_temp_get_state(s_mgr->state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
 	vty_out(vty, " Digital: %f Celcius%s",
 		sysmobts_temp_get(SYSMOBTS_TEMP_DIGITAL,
@@ -111,7 +277,7 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 
 		sbts2050_uc_check_temp(&temp_pa, &temp_board);
 		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_pa, VTY_NEWLINE);
-		vty_out(vty, " sysmoBTS 2050 PA: %d CelciusC%s", temp_board, VTY_NEWLINE);
+		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_board, VTY_NEWLINE);
 
 		sbts2050_uc_get_status(&status);
 		vty_out(vty, "Power Status%s", VTY_NEWLINE);
@@ -138,10 +304,26 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 	return CMD_SUCCESS;
 }
 
-static int config_write_mgr(struct vty *vty)
+static void register_limit(int limit)
 {
-	vty_out(vty, "sysmobts-mgr%s", VTY_NEWLINE);
-	return CMD_SUCCESS;
+	install_element(limit, &cfg_thresh_warning_cmd);
+	install_element(limit, &cfg_thresh_crit_cmd);
+}
+
+static void register_action(int act)
+{
+#if 0
+	install_element(act, &cfg_action_pwr_contrl_cmd);
+	install_element(act, &cfg_no_action_pwr_contrl_cmd);
+
+	/* these only work on the sysmobts 2050 */
+	install_element(act, &cfg_action_master_off_cmd);
+	install_element(act, &cfg_no_action_master_off_cmd);
+	install_element(act, &cfg_action_slave_off_cmd);
+	install_element(act, &cfg_no_action_slave_off_cmd);
+#endif
+	install_element(act, &cfg_action_pa_off_cmd);
+	install_element(act, &cfg_no_action_pa_off_cmd);
 }
 
 int sysmobts_mgr_vty_init(void)
@@ -154,17 +336,50 @@ int sysmobts_mgr_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_mgr_cmd);
 	vty_install_default(MGR_NODE);
 
+	/* install the limit nodes */
+	install_node(&limit_rf_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_rf_cmd);
+	register_limit(LIMIT_RF_NODE);
+	vty_install_default(LIMIT_RF_NODE);
+
+	install_node(&limit_digital_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_digital_cmd);
+	register_limit(LIMIT_DIGITAL_NODE);
+	vty_install_default(LIMIT_DIGITAL_NODE);
+
+	install_node(&limit_board_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_board_cmd);
+	register_limit(LIMIT_BOARD_NODE);
+	vty_install_default(LIMIT_BOARD_NODE);
+
+	install_node(&limit_pa_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_pa_cmd);
+	register_limit(LIMIT_PA_NODE);
+	vty_install_default(LIMIT_PA_NODE);
+
+	/* install the warning and critical node */
+	install_node(&act_warn_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_action_warn_cmd);
+	register_action(ACT_WARN_NODE);
+	vty_install_default(ACT_WARN_NODE);
+
+	install_node(&act_crit_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_action_critical_cmd);
+	register_action(ACT_CRIT_NODE);
+	vty_install_default(ACT_CRIT_NODE);
+
 	return 0;
 }
 
-int sysmobts_mgr_parse_config(const char *config_file)
+int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *manager)
 {
 	int rc;
 
-	rc = vty_read_config_file(config_file, NULL);
+	s_mgr = manager;
+	rc = vty_read_config_file(s_mgr->config_file, NULL);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n",
-				config_file);
+				s_mgr->config_file);
 		return rc;
 	}
 

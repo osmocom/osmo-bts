@@ -3,12 +3,6 @@
 
 #include <stdint.h>
 
-/* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
-#define TEMP_TIMER_SECS		(6 * 3600)
-
-/* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
-#define HOURS_TIMER_SECS	(1 * 3600)
-
 enum sysmobts_temp_sensor {
 	SYSMOBTS_TEMP_DIGITAL = 1,
 	SYSMOBTS_TEMP_RF = 2,
@@ -37,6 +31,8 @@ enum sysmobts_firmware_type {
 int sysmobts_firmware_reload(enum sysmobts_firmware_type type);
 
 
+int sysmobts_bts_type();
+int sysmobts_trx_number();
 int is_sbts2050(void);
 int is_sbts2050_trx(int);
 int is_sbts2050_master(void);
@@ -59,9 +55,10 @@ struct sbts2050_power_status {
 	float pa_bias_voltage;
 };
 
-void sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
-void sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
+int sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
+int sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
 int sbts2050_uc_get_status(struct sbts2050_power_status *status);
+int sbts2050_uc_set_pa_power(int on_off);
 void sbts2050_uc_initialize();
 
 #endif
