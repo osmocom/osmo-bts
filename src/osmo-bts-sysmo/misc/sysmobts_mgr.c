@@ -39,7 +39,6 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
-#include "btsconfig.h"
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
 #include "misc/sysmobts_nl.h"
@@ -47,65 +46,8 @@
 
 static int no_eeprom_write = 0;
 static int daemonize = 0;
+static const char *cfgfile = "sysmobts-mgr.cfg";
 void *tall_mgr_ctx;
-
-/* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
-#define TEMP_TIMER_SECS		(6 * 3600)
-
-/* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
-#define HOURS_TIMER_SECS	(1 * 3600)
-
-#ifdef BUILD_SBTS2050
-static struct osmo_timer_list temp_uc_timer;
-static void check_uctemp_timer_cb(void *data)
-{
-	int temp_pa = 0, temp_board = 0;
-	struct uc *ucontrol0 = data;
-
-	sbts2050_uc_check_temp(ucontrol0, &temp_pa, &temp_board);
-
-	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
-}
-#endif
-
-static void initialize_sbts2050(void)
-{
-#ifdef BUILD_SBTS2050
-	static struct uc ucontrol0 = {
-		.id = 0,
-		.path = "/dev/ttyS0"
-	};
-	int val;
-
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val) < 0) {
-		LOGP(DFIND, LOGL_ERROR,
-		     "Failed to get Model number\n");
-		return;
-	}
-
-	if (val != 2050)
-		return;
-
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
-		LOGP(DFIND, LOGL_ERROR, "Failed to get the TRX number\n");
-		return;
-	}
-
-	if (val != 0)
-		return;
-
-	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
-	if (ucontrol0.fd < 0) {
-		LOGP(DFIND, LOGL_ERROR,
-		     "Failed to open the serial interface\n");
-		return;
-	}
-
-	temp_uc_timer.cb = check_uctemp_timer_cb;
-	temp_uc_timer.data = &ucontrol0;
-	check_uctemp_timer_cb(&ucontrol0);
-#endif
-}
 
 static struct osmo_timer_list temp_timer;
 static void check_temp_timer_cb(void *unused)
@@ -130,13 +72,14 @@ static void print_help(void)
 	printf(" -s Disable color\n");
 	printf(" -d CAT enable debugging\n");
 	printf(" -D daemonize\n");
+	printf(" -c Specify the filename of the config file\n");
 }
 
 static int parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "nhsd:")) != -1) {
+	while ((opt = getopt(argc, argv, "nhsd:c:")) != -1) {
 		switch (opt) {
 		case 'n':
 			no_eeprom_write = 1;
@@ -152,6 +95,9 @@ static int parse_options(int argc, char **argv)
 			break;
 		case 'D':
 			daemonize = 1;
+			break;
+		case 'c':
+			cfgfile = optarg;
 			break;
 		default:
 			return -1;
@@ -386,6 +332,20 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(2);
 
+	sysmobts_mgr_vty_init();
+	logging_vty_add_cmds(&mgr_log_info);
+	rc = sysmobts_mgr_parse_config(cfgfile);
+	if (rc < 0) {
+		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");
+		exit(1);
+	}
+
+	rc = telnet_init(tall_msgb_ctx, NULL, 4252);
+	if (rc < 0) {
+		fprintf(stderr, "Error initializing telnet\n");
+		exit(1);
+	}
+
 	/* start temperature check timer */
 	temp_timer.cb = check_temp_timer_cb;
 	check_temp_timer_cb(NULL);
@@ -395,7 +355,7 @@ int main(int argc, char **argv)
 	hours_timer_cb(NULL);
 
 	/* start uc temperature check timer */
-	initialize_sbts2050();
+	sbts2050_uc_initialize();
 
 	/* handle broadcast messages for ipaccess-find */
 	fd.cb = ipaccess_bcast;
