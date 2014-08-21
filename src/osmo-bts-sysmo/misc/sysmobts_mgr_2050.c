@@ -305,16 +305,6 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 	msgb_free(msg);
 }
 
-static struct osmo_timer_list temp_uc_timer;
-static void check_uctemp_timer_cb(void *data)
-{
-	int temp_pa = 0, temp_board = 0;
-
-	sbts2050_uc_check_temp(&temp_pa, &temp_board);
-
-	osmo_timer_schedule(&temp_uc_timer, TEMP_TIMER_SECS, 0);
-}
-
 void sbts2050_uc_initialize(void)
 {
 	if (!is_sbts2050_master())
@@ -326,9 +316,6 @@ void sbts2050_uc_initialize(void)
 		     "Failed to open the serial interface\n");
 		return;
 	}
-
-	temp_uc_timer.cb = check_uctemp_timer_cb;
-	check_uctemp_timer_cb(NULL);
 }
 #else
 void sbts2050_uc_initialize(void)

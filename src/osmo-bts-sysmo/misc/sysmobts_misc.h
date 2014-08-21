@@ -3,12 +3,6 @@
 
 #include <stdint.h>
 
-/* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
-#define TEMP_TIMER_SECS		(6 * 3600)
-
-/* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
-#define HOURS_TIMER_SECS	(1 * 3600)
-
 enum sysmobts_temp_sensor {
 	SYSMOBTS_TEMP_DIGITAL = 1,
 	SYSMOBTS_TEMP_RF = 2,

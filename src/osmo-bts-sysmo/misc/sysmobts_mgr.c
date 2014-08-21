@@ -47,6 +47,12 @@ static int no_eeprom_write = 0;
 static int daemonize = 0;
 void *tall_mgr_ctx;
 
+/* every 6 hours means 365*4 = 1460 EEprom writes per year (max) */
+#define TEMP_TIMER_SECS		(6 * 3600)
+
+/* every 1 hours means 365*24 = 8760 EEprom writes per year (max) */
+#define HOURS_TIMER_SECS	(1 * 3600)
+
 /* the initial state */
 static struct sysmobts_mgr_instance manager = {
 	.config_file	= "sysmobts-mgr.cfg",
