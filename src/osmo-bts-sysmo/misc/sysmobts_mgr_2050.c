@@ -297,7 +297,7 @@ void sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 	*temp_board = response->rsp.tempGet.i8BrdTemp;
 	*temp_pa = response->rsp.tempGet.i8PaTemp;
 
-	LOGP(DTEMP, LOGL_DEBUG, "Temperature Board: %+3d C\n"
+	LOGP(DTEMP, LOGL_DEBUG, "Temperature Board: %+3d C, "
 				"Tempeture PA: %+3d C\n",
 				 response->rsp.tempGet.i8BrdTemp,
 				 response->rsp.tempGet.i8PaTemp);
