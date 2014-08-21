@@ -37,6 +37,8 @@ enum sysmobts_firmware_type {
 int sysmobts_firmware_reload(enum sysmobts_firmware_type type);
 
 
+int sysmobts_bts_type();
+int sysmobts_trx_number();
 int is_sbts2050(void);
 int is_sbts2050_trx(int);
 int is_sbts2050_master(void);

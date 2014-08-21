@@ -72,6 +72,16 @@ static int classify_bts(void)
 	return 0;
 }
 
+int sysmobts_bts_type(void)
+{
+	return bts_type;
+}
+
+int sysmobts_trx_number(void)
+{
+	return trx_number;
+}
+
 int is_sbts2050(void)
 {
 	return bts_type == 2050;
@@ -212,146 +222,8 @@ static int mgr_log_init(void)
 	return 0;
 }
 
-/*
- * The TLV structure in IPA messages in UDP packages is a bit
- * weird. First the header appears to have an extra NULL byte
- * and second the L16 of the L16TV needs to include +1 for the
- * tag. The default msgb/tlv and libosmo-abis routines do not
- * provide this.
- */
-
-static void ipaccess_prepend_header_quirk(struct msgb *msg, int proto)
-{
-	struct ipaccess_head *hh;
-
-	/* prepend the ip.access header */
-	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh) + 1);
-	hh->len = htons(msg->len - sizeof(*hh) - 1);
-	hh->proto = proto;
-}
-
-static void quirk_l16tv_put(struct msgb *msg, uint16_t len, uint8_t tag,
-			const uint8_t *val)
-{
-	uint8_t *buf = msgb_put(msg, len + 2 + 1);
-
-	*buf++ = (len + 1) >> 8;
-	*buf++ = (len + 1) & 0xff;
-	*buf++ = tag;
-	memcpy(buf, val, len);
-}
-
-/*
- * We don't look at the content of the request yet and lie
- * about most of the responses.
- */
-static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
-			uint8_t *data, size_t len)
-{
-	static int fetched_info = 0;
-	static char mac_str[20] = { };
-	static char *model_name;
-
-	struct sockaddr_in loc_addr;
-	int rc;
-	char loc_ip[INET_ADDRSTRLEN];
-	struct msgb *msg = msgb_alloc_headroom(512, 128, "ipa get response");
-	if (!msg) {
-		LOGP(DFIND, LOGL_ERROR, "Failed to allocate msgb\n");
-		return;
-	}
-
-	if (!fetched_info) {
-		uint8_t mac[6];
-
-		/* fetch the MAC */
-		sysmobts_par_get_buf(SYSMOBTS_PAR_MAC, mac, sizeof(mac));
-		snprintf(mac_str, sizeof(mac_str), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-				mac[0], mac[1], mac[2],
-				mac[3], mac[4], mac[5]);
-
-		/* fetch the model and trx number */
-		switch(bts_type) {
-		case 0:
-		case 0xffff:
-		case 1002:
-			model_name = "sysmoBTS 1002";
-			break;
-		case 2050:
-			if (trx_number == 0)
-				model_name = "sysmoBTS 2050 (master)";
-			else if (trx_number == 1)
-				model_name = "sysmoBTS 2050 (slave)";
-			else
-				model_name = "sysmoBTS 2050 (unknown)";
-			break;
-		default:
-			model_name = "Unknown";
-			break;
-		}
-
-
-		fetched_info = 1;
-	}
-
-	if (source_for_dest(&src->sin_addr, &loc_addr.sin_addr) != 0) {
-		LOGP(DFIND, LOGL_ERROR, "Failed to determine local source\n");
-		return;
-	}
-
-	msgb_put_u8(msg, IPAC_MSGT_ID_RESP);
-
-	/* append MAC addr */
-	quirk_l16tv_put(msg, strlen(mac_str) + 1, IPAC_IDTAG_MACADDR, (uint8_t *) mac_str);
-
-	/* append ip address */
-	inet_ntop(AF_INET, &loc_addr.sin_addr, loc_ip, sizeof(loc_ip));
-	quirk_l16tv_put(msg, strlen(loc_ip) + 1, IPAC_IDTAG_IPADDR, (uint8_t *) loc_ip);
-
-	/* abuse some flags */
-	quirk_l16tv_put(msg, strlen(model_name) + 1, IPAC_IDTAG_UNIT, (uint8_t *) model_name);
-
-	/* ip.access nanoBTS would reply to port==3006 */
-	ipaccess_prepend_header_quirk(msg, IPAC_PROTO_IPACCESS);
-	rc = sendto(fd->fd, msg->data, msg->len, 0, (struct sockaddr *)src, sizeof(*src));
-	if (rc != msg->len)
-		LOGP(DFIND, LOGL_ERROR,
-			"Failed to send with rc(%d) errno(%d)\n", rc, errno);
-}
-
-static int ipaccess_bcast(struct osmo_fd *fd, unsigned int what)
-{
-	uint8_t data[2048];
-	char src[INET_ADDRSTRLEN];
-	struct sockaddr_in addr = {};
-	socklen_t len = sizeof(addr);
-	int rc;
-
-	rc = recvfrom(fd->fd, data, sizeof(data), 0,
-			(struct sockaddr *) &addr, &len);
-	if (rc <= 0) {
-		LOGP(DFIND, LOGL_ERROR,
-			"Failed to read from socket errno(%d)\n", errno);
-		return -1;
-	}
-
-	LOGP(DFIND, LOGL_DEBUG,
-		"Received request from: %s size %d\n",
-		inet_ntop(AF_INET, &addr.sin_addr, src, sizeof(src)), rc);
-
-	if (rc < 6)
-		return 0;
-
-	if (data[2] != IPAC_PROTO_IPACCESS || data[4] != IPAC_MSGT_ID_GET)
-		return 0;
-
-	respond_to(&addr, fd, data + 6, rc - 6);
-	return 0;
-}
-
 int main(int argc, char **argv)
 {
-	struct osmo_fd fd;
 	void *tall_msgb_ctx;
 	int rc;
 
@@ -399,13 +271,8 @@ int main(int argc, char **argv)
 	sbts2050_uc_initialize();
 
 	/* handle broadcast messages for ipaccess-find */
-	fd.cb = ipaccess_bcast;
-	rc = osmo_sock_init_ofd(&fd, AF_INET, SOCK_DGRAM, IPPROTO_UDP,
-				"0.0.0.0", 3006, OSMO_SOCK_F_BIND);
-	if (rc < 0) {
-		perror("Socket creation");
+	if (sysmobts_mgr_nl_init() != 0)
 		exit(3);
-	}
 
 	if (daemonize) {
 		rc = osmo_daemonize();

@@ -20,4 +20,5 @@ int sysmobts_mgr_parse_config(const char *config_file);
 struct sysmobts_mgr_instance {
 	const char *config_file;
 };
+int sysmobts_mgr_nl_init(void);
 #endif
