@@ -28,6 +28,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 #ifdef BUILD_SBTS2050
 #include <sysmocom/femtobts/sbts2050_header.h>
@@ -51,7 +52,8 @@ struct ucinfo {
 
 static struct uc ucontrol0 = {
 	.id = 0,
-	.path = "/dev/ttyS0"
+	.path = "/dev/ttyS0",
+	.fd = -1,
 };
 
 /**********************************************************************
@@ -202,41 +204,43 @@ err:
 /**********************************************************************
  *	Get power status function
  *********************************************************************/
-int sbts2050_uc_get_status(enum sbts2050_status_rqt status)
+int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 {
 	struct msgb *msg;
 	const struct ucinfo info = {
 		.id = SBTS2050_PWR_STATUS,
 	};
 	rsppkt_t *response;
-	int val_status;
 
+	memset(status, 0, sizeof(*status));
 	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR,
-			"Error requesting power status: %d\n", status);
+			"Error requesting power status.\n");
 		return -1;
 	}
 
 	response = (rsppkt_t *)msg->data;
 
-	switch (status) {
-	case SBTS2050_STATUS_MASTER:
-		val_status = response->rsp.pwrGetStatus.u1MasterEn;
-		break;
-	case SBTS2050_STATUS_SLAVE:
-		val_status = response->rsp.pwrGetStatus.u1SlaveEn;
-		break;
-	case SBTS2050_STATUS_PA:
-		val_status = response->rsp.pwrGetStatus.u1PwrAmpEn;
-		break;
-	default:
-		msgb_free(msg);
-		return -1;
-	}
+	status->main_supply_current = response->rsp.pwrGetStatus.u8MainSupplyA / 64.f;
+
+	status->master_enabled = response->rsp.pwrGetStatus.u1MasterEn;
+	status->master_voltage = response->rsp.pwrGetStatus.u8MasterV / 32.f;
+	status->master_current = response->rsp.pwrGetStatus.u8MasterA / 64.f;;
+
+	status->slave_enabled = response->rsp.pwrGetStatus.u1SlaveEn;
+	status->slave_voltage = response->rsp.pwrGetStatus.u8SlaveV / 32.f;
+	status->slave_current = response->rsp.pwrGetStatus.u8SlaveA / 64.f;
+
+	status->pa_enabled = response->rsp.pwrGetStatus.u1PwrAmpEn;
+	status->pa_voltage = response->rsp.pwrGetStatus.u8PwrAmpV / 4.f;
+	status->pa_current = response->rsp.pwrGetStatus.u8PwrAmpA / 64.f;
+
+	status->pa_bias_voltage = response->rsp.pwrGetStatus.u8PwrAmpBiasV / 16.f;
+
 	msgb_free(msg);
-	return val_status;
+	return 0;
 }
 
 /**********************************************************************
@@ -312,23 +316,7 @@ static void check_uctemp_timer_cb(void *data)
 
 void sbts2050_uc_initialize(void)
 {
-	int val;
-
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val) < 0) {
-		LOGP(DTEMP, LOGL_ERROR,
-		     "Failed to get Model number\n");
-		return;
-	}
-
-	if (val != 2050)
-		return;
-
-	if (sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val) < 0) {
-		LOGP(DTEMP, LOGL_ERROR, "Failed to get the TRX number\n");
-		return;
-	}
-
-	if (val != 0)
+	if (!is_sbts2050_master())
 		return;
 
 	ucontrol0.fd = osmo_serial_init(ucontrol0.path, 115200);
