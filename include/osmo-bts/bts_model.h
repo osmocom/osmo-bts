@@ -46,4 +46,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx);
 
 int bts_model_oml_estab(struct gsm_bts *bts);
 
+int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm);
+
 #endif

@@ -84,11 +84,7 @@ int bts_model_init(struct gsm_bts *bts)
 		rc = 23;
 	}
 	bts->c0->nominal_power = rc;
-
-	/* Initial values for the power adjustments */
-	bts->c0->pa.max_initial_power = 23;
-	bts->c0->pa.step_size = 2;
-	bts->c0->pa.step_interval = 1;
+	bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
 
 	bts_model_vty_init(bts);
 

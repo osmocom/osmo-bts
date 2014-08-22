@@ -186,7 +186,19 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	bts_model_config_write_bts(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
+		struct trx_power_params *tpp = &trx->power_params;
 		vty_out(vty, " trx %u%s", trx->nr, VTY_NEWLINE);
+
+		if (trx->power_params.user_gain_mdB)
+			vty_out(vty, "  user-gain %u mdB%s",
+				tpp->user_gain_mdB, VTY_NEWLINE);
+		vty_out(vty, "  power-ramp max-initinal-pout %d mdBm%s",
+			tpp->ramp.max_initial_pout_mdBm, VTY_NEWLINE);
+		vty_out(vty, "  power-ramp step-size %d mdBm%s",
+			tpp->ramp.step_size_mdB, VTY_NEWLINE);
+		vty_out(vty, "  power-ramp step-interval %d%s",
+			tpp->ramp.step_interval_sec, VTY_NEWLINE);
+
 		bts_model_config_write_trx(vty, trx);
 	}
 }
@@ -384,6 +396,71 @@ DEFUN(cfg_bts_agch_queue_mgmt_default,
 	return CMD_SUCCESS;
 }
 
+#define DB_DBM_STR 							\
+	"Unit is dB (decibels)\n"					\
+	"Unit is mdB (milli-decibels, or rather 1/10000 bel)\n"
+
+static int parse_mdbm(const char *valstr, const char *unit)
+{
+	int val = atoi(valstr);
+
+	if (!strcmp(unit, "dB") || !strcmp(unit, "dBm"))
+		return val * 1000;
+	else
+		return val;
+}
+
+DEFUN(cfg_trx_user_gain,
+	cfg_trx_user_gain_cmd,
+	"user-gain <-100000-100000> (dB|mdB)",
+	"Inform BTS about additional, user-provided gain or attenuation at TRX output\n"
+	"Value of user-provided external gain(+)/attenuation(-)\n" DB_DBM_STR)
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->power_params.user_gain_mdB = parse_mdbm(argv[0], argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+#define PR_STR "Power-Ramp settings"
+DEFUN(cfg_trx_pr_max_initial, cfg_trx_pr_max_initial_cmd,
+	"power-ramp max-initial <0-100000> (dBm|mdBm)",
+	PR_STR "Maximum initial power\n"
+	"Value\n" DB_DBM_STR)
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->power_params.ramp.max_initial_pout_mdBm =
+				parse_mdbm(argv[0], argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_pr_step_size, cfg_trx_pr_step_size_cmd,
+	"power-ramp step-size <1-100000> (dB|mdB)",
+	PR_STR "Power increase by step\n"
+	"Step size\n" DB_DBM_STR)
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->power_params.ramp.step_size_mdB =
+				parse_mdbm(argv[0], argv[1]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_pr_step_interval, cfg_trx_pr_step_interval_cmd,
+	"power-ramp step-interval <1-100>",
+	PR_STR "Power increase by step\n"
+	"Step time in seconds\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->power_params.ramp.step_interval_sec = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+
 
 /* ======================================================================
  * SHOW
@@ -562,6 +639,11 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
 	install_node(&trx_node, config_write_dummy);
 	install_default(TRX_NODE);
+
+	install_element(TRX_NODE, &cfg_trx_user_gain_cmd);
+	install_element(TRX_NODE, &cfg_trx_pr_max_initial_cmd);
+	install_element(TRX_NODE, &cfg_trx_pr_step_size_cmd);
+	install_element(TRX_NODE, &cfg_trx_pr_step_interval_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 

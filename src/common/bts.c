@@ -120,7 +120,9 @@ int bts_init(struct gsm_bts *bts)
 
 	/* initialize bts data structure */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
+		struct trx_power_params *tpp = &trx->power_params;
 		int i;
+
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[i];
 			int k;
@@ -130,6 +132,10 @@ int bts_init(struct gsm_bts *bts)
 				INIT_LLIST_HEAD(&lchan->dl_tch_queue);
 			}
 		}
+		/* Default values for the power adjustments */
+		tpp->ramp.max_initial_pout_mdBm = to_mdB(23);
+		tpp->ramp.step_size_mdB = to_mdB(2);
+		tpp->ramp.step_interval_sec = 1;
 	}
 
 	osmo_rtp_init(tall_bts_ctx);

@@ -6,6 +6,7 @@
 #include <osmocom/gsm/lapdm.h>
 
 #include <osmo-bts/paging.h>
+#include <osmo-bts/tx_power.h>
 
 #define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT 41
 #define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE 999999
