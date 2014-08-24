@@ -37,6 +37,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/ports.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -354,7 +355,7 @@ int main(int argc, char **argv)
 	bts_controlif_setup(bts);
 	sysmobts_ctrlif_inst_cmds();
 
-	rc = telnet_init(tall_bts_ctx, NULL, 4241);
+	rc = telnet_init(tall_bts_ctx, NULL, OSMO_VTY_PORT_BTS);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);

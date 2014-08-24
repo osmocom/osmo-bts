@@ -35,6 +35,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/ports.h>
 
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
@@ -267,7 +268,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = telnet_init(tall_msgb_ctx, NULL, 4252);
+	rc = telnet_init(tall_msgb_ctx, NULL, OSMO_VTY_PORT_BTSMGR);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
