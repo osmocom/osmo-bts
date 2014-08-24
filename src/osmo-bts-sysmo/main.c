@@ -45,6 +45,7 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/control_if.h>
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
@@ -290,6 +291,8 @@ static int write_pid_file(char *procname)
 	return 0;
 }
 
+extern int sysmobts_ctrlif_inst_cmds(void);
+
 int main(int argc, char **argv)
 {
 	struct stat st;
@@ -347,6 +350,8 @@ int main(int argc, char **argv)
 		exit(23);
 	}
 	write_pid_file("osmo-bts");
+
+	bts_controlif_setup(bts, 3333);
 
 	rc = telnet_init(tall_bts_ctx, NULL, 4241);
 	if (rc < 0) {
