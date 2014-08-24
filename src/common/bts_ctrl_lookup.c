@@ -23,6 +23,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
@@ -84,12 +85,12 @@ err_index:
 	return -ERANGE;
 }
 
-struct ctrl_handle *bts_controlif_setup(struct gsm_bts *bts, uint16_t port)
+struct ctrl_handle *bts_controlif_setup(struct gsm_bts *bts)
 {
 	struct ctrl_handle *hdl;
 	int rc = 0;
 
-	hdl = ctrl_interface_setup(bts, port, bts_ctrl_node_lookup);
+	hdl = ctrl_interface_setup(bts, OSMO_CTRL_PORT_BTS, bts_ctrl_node_lookup);
 	if (!hdl)
 		return NULL;
 

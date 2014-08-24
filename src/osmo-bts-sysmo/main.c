@@ -351,7 +351,8 @@ int main(int argc, char **argv)
 	}
 	write_pid_file("osmo-bts");
 
-	bts_controlif_setup(bts, 3333);
+	bts_controlif_setup(bts);
+	sysmobts_ctrlif_inst_cmds();
 
 	rc = telnet_init(tall_bts_ctx, NULL, 4241);
 	if (rc < 0) {
