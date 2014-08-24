@@ -125,21 +125,6 @@ struct gsm_network *gsmnet_from_vty(struct vty *v)
 	return &bts_gsmnet;
 }
 
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
-{
-	struct gsm_bts *bts;
-
-	if (num >= net->num_bts)
-		return NULL;
-
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		if (bts->nr == num)
-			return bts;
-	}
-
-	return NULL;
-}
-
 static struct cmd_node bts_node = {
 	BTS_NODE,
 	"%s(bts)#",
