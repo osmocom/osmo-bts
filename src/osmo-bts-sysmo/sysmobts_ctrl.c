@@ -47,6 +47,7 @@
 
 /* for control interface */
 
+#ifndef HW_SYSMOBTS_V1
 CTRL_CMD_DEFINE(clock_info, "clock-info");
 static int ctrl_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			   void *data)
@@ -241,13 +242,16 @@ static int verify_clock_corr(struct ctrl_cmd *cmd, const char *value, void *data
 	/* FIXME: check the range */
 	return 0;
 }
+#endif /* HW_SYSMOBTS_V1 */
 
 int sysmobts_ctrlif_inst_cmds(void)
 {
 	int rc = 0;
 
+#ifndef HW_SYSMOBTS_V1
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_clock_info);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_clock_corr);
+#endif /* HW_SYSMOBTS_V1 */
 
 	return rc;
 }
