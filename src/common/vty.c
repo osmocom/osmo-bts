@@ -192,9 +192,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		if (trx->power_params.user_gain_mdB)
 			vty_out(vty, "  user-gain %u mdB%s",
 				tpp->user_gain_mdB, VTY_NEWLINE);
-		vty_out(vty, "  power-ramp max-initinal-pout %d mdBm%s",
+		vty_out(vty, "  power-ramp max-initial %d mdBm%s",
 			tpp->ramp.max_initial_pout_mdBm, VTY_NEWLINE);
-		vty_out(vty, "  power-ramp step-size %d mdBm%s",
+		vty_out(vty, "  power-ramp step-size %d mdB%s",
 			tpp->ramp.step_size_mdB, VTY_NEWLINE);
 		vty_out(vty, "  power-ramp step-interval %d%s",
 			tpp->ramp.step_interval_sec, VTY_NEWLINE);
