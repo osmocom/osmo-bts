@@ -67,7 +67,7 @@ static int ctrl_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 				sysp->u.rfClockInfoCnf.rfTrxClkCal.clkSrc));
 
 	if (ctrl_cmd_def_is_zombie(cd)) {
-		talloc_free(resp);
+		msgb_free(resp);
 		return 0;
 	}
 
@@ -82,7 +82,7 @@ static int ctrl_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	ctrl_cmd_def_send(cd);
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	return 0;
 }
@@ -109,7 +109,7 @@ static int ctrl_set_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	struct ctrl_cmd *cmd = cd->cmd;
 
 	if (ctrl_cmd_def_is_zombie(cd)) {
-		talloc_free(resp);
+		msgb_free(resp);
 		return 0;
 	}
 
@@ -117,7 +117,7 @@ static int ctrl_set_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	ctrl_cmd_def_send(cd);
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	return 0;
 }
@@ -155,7 +155,7 @@ static int ctrl_get_clkcorr_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	struct ctrl_cmd *cmd = cd->cmd;
 
 	if (ctrl_cmd_def_is_zombie(cd)) {
-		talloc_free(resp);
+		msgb_free(resp);
 		return 0;
 	}
 
@@ -164,7 +164,7 @@ static int ctrl_get_clkcorr_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	ctrl_cmd_def_send(cd);
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	return 0;
 }
@@ -198,7 +198,7 @@ static int ctrl_set_clkcorr_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	struct ctrl_cmd *cmd = cd->cmd;
 
 	if (ctrl_cmd_def_is_zombie(cd)) {
-		talloc_free(resp);
+		msgb_free(resp);
 		return 0;
 	}
 
@@ -210,7 +210,7 @@ static int ctrl_set_clkcorr_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	ctrl_cmd_def_send(cd);
 
-	talloc_free(resp);
+	msgb_free(resp);
 
 	return 0;
 }
