@@ -132,6 +132,7 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 
 static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 {
+	struct gsm_meas_rep_unidir *mru;
 	uint32_t ber_full_sum = 0;
 	uint32_t irssi_full_sum = 0;
 	uint32_t ber_sub_sum = 0;
@@ -183,10 +184,11 @@ static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		irssi_sub_sum);
 
 	/* store results */
-	lchan->meas.res.rxlev_full = dbm2rxlev((int)irssi_full_sum * -1);
-	lchan->meas.res.rxlev_sub = dbm2rxlev((int)irssi_sub_sum * -1);
-	lchan->meas.res.rxqual_full = ber10k_to_rxqual(ber_full_sum);
-	lchan->meas.res.rxqual_sub = ber10k_to_rxqual(ber_sub_sum);
+	mru = &lchan->meas.ul_res;
+	mru->full.rx_lev = dbm2rxlev((int)irssi_full_sum * -1);
+	mru->sub.rx_lev = dbm2rxlev((int)irssi_sub_sum * -1);
+	mru->full.rx_qual = ber10k_to_rxqual(ber_full_sum);
+	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
 
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
 	lchan->meas.num_ul_meas = 0;
@@ -199,10 +201,10 @@ static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 /* build the 3 byte RSL uplinke measurement IE content */
 int lchan_build_rsl_ul_meas(struct gsm_lchan *lchan, uint8_t *buf)
 {
-	buf[0] = (lchan->meas.res.rxlev_full & 0x3f); /* FIXME: DTXu support */
-	buf[1] = (lchan->meas.res.rxlev_sub & 0x3f);
-	buf[2] = ((lchan->meas.res.rxqual_full & 7) << 3) |
-					(lchan->meas.res.rxqual_sub & 7);
+	struct gsm_meas_rep_unidir *mru = &lchan->meas.ul_res;
+	buf[0] = (mru->full.rx_lev & 0x3f); /* FIXME: DTXu support */
+	buf[1] = (mru->sub.rx_lev & 0x3f);
+	buf[2] = ((mru->full.rx_qual & 7) << 3) | (mru->sub.rx_qual & 7);
 
 	return 3;
 }
