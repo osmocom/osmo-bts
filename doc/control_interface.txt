@@ -9,14 +9,18 @@ thermal management.  In some cases the PA might be passing a critical level,
 so an external control process can use this attribute to reduce the system
 output power.
 
+Please note that all values in the context of transmit power calculation
+are integers in milli-dB (1/10000 bel), so the below example is setting
+the attenuation at 3 dB:
+
 <pre>
-bsc_control.py -d localhost -p 4238 -s trx.0.thermal-attenuation 3
-Got message: SET_REPLY 1 trx.0.thermal-attenuation 3
+bsc_control.py -d localhost -p 4238 -s trx.0.thermal-attenuation 3000
+Got message: SET_REPLY 1 trx.0.thermal-attenuation 3000
 </pre>
 
 <pre>
 bsc_control.py -d localhost -p 4238 -g trx.0.thermal-attenuation
-Got message: GET_REPLY 1 trx.0.thermal-attenuation 3
+Got message: GET_REPLY 1 trx.0.thermal-attenuation 3000
 </pre>
 
 
