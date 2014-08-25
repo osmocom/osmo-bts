@@ -261,7 +261,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 			power_ramp_do_step(trx, 1);
 		}
 	} else {
-		/* Set ramp attenuation to negative value, and increse that by
+		/* Set ramp attenuation to negative value, and increase that by
 		 * steps until it reaches 0 */
 		tpp->ramp.attenuation_mdB = tpp->p_total_tgt_mdBm - tpp->p_total_cur_mdBm;
 
