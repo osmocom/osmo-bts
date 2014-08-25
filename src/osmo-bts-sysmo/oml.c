@@ -1078,6 +1078,9 @@ static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	LOGPC(DL1C, LOGL_INFO, "setTxPower %f dBm\n",
 		cc->cfgParams.setTxPowerLevel.fTxPowerLevel);
 
+	power_trx_change_compl(trx,
+		(int) (cc->cfgParams.setTxPowerLevel.fTxPowerLevel * 1000));
+
 	msgb_free(l1_msg);
 
 	return 0;

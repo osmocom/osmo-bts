@@ -182,6 +182,24 @@ static void power_ramp_timer_cb(void *_trx)
 
 	/* Instruct L1 to apply new effective TRX output power required */
 	bts_model_change_power(trx, p_trxout_eff_mdBm);
+}
+
+/* BTS model call-back once one a call to bts_model_change_power()
+ * completes, indicating actual L1 transmit power */
+void power_trx_change_compl(struct gsm_bts_trx *trx, int p_trxout_cur_mdBm)
+{
+	struct trx_power_params *tpp = &trx->power_params;
+	int p_trxout_should_mdBm;
+
+	p_trxout_should_mdBm = get_p_trxout_eff_mdBm(trx, tpp->p_total_tgt_mdBm);
+
+	/* for now we simply write an error message, but in the future
+	 * we might use the value (again) as part of our math? */
+	if (p_trxout_cur_mdBm != p_trxout_should_mdBm) {
+		LOGP(DL1C, LOGL_ERROR, "bts_model notifies us of %u mdBm TRX "
+		     "output power.  However, it should be %u mdBm!\n",
+		     p_trxout_cur_mdBm, p_trxout_should_mdBm);
+	}
 
 	/* and do another step... */
 	power_ramp_do_step(trx, 0);
