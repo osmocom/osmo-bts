@@ -98,7 +98,7 @@ int get_p_trxout_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 	int p_actual_mdBm, user_pa_drvlvl_mdBm, pa_drvlvl_mdBm;
 	unsigned int arfcn = trx->arfcn;
 
-	/* P_actual subtracted by any bulk gaion added by the user */
+	/* P_actual subtracted by any bulk gain added by the user */
 	p_actual_mdBm = get_p_eff_mdBm(trx, p_target_mdBm) - tpp->user_gain_mdB;
 
 	/* determine input drive level required at input to user PA */
@@ -119,7 +119,7 @@ int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie)
 	int p_target_mdBm, user_pa_drvlvl_mdBm, pa_drvlvl_mdBm;
 	unsigned int arfcn = trx->arfcn;
 
-	/* P_target subtracted by any bulk gaion added by the user */
+	/* P_target subtracted by any bulk gain added by the user */
 	p_target_mdBm = get_p_target_mdBm(trx, bs_power_ie) - tpp->user_gain_mdB;
 
 	/* determine input drive level required at input to user PA */
