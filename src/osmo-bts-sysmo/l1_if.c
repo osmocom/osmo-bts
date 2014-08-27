@@ -363,43 +363,11 @@ static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 	return 1;
 }
 
-static inline void check_for_first_ciphrd(struct femtol1_hdl *fl1h,
-					GsmL1_MsgUnitParam_t *msgUnitParam,
-					struct gsm_lchan *lchan)
-{
-	uint8_t n_s;
-
-	/* if this is the first valid message after enabling Rx
-	 * decryption, we have to enable Tx encryption */
-	if (lchan->ciph_state != LCHAN_CIPH_RX_CONF)
-		return;
-
-	/* HACK: check if it's an I frame, in order to
-	 * ignore some still buffered/queued UI frames received
-	 * before decryption was enabled */
-	if (msgUnitParam->u8Buffer[0] != 0x01)
-		return;
-	if ((msgUnitParam->u8Buffer[1] & 0x01) != 0)
-		return;
-	n_s = msgUnitParam->u8Buffer[1] >> 5;
-	if (lchan->ciph_ns != n_s)
-		return;
-	lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
-	l1if_set_ciphering(fl1h, lchan, 1);
-}
-
 /* public helpers for the test */
 int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan)
 {
 	return check_for_ciph_cmd(fl1h, msg, lchan);
-}
-
-void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
-				GsmL1_MsgUnitParam_t *msgUnitParam,
-				struct gsm_lchan *lchan)
-{
-	return check_for_first_ciphrd(fl1h, msgUnitParam, lchan);
 }
 
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {

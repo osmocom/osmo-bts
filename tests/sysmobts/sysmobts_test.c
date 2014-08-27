@@ -18,6 +18,7 @@
  */
 
 #include <osmo-bts/bts.h>
+#include <osmo-bts/l1sap.h>
 
 #include "femtobts.h"
 #include "l1_if.h"
@@ -169,14 +170,17 @@ static void test_sysmobts_cipher(void)
 	/* Handle message sent before ciphering was received */
 	memcpy(&unit.u8Buffer[0], too_early_classmark, ARRAY_SIZE(too_early_classmark));
 	unit.u8Size = ARRAY_SIZE(too_early_classmark);
-	bts_check_for_first_ciphrd(&fl1h, &unit, &lchan);
+	rc = bts_check_for_first_ciphrd(&lchan, unit.u8Buffer, unit.u8Size);
+	OSMO_ASSERT(rc == 0);
 	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_RX_CONF);
 
 	/* Now send the first ciphered message */
 	memcpy(&unit.u8Buffer[0], first_ciphered_cipher_cmpl, ARRAY_SIZE(first_ciphered_cipher_cmpl));
 	unit.u8Size = ARRAY_SIZE(first_ciphered_cipher_cmpl);
-	bts_check_for_first_ciphrd(&fl1h, &unit, &lchan);
-	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_TXRX_REQ);
+	rc = bts_check_for_first_ciphrd(&lchan, unit.u8Buffer, unit.u8Size);
+	OSMO_ASSERT(rc == 1);
+	/* we cannot test for lchan.ciph_state == * LCHAN_CIPH_RX_CONF_TX_REQ, as
+	 * this happens asynchronously on the other side of the l1sap queue */
 }
 
 static void test_sysmobts_loop(void)
