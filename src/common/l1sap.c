@@ -170,8 +170,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		return l1sap_handover_rach(trx, l1sap, rach_ind);
 
 	/* check for packet access */
-	if (trx == bts->c0
-	 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) {
+	if (trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) {
 		LOGP(DL1P, LOGL_INFO, "RACH for packet access\n");
 		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
 			rach_ind->ra, rach_ind->fn);
