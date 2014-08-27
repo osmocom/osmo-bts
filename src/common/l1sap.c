@@ -112,6 +112,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
+#warning "TODO: Yet another assumption that BS_AG_BLKS_RES=1"
 		/* if CCCH block is 0, it is AGCH */
 		rc = bts_ccch_copy_msg(trx->bts, p, &g_time,
 			(L1SAP_FN2CCCHBLOCK(fn) < 1));
