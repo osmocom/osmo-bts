@@ -456,7 +456,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 {
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
 	uint32_t u32Fn;
-	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
 	uint8_t chan_nr, link_id;
 	GsmL1_Prim_t *l1p;
 	int len;
@@ -549,7 +549,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi, ss;
 	uint8_t chan_nr;
 	GsmL1_Prim_t *l1p;
-	struct msgb *nmsg;
+	struct msgb *nmsg = NULL;
 
 	chan_nr = l1sap->u.tch.chan_nr;
 	u32Fn = l1sap->u.tch.fn;
