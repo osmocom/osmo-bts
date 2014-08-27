@@ -596,29 +596,12 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	/* if we provide data, or if data is already in nmsg */
 	if (l1p->u.phDataReq.msgUnitParam.u8Size) {
 		/* data request */
-		GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
-
-		l1p->id = GsmL1_PrimId_PhDataReq;
-
-		data_req->hLayer1 = fl1->hLayer1;
-		data_req->u8Tn = u8Tn;
-		data_req->u32Fn = u32Fn;
-		data_req->sapi = sapi;
-		data_req->subCh = subCh;
-		data_req->u8BlockNbr = u8BlockNbr;
+		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh,
+				    u8BlockNbr,
+				    l1p->u.phDataReq.msgUnitParam.u8Size);
 	} else {
 		/* empty frame */
-		GsmL1_PhEmptyFrameReq_t *empty_req =
-						&l1p->u.phEmptyFrameReq;
-
-		l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
-
-		empty_req->hLayer1 = fl1->hLayer1;
-		empty_req->u8Tn = u8Tn;
-		empty_req->u32Fn = u32Fn;
-		empty_req->sapi = sapi;
-		empty_req->subCh = subCh;
-		empty_req->u8BlockNbr = u8BlockNbr;
+		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
