@@ -481,6 +481,39 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 	}
 }
 
+static inline int check_for_first_ciphrd(struct gsm_lchan *lchan,
+					  uint8_t *data, int len)
+{
+	uint8_t n_s;
+
+	/* if this is the first valid message after enabling Rx
+	 * decryption, we have to enable Tx encryption */
+	if (lchan->ciph_state != LCHAN_CIPH_RX_CONF)
+		return 0;
+
+	/* HACK: check if it's an I frame, in order to
+	 * ignore some still buffered/queued UI frames received
+	 * before decryption was enabled */
+	if (data[0] != 0x01)
+		return 0;
+
+	if ((data[1] & 0x01) != 0)
+		return 0;
+
+	n_s = data[1] >> 5;
+	if (lchan->ciph_ns != n_s)
+		return 0;
+
+	return 1;
+}
+
+/* public helper for the test */
+int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
+				uint8_t *data, int len)
+{
+	return check_for_first_ciphrd(lchan, data, len);
+}
+
 /* DATA received from bts model */
 static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_data_param *data_ind)
@@ -557,16 +590,8 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
 
-	/* if this is the first valid message after enabling Rx
-	 * decryption, we have to enable Tx encryption */
-	if (lchan->ciph_state == LCHAN_CIPH_RX_CONF) {
-		/* HACK: check if it's an I frame, in order to
-		 * ignore some still buffered/queued UI frames received
-		 * before decryption was enabled */
-		if (data[0] == 0x01 && (data[1] & 0x01) == 0) {
-			l1sap_tx_ciph_req(trx, chan_nr, 1, 0);
-		}
-	}
+	if (check_for_first_ciphrd(lchan, data, len))
+		l1sap_tx_ciph_req(lchan->ts->trx, chan_nr, 1, 0);
 
 	/* SDCCH, SACCH and FACCH all go to LAPDm */
 	msgb_pull(msg, (msg->l2h - msg->data));
