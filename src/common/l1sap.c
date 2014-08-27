@@ -77,6 +77,8 @@ static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 
+	int frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
+
 	DEBUGP(DL1P, "MPH_INFO time ind %u\n", info_time_ind->fn);
 
 	/* Update our data structures with the current GSM time */
@@ -89,10 +91,18 @@ static int l1sap_info_time_ind(struct gsm_bts_trx *trx,
 	 * and pre-compute the respective measurement */
 	trx_meas_check_compute(trx, info_time_ind->fn - 1);
 
-	/* increment 'total' for every possible rach */
-	if (bts->c0->ts[0].pchan != GSM_PCHAN_CCCH_SDCCH4
-	 || (info_time_ind->fn % 51) < 27)
-		btsb->load.rach.total++;
+	/* increment number of RACH slots that have passed by since the
+	 * last time indication */
+	if (trx == bts->c0) {
+		unsigned int num_rach_per_frame;
+		/* 27 / 51 taken from TS 05.01 Figure 3 */
+		if (bts->c0->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4)
+			num_rach_per_frame = 27;
+		else
+			num_rach_per_frame = 51;
+
+		btsb->load.rach.total += frames_expired * num_rach_per_frame;
+	}
 
 	return 0;
 }
