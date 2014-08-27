@@ -44,6 +44,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/handover.h>
 
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
