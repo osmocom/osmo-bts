@@ -327,19 +327,6 @@ empty_req_from_rts_ind(GsmL1_Prim_t *l1p,
 	return empty_req;
 }
 
-/* obtain a ptr to the lapdm_channel for a given hLayer2 */
-static struct lapdm_channel *
-get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
-{
-	struct gsm_lchan *lchan;
-
-	lchan = l1if_hLayer_to_lchan(trx, hLayer2);
-	if (!lchan)
-		return NULL;
-
-	return &lchan->lapdm_ch;
-}
-
 /* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
  * uni-directional de-cryption on the uplink. We need this ugly layering
  * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
