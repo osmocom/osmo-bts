@@ -609,6 +609,7 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 		return 0;
 	}
 
+	/* not reached due to default case above */
 	return (cbits << 3) | u8Tn;
 }
 
@@ -1055,9 +1056,12 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	}
 
 	if (!chan_nr) {
+		/* message was handled by old code, not by L1SAP */
 		msgb_free(l1p_msg);
 		return rc;
 	}
+
+	/* if we proceed to this point, the message has to be handled via L1SAP */
 
 	/* get data pointer and length */
 	data = data_ind->msgUnitParam.u8Buffer;
