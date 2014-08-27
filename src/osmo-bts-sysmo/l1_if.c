@@ -1,6 +1,6 @@
 /* Interface handler for Sysmocom L1 */
 
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
  * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
@@ -423,6 +423,49 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x2B, 0x2B, 0x2B
 };
 
+/* fill PH-DATA.req from l1sap primitive */
+static GsmL1_PhDataReq_t *
+data_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+		uint8_t tn, uint32_t fn, uint8_t sapi, uint8_t sub_ch,
+		uint8_t block_nr, uint8_t len)
+{
+	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+
+	l1p->id = GsmL1_PrimId_PhDataReq;
+
+	/* copy fields from PH-RSS.ind */
+	data_req->hLayer1	= fl1->hLayer1;
+	data_req->u8Tn 		= tn;
+	data_req->u32Fn		= fn;
+	data_req->sapi		= sapi;
+	data_req->subCh		= sub_ch;
+	data_req->u8BlockNbr	= block_nr;
+
+	data_req->msgUnitParam.u8Size = len;
+
+	return data_req;
+}
+
+/* fill PH-EMPTY_FRAME.req from l1sap primitive */
+static GsmL1_PhEmptyFrameReq_t *
+empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+		     uint8_t tn, uint32_t fn, uint8_t sapi,
+		     uint8_t subch, uint8_t block_nr)
+{
+	GsmL1_PhEmptyFrameReq_t *empty_req = &l1p->u.phEmptyFrameReq;
+
+	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+
+	empty_req->hLayer1 = fl1->hLayer1;
+	empty_req->u8Tn = tn;
+	empty_req->u32Fn = fn;
+	empty_req->sapi = sapi;
+	empty_req->subCh = subch;
+	empty_req->u8BlockNbr = block_nr;
+
+	return empty_req;
+}
+
 static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		       struct osmo_phsap_prim *l1sap)
 {
@@ -460,15 +503,11 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	/* convert l1sap message to GsmL1 primitive, keep payload */
 	if (len) {
 		/* data request */
-		GsmL1_PhDataReq_t *data_req;
-		GsmL1_MsgUnitParam_t *msu_param;
-		uint8_t *temp;
 
 		/* wrap zeroed l1p structure arrount payload
 		 * this must be done in three steps, since the actual
 		 * payload is not at the end but inside the l1p structure. */
-		temp = l1p->u.phDataReq.msgUnitParam.u8Buffer;
-		msgb_push(msg, temp - (uint8_t *)l1p);
+		msgb_push(msg, offsetof(GsmL1_Prim_t, u.phDataReq.msgUnitParam.u8Buffer));
 		memset(msg->data, 0, msg->len);
 		msgb_put(msg, len);
 		memset(msg->tail, 0, sizeof(*l1p) - msg->len);
@@ -476,19 +515,9 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		msg->l1h = msg->data;
 
 		l1p = msgb_l1prim(msg);
-		l1p->id = GsmL1_PrimId_PhDataReq;
-		data_req = &l1p->u.phDataReq;
-		data_req->hLayer1 = fl1->hLayer1;
-		data_req->u8Tn = u8Tn;
-		data_req->u32Fn = u32Fn;
-		data_req->sapi = sapi;
-		data_req->subCh = subCh;
-		data_req->u8BlockNbr = u8BlockNbr;
-		msu_param = &data_req->msgUnitParam;
-		msu_param->u8Size = len;
+		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
 	} else {
 		/* empty frame */
-		GsmL1_PhEmptyFrameReq_t *empty_req;
 
 		/* put l1p structure */
 		msgb_put(msg, sizeof(*l1p));
@@ -496,14 +525,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		msg->l1h = msg->data;
 
 		l1p = msgb_l1prim(msg);
-		l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
-		empty_req = &l1p->u.phEmptyFrameReq;
-		empty_req->hLayer1 = fl1->hLayer1;
-		empty_req->u8Tn = u8Tn;
-		empty_req->u32Fn = u32Fn;
-		empty_req->sapi = sapi;
-		empty_req->subCh = subCh;
-		empty_req->u8BlockNbr = u8BlockNbr;
+		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 
 	/* send message to DSP's queue */
