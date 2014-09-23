@@ -50,7 +50,7 @@ AC_ARG_WITH([openbsc],
 	[AS_HELP_STRING([--with-openbsc=INCLUDE_DIR],
 		[OpenBSC include directory for openbsc/gsm_data_shared.h])],
 	[openbsc_incdir="$withval"],
-	[openbsc_incdir="`cd $srcdir; pwd`/../openbsc/openbsc/include"])
+	[openbsc_incdir="`cd $srcdir; pwd`/include"])
 AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
 
 oldCPPFLAGS=$CPPFLAGS
