@@ -1,0 +1,5 @@
+osmo-bts (0.3.0~fw-3) precise; urgency=low
+
+  * Initial release
+
+ -- Ivan Kluchnikov  <Ivan.Kluchnikov@fairwaves.ru>  Mon, 5 Aug 2013 13:34:24 +0200

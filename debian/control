@@ -1,0 +1,22 @@
+Source: osmo-bts
+Section: net
+Priority: optional
+Maintainer: Harald Welte <laforge@gnumonks.org>
+Build-Depends: debhelper (>= 7.0.0~), autotools-dev, pkg-config, libosmocore-dev, dh-autoreconf, libosmo-abis-dev, libortp-dev
+Standards-Version: 0.3.0
+Homepage: http://openbsc.osmocom.org/trac/wiki/OsmoBTS
+Vcs-Git: git://git.osmocom.org/osmo-bts
+Vcs-Browser: http://cgit.osmocom.org/osmo-bts/
+
+Package: osmo-bts
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libosmocore
+Description: Osmocom GSM BTS implementation.
+
+Package: osmo-bts-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmo-bts (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the osmo-bts
+ Make debugging possible
