@@ -116,7 +116,7 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->gprs.nse.mo, -1, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.cell.mo, -1, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[0].mo, -1, NM_AVSTATE_DEPENDENCY);
-	oml_mo_state_init(&bts->gprs.nsvc[1].mo, -1, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_init(&bts->gprs.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 
 	/* initialize bts data structure */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
