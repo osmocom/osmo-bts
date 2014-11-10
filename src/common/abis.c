@@ -209,8 +209,8 @@ void abis_init(struct gsm_bts *bts)
 	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
 }
 
-struct e1inp_line *abis_open(struct gsm_bts *bts, const char *dst_host,
-			     const char *model_name)
+struct e1inp_line *abis_open(struct gsm_bts *bts, char *dst_host,
+			     char *model_name)
 {
 	struct e1inp_line *line;
 
