@@ -111,6 +111,9 @@ int bts_init(struct gsm_bts *bts)
 	/* default RADIO_LINK_TIMEOUT */
 	btsb->radio_link_timeout = 32;
 
+	/* Start with the site manager */
+	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+
 	/* set BTS to dependency */
 	oml_mo_state_init(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nse.mo, -1, NM_AVSTATE_DEPENDENCY);
