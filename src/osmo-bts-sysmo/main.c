@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
-		exit(1);
+		exit(2);
 	}
 
 	if (daemonize) {
