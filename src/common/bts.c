@@ -196,7 +196,7 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending Status'.\n");
 
-	/* BTS and SITE MGR are EAABLED, BTS is DEPENDENCY */
+	/* BTS and SITE MGR are EANBLED, BTS is DEPENDENCY */
 	oml_tx_state_changed(&bts->site_mgr.mo);
 	oml_tx_state_changed(&bts->mo);
 
