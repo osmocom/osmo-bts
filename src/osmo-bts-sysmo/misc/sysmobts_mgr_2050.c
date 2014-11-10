@@ -110,7 +110,7 @@ static void add_parity(cmdpkt_t *command)
 	command->cmd.raw[command->u8Len] = parity;
 }
 
-static struct msgb *sbts2050_ucinfo_get(struct uc *ucontrol, const struct ucinfo *info)
+static struct msgb *sbts2050_ucinfo_sndrcv(struct uc *ucontrol, const struct ucinfo *info)
 {
 	int num, rc;
 	cmdpkt_t *command;
@@ -214,7 +214,7 @@ int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 	rsppkt_t *response;
 
 	memset(status, 0, sizeof(*status));
-	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
+	msg = sbts2050_ucinfo_sndrcv(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR,
@@ -257,7 +257,7 @@ int sbts2050_uc_set_power(int pmaster, int pslave, int ppa)
 		.pa = ppa
 	};
 
-	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
+	msg = sbts2050_ucinfo_sndrcv(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error switching off some unit.\n");
@@ -287,7 +287,7 @@ int sbts2050_uc_check_temp(int *temp_pa, int *temp_board)
 		.id = SBTS2050_TEMP_RQT,
 	};
 
-	msg = sbts2050_ucinfo_get(&ucontrol0, &info);
+	msg = sbts2050_ucinfo_sndrcv(&ucontrol0, &info);
 
 	if (msg == NULL) {
 		LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
