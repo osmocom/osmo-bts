@@ -244,7 +244,9 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_len,
 					 struct gsm_lchan *lchan)
 {
+#ifndef USE_L1_RTP_MODE
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
+#endif
 	struct msgb *msg;
 	uint8_t amr_if2_len = payload_len - 2;
 	uint8_t *cur;
@@ -332,12 +334,13 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	uint8_t cmi, sti;
 	uint8_t *l1_cmi_idx = l1_payload;
 	uint8_t *l1_cmr_idx = l1_payload+1;
-	uint8_t amr_if2_core_len = payload_len - 2;
 	int rc;
 
 #ifdef USE_L1_RTP_MODE
 	memcpy(l1_payload+2, rtp_payload, payload_len);
 #else
+	uint8_t amr_if2_core_len = payload_len - 2;
+
 	/* step1: shift everything right one nibble; make space for FT */
 	osmo_nibble_shift_right(l1_payload+2, rtp_payload+2, amr_if2_core_len*2);
 	/* step2: reverse the bit-order within every byte of the IF2
