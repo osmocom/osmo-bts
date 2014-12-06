@@ -179,11 +179,68 @@ static void test_sysmobts_cipher(void)
 	OSMO_ASSERT(lchan.ciph_state == LCHAN_CIPH_TXRX_REQ);
 }
 
+static void test_sysmobts_loop(void)
+{
+	struct gsm_bts bts;
+	struct gsm_bts_trx trx;
+	struct gsm_bts_trx_ts ts;
+	struct gsm_lchan *lchan;
+	int ret;
+
+	memset(&bts, 0, sizeof(bts));
+	memset(&trx, 0, sizeof(trx));
+	memset(&ts, 0, sizeof(ts));
+
+	lchan = &ts.lchan[0];
+	lchan->ts = &ts;
+	ts.trx = &trx;
+	trx.bts = &bts;
+	bts.band = GSM_BAND_1800;
+	trx.ms_power_control = 1;
+
+	printf("Testing sysmobts power control\n");
+
+	/* Simply clamping */
+	lchan->state = LCHAN_S_NONE;
+	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	ret = l1if_ms_pwr_ctrl(lchan, -75, lchan->ms_power_ctrl.current, -60);
+	OSMO_ASSERT(ret == 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+
+
+	/*
+	 * Now 15 dB too little and we should power it up. Could be a
+	 * power level of 7 or 8 for 15 dBm
+	 */
+	ret = l1if_ms_pwr_ctrl(lchan, -75, lchan->ms_power_ctrl.current, -90);
+	OSMO_ASSERT(ret == 1);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 7);
+
+	/* It should be clamped to level 0 and 30 dBm */
+	ret = l1if_ms_pwr_ctrl(lchan, -75, lchan->ms_power_ctrl.current, -100);
+	OSMO_ASSERT(ret == 1);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 0);
+
+	/* Fix it and jump down */
+	lchan->ms_power_ctrl.fixed = 1;
+	ret = l1if_ms_pwr_ctrl(lchan, -75, lchan->ms_power_ctrl.current, -60);
+	OSMO_ASSERT(ret == 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 0);
+
+	/* And leave it again */
+	lchan->ms_power_ctrl.fixed = 0;
+	ret = l1if_ms_pwr_ctrl(lchan, -75, lchan->ms_power_ctrl.current, -40);
+	OSMO_ASSERT(ret == 1);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing sysmobts routines\n");
 	test_sysmobts_auto_band();
 	test_sysmobts_cipher();
+	test_sysmobts_loop();
 	return 0;
 }
 

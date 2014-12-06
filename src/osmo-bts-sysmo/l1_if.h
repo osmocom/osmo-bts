@@ -132,4 +132,6 @@ int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
 				GsmL1_MsgUnitParam_t *msgUnitParam,
 				struct gsm_lchan *lchan);
+inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
+			const uint8_t ms_power, const float rxLevel);
 #endif /* _FEMTO_L1_H */
