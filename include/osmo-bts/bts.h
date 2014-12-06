@@ -39,5 +39,8 @@ void load_timer_start(struct gsm_bts *bts);
 
 void bts_update_status(enum bts_global_status which, int on);
 
+int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx);
+
+
 #endif /* _BTS_H */
 

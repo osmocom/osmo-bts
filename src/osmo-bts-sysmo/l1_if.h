@@ -124,4 +124,6 @@ int calib_load(struct femtol1_hdl *fl1h);
 int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h);
 int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
 
+inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
+			const uint8_t ms_power, const float rxLevel);
 #endif /* _FEMTO_L1_H */
