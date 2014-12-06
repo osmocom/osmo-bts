@@ -328,7 +328,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16Arfcn = trx->arfcn;
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
-	dev_par->fRxPowerLevel = fl1h->ul_power_target;
+	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
+					? 0.0 : fl1h->ul_power_target;
 
 	dev_par->fTxPowerLevel = 0.0;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "
@@ -903,12 +904,16 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	case GsmL1_Sapi_Prach:
 		lch_par->prach.u8Bsic = lchan->ts->trx->bts->bsic;
 		break;
-	case GsmL1_Sapi_Pdtch:
-	case GsmL1_Sapi_Pacch:
 	case GsmL1_Sapi_Sacch:
 		/*
-		 * TODO: For the SACCH we need to set the u8MsPowerLevel when
-		 * doing manual MS power control. */
+		 * For the SACCH we need to set the u8MsPowerLevel when
+		 * doing manual MS power control.
+		 */
+		if (trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
+			lch_par->sacch.u8MsPowerLevel = lchan->ms_power_ctrl.current;
+		/* fall through */
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
 		/*
 		 * Be sure that every packet is received, even if it
 		 * fails. In this case the length might be lower or 0.
@@ -1150,7 +1155,8 @@ err:
 
 static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphConfigReq_t *conf_req;
 	GsmL1_LogChParam_t *lch_par;
@@ -1160,7 +1166,7 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 	/* update multi-rate config */
 	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetLogChParams;
-	conf_req->cfgParams.setLogChParams.sapi = lchan_to_GsmL1_Sapi_t(lchan);
+	conf_req->cfgParams.setLogChParams.sapi = cmd->sapi;
 	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
 	conf_req->cfgParams.setLogChParams.subCh = lchan_to_GsmL1_SubCh_t(lchan);
 	conf_req->cfgParams.setLogChParams.dir = cmd->dir;
@@ -1168,6 +1174,10 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 
 	lch_par = &conf_req->cfgParams.setLogChParams.logChParams;
 	lchan2lch_par(lch_par, lchan);
+
+	/* Update the MS Power Level */
+	if (cmd->sapi == GsmL1_Sapi_Sacch && trx_ms_pwr_ctrl_is_osmo(trx))
+		lch_par->sacch.u8MsPowerLevel = lchan->ms_power_ctrl.current;
 
 	/* FIXME: update encryption */
 
@@ -1186,19 +1196,19 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 	return l1if_gsm_req_compl(fl1h, msg, chmod_modif_compl_cb, NULL);
 }
 
-static void enqueue_sapi_logchpar_cmd(struct gsm_lchan *lchan, int dir)
+static void enqueue_sapi_logchpar_cmd(struct gsm_lchan *lchan, int dir, GsmL1_Sapi_t sapi)
 {
 	struct sapi_cmd *cmd = talloc_zero(lchan->ts->trx, struct sapi_cmd);
 
 	cmd->dir = dir;
+	cmd->sapi = sapi;
 	cmd->type = SAPI_CMD_CONFIG_LOGCH_PARAM;
 	queue_sapi_command(lchan, cmd);
 }
 
 static int tx_confreq_logchpar(struct gsm_lchan *lchan, uint8_t direction)
 {
-	enqueue_sapi_logchpar_cmd(lchan, direction);
-
+	enqueue_sapi_logchpar_cmd(lchan, direction, lchan_to_GsmL1_Sapi_t(lchan));
 	return 0;
 }
 
@@ -1278,6 +1288,15 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 
 	enqueue_sapi_ciphering_cmd(lchan, dir);
 
+	return 0;
+}
+
+int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
+{
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return -1;
+
+	enqueue_sapi_logchpar_cmd(lchan, GsmL1_Dir_RxUplink, GsmL1_Sapi_Sacch);
 	return 0;
 }
 

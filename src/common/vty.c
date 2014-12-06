@@ -198,6 +198,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			tpp->ramp.step_size_mdB, VTY_NEWLINE);
 		vty_out(vty, "  power-ramp step-interval %d%s",
 			tpp->ramp.step_interval_sec, VTY_NEWLINE);
+		vty_out(vty, "  ms-power-control %s%s",
+			trx->ms_power_control == 0 ? "dsp" : "osmo",
+			VTY_NEWLINE);
 
 		bts_model_config_write_trx(vty, trx);
 	}
@@ -460,6 +463,16 @@ DEFUN(cfg_trx_pr_step_interval, cfg_trx_pr_step_interval_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
+	"ms-power-control (dsp|osmo)",
+	"Mobile Station Power Level Control\n"
+	"Handled by DSP\n" "Handled by OsmoBTS\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->ms_power_control = argv[0][0] == 'd' ? 0 : 1;
+	return CMD_SUCCESS;
+}
 
 
 /* ======================================================================
@@ -644,6 +657,7 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(TRX_NODE, &cfg_trx_pr_max_initial_cmd);
 	install_element(TRX_NODE, &cfg_trx_pr_step_size_cmd);
 	install_element(TRX_NODE, &cfg_trx_pr_step_interval_cmd);
+	install_element(TRX_NODE, &cfg_trx_ms_power_control_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 

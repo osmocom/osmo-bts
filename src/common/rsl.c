@@ -712,6 +712,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
+	/* Initialize channel defaults */
+	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	lchan->ms_power_ctrl.current = lchan->ms_power;
+	lchan->ms_power_ctrl.fixed = 0;
+
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.3 Activation Type */
@@ -751,8 +756,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 	/* 9.3.13 MS Power */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER))
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
 		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
+		lchan->ms_power_ctrl.current = lchan->ms_power;
+		lchan->ms_power_ctrl.fixed = 0;
+	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRESENT(&tp, RSL_IE_TIMING_ADVANCE))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);

@@ -604,3 +604,8 @@ int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
 	sup =  (1 << (rsl_cipher - 2)) & bts->support.ciphers;
 	return sup > 0;
 }
+
+int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
+{
+	return trx->ms_power_control == 1;
+}

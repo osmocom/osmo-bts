@@ -49,6 +49,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/bts_model.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -520,10 +521,11 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		/* resolve the L2 entity using rts_ind->hLayer2 */
 		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
 		le = &lchan->lapdm_ch.lapdm_acch;
-		/* if the DSP is taking care of power control
-		 * (ul_power_target==0), then this value will be
-		 * overridden. */
-		msu_param->u8Buffer[0] = lchan->ms_power;
+		/*
+		 * if the DSP is taking care of power control,
+		 * then this value will be overridden.
+		 */
+		msu_param->u8Buffer[0] = lchan->ms_power_ctrl.current;
 		msu_param->u8Buffer[1] = lchan->rqd_ta;
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
@@ -768,6 +770,14 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 				data_ind->msgUnitParam.u8Size);
 			break;
 		}
+
+		/*
+		 * Handle power control
+		 */
+		l1if_ms_pwr_ctrl(lchan, fl1->ul_power_target,
+				data_ind->msgUnitParam.u8Buffer[0] & 0x1f,
+				data_ind->measParam.fRssi);
+
 		/* Some brilliant engineer decided that the ordering of
 		 * fields on the Um interface is different from the
 		 * order of fields in RLS. See TS 04.04 (Chapter 7.2)
@@ -1681,3 +1691,69 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 }
 
 #endif
+
+/*
+ * Check if manual power control is needed
+ * Check if fixed power was selected
+ * Check if the MS is already using our level if not
+ * the value is bogus..
+ * TODO: Add a timeout.. e.g. if the ms is not capable of reaching
+ * the value we have set.
+ */
+inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int ul_power_target,
+			const uint8_t ms_power, const float rxLevel)
+{
+	float rx;
+	int cur_dBm, new_dBm, new_pwr;
+	const enum gsm_band band = lchan->ts->trx->bts->band;
+
+	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
+		return 0;
+	if (lchan->ms_power_ctrl.fixed)
+		return 0;
+
+	/* The phone hasn't reached the power level yet */
+	if (lchan->ms_power_ctrl.current != ms_power)
+		return 0;
+
+	/*
+	 * What is the difference between what we want and received?
+	 * Ignore a margin that is within the range of measurement
+	 * and MS output issues.
+	 */
+	rx = ul_power_target - rxLevel;
+	if (rx >= 0 && rx < 1.5f)
+		return 0;
+	if (rx < 0 && rx > -1.5f)
+		return 0;
+
+	/* We don't really care about the truncation of int + float */
+	cur_dBm = ms_pwr_dbm(band, ms_power);
+	new_dBm = cur_dBm + rx;
+
+	/* Clamp negative values and do it depending on the band */
+	if (new_dBm < 0)
+		new_dBm = 0;
+
+	switch (band) {
+	case GSM_BAND_1800:
+		/* If MS_TX_PWR_MAX_CCH is set the values 29,
+		 * 30, 31 are not used. Avoid specifying a dBm
+		 * that would lead to these power levels. The
+		 * phone might not be able to reach them. */
+		if (new_dBm > 30)
+			new_dBm = 30;
+		break;
+	default:
+		break;
+	}
+
+	new_pwr = ms_pwr_ctl_lvl(band, new_dBm);
+	if (lchan->ms_power_ctrl.current != new_pwr) {
+		lchan->ms_power_ctrl.current = new_pwr;
+		bts_model_adjst_ms_pwr(lchan);
+		return 1;
+	}
+
+	return 0;
+}
