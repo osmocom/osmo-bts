@@ -424,6 +424,18 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 	return CMD_SUCCESS;
 }
 
+DEFUN(calibrate_trx, calibrate_trx_cmd,
+      "trx 0 calibrate-clock",
+      "Transceiver commands\n" "Transceiver 0\n"
+      "Calibrate clock against GPS PPS\n")
+{
+	if (sysmobts_mgr_calib_run(s_mgr) < 0) {
+		vty_out(vty, "%%Failed to start calibration.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
 static void register_limit(int limit)
 {
 	install_element(limit, &cfg_thresh_warning_cmd);
@@ -463,6 +475,8 @@ int sysmobts_mgr_vty_init(void)
 	vty_init(&vty_info);
 
 	install_element_ve(&show_mgr_cmd);
+
+	install_element(ENABLE_NODE, &calibrate_trx_cmd);
 
 	install_node(&mgr_node, config_write_mgr);
 	install_element(CONFIG_NODE, &cfg_mgr_cmd);
