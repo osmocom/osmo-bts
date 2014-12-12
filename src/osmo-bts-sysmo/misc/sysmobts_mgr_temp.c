@@ -98,6 +98,17 @@ static void handle_actions(int actions)
 		 * requires the control protocol.
 		 */
 	}
+
+	if (actions & TEMP_ACT_BTS_SRV_OFF) {
+		LOGP(DTEMP, LOGL_NOTICE,
+			"Going to switch off the BTS service\n");
+		/*
+		 * TODO: use/create something like nspawn that serializes
+		 * and used SIGCHLD/waitpid to pick up the dead processes
+		 * without invoking shell.
+		 */
+		system("/bin/systemctl stop sysmobts.service");
+	}
 }
 
 /**

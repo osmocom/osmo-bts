@@ -16,6 +16,7 @@ enum {
 	TEMP_ACT_MASTER_OFF	=	0x2,
 	TEMP_ACT_SLAVE_OFF	=	0x4,
 	TEMP_ACT_PA_OFF		=	0x8,
+	TEMP_ACT_BTS_SRV_OFF	=	0x10,
 };
 
 enum sysmobts_temp_state {

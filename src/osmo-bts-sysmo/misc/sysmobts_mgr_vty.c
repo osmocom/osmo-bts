@@ -170,6 +170,8 @@ static void write_action(struct vty *vty, const char *name, int actions)
 #endif
 	vty_out(vty, "  %spa-off%s",
 		(actions & TEMP_ACT_PA_OFF) ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %sbts-service-off%s",
+		(actions & TEMP_ACT_BTS_SRV_OFF) ? "" : "no ", VTY_NEWLINE);
 }
 
 static int config_write_mgr(struct vty *vty)
@@ -257,6 +259,24 @@ DEFUN(cfg_no_action_pa_off, cfg_no_action_pa_off_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_action_bts_srv_off, cfg_action_bts_srv_off_cmd,
+	"bts-service-off",
+	"Stop the systemd sysmobts.service\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_BTS_SRV_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_bts_srv_off, cfg_no_action_bts_srv_off_cmd,
+	"no bts-service-off",
+	NO_STR "Stop the systemd sysmobts.service\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_BTS_SRV_OFF;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
@@ -327,6 +347,8 @@ static void register_action(int act)
 #endif
 	install_element(act, &cfg_action_pa_off_cmd);
 	install_element(act, &cfg_no_action_pa_off_cmd);
+	install_element(act, &cfg_action_bts_srv_off_cmd);
+	install_element(act, &cfg_no_action_bts_srv_off_cmd);
 }
 
 int sysmobts_mgr_vty_init(void)
