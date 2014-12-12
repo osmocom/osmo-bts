@@ -6,6 +6,8 @@
 
 #include <osmocom/core/timer.h>
 
+#include <stdint.h>
+
 enum {
 	DTEMP,
 	DFW,
@@ -82,6 +84,10 @@ struct sysmobts_mgr_instance {
 		int is_up;
 		struct osmo_timer_list recon_timer;
 		struct ipa_client_conn *bts_conn;
+
+		int state;
+		struct osmo_timer_list timer;
+		uint32_t last_seqno;
 	} calib;
 };
 
@@ -89,8 +95,11 @@ int sysmobts_mgr_vty_init(void);
 int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *mgr);
 int sysmobts_mgr_nl_init(void);
 int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr);
-int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr);
 const char *sysmobts_mgr_temp_get_state(enum sysmobts_temp_state state);
+
+
+int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr);
+int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr);
 
 
 extern void *tall_mgr_ctx;
