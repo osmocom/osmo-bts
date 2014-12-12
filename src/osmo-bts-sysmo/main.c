@@ -56,8 +56,6 @@
 #include "hw_misc.h"
 #include "oml_router.h"
 
-/* FIXME: read from real hardware */
-const uint8_t abis_mac[6] = { 0,1,2,3,4,5 };
 int pcu_direct = 0;
 
 static const char *config_file = "osmo-bts.cfg";
