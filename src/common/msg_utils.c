@@ -103,13 +103,6 @@ int msg_verify_ipa_structure(struct msgb *msg)
 
 	hh = (struct ipaccess_head *) msg->l1h;
 
-	if (hh->proto != IPAC_PROTO_OML) {
-		LOGP(DL1C, LOGL_ERROR,
-			"Incorrect ipa header protocol 0x%x 0x%x\n",
-			hh->proto, IPAC_PROTO_OML);
-		return -1;
-	}
-
 	if (ntohs(hh->len) != msgb_l1len(msg) - sizeof(struct ipaccess_head)) {
 		LOGP(DL1C, LOGL_ERROR,
 			"Incorrect ipa header msg size %d %d\n",
@@ -117,7 +110,16 @@ int msg_verify_ipa_structure(struct msgb *msg)
 		return -1;
 	}
 
-	msg->l2h = hh->data;
+	if (hh->proto == IPAC_PROTO_OSMO) {
+		struct ipaccess_head_ext *hh_ext = (struct ipaccess_head_ext *) hh->data;
+		if (ntohs(hh->len) < sizeof(*hh_ext)) {
+			LOGP(DL1C, LOGL_ERROR, "IPA length shorter than OSMO header\n");
+			return -1;
+		}
+		msg->l2h = hh_ext->data;
+	} else
+		msg->l2h = hh->data;
+
 	return 0;
 }
 
