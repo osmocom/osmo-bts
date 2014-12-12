@@ -375,6 +375,8 @@ DEFUN(cfg_no_action_slave_off, cfg_no_action_slave_off_cmd,
 DEFUN(show_mgr, show_mgr_cmd, "show manager",
       SHOW_STR "Display information about the manager")
 {
+	vty_out(vty, "BTS Control Interface: %s%s",
+		s_mgr->calib.is_up ? "connected" : "disconnected", VTY_NEWLINE);
 	vty_out(vty, "Temperature control state: %s%s",
 		sysmobts_mgr_temp_get_state(s_mgr->state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
