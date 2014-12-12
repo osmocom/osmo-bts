@@ -77,28 +77,10 @@ static int next_state(enum sysmobts_temp_state current_state, int critical, int 
 	return next_state;
 }
 
-/**
- * Go back to normal! Undo everything we did in the other states. For
- * reducint the transmit power, the question is if we should slowly set
- * it back to normal, let the BTS slowly increase it.. or handle it here
- * as well?
- */
-static void execute_normal_act(struct sysmobts_mgr_instance *manager)
+static void handle_actions(int actions)
 {
-	LOGP(DTEMP, LOGL_NOTICE, "System is back to normal temperature.\n");
-}
-
-static void execute_warning_act(struct sysmobts_mgr_instance *manager)
-{
-	LOGP(DTEMP, LOGL_NOTICE, "System has reached temperature warning.\n");
-}
-
-static void execute_critical_act(struct sysmobts_mgr_instance *manager)
-{
-	LOGP(DTEMP, LOGL_NOTICE, "System has reached critical warning.\n");
-
 	/* switch off the PA */
-	if (manager->action_crit & TEMP_ACT_PA_OFF) {
+	if (actions & TEMP_ACT_PA_OFF) {
 		if (!is_sbts2050()) {
 			LOGP(DTEMP, LOGL_NOTICE,
 				"PA can only be switched-off on the master\n");
@@ -116,6 +98,29 @@ static void execute_critical_act(struct sysmobts_mgr_instance *manager)
 		 * requires the control protocol.
 		 */
 	}
+}
+
+/**
+ * Go back to normal! Undo everything we did in the other states. For
+ * reducint the transmit power, the question is if we should slowly set
+ * it back to normal, let the BTS slowly increase it.. or handle it here
+ * as well?
+ */
+static void execute_normal_act(struct sysmobts_mgr_instance *manager)
+{
+	LOGP(DTEMP, LOGL_NOTICE, "System is back to normal temperature.\n");
+}
+
+static void execute_warning_act(struct sysmobts_mgr_instance *manager)
+{
+	LOGP(DTEMP, LOGL_NOTICE, "System has reached temperature warning.\n");
+	handle_actions(manager->action_warn);
+}
+
+static void execute_critical_act(struct sysmobts_mgr_instance *manager)
+{
+	LOGP(DTEMP, LOGL_NOTICE, "System has reached critical warning.\n");
+	handle_actions(manager->action_crit);
 }
 
 static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
