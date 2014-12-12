@@ -224,6 +224,12 @@ static struct log_info_cat mgr_log_info_cat[] = {
 		.color = "\033[1;37m",
 		.enabled = 1, .loglevel = LOGL_INFO,
 	},
+	[DCALIB] = {
+		.name = "DCALIB",
+		.description = "Calibration handling",
+		.color = "\033[1;37m",
+		.enabled = 1, .loglevel = LOGL_INFO,
+	},
 };
 
 static const struct log_info mgr_log_info = {
@@ -291,6 +297,9 @@ int main(int argc, char **argv)
 
 	/* Initialize the temperature control */
 	sysmobts_mgr_temp_init(&manager);
+
+	if (sysmobts_mgr_calib_init(&manager) != 0)
+		exit(3);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

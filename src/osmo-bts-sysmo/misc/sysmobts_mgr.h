@@ -4,10 +4,13 @@
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
 
+#include <osmocom/core/timer.h>
+
 enum {
 	DTEMP,
 	DFW,
 	DFIND,
+	DCALIB,
 };
 
 
@@ -74,12 +77,22 @@ struct sysmobts_mgr_instance {
 	int action_crit;
 
 	enum sysmobts_temp_state state;
+
+	struct {
+		int is_up;
+		struct osmo_timer_list recon_timer;
+		struct ipa_client_conn *bts_conn;
+	} calib;
 };
 
 int sysmobts_mgr_vty_init(void);
 int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *mgr);
 int sysmobts_mgr_nl_init(void);
 int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr);
+int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr);
 const char *sysmobts_mgr_temp_get_state(enum sysmobts_temp_state state);
+
+
+extern void *tall_mgr_ctx;
 
 #endif
