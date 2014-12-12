@@ -121,6 +121,13 @@ static int ctrl_set_clkinfo_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	return 0;
 }
+static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+			void *data)
+{
+	msgb_free(resp);
+	return 0;
+}
+
 static int set_clock_info(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_bts_trx *trx = cmd->node;
@@ -132,6 +139,16 @@ static int set_clock_info(struct ctrl_cmd *cmd, void *data)
 	/* geneate a deferred control command */
 	cd = ctrl_cmd_def_make(fl1h, cmd, NULL, 10);
 
+	/* Set GPS/PPS as reference */
+	sysp->id = SuperFemto_PrimId_RfClockSetupReq;
+	sysp->u.rfClockSetupReq.rfTrx.iClkCor = fl1h->clk_cal; /* !!! use get_clk_cal */
+	sysp->u.rfClockSetupReq.rfTrx.clkSrc = fl1h->clk_src;
+	sysp->u.rfClockSetupReq.rfTrxClkCal.clkSrc = SuperFemto_ClkSrcId_GpsPps;
+	l1if_req_compl(fl1h, msg, clock_setup_cb, NULL);
+
+	/* Reset the error counters */
+	msg = sysp_msgb_alloc();
+	sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
 	sysp->u.rfClockInfoReq.u8RstClkCal = 1;
 
