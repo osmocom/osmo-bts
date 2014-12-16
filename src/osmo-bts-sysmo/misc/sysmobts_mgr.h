@@ -12,18 +12,22 @@ enum {
 
 
 enum {
+#if 0
 	TEMP_ACT_PWR_CONTRL	=	0x1,
 	TEMP_ACT_MASTER_OFF	=	0x2,
 	TEMP_ACT_SLAVE_OFF	=	0x4,
+#endif
 	TEMP_ACT_PA_OFF		=	0x8,
 	TEMP_ACT_BTS_SRV_OFF	=	0x10,
 };
 
 /* actions only for normal state */
 enum {
+#if 0
 	TEMP_ACT_NORM_PW_CONTRL	=	0x1,
 	TEMP_ACT_NORM_MASTER_ON	=	0x2,
 	TEMP_ACT_NORM_SLAVE_ON	=	0x4,
+#endif
 	TEMP_ACT_NORM_PA_ON	=	0x8,
 	TEMP_ACT_NORM_BTS_SRV_ON=	0x10,
 };
