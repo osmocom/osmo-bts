@@ -35,12 +35,13 @@ enum act {
 
 static enum act action;
 static char *write_arg;
+static int void_warranty;
 
 static void print_help()
 {
 	const struct value_string *par = sysmobts_par_names;
 
-	printf("sysmobts-util [-r | -w value] param_name\n");
+	printf("sysmobts-util [--void-warranty -r | -w value] param_name\n");
 	printf("Possible param names:\n");
 
 	for (; par->str != NULL; par += 1) {
@@ -52,10 +53,21 @@ static void print_help()
 
 static int parse_options(int argc, char **argv)
 {
-	int opt;
+	while (1) {
+		int option_idx = 0, c;
+		static const struct option long_options[] = {
+			{ "help", 0, 0, 'h' },
+			{ "read", 0, 0, 'r' },
+			{ "void-warranty", 0, 0, 1000},
+			{ "write", 1, 0, 'w' },
+			{ 0, 0, 0, 0 }
+		};
 
-	while ((opt = getopt(argc, argv, "rw:h")) != -1) {
-		switch (opt) {
+		c = getopt_long(argc, argv, "rw:h",
+				long_options, &option_idx);
+		if (c == -1)
+			break;
+		switch (c) {
 		case 'r':
 			action = ACT_GET;
 			break;
@@ -66,6 +78,10 @@ static int parse_options(int argc, char **argv)
 		case 'h':
 			print_help();
 			return -1;
+			break;
+		case 1000:
+			printf("Will void warranty on write.\n");
+			void_warranty = 1;
 			break;
 		default:
 			return -1;
@@ -113,7 +129,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Error %d\n", rc);
 			goto err;
 		}
-		if (val != 0xFFFF && val != 0xFF && val != 0xFFFFFFFF) {
+		if (val != 0xFFFF && val != 0xFF && val != 0xFFFFFFFF && !void_warranty) {
 			fprintf(stderr, "Parameter is already set!\r\n");
 			goto err;
 		}

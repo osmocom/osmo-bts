@@ -6,7 +6,7 @@
 struct sysmobts_eeprom {		/* offset */
 	uint8_t eth_mac[6];		/* 0-5 */
 	uint8_t _pad0[10];		/* 6-15 */
-	uint16_t clk_cal_fact;		/* 16-17 */
+	uint16_t unused1;		/* 16-17 */
 	uint8_t temp1_max;		/* 18 */
 	uint8_t temp2_max;		/* 19 */
 	uint32_t serial_nr;		/* 20-23 */

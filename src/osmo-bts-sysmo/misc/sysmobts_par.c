@@ -33,6 +33,7 @@
 
 #include "sysmobts_eeprom.h"
 #include "sysmobts_par.h"
+#include "eeprom.h"
 
 #define EEPROM_PATH	"/sys/devices/platform/i2c_davinci.1/i2c-1/1-0050/eeprom"
 
@@ -119,6 +120,8 @@ int sysmobts_par_is_int(enum sysmobts_par par)
 
 int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 {
+	eeprom_RfClockCal_t rf_clk;
+	eeprom_Error_t err;
 	struct sysmobts_eeprom *ee = get_eeprom(0);
 
 	if (!ee)
@@ -129,7 +132,10 @@ int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 
 	switch (par) {
 	case SYSMOBTS_PAR_CLK_FACTORY:
-		*ret = ee->clk_cal_fact;
+		err = eeprom_ReadRfClockCal(&rf_clk);
+		if (err != EEPROM_SUCCESS)
+			return -EIO;
+		*ret = rf_clk.iClkCor;
 		break;
 	case SYSMOBTS_PAR_TEMP_DIG_MAX:
 		*ret = ee->temp1_max;
@@ -164,6 +170,8 @@ int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 
 int sysmobts_par_set_int(enum sysmobts_par par, int val)
 {
+	eeprom_RfClockCal_t rf_clk;
+	eeprom_Error_t err;
 	struct sysmobts_eeprom *ee = get_eeprom(1);
 
 	if (!ee)
@@ -174,7 +182,13 @@ int sysmobts_par_set_int(enum sysmobts_par par, int val)
 
 	switch (par) {
 	case SYSMOBTS_PAR_CLK_FACTORY:
-		ee->clk_cal_fact = val;
+		err = eeprom_ReadRfClockCal(&rf_clk);
+		if (err != EEPROM_SUCCESS)
+			return -EIO;
+		rf_clk.iClkCor = val;
+		err = eeprom_WriteRfClockCal(&rf_clk);
+		if (err != EEPROM_SUCCESS)
+			return -EIO;
 		break;
 	case SYSMOBTS_PAR_TEMP_DIG_MAX:
 		ee->temp1_max = val;
