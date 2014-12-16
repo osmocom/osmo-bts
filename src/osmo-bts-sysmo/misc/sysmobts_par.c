@@ -99,6 +99,24 @@ static int set_eeprom(struct sysmobts_eeprom *ee)
 	return 0;
 }
 
+int sysmobts_par_is_int(enum sysmobts_par par)
+{
+	switch (par) {
+	case SYSMOBTS_PAR_CLK_FACTORY:
+	case SYSMOBTS_PAR_TEMP_DIG_MAX:
+	case SYSMOBTS_PAR_TEMP_RF_MAX:
+	case SYSMOBTS_PAR_SERNR:
+	case SYSMOBTS_PAR_HOURS:
+	case SYSMOBTS_PAR_BOOTS:
+	case SYSMOBTS_PAR_MODEL_NR:
+	case SYSMOBTS_PAR_MODEL_FLAGS:
+	case SYSMOBTS_PAR_TRX_NR:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 int sysmobts_par_get_int(enum sysmobts_par par, int *ret)
 {
 	struct sysmobts_eeprom *ee = get_eeprom(0);

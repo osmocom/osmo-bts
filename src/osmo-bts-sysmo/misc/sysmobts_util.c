@@ -43,9 +43,10 @@ static void print_help()
 	printf("sysmobts-util [-r | -w value] param_name\n");
 	printf("Possible param names:\n");
 
-	while (par->str != NULL) {
+	for (; par->str != NULL; par += 1) {
+		if (!sysmobts_par_is_int(par->value))
+			continue;
 		printf(" %s\n", par->str);
-		par += 1;
 	}
 }
 

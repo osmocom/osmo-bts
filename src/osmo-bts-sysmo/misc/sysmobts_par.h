@@ -27,4 +27,6 @@ int sysmobts_par_get_buf(enum sysmobts_par par, uint8_t *buf,
 int sysmobts_par_set_buf(enum sysmobts_par par, const uint8_t *buf,
 			 unsigned int size);
 
+int sysmobts_par_is_int(enum sysmobts_par par);
+
 #endif
