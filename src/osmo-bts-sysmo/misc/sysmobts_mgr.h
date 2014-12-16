@@ -19,6 +19,15 @@ enum {
 	TEMP_ACT_BTS_SRV_OFF	=	0x10,
 };
 
+/* actions only for normal state */
+enum {
+	TEMP_ACT_NORM_PW_CONTRL	=	0x1,
+	TEMP_ACT_NORM_MASTER_ON	=	0x2,
+	TEMP_ACT_NORM_SLAVE_ON	=	0x4,
+	TEMP_ACT_NORM_PA_ON	=	0x8,
+	TEMP_ACT_NORM_BTS_SRV_ON=	0x10,
+};
+
 enum sysmobts_temp_state {
 	STATE_NORMAL,		/* Everything is fine */
 	STATE_WARNING_HYST,	/* Go back to normal next? */
@@ -39,6 +48,7 @@ struct sysmobts_temp_limit {
 enum mgr_vty_node {
 	MGR_NODE = _LAST_OSMOVTY_NODE + 1,
 
+	ACT_NORM_NODE,
 	ACT_WARN_NODE,
 	ACT_CRIT_NODE,
 	LIMIT_RF_NODE,
@@ -57,6 +67,7 @@ struct sysmobts_mgr_instance {
 	struct sysmobts_temp_limit board_limit;
 	struct sysmobts_temp_limit pa_limit;
 
+	int action_norm;
 	int action_warn;
 	int action_crit;
 

@@ -77,6 +77,34 @@ static int next_state(enum sysmobts_temp_state current_state, int critical, int 
 	return next_state;
 }
 
+static void handle_normal_actions(int actions)
+{
+	/* switch off the PA */
+	if (actions & TEMP_ACT_NORM_PA_ON) {
+		if (!is_sbts2050()) {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"PA can only be switched-on on the master\n");
+		} else if (sbts2050_uc_set_pa_power(1) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch on the PA\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched on the PA as normal action.\n");
+		}
+	}
+
+	if (actions & TEMP_ACT_NORM_BTS_SRV_ON) {
+		LOGP(DTEMP, LOGL_NOTICE,
+			"Going to switch on the BTS service\n");
+		/*
+		 * TODO: use/create something like nspawn that serializes
+		 * and used SIGCHLD/waitpid to pick up the dead processes
+		 * without invoking shell.
+		 */
+		system("/bin/systemctl start sysmobts.service");
+	}
+}
+
 static void handle_actions(int actions)
 {
 	/* switch off the PA */
@@ -91,12 +119,6 @@ static void handle_actions(int actions)
 			LOGP(DTEMP, LOGL_NOTICE,
 				"Switched off the PA due temperature.\n");
 		}
-		/*
-		 * TODO: remember we switched off things so we could switch
-		 * it back on. But we would need to make sure that the BTS
-		 * will not transmit with full power at that time. This
-		 * requires the control protocol.
-		 */
 	}
 
 	if (actions & TEMP_ACT_BTS_SRV_OFF) {
@@ -112,14 +134,16 @@ static void handle_actions(int actions)
 }
 
 /**
- * Go back to normal! Undo everything we did in the other states. For
- * reducint the transmit power, the question is if we should slowly set
- * it back to normal, let the BTS slowly increase it.. or handle it here
- * as well?
+ * Go back to normal! Depending on the configuration execute the normal
+ * actions that could (start to) undo everything we did in the other
+ * states. What is still missing is the power increase/decrease depending
+ * on the state. E.g. starting from WARNING_HYST we might want to slowly
+ * ramp up the output power again.
  */
 static void execute_normal_act(struct sysmobts_mgr_instance *manager)
 {
 	LOGP(DTEMP, LOGL_NOTICE, "System is back to normal temperature.\n");
+	handle_normal_actions(manager->action_norm);
 }
 
 static void execute_warning_act(struct sysmobts_mgr_instance *manager)

@@ -54,6 +54,7 @@ static enum node_type go_to_parent(struct vty *vty)
 	case MGR_NODE:
 		vty->node = CONFIG_NODE;
 		break;
+	case ACT_NORM_NODE:
 	case ACT_WARN_NODE:
 	case ACT_CRIT_NODE:
 	case LIMIT_RF_NODE:
@@ -72,6 +73,7 @@ static int is_config_node(struct vty *vty, int node)
 {
 	switch (node) {
 	case MGR_NODE:
+	case ACT_NORM_NODE:
 	case ACT_WARN_NODE:
 	case ACT_CRIT_NODE:
 	case LIMIT_RF_NODE:
@@ -98,6 +100,12 @@ static struct vty_app_info vty_info = {
 static struct cmd_node mgr_node = {
 	MGR_NODE,
 	"%s(sysmobts-mgr)# ",
+	1,
+};
+
+static struct cmd_node act_norm_node = {
+	ACT_NORM_NODE,
+	"%s(action-normal)# ",
 	1,
 };
 
@@ -155,6 +163,15 @@ static void write_temp_limit(struct vty *vty, const char *name,
 		limit->thresh_crit, VTY_NEWLINE);
 }
 
+static void write_norm_action(struct vty *vty, const char *name, int actions)
+{
+	vty_out(vty, " %s%s", name, VTY_NEWLINE);
+	vty_out(vty, "  %spa-on%s",
+		(actions & TEMP_ACT_NORM_PA_ON) ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %sbts-service-on%s",
+		(actions & TEMP_ACT_NORM_BTS_SRV_ON) ? "" : "no ", VTY_NEWLINE);
+}
+
 static void write_action(struct vty *vty, const char *name, int actions)
 {
 	vty_out(vty, " %s%s", name, VTY_NEWLINE);
@@ -183,6 +200,7 @@ static int config_write_mgr(struct vty *vty)
 	write_temp_limit(vty, "limits board", &s_mgr->board_limit);
 	write_temp_limit(vty, "limits pa", &s_mgr->pa_limit);
 
+	write_norm_action(vty, "actions normal", s_mgr->action_norm);
 	write_action(vty, "actions warn", s_mgr->action_warn);
 	write_action(vty, "actions critical", s_mgr->action_crit);
 
@@ -237,9 +255,46 @@ DEFUN(cfg_action_##name, cfg_action_##name##_cmd,			\
 	vty->index = &s_mgr->variable;					\
 	return CMD_SUCCESS;						\
 }
+CFG_ACTION(normal, "Normal Actions\n", ACT_NORM_NODE, action_norm)
 CFG_ACTION(warn, "Warning Actions\n", ACT_WARN_NODE, action_warn)
 CFG_ACTION(critical, "Critical Actions\n", ACT_CRIT_NODE, action_crit)
 #undef CFG_ACTION
+
+DEFUN(cfg_action_pa_on, cfg_action_pa_on_cmd,
+	"pa-on",
+	"Switch the Power Amplifier on\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_NORM_PA_ON;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_pa_on, cfg_no_action_pa_on_cmd,
+	"no pa-on",
+	NO_STR "Switch the Power Amplifier on\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_NORM_PA_ON;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_action_bts_srv_on, cfg_action_bts_srv_on_cmd,
+	"bts-service-on",
+	"Start the systemd sysmobts.service\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_NORM_BTS_SRV_ON;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_bts_srv_on, cfg_no_action_bts_srv_on_cmd,
+	"no bts-service-on",
+	NO_STR "Start the systemd sysmobts.service\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_NORM_BTS_SRV_ON;
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_action_pa_off, cfg_action_pa_off_cmd,
 	"pa-off",
@@ -333,6 +388,14 @@ static void register_limit(int limit)
 	install_element(limit, &cfg_thresh_crit_cmd);
 }
 
+static void register_normal_action(int act)
+{
+	install_element(act, &cfg_action_pa_on_cmd);
+	install_element(act, &cfg_no_action_pa_on_cmd);
+	install_element(act, &cfg_action_bts_srv_on_cmd);
+	install_element(act, &cfg_no_action_bts_srv_on_cmd);
+}
+
 static void register_action(int act)
 {
 #if 0
@@ -381,6 +444,11 @@ int sysmobts_mgr_vty_init(void)
 	install_element(MGR_NODE, &cfg_limit_pa_cmd);
 	register_limit(LIMIT_PA_NODE);
 	vty_install_default(LIMIT_PA_NODE);
+
+	/* install the normal node */
+	install_node(&act_norm_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_action_normal_cmd);
+	register_normal_action(ACT_NORM_NODE);
 
 	/* install the warning and critical node */
 	install_node(&act_warn_node, config_write_dummy);
