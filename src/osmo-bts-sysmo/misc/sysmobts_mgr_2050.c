@@ -335,6 +335,20 @@ int sbts2050_uc_set_pa_power(int on_off)
 
 	return sbts2050_uc_set_power(status.master_enabled, status.slave_enabled, on_off);
 }
+
+int sbts2050_uc_set_slave_power(int on_off)
+{
+	struct sbts2050_power_status status;
+	if (sbts2050_uc_get_status(&status) != 0) {
+		LOGP(DTEMP, LOGL_ERROR, "Failed to read current power status.\n");
+		return -1;
+	}
+
+	return sbts2050_uc_set_power(
+			status.master_enabled,
+			on_off,
+			status.pa_enabled);
+}
 #else
 void sbts2050_uc_initialize(void)
 {
@@ -358,6 +372,12 @@ int sbts2050_uc_get_status(struct sbts2050_power_status *status)
 int sbts2050_uc_set_pa_power(int on_off)
 {
 	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without PA support.\n");
+	return -1;
+}
+
+int sbts2050_uc_set_slave_power(int on_off)
+{
+	LOGP(DTEMP, LOGL_ERROR, "sysmoBTS2050 compiled without UC support.\n");
 	return -1;
 }
 

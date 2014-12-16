@@ -93,6 +93,19 @@ static void handle_normal_actions(int actions)
 		}
 	}
 
+	if (actions & TEMP_ACT_NORM_SLAVE_ON) {
+		if (!is_sbts2050()) {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Slave on only possible on the sysmoBTS2050\n");
+		} else if (sbts2050_uc_set_slave_power(1) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch on the slave BTS\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched on the slave as normal action.\n");
+		}
+	}
+
 	if (actions & TEMP_ACT_NORM_BTS_SRV_ON) {
 		LOGP(DTEMP, LOGL_NOTICE,
 			"Going to switch on the BTS service\n");
@@ -118,6 +131,19 @@ static void handle_actions(int actions)
 		} else {
 			LOGP(DTEMP, LOGL_NOTICE,
 				"Switched off the PA due temperature.\n");
+		}
+	}
+
+	if (actions & TEMP_ACT_SLAVE_OFF) {
+		if (!is_sbts2050()) {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Slave off only possible on the sysmoBTS2050\n");
+		} else if (sbts2050_uc_set_slave_power(0) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch off the slave BTS\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched off the slave due temperature\n");
 		}
 	}
 

@@ -59,6 +59,7 @@ int sbts2050_uc_check_temp(int *temp_pa, int *temp_board);
 int sbts2050_uc_set_power(int pmaster, int pslave, int ppa);
 int sbts2050_uc_get_status(struct sbts2050_power_status *status);
 int sbts2050_uc_set_pa_power(int on_off);
+int sbts2050_uc_set_slave_power(int on_off);
 void sbts2050_uc_initialize();
 
 #endif

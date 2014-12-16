@@ -170,6 +170,8 @@ static void write_norm_action(struct vty *vty, const char *name, int actions)
 		(actions & TEMP_ACT_NORM_PA_ON) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %sbts-service-on%s",
 		(actions & TEMP_ACT_NORM_BTS_SRV_ON) ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %sslave-on%s",
+		(actions & TEMP_ACT_NORM_SLAVE_ON) ? "" : "no ", VTY_NEWLINE);
 }
 
 static void write_action(struct vty *vty, const char *name, int actions)
@@ -189,6 +191,8 @@ static void write_action(struct vty *vty, const char *name, int actions)
 		(actions & TEMP_ACT_PA_OFF) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %sbts-service-off%s",
 		(actions & TEMP_ACT_BTS_SRV_OFF) ? "" : "no ", VTY_NEWLINE);
+	vty_out(vty, "  %sslave-off%s",
+		(actions & TEMP_ACT_SLAVE_OFF) ? "" : "no ", VTY_NEWLINE);
 }
 
 static int config_write_mgr(struct vty *vty)
@@ -296,6 +300,24 @@ DEFUN(cfg_no_action_bts_srv_on, cfg_no_action_bts_srv_on_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_action_slave_on, cfg_action_slave_on_cmd,
+	"slave-on",
+	"Power-on secondary device on sysmoBTS2050\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_NORM_SLAVE_ON;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_slave_on, cfg_no_action_slave_on_cmd,
+	"no slave-on",
+	NO_STR "Power-on secondary device on sysmoBTS2050\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_NORM_SLAVE_ON;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_action_pa_off, cfg_action_pa_off_cmd,
 	"pa-off",
 	"Switch the Power Amplifier off\n")
@@ -329,6 +351,24 @@ DEFUN(cfg_no_action_bts_srv_off, cfg_no_action_bts_srv_off_cmd,
 {
 	int *action = vty->index;
 	*action &= ~TEMP_ACT_BTS_SRV_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_action_slave_off, cfg_action_slave_off_cmd,
+	"slave-off",
+	"Power-off secondary device on sysmoBTS2050\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_SLAVE_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_slave_off, cfg_no_action_slave_off_cmd,
+	"no slave-off",
+	NO_STR "Power-off secondary device on sysmoBTS2050\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_SLAVE_OFF;
 	return CMD_SUCCESS;
 }
 
@@ -394,6 +434,10 @@ static void register_normal_action(int act)
 	install_element(act, &cfg_no_action_pa_on_cmd);
 	install_element(act, &cfg_action_bts_srv_on_cmd);
 	install_element(act, &cfg_no_action_bts_srv_on_cmd);
+
+	/* these only work on the sysmobts 2050 */
+	install_element(act, &cfg_action_slave_on_cmd);
+	install_element(act, &cfg_no_action_slave_on_cmd);
 }
 
 static void register_action(int act)
@@ -401,17 +445,15 @@ static void register_action(int act)
 #if 0
 	install_element(act, &cfg_action_pwr_contrl_cmd);
 	install_element(act, &cfg_no_action_pwr_contrl_cmd);
-
-	/* these only work on the sysmobts 2050 */
-	install_element(act, &cfg_action_master_off_cmd);
-	install_element(act, &cfg_no_action_master_off_cmd);
-	install_element(act, &cfg_action_slave_off_cmd);
-	install_element(act, &cfg_no_action_slave_off_cmd);
 #endif
 	install_element(act, &cfg_action_pa_off_cmd);
 	install_element(act, &cfg_no_action_pa_off_cmd);
 	install_element(act, &cfg_action_bts_srv_off_cmd);
 	install_element(act, &cfg_no_action_bts_srv_off_cmd);
+
+	/* these only work on the sysmobts 2050 */
+	install_element(act, &cfg_action_slave_off_cmd);
+	install_element(act, &cfg_no_action_slave_off_cmd);
 }
 
 int sysmobts_mgr_vty_init(void)
