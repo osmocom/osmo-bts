@@ -836,7 +836,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	}
 
 	/* check for handover rach */
-	if (trx != bts->c0 && rach_ind->chan_nr != 0x88)
+	if (rach_ind->chan_nr != 0x88)
 		return l1sap_handover_rach(trx, l1sap, rach_ind);
 
 	/* check for packet access */
