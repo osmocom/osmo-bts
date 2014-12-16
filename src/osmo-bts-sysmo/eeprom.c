@@ -1388,7 +1388,7 @@ static int eeprom_write( int addr, int size, const char *pBuff )
         }
 	g_file = f;
     }
-    if (fseek( f, addr, SEEK_SET ) == 0)
+    if (fseek( f, addr, SEEK_SET ) != 0)
     {
         perror( "eeprom fseek" );
         n = -1;
