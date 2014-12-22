@@ -1,5 +1,5 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(OPENBSC_INCDIR)
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBOSMOCTRL_CFLAGS) $(LIBOSMOABIS_CFLAGS)
+AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBOSMOCTRL_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBGPS_CFLAGS)
 COMMON_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOCTRL_LIBS) -lortp
 
 EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
@@ -29,7 +29,7 @@ sysmobts_mgr_SOURCES = \
 		misc/sysmobts_mgr_temp.c \
 		misc/sysmobts_mgr_calib.c \
 		eeprom.c
-sysmobts_mgr_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS) $(top_builddir)/src/common/libbts.a
+sysmobts_mgr_LDADD = $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS) $(top_builddir)/src/common/libbts.a
 
 sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c eeprom.c
 sysmobts_util_LDADD = $(LIBOSMOCORE_LIBS)
