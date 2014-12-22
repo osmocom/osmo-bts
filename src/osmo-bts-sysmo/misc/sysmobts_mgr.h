@@ -4,7 +4,10 @@
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
 
+#include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
+
+#include <gps.h>
 
 #include <stdint.h>
 
@@ -88,6 +91,12 @@ struct sysmobts_mgr_instance {
 		int state;
 		struct osmo_timer_list timer;
 		uint32_t last_seqno;
+
+		/* gps structure to see if there is a fix */
+		int gps_open;
+		struct osmo_fd gpsfd;
+		struct gps_data_t gpsdata;
+		struct osmo_timer_list fix_timeout;
 	} calib;
 };
 

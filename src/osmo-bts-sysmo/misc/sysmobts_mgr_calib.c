@@ -36,14 +36,109 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipa.h>
 
+static void calib_state_reset(struct sysmobts_mgr_instance *mgr);
+static void request_clock_reset(struct sysmobts_mgr_instance *mgr);
 static void bts_updown_cb(struct ipa_client_conn *link, int up);
 
 enum calib_state {
 	CALIB_INITIAL,
+	CALIB_GPS_WAIT_FOR_FIX,
 	CALIB_CTR_RESET,
 	CALIB_CTR_WAIT,
 	CALIB_COR_SET,
 };
+
+static void mgr_gps_close(struct sysmobts_mgr_instance *mgr)
+{
+	if (!mgr->calib.gps_open)
+		return;
+
+	osmo_timer_del(&mgr->calib.fix_timeout);
+
+	osmo_fd_unregister(&mgr->calib.gpsfd);
+	gps_close(&mgr->calib.gpsdata);
+	memset(&mgr->calib.gpsdata, 0, sizeof(mgr->calib.gpsdata));
+	mgr->calib.gps_open = 0;
+}
+
+static void mgr_gps_checkfix(struct sysmobts_mgr_instance *mgr)
+{
+	struct gps_data_t *data = &mgr->calib.gpsdata;
+
+	/* No 2D fix yet */
+	if (data->fix.mode < MODE_2D) {
+		LOGP(DCALIB, LOGL_DEBUG, "Fix mode not enough: %d\n",
+			data->fix.mode);
+		return;
+	}
+
+	/* The trimble driver is broken...add some sanity checking */
+	if (data->satellites_used < 1) {
+		LOGP(DCALIB, LOGL_DEBUG, "Not enough satellites used: %d\n",
+			data->satellites_used);
+		return;
+	}
+
+	LOGP(DCALIB, LOGL_NOTICE, "Got a GPS fix continuing.\n");
+	osmo_timer_del(&mgr->calib.fix_timeout);
+	mgr_gps_close(mgr);
+	request_clock_reset(mgr);
+}
+
+static int mgr_gps_read(struct osmo_fd *fd, unsigned int what)
+{
+	int rc;
+	struct sysmobts_mgr_instance *mgr = fd->data;
+
+	rc = gps_read(&mgr->calib.gpsdata);
+	if (rc == -1) {
+		LOGP(DCALIB, LOGL_ERROR, "gpsd vanished during read.\n");
+		calib_state_reset(mgr);
+		return -1;
+	}
+
+	if (rc > 0)
+		mgr_gps_checkfix(mgr);
+	return 0;
+}
+
+static void mgr_gps_fix_timeout(void *_data)
+{
+	struct sysmobts_mgr_instance *mgr = _data;
+
+	LOGP(DCALIB, LOGL_ERROR, "Failed to acquire GPRS fix.\n");
+	calib_state_reset(mgr);
+}
+
+static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
+{
+	int rc;
+
+	rc = gps_open("localhost", DEFAULT_GPSD_PORT, &mgr->calib.gpsdata);
+	if (rc != 0) {
+		LOGP(DCALIB, LOGL_ERROR, "Failed to connect to GPS %d\n", rc);
+		calib_state_reset(mgr);
+		return;
+	}
+
+	mgr->calib.gps_open = 1;
+	gps_stream(&mgr->calib.gpsdata, WATCH_ENABLE, NULL);
+
+	mgr->calib.gpsfd.data = mgr;
+	mgr->calib.gpsfd.cb = mgr_gps_read;
+	mgr->calib.gpsfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	mgr->calib.gpsfd.fd = mgr->calib.gpsdata.gps_fd;
+	if (osmo_fd_register(&mgr->calib.gpsfd) < 0) {
+		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
+		calib_state_reset(mgr);
+	}
+
+	mgr->calib.state = CALIB_GPS_WAIT_FOR_FIX;
+	mgr->calib.fix_timeout.data = mgr;
+	mgr->calib.fix_timeout.cb = mgr_gps_fix_timeout;
+	osmo_timer_schedule(&mgr->calib.fix_timeout, 60, 0);
+	LOGP(DCALIB, LOGL_NOTICE, "Opened the GPSD connection waiting for fix\n");
+}
 
 static void send_ctrl_cmd(struct sysmobts_mgr_instance *mgr,
 			struct msgb *msg)
@@ -104,15 +199,22 @@ int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr)
 		return -2;
 	}
 
+	mgr_gps_open(mgr);
+	return 0;
+}
+
+static void request_clock_reset(struct sysmobts_mgr_instance *mgr)
+{
 	send_set_ctrl_cmd(mgr, "trx.0.clock-info", "1");
 	mgr->calib.state = CALIB_CTR_RESET;
-	return 0;
 }
 
 static void calib_state_reset(struct sysmobts_mgr_instance *mgr)
 {
 	mgr->calib.state = CALIB_INITIAL;
 	osmo_timer_del(&mgr->calib.timer);
+
+	mgr_gps_close(mgr);
 }
 
 static void calib_get_clock_err_cb(void *_data)
@@ -213,7 +315,7 @@ static void handle_ctrl_set_cor(
 
 	LOGP(DCALIB, LOGL_NOTICE,
 		"Calibration process completed\n");
-	mgr->calib.state = CALIB_INITIAL;
+	calib_state_reset(mgr);
 }
 
 static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
