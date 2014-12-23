@@ -84,6 +84,7 @@ struct sysmobts_mgr_instance {
 	enum sysmobts_temp_state state;
 
 	struct {
+		int initial_calib_started;
 		int is_up;
 		struct osmo_timer_list recon_timer;
 		struct ipa_client_conn *bts_conn;
