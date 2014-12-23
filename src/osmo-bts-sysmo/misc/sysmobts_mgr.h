@@ -98,6 +98,10 @@ struct sysmobts_mgr_instance {
 		struct osmo_fd gpsfd;
 		struct gps_data_t gpsdata;
 		struct osmo_timer_list fix_timeout;
+
+		/* Loop/Re-try control */
+		int calib_from_loop;
+		struct osmo_timer_list calib_timeout;
 	} calib;
 };
 

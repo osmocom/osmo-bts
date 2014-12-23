@@ -37,7 +37,8 @@
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipa.h>
 
-static void calib_state_reset(struct sysmobts_mgr_instance *mgr);
+static int calib_run(struct sysmobts_mgr_instance *mgr, int from_loop);
+static void calib_state_reset(struct sysmobts_mgr_instance *mgr, int reason);
 static void request_clock_reset(struct sysmobts_mgr_instance *mgr);
 static void bts_updown_cb(struct ipa_client_conn *link, int up);
 
@@ -48,6 +49,24 @@ enum calib_state {
 	CALIB_CTR_WAIT,
 	CALIB_COR_SET,
 };
+
+enum calib_result {
+	CALIB_FAIL_START,
+	CALIB_FAIL_GPS,
+	CALIB_FAIL_CTRL,
+	CALIB_SUCESS,
+};
+
+static void calib_loop_run(void *_data)
+{
+	int rc;
+	struct sysmobts_mgr_instance *mgr = _data;
+
+	LOGP(DCALIB, LOGL_NOTICE, "Going to calibrate the system.\n");
+	rc = calib_run(mgr, 1);
+	if (rc != 0)
+		calib_state_reset(mgr, CALIB_FAIL_START);
+}
 
 static void mgr_gps_close(struct sysmobts_mgr_instance *mgr)
 {
@@ -94,7 +113,7 @@ static int mgr_gps_read(struct osmo_fd *fd, unsigned int what)
 	rc = gps_read(&mgr->calib.gpsdata);
 	if (rc == -1) {
 		LOGP(DCALIB, LOGL_ERROR, "gpsd vanished during read.\n");
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_GPS);
 		return -1;
 	}
 
@@ -108,7 +127,7 @@ static void mgr_gps_fix_timeout(void *_data)
 	struct sysmobts_mgr_instance *mgr = _data;
 
 	LOGP(DCALIB, LOGL_ERROR, "Failed to acquire GPRS fix.\n");
-	calib_state_reset(mgr);
+	calib_state_reset(mgr, CALIB_FAIL_GPS);
 }
 
 static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
@@ -118,7 +137,7 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 	rc = gps_open("localhost", DEFAULT_GPSD_PORT, &mgr->calib.gpsdata);
 	if (rc != 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to connect to GPS %d\n", rc);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_GPS);
 		return;
 	}
 
@@ -131,7 +150,7 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 	mgr->calib.gpsfd.fd = mgr->calib.gpsdata.gps_fd;
 	if (osmo_fd_register(&mgr->calib.gpsfd) < 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_GPS);
 	}
 
 	mgr->calib.state = CALIB_GPS_WAIT_FOR_FIX;
@@ -188,7 +207,7 @@ static void send_get_ctrl_cmd(struct sysmobts_mgr_instance *mgr,
 	return send_ctrl_cmd(mgr, msg);
 }
 
-int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr)
+static int calib_run(struct sysmobts_mgr_instance *mgr, int from_loop)
 {
 	if (!mgr->calib.is_up) {
 		LOGP(DCALIB, LOGL_ERROR, "Control interface not connected.\n");
@@ -200,10 +219,17 @@ int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr)
 		return -2;
 	}
 
+	mgr->calib.calib_from_loop = from_loop;
+
 	/* From now on everything will be handled from the failure */
 	mgr->calib.initial_calib_started = 1;
 	mgr_gps_open(mgr);
 	return 0;
+}
+
+int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr)
+{
+	return calib_run(mgr, 0);
 }
 
 static void request_clock_reset(struct sysmobts_mgr_instance *mgr)
@@ -212,8 +238,22 @@ static void request_clock_reset(struct sysmobts_mgr_instance *mgr)
 	mgr->calib.state = CALIB_CTR_RESET;
 }
 
-static void calib_state_reset(struct sysmobts_mgr_instance *mgr)
+static void calib_state_reset(struct sysmobts_mgr_instance *mgr, int outcome)
 {
+	if (mgr->calib.calib_from_loop) {
+		/*
+		 * In case of success calibrate in two hours again
+		 * and in case of a failure in some minutes.
+		 */
+		int timeout = 2 * 60 * 60;
+		if (outcome != CALIB_SUCESS)
+			timeout = 5 * 60;
+
+		mgr->calib.calib_timeout.data = mgr;
+		mgr->calib.calib_timeout.cb = calib_loop_run;
+		osmo_timer_schedule(&mgr->calib.calib_timeout, timeout, 0);
+	}
+
 	mgr->calib.state = CALIB_INITIAL;
 	osmo_timer_del(&mgr->calib.timer);
 
@@ -234,14 +274,14 @@ static void handle_ctrl_reset_resp(
 	if (strcmp(cmd->variable, "trx.0.clock-info") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unexpected variable: %s\n", cmd->variable);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
 	if (strcmp(cmd->reply, "success") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unexpected reply: %s\n", cmd->variable);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
@@ -266,7 +306,7 @@ static void handle_ctrl_get_resp(
 	if (strcmp(cmd->variable, "trx.0.clock-info") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unexpected variable: %s\n", cmd->variable);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
@@ -278,7 +318,7 @@ static void handle_ctrl_get_resp(
 
 	if (!clk_cur || !clk_src || !cal_err || !cal_res || !cal_src) {
 		LOGP(DCALIB, LOGL_ERROR, "Parse error on clock-info reply\n");
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 
 	}
@@ -289,7 +329,7 @@ static void handle_ctrl_get_resp(
 
 	if (strcmp(cal_res, "0") == 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Invalid clock resolution. Giving up\n");
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
@@ -305,20 +345,20 @@ static void handle_ctrl_set_cor(
 	if (strcmp(cmd->variable, "trx.0.clock-correction") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unexpected variable: %s\n", cmd->variable);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
 	if (strcmp(cmd->reply, "success") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unexpected reply: %s\n", cmd->variable);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		return;
 	}
 
 	LOGP(DCALIB, LOGL_NOTICE,
 		"Calibration process completed\n");
-	calib_state_reset(mgr);
+	calib_state_reset(mgr, CALIB_SUCESS);
 }
 
 static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
@@ -339,7 +379,7 @@ static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
 			LOGP(DCALIB, LOGL_ERROR,
 				"Unhandled response in state: %d %s/%s\n",
 				mgr->calib.state, cmd->variable, cmd->reply);
-			calib_state_reset(mgr);
+			calib_state_reset(mgr, CALIB_FAIL_CTRL);
 			break;
 		};
 		break;
@@ -355,7 +395,7 @@ static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
 			LOGP(DCALIB, LOGL_ERROR,
 				"Unhandled response in state: %d %s/%s\n",
 				mgr->calib.state, cmd->variable, cmd->reply);
-			calib_state_reset(mgr);
+			calib_state_reset(mgr, CALIB_FAIL_CTRL);
 			break;
 		};
 		break;
@@ -366,7 +406,7 @@ static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
 		LOGP(DCALIB, LOGL_ERROR,
 			"Unhandled CTRL response: %d. Resetting state\n",
 			cmd->type);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 		break;
 	}
 
@@ -453,14 +493,13 @@ static void bts_updown_cb(struct ipa_client_conn *link, int up)
 	if (up) {
 		mgr->calib.is_up = 1;
 		mgr->calib.last_seqno = 0;
-		calib_state_reset(mgr);
 
 		if (!mgr->calib.initial_calib_started)
-			sysmobts_mgr_calib_run(mgr);
+			calib_run(mgr, 1);
 	} else {
 		mgr->calib.is_up = 0;
 		schedule_bts_connect(mgr);
-		calib_state_reset(mgr);
+		calib_state_reset(mgr, CALIB_FAIL_CTRL);
 	}
 }
 
