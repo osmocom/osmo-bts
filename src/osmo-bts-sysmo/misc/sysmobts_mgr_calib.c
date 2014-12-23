@@ -22,6 +22,7 @@
  */
 
 #include "misc/sysmobts_mgr.h"
+#include "misc/sysmobts_misc.h"
 #include "osmo-bts/msg_utils.h"
 
 #include <osmocom/core/logging.h>
@@ -199,6 +200,8 @@ int sysmobts_mgr_calib_run(struct sysmobts_mgr_instance *mgr)
 		return -2;
 	}
 
+	/* From now on everything will be handled from the failure */
+	mgr->calib.initial_calib_started = 1;
 	mgr_gps_open(mgr);
 	return 0;
 }
@@ -451,6 +454,9 @@ static void bts_updown_cb(struct ipa_client_conn *link, int up)
 		mgr->calib.is_up = 1;
 		mgr->calib.last_seqno = 0;
 		calib_state_reset(mgr);
+
+		if (!mgr->calib.initial_calib_started)
+			sysmobts_mgr_calib_run(mgr);
 	} else {
 		mgr->calib.is_up = 0;
 		schedule_bts_connect(mgr);
@@ -460,6 +466,12 @@ static void bts_updown_cb(struct ipa_client_conn *link, int up)
 
 int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr)
 {
+	if (!is_sbts2050_master()) {
+		LOGP(DCALIB, LOGL_NOTICE,
+			"Calib is only possible on the sysmoBTS2050 master\n");
+		return 0;
+	}
+
 	mgr->calib.bts_conn = ipa_client_conn_create(tall_mgr_ctx, NULL, 0,
 					"localhost", 4238,
 					bts_updown_cb, bts_read_cb,
