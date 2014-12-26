@@ -43,6 +43,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/vty.h>
 
+#include "misc/sysmobts_par.h"
 #include "femtobts.h"
 #include "l1_if.h"
 #include "utils.h"
@@ -81,6 +82,47 @@ DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	btsb->auto_band = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_unit_id, cfg_bts_unit_id_cmd,
+	"ipa unit-id eeprom",
+	"ip.access RSL commands\n"
+	"Set the Unit ID of this BTS\n"
+	"Use serial number as Unit ID\n")
+{
+	int serial_nr, rc;
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	rc = sysmobts_par_get_int(SYSMOBTS_PAR_SERNR, &serial_nr);
+	if (rc != 0) {
+		vty_out(vty, "Failed to read serial number%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (serial_nr < 0) {
+		vty_out(vty, "Serial number(%d) not valid%s",
+			serial_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	btsb->unitid_use_eeprom = 1;
+	bts->ip_access.bts_id = 0;
+	bts->ip_access.site_id = serial_nr;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_unit_id, cfg_bts_no_unit_id_cmd,
+	"no ipa unit-id eeprom",
+	NO_STR "ip.access RSL commands\n"
+	"Set the Unit ID of this BTS\n"
+	"Use serial number as Unit ID\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->unitid_use_eeprom = 0;
 	return CMD_SUCCESS;
 }
 
@@ -495,6 +537,8 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 	if (btsb->auto_band)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
+	if (btsb->unitid_use_eeprom)
+		vty_out(vty, " ipa unit-id eeprom%s", VTY_NEWLINE);
 }
 
 /* FIXME: move to libosmocore ? */
@@ -608,6 +652,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_unit_id_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_clkcal_cmd);
 	install_element(TRX_NODE, &cfg_trx_clkcal_eeprom_cmd);

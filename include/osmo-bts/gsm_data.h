@@ -84,6 +84,7 @@ struct gsm_bts_role_bts {
 
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
+	uint8_t unitid_use_eeprom;
 };
 
 enum lchan_ciph_state {
