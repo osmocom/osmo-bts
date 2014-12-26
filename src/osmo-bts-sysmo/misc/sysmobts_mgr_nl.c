@@ -80,8 +80,9 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 			uint8_t *data, size_t len)
 {
 	static int fetched_info = 0;
-	static char mac_str[20] = { };
+	static char mac_str[20] = {0, };
 	static char *model_name;
+	static char ser_str[20] = {0, };
 
 	struct sockaddr_in loc_addr;
 	int rc;
@@ -94,12 +95,17 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 
 	if (!fetched_info) {
 		uint8_t mac[6];
+		int serno;
 
 		/* fetch the MAC */
 		sysmobts_par_get_buf(SYSMOBTS_PAR_MAC, mac, sizeof(mac));
 		snprintf(mac_str, sizeof(mac_str), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5]);
+
+		/* fetch the serial number */
+		sysmobts_par_get_int(SYSMOBTS_PAR_SERNR, &serno);
+		snprintf(ser_str, sizeof(ser_str), "%d", serno);
 
 		/* fetch the model and trx number */
 		switch(sysmobts_bts_type()) {
@@ -138,6 +144,9 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 	/* append ip address */
 	inet_ntop(AF_INET, &loc_addr.sin_addr, loc_ip, sizeof(loc_ip));
 	quirk_l16tv_put(msg, strlen(loc_ip) + 1, IPAC_IDTAG_IPADDR, (uint8_t *) loc_ip);
+
+	/* append the serial number */
+	quirk_l16tv_put(msg, strlen(ser_str) + 1, IPAC_IDTAG_SERNR, (uint8_t *) ser_str);
 
 	/* abuse some flags */
 	quirk_l16tv_put(msg, strlen(model_name) + 1, IPAC_IDTAG_UNIT, (uint8_t *) model_name);
