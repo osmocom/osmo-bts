@@ -100,7 +100,10 @@ int construct_etws_prim_notif(struct bitvec *bv, uint8_t pni,
 	/* expand packed payload bits to unpacked bits and set them in
 	 * the bit vector */
 	osmo_pbit2ubit(payload_ubits, payload, num_payload_bits);
-	bitvec_set_bits(bv, (enum bit_value *) payload_ubits, num_payload_bits);
+	int i;
+	for (i = 0; i < num_payload_bits; ++i)
+		bitvec_set_bit(bv, payload_ubits[i]);
+//	bitvec_set_bits(bv, (enum bit_value *) payload_ubits, num_payload_bits);
 
 	return 0;
 }

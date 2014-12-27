@@ -46,6 +46,9 @@
 #define MAX_PAGING_BLOCKS_CCCH	9
 #define MAX_BS_PA_MFRMS		9
 
+static const uint8_t empty_id_lv[] = { 0x01, 0xF0 };
+
+
 enum paging_record_type {
 	PAGING_RECORD_PAGING,
 	PAGING_RECORD_IMM_ASS
@@ -263,8 +266,8 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 #define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
 
 static int current_segment[MAX_PAGING_BLOCKS_CCCH*MAX_BS_PA_MFRMS];
-uint8_t etws_segment_data[4][17];
-uint8_t etws_segment_len[4];
+uint8_t etws_segment_data[5][17];
+uint8_t etws_segment_len[5];
 uint8_t etws_nr_seg;
 uint8_t etws_data[60];
 size_t etws_len;
@@ -286,11 +289,13 @@ static int fill_paging_type_1(int group, uint8_t *out_buf, const uint8_t *identi
 	cur = lv_put(pt1->data, identity1_lv[0], identity1_lv+1);
 	if (identity2_lv)
 		cur = lv_put(cur, identity2_lv[0], identity2_lv+1);
-
-	if (etws_nr_seg > 0) {
+	else if (identity1_lv == empty_id_lv && etws_nr_seg > 0) {
 		int cur_segment = current_segment[group];
 		current_segment[group] += 1;
 		current_segment[group] %= etws_nr_seg;
+
+		LOGP(DPAG, LOGL_NOTICE, "paging group(%d) segment(%d)\n",
+			group, cur_segment);
 
 		/* move the pointer */
 		memcpy(cur, etws_segment_data[cur_segment], etws_segment_len[cur_segment]);
@@ -353,8 +358,6 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 
 	return cur - out_buf;
 }
-
-static const uint8_t empty_id_lv[] = { 0x01, 0xF0 };
 
 static struct paging_record *dequeue_pr(struct llist_head *group_q)
 {

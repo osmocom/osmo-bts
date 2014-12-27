@@ -615,20 +615,55 @@ DEFUN(bts_t_t_l_jitter_buf,
 	return CMD_SUCCESS;
 }
 
+extern int construct_p1_rest_octets(struct bitvec *bv, int etws_will_follow);
+extern int construct_etws_prim_notif(struct bitvec *bv, uint8_t pni,
+			      uint8_t seg_nr, uint8_t num_segs,
+			      const uint8_t *payload,
+			      uint8_t num_payload_bits);
+
 DEFUN(bts_etsw_idle, bts_etsw_idle_cmd,
 	"etsw-message MESSAGE",
 	"ETSW Message\nMessage in Hex\n")
 {
 	int rc;
+	int segment = 0, rest = 56;
 	
 	rc = osmo_hexparse(argv[0], etws_data, sizeof(etws_data));
+	if (rc != 56) {
+		vty_out(vty, "%%we expect 56 bytes of the data.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	vty_out(vty, "%% parsed: %s%s",
 		osmo_hexdump(etws_data, rc), VTY_NEWLINE);
 	etws_len = rc;
 
-	/* factor and segment.. */
 
+	for (segment = 0; segment < 5; ++segment) {
+		struct bitvec bv = { 0, };
+		bv.data_len = 14;
+		bv.data = &etws_segment_data[segment][0];
 
+		LOGP(DPAG, LOGL_NOTICE, "Goint to create segment(%d) offset %d len %d\n",
+			segment, segment * 12,
+			rest >= 12 ? 12 : rest);
+		construct_p1_rest_octets(&bv, 1);
+		printf("CUR BIT: %d %s\n", bv.cur_bit,
+			osmo_hexdump(&etws_data[segment * 12],
+					rest >= 12 ? 12 : rest));
+		construct_etws_prim_notif(&bv, 1, segment, 5,
+					&etws_data[segment * 12],
+					rest >= 12 ? 12 * 8 : rest * 8);
+		etws_segment_len[segment] = (bv.cur_bit + 7) / 8;
+		rest -= 12;
+
+		LOGP(DPAG, LOGL_NOTICE,
+			"Created segment(%d) with len %d %s\n",
+			segment, etws_segment_len[segment],
+			osmo_hexdump(etws_segment_data[segment], etws_segment_len[segment]));
+	}
+
+	etws_nr_seg = 5;
 	return CMD_SUCCESS;
 }
 
