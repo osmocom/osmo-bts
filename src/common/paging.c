@@ -262,7 +262,14 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 
 #define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
 
-static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
+static int current_segment[MAX_PAGING_BLOCKS_CCCH*MAX_BS_PA_MFRMS];
+uint8_t etws_segment_data[4][17];
+uint8_t etws_segment_len[4];
+uint8_t etws_nr_seg;
+uint8_t etws_data[60];
+size_t etws_len;
+
+static int fill_paging_type_1(int group, uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan1, const uint8_t *identity2_lv,
 				uint8_t chan2)
 {
@@ -280,6 +287,17 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 	if (identity2_lv)
 		cur = lv_put(cur, identity2_lv[0], identity2_lv+1);
 
+	if (etws_nr_seg > 0) {
+		int cur_segment = current_segment[group];
+		current_segment[group] += 1;
+		current_segment[group] %= etws_nr_seg;
+
+		/* move the pointer */
+		memcpy(cur, etws_segment_data[cur_segment], etws_segment_len[cur_segment]);
+		cur += etws_segment_len[cur_segment];
+	}
+
+	/* do we need to include it */
 	pt1->l2_plen = L2_PLEN(cur - out_buf);
 
 	return cur - out_buf;
@@ -400,7 +418,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 	/* There is nobody to be paged, send Type1 with two empty ID */
 	if (llist_empty(group_q)) {
 		//DEBUGP(DPAG, "Tx PAGING TYPE 1 (empty)\n");
-		len = fill_paging_type_1(out_buf, empty_id_lv, 0,
+		len = fill_paging_type_1(group, out_buf, empty_id_lv, 0,
 					 NULL, 0);
 		*is_empty = 1;
 	} else {
@@ -474,7 +492,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			}
 		} else if (num_pr == 1) {
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (1 xMSI,1 empty)\n");
-			len = fill_paging_type_1(out_buf,
+			len = fill_paging_type_1(group, out_buf,
 						 pr[0]->u.paging.identity_lv,
 						 pr[0]->u.paging.chan_needed,
 						 NULL, 0);
@@ -482,7 +500,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* 2 (any type) or
 			 * 3 or 4, of which only 2 will be sent */
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (2 xMSI)\n");
-			len = fill_paging_type_1(out_buf,
+			len = fill_paging_type_1(group, out_buf,
 						 pr[0]->u.paging.identity_lv,
 						 pr[0]->u.paging.chan_needed,
 						 pr[1]->u.paging.identity_lv,

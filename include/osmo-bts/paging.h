@@ -49,4 +49,10 @@ int paging_group_queue_empty(struct paging_state *ps, uint8_t group);
 int paging_queue_length(struct paging_state *ps);
 int paging_buffer_space(struct paging_state *ps);
 
+extern uint8_t etws_segment_data[4][17];
+extern uint8_t etws_segment_len[4];
+extern uint8_t etws_nr_seg;
+extern uint8_t etws_data[60];
+extern size_t etws_len;
+
 #endif

@@ -44,6 +44,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
+#include <osmo-bts/paging.h>
 
 
 enum node_type bts_vty_go_parent(struct vty *vty)
@@ -614,6 +615,24 @@ DEFUN(bts_t_t_l_jitter_buf,
 	return CMD_SUCCESS;
 }
 
+DEFUN(bts_etsw_idle, bts_etsw_idle_cmd,
+	"etsw-message MESSAGE",
+	"ETSW Message\nMessage in Hex\n")
+{
+	int rc;
+	
+	rc = osmo_hexparse(argv[0], etws_data, sizeof(etws_data));
+	vty_out(vty, "%% parsed: %s%s",
+		osmo_hexdump(etws_data, rc), VTY_NEWLINE);
+	etws_len = rc;
+
+	/* factor and segment.. */
+
+
+	return CMD_SUCCESS;
+}
+
+
 int bts_vty_init(const struct log_info *cat)
 {
 	install_element_ve(&show_bts_cmd);
@@ -646,6 +665,7 @@ int bts_vty_init(const struct log_info *cat)
 	install_element(TRX_NODE, &cfg_trx_pr_step_interval_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
+	install_element(ENABLE_NODE, &bts_etsw_idle_cmd);
 
 	return 0;
 }
