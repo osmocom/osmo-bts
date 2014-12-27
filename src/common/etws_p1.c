@@ -41,6 +41,8 @@ int construct_p1_rest_octets(struct bitvec *bv, int etws_will_follow)
 	bitvec_set_bit(bv, L);
 	/* no Priority 2 */
 	bitvec_set_bit(bv, L);
+	/* Group Call Information */
+	bitvec_set_bit(bv, L);
 	/* Packet Page Indication 1 */
 	bitvec_set_bit(bv, L);
 	/* Packet Page Indication 2 */
