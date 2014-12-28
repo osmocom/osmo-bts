@@ -587,6 +587,10 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
 		break;
+	case GsmL1_Sapi_Cbch:
+		/* get them from bts->si_buf[] */
+		bts_cbch_get(bts, msu_param->u8Buffer, &g_time);
+		break;
 	default:
 		memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
 		break;
