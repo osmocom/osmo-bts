@@ -63,9 +63,11 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE]		= GsmL1_LogChComb_0,
 	[GSM_PCHAN_CCCH]		= GsmL1_LogChComb_IV,
 	[GSM_PCHAN_CCCH_SDCCH4] 	= GsmL1_LogChComb_V,
+	[GSM_PCHAN_CCCH_SDCCH4_CBCH] 	= GsmL1_LogChComb_V,
 	[GSM_PCHAN_TCH_F]		= GsmL1_LogChComb_I,
 	[GSM_PCHAN_TCH_H]		= GsmL1_LogChComb_II,
 	[GSM_PCHAN_SDCCH8_SACCH8C]	= GsmL1_LogChComb_VII,
+	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH]	= GsmL1_LogChComb_VII,
 	[GSM_PCHAN_PDCH]		= GsmL1_LogChComb_XIII,
 	//[GSM_PCHAN_TCH_F_PDCH]		= FIXME,
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
@@ -207,9 +209,12 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 	/* ugly hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
 	    mo->obj_inst.ts_nr == 0) {
+		struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
 		DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
 		mo->bts->c0->ts[0].lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
 		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
+		if (cbch)
+			lchan_activate(cbch);
 	}
 
 	/* Send OPSTART ack */
@@ -430,11 +435,13 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 {
 	switch (lchan->ts->pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		if (lchan->type == GSM_LCHAN_CCCH)
 			return GsmL1_SubCh_NA;
 		/* fall-through */
 	case GSM_PCHAN_TCH_H:
 	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		return lchan->nr;
 	case GSM_PCHAN_NONE:
 	case GSM_PCHAN_CCCH:
@@ -487,6 +494,12 @@ static const struct sapi_dir sdcch_sapis[] = {
 	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_RxUplink },
 };
 
+static const struct sapi_dir cbch_sapis[] = {
+	{ GsmL1_Sapi_Cbch, 	GsmL1_Dir_TxDownlink },
+	/* Does the CBCH really have a SACCH in Downlink? */
+	{ GsmL1_Sapi_Sacch,	GsmL1_Dir_TxDownlink },
+};
+
 static const struct sapi_dir pdtch_sapis[] = {
 	{ GsmL1_Sapi_Pdtch,	GsmL1_Dir_TxDownlink },
 	{ GsmL1_Sapi_Pdtch,	GsmL1_Dir_RxUplink },
@@ -527,6 +540,10 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 	[GSM_LCHAN_PDTCH] = {
 		.sapis = pdtch_sapis,
 		.num_sapis = ARRAY_SIZE(pdtch_sapis),
+	},
+	[GSM_LCHAN_CBCH] = {
+		.sapis = cbch_sapis,
+		.num_sapis = ARRAY_SIZE(cbch_sapis),
 	},
 };
 

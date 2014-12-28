@@ -162,12 +162,14 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1c) == 0x04) {
 		lch_idx = cbits & 0x3;	/* SDCCH/4 */
-		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
+		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
+		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x18) == 0x08) {
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
-		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C)
+		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
+		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
 			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {

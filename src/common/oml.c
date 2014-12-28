@@ -601,10 +601,17 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 	unsigned int i;
 
 	switch (ts->pchan) {
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		/* fallthrough */
 	case GSM_PCHAN_CCCH_SDCCH4:
 		for (i = 0; i < 4; i++) {
 			lchan = &ts->lchan[i];
-			lchan->type = GSM_LCHAN_SDCCH;
+			if (ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH
+			    && i == 2) {
+				lchan->type = GSM_LCHAN_CBCH;
+			} else {
+				lchan->type = GSM_LCHAN_SDCCH;
+			}
 		}
 		/* fallthrough */
 	case GSM_PCHAN_CCCH:
@@ -621,10 +628,17 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 			lchan->type = GSM_LCHAN_TCH_H;
 		}
 		break;
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		/* fallthrough */
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 		for (i = 0; i < 8; i++) {
 			lchan = &ts->lchan[i];
-			lchan->type = GSM_LCHAN_SDCCH;
+			if (ts->pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH
+			    && i == 2) {
+				lchan->type = GSM_LCHAN_CBCH;
+			} else {
+				lchan->type = GSM_LCHAN_SDCCH;
+			}
 		}
 		break;
 	case GSM_PCHAN_PDCH:

@@ -70,8 +70,12 @@ char *bts_support_comb_name(uint8_t chan_comb)
 		return("BCCH");
 	if (chan_comb == NM_CHANC_BCCHComb)
 		return("BCCH+SDCCH/4");
+	if (chan_comb == NM_CHANC_BCCH_CBCH)
+		return("BCCH+CBCH+SDCCH/4");
 	if (chan_comb == NM_CHANC_SDCCH)
 		return("SDCCH/8");
+	if (chan_comb == NM_CHANC_SDCCH_CBCH)
+		return("SDCCH/8+CBCH");
 	if (chan_comb == NM_CHANC_TCHFull)
 		return("TCH/F");
 	if (chan_comb == NM_CHANC_TCHHalf)

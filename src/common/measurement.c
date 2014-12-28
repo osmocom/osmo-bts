@@ -70,11 +70,13 @@ static int is_meas_complete(enum gsm_phys_chan_config pchan, unsigned int ts,
 			rc = 1;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		fn_mod = fn % 102;
 		if (fn_mod == 11)
 			rc = 1;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		fn_mod = fn % 102;
 		if (fn_mod == 36)
 			rc = 1;
@@ -214,9 +216,11 @@ static const uint8_t subslots_per_pchan[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE] = 0,
 	[GSM_PCHAN_CCCH] = 0,
 	[GSM_PCHAN_CCCH_SDCCH4] = 4,
+	[GSM_PCHAN_CCCH_SDCCH4_CBCH] = 4,
 	[GSM_PCHAN_TCH_F] = 1,
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
+	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
 	/* FIXME: what about dynamic TCH_F_TCH_H ? */
 	[GSM_PCHAN_TCH_F_PDCH] = 1,
 };
