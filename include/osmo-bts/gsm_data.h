@@ -14,6 +14,7 @@
 #define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
 
 struct pcu_sock_state;
+struct smscb_msg;
 
 struct gsm_network {
 	struct llist_head bts_list;
@@ -85,6 +86,11 @@ struct gsm_bts_role_bts {
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
 	uint8_t unitid_use_eeprom;
+
+	struct {
+		struct llist_head queue;	/* list of struct smscb_msg */
+		struct smscb_msg *cur_msg;	/* current SMS-CB */
+	} smscb_state;
 };
 
 enum lchan_ciph_state {
