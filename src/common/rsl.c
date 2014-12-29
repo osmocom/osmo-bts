@@ -1,7 +1,7 @@
 /* GSM TS 08.58 RSL, BTS Side */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -46,6 +46,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/cbch.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -412,6 +413,26 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	pcu_tx_pag_req(identity_lv, chan_needed);
 
 	return 0;
+}
+
+/* 8.5.8 SMS BROADCAST COMMAND */
+static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct tlv_parsed tp;
+	struct rsl_ie_cb_cmd_type *cb_cmd_type;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (!TLVP_PRESENT(&tp, RSL_IE_CB_CMD_TYPE) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+
+	cb_cmd_type = (struct rsl_ie_cb_cmd_type *)
+					TLVP_VAL(&tp, RSL_IE_CB_CMD_TYPE);
+
+	return bts_process_smscb_cmd(trx->bts, *cb_cmd_type,
+				     TLVP_LEN(&tp, RSL_IE_SMSCB_MSG),
+				     TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
 }
 
 /* 8.6.2 SACCH FILLING */
@@ -1688,8 +1709,10 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	case RSL_MT_PAGING_CMD:
 		ret = rsl_rx_paging_cmd(trx, msg);
 		break;
-	case RSL_MT_SMS_BC_REQ:
 	case RSL_MT_SMS_BC_CMD:
+		ret = rsl_rx_sms_bcast_cmd(trx, msg);
+		break;
+	case RSL_MT_SMS_BC_REQ:
 	case RSL_MT_NOT_CMD:
 		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL cchan msg_type %s\n",
 			rsl_msg_name(cch->c.msg_type));

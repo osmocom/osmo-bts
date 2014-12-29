@@ -1,8 +1,195 @@
+/* Cell Broadcast routines */
+
+/* (C) 2014 by Harald Welte <laforge@gnumonks.org>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <errno.h>
+
+#include <osmocom/core/linuxlist.h>
 
 #include <osmo-bts/bts.h>
+#include <osmo-bts/cbch.h>
+#include <osmo-bts/logging.h>
 
+#define SMS_CB_MSG_LEN		88	/* TS 04.12 Section 3.1 */
+#define SMS_CB_BLOCK_LEN	22	/* TS 04.12 Section 3.1 */
+
+struct smscb_msg {
+	struct llist_head list;		/* list in smscb_state.queue */
+
+	uint8_t msg[SMS_CB_MSG_LEN];	/* message buffer */
+	uint8_t next_seg;		/* next segment number */
+	uint8_t num_segs;		/* total number of segments */
+};
+
+/* Figure 3/3GPP TS 04.12 */
+struct sms_cb_block_type {
+	uint8_t seq_nr:4,		/* 0=first, 1=2nd, ... f=null */
+		lb:1,			/* last block */
+		lpd:2,			/* always 01 */
+		spare:1;
+};
+
+/* get the next block of the current CB message */
+static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
+{
+	int to_copy;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct sms_cb_block_type *block_type = (struct sms_cb_block_type *) out++;
+	struct smscb_msg *msg = btsb->smscb_state.cur_msg;
+
+	/* LPD is always 01 */
+	block_type->lpd = 1;
+
+	if (!msg) {
+		/* No message: Send NULL mesage */
+		block_type->seq_nr = 0xf;
+		block_type->lb = 0;
+		/* padding */
+		memset(out, GSM_MACBLOCK_PADDING, SMS_CB_BLOCK_LEN);
+		return 0;
+	}
+
+	/* determine how much data to copy */
+	to_copy = SMS_CB_MSG_LEN - (msg->next_seg * SMS_CB_BLOCK_LEN);
+	if (to_copy > SMS_CB_BLOCK_LEN)
+		to_copy = SMS_CB_BLOCK_LEN;
+
+	/* copy data and increment index */
+	memcpy(out, &msg->msg[msg->next_seg * SMS_CB_BLOCK_LEN], to_copy);
+
+	/* set + increment sequence number */
+	block_type->seq_nr = msg->next_seg++;
+
+	/* determine if this is the last block */
+	if (block_type->seq_nr + 1 == msg->num_segs)
+		block_type->lb = 1;
+	else
+		block_type->lb = 0;
+
+	if (block_type->lb == 1) {
+		/* remove/release the message memory */
+		talloc_free(btsb->smscb_state.cur_msg);
+		btsb->smscb_state.cur_msg = NULL;
+	}
+
+	return block_type->lb;
+}
+
+static const uint8_t last_block_rsl2um[4] = {
+	[RSL_CB_CMD_LASTBLOCK_4]	= 4,
+	[RSL_CB_CMD_LASTBLOCK_1]	= 1,
+	[RSL_CB_CMD_LASTBLOCK_2]	= 2,
+	[RSL_CB_CMD_LASTBLOCK_3]	= 3,
+};
+
+
+/* incoming SMS broadcast command from RSL */
+int bts_process_smscb_cmd(struct gsm_bts *bts,
+			  struct rsl_ie_cb_cmd_type cmd_type,
+			  uint8_t msg_len, const uint8_t *msg)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct smscb_msg *scm;
+
+	if (msg_len > sizeof(scm->msg)) {
+		LOGP(DLSMS, LOGL_ERROR,
+		     "Cannot process SMSCB of %u bytes (max %lu)\n",
+		     msg_len, sizeof(scm->msg));
+		return -EINVAL;
+	}
+
+	scm = talloc_zero_size(bts, sizeof(*scm));
+
+	/* initialize entire message with default padding */
+	memset(scm->msg, GSM_MACBLOCK_PADDING, sizeof(scm->msg));
+	/* next segment is first segment */
+	scm->next_seg = 0;
+
+	switch (cmd_type.command) {
+	case RSL_CB_CMD_TYPE_NORMAL:
+	case RSL_CB_CMD_TYPE_SCHEDULE:
+	case RSL_CB_CMD_TYPE_NULL:
+		scm->num_segs = last_block_rsl2um[cmd_type.last_block&3];
+		memcpy(scm->msg, msg, msg_len);
+		/* def_bcast is ignored */
+		break;
+	case RSL_CB_CMD_TYPE_DEFAULT:
+		/* use def_bcast, ignore command  */
+		/* def_bcast == 0: normal mess */
+		break;
+	}
+
+	llist_add_tail(&scm->list, &btsb->smscb_state.queue);
+
+	return 0;
+}
+
+static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
+{
+	struct smscb_msg *msg;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	if (llist_empty(&btsb->smscb_state.queue))
+		return NULL;
+
+	msg = llist_entry(btsb->smscb_state.queue.next,
+			  struct smscb_msg, list);
+
+	llist_del(&msg->list);
+
+	return msg;
+}
+
+/* call-back from bts model specific code when it wants to obtain a CBCH
+ * block for a given gsm_time.  outbuf must have 23 bytes of space. */
 int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 {
-	/* FIXME: Actaully schedule + return CBCH messages */
-	return 0;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	uint32_t fn = gsm_gsmtime2fn(g_time);
+	/* According to 05.02 Section 6.5.4 */
+	uint32_t tb = (fn / 51) % 8;
+	int rc = 0;
+
+	/* The multiframes used for the basic cell broadcast channel
+	 * shall be those in * which TB = 0,1,2 and 3. The multiframes
+	 * used for the extended cell broadcast channel shall be those
+	 * in which TB = 4, 5, 6 and 7 */
+
+	/* The SMSCB header shall be sent in the multiframe in which TB
+	 * = 0 for the basic, and TB = 4 for the extended cell
+	 * broadcast channel. */
+
+	switch (tb) {
+	case 0:
+		/* select a new SMSCB message */
+		btsb->smscb_state.cur_msg = select_next_smscb(bts);
+		rc = get_smscb_block(bts, outbuf);
+		break;
+	case 1: case 2: case 3:
+		rc = get_smscb_block(bts, outbuf);
+		break;
+	case 4: case 5: case 6: case 7:
+		/* always send NULL frame in extended CBCH for now */
+		outbuf[0] = 0x2f;
+		memset(outbuf+1, GSM_MACBLOCK_PADDING, SMS_CB_BLOCK_LEN);
+		break;
+	}
+
+	return rc;
 }

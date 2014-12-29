@@ -1,6 +1,6 @@
 /* OsmoBTS VTY interface */
 
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -473,6 +473,17 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 		abis_nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
+static unsigned int llist_length(struct llist_head *list)
+{
+	unsigned int len = 0;
+	struct llist_head *pos;
+
+	llist_for_each(pos, list)
+		len++;
+
+	return len;
+}
+
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts->role;
@@ -503,6 +514,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		btsb->agch_queue_rejected_msgs, btsb->agch_queue_agch_msgs,
 		btsb->agch_queue_pch_msgs,
 		VTY_NEWLINE);
+	vty_out(vty, "  CBCH backlog queue length: %u%s",
+		llist_length(&btsb->smscb_state.queue), VTY_NEWLINE);
 #if 0
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),
