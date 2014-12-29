@@ -24,6 +24,7 @@
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/cbch.h>
+#include <osmo-bts/logging.h>
 
 #define SMS_CB_MSG_LEN		88	/* TS 04.12 Section 3.1 */
 #define SMS_CB_BLOCK_LEN	22	/* TS 04.12 Section 3.1 */
@@ -64,6 +65,8 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 		return 0;
 	}
 
+	DEBUGP(DLSMS, "Current SMS-CB %s: ",
+		osmo_hexdump_nospc(msg->msg, sizeof(msg->msg)));
 	/* determine how much data to copy */
 	to_copy = SMS_CB_MSG_LEN - (msg->next_seg * SMS_CB_BLOCK_LEN);
 	if (to_copy > SMS_CB_BLOCK_LEN)
@@ -74,6 +77,9 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 
 	/* set + increment sequence number */
 	block_type->seq_nr = msg->next_seg++;
+
+	DEBUGP(DLSMS, "sending block %u: %s\n",
+		block_type->seq_nr, osmo_hexdump_nospc(out, to_copy));
 
 	/* determine if this is the last block */
 	if (block_type->seq_nr + 1 == msg->num_segs)
@@ -134,6 +140,8 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 		break;
 	}
 
+	DEBUGP(DLSMS, "Enqueuing SMS-CB %s from RSL",
+		osmo_hexdump_nospc(scm->msg, sizeof(scm->msg)));
 	llist_add_tail(&scm->list, &btsb->smscb_state.queue);
 
 	return 0;
