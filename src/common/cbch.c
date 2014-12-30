@@ -35,20 +35,12 @@ struct smscb_msg {
 	uint8_t num_segs;		/* total number of segments */
 };
 
-/* Figure 3/3GPP TS 04.12 */
-struct sms_cb_block_type {
-	uint8_t seq_nr:4,		/* 0=first, 1=2nd, ... f=null */
-		lb:1,			/* last block */
-		lpd:2,			/* always 01 */
-		spare:1;
-};
-
 /* get the next block of the current CB message */
 static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 {
 	int to_copy;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct sms_cb_block_type *block_type = (struct sms_cb_block_type *) out++;
+	struct gsm412_block_type *block_type = (struct gsm412_block_type *) out++;
 	struct smscb_msg *msg = btsb->smscb_state.cur_msg;
 
 	/* LPD is always 01 */
