@@ -21,18 +21,16 @@
 #include <errno.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/protocol/gsm_04_12.h>
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/logging.h>
 
-#define SMS_CB_MSG_LEN		88	/* TS 04.12 Section 3.1 */
-#define SMS_CB_BLOCK_LEN	22	/* TS 04.12 Section 3.1 */
-
 struct smscb_msg {
 	struct llist_head list;		/* list in smscb_state.queue */
 
-	uint8_t msg[SMS_CB_MSG_LEN];	/* message buffer */
+	uint8_t msg[GSM412_MSG_LEN];	/* message buffer */
 	uint8_t next_seg;		/* next segment number */
 	uint8_t num_segs;		/* total number of segments */
 };
@@ -61,17 +59,17 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 		block_type->seq_nr = 0xf;
 		block_type->lb = 0;
 		/* padding */
-		memset(out, GSM_MACBLOCK_PADDING, SMS_CB_BLOCK_LEN);
+		memset(out, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
 		return 0;
 	}
 
 	/* determine how much data to copy */
-	to_copy = SMS_CB_MSG_LEN - (msg->next_seg * SMS_CB_BLOCK_LEN);
-	if (to_copy > SMS_CB_BLOCK_LEN)
-		to_copy = SMS_CB_BLOCK_LEN;
+	to_copy = GSM412_MSG_LEN - (msg->next_seg * GSM412_BLOCK_LEN);
+	if (to_copy > GSM412_BLOCK_LEN)
+		to_copy = GSM412_BLOCK_LEN;
 
 	/* copy data and increment index */
-	memcpy(out, &msg->msg[msg->next_seg * SMS_CB_BLOCK_LEN], to_copy);
+	memcpy(out, &msg->msg[msg->next_seg * GSM412_BLOCK_LEN], to_copy);
 
 	/* set + increment sequence number */
 	block_type->seq_nr = msg->next_seg++;
@@ -187,7 +185,7 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 	case 4: case 5: case 6: case 7:
 		/* always send NULL frame in extended CBCH for now */
 		outbuf[0] = 0x2f;
-		memset(outbuf+1, GSM_MACBLOCK_PADDING, SMS_CB_BLOCK_LEN);
+		memset(outbuf+1, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
 		break;
 	}
 
