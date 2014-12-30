@@ -48,7 +48,7 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 
 	if (!msg) {
 		/* No message: Send NULL mesage */
-		block_type->seq_nr = 0xf;
+		block_type->seq_nr = GSM412_SEQ_NULL_MSG;
 		block_type->lb = 0;
 		/* padding */
 		memset(out, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
