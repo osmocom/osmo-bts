@@ -35,25 +35,37 @@ struct smscb_msg {
 	uint8_t num_segs;		/* total number of segments */
 };
 
+static int get_smscb_null_block(uint8_t *out)
+{
+	struct gsm412_block_type *block_type = (struct gsm412_block_type *) out;
+
+	block_type->spare = 0;
+	block_type->lpd = 1;
+	block_type->seq_nr = GSM412_SEQ_NULL_MSG;
+	block_type->lb = 0;
+	memset(out+1, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
+
+	return 0;
+}
+
 /* get the next block of the current CB message */
 static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 {
 	int to_copy;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct gsm412_block_type *block_type = (struct gsm412_block_type *) out++;
+	struct gsm412_block_type *block_type;
 	struct smscb_msg *msg = btsb->smscb_state.cur_msg;
-
-	/* LPD is always 01 */
-	block_type->lpd = 1;
 
 	if (!msg) {
 		/* No message: Send NULL mesage */
-		block_type->seq_nr = GSM412_SEQ_NULL_MSG;
-		block_type->lb = 0;
-		/* padding */
-		memset(out, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
-		return 0;
+		return get_smscb_null_block(out);
 	}
+
+	block_type = (struct gsm412_block_type *) out++;
+
+	/* LPD is always 01 */
+	block_type->spare = 0;
+	block_type->lpd = 1;
 
 	/* determine how much data to copy */
 	to_copy = GSM412_MSG_LEN - (msg->next_seg * GSM412_BLOCK_LEN);
@@ -176,8 +188,7 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 		break;
 	case 4: case 5: case 6: case 7:
 		/* always send NULL frame in extended CBCH for now */
-		outbuf[0] = 0x2f;
-		memset(outbuf+1, GSM_MACBLOCK_PADDING, GSM412_BLOCK_LEN);
+		rc = get_smscb_null_block(outbuf);
 		break;
 	}
 
