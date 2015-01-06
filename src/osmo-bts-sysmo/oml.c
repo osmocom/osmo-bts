@@ -213,8 +213,10 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 		DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
 		mo->bts->c0->ts[0].lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
 		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
-		if (cbch)
+		if (cbch) {
+			cbch->rel_act_kind = LCHAN_REL_ACT_OML;
 			lchan_activate(cbch);
+		}
 	}
 
 	/* Send OPSTART ack */
