@@ -53,6 +53,19 @@ static void send_ctrl_cmd(struct sysmobts_mgr_instance *mgr,
 	ipa_client_conn_send(mgr->calib.bts_conn, msg);
 }
 
+static void send_set_ctrl_cmd_int(struct sysmobts_mgr_instance *mgr,
+				const char *key, const int val)
+{
+	struct msgb *msg;
+	int ret;
+
+	msg = msgb_alloc_headroom(1024, 128, "CTRL SET");
+	ret = snprintf((char *) msg->data, 4096, "SET %u %s %d",
+			mgr->calib.last_seqno++, key, val);
+	msg->l2h = msgb_put(msg, ret);
+	return send_ctrl_cmd(mgr, msg);
+}
+
 static void send_set_ctrl_cmd(struct sysmobts_mgr_instance *mgr,
 				const char *key, const char *val)
 {
@@ -143,6 +156,7 @@ static void handle_ctrl_get_resp(
 	char *cal_err;
 	char *cal_res;
 	char *cal_src;
+	int cal_err_int;
 
 	if (strcmp(cmd->variable, "trx.0.clock-info") != 0) {
 		LOGP(DCALIB, LOGL_ERROR,
@@ -163,9 +177,10 @@ static void handle_ctrl_get_resp(
 		return;
 
 	}
+	cal_err_int = atoi(cal_err);
 	LOGP(DCALIB, LOGL_NOTICE,
-		"Calibration CUR(%s) SRC(%s) ERR(%s) RES(%s) SRC(%s)\n",
-		clk_cur, clk_src, cal_err, cal_res, cal_src);
+		"Calibration CUR(%s) SRC(%s) ERR(%s/%d) RES(%s) SRC(%s)\n",
+		clk_cur, clk_src, cal_err, cal_err_int, cal_res, cal_src);
 
 	if (strcmp(cal_res, "0") == 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Invalid clock resolution. Giving up\n");
@@ -174,7 +189,7 @@ static void handle_ctrl_get_resp(
 	}
 
 	/* Now we can finally set the new value */
-	send_set_ctrl_cmd(mgr, "trx.0.clock-correction", cal_err);
+	send_set_ctrl_cmd_int(mgr, "trx.0.clock-correction", -cal_err_int);
 	mgr->calib.state = CALIB_COR_SET;
 }
 
