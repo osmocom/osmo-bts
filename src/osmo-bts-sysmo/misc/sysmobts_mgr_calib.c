@@ -1,7 +1,7 @@
 /* OCXO/TCXO calibration control for SysmoBTS management daemon */
 
 /*
- * (C) 2014 by Holger Hans Peter Freyther
+ * (C) 2014,2015 by Holger Hans Peter Freyther
  * (C) 2014 by Harald Welte for the IPA code from the oml router
  *
  * All Rights Reserved
@@ -157,7 +157,9 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 	mgr->calib.fix_timeout.data = mgr;
 	mgr->calib.fix_timeout.cb = mgr_gps_fix_timeout;
 	osmo_timer_schedule(&mgr->calib.fix_timeout, 60, 0);
-	LOGP(DCALIB, LOGL_NOTICE, "Opened the GPSD connection waiting for fix\n");
+	LOGP(DCALIB, LOGL_NOTICE,
+		"Opened the GPSD connection waiting for fix: %d\n",
+		mgr->calib.gpsfd.fd);
 }
 
 static void send_ctrl_cmd(struct sysmobts_mgr_instance *mgr,
@@ -264,6 +266,8 @@ static void calib_get_clock_err_cb(void *_data)
 {
 	struct sysmobts_mgr_instance *mgr = _data;
 
+	LOGP(DCALIB, LOGL_DEBUG,
+		"Requesting current clock-info.\n");
 	send_get_ctrl_cmd(mgr, "trx.0.clock-info");
 }
 
@@ -289,6 +293,8 @@ static void handle_ctrl_reset_resp(
 	mgr->calib.timer.cb = calib_get_clock_err_cb;
 	mgr->calib.timer.data = mgr;
 	osmo_timer_schedule(&mgr->calib.timer, 60, 0);
+	LOGP(DCALIB, LOGL_DEBUG,
+		"Reset the calibration counter. Waiting 60 seconds.\n");
 }
 
 static void handle_ctrl_get_resp(
@@ -334,6 +340,9 @@ static void handle_ctrl_get_resp(
 	}
 
 	/* Now we can finally set the new value */
+	LOGP(DCALIB, LOGL_NOTICE,
+		"Going to apply %d as new clock correction.\n",
+		-cal_err_int);
 	send_set_ctrl_cmd_int(mgr, "trx.0.clock-correction", -cal_err_int);
 	mgr->calib.state = CALIB_COR_SET;
 }
