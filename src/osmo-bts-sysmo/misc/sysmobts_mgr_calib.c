@@ -524,7 +524,7 @@ int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr)
 					"localhost", 4238,
 					bts_updown_cb, bts_read_cb,
 					NULL, mgr);
-	if (!mgr) {
+	if (!mgr->calib.bts_conn) {
 		LOGP(DCALIB, LOGL_ERROR,
 			"Failed to create IPA connection\n");
 		return -1;
