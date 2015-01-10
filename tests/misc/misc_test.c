@@ -78,7 +78,7 @@ static void test_msg_utils_ipa(void)
 	memcpy(msg->l1h, ipa_rsl_connect, sizeof(ipa_rsl_connect));
 	msg->l1h[2] = 0x23;
 	rc = msg_verify_ipa_structure(msg);
-	OSMO_ASSERT(rc == -1);
+	OSMO_ASSERT(rc == 0);
 	msgb_free(msg);
 }
 
