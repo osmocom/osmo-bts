@@ -1116,6 +1116,26 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	return rc;
 }
 
+/* 8.4.15 MS POWER CONTROL */
+static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
+{
+	struct gsm_lchan *lchan = msg->lchan;
+	struct tlv_parsed tp;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
+		uint8_t pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
+		lchan->ms_power_ctrl.fixed = 1;
+		lchan->ms_power_ctrl.current = pwr;
+
+		LOGP(DRSL, LOGL_NOTICE, "%s forcing power to %d\n",
+			gsm_lchan_name(lchan), lchan->ms_power_ctrl.current);
+		bts_model_adjst_ms_pwr(lchan);
+	}
+
+	return 0;
+}
+
 /* 8.4.20 SACCH INFO MODify */
 static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 {
@@ -1779,6 +1799,9 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		break;
 	case RSL_MT_MODE_MODIFY_REQ:
 		ret = rsl_rx_mode_modif(msg);
+		break;
+	case RSL_MT_MS_POWER_CONTROL:
+		ret = rsl_rx_ms_pwr_ctrl(msg);
 		break;
 	case RSL_MT_PHY_CONTEXT_REQ:
 	case RSL_MT_PREPROC_CONFIG:
