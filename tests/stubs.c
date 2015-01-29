@@ -51,3 +51,8 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 int bts_model_oml_estab(struct gsm_bts *bts)
 { return 0; }
+
+
+
+int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
+{ return 0; }
