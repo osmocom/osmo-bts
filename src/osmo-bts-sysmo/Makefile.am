@@ -4,9 +4,10 @@ COMMON_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOS
 
 EXTRA_DIST = misc/sysmobts_mgr.h misc/sysmobts_misc.h misc/sysmobts_par.h \
 	misc/sysmobts_eeprom.h misc/sysmobts_nl.h femtobts.h hw_misc.h \
-	l1_fwd.h l1_if.h l1_transp.h eeprom.h utils.h oml_router.h
+	l1_fwd.h l1_if.h l1_transp.h eeprom.h utils.h oml_router.h \
+	misc/sx150x.h misc/sob_bts_pa.h misc/i2c-dev.h
 
-bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr sysmobts-util
+bin_PROGRAMS = sysmobts sysmobts-remote l1fwd-proxy sysmobts-mgr sysmobts-util sob-bts-pa-ctrl
 
 COMMON_SOURCES = main.c femtobts.c l1_if.c oml.c sysmobts_vty.c tch.c hw_misc.c calib_file.c \
 		 eeprom.c calib_fixup.c utils.c misc/sysmobts_par.c oml_router.c sysmobts_ctrl.c
@@ -33,3 +34,5 @@ sysmobts_mgr_LDADD = $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIB
 
 sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c eeprom.c
 sysmobts_util_LDADD = $(LIBOSMOCORE_LIBS)
+
+sob_bts_pa_ctrl_SOURCES = misc/sx150x.c misc/sob_bts_pa.c misc/sob_bts_pa_ctrl.c
