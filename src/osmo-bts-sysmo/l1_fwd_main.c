@@ -77,7 +77,12 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 	struct l1fwd_hdl *l1fh = fl1h->priv;
 
 	/* Enqueue message to UDP socket */
-	return osmo_wqueue_enqueue(&l1fh->udp_wq[wq], msg);
+	if (osmo_wqueue_enqueue(&l1fh->udp_wq[wq], msg) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "Write queue %d full. dropping msg\n", wq);
+		msgb_free(msg);
+		return -EAGAIN;
+	}
+	return 0;
 }
 
 /* callback when there's a new SYS primitive coming in from the HW */
@@ -86,7 +91,12 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 	struct l1fwd_hdl *l1fh = fl1h->priv;
 
 	/* Enqueue message to UDP socket */
-	return osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_SYS_WRITE], msg);
+	if (osmo_wqueue_enqueue(&l1fh->udp_wq[MQ_SYS_WRITE], msg) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "MQ_SYS_WRITE ful. dropping msg\n");
+		msgb_free(msg);
+		return -EAGAIN;
+	}
+	return 0;
 }
 
 
@@ -121,9 +131,13 @@ static int udp_read_cb(struct osmo_fd *ofd)
 		ofd->priv_nr);
 
 	/* put the message into the right queue */
-	rc = osmo_wqueue_enqueue(&fl1h->write_q[ofd->priv_nr], msg);
-	
-	return rc;
+	if (osmo_wqueue_enqueue(&fl1h->write_q[ofd->priv_nr], msg) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "Write queue %d full. dropping msg\n",
+			ofd->priv_nr);
+		msgb_free(msg);
+		return -EAGAIN;
+	}
+	return 0;
 }
 
 /* callback when we can write to the UDP socket */

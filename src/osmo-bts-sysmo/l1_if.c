@@ -238,7 +238,12 @@ static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 	}
 
 	/* enqueue the message in the queue and add wsc to list */
-	osmo_wqueue_enqueue(wqueue, msg);
+	if (osmo_wqueue_enqueue(wqueue, msg) != 0) {
+		/* So we will get a timeout but the log message might help */
+		LOGP(DL1C, LOGL_ERROR, "Write queue for %s full. dropping msg.\n",
+			is_system_prim ? "system primitive" : "gsm");
+		msgb_free(msg);
+	}
 	llist_add(&wlc->list, &fl1h->wlc_list);
 
 	/* schedule a timer for timeout_secs seconds. If DSP fails to respond, we terminate */
@@ -603,7 +608,10 @@ tx:
 	tx_to_gsmtap(fl1, resp_msg);
 
 	/* transmit */
-	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg);
+	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		msgb_free(resp_msg);
+	}
 
 	return 0;
 
@@ -1421,7 +1429,12 @@ int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 	hdl->dsp_trace_f = flags;
 
 	/* There is no confirmation we could wait for */
-	return osmo_wqueue_enqueue(&hdl->write_q[MQ_SYS_WRITE], msg);
+	if (osmo_wqueue_enqueue(&hdl->write_q[MQ_SYS_WRITE], msg) != 0) {
+		LOGP(DL1C, LOGL_ERROR, "MQ_SYS_WRITE queue full. Dropping msg\n");
+		msgb_free(msg);
+		return -EAGAIN;
+	}
+	return 0;
 }
 
 /* send packet data request to L1 */
@@ -1459,7 +1472,10 @@ int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	tx_to_gsmtap(fl1h, msg);
 
 	/* transmit */
-	osmo_wqueue_enqueue(&fl1h->write_q[MQ_L1_WRITE], msg);
+	if (osmo_wqueue_enqueue(&fl1h->write_q[MQ_L1_WRITE], msg) != 0) {
+		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		msgb_free(msg);
+	}
 
 	return 0;
 }
