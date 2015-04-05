@@ -1,6 +1,7 @@
 /* Scheduler for OsmoBTS-TRX */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  *
  * All Rights Reserved
  *
@@ -563,8 +564,7 @@ found_msg:
 }
 
 static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float toa,
-	float ber, float rssi)
+	enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
@@ -588,12 +588,6 @@ static int compose_ph_data_ind(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* forward primitive */
 	l1sap_up(l1h->trx, l1sap);
-
-	/* process measurement */
-	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
-		l1if_process_meas_res(l1h->trx, chan_nr,
-			(l1h->trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)].rqd_ta + toa) * 4,
-			ber, rssi);
 
 	return 0;
 }
@@ -668,9 +662,16 @@ got_msg:
 	/* handle loss detection of sacch */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
-		if (++(l1h->chan_states[tn][chan].lost) > 1)
-			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0, 0, 0,
-				-110);
+		if (++(l1h->chan_states[tn][chan].lost) > 1) {
+			/* TODO: Should we pass old TOA here? Otherwise we risk
+			 * unnecessary decreasing TA */
+
+			/* Send uplnk measurement information to L2 */
+			l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+				456, 456, -110, 0);
+
+			compose_ph_data_ind(l1h, tn, 0, chan, NULL, 0, -110);
+		}
 	}
 
 	/* alloc burst memory, if not already */
@@ -1225,6 +1226,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	float *toa_sum = &chan_state->toa_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[23], l2_len;
+	int n_errors, n_bits_total;
 	int rc;
 
 	/* handle rach, if handover rach detection is turned on */
@@ -1290,7 +1292,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	*mask = 0x0;
 
 	/* decode */
-	rc = xcch_decode(l2, *bursts_p);
+	rc = xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad data frame at fn=%u "
 			"(%u/%u) for %s\n", *first_fn,
@@ -1300,8 +1302,11 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	} else
 		l2_len = 23;
 
-	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len,
-		*toa_sum / *toa_num, 0, *rssi_sum / *rssi_num);
+	/* Send uplnk measurement information to L2 */
+	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
+
+	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len, *rssi_sum / *rssi_num);
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1316,6 +1321,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	float *toa_sum = &chan_state->toa_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[54+1];
+	int n_errors, n_bits_total;
 	int rc;
 
 	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n", 
@@ -1364,7 +1370,12 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	*mask = 0x0;
 
 	/* decode */
-	rc = pdtch_decode(l2 + 1, *bursts_p, NULL);
+	rc = pdtch_decode(l2 + 1, *bursts_p, NULL, &n_errors, &n_bits_total);
+
+	/* Send uplnk measurement information to L2 */
+	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
+
 	if (rc <= 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block ending at "
 			"fn=%u (%u/%u) for %s\n", fn, fn % l1h->mf_period[tn],
@@ -1375,7 +1386,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	l2[0] = 7; /* valid frame */
 
 	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
-		l2, rc + 1, *toa_sum / *toa_num, 0, *rssi_sum / *rssi_num);
+		l2, rc + 1, *rssi_sum / *rssi_num);
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -1389,7 +1400,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
-	float ber;
+	int n_errors, n_bits_total;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1437,10 +1448,10 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
 								: tch_mode) {
 	case GSM48_CMODE_SPEECH_V1: /* FR */
-		rc = tch_fr_decode(tch_data, *bursts_p, 1, 0);
+		rc = tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
-		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1);
+		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 defines that CMI is included in frame,
@@ -1450,11 +1461,11 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		rc = tch_afs_decode(tch_data + 2, *bursts_p,
 			(((fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
-			&chan_state->ul_cmr, &ber);
+			&chan_state->ul_cmr, &n_errors, &n_bits_total);
 		if (rc)
 			trx_loop_amr_input(l1h,
 				trx_chan_desc[chan].chan_nr | tn, chan_state,
-				ber);
+				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
 		if (rc != 23 && rc >= 4) {
@@ -1469,6 +1480,12 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		return -EINVAL;
 	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
+
+	/* Send uplnk measurement information to L2 */
+	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
+		n_errors, n_bits_total, rssi, toa);
+
+	/* Check if the frame is bad */
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
 			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
@@ -1484,7 +1501,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == 23) {
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data + amr, 23, 0, 0, 0);
+			tch_data + amr, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1533,7 +1550,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
-	float ber;
+	int n_errors, n_bits_total;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1594,7 +1611,8 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		 * Even FN ending at: 10,11,19,20,2,3
 		 */
 		rc = tch_hr_decode(tch_data, *bursts_p,
-			(((fn + 26 - 10) % 26) >> 2) & 1);
+			(((fn + 26 - 10) % 26) >> 2) & 1,
+			&n_errors, &n_bits_total);
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 or 1,9,18 defines that CMI is included
@@ -1605,11 +1623,11 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			(((fn + 26 - 10) % 26) >> 2) & 1,
 			(((fn + 26 - 10) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
-			&chan_state->ul_cmr, &ber);
+			&chan_state->ul_cmr, &n_errors, &n_bits_total);
 		if (rc)
 			trx_loop_amr_input(l1h,
 				trx_chan_desc[chan].chan_nr | tn, chan_state,
-				ber);
+				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
 		if (rc != 23 && rc >= 4) {
@@ -1625,6 +1643,12 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 	memcpy(*bursts_p, *bursts_p + 232, 232);
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+
+	/* Send uplnk measurement information to L2 */
+	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
+		n_errors, n_bits_total, rssi, toa);
+
+	/* Check if the frame is bad */
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
 			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
@@ -1642,7 +1666,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
 			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
-			tch_data + amr, 23, 0, 0, 0); 
+			tch_data + amr, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */

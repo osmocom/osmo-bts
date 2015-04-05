@@ -1,9 +1,29 @@
+/* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 
+#include <osmocom/core/utils.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/core/conv.h>
 #include <osmocom/core/crcgen.h>
@@ -16,12 +36,37 @@
 #include "gsm0503_tables.h"
 #include "gsm0503_coding.h"
 
-static int _xcch_decode_cB(uint8_t *l2_data, sbit_t *cB)
+int osmo_conv_decode_ber(const struct osmo_conv_code *code,
+	const sbit_t *input, ubit_t *output,
+	int *n_errors, int *n_bits_total)
+{
+	int res, i;
+	ubit_t recoded[1024]; /* TODO: We can do smaller, I guess */
+
+	res = osmo_conv_decode(code, input, output);
+
+	*n_bits_total = osmo_conv_encode(code, output, recoded);
+	OSMO_ASSERT(sizeof(recoded)/sizeof(recoded[0]) >= *n_bits_total);
+
+	/* Count bit errors */
+	*n_errors = 0;
+	for (i=0; i< *n_bits_total; i++) {
+		if (! ((recoded[i] && input[i]<0) ||
+		       (!recoded[i] && input[i]>0)) )
+			*n_errors += 1;
+	}
+
+	return res;
+}
+
+
+static int _xcch_decode_cB(uint8_t *l2_data, sbit_t *cB,
+	int *n_errors, int *n_bits_total)
 {
 	ubit_t conv[224];
 	int rv;
 
-	osmo_conv_decode(&gsm0503_conv_xcch, cB, conv);
+	osmo_conv_decode_ber(&gsm0503_conv_xcch, cB, conv, n_errors, n_bits_total);
 
 	rv = osmo_crc64gen_check_bits(&gsm0503_fire_crc40, conv, 184, conv+184);
 	if (rv)
@@ -50,7 +95,8 @@ static int _xcch_encode_cB(ubit_t *cB, uint8_t *l2_data)
  * GSM xCCH block transcoding
  */
 
-int xcch_decode(uint8_t *l2_data, sbit_t *bursts)
+int xcch_decode(uint8_t *l2_data, sbit_t *bursts,
+	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[456], cB[456];
 	int i;
@@ -61,7 +107,7 @@ int xcch_decode(uint8_t *l2_data, sbit_t *bursts)
 
 	gsm0503_xcch_deinterleave(cB, iB);
 
-	return _xcch_decode_cB(l2_data, cB);
+	return _xcch_decode_cB(l2_data, cB, n_errors, n_bits_total);
 }
 
 int xcch_encode(ubit_t *bursts, uint8_t *l2_data)
@@ -85,7 +131,8 @@ int xcch_encode(ubit_t *bursts, uint8_t *l2_data)
  * GSM PDTCH block transcoding
  */
 
-int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p)
+int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p,
+	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[456], cB[676], hl_hn[8];
 	ubit_t conv[456];
@@ -109,7 +156,7 @@ int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p)
 
 	switch (cs) {
 	case 1:
-		osmo_conv_decode(&gsm0503_conv_xcch, cB, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_xcch, cB, conv, n_errors, n_bits_total);
 
 		rv = osmo_crc64gen_check_bits(&gsm0503_fire_crc40, conv, 184,
 			conv+184);
@@ -126,7 +173,7 @@ int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p)
 			else
 				cB[i] = 0;
 
-		osmo_conv_decode(&gsm0503_conv_cs2, cB, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_cs2, cB, conv, n_errors, n_bits_total);
 
 		for (i=0; i<8; i++) {
 			for (j=0, k=0; j<6; j++)
@@ -159,7 +206,7 @@ int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p)
 			else
 				cB[i] = 0;
 
-		osmo_conv_decode(&gsm0503_conv_cs3, cB, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_cs3, cB, conv, n_errors, n_bits_total);
 
 		for (i=0; i<8; i++) {
 			for (j=0, k=0; j<6; j++)
@@ -207,12 +254,22 @@ int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p)
 
 		rv = osmo_crc16gen_check_bits(&gsm0503_cs234_crc16, conv+9, 431,
 			conv+9+431);
-		if (rv)
+		if (rv) {
+			*n_bits_total = 456-12;
+			*n_errors = *n_bits_total;
 			return -1;
+		}
+
+		*n_bits_total = 456-12;
+		*n_errors = 0;
 
 		osmo_ubit2pbit_ext(l2_data, 0, conv, 9, 431, 1);
 
 		return 54;
+	default:
+		*n_bits_total = 0;
+		*n_errors = 0;
+		break;
 	}
 
 	return -1;
@@ -608,7 +665,8 @@ static void tch_amr_unmerge(ubit_t *d, ubit_t *p, ubit_t *u, int len, int prot)
 	memcpy(d+prot, u+prot+6, len-prot);
 }
 
-int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr)
+int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
+	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
 	ubit_t conv[185], s[244], w[260], b[65], d[260], p[8];
@@ -623,14 +681,14 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr)
 	gsm0503_tch_fr_deinterleave(cB, iB);
 
 	if (steal > 0) {
-		rv = _xcch_decode_cB(tch_data, cB);
+		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
 		if (rv)
 			return -1;
 
 		return 23;
 	}
 
-	osmo_conv_decode(&gsm0503_conv_tch_fr, cB, conv);
+	osmo_conv_decode_ber(&gsm0503_conv_tch_fr, cB, conv, n_errors, n_bits_total);
 
 	tch_fr_unreorder(d, p, conv);
 
@@ -723,7 +781,8 @@ coding_efr_fr:
 	return 0;
 }
 
-int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd)
+int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
+	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
 	ubit_t conv[98], b[112], d[112], p[3];
@@ -752,7 +811,7 @@ int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd)
 
 		gsm0503_tch_fr_deinterleave(cB, iB);
 
-		rv = _xcch_decode_cB(tch_data, cB);
+		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
 		if (rv)
 			return -1;
 
@@ -765,7 +824,7 @@ int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd)
 
 	gsm0503_tch_hr_deinterleave(cB, iB);
 
-	osmo_conv_decode(&gsm0503_conv_tch_hr, cB, conv);
+	osmo_conv_decode_ber(&gsm0503_conv_tch_hr, cB, conv, n_errors, n_bits_total);
 
 	tch_hr_unreorder(d, p, conv);
 
@@ -834,29 +893,14 @@ int tch_hr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
 	return 0;
 }
 
-static float amr_calc_ber(sbit_t *orig, ubit_t *test, int len)
-{
-	int i, err = 0;
-
-	/* count number of wrong bits (sbits with 0-value are omitted) */
-	for (i=0; i<len; i++) {
-		if ((*orig) > 0 && (*test))
-			err++;
-		else if ((*orig) < 0 && !(*test))
-			err++;
-		orig++;
-		test++;
-	}
-
-	return (float)err / (float)len;
-}
-
 int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
-	uint8_t *codec, int codecs, uint8_t *ft, uint8_t *cmr, float *ber)
+	uint8_t *codec, int codecs, uint8_t *ft, uint8_t *cmr,
+	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
 	ubit_t test[456], d[244], p[6], conv[250];
 	int i, j, k, best = 0, rv, len, steal = 0, id = 0;
+	*n_errors = 0; *n_bits_total = 0;
 
 	for (i=0; i<8; i++) {
 		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], &h,
@@ -867,7 +911,7 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 	gsm0503_tch_fr_deinterleave(cB, iB);
 
 	if (steal > 0) {
-		rv = _xcch_decode_cB(tch_data, cB);
+		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
 		if (rv)
 			return -1;
 
@@ -892,7 +936,7 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 	switch ((codec_mode_req) ? codec[*ft] : codec[id]) {
 	case 7: /* TCH/AFS12.2 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_12_2, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_12_2, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 244, 81);
 
@@ -904,15 +948,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 31;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_12_2, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 6: /* TCH/AFS10.2 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_10_2, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_10_2, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 204, 65);
 
@@ -924,15 +962,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 26;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_10_2, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 5: /* TCH/AFS7.95 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_7_95, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_7_95, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 159, 75);
 
@@ -944,15 +976,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 20;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_7_95, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 4: /* TCH/AFS7.4 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_7_4, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_7_4, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 148, 61);
 
@@ -964,15 +990,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 19;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_7_4, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 3: /* TCH/AFS6.7 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_6_7, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_6_7, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 134, 55);
 
@@ -984,15 +1004,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 17;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_6_7, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 2: /* TCH/AFS5.9 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_5_9, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_5_9, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 118, 55);
 
@@ -1004,15 +1018,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 15;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_5_9, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 1: /* TCH/AFS5.15 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_5_15, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_5_15, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 103, 49);
 
@@ -1024,15 +1032,9 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 13;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_5_15, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	case 0: /* TCH/AFS4.75 */
-		osmo_conv_decode(&gsm0503_conv_tch_afs_4_75, cB+8, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_afs_4_75, cB+8, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 95, 39);
 
@@ -1044,16 +1046,11 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		len = 12;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_afs_4_75, conv,
-				test+8);
-			*ber = amr_calc_ber(cB+8, test+8, 448);
-		}
-
 		break;
 	default:
 		fprintf(stderr, "FIXME: FT %d not supported!\n", *ft);
-
+		*n_bits_total = 448;
+		*n_errors = *n_bits_total;
 		return -1;
 	}
 
@@ -1229,7 +1226,7 @@ facch:
 
 int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 	int codec_mode_req, uint8_t *codec, int codecs, uint8_t *ft,
-	uint8_t *cmr, float *ber)
+	uint8_t *cmr, int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
 	ubit_t test[456], d[244], p[6], conv[135];
@@ -1258,7 +1255,7 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		gsm0503_tch_fr_deinterleave(cB, iB);
 
-		rv = _xcch_decode_cB(tch_data, cB);
+		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
 		if (rv)
 			return -1;
 
@@ -1289,7 +1286,7 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 	switch ((codec_mode_req) ? codec[*ft] : codec[id]) {
 	case 5: /* TCH/AHS7.95 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_7_95, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_7_95, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 123, 67);
 
@@ -1304,15 +1301,9 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 20;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_7_95, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 188);
-		}
-
 		break;
 	case 4: /* TCH/AHS7.4 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_7_4, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_7_4, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 120, 61);
 
@@ -1327,15 +1318,9 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 19;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_7_4, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 196);
-		}
-
 		break;
 	case 3: /* TCH/AHS6.7 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_6_7, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_6_7, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 110, 55);
 
@@ -1350,15 +1335,9 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 17;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_6_7, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 200);
-		}
-
 		break;
 	case 2: /* TCH/AHS5.9 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_5_9, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_5_9, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 102, 55);
 
@@ -1373,15 +1352,9 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 15;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_5_9, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 208);
-		}
-
 		break;
 	case 1: /* TCH/AHS5.15 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_5_15, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_5_15, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 91, 49);
 
@@ -1396,15 +1369,9 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 13;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_5_15, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 212);
-		}
-
 		break;
 	case 0: /* TCH/AHS4.75 */
-		osmo_conv_decode(&gsm0503_conv_tch_ahs_4_75, cB+4, conv);
+		osmo_conv_decode_ber(&gsm0503_conv_tch_ahs_4_75, cB+4, conv, n_errors, n_bits_total);
 
 		tch_amr_unmerge(d, p, conv, 83, 39);
 
@@ -1419,16 +1386,11 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		len = 12;
 
-		if (ber) {
-			osmo_conv_encode(&gsm0503_conv_tch_ahs_4_75, conv,
-				test+4);
-			*ber = amr_calc_ber(cB+4, test+4, 212);
-		}
-
 		break;
 	default:
 		fprintf(stderr, "FIXME: FT %d not supported!\n", *ft);
-
+		*n_bits_total = 159;
+		*n_errors = *n_bits_total;
 		return -1;
 	}
 

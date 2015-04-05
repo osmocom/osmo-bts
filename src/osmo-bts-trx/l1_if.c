@@ -2,6 +2,7 @@
  * layer 1 primitive handling and interface
  *
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
+ * Copyright (C) 2015  Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  *
  * All Rights Reserved
  *
@@ -457,19 +458,33 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 	return l1sap_up(bts->c0, &l1sap);
 }
 
-int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr, float qta,
+
+void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, float ta,
 	float ber, float rssi)
 {
-	struct osmo_phsap_prim l1sap;
-
-	memset(&l1sap, 0, sizeof(l1sap));
-	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+	memset(l1sap, 0, sizeof(*l1sap));
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_MPH_INFO,
 		PRIM_OP_INDICATION, NULL);
-	l1sap.u.info.type = PRIM_INFO_MEAS;
-	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap.u.info.u.meas_ind.ta_offs_qbits = qta;
-	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (ber * 100);
-	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
+	l1sap->u.info.type = PRIM_INFO_MEAS;
+	l1sap->u.info.u.meas_ind.chan_nr = chan_nr;
+	l1sap->u.info.u.meas_ind.ta_offs_qbits = (int16_t)(ta*4);
+	l1sap->u.info.u.meas_ind.ber10k = (unsigned int) (ber * 10000);
+	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
+}
+
+int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
+	int n_errors, int n_bits_total, float rssi, float toa)
+{
+	struct gsm_lchan *lchan = &trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)];
+	struct osmo_phsap_prim l1sap;
+	float ber = (float)n_errors / (float)n_bits_total;
+
+	LOGP(DMEAS, LOGL_DEBUG, "RX L1 frame %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
+		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
+		gsm_lchan_name(lchan), fn, chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info[1], lchan->rqd_ta, toa);
+
+	l1if_fill_meas_res(&l1sap, chan_nr, lchan->rqd_ta + toa, ber, rssi);
 
 	return l1sap_up(trx, &l1sap);
 }
