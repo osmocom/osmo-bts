@@ -1049,7 +1049,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 		return oml_fom_ack_nack(msg, 0);
 	}
 
-	rc = e1inp_ipa_bts_rsl_connect(oml_link->ts->line, inet_ntoa(in), port,
+	rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port,
 		trx->nr);
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Error in abis_open(RSL): %d\n", rc);
