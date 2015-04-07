@@ -1,4 +1,5 @@
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  *
  * All Rights Reserved
  *
@@ -63,6 +64,7 @@ static void test_xcch(uint8_t *l2)
 	uint8_t result[23];
 	ubit_t bursts_u[116 * 4];
 	sbit_t bursts_s[116 * 4];
+	int n_errors, n_bits_total;
 
 	printd("Encoding: %s\n", osmo_hexdump(l2, 23));
 
@@ -102,9 +104,13 @@ static void test_xcch(uint8_t *l2)
 	memset(bursts_s + 116, 0, 30);
 
 	/* decode */
-	xcch_decode(result, bursts_s);
+	xcch_decode(result, bursts_s, &n_errors, &n_bits_total);
+
+	ASSERT_TRUE(n_bits_total == 456);
 
 	printd("Decoded: %s\n", osmo_hexdump(result, 23));
+	printf("xcch_decode: n_errors=%d n_bits_total=%d ber=%.2f\n",
+		n_errors, n_bits_total, (float)n_errors/n_bits_total);
 
 	ASSERT_TRUE(!memcmp(l2, result, 23));
 
@@ -180,6 +186,7 @@ static void test_fr(uint8_t *speech, int len)
 	uint8_t result[33];
 	ubit_t bursts_u[116 * 8];
 	sbit_t bursts_s[116 * 8];
+	int n_errors, n_bits_total;
 	int rc;
 
 	memset(bursts_u, 0x23, sizeof(bursts_u));
@@ -242,12 +249,17 @@ static void test_fr(uint8_t *speech, int len)
 		(uint8_t)bursts_s[57 + 812], (uint8_t)bursts_s[58 + 812]);
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 812, 57));
 
+	/* destroy */
+	memset(bursts_s + 6, 0, 20);
+
 	/* decode */
-	rc = tch_fr_decode(result, bursts_s, 1, len == 31);
+	rc = tch_fr_decode(result, bursts_s, 1, len == 31, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 
 	printd("Decoded: %s\n", osmo_hexdump(result, len));
+	printf("tch_fr_decode: n_errors=%d n_bits_total=%d ber=%.2f\n",
+		n_errors, n_bits_total, (float)n_errors/n_bits_total);
 
 	ASSERT_TRUE(!memcmp(speech, result, len));
 
@@ -259,6 +271,7 @@ static void test_hr(uint8_t *speech, int len)
 	uint8_t result[23];
 	ubit_t bursts_u[116 * 6];
 	sbit_t bursts_s[116 * 6];
+	int n_errors, n_bits_total;
 	int rc;
 
 	memset(bursts_u, 0x23, sizeof(bursts_u));
@@ -309,12 +322,17 @@ static void test_hr(uint8_t *speech, int len)
 		(uint8_t)bursts_s[57 + 580], (uint8_t)bursts_s[58 + 580]);
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 580, 57));
 
+	/* destroy */
+	memset(bursts_s + 6, 0, 20);
+
 	/* decode */
-	rc = tch_hr_decode(result, bursts_s, 0);
+	rc = tch_hr_decode(result, bursts_s, 0, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 
 	printd("Decoded: %s\n", osmo_hexdump(result, len));
+	printf("tch_hr_decode: n_errors=%d n_bits_total=%d ber=%.2f\n",
+		n_errors, n_bits_total, (float)n_errors/n_bits_total);
 
 	ASSERT_TRUE(!memcmp(speech, result, len));
 
@@ -326,6 +344,7 @@ static void test_pdtch(uint8_t *l2, int len)
 	uint8_t result[len];
 	ubit_t bursts_u[116 * 4];
 	sbit_t bursts_s[116 * 4];
+	int n_errors, n_bits_total;
 	int rc;
 
 	/* zero the not coded tail bits */
@@ -375,11 +394,13 @@ static void test_pdtch(uint8_t *l2, int len)
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 348, 57));
 
 	/* decode */
-	rc = pdtch_decode(result, bursts_s, NULL);
+	rc = pdtch_decode(result, bursts_s, NULL, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 
 	printd("Decoded: %s\n", osmo_hexdump(result, len));
+	printf("pdtch_decode: n_errors=%d n_bits_total=%d ber=%.2f\n",
+		n_errors, n_bits_total, (float)n_errors/n_bits_total);
 
 	ASSERT_TRUE(!memcmp(l2, result, len));
 
@@ -388,22 +409,22 @@ static void test_pdtch(uint8_t *l2, int len)
 
 uint8_t test_l2[][23] = {
 	/* dummy frame */
-      {	0x03, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+	{ 0x03, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	/* random frame */
-      { 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
+	{ 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
 	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
 	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0x59, 0xa8 },
 	/* jolly frame */
-      {	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+	{ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 	0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
 	0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 },
 };
 
 uint8_t test_macblock[][54] = {
 	/* random frame */
-      { 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
+	{ 0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
 	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
 	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0x59, 0xa8, 0x42,
 	0xa3, 0xaf, 0x5f, 0xc6, 0x36, 0x43, 0x44, 0xab,
@@ -411,7 +432,7 @@ uint8_t test_macblock[][54] = {
 	0xd9, 0x6d, 0x7d, 0x62, 0x24, 0xc9, 0xd2, 0x92,
 	0xfa, 0x27, 0x5d, 0x71, 0x7a, 0xa8 },
 	/* jolly frame */
-      {	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+	{ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 	0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
 	0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 },
 };
