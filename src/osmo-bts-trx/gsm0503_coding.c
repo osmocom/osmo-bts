@@ -29,6 +29,8 @@
 #include <osmocom/core/crcgen.h>
 #include <osmocom/codec/codec.h>
 
+#include <osmo-bts/logging.h>
+
 #include "gsm0503_conv.h"
 #include "gsm0503_parity.h"
 #include "gsm0503_mapping.h"
@@ -682,8 +684,10 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 
 	if (steal > 0) {
 		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error decoding  FACCH frame (%d/%d bits)\n", *n_errors, *n_bits_total);
 			return -1;
+		}
 
 		return 23;
 	}
@@ -696,8 +700,10 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 		d[i+182] = (cB[i+378] < 0) ? 1:0;
 
 	rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d, 50, p);
-	if (rv)
+	if (rv) {
+		LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error checking CRC8 for the FR part of an %s frame\n", efr?"EFR":"FR");
 		return -1;
+	}
 
 
 	if (efr) {
@@ -709,8 +715,10 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_tch_efr_crc8, b,
 			65, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error checking CRC8 for the EFR part of an EFR frame\n");
 			return -1;
+		}
 
 		tch_efr_reassemble(tch_data, s);
 
@@ -812,8 +820,10 @@ int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		gsm0503_tch_fr_deinterleave(cB, iB);
 
 		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_hr_decode(): error decoding  FACCH frame (%d/%d bits)\n", *n_errors, *n_bits_total);
 			return -1;
+		}
 
 		return 23;
 	}
@@ -832,8 +842,10 @@ int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		d[i+95] = (cB[i+211] < 0) ? 1:0;
 
 	rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d + 73, 22, p);
-	if (rv)
+	if (rv) {
+		LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error checking CRC8 for an HR frame\n");
 		return -1;
+	}
 
 	tch_hr_d_to_b(b, d);
 
@@ -912,8 +924,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 	if (steal > 0) {
 		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error decoding  FACCH frame (%d/%d bits)\n", *n_errors, *n_bits_total);
 			return -1;
+		}
 
 		return 23;
 	}
@@ -941,8 +955,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 244, 81);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 81, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 12.2 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 244);
 
@@ -955,8 +971,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 204, 65);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 65, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 10.2 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 204);
 
@@ -969,8 +987,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 159, 75);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 75, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 7.95 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 159);
 
@@ -983,8 +1003,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 148, 61);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 61, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 7.4 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 148);
 
@@ -997,8 +1019,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 134, 55);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 6.7 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 134);
 
@@ -1011,8 +1035,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 118, 55);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 5.9 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 118);
 
@@ -1025,8 +1051,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 103, 49);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 49, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 5.15 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 103);
 
@@ -1039,8 +1067,10 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 		tch_amr_unmerge(d, p, conv, 95, 39);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 39, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_afs_decode(): error checking CRC8 for an AMR 4.75 frame\n");
 			return -1;
+		}
 
 		tch_amr_reassemble(tch_data, d, 95);
 
@@ -1048,6 +1078,7 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 
 		break;
 	default:
+		LOGP(DL1C, LOGL_ERROR, "tch_afs_decode(): Unknown frame type\n");
 		fprintf(stderr, "FIXME: FT %d not supported!\n", *ft);
 		*n_bits_total = 448;
 		*n_errors = *n_bits_total;
@@ -1256,8 +1287,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		gsm0503_tch_fr_deinterleave(cB, iB);
 
 		rv = _xcch_decode_cB(tch_data, cB, n_errors, n_bits_total);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error decoding  FACCH frame (%d/%d bits)\n", *n_errors, *n_bits_total);
 			return -1;
+		}
 
 		return 23;
 	}
@@ -1291,8 +1324,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 123, 67);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 67, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 7.95 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<36;i++)
 			d[i+123] = (cB[i+192] < 0) ? 1:0;
@@ -1308,8 +1343,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 120, 61);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 61, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 7.4 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<28;i++)
 			d[i+120] = (cB[i+200] < 0) ? 1:0;
@@ -1325,8 +1362,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 110, 55);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 6.7 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<24;i++)
 			d[i+110] = (cB[i+204] < 0) ? 1:0;
@@ -1342,8 +1381,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 102, 55);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 55, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 5.9 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<16;i++)
 			d[i+102] = (cB[i+212] < 0) ? 1:0;
@@ -1359,8 +1400,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 91, 49);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 49, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 5.15 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<12;i++)
 			d[i+91] = (cB[i+216] < 0) ? 1:0;
@@ -1376,8 +1419,10 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 		tch_amr_unmerge(d, p, conv, 83, 39);
 
 		rv = osmo_crc8gen_check_bits(&gsm0503_amr_crc6, d, 39, p);
-		if (rv)
+		if (rv) {
+			LOGP(DL1C, LOGL_NOTICE, "tch_ahs_decode(): error checking CRC8 for an AMR 4.75 frame\n");
 			return -1;
+		}
 
 		for (i=0; i<12;i++)
 			d[i+83] = (cB[i+216] < 0) ? 1:0;
@@ -1388,6 +1433,7 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 
 		break;
 	default:
+		LOGP(DL1C, LOGL_ERROR, "tch_afs_decode(): Unknown frame type\n");
 		fprintf(stderr, "FIXME: FT %d not supported!\n", *ft);
 		*n_bits_total = 159;
 		*n_errors = *n_bits_total;
