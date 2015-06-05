@@ -910,7 +910,7 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
-	ubit_t test[456], d[244], p[6], conv[250];
+	ubit_t d[244], p[6], conv[250];
 	int i, j, k, best = 0, rv, len, steal = 0, id = 0;
 	*n_errors = 0; *n_bits_total = 0;
 
@@ -1260,7 +1260,7 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 	uint8_t *cmr, int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
-	ubit_t test[456], d[244], p[6], conv[135];
+	ubit_t d[244], p[6], conv[135];
 	int i, j, k, best = 0, rv, len, steal = 0, id = 0;
 
 	/* only unmap the stealing bits */
