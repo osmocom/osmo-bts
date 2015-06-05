@@ -2898,7 +2898,7 @@ static void trx_ctrl_timer_cb(void *data)
 	if (transceiver_lost++ == TRX_LOSS_FRAMES) {
 		struct gsm_bts_trx *trx;
 
-		LOGP(DL1C, LOGL_NOTICE, "No more clock from traneiver\n");
+		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
 
 no_clock:
 		transceiver_available = 0;
