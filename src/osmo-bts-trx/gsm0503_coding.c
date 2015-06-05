@@ -731,6 +731,7 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 		len = 33;
 	}
 
+	LOGP(DL1C, LOGL_DEBUG, "tch_fr_decode(): successfully decoded %s frame (%d/%d bits)\n", efr?"EFR":"FR", *n_errors, *n_bits_total);
 	return len;
 }
 
