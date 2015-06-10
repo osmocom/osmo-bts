@@ -477,7 +477,8 @@ int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint
 {
 	struct gsm_lchan *lchan = &trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)];
 	struct osmo_phsap_prim l1sap;
-	float ber = (float)n_errors / (float)n_bits_total;
+	/* 100% BER is n_bits_total is 0 */
+	float ber = n_bits_total==0 ? 1.0 : (float)n_errors / (float)n_bits_total;
 
 	LOGP(DMEAS, LOGL_DEBUG, "RX L1 frame %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
 		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
