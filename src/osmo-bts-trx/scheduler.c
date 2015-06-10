@@ -71,7 +71,7 @@ typedef ubit_t *trx_sched_dl_func(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn, enum trx_chan_type chan, uint8_t bid);
 typedef int trx_sched_ul_func(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 
 static int rts_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
@@ -95,19 +95,19 @@ static ubit_t *tx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid);
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa);
+	float toa, int bad_burst);
 
 static ubit_t dummy_burst[148] = {
 	0,0,0,
@@ -222,6 +222,7 @@ int trx_sched_init(struct trx_l1h *l1h)
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			chan_state = &l1h->chan_states[tn][i];
 			chan_state->active = 0;
+			chan_state->last_toa = 0.0;
 		}
 	}
 
@@ -665,6 +666,8 @@ got_msg:
 		if (++(l1h->chan_states[tn][chan].lost) > 1) {
 			/* TODO: Should we pass old TOA here? Otherwise we risk
 			 * unnecessary decreasing TA */
+			/* TODO: Why is this here? How is uplink measurement related
+			 * to downlink messages? */
 
 			/* Send uplnk measurement information to L2 */
 			l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
@@ -1171,14 +1174,76 @@ send_burst:
  * RX on uplink (indication to upper layer)
  */
 
+/* Update UL channel state - mask, RSSI and TOA */
+static void rx_update_chan_state(struct trx_chan_state *chan_state, uint8_t bid,
+								int8_t rssi, float toa, int bad_burst)
+{
+	uint8_t *mask = &chan_state->ul_mask;
+	float *rssi_sum = &chan_state->rssi_sum;
+	uint8_t *rssi_num = &chan_state->rssi_num;
+	float *toa_sum = &chan_state->toa_sum;
+	uint8_t *toa_num = &chan_state->toa_num;
+	float *last_toa = &chan_state->last_toa;
+
+	/* clear burst */
+	if (bid == 0) {
+		*mask = 0x0;
+		*rssi_sum = 0;
+		*rssi_num = 0;
+		*toa_sum = 0;
+		*toa_num = 0;
+	}
+
+	/* update rssi average */
+	*rssi_sum += rssi;
+	(*rssi_num)++;
+
+	/* TOA and bits are valid only if it's a good frame */
+	if (bad_burst == IND_GOOD_BURST) {
+		/* update mask */
+		*mask |= (1 << bid);
+
+		/* update TOA average */
+		*toa_sum += toa;
+		(*toa_num)++;
+
+		/* update last valid TOA */
+		*last_toa = *toa_sum / *toa_num;
+	}
+}
+
+/* Return RSSI average */
+static float rx_chan_rssi_avg(struct trx_chan_state *chan_state)
+{
+	/* this function must be called after we have received at least
+	 * one burst, no matter good or bad */
+	OSMO_ASSERT(chan_state->rssi_num > 0);
+	return chan_state->rssi_sum / chan_state->rssi_num;
+}
+
+/* Return TOA average */
+static float rx_chan_toa_avg(struct trx_chan_state *chan_state)
+{
+	if (chan_state->toa_num == 0) {
+		return chan_state->last_toa;
+	} else {
+		return chan_state->toa_sum / chan_state->toa_num;
+	}
+}
+
 static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa)
+	float toa, int bad_burst)
 {
 	uint8_t chan_nr;
 	struct osmo_phsap_prim l1sap;
 	uint8_t ra;
 	int rc;
+
+	/* Ignore bad bursts on RACH channels */
+	if (bad_burst != IND_GOOD_BURST) {
+		return 0;
+	}
 
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
 
@@ -1215,26 +1280,24 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa)
+	float toa, int bad_burst)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
-	float *rssi_sum = &chan_state->rssi_sum;
-	uint8_t *rssi_num = &chan_state->rssi_num;
-	float *toa_sum = &chan_state->toa_sum;
-	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[23], l2_len;
 	int n_errors, n_bits_total;
 	int rc;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa, bad_burst);
 
 	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
+
+	rx_update_chan_state(chan_state, bid, rssi, toa, bad_burst);
 
 	/* alloc burst memory, if not already */
 	if (!*bursts_p) {
@@ -1246,35 +1309,35 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* clear burst & store frame number of first burst */
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
-		*mask = 0x0;
-		*first_fn = fn;
-		*rssi_sum = 0;
-		*rssi_num = 0;
-		*toa_sum = 0;
-		*toa_num = 0;
 	}
 
-	/* update mask + rssi */
-	*mask |= (1 << bid);
-	*rssi_sum += rssi;
-	(*rssi_num)++;
-	*toa_sum += toa;
-	(*toa_num)++;
-
-	/* copy burst to buffer of 4 bursts */
-	burst = *bursts_p + bid * 116;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	/* TOA and bits are valid only if it's a good frame */
+	if (bad_burst == IND_GOOD_BURST) {
+		/* copy burst to buffer of 4 bursts */
+		burst = *bursts_p + bid * 116;
+		memcpy(burst, bits + 3, 58);
+		memcpy(burst + 58, bits + 87, 58);
+	}
 
 	/* send burst information to loops process */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		trx_loop_sacch_input(l1h, trx_chan_desc[chan].chan_nr | tn,
-			chan_state, rssi, toa);
+			chan_state, rssi, toa, bad_burst);
 	}
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
+
+	/* check if we received anything at all */
+	if ((*mask & 0xf) == 0x0) {
+		/* Send uplnk measurement information to L2 */
+		/* Indicate real RSSI, 100% BER, last valid TOA */
+		l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+			0, 0,
+			rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
+		return 0;
+	}
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
@@ -1304,28 +1367,28 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
-		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
+		n_errors, n_bits_total,
+		rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
 
-	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len, *rssi_sum / *rssi_num);
+	return compose_ph_data_ind(l1h, tn, *first_fn, chan, l2, l2_len,
+		rx_chan_rssi_avg(chan_state));
 }
 
 static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa)
+	float toa, int bad_burst)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
-	float *rssi_sum = &chan_state->rssi_sum;
-	uint8_t *rssi_num = &chan_state->rssi_num;
-	float *toa_sum = &chan_state->toa_sum;
-	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[54+1];
 	int n_errors, n_bits_total;
 	int rc;
 
 	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
+
+	rx_update_chan_state(chan_state, bid, rssi, toa, bad_burst);
 
 	/* alloc burst memory, if not already */
 	if (!*bursts_p) {
@@ -1337,28 +1400,29 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* clear burst */
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
-		*mask = 0x0;
-		*rssi_sum = 0;
-		*rssi_num = 0;
-		*toa_sum = 0;
-		*toa_num = 0;
 	}
 
-	/* update mask + rssi */
-	*mask |= (1 << bid);
-	*rssi_sum += rssi;
-	(*rssi_num)++;
-	*toa_sum += toa;
-	(*toa_num)++;
-
-	/* copy burst to buffer of 4 bursts */
-	burst = *bursts_p + bid * 116;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	/* TOA and bits are valid only if it's a good frame */
+	if (bad_burst == IND_GOOD_BURST) {
+		/* copy burst to buffer of 4 bursts */
+		burst = *bursts_p + bid * 116;
+		memcpy(burst, bits + 3, 58);
+		memcpy(burst + 58, bits + 87, 58);
+	}
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
+
+	/* check if we received anything at all */
+	if ((*mask & 0xf) == 0x0) {
+		/* Send uplnk measurement information to L2 */
+		/* Indicate real RSSI, 100% BER, last valid TOA */
+		l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+			0, 0,
+			rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
+		return 0;
+	}
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
@@ -1374,7 +1438,8 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
-		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
+		n_errors, n_bits_total,
+		rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
 
 	if (rc <= 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block ending at "
@@ -1386,12 +1451,12 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	l2[0] = 7; /* valid frame */
 
 	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
-		l2, rc + 1, *rssi_sum / *rssi_num);
+		l2, rc + 1, rx_chan_rssi_avg(chan_state));
 }
 
 static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa)
+	float toa, int bad_burst)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -1404,10 +1469,12 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa, bad_burst);
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
+
+	rx_update_chan_state(chan_state, bid, rssi, toa, bad_burst);
 
 	/* alloc burst memory, if not already */
 	if (!*bursts_p) {
@@ -1419,20 +1486,28 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* clear burst */
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 464);
-		*mask = 0x0;
 	}
 
-	/* update mask */
-	*mask |= (1 << bid);
-
-	/* copy burst to end of buffer of 8 bursts */
-	burst = *bursts_p + bid * 116 + 464;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	if (bad_burst == IND_GOOD_BURST) {
+		/* copy burst to end of buffer of 8 bursts */
+		burst = *bursts_p + bid * 116 + 464;
+		memcpy(burst, bits + 3, 58);
+		memcpy(burst + 58, bits + 87, 58);
+	}
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
+
+	/* check if we received anything at all */
+	if ((*mask & 0xf) == 0x0) {
+		/* Send uplnk measurement information to L2 */
+		/* Indicate real RSSI, 100% BER, last valid TOA */
+		l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+			0, 0,
+			rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
+		return 0;
+	}
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
@@ -1483,7 +1558,8 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
-		n_errors, n_bits_total, rssi, toa);
+		n_errors, n_bits_total,
+		rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
@@ -1501,7 +1577,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == 23) {
 		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, 23, rx_chan_rssi_avg(chan_state));
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1541,7 +1617,7 @@ bfi:
 
 static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
-	float toa)
+	float toa, int bad_burst)
 {
 	struct trx_chan_state *chan_state = &l1h->chan_states[tn][chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -1554,10 +1630,12 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
+		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa, bad_burst);
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
+
+	rx_update_chan_state(chan_state, bid, rssi, toa, bad_burst);
 
 	/* alloc burst memory, if not already */
 	if (!*bursts_p) {
@@ -1569,11 +1647,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* clear burst */
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 232);
-		*mask = 0x0;
 	}
-
-	/* update mask */
-	*mask |= (1 << bid);
 
 	/* copy burst to end of buffer of 6 bursts */
 	burst = *bursts_p + bid * 116 + 464;
@@ -1583,6 +1657,16 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* wait until complete set of bursts */
 	if (bid != 1)
 		return 0;
+
+	/* check if we received anything at all */
+	if ((*mask & 0xf) == 0x0) {
+		/* Send uplnk measurement information to L2 */
+		/* Indicate real RSSI, 100% BER, last valid TOA */
+		l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+			0, 0,
+			rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
+		return 0;
+	}
 
 	/* check for complete set of bursts */
 	if ((*mask & 0x3) != 0x3) {
@@ -1646,7 +1730,8 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
-		n_errors, n_bits_total, rssi, toa);
+		n_errors, n_bits_total,
+		rx_chan_rssi_avg(chan_state), rx_chan_toa_avg(chan_state));
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
@@ -1666,7 +1751,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
 			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, 23, rx_chan_rssi_avg(chan_state));
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -2746,7 +2831,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 
 /* process uplink burst */
 int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
-	sbit_t *bits, int8_t rssi, float toa)
+	sbit_t *bits, int8_t rssi, float toa, int bad_burst)
 {
 	struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
@@ -2768,6 +2853,8 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 		fn = current_fn;
 
 	while (42) {
+		int cur_bad_burst = (fn != current_fn) || bad_burst;
+
 		/* get frame from multiframe */
 		period = l1h->mf_period[tn];
 		offset = fn % period;
@@ -2786,8 +2873,8 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 		if (!func)
 			goto next_frame;
 
-		/* put burst to function */
-		if (fn == current_fn) {
+		/* put burst to function if it's a valid burst */
+		if (!cur_bad_burst) {
 			/* decrypt */
 			if (bits && l1h->chan_states[tn][chan].ul_encr_algo) {
 				ubit_t ks[114];
@@ -2803,15 +2890,9 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 						bits[i + 88] = - bits[i + 88];
 				}
 			}
-
-			func(l1h, tn, fn, chan, bid, bits, rssi, toa);
-		} else if (chan != TRXC_RACH
-		        && !l1h->chan_states[tn][chan].ho_rach_detect) {
-			sbit_t spare[148];
-
-			memset(spare, 0, 148);
-			func(l1h, tn, fn, chan, bid, spare, -128, 0);
 		}
+		/* send burst to the upper layer */
+		func(l1h, tn, fn, chan, bid, bits, rssi, toa, cur_bad_burst);
 
 next_frame:
 		/* reached current fn */

@@ -16,8 +16,12 @@ int trx_sched_tch_req(struct trx_l1h *l1h, struct osmo_phsap_prim *l1sap);
 
 int trx_sched_clock(uint32_t fn);
 
+/* Defines for the "bad_burst" parameter */
+#define IND_GOOD_BURST 0
+#define IND_BAD_BURST  1
+
 int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
-        sbit_t *bits, int8_t rssi, float toa);
+		sbit_t *bits, int8_t rssi, float toa, int bad_burst);
 
 /* set multiframe scheduler to given pchan */
 int trx_sched_set_pchan(struct trx_l1h *l1h, uint8_t tn,

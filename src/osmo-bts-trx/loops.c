@@ -211,7 +211,7 @@ int ta_val(struct trx_l1h *l1h, struct gsm_lchan *lchan, uint8_t chan_nr,
 }
 
 int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
-	struct trx_chan_state *chan_state, int8_t rssi, float toa)
+	struct trx_chan_state *chan_state, int8_t rssi, float toa, int bad_burst)
 {
 	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
@@ -219,7 +219,8 @@ int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
 	if (trx_ms_power_loop)
 		ms_power_val(chan_state, rssi);
 
-	if (trx_ta_loop)
+	/* TOA is only valid for good frames, ignore if bad_burst */
+	if (trx_ta_loop && !bad_burst)
 		ta_val(l1h, lchan, chan_nr, chan_state, toa);
 
 	return 0;

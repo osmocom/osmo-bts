@@ -60,6 +60,7 @@ struct trx_chan_state {
 	float			rssi_sum;	/* sum of RSSI values */
 	uint8_t			toa_num;	/* number of TOA values */
 	float			toa_sum;	/* sum of TOA values */
+	float			last_toa;   /* last valid TOA */
 
 	/* loss detection */
 	uint8_t			lost;		/* (SACCH) loss detection */
