@@ -416,44 +416,61 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	len = recv(ofd->fd, buf, sizeof(buf), 0);
 	if (len <= 0)
 		return len;
-	if (len != 158) {
-		LOGP(DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
+	/* 6   - a short "empty" packet with RSSI and no bits  */
+	/* 156 - a full packet with demodulated bits */
+	/* 158 - a full packet with demodulated bits (older version with 2 unused bytes) */
+	if (len != 158 && len != 156 && len != 6) {
+		LOGP(DTRX, LOGL_NOTICE, "Got data message with invalid length "
 			"'%d'\n", len);
 		return -EINVAL;
 	}
+
+	/* decode frame time */
 	tn = buf[0];
-	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
-	rssi = -(int8_t)buf[5];
-	toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
-
-	/* copy and convert bits {254..0} to sbits {-127..127} */
-	for (i = 0; i < 148; i++) {
-		if (buf[8 + i] == 255)
-			bits[i] = -127;
-		else
-			bits[i] = 127 - buf[8 + i];
-	}
-
 	if (tn >= 8) {
 		LOGP(DTRX, LOGL_ERROR, "Illegal TS %d\n", tn);
 		return -EINVAL;
 	}
+	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
 	if (fn >= 2715648) {
 		LOGP(DTRX, LOGL_ERROR, "Illegal FN %u\n", fn);
 		return -EINVAL;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f\n",
-		tn, fn, rssi, toa);
+	/* decode RSSI */
+	rssi = -(int8_t)buf[5];
 
-#ifdef TOA_RSSI_DEBUG
-	char deb[128];
+	if (len > 6) {
+		/* decode Time Of Arrival */
+		toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
 
-	sprintf(deb, "|                                0              "
-		"                 | rssi=%4d  toa=%4.2f fn=%u", rssi, toa, fn);
-	deb[1 + (128 + rssi) / 4] = '*';
-	fprintf(stderr, "%s\n", deb);
-#endif
+		/* copy and convert bits {254..0} to sbits {-127..127} */
+		for (i = 0; i < 148; i++) {
+			if (buf[8 + i] == 255)
+				bits[i] = -127;
+			else
+				bits[i] = 127 - buf[8 + i];
+		}
+
+		LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f\n",
+			tn, fn, rssi, toa);
+
+	#ifdef TOA_RSSI_DEBUG
+		char deb[128];
+
+		sprintf(deb, "|                                0              "
+			"                 | rssi=%4d  toa=%4.2f fn=%u", rssi, toa, fn);
+		deb[1 + (128 + rssi) / 4] = '*';
+		fprintf(stderr, "%s\n", deb);
+	#endif
+	} else {
+		/* indicate bad burst */
+		bad_burst = IND_BAD_BURST;
+
+		LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d bad burst\n",
+			tn, fn, rssi);
+	}
+
 
 	trx_sched_ul_burst(l1h, tn, fn, bits, rssi, toa, bad_burst);
 
