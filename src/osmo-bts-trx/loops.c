@@ -90,8 +90,7 @@ static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	return 0;
 }
 
-static int ms_power_val(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	uint8_t chan_nr, struct trx_chan_state *chan_state, int8_t rssi)
+static int ms_power_val(struct trx_chan_state *chan_state, int8_t rssi)
 {
 	/* ignore inserted dummy frames, treat as lost frames */
 	if (rssi < -127)
@@ -100,10 +99,6 @@ static int ms_power_val(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	LOGP(DLOOP, LOGL_DEBUG, "Got RSSI value of %d\n", rssi);
 
 	chan_state->meas.rssi_count++;
-
-	/* check if the current L1 header compares to the current ordered TA */
-//	if ((lchan->meas.l1_info[0] >> 3) != lchan->ms_power)
-//		return 0;
 
 	chan_state->meas.rssi_got_burst = 1;
 
@@ -222,7 +217,7 @@ int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
 					.lchan[l1sap_chan2ss(chan_nr)];
 
 	if (trx_ms_power_loop)
-		ms_power_val(l1h, lchan, chan_nr, chan_state, rssi);
+		ms_power_val(chan_state, rssi);
 
 	if (trx_ta_loop)
 		ta_val(l1h, lchan, chan_nr, chan_state, toa);
