@@ -838,9 +838,9 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		struct msgb *tmp;
 		int count = 0;
 
-		 /* make sure the queue doesn't get too long */
+		/* make sure the queue doesn't get too long */
 		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-		count++;
+			count++;
 		while (count >= 1) {
 			tmp = msgb_dequeue(&lchan->dl_tch_queue);
 			msgb_free(tmp);
