@@ -800,16 +800,24 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		struct msgb *tmp;
 		int count = 0;
 
-		 /* make sure the queue doesn't get too long */
+		/* make sure the queue doesn't get too long */
 		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-		count++;
+			count++;
 		while (count >= 1) {
 			tmp = msgb_dequeue(&lchan->dl_tch_queue);
 			msgb_free(tmp);
 			count--;
 		}
 
-		msgb_enqueue(&lchan->dl_tch_queue, msg);
+		/* copy msg to a new msgb before enquing it, because msg
+		 * will be freed on the exit from the function. */
+		tmp = l1sap_msgb_alloc(msg->len);
+		if (!tmp)
+			return 0;
+		memcpy(msgb_put(tmp, msg->len), msg->data, msg->len);
+		msgb_pull(tmp, sizeof(*l1sap));
+
+		msgb_enqueue(&lchan->dl_tch_queue, tmp);
 	}
 
 	return 0;
