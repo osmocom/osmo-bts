@@ -231,12 +231,18 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
-	return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
+	if (l1h->trx->nr == 0)
+		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
+	else
+		return 0;
 }
 
 int trx_if_cmd_poweron(struct trx_l1h *l1h)
 {
-	return trx_ctrl_cmd(l1h, 1, "POWERON", "");
+	if (l1h->trx->nr == 0)
+		return trx_ctrl_cmd(l1h, 1, "POWERON", "");
+	else
+		return 0;
 }
 
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
