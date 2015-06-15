@@ -661,6 +661,64 @@ DEFUN(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
+DEFUN(bts_t_t_l_activate,
+	bts_t_t_l_activate_cmd,
+	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> activate",
+	BTS_T_T_L_STR "Activate channel\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_lchan *lchan;
+	int rc;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* set channel configuration */
+	/* TODO: let user choose speech mode */
+	lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+	lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+	/* no encryption */
+	memset(&lchan->encr, 0, sizeof(lchan->encr));
+
+	/* activate the channel */
+	lchan->rel_act_kind = LCHAN_REL_ACT_OML;
+	rc = l1sap_chan_act(lchan->ts->trx, gsm_lchan2chan_nr(lchan), NULL);
+	if (rc < 0) {
+		vty_out(vty, "%% can't activate channel%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(bts_t_t_l_deactivate,
+	bts_t_t_l_deactivate_cmd,
+	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> deactivate",
+	BTS_T_T_L_STR "Deactivate channel\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_lchan *lchan;
+	int rc;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* deactivate the channel */
+	rc = l1sap_chan_rel(lchan->ts->trx, gsm_lchan2chan_nr(lchan));
+	if (rc < 0) {
+		vty_out(vty, "%% can't deactivate channel%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 {
 	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
@@ -707,6 +765,8 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_activate_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_deactivate_cmd);
 
 	return 0;
 }
