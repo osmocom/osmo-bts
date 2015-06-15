@@ -407,7 +407,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	int len;
 	uint8_t tn;
 	int8_t rssi;
-	float toa;
+	float toa = 0.0;
 	uint32_t fn;
 	sbit_t bits[148];
 	int i;
