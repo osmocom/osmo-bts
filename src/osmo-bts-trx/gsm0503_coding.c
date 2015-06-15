@@ -702,7 +702,7 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 	rv = osmo_crc8gen_check_bits(&gsm0503_tch_fr_crc3, d, 50, p);
 	if (rv) {
 		LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error checking CRC8 for the FR part of an %s frame\n", efr?"EFR":"FR");
-		return -1;
+//		return -1;
 	}
 
 
@@ -717,7 +717,7 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 			65, p);
 		if (rv) {
 			LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): error checking CRC8 for the EFR part of an EFR frame\n");
-			return -1;
+//			return -1;
 		}
 
 		tch_efr_reassemble(tch_data, s);
@@ -731,7 +731,7 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 		len = 33;
 	}
 
-	LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): successfully decoded %s frame (%d/%d bits)\n", efr?"EFR":"FR", *n_errors, *n_bits_total);
+	LOGP(DL1C, LOGL_NOTICE, "tch_fr_decode(): decoded %s frame (%d/%d bits)\n", efr?"EFR":"FR", *n_errors, *n_bits_total);
 	return len;
 }
 
