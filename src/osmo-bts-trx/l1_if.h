@@ -142,12 +142,9 @@ struct trx_config {
 };
 
 struct trx_l1h {
-	struct llist_head	trx_ctrl_list;
-
 	struct gsm_bts_trx	*trx;
 
 	struct osmo_fd		trx_ofd_ctrl;
-	struct osmo_timer_list	trx_ctrl_timer;
 	struct osmo_fd		trx_ofd_data;
 
 	/* transceiver config */

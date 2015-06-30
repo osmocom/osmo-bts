@@ -49,6 +49,10 @@ const char *transceiver_ip = "127.0.0.1";
 int settsc_enabled = 0;
 int setbsic_enabled = 0;
 
+/* control socket queue */
+struct llist_head trx_ctrl_list;
+struct osmo_timer_list trx_ctrl_timer;
+
 /*
  * socket
  */
@@ -158,35 +162,39 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 static void trx_ctrl_timer_cb(void *data);
 
 /* send first ctrl message and start timer */
-static void trx_ctrl_send(struct trx_l1h *l1h)
+static void trx_ctrl_send(struct gsm_bts *bts)
 {
 	struct trx_ctrl_msg *tcm;
+	struct gsm_bts_trx *trx;
+	struct trx_l1h *l1h;
 
 	/* get first command */
-	if (llist_empty(&l1h->trx_ctrl_list))
+	if (llist_empty(&trx_ctrl_list))
 		return;
-	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
+	tcm = llist_entry(trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
 	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to trx=%u\n", tcm->cmd,
-		l1h->trx->nr);
+		tcm->trx_num);
 	/* send command */
+	trx = gsm_bts_trx_num(bts, tcm->trx_num);
+	l1h = trx_l1h_hdl(trx);
 	send(l1h->trx_ofd_ctrl.fd, tcm->cmd, strlen(tcm->cmd)+1, 0);
 
 	/* start timer */
-	l1h->trx_ctrl_timer.cb = trx_ctrl_timer_cb;
-	l1h->trx_ctrl_timer.data = l1h;
-	osmo_timer_schedule(&l1h->trx_ctrl_timer, 2, 0);
+	trx_ctrl_timer.cb = trx_ctrl_timer_cb;
+	trx_ctrl_timer.data = trx;
+	osmo_timer_schedule(&trx_ctrl_timer, 2, 0);
 }
 
 /* send first ctrl message and start timer */
 static void trx_ctrl_timer_cb(void *data)
 {
-	struct trx_l1h *l1h = data;
+	struct gsm_bts_trx *trx = data;
 
 	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for trx=%d\n",
-		l1h->trx->nr);
+		trx->nr);
 
-	trx_ctrl_send(l1h);
+	trx_ctrl_send(trx->bts);
 }
 
 /* add a new ctrl command */
@@ -203,11 +211,12 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		return -EIO;
 	}
 
-	if (!llist_empty(&l1h->trx_ctrl_list))
+	if (!llist_empty(&trx_ctrl_list))
 		pending = 1;
 
 	/* create message */
 	tcm = talloc_zero(tall_bts_ctx, struct trx_ctrl_msg);
+	tcm->trx_num = l1h->trx->nr;
 	if (!tcm)
 		return -ENOMEM;
 	if (fmt && fmt[0]) {
@@ -219,12 +228,12 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "CMD %s", cmd);
 	tcm->cmd_len = strlen(cmd);
 	tcm->critical = critical;
-	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
+	llist_add_tail(&tcm->list, &trx_ctrl_list);
 	LOGP(DTRX, LOGL_INFO, "Adding new control '%s'\n", tcm->cmd);
 
-	/* send message, if no pending message */
+	/* send this message, if there are no other pending messages */
 	if (!pending)
-		trx_ctrl_send(l1h);
+		trx_ctrl_send(l1h->trx->bts);
 
 	return 0;
 }
@@ -319,12 +328,46 @@ int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
 }
 
+static int check_resp(char *buf, struct trx_ctrl_msg *tcm, struct trx_l1h *l1h)
+{
+	char *p;
+	int rsp_len = 0;
+	int resp;
+
+	/* calculate the length of response item */
+	p = strchr(buf + 4, ' ');
+	if (p)
+		rsp_len = p - buf - 4;
+	else
+		rsp_len = strlen(buf) - 4;
+
+	/* check if respose matches command */
+	if (rsp_len != tcm->cmd_len
+		|| !!strncmp(buf + 4, tcm->cmd + 4, rsp_len)) {
+		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+			"Response message '%s' does not match command "
+			"message '%s'\n", buf, tcm->cmd);
+		return -EIO;
+	}
+
+	/* check for response code */
+	sscanf(p + 1, "%d", &resp);
+	if (resp) {
+		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+			"transceiver (trx=%d) rejected TRX command "
+			"with response: '%s'\n", l1h->trx->nr, buf);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 /* get response from ctrl socket */
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
 	char buf[1500];
-	int len, resp;
+	int len;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
 	if (len <= 0)
@@ -333,49 +376,23 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	if (!strncmp(buf, "RSP ", 4)) {
 		struct trx_ctrl_msg *tcm;
-		char *p;
-		int rsp_len = 0;
-
-		/* calculate the length of response item */
-		p = strchr(buf + 4, ' ');
-		if (p)
-			rsp_len = p - buf - 4;
-		else
-			rsp_len = strlen(buf) - 4;
 
 		LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
-		/* abort timer and send next message, if any */
-		if (osmo_timer_pending(&l1h->trx_ctrl_timer))
-			osmo_timer_del(&l1h->trx_ctrl_timer);
+		/* abort timer */
+		if (osmo_timer_pending(&trx_ctrl_timer))
+			osmo_timer_del(&trx_ctrl_timer);
 
 		/* get command for response message */
-		if (llist_empty(&l1h->trx_ctrl_list)) {
+		if (llist_empty(&trx_ctrl_list)) {
 			LOGP(DTRX, LOGL_NOTICE, "Response message without "
 				"command\n");
 			return -EINVAL;
 		}
-		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
-			list);
+		tcm = llist_entry(trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-		/* check if respose matches command */
-		if (rsp_len != tcm->cmd_len) {
-			notmatch:
-			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"Response message '%s' does not match command "
-				"message '%s'\n", buf, tcm->cmd);
-			goto rsp_error;
-		}
-		if (!!strncmp(buf + 4, tcm->cmd + 4, rsp_len))
-			goto notmatch;
-
-		/* check for response code */
-		sscanf(p + 1, "%d", &resp);
-		if (resp) {
-			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"transceiver (trx=%d) rejected TRX command "
-				"with response: '%s'\n", l1h->trx->nr, buf);
-rsp_error:
+		/* check if respose matches command and it's a success response */
+		if (check_resp(buf, tcm, l1h) < 0) {
 			if (tcm->critical) {
 				bts_shutdown(l1h->trx->bts, "SIGINT");
 				/* keep tcm list, so process is stopped */
@@ -387,7 +404,8 @@ rsp_error:
 		llist_del(&tcm->list);
 		talloc_free(tcm);
 
-		trx_ctrl_send(l1h);
+		/* send next command */
+		trx_ctrl_send(l1h->trx->bts);
 	} else
 		LOGP(DTRX, LOGL_NOTICE, "Unknown message on ctrl port: %s\n",
 			buf);
@@ -478,7 +496,7 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 
 	/* we must be sure that we have clock, and we have sent all control
 	 * data */
-	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
+	if (transceiver_available && llist_empty(&trx_ctrl_list)) {
 		send(l1h->trx_ofd_data.fd, buf, 154, 0);
 	} else
 		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, transceiver "
@@ -499,7 +517,8 @@ int trx_if_open(struct trx_l1h *l1h)
 	LOGP(DTRX, LOGL_NOTICE, "Open transceiver for trx=%u\n", l1h->trx->nr);
 
 	/* initialize ctrl queue */
-	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
+	if (l1h->trx->nr == 0)
+		INIT_LLIST_HEAD(&trx_ctrl_list);
 
 	/* open sockets */
 	if (l1h->trx->nr == 0) {
@@ -537,8 +556,8 @@ void trx_if_flush(struct trx_l1h *l1h)
 	struct trx_ctrl_msg *tcm;
 
 	/* free ctrl message list */
-	while (!llist_empty(&l1h->trx_ctrl_list)) {
-		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
+	while (!llist_empty(&trx_ctrl_list)) {
+		tcm = llist_entry(trx_ctrl_list.next, struct trx_ctrl_msg,
 			list);
 		llist_del(&tcm->list);
 		talloc_free(tcm);

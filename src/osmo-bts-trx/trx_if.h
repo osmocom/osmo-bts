@@ -9,6 +9,7 @@ extern int setbsic_enabled;
 
 struct trx_ctrl_msg {
 	struct llist_head	list;
+	int			trx_num;
 	char 			cmd[128];
 	int			cmd_len;
 	int			critical;
