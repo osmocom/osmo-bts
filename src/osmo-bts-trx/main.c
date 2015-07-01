@@ -339,7 +339,7 @@ int main(int argc, char **argv)
 
 	write_pid_file("osmo-bts");
 
-	rc = telnet_init(tall_bts_ctx, NULL, 4241);
+    rc = telnet_init(tall_bts_ctx, NULL, 4243);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);

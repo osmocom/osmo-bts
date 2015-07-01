@@ -53,7 +53,7 @@ int setbsic_enabled = 0;
  * socket
  */
 
-static uint16_t base_port_local = 5800;
+static uint16_t base_port_local = 5803;
 
 /* open socket */
 static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
@@ -231,9 +231,9 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
-	if (l1h->trx->nr == 0)
-		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
-	else
+//	if (l1h->trx->nr == 0)
+//		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
+//	else
 		return 0;
 }
 
@@ -510,11 +510,11 @@ int trx_if_open(struct trx_l1h *l1h)
 		LOGP(DTRX, LOGL_NOTICE, "Waiting for transceiver send clock\n");
 	}
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
-		base_port_local + (l1h->trx->nr << 1) + 1, trx_ctrl_read_cb);
+        base_port_local + l1h->trx->nr*3 + 1, trx_ctrl_read_cb);
 	if (rc < 0)
 		goto err;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
-		base_port_local + (l1h->trx->nr << 1) + 2, trx_data_read_cb);
+        base_port_local + l1h->trx->nr*3 + 2, trx_data_read_cb);
 	if (rc < 0)
 		goto err;
 
