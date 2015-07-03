@@ -249,11 +249,19 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 		net->mcc = ((si3->lai.digits[0] & 0x0f) << 8)
 			| (si3->lai.digits[0] & 0xf0)
 			| (si3->lai.digits[1] & 0x0f);
-		net->mnc = ((si3->lai.digits[2] & 0x0f) << 8)
+		net->mnc.network_code = ((si3->lai.digits[2] & 0x0f) << 8)
 			| (si3->lai.digits[2] & 0xf0)
 			| ((si3->lai.digits[1] & 0xf0) >> 4);
-		if ((net->mnc & 0x00f) == 0x00f)
-			net->mnc >>= 4;
+		if ((net->mnc.network_code & 0x00f) == 0x00f)
+		{
+			net->mnc.two_digits = true;
+			net->mnc.network_code >>= 4;
+		}
+		else
+		{
+			net->mnc.two_digits = false;
+		}
+
 		bts->location_area_code = ntohs(si3->lai.lac);
 		bts->cell_identity = si3->cell_identity;
 		avail_lai = 1;

@@ -4,6 +4,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/lapdm.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <osmo-bts/paging.h>
 
@@ -17,7 +18,8 @@ struct pcu_sock_state;
 struct gsm_network {
 	struct llist_head bts_list;
 	unsigned int num_bts;
-	uint16_t mcc, mnc;
+	uint16_t mcc;
+	gsm_mnc_t mnc;
 	struct pcu_sock_state *pcu_state;
 };
 
