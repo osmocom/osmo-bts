@@ -1639,22 +1639,25 @@ static int rslms_is_meas_rep(struct msgb *msg)
 static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 {
 	struct msgb *msg;
+	uint8_t meas_res[16];
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	int res_valid = lchan->meas.flags & LC_UL_M_F_RES_VALID;
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Tx MEAS RES\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx MEAS RES valid(%d)\n",
+		gsm_lchan_name(lchan), res_valid);
+
+	if (!res_valid)
+		return -EINPROGRESS;
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
 		return -ENOMEM;
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
-	if (lchan->meas.flags & LC_UL_M_F_RES_VALID) {
-		uint8_t meas_res[16];
-		int ie_len = lchan_build_rsl_ul_meas(lchan, meas_res);
-		if (ie_len >= 3) {
-			msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
-			lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
-		}
+	int ie_len = lchan_build_rsl_ul_meas(lchan, meas_res);
+	if (ie_len >= 3) {
+		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
+		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
 	}
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->meas.bts_tx_pwr);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
