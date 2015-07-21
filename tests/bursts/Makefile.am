@@ -11,4 +11,4 @@ bursts_test_SOURCES = bursts_test.c \
 			$(top_builddir)/src/osmo-bts-trx/gsm0503_mapping.c \
 			$(top_builddir)/src/osmo-bts-trx/gsm0503_tables.c \
 			$(top_builddir)/src/osmo-bts-trx/gsm0503_parity.c
-bursts_test_LDADD = $(LDADD)
+bursts_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)
