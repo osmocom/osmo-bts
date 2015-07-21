@@ -1,3 +1,10 @@
+osmo-bts (0.3.0~fw-4) precise; urgency=low
+
+  * Fix loopback support, which allows us to run BER tests.
+  * Minor fixes.
+
+ -- Alexander Chemeris  <Alexander.Chemeris@fairwaves.co>  Mon, 20 Jul 2015 19:10:59 -0400
+
 osmo-bts (0.3.0~fw-3) precise; urgency=low
 
   * Initial release
