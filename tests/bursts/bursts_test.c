@@ -29,6 +29,7 @@
 
 #include "../../src/osmo-bts-trx/gsm0503_coding.h"
 
+#include <osmo-bts/logging.h>
 
 #define ASSERT_TRUE(rc) \
 	if (!(rc)) { \
@@ -444,6 +445,8 @@ uint8_t test_speech_hr[15];
 int main(int argc, char **argv)
 {
 	int i;
+
+	bts_log_init(NULL);
 
 	for (i = 0; i < sizeof(test_l2) / sizeof(test_l2[0]); i++)
 		test_xcch(test_l2[i]);
