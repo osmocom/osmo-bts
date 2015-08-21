@@ -1,10 +1,10 @@
-Repository for new the Osmocom BTS implementation.
+Repository forw the Osmocom BTS implementation.
 
 This code implementes the Layer 2 and higher of a more or less
 conventional GSM BTS (Base Transceiver Station) - however, using an
 Abis/IP interface, rather than the old-fashioned E1/T1.
 
-Specificallt, this includes
+Specifically, this includes
  * BTS-Side implementation of TS 08.58 (RSL) and TS 12.21 (OML)
  * BTS-Side implementation of LAPDm (using libosmocore/libosmogsm)
  * A somewhat separated interface between those higher layer parts
@@ -19,12 +19,12 @@ for the Calypso DSP code have not been written yet.  This would still
 require a lot of work.
 
 Some additional work is being done in using some parts of the OpenBTS
-L1FEC and glue it against omso-bts.  However, this is also still in an
-early, experimental stage.
+L1FEC and glue it against omso-bts.  This code is called osmo-trx and
+requires the jolly/trx branch of this repository.
 
 == Known Limitations ==
 
-As of June 3, 2012, the following known limitations exist in this
+As of August 20, 2015, the following known limitations exist in this
 implementation:
 
 === Common Core ===
@@ -37,7 +37,6 @@ implementation:
  * No support for frequency hopping
  * No reporting of interference levels as part of TS 08.58 RF RES IND
  * No error reporting in case PAGING COMMAND fails due to queue overflow
- * No hand-over support (planned)
  * No use of TS 08.58 BS Power and MS Power parameters
  * No support of TS 08.58 MultiRate Control
  * No support of TS 08.58 Supported Codec Types
@@ -45,13 +44,11 @@ implementation:
 
 === osmo-bts-sysmo ===
  * No CSD / ECSD support (not planned)
- * No GPRS/EDGE support (planned)
  * GSM-R frequency band supported, but no NCH/ASCI/SoLSA
  * All timeslots on one TRX have to use same training sequence (TSC)
  * No multi-TRX support yet, though hardware+L1 support stacking
  * Makes no use of 12.21 Intave Parameters and Interference
    Level Boundaries
- * Makes no use of TS 12.21 T3105
  * Doesn't yet include MAC address in Abis/IP Identity message
  * MphConfig.CNF can be returned to the wrong callback. E.g. with Tx Power
    and ciphering. The dispatch should take a look at the hLayer3.
