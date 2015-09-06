@@ -49,6 +49,25 @@ AC_ARG_ENABLE(trx,
 AC_MSG_RESULT([$enable_trx])
 AM_CONDITIONAL(ENABLE_TRX, test "x$enable_trx" = "xyes")
 
+AC_MSG_CHECKING([whether to enable support for Octasic OCTPHY-2G])
+AC_ARG_ENABLE(octphy,
+		AC_HELP_STRING([--enable-octphy],
+				[enable code for Octasic OCTPHY-2G [default=no]]),
+		[enable_octphy="yes"],[enable_octphy="no"])
+AC_ARG_WITH([octsdr-2g], [AS_HELP_STRING([--with-octsdr-2g], [Location of the OCTSDR-2G API header files])],
+			 [octsdr2g_incdir="$withval"],[octsdr2g_incdir="`cd $srcdir; pwd`/src/osmo-bts-octphy/"])
+AC_SUBST([OCTSDR2G_INCDIR], $octsdr2g_incdir)
+AC_MSG_RESULT([$enable_octphy])
+AM_CONDITIONAL(ENABLE_OCTPHY, test "x$enable_octphy" = "xyes")
+if test "$enable_octphy" = "yes" ; then
+	oldCPPFLAGS=$CPPFLAGS
+	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
+	AC_CHECK_HEADER([octphy/octvc1/gsm/octvc1_gsm_default.h],[],
+			[AC_MSG_ERROR([octphy/octvc1/gsm/octvc1_gsm_default.h can not be found in $octsdr2g_incdir])],
+			[#include <octphy/octvc1/gsm/octvc1_gsm_default.h>])
+	CPPFLAGS=$oldCPPFLAGS
+fi
+
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
 AC_ARG_WITH([openbsc],
@@ -83,6 +102,7 @@ AC_OUTPUT(
     src/common/Makefile
     src/osmo-bts-sysmo/Makefile
     src/osmo-bts-trx/Makefile
+    src/osmo-bts-octphy/Makefile
     include/Makefile
     include/osmo-bts/Makefile
     tests/Makefile

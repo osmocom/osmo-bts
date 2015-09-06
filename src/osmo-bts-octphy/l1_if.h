@@ -1,0 +1,89 @@
+#pragma once
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <linux/if_packet.h>
+
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
+
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+
+#include <osmo-bts/gsm_data.h>
+
+#include <octphy/octvc1/gsm/octvc1_gsm_api.h>
+
+struct octphy_hdl {
+	/* packet socket to talk with PHY */
+	struct osmo_wqueue phy_wq;
+	/* MAC address of th PHY */
+	struct sockaddr_ll phy_addr;
+	/* Network device name */
+	char *netdev_name;
+
+	/* address parameters of the PHY */
+	uint32_t session_id;
+	uint32_t next_trans_id;
+	uint32_t socket_id;
+
+	/* clock manager state */
+	uint32_t clkmgr_state;
+
+	struct {
+		uint32_t rf_port_index;
+		uint32_t rx_gain_db;
+		uint32_t tx_atten_db;
+	} config;
+
+	struct llist_head wlc_list;
+
+	/* private pointer, points back to TRX */
+	void *priv;
+
+	struct osmo_timer_list alive_timer;
+	uint32_t alive_prim_cnt;
+};
+
+static inline struct octphy_hdl *trx_octphy_hdl(struct gsm_bts_trx *trx)
+{
+	return trx->role_bts.l1h;
+}
+
+void l1if_fill_msg_hdr(tOCTVC1_MSG_HEADER *mh, struct msgb *msg,
+			struct octphy_hdl *fl1h, uint32_t msg_type, uint32_t api_cmd);
+
+typedef int l1if_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg, void *data);
+
+/* send a request primitive to the L1 and schedule completion call-back */
+int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
+		   l1if_compl_cb *cb, void *data);
+
+#include <octphy/octvc1/gsm/octvc1_gsm_api.h>
+struct gsm_lchan *get_lchan_by_lchid(struct gsm_bts_trx *trx,
+				tOCTVC1_GSM_LOGICAL_CHANNEL_ID *lch_id);
+
+int l1if_open(struct octphy_hdl *fl1h);
+int l1if_close(struct octphy_hdl *hdl);
+
+int l1if_trx_open(struct gsm_bts_trx *trx);
+int l1if_trx_close_all(struct gsm_bts *bts);
+int l1if_enable_events(struct gsm_bts_trx *trx);
+
+int l1if_activate_rf(struct octphy_hdl *fl1h, int on);
+
+int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
+		tOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_DATA_INDICATION_EVT *
+		data_ind);
+
+struct msgb *l1p_msgb_alloc(void);
+
+/* tch.c */
+void l1if_tch_encode(struct gsm_lchan *lchan, uint32_t *payload_type,
+		     uint8_t *data, uint32_t *len, const uint8_t *rtp_pl,
+		     unsigned int rtp_pl_len);
+
+tOCTVC1_RADIO_STANDARD_FREQ_BAND_GSM_ENUM
+osmocom_to_octphy_band(enum gsm_band osmo_band, unsigned int arfcn);
