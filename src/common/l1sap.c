@@ -783,6 +783,8 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan->meas.l1_info[0] |= ((data[0] >> 5) & 1) << 2;
 		lchan->meas.l1_info[1] = data[1];
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
+
+		lchan_ms_pwr_ctrl(lchan, data[0] & 0x1f, data_ind->rssi);
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
 

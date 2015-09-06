@@ -324,6 +324,7 @@ static const uint8_t trx_rqd_attr[] = { NM_ATT_RF_MAXPOWR_R };
 static int trx_init(struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
@@ -352,7 +353,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
 	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
-					? 0.0 : fl1h->ul_power_target;
+					? 0.0 : btsb->ul_power_target;
 
 	dev_par->fTxPowerLevel = 0.0;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "

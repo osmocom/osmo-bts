@@ -207,6 +207,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
 		VTY_NEWLINE);
+	vty_out(vty, " uplink-power-target %d%s", btsb->ul_power_target, VTY_NEWLINE);
 	if (btsb->agch_queue_thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
 		 || btsb->agch_queue_low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
 		 || btsb->agch_queue_high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
@@ -437,6 +438,19 @@ DEFUN(cfg_bts_agch_queue_mgmt_default,
 	btsb->agch_queue_thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
 	btsb->agch_queue_low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
 	btsb->agch_queue_high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
+	"uplink-power-target <-110-0>",
+	"Set the nominal target Rx Level for uplink power control loop\n"
+	"Target uplink Rx level in dBm\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -782,6 +796,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_paging_lifetime_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
+	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);

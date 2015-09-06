@@ -99,6 +99,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* configurable via VTY */
 	btsb->paging_state = paging_init(btsb, 200, 0);
+	btsb->ul_power_target = -75;	/* dBm default */
 
 	/* configurable via OML */
 	btsb->load.ccch.load_ind_period = 112;
