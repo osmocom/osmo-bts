@@ -296,6 +296,13 @@ void bts_model_abis_close(struct gsm_bts *bts)
 		bts_model_trx_close(trx);
 }
 
+int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
+{
+	/* we always implement the power control loop in osmo-bts software, as
+	 * there is no automatism in the underlying osmo-trx */
+	return 0;
+}
+
 /* set bts attributes */
 static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 {
