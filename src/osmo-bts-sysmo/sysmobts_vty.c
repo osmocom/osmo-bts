@@ -175,15 +175,15 @@ DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
+DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	"uplink-power-target <-110-0>",
-	"Set the nominal target Rx Level for uplink power control loop\n"
+	"Obsolete alias for bts uplink-power-target\n"
 	"Target uplink Rx level in dBm\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
-	fl1h->ul_power_target = atoi(argv[0]);
+	btsb->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -484,8 +484,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
-	vty_out(vty, "  uplink-power-target %d%s", fl1h->ul_power_target,
-		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
 		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
@@ -536,7 +534,6 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
 	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
-	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);

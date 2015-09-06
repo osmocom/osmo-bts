@@ -46,7 +46,6 @@ struct femtol1_hdl {
 	uint32_t dsp_trace_f;
 	uint8_t clk_use_eeprom;
 	int clk_cal;
-	int ul_power_target;
 	uint8_t clk_src;
 	float min_qual_rach;
 	float min_qual_norm;

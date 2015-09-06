@@ -84,6 +84,8 @@ struct gsm_bts_role_bts {
 	struct gsm_time gsm_time;
 	uint8_t radio_link_timeout;
 
+	int ul_power_target;		/* Uplink Rx power target */
+
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
 
