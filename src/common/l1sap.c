@@ -848,6 +848,9 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		}
 
 		msgb_enqueue(&lchan->dl_tch_queue, msg);
+
+		/* Return 1 to signal that we're still using msg and it should not be freed */
+		return 1;
 	}
 
 	return 0;
