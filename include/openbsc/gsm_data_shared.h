@@ -13,6 +13,7 @@
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/rxlev_stat.h>
 #include <osmocom/gsm/sysinfo.h>
+#include <osmocom/gsm/meas_rep.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -56,9 +57,6 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_BTS0_TS	1
 #define HARDCODED_BTS1_TS	6
 #define HARDCODED_BTS2_TS	11
-
-/* reserved according to GSM 03.03 § 2.4 */
-#define GSM_RESERVED_TMSI   0xFFFFFFFF
 
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
@@ -152,10 +150,8 @@ struct bts_codec_conf {
 
 struct amr_mode {
 	uint8_t mode;
-	uint8_t threshold_ms;
-	uint8_t hysteresis_ms;
-	uint8_t threshold_bts;
-	uint8_t hysteresis_bts;
+	uint8_t threshold;
+	uint8_t hysteresis;
 };
 struct amr_multirate_conf {
 	uint8_t gsm48_ie[2];
@@ -199,6 +195,7 @@ struct gsm_lchan {
 	enum lchan_csd_mode csd_mode;
 	/* State */
 	enum gsm_lchan_state state;
+	const char *broken_reason;
 	/* Power levels for MS and BTS */
 	uint8_t bs_power;
 	uint8_t ms_power;
@@ -210,8 +207,7 @@ struct gsm_lchan {
 	} encr;
 
 	/* AMR bits */
-	uint8_t mr_ms_lv[7];
-	uint8_t mr_bts_lv[7];
+	struct gsm48_multi_rate_conf mr_conf;
 
 	/* Established data link layer services */
 	uint8_t sapis[8];
@@ -281,12 +277,7 @@ struct gsm_lchan {
 		struct bts_ul_meas uplink[MAX_NUM_UL_MEAS];
 		/* last L1 header from the MS */
 		uint8_t l1_info[2];
-		struct {
-			uint8_t rxlev_full;
-			uint8_t rxlev_sub;
-			uint8_t rxqual_full;
-			uint8_t rxqual_sub;
-		} res;
+		struct gsm_meas_rep_unidir ul_res;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
@@ -294,9 +285,11 @@ struct gsm_lchan {
 			uint8_t buf[16];
 			uint8_t len;
 		} last_sid;
+		uint8_t last_cmr;
 	} tch;
 	/* BTS-side ciphering state (rx only, bi-directional, ...) */
 	uint8_t ciph_state;
+	uint8_t ciph_ns;
 	uint8_t loopback;
 	struct {
 		uint8_t active;
@@ -310,6 +303,12 @@ struct gsm_lchan {
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
 	int rel_act_kind;
+
+	/* power handling */
+	struct {
+		uint8_t current;
+		uint8_t fixed;
+	} ms_power_ctrl;
 #endif
 };
 
@@ -374,11 +373,15 @@ struct gsm_bts_trx {
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
-	unsigned int power_reduce;	/* in dB */
+
+#ifndef ROLE_BSC
+	struct trx_power_params power_params;
+	int ms_power_control;
 
 	struct {
 		void *l1h;
 	} role_bts;
+#endif
 
 	union {
 		struct {
@@ -648,6 +651,7 @@ struct gsm_bts {
 			unsigned int configured:1,
 				skip_reset:1,
 				no_loc_rel_cnf:1,
+				bts_reset_timer_cnf,
 				did_reset:1,
 				wait_reset:1;
 			struct osmo_timer_list reset_timer;
@@ -681,8 +685,9 @@ struct gsm_bts {
 	int num_trx;
 	struct llist_head trx_list;
 
-	/* SI compatibility hacks */
+	/* SI related items */
 	int force_combined_si;
+	int bcch_change_mark;
 
 #ifdef ROLE_BSC
 	/* Abis NM queue */
@@ -725,23 +730,23 @@ struct gsm_bts {
 	/* supported codecs beside FR */
 	struct bts_codec_conf codec;
 
-	/* full and half rate multirate config */
-	struct amr_multirate_conf mr_full;
-	struct amr_multirate_conf mr_half;
+	/* BTS dependencies bit field */
+	uint32_t depends_on[256/(8*4)];
 #endif /* ROLE_BSC */
 	void *role;
 };
 
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
 
-const struct value_string gsm_pchant_names[10];
-const struct value_string gsm_pchant_descs[10];
-const struct value_string gsm_lchant_names[6];
+const struct value_string gsm_pchant_names[12];
+const struct value_string gsm_pchant_descs[12];
+const struct value_string gsm_lchant_names[8];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
@@ -770,6 +775,9 @@ void gsm_bts_mo_reset(struct gsm_bts *bts);
 
 uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
+
+/* return the gsm_lchan for the CBCH (if it exists at all) */
+struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
 
 /*
  * help with parsing regexps

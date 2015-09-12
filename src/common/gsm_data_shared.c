@@ -51,7 +51,7 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	gsm_abis_mo_reset(mo);
 }
 
-const struct value_string gsm_pchant_names[10] = {
+const struct value_string gsm_pchant_names[12] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },
 	{ GSM_PCHAN_CCCH_SDCCH4,"CCCH+SDCCH4" },
@@ -61,10 +61,12 @@ const struct value_string gsm_pchant_names[10] = {
 	{ GSM_PCHAN_PDCH,	"PDCH" },
 	{ GSM_PCHAN_TCH_F_PDCH,	"TCH/F_PDCH" },
 	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
+	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "CCCH+SDCCH4+CBCH" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "SDCCH8+CBCH" },
 	{ 0,			NULL }
 };
 
-const struct value_string gsm_pchant_descs[10] = {
+const struct value_string gsm_pchant_descs[12] = {
 	{ GSM_PCHAN_NONE,	"Physical Channel not configured" },
 	{ GSM_PCHAN_CCCH,	"FCCH + SCH + BCCH + CCCH (Comb. IV)" },
 	{ GSM_PCHAN_CCCH_SDCCH4,
@@ -75,6 +77,8 @@ const struct value_string gsm_pchant_descs[10] = {
 	{ GSM_PCHAN_PDCH,	"Packet Data Channel for GPRS/EDGE" },
 	{ GSM_PCHAN_TCH_F_PDCH,	"Dynamic TCH/F or GPRS PDCH" },
 	{ GSM_PCHAN_UNKNOWN,	"Unknown / Unsupported channel combination" },
+	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "FCCH + SCH + BCCH + CCCH + CBCH + 3 SDCCH + 2 SACCH (Comb. V)" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "7 SDCCH + 4 SACCH + CBCH (Comb. VII)" },
 	{ 0,			NULL }
 };
 
@@ -88,12 +92,13 @@ enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
 	return get_string_value(gsm_pchant_names, name);
 }
 
-const struct value_string gsm_lchant_names[6] = {
+const struct value_string gsm_lchant_names[8] = {
 	{ GSM_LCHAN_NONE,	"NONE" },
 	{ GSM_LCHAN_SDCCH,	"SDCCH" },
 	{ GSM_LCHAN_TCH_F,	"TCH/F" },
 	{ GSM_LCHAN_TCH_H,	"TCH/H" },
 	{ GSM_LCHAN_UNKNOWN,	"UNKNOWN" },
+	{ GSM_LCHAN_CBCH,	"CBCH" },
 	{ 0,			NULL }
 };
 
@@ -130,6 +135,21 @@ static const struct value_string chreq_names[] = {
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 {
 	return get_value_string(chreq_names, c);
+}
+
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
+{
+	struct gsm_bts *bts;
+
+	if (num >= net->num_bts)
+		return NULL;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->nr == num)
+			return bts;
+	}
+
+	return NULL;
 }
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
@@ -260,6 +280,9 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->rach_b_thresh = -1;
 	bts->rach_ldavg_slots = -1;
 	bts->paging.free_chans_need = -1;
+
+	/* si handling */
+	bts->bcch_change_mark = 1;
 
 	return bts;
 }
@@ -497,10 +520,12 @@ uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
 		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		cbits = 0x04;
 		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		cbits = 0x08;
 		cbits += lchan_nr;
 		break;
@@ -518,4 +543,25 @@ uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
 	return gsm_ts2chan_nr(lchan->ts, lchan->nr);
+}
+
+/* return the gsm_lchan for the CBCH (if it exists at all) */
+struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
+{
+	struct gsm_lchan *lchan = NULL;
+	struct gsm_bts_trx *trx = bts->c0;
+
+	if (trx->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
+		lchan = &trx->ts[0].lchan[2];
+	else {
+		int i;
+		for (i = 0; i < 8; i++) {
+			if (trx->ts[i].pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH) {
+				lchan = &trx->ts[i].lchan[2];
+				break;
+			}
+		}
+	}
+
+	return lchan;
 }
