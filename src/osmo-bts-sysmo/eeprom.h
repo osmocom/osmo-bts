@@ -96,6 +96,10 @@ typedef struct eeprom_RfClockCal
  ***************************************************************************/
 typedef struct eeprom_TxCal
 {
+	uint8_t u8DspMajVer;            ///< DSP firmware major version
+	uint8_t u8DspMinVer;            ///< DSP firmware minor version
+	uint8_t u8FpgaMajVer;           ///< FPGA firmware major version
+	uint8_t u8FpgaMinVer;           ///< FPGA firmware minor version
     float fTxGainGmsk[80];          ///< Gain setting for GMSK output level from +50dBm to -29 dBm
     float fTx8PskCorr;              ///< Gain adjustment for 8 PSK (default to +3.25 dB)
     float fTxExtAttCorr[31];        ///< Gain adjustment for external attenuator (0:@1dB, 1:@2dB, ..., 31:@32dB)
@@ -115,6 +119,10 @@ typedef struct eeprom_TxCal
  ***************************************************************************/
 typedef struct eeprom_RxCal
 {
+	uint8_t u8DspMajVer;            ///< DSP firmware major version
+	uint8_t u8DspMinVer;            ///< DSP firmware minor version
+	uint8_t u8FpgaMajVer;           ///< FPGA firmware major version
+	uint8_t u8FpgaMinVer;           ///< FPGA firmware minor version
     float fExtRxGain;               ///< External RX gain
     float fRxMixGainCorr;           ///< Mixer gain error compensation
     float fRxLnaGainCorr[3];        ///< LNA gain error compensation (1:@-12 dB, 2:@-24 dB, 3:@-36 dB)

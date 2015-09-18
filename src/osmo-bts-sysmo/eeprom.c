@@ -96,6 +96,12 @@
 #define EEPROM_CFG_MAGIC_ID     0x53464548
 
 /**
+ * EEPROM header version
+ */
+#define EEPROM_HDR_V1	1
+#define EEPROM_HDR_V2	2
+
+/**
  * EEPROM section ID
  */
 typedef enum
@@ -113,7 +119,8 @@ typedef enum
     EEPROM_SID_DCS1800_RXDCAL   = 0x3220,       ///< DCS-1800 RX Downlink Calibration Table
     EEPROM_SID_PCS1900_TXCAL    = 0x3300,       ///< PCS-1900 TX Calibration Table
     EEPROM_SID_PCS1900_RXUCAL   = 0x3310,       ///< PCS-1900 RX Uplink Calibration Table
-    EEPROM_SID_PCS1900_RXDCAL   = 0x3320        ///< PCS-1900 RX Downlink Calibration Table
+    EEPROM_SID_PCS1900_RXDCAL   = 0x3320,       ///< PCS-1900 RX Downlink Calibration Table
+    EEPROM_SID_ASSY             = 0x3400        ///< Assembly information
 } eeprom_SID_t;
 
 /****************************************************************************
@@ -121,7 +128,7 @@ typedef enum
  ****************************************************************************/
 
 /**
- * TX calibration table (common part)
+ * TX calibration table (common part) V1
  */
 typedef struct
 {
@@ -136,7 +143,7 @@ typedef struct
 } __attribute__((packed)) eeprom_CfgTxCal_t;
 
 /**
- * RX calibration table (common part)
+ * RX calibration table (common part) V1
  */
 typedef struct
 {
@@ -152,6 +159,45 @@ typedef struct
     int16_t sfixRxLnaGainCorr[3];               ///< [Q6.9] LNA gain error compensation (1:@-12 dB, 2:@-24 dB, 3:@-36 dB)
     int16_t sfixRxRollOffCorr[0];               ///< [Q6.9] Frequency roll-off compensation
 } __attribute__((packed)) eeprom_CfgRxCal_t;
+
+/**
+ * TX calibration table (common part) V2
+ */
+typedef struct
+{
+    uint16_t u16SectionID;                      ///< Section ID
+    uint16_t u16Crc;                            ///< Parity
+    uint32_t u32Time;                           ///< Epoch time
+    uint8_t u8DspMajVer;                            ///< DSP firmware major version
+    uint8_t u8DspMinVer;                            ///< DSP firmware minor version
+    uint8_t u8FpgaMajVer;                            ///< FPGA firmware major version
+    uint8_t u8FpgaMinVer;                            ///< FPGA firmware minor version
+    int16_t  sfixTxGainGmsk[80];                ///< [Q10.5] Gain setting for GMSK output level from +50dBm to -29 dBm
+    int16_t  sfixTx8PskCorr;                    ///< [Q6.9] Gain adjustment for 8 PSK (default to +3.25 dB)
+    int16_t  sfixTxExtAttCorr[31];              ///< [Q6.9] Gain adjustment for external attenuator (0:@1dB, 1:@2dB, ..., 31:@32dB)
+    int16_t  sfixTxRollOffCorr[0];              ///< [Q6.9] Gain correction for each ARFCN
+} __attribute__((packed)) eeprom_CfgTxCalV2_t;
+
+/**
+ * RX calibration table (common part) V2
+ */
+typedef struct
+{
+    uint16_t u16SectionID;                      ///< Section ID
+    uint16_t u16Crc;                            ///< Parity
+    uint32_t u32Time;                           ///< Epoch time
+    uint8_t u8DspMajVer;                        ///< DSP firmware major version
+    uint8_t u8DspMinVer ;                       ///< DSP firmware minor version
+    uint8_t u8FpgaMajVer;                      ///< FPGA firmware major version
+    uint8_t u8FpgaMinVer;                      ///< FPGA firmware minor version
+    uint16_t u16IqImbalMode;                    ///< IQ imbalance mode (0:off, 1:on, 2:auto)
+    uint16_t u16IqImbalCorr[4];                 ///< IQ imbalance compensation
+    int16_t sfixExtRxGain;                      ///< [Q6.9] External RX gain
+    int16_t sfixRxMixGainCorr;                  ///< [Q6.9] Mixer gain error compensation
+    int16_t sfixRxLnaGainCorr[3];               ///< [Q6.9] LNA gain error compensation (1:@-12 dB, 2:@-24 dB, 3:@-36 dB)
+    int16_t sfixRxRollOffCorr[0];               ///< [Q6.9] Frequency roll-off compensation
+} __attribute__((packed)) eeprom_CfgRxCalV2_t;
+
 
 /**
  * EEPROM configuration area format
@@ -248,6 +294,102 @@ typedef struct
             uint16_t __pcs1900RxdCalMem[299];
 
         } __attribute__((packed)) v1;
+
+        /** EEPROM Format V2 */
+        struct
+        {
+            /** System information */
+            struct
+            {
+                uint16_t u16SectionID;          ///< Section ID
+                uint16_t u16Crc;                ///< Parity
+                uint32_t u32Time;               ///< Epoch time
+                char szSn[16];                  ///< Serial number
+                uint32_t u8Rev      :  8;       ///< Board revision
+                uint32_t u2Tcxo     :  2;       ///< TCXO present       (0:absent, 1:present, x:unknows)
+                uint32_t u2Ocxo     :  2;       ///< OCXO present       (0:absent, 1:present, x:unknows)
+                uint32_t u2GSM850   :  2;       ///< GSM-850 supported  (0:unsupported, 1:supported, x:unknows)
+                uint32_t u2GSM900   :  2;       ///< GSM-900 supported  (0:unsupported, 1:supported, x:unknows)
+                uint32_t u2DCS1800  :  2;       ///< GSM-1800 supported (0:unsupported, 1:supported, x:unknows)
+                uint32_t u2PCS1900  :  2;       ///< GSM-1900 supported (0:unsupported, 1:supported, x:unknows)
+                uint32_t            : 12;       ///< unused
+            } __attribute__((packed)) sysInfo;
+
+            /** RF Clock configuration */
+            struct
+            {
+                uint16_t u16SectionID;          ///< Section ID
+                uint16_t u16Crc;                ///< Parity
+                uint32_t u32Time;               ///< Epoch time
+
+                int      i24ClkCor  :24;        ///< Clock correction value in PPB.
+                uint32_t u8ClkSrc   : 8;        ///< Clock source (0:None, 1:OCXO, 2:TCXO, 3:External, 4:GPS PPS, 5:reserved, 6:RX, 7:Edge)
+            } __attribute__((packed)) rfClk;
+
+            /** GSM-850 TX Calibration Table */
+            eeprom_CfgTxCalV2_t gsm850TxCalV2;
+            uint16_t __gsm850TxCalMemV2[124];
+
+            /** GSM-850 RX Uplink Calibration Table */
+            eeprom_CfgRxCalV2_t gsm850RxuCalV2;
+            uint16_t __gsm850RxuCalMemV2[124];
+
+            /** GSM-850 RX Downlink Calibration Table */
+            eeprom_CfgRxCalV2_t gsm850RxdCalV2;
+            uint16_t __gsm850RxdCalMemV2[124];
+
+            /** GSM-900 TX Calibration Table */
+            eeprom_CfgTxCalV2_t gsm900TxCalV2;
+            uint16_t __gsm900TxCalMemV2[194];
+
+            /** GSM-900 RX Uplink Calibration Table */
+            eeprom_CfgRxCalV2_t gsm900RxuCalV2;
+            uint16_t __gsm900RxuCalMemV2[194];
+
+            /** GSM-900 RX Downlink Calibration Table */
+            eeprom_CfgRxCalV2_t gsm900RxdCalV2;
+            uint16_t __gsm900RxdCalMemV2[194];
+
+            /** DCS-1800 TX Calibration Table */
+            eeprom_CfgTxCalV2_t dcs1800TxCalV2;
+            uint16_t __dcs1800TxCalMemV2[374];
+
+            /** DCS-1800 RX Uplink Calibration Table */
+            eeprom_CfgRxCalV2_t dcs1800RxuCalV2;
+            uint16_t __dcs1800RxuCalMemV2[374];
+
+            /** DCS-1800 RX Downlink Calibration Table */
+            eeprom_CfgRxCalV2_t dcs1800RxdCalV2;
+            uint16_t __dcs1800RxdCalMemV2[374];
+
+            /** PCS-1900 TX Calibration Table */
+            eeprom_CfgTxCalV2_t pcs1900TxCalV2;
+            uint16_t __pcs1900TxCalMemV2[299];
+
+            /** PCS-1900 RX Uplink Calibration Table */
+            eeprom_CfgRxCalV2_t pcs1900RxuCalV2;
+            uint16_t __pcs1900RxuCalMemV2[299];
+
+            /** PCS-1900 RX Downlink Calibration Table */
+            eeprom_CfgRxCalV2_t pcs1900RxdCalV2;
+            uint16_t __pcs1900RxdCalMemV2[299];
+
+			/** Assembly information */
+			struct
+			{
+				uint16_t u16SectionID;          ///< Section ID
+				uint16_t u16Crc;                ///< Parity
+				uint32_t u32Time;               ///< Epoch time
+				char szSn[16];                  ///< System serial number
+				char szPartNum[20];             ///< System part number
+				uint8_t u8TsID ;                ///< Test station ID
+				uint8_t u8TstVer ;              ///< Test version
+				uint8_t u8PaType;               ///< PA type       (0: None, 1-254 supported, 255 ; Unknown)
+				uint8_t u8PaBand;               ///< PA GSM band  (0: Unknown, 1: 850 MHz, 2: 900 MHz, 4: 1800 MHz, 8: 1900 MHz)
+				uint8_t u8PaMajVer;          	///< PA major version
+				uint8_t u8PaMinVer;         	///< PA minor version
+			} __attribute__((packed)) assyInfo;
+        } __attribute__((packed)) v2;
     } __attribute__((packed)) cfg;
 } __attribute__((packed)) eeprom_Cfg_t;
 
@@ -287,11 +429,11 @@ eeprom_Error_t eeprom_ResetCfg( void )
 
     // Init the header
     ee.hdr.u32MagicId = EEPROM_CFG_MAGIC_ID;
-    ee.hdr.u16Version = 1;
+    ee.hdr.u16Version = EEPROM_HDR_V2;
 
     // Write it to the EEPROM
-    err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
-    if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
+    err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v2), (const char *) &ee );
+    if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v2) )
     {
         return EEPROM_ERR_DEVICE;
     }
@@ -349,7 +491,8 @@ eeprom_Error_t eeprom_ReadSysInfo( eeprom_SysInfo_t *pSysInfo )
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+    	case EEPROM_HDR_V1:
+        case EEPROM_HDR_V2:
         {
             // Get a copy of the EEPROM section
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.sysInfo - (uint32_t)&ee), sizeof(ee.cfg.v1.sysInfo), (char *)&ee.cfg.v1.sysInfo );
@@ -426,7 +569,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
     {
         // Init the header
         ee.hdr.u32MagicId = EEPROM_CFG_MAGIC_ID;
-        ee.hdr.u16Version = 1;
+        ee.hdr.u16Version = EEPROM_HDR_V2;
 
         // Write it to the EEPROM
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
@@ -439,7 +582,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+        case EEPROM_HDR_V2:
         {
             ee.cfg.v1.sysInfo.u16SectionID = EEPROM_SID_SYSINFO;
             ee.cfg.v1.sysInfo.u16Crc       = 0;
@@ -513,7 +656,8 @@ eeprom_Error_t eeprom_ReadRfClockCal( eeprom_RfClockCal_t *pRfClockCal )
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+		case EEPROM_HDR_V1:
+    	case EEPROM_HDR_V2:
         {
             // Get a copy of the EEPROM section 
             err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.rfClk - (uint32_t)&ee), sizeof(ee.cfg.v1.rfClk), (char *)&ee.cfg.v1.rfClk );
@@ -584,7 +728,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
     {
         // Init the header
         ee.hdr.u32MagicId = EEPROM_CFG_MAGIC_ID;
-        ee.hdr.u16Version = 1;
+        ee.hdr.u16Version = EEPROM_HDR_V2;
 
         // Write it to the EEPROM
         err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
@@ -597,7 +741,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+        case EEPROM_HDR_V2:
         {
             ee.cfg.v1.rfClk.u16SectionID = EEPROM_SID_RFCLOCK_CAL;
             ee.cfg.v1.rfClk.u16Crc       = 0;
@@ -655,6 +799,7 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
     eeprom_Cfg_t *ee = eeprom_cached_config();
     eeprom_SID_t sId;
     eeprom_CfgTxCal_t *pCfgTxCal = NULL;
+    eeprom_CfgTxCalV2_t *pCfgTxCalV2 = NULL;
 
     // Get a copy of the EEPROM header
     if (!ee)
@@ -665,7 +810,7 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
 
     switch ( ee->hdr.u16Version )
     {
-        case 1:
+    	case EEPROM_HDR_V1:
         {
             switch ( iBand )
             {
@@ -726,8 +871,92 @@ eeprom_Error_t eeprom_ReadTxCal( int iBand, eeprom_TxCal_t *pTxCal )
             {
                 pTxCal->fTxRollOffCorr[i] = (float)pCfgTxCal->sfixTxRollOffCorr[i] * 0.001953125f;
             }
+
+            //DSP firmware version
+			pTxCal->u8DspMajVer = 0;
+			pTxCal->u8DspMinVer = 0;
+
+			//FPGA firmware version
+			pTxCal->u8FpgaMajVer = 0;
+			pTxCal->u8FpgaMinVer = 0;
+
             break;
         }
+
+    	case EEPROM_HDR_V2:
+		{
+
+			switch ( iBand )
+			{
+				case 0:
+					nArfcn = 124;
+					sId = EEPROM_SID_GSM850_TXCAL;
+					pCfgTxCalV2 = &ee->cfg.v2.gsm850TxCalV2;
+					size = sizeof(ee->cfg.v2.gsm850TxCalV2) + sizeof(ee->cfg.v2.__gsm850TxCalMemV2);
+					break;
+				case 1:
+					nArfcn = 194;
+					sId = EEPROM_SID_GSM900_TXCAL;
+					pCfgTxCalV2 = &ee->cfg.v2.gsm900TxCalV2;
+					size = sizeof(ee->cfg.v2.gsm900TxCalV2) + sizeof(ee->cfg.v2.__gsm900TxCalMemV2);
+					break;
+				case 2:
+					nArfcn = 374;
+					sId = EEPROM_SID_DCS1800_TXCAL;
+					pCfgTxCalV2 = &ee->cfg.v2.dcs1800TxCalV2;
+					size = sizeof(ee->cfg.v2.dcs1800TxCalV2) + sizeof(ee->cfg.v2.__dcs1800TxCalMemV2);
+					break;
+				case 3:
+					nArfcn = 299;
+					sId = EEPROM_SID_PCS1900_TXCAL;
+					pCfgTxCalV2 = &ee->cfg.v2.pcs1900TxCalV2;
+					size = sizeof(ee->cfg.v2.pcs1900TxCalV2) + sizeof(ee->cfg.v2.__pcs1900TxCalMemV2);
+					break;
+				default:
+					PERROR( "Invalid GSM band specified (%d)\n", iBand );
+					return EEPROM_ERR_INVALID;
+			}
+
+
+			// Validate the ID
+			if ( pCfgTxCalV2->u16SectionID != sId )
+			{
+				PERROR( "Uninitialised data section\n" );
+				return EEPROM_ERR_UNAVAILABLE;
+			}
+
+			// Validate the CRC
+			if ( eeprom_crc( (uint8_t *)&pCfgTxCalV2->u32Time, size - 2 * sizeof(uint16_t) ) != pCfgTxCalV2->u16Crc )
+			{
+				PERROR( "Parity error\n" );
+				return EEPROM_ERR_PARITY;
+			}
+
+			// Expand the content of the section
+			for ( i = 0; i < 80; i++ )
+			{
+				pTxCal->fTxGainGmsk[i] = (float)pCfgTxCalV2->sfixTxGainGmsk[i] * 0.03125f;
+			}
+			pTxCal->fTx8PskCorr = (float)pCfgTxCalV2->sfixTx8PskCorr * 0.001953125f;
+			for ( i = 0; i < 31; i++ )
+			{
+				pTxCal->fTxExtAttCorr[i] = (float)pCfgTxCalV2->sfixTxExtAttCorr[i] * 0.001953125f;
+			}
+			for ( i = 0; i < nArfcn; i++ )
+			{
+				pTxCal->fTxRollOffCorr[i] = (float)pCfgTxCalV2->sfixTxRollOffCorr[i] * 0.001953125f;
+			}
+
+			//DSP firmware version
+			pTxCal->u8DspMajVer = pCfgTxCalV2->u8DspMajVer;
+			pTxCal->u8DspMinVer = pCfgTxCalV2->u8DspMinVer;
+
+			//FPGA firmware version
+			pTxCal->u8FpgaMajVer = pCfgTxCalV2->u8FpgaMajVer;
+			pTxCal->u8FpgaMinVer = pCfgTxCalV2->u8FpgaMinVer;
+
+			break;
+		}
 
         default:
         {
@@ -764,7 +993,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
     int nArfcn;
     eeprom_Cfg_t ee;
     eeprom_SID_t sId;
-    eeprom_CfgTxCal_t *pCfgTxCal = NULL;
+    eeprom_CfgTxCalV2_t *pCfgTxCal = NULL;
 
     // Get a copy of the EEPROM header
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
@@ -779,11 +1008,11 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
     {
         // Init the header
         ee.hdr.u32MagicId = EEPROM_CFG_MAGIC_ID;
-        ee.hdr.u16Version = 1;
+        ee.hdr.u16Version = EEPROM_HDR_V2;
 
         // Write it to the EEPROM
-        err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
-        if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
+        err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v2), (const char *) &ee );
+        if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v2) )
         {
             PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
@@ -792,36 +1021,36 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+        case EEPROM_HDR_V2:
         {
             int32_t fixVal;
 
             switch ( iBand )
             {
                 case 0:
-                    nArfcn = 124;
-                    sId = EEPROM_SID_GSM850_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.gsm850TxCal;
-                    size = sizeof(ee.cfg.v1.gsm850TxCal) + sizeof(ee.cfg.v1.__gsm850TxCalMem);
-                    break;
+			nArfcn = 124;
+			sId = EEPROM_SID_GSM850_TXCAL;
+			pCfgTxCal = &ee.cfg.v2.gsm850TxCalV2;
+			size = sizeof(ee.cfg.v2.gsm850TxCalV2) + sizeof(ee.cfg.v2.__gsm850TxCalMemV2);
+			break;
                 case 1:
-                    nArfcn = 194;
-                    sId = EEPROM_SID_GSM900_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.gsm900TxCal;
-                    size = sizeof(ee.cfg.v1.gsm900TxCal) + sizeof(ee.cfg.v1.__gsm900TxCalMem);
-                    break;
+                	nArfcn = 194;
+					sId = EEPROM_SID_GSM900_TXCAL;
+					pCfgTxCal = &ee.cfg.v2.gsm900TxCalV2;
+					size = sizeof(ee.cfg.v2.gsm900TxCalV2) + sizeof(ee.cfg.v2.__gsm900TxCalMemV2);
+					break;
                 case 2:
-                    nArfcn = 374;
-                    sId = EEPROM_SID_DCS1800_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.dcs1800TxCal;
-                    size = sizeof(ee.cfg.v1.dcs1800TxCal) + sizeof(ee.cfg.v1.__dcs1800TxCalMem);
-                    break;
+                	nArfcn = 374;
+					sId = EEPROM_SID_DCS1800_TXCAL;
+					pCfgTxCal = &ee.cfg.v2.dcs1800TxCalV2;
+					size = sizeof(ee.cfg.v2.dcs1800TxCalV2) + sizeof(ee.cfg.v2.__dcs1800TxCalMemV2);
+					break;
                 case 3:
-                    nArfcn = 299;
-                    sId = EEPROM_SID_PCS1900_TXCAL;
-                    pCfgTxCal = &ee.cfg.v1.pcs1900TxCal;
-                    size = sizeof(ee.cfg.v1.pcs1900TxCal) + sizeof(ee.cfg.v1.__pcs1900TxCalMem);
-                    break;
+                	nArfcn = 299;
+					sId = EEPROM_SID_PCS1900_TXCAL;
+					pCfgTxCal = &ee.cfg.v2.pcs1900TxCalV2;
+					size = sizeof(ee.cfg.v2.pcs1900TxCalV2) + sizeof(ee.cfg.v2.__pcs1900TxCalMemV2);
+					break;
                 default:
                     PERROR( "Invalid GSM band specified (%d)\n", iBand );
                     return EEPROM_ERR_INVALID;
@@ -830,6 +1059,14 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
             pCfgTxCal->u16SectionID = sId;
             pCfgTxCal->u16Crc       = 0;
             pCfgTxCal->u32Time      = time(NULL);
+
+            //DSP firmware version
+			pCfgTxCal->u8DspMajVer  = pTxCal->u8DspMajVer;
+			pCfgTxCal->u8DspMinVer  = pTxCal->u8DspMinVer;
+
+		   //FPGA firmware version
+			pCfgTxCal->u8FpgaMajVer  = pTxCal->u8FpgaMajVer;
+			pCfgTxCal->u8FpgaMinVer  = pTxCal->u8FpgaMinVer;
 
             // Compress the calibration tables
             for ( i = 0; i < 80; i++ )
@@ -909,6 +1146,7 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
     eeprom_Cfg_t *ee = eeprom_cached_config();
     eeprom_SID_t sId;
     eeprom_CfgRxCal_t *pCfgRxCal = NULL;
+    eeprom_CfgRxCalV2_t *pCfgRxCalV2 = NULL;
 
 
     if (!ee)
@@ -919,7 +1157,7 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
 
     switch ( ee->hdr.u16Version )
     {
-        case 1:
+    	case EEPROM_HDR_V1:
         {
             switch ( iBand )
             {
@@ -1028,8 +1266,139 @@ eeprom_Error_t eeprom_ReadRxCal( int iBand, int iUplink, eeprom_RxCal_t *pRxCal 
             {
                 pRxCal->fRxRollOffCorr[i] = (float)pCfgRxCal->sfixRxRollOffCorr[i] * 0.001953125f;
             }
+
+            //DSP firmware version
+			pRxCal->u8DspMajVer = 0;
+			pRxCal->u8DspMinVer = 0;
+
+			//FPGA firmware version
+			pRxCal->u8FpgaMajVer = 0;
+			pRxCal->u8FpgaMinVer = 0;
+
             break;
         }
+
+    	case EEPROM_HDR_V2:
+		{
+			switch ( iBand )
+			{
+				case 0:
+					nArfcn = 124;
+					if ( iUplink )
+					{
+						sId = EEPROM_SID_GSM850_RXUCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.gsm850RxuCalV2;
+						size = sizeof(ee->cfg.v2.gsm850RxuCalV2) + sizeof(ee->cfg.v2.__gsm850RxuCalMemV2);
+					}
+					else
+					{
+						sId = EEPROM_SID_GSM850_RXDCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.gsm850RxdCalV2;
+						size = sizeof(ee->cfg.v2.gsm850RxdCalV2) + sizeof(ee->cfg.v2.__gsm850RxdCalMemV2);
+					}
+					break;
+				case 1:
+					nArfcn = 194;
+					if ( iUplink )
+					{
+						sId = EEPROM_SID_GSM900_RXUCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.gsm900RxuCalV2;
+						size = sizeof(ee->cfg.v2.gsm900RxuCalV2) + sizeof(ee->cfg.v2.__gsm900RxuCalMemV2);
+					}
+					else
+					{
+						sId = EEPROM_SID_GSM900_RXDCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.gsm900RxdCalV2;
+						size = sizeof(ee->cfg.v2.gsm900RxdCalV2) + sizeof(ee->cfg.v2.__gsm900RxdCalMemV2);
+					}
+					break;
+				case 2:
+					nArfcn = 374;
+					if ( iUplink )
+					{
+						sId = EEPROM_SID_DCS1800_RXUCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.dcs1800RxuCalV2;
+						size = sizeof(ee->cfg.v2.dcs1800RxuCalV2) + sizeof(ee->cfg.v2.__dcs1800RxuCalMemV2);
+					}
+					else
+					{
+						sId = EEPROM_SID_DCS1800_RXDCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.dcs1800RxdCalV2;
+						size = sizeof(ee->cfg.v2.dcs1800RxdCalV2) + sizeof(ee->cfg.v2.__dcs1800RxdCalMemV2);
+					}
+					break;
+				case 3:
+					nArfcn = 299;
+					if ( iUplink )
+					{
+						sId = EEPROM_SID_PCS1900_RXUCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.pcs1900RxuCalV2;
+						size = sizeof(ee->cfg.v2.pcs1900RxuCalV2) + sizeof(ee->cfg.v2.__pcs1900RxuCalMemV2);
+					}
+					else
+					{
+						sId = EEPROM_SID_PCS1900_RXDCAL;
+						pCfgRxCalV2 = &ee->cfg.v2.pcs1900RxdCalV2;
+						size = sizeof(ee->cfg.v2.pcs1900RxdCalV2) + sizeof(ee->cfg.v2.__pcs1900RxdCalMemV2);
+					}
+					break;
+
+				default:
+					PERROR( "Invalid GSM band specified (%d)\n", iBand );
+					return EEPROM_ERR_INVALID;
+			}
+
+		    // Validate the ID
+			if ( pCfgRxCalV2->u16SectionID != sId )
+			{
+				PERROR( "Uninitialized data section\n" );
+				return EEPROM_ERR_UNAVAILABLE;
+			}
+
+			// Validate the CRC
+			if ( eeprom_crc( (uint8_t *)&pCfgRxCalV2->u32Time, size - 2 * sizeof(uint16_t) ) != pCfgRxCalV2->u16Crc )
+			{
+				PERROR( "Parity error - Band %d\n", iBand );
+				return EEPROM_ERR_PARITY;
+			}
+
+			// Expand the IQ imbalance mode (0:off, 1:on, 2:auto)
+			pRxCal->u8IqImbalMode = pCfgRxCalV2->u16IqImbalMode;
+
+			// Expand the IQ imbalance compensation
+			for ( i = 0; i < 4; i++ )
+			{
+				pRxCal->u16IqImbalCorr[i] = pCfgRxCalV2->u16IqImbalCorr[i];
+			}
+
+			// Expand the External RX gain
+			pRxCal->fExtRxGain = (float)pCfgRxCalV2->sfixExtRxGain * 0.001953125;
+
+			// Expand the Mixer gain error compensation
+			pRxCal->fRxMixGainCorr = (float)pCfgRxCalV2->sfixRxMixGainCorr * 0.001953125;
+
+			// Expand the LNA gain error compensation (1:@-12 dB, 2:@-24 dB, 3:@-36 dB)
+			for ( i = 0; i < 3; i++ )
+			{
+				pRxCal->fRxLnaGainCorr[i] = (float)pCfgRxCalV2->sfixRxLnaGainCorr[i] * 0.001953125;
+			}
+
+			// Expand the Frequency roll-off compensation
+			for ( i = 0; i < nArfcn; i++ )
+			{
+				pRxCal->fRxRollOffCorr[i] = (float)pCfgRxCalV2->sfixRxRollOffCorr[i] * 0.001953125;
+			}
+
+			//DSP firmware version
+			pRxCal->u8DspMajVer = pCfgRxCalV2->u8DspMajVer;
+			pRxCal->u8DspMinVer = pCfgRxCalV2->u8DspMinVer;
+
+			//FPGA firmware version
+			pRxCal->u8FpgaMajVer = pCfgRxCalV2->u8FpgaMajVer;
+			pRxCal->u8FpgaMinVer = pCfgRxCalV2->u8FpgaMinVer;
+
+			break;
+		}
 
         default:
         {
@@ -1069,7 +1438,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
     int nArfcn;
     eeprom_Cfg_t ee;
     eeprom_SID_t sId;
-    eeprom_CfgRxCal_t *pCfgRxCal = NULL;
+    eeprom_CfgRxCalV2_t *pCfgRxCal = NULL;
 
     // Get a copy of the EEPROM header
     err = eeprom_read( EEPROM_CFG_START_ADDR, sizeof(ee.hdr), (char *) &ee.hdr );
@@ -1084,11 +1453,11 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
     {
         // Init the header
         ee.hdr.u32MagicId = EEPROM_CFG_MAGIC_ID;
-        ee.hdr.u16Version = 1;
+        ee.hdr.u16Version = EEPROM_HDR_V2;
 
         // Write it to the EEPROM
-        err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v1), (const char *) &ee );
-        if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v1) )
+        err = eeprom_write( EEPROM_CFG_START_ADDR, sizeof(ee.hdr) + sizeof(ee.cfg.v2), (const char *) &ee );
+        if ( err != sizeof(ee.hdr) + sizeof(ee.cfg.v2) )
         {
             PERROR( "Error while writing to the EEPROM (%d)\n", err );
             return EEPROM_ERR_DEVICE;
@@ -1097,7 +1466,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
 
     switch ( ee.hdr.u16Version )
     {
-        case 1:
+    	case EEPROM_HDR_V2:
         {
             int32_t fixVal;
     
@@ -1107,15 +1476,15 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
                     nArfcn = 124;
                     if ( iUplink )
                     {
-                        sId = EEPROM_SID_GSM850_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm850RxuCal;
-                        size = sizeof(ee.cfg.v1.gsm850RxuCal) + sizeof(ee.cfg.v1.__gsm850RxuCalMem);
+                    	sId = EEPROM_SID_GSM850_RXUCAL;
+						pCfgRxCal = &ee.cfg.v2.gsm850RxuCalV2;
+						size = sizeof(ee.cfg.v2.gsm850RxuCalV2) + sizeof(ee.cfg.v2.__gsm850RxuCalMemV2);
                     }
                     else
                     {
                         sId = EEPROM_SID_GSM850_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm850RxdCal;
-                        size = sizeof(ee.cfg.v1.gsm850RxdCal) + sizeof(ee.cfg.v1.__gsm850RxdCalMem);
+                        pCfgRxCal = &ee.cfg.v2.gsm850RxdCalV2;
+                        size = sizeof(ee.cfg.v2.gsm850RxdCalV2) + sizeof(ee.cfg.v2.__gsm850RxdCalMemV2);
                     }
                     break;
                 case 1:
@@ -1123,14 +1492,14 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_GSM900_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm900RxuCal;
-                        size = sizeof(ee.cfg.v1.gsm900RxuCal) + sizeof(ee.cfg.v1.__gsm900RxuCalMem);
+                        pCfgRxCal = &ee.cfg.v2.gsm900RxuCalV2;
+                        size = sizeof(ee.cfg.v2.gsm900RxuCalV2) + sizeof(ee.cfg.v2.__gsm900RxuCalMemV2);
                     }
                     else
                     {
                         sId = EEPROM_SID_GSM900_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.gsm900RxdCal;
-                        size = sizeof(ee.cfg.v1.gsm900RxdCal) + sizeof(ee.cfg.v1.__gsm900RxdCalMem);
+                        pCfgRxCal = &ee.cfg.v2.gsm900RxdCalV2;
+                        size = sizeof(ee.cfg.v2.gsm900RxdCalV2) + sizeof(ee.cfg.v2.__gsm900RxdCalMemV2);
                     }
                     break;
                 case 2:
@@ -1138,14 +1507,14 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_DCS1800_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.dcs1800RxuCal;
-                        size = sizeof(ee.cfg.v1.dcs1800RxuCal) + sizeof(ee.cfg.v1.__dcs1800RxuCalMem);
+                        pCfgRxCal = &ee.cfg.v2.dcs1800RxuCalV2;
+                        size = sizeof(ee.cfg.v2.dcs1800RxuCalV2) + sizeof(ee.cfg.v2.__dcs1800RxuCalMemV2);
                     }
                     else
                     {
                         sId = EEPROM_SID_DCS1800_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.dcs1800RxdCal;
-                        size = sizeof(ee.cfg.v1.dcs1800RxdCal) + sizeof(ee.cfg.v1.__dcs1800RxdCalMem);
+                        pCfgRxCal = &ee.cfg.v2.dcs1800RxdCalV2;
+                        size = sizeof(ee.cfg.v2.dcs1800RxdCalV2) + sizeof(ee.cfg.v2.__dcs1800RxdCalMemV2);
                     }
                     break;
                 case 3:
@@ -1153,14 +1522,14 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
                     if ( iUplink )
                     {
                         sId = EEPROM_SID_PCS1900_RXUCAL;
-                        pCfgRxCal = &ee.cfg.v1.pcs1900RxuCal;
-                        size = sizeof(ee.cfg.v1.pcs1900RxuCal) + sizeof(ee.cfg.v1.__pcs1900RxuCalMem);
+                        pCfgRxCal = &ee.cfg.v2.pcs1900RxuCalV2;
+                        size = sizeof(ee.cfg.v2.pcs1900RxuCalV2) + sizeof(ee.cfg.v2.__pcs1900RxuCalMemV2);
                     }
                     else
                     {
                         sId = EEPROM_SID_PCS1900_RXDCAL;
-                        pCfgRxCal = &ee.cfg.v1.pcs1900RxdCal;
-                        size = sizeof(ee.cfg.v1.pcs1900RxdCal) + sizeof(ee.cfg.v1.__pcs1900RxdCalMem);
+                        pCfgRxCal = &ee.cfg.v2.pcs1900RxdCalV2;
+                        size = sizeof(ee.cfg.v2.pcs1900RxdCalV2) + sizeof(ee.cfg.v2.__pcs1900RxdCalMemV2);
                     }
                     break;
                 default:
@@ -1171,6 +1540,14 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
             pCfgRxCal->u16SectionID = sId;
             pCfgRxCal->u16Crc       = 0;
             pCfgRxCal->u32Time      = time(NULL);
+
+            //DSP firmware version
+			pCfgRxCal->u8DspMajVer  = pRxCal->u8DspMajVer;
+			pCfgRxCal->u8DspMinVer  = pRxCal->u8DspMinVer;
+
+			//FPGA firmware version
+			pCfgRxCal->u8FpgaMajVer  = pRxCal->u8FpgaMajVer;
+			pCfgRxCal->u8FpgaMinVer  = pRxCal->u8FpgaMinVer;
 
             // Compress the IQ imbalance mode (0:off, 1:on, 2:auto)
             pCfgRxCal->u16IqImbalMode = pRxCal->u8IqImbalMode;
