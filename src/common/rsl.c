@@ -1203,6 +1203,7 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 	if (!nmsg)
 		return -ENOMEM;
 
+	msgb_tv16_put(nmsg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
 	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
 	rsl_ipa_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND, gsm_lchan2chan_nr(lchan));
 
