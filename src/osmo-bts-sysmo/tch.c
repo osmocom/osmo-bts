@@ -529,6 +529,11 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	msgb_enqueue(&lchan->dl_tch_queue, msg);
 }
 
+static int is_recv_only(uint8_t speech_mode)
+{
+	return (speech_mode & 0xF0) == (1 << 4);
+}
+
 /*! \brief receive a traffic L1 primitive for a given lchan */
 int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 {
@@ -538,6 +543,9 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 	uint8_t *payload = data_ind->msgUnitParam.u8Buffer + 1;
 	uint8_t payload_len;
 	struct msgb *rmsg = NULL;
+
+	if (is_recv_only(lchan->abis_ip.speech_mode))
+		return -EAGAIN;
 
 	if (data_ind->msgUnitParam.u8Size < 1) {
 		LOGP(DL1C, LOGL_ERROR, "%s Rx Payload size 0\n",
