@@ -84,34 +84,6 @@ DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
-	"HIDDEN", "HIDDEN")
-{
-	struct gsm_bts_trx *trx = vty->index;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	int sapi;
-
-	sapi = get_string_value(femtobts_l1sapi_names, argv[0]);
-
-	fl1h->gsmtap_sapi_mask |= (1 << sapi);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
-	"HIDDEN", "HIDDEN")
-{
-	struct gsm_bts_trx *trx = vty->index;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	int sapi;
-
-	sapi = get_string_value(femtobts_l1sapi_names, argv[0]);
-
-	fl1h->gsmtap_sapi_mask &= ~(1 << sapi);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_trx_clkcal_eeprom, cfg_trx_clkcal_eeprom_cmd,
 	"clock-calibration eeprom",
 	"Use the eeprom clock calibration value\n")
@@ -203,15 +175,15 @@ DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
+DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	"uplink-power-target <-110-0>",
-	"Set the nominal target Rx Level for uplink power control loop\n"
+	"Obsolete alias for bts uplink-power-target\n"
 	"Target uplink Rx level in dBm\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
-	fl1h->ul_power_target = atoi(argv[0]);
+	btsb->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -497,37 +469,9 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 }
 
-/* FIXME: move to libosmocore ? */
-static char buf_casecnvt[256];
-char *osmo_str_tolower(const char *in)
-{
-	int len, i;
-
-	if (!in)
-		return NULL;
-
-	len = strlen(in);
-	if (len > sizeof(buf_casecnvt))
-		len = sizeof(buf_casecnvt);
-
-	for (i = 0; i < len; i++) {
-		buf_casecnvt[i] = tolower(in[i]);
-		if (in[i] == '\0')
-			break;
-	}
-	if (i < sizeof(buf_casecnvt))
-		buf_casecnvt[i] = '\0';
-
-	/* just to make sure we're always zero-terminated */
-	buf_casecnvt[sizeof(buf_casecnvt)-1] = '\0';
-
-	return buf_casecnvt;
-}
-
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	int i;
 
 	if (fl1h->clk_use_eeprom)
 		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
@@ -540,8 +484,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "  clock-source %s%s",
 		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
 		VTY_NEWLINE);
-	vty_out(vty, "  uplink-power-target %d%s", fl1h->ul_power_target,
-		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
 		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
@@ -549,14 +491,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	if (trx->nominal_power != sysmobts_get_nominal_power(trx))
 		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
 			VTY_NEWLINE);
-
-	for (i = 0; i < 32; i++) {
-		if (fl1h->gsmtap_sapi_mask & (1 << i)) {
-			const char *name = get_value_string(femtobts_l1sapi_names, i);
-			vty_out(vty, "  gsmtap-sapi %s%s", osmo_str_tolower(name),
-				VTY_NEWLINE);
-		}
-	}
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
@@ -576,20 +510,6 @@ int bts_model_vty_init(struct gsm_bts *bts)
 						"|",")", VTY_DO_LOWER);
 	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
-						"\n", "", 0);
-
-	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
-						"gsmtap-sapi (",
-						"|",")", VTY_DO_LOWER);
-	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
-						"GSMTAP SAPI\n",
-						"\n", "", 0);
-
-	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
-						"no gsmtap-sapi (",
-						"|",")", VTY_DO_LOWER);
-	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_l1sapi_names,
-						NO_STR "GSMTAP SAPI\n",
 						"\n", "", 0);
 
 	install_element_ve(&show_dsp_trace_f_cmd);
@@ -614,9 +534,6 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
 	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
-	install_element(TRX_NODE, &cfg_trx_gsmtap_sapi_cmd);
-	install_element(TRX_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
-	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);

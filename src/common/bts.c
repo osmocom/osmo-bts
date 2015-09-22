@@ -99,6 +99,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* configurable via VTY */
 	btsb->paging_state = paging_init(btsb, 200, 0);
+	btsb->ul_power_target = -75;	/* dBm default */
 
 	/* configurable via OML */
 	btsb->load.ccch.load_ind_period = 112;
@@ -610,4 +611,11 @@ int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
 int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
 {
 	return trx->ms_power_control == 1;
+}
+
+struct gsm_time *get_time(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts->role;
+
+	return &btsb->gsm_time;
 }

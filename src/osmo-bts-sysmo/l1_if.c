@@ -1,6 +1,6 @@
 /* Interface handler for Sysmocom L1 */
 
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
  * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
@@ -33,12 +33,8 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/write_queue.h>
-#include <osmocom/core/gsmtap.h>
-#include <osmocom/core/gsmtap_util.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/lapdm.h>
-
-#include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -51,6 +47,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/l1sap.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -69,97 +66,6 @@ extern int pcu_direct;
 
 #define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
 #define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
-
-/* mapping from femtobts L1 SAPI to GSMTAP channel type */
-static const uint8_t l1sapi2gsmtap_cht[GsmL1_Sapi_NUM] = {
-	[GsmL1_Sapi_Idle] = 255,
-	[GsmL1_Sapi_Fcch] = 255,
-	[GsmL1_Sapi_Sch] = 255,
-	[GsmL1_Sapi_Sacch] = GSMTAP_CHANNEL_SDCCH | GSMTAP_CHANNEL_ACCH,
-	[GsmL1_Sapi_Sdcch] = GSMTAP_CHANNEL_SDCCH,
-	[GsmL1_Sapi_Bcch] = GSMTAP_CHANNEL_BCCH,
-	[GsmL1_Sapi_Pch] = GSMTAP_CHANNEL_PCH,
-	[GsmL1_Sapi_Agch] = GSMTAP_CHANNEL_AGCH,
-	[GsmL1_Sapi_Cbch] = GSMTAP_CHANNEL_CBCH51,
-	[GsmL1_Sapi_Rach] = GSMTAP_CHANNEL_RACH,
-	[GsmL1_Sapi_TchF] = 255,
-	[GsmL1_Sapi_FacchF] = GSMTAP_CHANNEL_TCH_F,
-	[GsmL1_Sapi_TchH] = 255,
-	[GsmL1_Sapi_FacchH] = GSMTAP_CHANNEL_TCH_H,
-	[GsmL1_Sapi_Nch] = GSMTAP_CHANNEL_CCCH,
-	[GsmL1_Sapi_Pdtch] = GSMTAP_CHANNEL_PACCH,
-	[GsmL1_Sapi_Pacch] = GSMTAP_CHANNEL_PACCH,
-	[GsmL1_Sapi_Pbcch] = 255,
-	[GsmL1_Sapi_Pagch] = 255,
-	[GsmL1_Sapi_Ppch] = 255,
-	[GsmL1_Sapi_Pnch] = 255,
-	[GsmL1_Sapi_Ptcch] = GSMTAP_CHANNEL_PTCCH,
-	[GsmL1_Sapi_Prach] = 255,
-};
-
-static void tx_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
-{
-	struct gsm_bts_trx *trx = fl1h->priv;
-	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
-	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
-
-	if (fl1h->gsmtap) {
-		uint8_t ss, chan_type;
-		if (data_req->subCh == 0x1f)
-			ss = 0;
-		else
-			ss = data_req->subCh;
-
-		if (!(fl1h->gsmtap_sapi_mask & (1 << data_req->sapi)))
-			return;
-
-		chan_type = l1sapi2gsmtap_cht[data_req->sapi];
-		if (chan_type == 255)
-			return;
-
-		gsmtap_send(fl1h->gsmtap, trx->arfcn, data_req->u8Tn,
-				chan_type, ss, data_req->u32Fn, 0, 0,
-				data_req->msgUnitParam.u8Buffer,
-				data_req->msgUnitParam.u8Size);
-	}
-}
-
-static void ul_to_gsmtap(struct femtol1_hdl *fl1h, struct msgb *msg)
-{
-	struct gsm_bts_trx *trx = fl1h->priv;
-	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
-	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
-	int skip = 0;
-
-	if (fl1h->gsmtap) {
-		uint8_t ss, chan_type;
-		if (data_ind->subCh == 0x1f)
-			ss = 0;
-		else
-			ss = data_ind->subCh;
-
-		if (!(fl1h->gsmtap_sapi_mask & (1 << data_ind->sapi)))
-			return;
-
-		chan_type = l1sapi2gsmtap_cht[data_ind->sapi];
-		if (chan_type == 255)
-			return;
-		if (chan_type == GSMTAP_CHANNEL_PACCH
-		 || chan_type == GSMTAP_CHANNEL_PDCH) {
-			if (data_ind->msgUnitParam.u8Buffer[0]
-					!= GsmL1_PdtchPlType_Full)
-				return;
-			skip = 1;
-		}
-
-		gsmtap_send(fl1h->gsmtap, trx->arfcn | GSMTAP_ARFCN_F_UPLINK,
-				data_ind->u8Tn, chan_type, ss, data_ind->u32Fn,
-				data_ind->measParam.fRssi,
-				data_ind->measParam.fLinkQuality,
-				data_ind->msgUnitParam.u8Buffer + skip,
-				data_ind->msgUnitParam.u8Size - skip);
-	}
-}
 
 
 struct wait_l1_conf {
@@ -326,19 +232,6 @@ empty_req_from_rts_ind(GsmL1_Prim_t *l1p,
 	return empty_req;
 }
 
-/* obtain a ptr to the lapdm_channel for a given hLayer2 */
-static struct lapdm_channel *
-get_lapdm_chan_by_hl2(struct gsm_bts_trx *trx, uint32_t hLayer2)
-{
-	struct gsm_lchan *lchan;
-
-	lchan = l1if_hLayer_to_lchan(trx, hLayer2);
-	if (!lchan)
-		return NULL;
-
-	return &lchan->lapdm_ch;
-}
-
 /* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
  * uni-directional de-cryption on the uplink. We need this ugly layering
  * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
@@ -377,43 +270,11 @@ static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 	return 1;
 }
 
-static inline void check_for_first_ciphrd(struct femtol1_hdl *fl1h,
-					GsmL1_MsgUnitParam_t *msgUnitParam,
-					struct gsm_lchan *lchan)
-{
-	uint8_t n_s;
-
-	/* if this is the first valid message after enabling Rx
-	 * decryption, we have to enable Tx encryption */
-	if (lchan->ciph_state != LCHAN_CIPH_RX_CONF)
-		return;
-
-	/* HACK: check if it's an I frame, in order to
-	 * ignore some still buffered/queued UI frames received
-	 * before decryption was enabled */
-	if (msgUnitParam->u8Buffer[0] != 0x01)
-		return;
-	if ((msgUnitParam->u8Buffer[1] & 0x01) != 0)
-		return;
-	n_s = msgUnitParam->u8Buffer[1] >> 5;
-	if (lchan->ciph_ns != n_s)
-		return;
-	lchan->ciph_state = LCHAN_CIPH_TXRX_REQ;
-	l1if_set_ciphering(fl1h, lchan, 1);
-}
-
 /* public helpers for the test */
 int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan)
 {
 	return check_for_ciph_cmd(fl1h, msg, lchan);
-}
-
-void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
-				GsmL1_MsgUnitParam_t *msgUnitParam,
-				struct gsm_lchan *lchan)
-{
-	return check_for_first_ciphrd(fl1h, msgUnitParam, lchan);
 }
 
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
@@ -422,78 +283,482 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x2B, 0x2B, 0x2B
 };
 
+/* fill PH-DATA.req from l1sap primitive */
+static GsmL1_PhDataReq_t *
+data_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+		uint8_t tn, uint32_t fn, uint8_t sapi, uint8_t sub_ch,
+		uint8_t block_nr, uint8_t len)
+{
+	GsmL1_PhDataReq_t *data_req = &l1p->u.phDataReq;
+
+	l1p->id = GsmL1_PrimId_PhDataReq;
+
+	/* copy fields from PH-RSS.ind */
+	data_req->hLayer1	= fl1->hLayer1;
+	data_req->u8Tn 		= tn;
+	data_req->u32Fn		= fn;
+	data_req->sapi		= sapi;
+	data_req->subCh		= sub_ch;
+	data_req->u8BlockNbr	= block_nr;
+
+	data_req->msgUnitParam.u8Size = len;
+
+	return data_req;
+}
+
+/* fill PH-EMPTY_FRAME.req from l1sap primitive */
+static GsmL1_PhEmptyFrameReq_t *
+empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+		     uint8_t tn, uint32_t fn, uint8_t sapi,
+		     uint8_t subch, uint8_t block_nr)
+{
+	GsmL1_PhEmptyFrameReq_t *empty_req = &l1p->u.phEmptyFrameReq;
+
+	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
+
+	empty_req->hLayer1 = fl1->hLayer1;
+	empty_req->u8Tn = tn;
+	empty_req->u32Fn = fn;
+	empty_req->sapi = sapi;
+	empty_req->subCh = subch;
+	empty_req->u8BlockNbr = block_nr;
+
+	return empty_req;
+}
+
+static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		       struct osmo_phsap_prim *l1sap)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	uint32_t u32Fn;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
+	uint8_t chan_nr, link_id;
+	GsmL1_Prim_t *l1p;
+	int len;
+
+	if (!msg) {
+		LOGP(DL1C, LOGL_FATAL, "PH-DATA.req without msg. "
+			"Please fix!\n");
+		abort();
+	}
+	chan_nr = l1sap->u.data.chan_nr;
+	link_id = l1sap->u.data.link_id;
+	u32Fn = l1sap->u.data.fn;
+	u8Tn = L1SAP_CHAN2TS(chan_nr);
+	subCh = 0x1f;
+	if (L1SAP_IS_LINK_SACCH(link_id)) {
+		sapi = GsmL1_Sapi_Sacch;
+		if (!L1SAP_IS_CHAN_TCHF(chan_nr))
+			subCh = l1sap_chan2ss(chan_nr);
+	} else if (L1SAP_IS_CHAN_TCHF(chan_nr)) {
+		if (trx->ts[u8Tn].pchan == GSM_PCHAN_PDCH) {
+			if (L1SAP_IS_PTCCH(u32Fn)) {
+				sapi = GsmL1_Sapi_Ptcch;
+				u8BlockNbr = L1SAP_FN2PTCCHBLOCK(u32Fn);
+			} else {
+				sapi = GsmL1_Sapi_Pdtch;
+				u8BlockNbr = L1SAP_FN2MACBLOCK(u32Fn);
+			}
+		} else {
+			sapi = GsmL1_Sapi_FacchF;
+			u8BlockNbr = (u32Fn % 13) >> 2;
+		}
+	} else if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+		subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+		sapi = GsmL1_Sapi_FacchH;
+		u8BlockNbr = (u32Fn % 26) >> 3;
+	} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr)) {
+		subCh = L1SAP_CHAN2SS_SDCCH4(chan_nr);
+		sapi = GsmL1_Sapi_Sdcch;
+	} else if (L1SAP_IS_CHAN_SDCCH8(chan_nr)) {
+		subCh = L1SAP_CHAN2SS_SDCCH8(chan_nr);
+		sapi = GsmL1_Sapi_Sdcch;
+	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
+		sapi = GsmL1_Sapi_Bcch;
+	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
+		/* The sapi depends on DSP configuration, not
+		 * on the actual SYSTEM INFORMATION 3. */
+		u8BlockNbr = L1SAP_FN2CCCHBLOCK(u32Fn);
+		if (u8BlockNbr >= 1)
+			sapi = GsmL1_Sapi_Pch;
+		else
+			sapi = GsmL1_Sapi_Agch;
+	} else {
+		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
+			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
+			l1sap->oph.operation, chan_nr, link_id);
+		return -EINVAL;
+	}
+
+	/* pull and trim msg to start of payload */
+	msgb_pull(msg, sizeof(*l1sap));
+	len = msg->len;
+	msgb_trim(msg, 0);
+
+	/* convert l1sap message to GsmL1 primitive, keep payload */
+	if (len) {
+		/* data request */
+
+		/* wrap zeroed l1p structure arrount payload
+		 * this must be done in three steps, since the actual
+		 * payload is not at the end but inside the l1p structure. */
+		msgb_push(msg, offsetof(GsmL1_Prim_t, u.phDataReq.msgUnitParam.u8Buffer));
+		memset(msg->data, 0, msg->len);
+		msgb_put(msg, len);
+		memset(msg->tail, 0, sizeof(*l1p) - msg->len);
+		msgb_put(msg, sizeof(*l1p) - msg->len);
+		msg->l1h = msg->data;
+
+		l1p = msgb_l1prim(msg);
+		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
+	} else {
+		/* empty frame */
+
+		/* put l1p structure */
+		msgb_put(msg, sizeof(*l1p));
+		memset(msg->data, 0, msg->len);
+		msg->l1h = msg->data;
+
+		l1p = msgb_l1prim(msg);
+		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
+	}
+
+	/* send message to DSP's queue */
+	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], msg) != 0) {
+		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		msgb_free(msg);
+	}
+
+	return 0;
+}
+
+static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		       struct osmo_phsap_prim *l1sap)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct gsm_lchan *lchan;
+	uint32_t u32Fn;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi, ss;
+	uint8_t chan_nr;
+	GsmL1_Prim_t *l1p;
+	struct msgb *nmsg = NULL;
+
+	chan_nr = l1sap->u.tch.chan_nr;
+	u32Fn = l1sap->u.tch.fn;
+	u8Tn = L1SAP_CHAN2TS(chan_nr);
+	u8BlockNbr = (u32Fn % 13) >> 2;
+	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+		ss = subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+		sapi = GsmL1_Sapi_TchH;
+	} else {
+		subCh = 0x1f;
+		ss = 0;
+		sapi = GsmL1_Sapi_TchF;
+	}
+
+	lchan = &trx->ts[u8Tn].lchan[ss];
+
+	/* create new message and fill data */
+	if (msg) {
+		msgb_pull(msg, sizeof(*l1sap));
+		/* create new message */
+		nmsg = l1p_msgb_alloc();
+		if (!nmsg)
+			return -ENOMEM;
+		l1p = msgb_l1prim(nmsg);
+		l1if_tch_encode(lchan,
+			l1p->u.phDataReq.msgUnitParam.u8Buffer,
+			&l1p->u.phDataReq.msgUnitParam.u8Size,
+			msg->data, msg->len);
+	}
+
+	/* no message/data, we generate an empty traffic msg */
+	if (!nmsg)
+		nmsg = gen_empty_tch_msg(lchan);
+
+	/* no traffic message, we generate an empty msg */
+	if (!nmsg) {
+		nmsg = l1p_msgb_alloc();
+		if (!nmsg)
+			return -ENOMEM;
+	}
+
+	l1p = msgb_l1prim(nmsg);
+
+	/* if we provide data, or if data is already in nmsg */
+	if (l1p->u.phDataReq.msgUnitParam.u8Size) {
+		/* data request */
+		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh,
+				    u8BlockNbr,
+				    l1p->u.phDataReq.msgUnitParam.u8Size);
+	} else {
+		/* empty frame */
+		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
+	}
+	/* send message to DSP's queue */
+	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
+
+	msgb_free(msg);
+	return 0;
+}
+
+static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
+		        struct osmo_phsap_prim *l1sap)
+{
+	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	uint8_t u8Tn, ss;
+	uint8_t chan_nr;
+	struct gsm_lchan *lchan;
+	int rc = 0;
+
+	switch (l1sap->u.info.type) {
+	case PRIM_INFO_ACT_CIPH:
+		chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
+		u8Tn = L1SAP_CHAN2TS(chan_nr);
+		ss = l1sap_chan2ss(chan_nr);
+		lchan = &trx->ts[u8Tn].lchan[ss];
+		if (l1sap->u.info.u.ciph_req.uplink) {
+			l1if_set_ciphering(fl1, lchan, 0);
+			lchan->ciph_state = LCHAN_CIPH_RX_REQ;
+		}
+		if (l1sap->u.info.u.ciph_req.downlink) {
+			l1if_set_ciphering(fl1, lchan, 1);
+			lchan->ciph_state = LCHAN_CIPH_RX_CONF_TX_REQ;
+		}
+		if (l1sap->u.info.u.ciph_req.downlink
+		 && l1sap->u.info.u.ciph_req.uplink)
+			lchan->ciph_state = LCHAN_CIPH_RXTX_REQ;
+		break;
+	case PRIM_INFO_ACTIVATE:
+	case PRIM_INFO_DEACTIVATE:
+	case PRIM_INFO_MODIFY:
+		chan_nr = l1sap->u.info.u.act_req.chan_nr;
+		u8Tn = L1SAP_CHAN2TS(chan_nr);
+		ss = l1sap_chan2ss(chan_nr);
+		lchan = &trx->ts[u8Tn].lchan[ss];
+		if (l1sap->u.info.type == PRIM_INFO_ACTIVATE)
+			l1if_rsl_chan_act(lchan);
+		else if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
+			if (lchan->ho.active == HANDOVER_WAIT_FRAME)
+				l1if_rsl_chan_mod(lchan);
+			else
+				l1if_rsl_mode_modify(lchan);
+		} else if (l1sap->u.info.u.act_req.sacch_only)
+			l1if_rsl_deact_sacch(lchan);
+		else
+			l1if_rsl_chan_rel(lchan);
+		msgb_free(msg);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
+			l1sap->u.info.type);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+/* primitive from common part */
+int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+{
+	struct msgb *msg = l1sap->oph.msg;
+	int rc = 0;
+
+	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
+		rc = ph_data_req(trx, msg, l1sap);
+		break;
+	case OSMO_PRIM(PRIM_TCH, PRIM_OP_REQUEST):
+		rc = ph_tch_req(trx, msg, l1sap);
+		break;
+	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
+		rc = mph_info_req(trx, msg, l1sap);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d\n",
+			l1sap->oph.primitive, l1sap->oph.operation);
+		rc = -EINVAL;
+	}
+
+	if (rc)
+		msgb_free(msg);
+	return rc;
+}
+
+static int handle_mph_time_ind(struct femtol1_hdl *fl1,
+				GsmL1_MphTimeInd_t *time_ind)
+{
+	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts *bts = trx->bts;
+	struct osmo_phsap_prim l1sap;
+	uint32_t fn;
+
+	/* increment the primitive count for the alive timer */
+	fl1->alive_prim_cnt++;
+
+	/* ignore every time indication, except for c0 */
+	if (trx != bts->c0) {
+		return 0;
+	}
+
+	fn = time_ind->u32Fn;
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+		PRIM_OP_INDICATION, NULL);
+	l1sap.u.info.type = PRIM_INFO_TIME;
+	l1sap.u.info.u.time_ind.fn = fn;
+
+	return l1sap_up(trx, &l1sap);
+}
+
+static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
+			       GsmL1_Sapi_t sapi, GsmL1_SubCh_t subCh,
+			       uint8_t u8Tn, uint32_t u32Fn)
+{
+	uint8_t cbits = 0;
+	switch (sapi) {
+	case GsmL1_Sapi_Bcch:
+		cbits = 0x10;
+		break;
+	case GsmL1_Sapi_Sacch:
+		switch(pchan) {
+		case GSM_PCHAN_TCH_F:
+			cbits = 0x01;
+			break;
+		case GSM_PCHAN_TCH_H:
+			cbits = 0x02 + subCh;
+			break;
+		case GSM_PCHAN_CCCH_SDCCH4:
+			cbits = 0x04 + subCh;
+			break;
+		case GSM_PCHAN_SDCCH8_SACCH8C:
+			cbits = 0x08 + subCh;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "SACCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
+	case GsmL1_Sapi_Sdcch:
+		switch(pchan) {
+		case GSM_PCHAN_CCCH_SDCCH4:
+			cbits = 0x04 + subCh;
+			break;
+		case GSM_PCHAN_SDCCH8_SACCH8C:
+			cbits = 0x08 + subCh;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "SDCCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
+	case GsmL1_Sapi_Agch:
+	case GsmL1_Sapi_Pch:
+		cbits = 0x12;
+		break;
+	case GsmL1_Sapi_Pdtch:
+	case GsmL1_Sapi_Pacch:
+		switch(pchan) {
+		case GSM_PCHAN_PDCH:
+			cbits = 0x01;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "PDTCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
+	case GsmL1_Sapi_TchF:
+		cbits = 0x01;
+		break;
+	case GsmL1_Sapi_TchH:
+		cbits = 0x02 + subCh;
+		break;
+	case GsmL1_Sapi_FacchF:
+		cbits = 0x01;
+		break;
+	case GsmL1_Sapi_FacchH:
+		cbits = 0x02 + subCh;
+		break;
+	case GsmL1_Sapi_Ptcch:
+		if (!L1SAP_IS_PTCCH(u32Fn)) {
+			LOGP(DL1C, LOGL_FATAL, "Not expecting PTCCH at frame "
+				"number other than 12, got it at %u (%u). "
+				"Please fix!\n", u32Fn % 52, u32Fn);
+			abort();
+		}
+		switch(pchan) {
+		case GSM_PCHAN_PDCH:
+			cbits = 0x01;
+			break;
+		default:
+			LOGP(DL1C, LOGL_ERROR, "PTCCH for pchan %d?\n",
+				pchan);
+			return 0;
+		}
+		break;
+	default:
+		return 0;
+	}
+
+	/* not reached due to default case above */
+	return (cbits << 3) | u8Tn;
+}
+
 static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
-				     GsmL1_PhReadyToSendInd_t *rts_ind)
+				     GsmL1_PhReadyToSendInd_t *rts_ind,
+				     struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
 	GsmL1_MsgUnitParam_t *msu_param;
-	struct lapdm_entity *le;
-	struct gsm_lchan *lchan;
 	struct gsm_time g_time;
 	uint32_t t3p;
-	uint8_t *si;
-	struct osmo_phsap_prim pp;
 	int rc;
+	struct osmo_phsap_prim *l1sap;
+	uint8_t chan_nr, link_id;
+	uint32_t fn;
+
+	/* check if primitive should be handled by common part */
+	chan_nr = chan_nr_by_sapi(trx->ts[rts_ind->u8Tn].pchan, rts_ind->sapi,
+		rts_ind->subCh, rts_ind->u8Tn, rts_ind->u32Fn);
+	if (chan_nr) {
+		fn = rts_ind->u32Fn;
+		if (rts_ind->sapi == GsmL1_Sapi_Sacch)
+			link_id = 0x40;
+		else
+			link_id = 0;
+		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
+		if (rc < 0)
+			MSGB_ABORT(l1p_msg, "No room for primitive\n");
+		l1sap = msgb_l1sap_prim(l1p_msg);
+		if (rts_ind->sapi == GsmL1_Sapi_TchF
+		 || rts_ind->sapi == GsmL1_Sapi_TchH) {
+			osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
+				PRIM_OP_INDICATION, l1p_msg);
+			l1sap->u.tch.chan_nr = chan_nr;
+			l1sap->u.tch.fn = fn;
+		} else {
+			osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RTS,
+				PRIM_OP_INDICATION, l1p_msg);
+			l1sap->u.data.link_id = link_id;
+			l1sap->u.data.chan_nr = chan_nr;
+			l1sap->u.data.fn = fn;
+		}
+
+		return l1sap_up(trx, l1sap);
+	}
 
 	gsm_fn2gsmtime(&g_time, rts_ind->u32Fn);
 
 	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u SAPI=%s\n",
 		g_time.t1, g_time.t2, g_time.t3,
 		get_value_string(femtobts_l1sapi_names, rts_ind->sapi));
-
-	/* In case of TCH downlink trasnmission, we already have a l1
-	 * primitive msgb pre-allocated and pre-formatted in the
-	 * dl_tch_queue.  All we need to do is to pull it off the queue
-	 * and transmit it */
-	switch (rts_ind->sapi) {
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		if (!lchan)
-			break;
-
-		if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
-			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
-			/* FIXME: we _assume_ that we never miss TDMA
-			 * frames and that we always get to this point
-			 * for every to-be-transmitted voice frame.  A
-			 * better solution would be to compute
-			 * rx_user_ts based on how many TDMA frames have
-			 * elapsed since the last call */
-			lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
-		}
-		/* get a msgb from the dl_tx_queue */
-		resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
-		/* if there is none, try to generate empty TCH frame
-		 * like AMR SID_BAD */
-		if (!resp_msg) {
-			LOGP(DL1C, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
-				gsm_lchan_name(lchan));
-			resp_msg = gen_empty_tch_msg(lchan);
-			/* if there really is none, break here and send empty */
-			if (!resp_msg)
-				break;
-		}
-
-		/* fill header */
-		data_req_from_rts_ind(msgb_l1prim(resp_msg), rts_ind);
-		/* actually transmit it */
-		goto tx;
-		break;
-	case GsmL1_Sapi_Pdtch:
-	case GsmL1_Sapi_Pacch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 0,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
-	case GsmL1_Sapi_Ptcch:
-		return pcu_tx_rts_req(&trx->ts[rts_ind->u8Tn], 1,
-			rts_ind->u32Fn, rts_ind->u16Arfcn, rts_ind->u8BlockNbr);
-	default:
-		break;
-	}
 
 	/* in all other cases, we need to allocate a new PH-DATA.ind
 	 * primitive msgb and start to fill it */
@@ -515,83 +780,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		msu_param->u8Buffer[2] = (g_time.t1 << 7) | (g_time.t2 << 2) | (t3p >> 1);
 		msu_param->u8Buffer[3] = (t3p & 1);
 		break;
-	case GsmL1_Sapi_Bcch:
-		/* get them from bts->si_buf[] */
-		si = bts_sysinfo_get(bts, &g_time);
-		if (si)
-			memcpy(msu_param->u8Buffer, si, GSM_MACBLOCK_LEN);
-		else
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-		break;
-	case GsmL1_Sapi_Sacch:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_acch;
-		/*
-		 * if the DSP is taking care of power control,
-		 * then this value will be overridden.
-		 */
-		msu_param->u8Buffer[0] = lchan->ms_power_ctrl.current;
-		msu_param->u8Buffer[1] = lchan->rqd_ta;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0) {
-			/* No SACCH data from LAPDM pending, send SACCH filling */
-			uint8_t *si = lchan_sacch_get(lchan);
-			if (si) {
-				/* +2 to not overwrite the ms_power/ta values */
-				memcpy(msu_param->u8Buffer+2, si, GSM_MACBLOCK_LEN-2);
-			} else {
-				/* +2 to not overwrite the ms_power/ta values */
-				memcpy(msu_param->u8Buffer+2, fill_frame, GSM_MACBLOCK_LEN-2);
-			}
-		} else {
-			/* +2 to not overwrite the ms_power/ta values */
-			memcpy(msu_param->u8Buffer+2, pp.oph.msg->data + 2, GSM_MACBLOCK_LEN-2);
-			msgb_free(pp.oph.msg);
-		}
-		break;
-	case GsmL1_Sapi_Sdcch:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_dcch;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0)
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-		else {
-			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
-			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
-			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
-			msgb_free(pp.oph.msg);
-		}
-		break;
-	case GsmL1_Sapi_Agch:
-	case GsmL1_Sapi_Pch:
-		rc = bts_ccch_copy_msg(bts, msu_param->u8Buffer, &g_time,
-				       rts_ind->sapi == GsmL1_Sapi_Agch);
-		if (rc <= 0)
-			memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
-		break;
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
-		/* only hit in case we have a RTP underflow, as real TCH
-		 * frames are handled way above */
-		goto empty_frame;
-		break;
-	case GsmL1_Sapi_FacchF:
-	case GsmL1_Sapi_FacchH:
-		/* resolve the L2 entity using rts_ind->hLayer2 */
-		lchan = l1if_hLayer_to_lchan(trx, rts_ind->hLayer2);
-		le = &lchan->lapdm_ch.lapdm_dcch;
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0)
-			goto empty_frame;
-		else {
-			memcpy(msu_param->u8Buffer, pp.oph.msg->data, GSM_MACBLOCK_LEN);
-			/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
-			check_for_ciph_cmd(fl1, pp.oph.msg, lchan);
-			msgb_free(pp.oph.msg);
-		}
-		break;
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
 		break;
@@ -605,14 +793,13 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	}
 tx:
 
-	tx_to_gsmtap(fl1, resp_msg);
-
 	/* transmit */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg) != 0) {
 		LOGP(DL1C, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(resp_msg);
 	}
 
+	msgb_free(l1p_msg);
 	return 0;
 
 empty_frame:
@@ -622,65 +809,6 @@ empty_frame:
 	goto tx;
 }
 
-static int handle_mph_time_ind(struct femtol1_hdl *fl1,
-				GsmL1_MphTimeInd_t *time_ind)
-{
-	struct gsm_bts_trx *trx = fl1->priv;
-	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
-
-	int frames_expired = time_ind->u32Fn - fl1->gsm_time.fn;
-
-	/* update time on PCU interface */
-	pcu_tx_time_ind(time_ind->u32Fn);
-
-	/* Update our data structures with the current GSM time */
-	gsm_fn2gsmtime(&fl1->gsm_time, time_ind->u32Fn);
-
-	/* check if the measurement period of some lchan has ended
-	 * and pre-compute the respective measurement */
-	trx_meas_check_compute(fl1->priv, time_ind->u32Fn -1);
-
-	/* increment the primitive count for the alive timer */
-	fl1->alive_prim_cnt++;
-
-	/* increment number of RACH slots that have passed by since the
-	 * last time indication */
-	if (trx == bts->c0) {
-		unsigned int num_rach_per_frame;
-		/* 27 / 51 taken from TS 05.01 Figure 3 */
-		if (bts->c0->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4)
-			num_rach_per_frame = 27;
-		else
-			num_rach_per_frame = 51;
-
-		btsb->load.rach.total += frames_expired * num_rach_per_frame;
-	}
-
-	return 0;
-}
-
-/* determine LAPDm entity inside LAPDm channel for given L1 sapi */
-static struct lapdm_entity *le_by_l1_sapi(struct lapdm_channel *lc, GsmL1_Sapi_t sapi)
-{
-	switch (sapi) {
-	case GsmL1_Sapi_Sacch:
-		return &lc->lapdm_acch;
-	default:
-		return &lc->lapdm_dcch;
-	}
-}
-
-static uint8_t gen_link_id(GsmL1_Sapi_t l1_sapi, uint8_t lapdm_sapi)
-{
-	uint8_t c_bits = 0;
-
-	if (l1_sapi == GsmL1_Sapi_Sacch)
-		c_bits = 0x40;
-
-	return c_bits | (lapdm_sapi & 7);
-}
-
 static void dump_meas_res(int ll, GsmL1_MeasParam_t *m)
 {
 	LOGPC(DL1C, ll, ", Meas: RSSI %-3.2f dBm,  Qual %-3.2f dB,  "
@@ -688,79 +816,50 @@ static void dump_meas_res(int ll, GsmL1_MeasParam_t *m)
 		m->fBer, m->i16BurstTiming);
 }
 
-static int process_meas_res(struct gsm_lchan *lchan, GsmL1_MeasParam_t *m)
+static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				GsmL1_MeasParam_t *m)
 {
-	struct bts_ul_meas ulm;
+	struct osmo_phsap_prim l1sap;
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
+		PRIM_OP_INDICATION, NULL);
+	l1sap.u.info.type = PRIM_INFO_MEAS;
+	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
+	l1sap.u.info.u.meas_ind.ta_offs_qbits = m->i16BurstTiming;
+	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 100);
+	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
 
-	/* in the GPRS case we are not interested in measurement
-	 * processing.  The PCU will take care of it */
-	if (lchan->type == GSM_LCHAN_PDTCH)
-		return 0;
-
-	ulm.ta_offs_qbits = m->i16BurstTiming;
-	ulm.ber10k = (unsigned int) (m->fBer * 100);
-	ulm.inv_rssi = (uint8_t) (m->fRssi * -1);
-
-	return lchan_new_ul_meas(lchan, &ulm);
-}
-
-/* process radio link timeout counter S */
-static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
-{
-	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
-
-	/* if link loss criterion already reached */
-	if (lchan->s == 0) {
-		DEBUGP(DMEAS, "%s radio link counter S already 0.\n",
-			gsm_lchan_name(lchan));
-		return;
-	}
-
-	if (bad_frame) {
-		/* count down radio link counter S */
-		lchan->s--;
-		DEBUGP(DMEAS, "%s counting down radio link counter S=%d\n",
-			gsm_lchan_name(lchan), lchan->s);
-		if (lchan->s == 0)
-			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
-		return;
-	}
-
-	if (lchan->s < btsb->radio_link_timeout) {
-		/* count up radio link counter S */
-		lchan->s += 2;
-		if (lchan->s > btsb->radio_link_timeout)
-			lchan->s = btsb->radio_link_timeout;
-		DEBUGP(DMEAS, "%s counting up radio link counter S=%d\n",
-			gsm_lchan_name(lchan), lchan->s);
-	}
+	return l1sap_up(trx, &l1sap);
 }
 
 static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
-	struct osmo_phsap_prim pp;
-	struct gsm_lchan *lchan;
-	struct lapdm_entity *le;
-	struct msgb *msg;
+	uint8_t chan_nr, link_id;
+	struct osmo_phsap_prim *l1sap;
+	uint32_t fn;
+	uint8_t *data, len;
 	int rc = 0;
 
-	ul_to_gsmtap(fl1, l1p_msg);
-
-	lchan = l1if_hLayer_to_lchan(fl1->priv, data_ind->hLayer2);
-	if (!lchan) {
-		LOGP(DL1C, LOGL_ERROR,
-			"unable to resolve lchan by hLayer2 for 0x%x\n",
-			data_ind->hLayer2);
-		return -ENODEV;
+	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
+		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
+	if (!chan_nr) {
+		LOGP(DL1C, LOGL_ERROR, "PH-DATA-INDICATION for unknown sapi "
+			"%d\n", data_ind->sapi);
+		msgb_free(l1p_msg);
+		return ENOTSUP;
 	}
+	fn = data_ind->u32Fn;
+	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? 0x40 : 0x00;
 
-	process_meas_res(lchan, &data_ind->measParam);
+	process_meas_res(trx, chan_nr, &data_ind->measParam);
 
 	if (data_ind->measParam.fLinkQuality < fl1->min_qual_norm
-	 && data_ind->msgUnitParam.u8Size != 0)
+	 && data_ind->msgUnitParam.u8Size != 0) {
+		msgb_free(l1p_msg);
 		return 0;
+	}
 
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
@@ -769,195 +868,96 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 
-	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
-		handover_frame(lchan);
-
-	switch (data_ind->sapi) {
-	case GsmL1_Sapi_Sacch:
-		radio_link_timeout(lchan, (data_ind->msgUnitParam.u8Size == 0));
-		if (data_ind->msgUnitParam.u8Size == 0)
-			break;
-		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
-		if (data_ind->msgUnitParam.u8Size < 2) {
-			LOGP(DL1C, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
-				data_ind->msgUnitParam.u8Size);
-			break;
-		}
-
-		/*
-		 * Handle power control
-		 */
-		l1if_ms_pwr_ctrl(lchan, fl1->ul_power_target,
-				data_ind->msgUnitParam.u8Buffer[0] & 0x1f,
-				data_ind->measParam.fRssi);
-
-		/* Some brilliant engineer decided that the ordering of
-		 * fields on the Um interface is different from the
-		 * order of fields in RLS. See TS 04.04 (Chapter 7.2)
-		 * vs. TS 08.58 (Chapter 9.3.10). */
-		lchan->meas.l1_info[0] = data_ind->msgUnitParam.u8Buffer[0] << 3;
-		lchan->meas.l1_info[0] |= ((data_ind->msgUnitParam.u8Buffer[0] >> 5) & 1) << 2;
-		lchan->meas.l1_info[1] = data_ind->msgUnitParam.u8Buffer[1];
-		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
-		/* fall-through */
-	case GsmL1_Sapi_Sdcch:
-	case GsmL1_Sapi_FacchF:
-	case GsmL1_Sapi_FacchH:
-		/* Check and Re-check for the SACCH */
-		if (data_ind->msgUnitParam.u8Size == 0) {
-			LOGP(DL1C, LOGL_NOTICE, "%s %s data is null.\n",
-				gsm_lchan_name(lchan),
-				get_value_string(femtobts_l1sapi_names, data_ind->sapi));
-			break;
-		}
-
-		check_for_first_ciphrd(fl1, &data_ind->msgUnitParam, lchan);
-
-		/* SDCCH, SACCH and FACCH all go to LAPDm */
-		le = le_by_l1_sapi(&lchan->lapdm_ch, data_ind->sapi);
-		/* allocate and fill LAPDm primitive */
-		msg = msgb_alloc_headroom(128, 64, "PH-DATA.ind");
-		osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_DATA,
-				PRIM_OP_INDICATION, msg);
-
-		/* copy over actual MAC block */
-		msg->l2h = msgb_put(msg, data_ind->msgUnitParam.u8Size);
-		memcpy(msg->l2h, data_ind->msgUnitParam.u8Buffer,
-			data_ind->msgUnitParam.u8Size);
-
-		/* LAPDm requires those... */
-		pp.u.data.chan_nr = gsm_lchan2chan_nr(lchan);
-		pp.u.data.link_id = gen_link_id(data_ind->sapi, 0);
-
-		/* feed into the LAPDm code of libosmogsm */
-		rc = lapdm_phsap_up(&pp.oph, le);
-		break;
-	case GsmL1_Sapi_TchF:
-	case GsmL1_Sapi_TchH:
+	/* check for TCH */
+	if (data_ind->sapi == GsmL1_Sapi_TchF
+	 || data_ind->sapi == GsmL1_Sapi_TchH) {
 		/* TCH speech frame handling */
-		rc = l1if_tch_rx(lchan, l1p_msg);
-		break;
-	case GsmL1_Sapi_Pdtch:
-	case GsmL1_Sapi_Pacch:
-		/* drop incomplete UL block */
-		if (!data_ind->msgUnitParam.u8Size
-		 || data_ind->msgUnitParam.u8Buffer[0]
-			!= GsmL1_PdtchPlType_Full)
-			break;
-		/* PDTCH / PACCH frame handling */
-		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 0,
-			data_ind->u32Fn, data_ind->u16Arfcn,
-			data_ind->u8BlockNbr,
-			data_ind->msgUnitParam.u8Buffer + 1,
-			data_ind->msgUnitParam.u8Size - 1,
-			(int8_t) (data_ind->measParam.fRssi));
-		break;
-	case GsmL1_Sapi_Ptcch:
-		/* PTCCH frame handling */
-		rc = pcu_tx_data_ind(&trx->ts[data_ind->u8Tn], 1,
-			data_ind->u32Fn, data_ind->u16Arfcn,
-			data_ind->u8BlockNbr,
-			data_ind->msgUnitParam.u8Buffer,
-			data_ind->msgUnitParam.u8Size,
-			(int8_t) (data_ind->measParam.fRssi));
-		break;
-	case GsmL1_Sapi_Idle:
-		/* nothing to send */
-		break;
-	default:
-		LOGP(DL1C, LOGL_NOTICE, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
-			get_value_string(femtobts_l1sapi_names, data_ind->sapi));
-		break;
+		rc = l1if_tch_rx(trx, chan_nr, l1p_msg);
+		msgb_free(l1p_msg);
+		return rc;
 	}
 
-	return rc;
+	/* get data pointer and length */
+	data = data_ind->msgUnitParam.u8Buffer;
+	len = data_ind->msgUnitParam.u8Size;
+	/* pull lower header part before data */
+	msgb_pull(l1p_msg, data - l1p_msg->data);
+	/* trim remaining data to it's size, to get rid of upper header part */
+	rc = msgb_trim(l1p_msg, len);
+	if (rc < 0)
+		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
+	l1p_msg->l2h = l1p_msg->data;
+	/* push new l1 header */
+	l1p_msg->l1h = msgb_push(l1p_msg, sizeof(*l1sap));
+	/* fill header */
+	l1sap = msgb_l1sap_prim(l1p_msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
+		PRIM_OP_INDICATION, l1p_msg);
+	l1sap->u.data.rssi = data_ind->measParam.fRssi;
+	l1sap->u.data.link_id = link_id;
+	l1sap->u.data.chan_nr = chan_nr;
+	l1sap->u.data.fn = fn;
+
+	return l1sap_up(trx, l1sap);
 }
 
-static int check_acc_delay(GsmL1_PhRaInd_t *ra_ind, struct gsm_bts_role_bts *btsb,
-				uint8_t *acc_delay)
-{
-	if (ra_ind->measParam.i16BurstTiming < 0)
-		*acc_delay = 0;
-	else
-		*acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-	return *acc_delay <= btsb->max_ta;
-}
-
-static int handle_handover(struct gsm_lchan *lchan, struct gsm_bts_role_bts *btsb,
-				GsmL1_PhRaInd_t *ra_ind)
-{
-	uint8_t acc_delay;
-	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
-		LOGP(DHO, LOGL_INFO, "%s ignoring RACH request %u > max_ta(%u)\n",
-			gsm_lchan_name(lchan), acc_delay, btsb->max_ta);
-		return 0;
-	}
-
-	handover_rach(lchan, ra_ind->msgUnitParam.u8Buffer[0], acc_delay);
-	return 0;
-}
-
-static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind)
+static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
+			    struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
-	struct osmo_phsap_prim pp;
-	struct lapdm_channel *lc;
-	uint8_t acc_delay;
+	struct osmo_phsap_prim *l1sap;
+	uint32_t fn;
+	uint8_t ra, acc_delay = 0;
+	int rc;
 
 	/* increment number of busy RACH slots, if required */
 	if (trx == bts->c0 &&
 	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach)
+	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach) {
+		msgb_free(l1p_msg);
 		return 0;
+	}
 
-	/*
-	 * Check if this is a handover
-	 */
+	if (ra_ind->measParam.i16BurstTiming > 0)
+		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+
+	/* increment number of RACH slots with valid non-handover RACH burst */
 	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
-	if (lchan && lchan->ho.active == HANDOVER_ENABLED)
-		return handle_handover(lchan, btsb, ra_ind);
-
-	/* increment number of RACH slots with valid RACH burst */
-	if (trx == bts->c0)
+	if (trx == bts->c0 && !(lchan && lchan->ho.active == HANDOVER_ENABLED))
 		btsb->load.rach.access++;
 
-	DEBUGP(DL1C, "Rx PH-RA.ind");
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 
-	lc = get_lapdm_chan_by_hl2(fl1->priv, ra_ind->hLayer2);
-	if (!lc) {
-		LOGP(DL1C, LOGL_ERROR, "unable to resolve LAPD channel by hLayer2\n");
-		return -ENODEV;
-	}
-
-	/* check for under/overflow / sign */
-	if (!check_acc_delay(ra_ind, btsb, &acc_delay)) {
-		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
-		     acc_delay, btsb->max_ta);
+	if (ra_ind->msgUnitParam.u8Size != 1) {
+		LOGP(DL1C, LOGL_ERROR, "PH-RACH-INDICATION has %d bits\n",
+			ra_ind->sapi);
+		msgb_free(l1p_msg);
 		return 0;
 	}
 
-	/* check for packet access */
-	if (trx == bts->c0
-	 && (ra_ind->msgUnitParam.u8Buffer[0] & 0xf0) == 0x70) {
-		LOGP(DL1C, LOGL_INFO, "RACH for packet access\n");
-		return pcu_tx_rach_ind(bts, ra_ind->measParam.i16BurstTiming,
-			ra_ind->msgUnitParam.u8Buffer[0], ra_ind->u32Fn);
-	}
+	fn = ra_ind->u32Fn;
+	ra = ra_ind->msgUnitParam.u8Buffer[0];
+	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
+	if (rc < 0)
+		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
+	l1sap = msgb_l1sap_prim(l1p_msg);
+	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
+		l1p_msg);
+	l1sap->u.rach_ind.ra = ra;
+	l1sap->u.rach_ind.acc_delay = acc_delay;
+	l1sap->u.rach_ind.fn = fn;
+	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
+	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4)
+		l1sap->u.rach_ind.chan_nr = 0x88;
+	else
+		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
 
-	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_RACH,
-			PRIM_OP_INDICATION, NULL);
-
-	pp.u.rach_ind.ra = ra_ind->msgUnitParam.u8Buffer[0];
-	pp.u.rach_ind.fn = ra_ind->u32Fn;
-	pp.u.rach_ind.acc_delay = acc_delay;
-
-	return lapdm_phsap_up(&pp.oph, &lc->lapdm_dcch);
+	return l1sap_up(trx, l1sap);
 }
 
 /* handle any random indication from the L1 */
@@ -975,13 +975,12 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 	case GsmL1_PrimId_PhConnectInd:
 		break;
 	case GsmL1_PrimId_PhReadyToSendInd:
-		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd);
-		break;
+		return handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
+					       msg);
 	case GsmL1_PrimId_PhDataInd:
-		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
-		break;
+		return handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 	case GsmL1_PrimId_PhRaInd:
-		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd);
+		return handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
 	default:
 		break;
@@ -1437,49 +1436,6 @@ int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 	return 0;
 }
 
-/* send packet data request to L1 */
-int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
-{
-	struct gsm_bts_trx *trx = ts->trx;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	struct msgb *msg;
-	GsmL1_Prim_t *l1p;
-	GsmL1_PhDataReq_t *data_req;
-	GsmL1_MsgUnitParam_t *msu_param;
-	struct gsm_time g_time;
-
-	gsm_fn2gsmtime(&g_time, fn);
-
-	DEBUGP(DL1P, "TX packet data %02u/%02u/%02u is_ptcch=%d trx=%d ts=%d "
-		"block_nr=%d, arfcn=%d, len=%d\n", g_time.t1, g_time.t2,
-		g_time.t3, is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
-
-	msg = l1p_msgb_alloc();
-	l1p = msgb_l1prim(msg);
-	l1p->id = GsmL1_PrimId_PhDataReq;
-	data_req = &l1p->u.phDataReq;
-	data_req->hLayer1 = fl1h->hLayer1;
-	data_req->sapi = (is_ptcch) ? GsmL1_Sapi_Ptcch : GsmL1_Sapi_Pdtch;
-	data_req->subCh = GsmL1_SubCh_NA;
-	data_req->u8BlockNbr = block_nr;
-	data_req->u8Tn = ts->nr;
-	data_req->u32Fn = fn;
-	msu_param = &data_req->msgUnitParam;
-	msu_param->u8Size = len;
-	memcpy(msu_param->u8Buffer, data, len);
-
-	tx_to_gsmtap(fl1h, msg);
-
-	/* transmit */
-	if (osmo_wqueue_enqueue(&fl1h->write_q[MQ_L1_WRITE], msg) != 0) {
-		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
-		msgb_free(msg);
-	}
-
-	return 0;
-}
-
 /* get those femtol1_hdl.hw_info elements that sre in EEPROM */
 static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 {
@@ -1548,7 +1504,6 @@ struct femtol1_hdl *l1if_open(void *priv)
 	fl1h->priv = priv;
 	fl1h->clk_cal = 0;
 	fl1h->clk_use_eeprom = 1;
-	fl1h->ul_power_target = -75;	/* dBm default */
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
 	fl1h->min_qual_norm = MIN_QUAL_NORM;
 	get_hwinfo_eeprom(fl1h);
@@ -1580,10 +1535,6 @@ struct femtol1_hdl *l1if_open(void *priv)
 		talloc_free(fl1h);
 		return NULL;
 	}
-
-	fl1h->gsmtap = gsmtap_source_init("localhost", GSMTAP_UDP_PORT, 1);
-	if (fl1h->gsmtap)
-		gsmtap_source_add_sink(fl1h->gsmtap);
 
 	return fl1h;
 }
@@ -1712,69 +1663,3 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 }
 
 #endif
-
-/*
- * Check if manual power control is needed
- * Check if fixed power was selected
- * Check if the MS is already using our level if not
- * the value is bogus..
- * TODO: Add a timeout.. e.g. if the ms is not capable of reaching
- * the value we have set.
- */
-inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int ul_power_target,
-			const uint8_t ms_power, const float rxLevel)
-{
-	float rx;
-	int cur_dBm, new_dBm, new_pwr;
-	const enum gsm_band band = lchan->ts->trx->bts->band;
-
-	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
-		return 0;
-	if (lchan->ms_power_ctrl.fixed)
-		return 0;
-
-	/* The phone hasn't reached the power level yet */
-	if (lchan->ms_power_ctrl.current != ms_power)
-		return 0;
-
-	/*
-	 * What is the difference between what we want and received?
-	 * Ignore a margin that is within the range of measurement
-	 * and MS output issues.
-	 */
-	rx = ul_power_target - rxLevel;
-	if (rx >= 0 && rx < 1.5f)
-		return 0;
-	if (rx < 0 && rx > -1.5f)
-		return 0;
-
-	/* We don't really care about the truncation of int + float */
-	cur_dBm = ms_pwr_dbm(band, ms_power);
-	new_dBm = cur_dBm + rx;
-
-	/* Clamp negative values and do it depending on the band */
-	if (new_dBm < 0)
-		new_dBm = 0;
-
-	switch (band) {
-	case GSM_BAND_1800:
-		/* If MS_TX_PWR_MAX_CCH is set the values 29,
-		 * 30, 31 are not used. Avoid specifying a dBm
-		 * that would lead to these power levels. The
-		 * phone might not be able to reach them. */
-		if (new_dBm > 30)
-			new_dBm = 30;
-		break;
-	default:
-		break;
-	}
-
-	new_pwr = ms_pwr_ctl_lvl(band, new_dBm);
-	if (lchan->ms_power_ctrl.current != new_pwr) {
-		lchan->ms_power_ctrl.current = new_pwr;
-		bts_model_adjst_ms_pwr(lchan);
-		return 1;
-	}
-
-	return 0;
-}

@@ -37,10 +37,26 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/l1sap.h>
 
 #include "l1_if.h"
 #include "femtobts.h"
 #include "utils.h"
+
+static int mph_info_chan_confirm(struct gsm_lchan *lchan,
+			enum osmo_mph_info_type type, uint8_t cause)
+{
+	struct osmo_phsap_prim l1sap;
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_CONFIRM,
+		NULL);
+	l1sap.u.info.type = type;
+	l1sap.u.info.u.act_cnf.chan_nr = gsm_lchan2chan_nr(lchan);
+	l1sap.u.info.u.act_cnf.cause = cause;
+
+	return l1sap_up(lchan->ts->trx, &l1sap);
+}
 
 enum sapi_cmd_type {
 	SAPI_CMD_ACTIVATE,
@@ -308,6 +324,7 @@ static const uint8_t trx_rqd_attr[] = { NM_ATT_RF_MAXPOWR_R };
 static int trx_init(struct gsm_bts_trx *trx)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
@@ -336,7 +353,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
 	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
-					? 0.0 : fl1h->ul_power_target;
+					? 0.0 : btsb->ul_power_target;
 
 	dev_par->fTxPowerLevel = 0.0;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "
@@ -974,7 +991,7 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 			gsm_lchan_name(lchan), status);
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
-		rsl_tx_chan_act_nack(lchan, RSL_ERR_PROCESSOR_OVERLOAD);
+		mph_info_chan_confirm(lchan, PRIM_INFO_ACTIVATE, RSL_ERR_PROCESSOR_OVERLOAD);
 		return -1;
 	}
 
@@ -984,14 +1001,16 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 	if (lchan->state != LCHAN_S_ACT_REQ)
 		return 0;
 
-	struct gsm_time *time;
 	lchan_set_state(lchan, LCHAN_S_ACTIVE);
-	time = bts_model_get_time(lchan->ts->trx->bts);
-	rsl_tx_chan_act_ack(lchan, time);
+	mph_info_chan_confirm(lchan, PRIM_INFO_ACTIVATE, 0);
 
 	/* set the initial ciphering parameters for both directions */
-	l1if_set_ciphering(fl1h, lchan, 0);
 	l1if_set_ciphering(fl1h, lchan, 1);
+	l1if_set_ciphering(fl1h, lchan, 0);
+	if (lchan->encr.alg_id)
+		lchan->ciph_state = LCHAN_CIPH_RXTX_REQ;
+	else
+		lchan->ciph_state = LCHAN_CIPH_NONE;
 
 	return 0;
 }
@@ -1009,7 +1028,6 @@ static void enqueue_sapi_act_cmd(struct gsm_lchan *lchan, int sapi, int dir)
 
 int lchan_activate(struct gsm_lchan *lchan)
 {
-	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	unsigned int i;
@@ -1042,8 +1060,6 @@ int lchan_activate(struct gsm_lchan *lchan)
 
 #warning "FIXME: Should this be in sapi_activate_cb?"
 	lchan_init_lapdm(lchan);
-
-	lchan->s = btsb->radio_link_timeout;
 
 	return 0;
 }
@@ -1143,9 +1159,16 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 			LOGPC(DL1C, LOGL_INFO, "RX_REQ -> RX_CONF\n");
 			lchan->ciph_state = LCHAN_CIPH_RX_CONF;
 			break;
-		case LCHAN_CIPH_TXRX_REQ:
-			LOGPC(DL1C, LOGL_INFO, "TX_REQ -> TX_CONF\n");
-			lchan->ciph_state = LCHAN_CIPH_TXRX_CONF;
+		case LCHAN_CIPH_RX_CONF_TX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "RX_CONF_TX_REQ -> RXTX_CONF\n");
+			lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
+			break;
+		case LCHAN_CIPH_RXTX_REQ:
+			LOGPC(DL1C, LOGL_INFO, "RXTX_REQ -> RX_CONF_TX_REQ\n");
+			lchan->ciph_state = LCHAN_CIPH_RX_CONF_TX_REQ;
+			break;
+		case LCHAN_CIPH_NONE:
+			LOGPC(DL1C, LOGL_INFO, "\n");
 			break;
 		default:
 			LOGPC(DL1C, LOGL_INFO, "unhandled state %u\n", lchan->ciph_state);
@@ -1319,7 +1342,7 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 	return 0;
 }
 
-int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
+int l1if_rsl_mode_modify(struct gsm_lchan *lchan)
 {
 	if (lchan->state != LCHAN_S_ACTIVE)
 		return -1;
@@ -1429,7 +1452,7 @@ static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
 			gsm_lchan_name(lchan));
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
-		rsl_tx_rf_rel_ack(lchan);
+		mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
 		return -1;
 	}
 
@@ -1441,7 +1464,7 @@ static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
 		return 0;
 
 	lchan_set_state(lchan, LCHAN_S_NONE);
-	rsl_tx_rf_rel_ack(lchan);
+	mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
 	return 0;
 }
 
@@ -1516,7 +1539,7 @@ static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 		LOGP(DL1C, LOGL_ERROR, "%s all SAPIs already released?\n",
 			gsm_lchan_name(lchan));
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
-		rsl_tx_rf_rel_ack(lchan);
+		mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
 	}
 
 	return res;
@@ -1554,13 +1577,6 @@ static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
 	enqueue_sacch_rel_marker(lchan);
 	return 0;
-}
-
-struct gsm_time *bts_model_get_time(struct gsm_bts *bts)
-{
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(bts->c0);
-
-	return &fl1h->gsm_time;
 }
 
 /* callback from OML */
@@ -1686,30 +1702,11 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		return oml_mo_statechg_nack(mo, NM_NACK_REQ_NOT_GRANT);
 
 }
-int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
+
+int l1if_rsl_chan_act(struct gsm_lchan *lchan)
 {
 	//uint8_t mode = *TLVP_VAL(tp, RSL_IE_CHAN_MODE);
 	//uint8_t type = *TLVP_VAL(tp, RSL_IE_ACT_TYPE);
-	struct gsm48_chan_desc *cd;
-
-	/* osmo-pcu calls this without a valid 'tp' parameter, so we
-	 * need to make sure we don't crash here */
-	if (tp && TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
-	    TLVP_LEN(tp, GSM48_IE_CHANDESC_2) >= sizeof(*cd)) {
-		cd = (struct gsm48_chan_desc *)
-				TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
-
-		/* our L1 only supports one global TSC for all channels
-		 * one one TRX, so we need to make sure not to activate
-		 * channels with a different TSC!! */
-		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
-			LOGP(DRSL, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
-				cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
-			return -RSL_ERR_SERV_OPT_UNIMPL;
-		}
-	}
-
-	lchan->sacch_deact = 0;
 	lchan_activate(lchan);
 	return 0;
 }
@@ -1718,7 +1715,7 @@ int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
  * Modify the given lchan in the handover scenario. This is a lot like
  * second channel activation but with some additional activation.
  */
-int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
+int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 {
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	unsigned int i;
@@ -1742,7 +1739,7 @@ int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
 	return 0;
 }
 
-int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
+int l1if_rsl_chan_rel(struct gsm_lchan *lchan)
 {
 	/* A duplicate RF Release Request, ignore it */
 	if (lchan->state == LCHAN_S_REL_REQ) {
@@ -1755,7 +1752,7 @@ int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
 	return 0;
 }
 
-int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
+int l1if_rsl_deact_sacch(struct gsm_lchan *lchan)
 {
 	/* Only de-activate the SACCH if the lchan is active */
 	if (lchan->state != LCHAN_S_ACTIVE)

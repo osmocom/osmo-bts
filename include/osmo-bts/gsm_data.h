@@ -81,7 +81,10 @@ struct gsm_bts_role_bts {
 	struct {
 		uint8_t tc4_ctr;
 	} si;
+	struct gsm_time gsm_time;
 	uint8_t radio_link_timeout;
+
+	int ul_power_target;		/* Uplink Rx power target */
 
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
@@ -96,8 +99,9 @@ enum lchan_ciph_state {
 	LCHAN_CIPH_NONE,
 	LCHAN_CIPH_RX_REQ,
 	LCHAN_CIPH_RX_CONF,
-	LCHAN_CIPH_TXRX_REQ,
-	LCHAN_CIPH_TXRX_CONF,
+	LCHAN_CIPH_RXTX_REQ,
+	LCHAN_CIPH_RX_CONF_TX_REQ,
+	LCHAN_CIPH_RXTX_CONF,
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)

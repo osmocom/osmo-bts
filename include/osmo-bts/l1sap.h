@@ -56,7 +56,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	unsigned int rtp_pl_len);
 
 /* channel control */
-int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr);
+int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp);
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr);
@@ -68,4 +68,6 @@ extern uint8_t gsmtap_sapi_acch;
 
 #define msgb_l1sap_prim(msg) ((struct osmo_phsap_prim *)(msg)->l1h)
 
+int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
+				uint8_t *data, int len);
 #endif /* L1SAP_H */

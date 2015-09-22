@@ -46,15 +46,11 @@ struct femtol1_hdl {
 	uint32_t dsp_trace_f;
 	uint8_t clk_use_eeprom;
 	int clk_cal;
-	int ul_power_target;
 	uint8_t clk_src;
 	float min_qual_rach;
 	float min_qual_norm;
 	char *calib_path;
 	struct llist_head wlc_list;
-
-	struct gsmtap_inst *gsmtap;
-	uint32_t gsmtap_sapi_mask;
 
 	void *priv;			/* user reference */
 
@@ -110,7 +106,9 @@ uint32_t l1if_lchan_to_hLayer(struct gsm_lchan *lchan);
 struct gsm_lchan *l1if_hLayer_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer);
 
 /* tch.c */
-int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg);
+void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
+	const uint8_t *rtp_pl, unsigned int rtp_pl_len);
+int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg);
 int l1if_tch_fill(struct gsm_lchan *lchan, uint8_t *l1_buffer);
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan);
 
@@ -118,6 +116,13 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan);
 int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 			  struct gsm_lchan *lchan,
 			  int dir_downlink);
+
+/* channel control */
+int l1if_rsl_chan_act(struct gsm_lchan *lchan);
+int l1if_rsl_chan_rel(struct gsm_lchan *lchan);
+int l1if_rsl_chan_mod(struct gsm_lchan *lchan);
+int l1if_rsl_deact_sacch(struct gsm_lchan *lchan);
+int l1if_rsl_mode_modify(struct gsm_lchan *lchan);
 
 /* calibration loading */
 int calib_load(struct femtol1_hdl *fl1h);
@@ -129,9 +134,6 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
 /* public helpers for test */
 int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan);
-void bts_check_for_first_ciphrd(struct femtol1_hdl *fl1h,
-				GsmL1_MsgUnitParam_t *msgUnitParam,
-				struct gsm_lchan *lchan);
 inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
 			const uint8_t ms_power, const float rxLevel);
 #endif /* _FEMTO_L1_H */

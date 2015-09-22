@@ -38,6 +38,8 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/ports.h>
+#include <osmocom/core/gsmtap_util.h>
+#include <osmocom/core/gsmtap.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -47,6 +49,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/l1sap.h>
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
@@ -62,6 +65,7 @@ static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static unsigned int dsp_trace = 0x71c00020;
 static int rt_prio = -1;
+static char *gsmtap_ip = 0;
 
 int bts_model_init(struct gsm_bts *bts)
 {
@@ -165,6 +169,7 @@ static void print_help()
 		"  -w	--hw-version	Print the targeted HW Version\n"
 		"  -M	--pcu-direct	Force PCU to access message queue for "
 			"PDCH dchannel directly\n"
+		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
 		);
 }
 
@@ -196,10 +201,11 @@ static void handle_options(int argc, char **argv)
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu-direct", 0, 0, 'M' },
 			{ "realtime", 1, 0, 'r' },
+			{ "gsmtap-ip", 1, 0, 'i' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:Mr:",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:Mr:i:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -243,6 +249,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'r':
 			rt_prio = atoi(optarg);
+			break;
+		case 'i':
+			gsmtap_ip = optarg;
 			break;
 		default:
 			break;
@@ -308,8 +317,9 @@ int main(int argc, char **argv)
 
 	bts_log_init(NULL);
 
+	bts = gsm_bts_alloc(tall_bts_ctx);
 	vty_init(&bts_vty_info);
-	bts_vty_init(&bts_log_info);
+	bts_vty_init(bts, &bts_log_info);
 
 	handle_options(argc, argv);
 
@@ -325,7 +335,15 @@ int main(int argc, char **argv)
 		}
 	}
 
-	bts = gsm_bts_alloc(tall_bts_ctx);
+        if (gsmtap_ip) {
+		gsmtap = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
+		if (!gsmtap) {
+			fprintf(stderr, "Failed during gsmtap_init()\n");
+			exit(1);
+		}
+		gsmtap_source_add_sink(gsmtap);
+	}
+
 	if (bts_init(bts) < 0) {
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
