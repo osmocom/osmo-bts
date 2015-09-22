@@ -59,3 +59,6 @@ int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 { return 0; }
+
+void bts_model_abis_close(struct gsm_bts *bts)
+{ }

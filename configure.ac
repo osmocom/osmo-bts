@@ -28,6 +28,7 @@ PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
 PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
 PKG_CHECK_MODULES(LIBGPS, libgps)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec)
 
 AC_MSG_CHECKING([whether to enable sysmocom-bts hardware support])
 AC_ARG_ENABLE(sysmocom-bts,
@@ -36,6 +37,14 @@ AC_ARG_ENABLE(sysmocom-bts,
 		[enable_sysmocom_bts="yes"],[enable_sysmocom_bts="no"])
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
+
+AC_MSG_CHECKING([whether to enable trx hardware support])
+AC_ARG_ENABLE(trx,
+		AC_HELP_STRING([--enable-trx],
+				[enable code for trx hardware [default=no]]),
+		[enable_trx="yes"],[enable_trx="no"])
+AC_MSG_RESULT([$enable_trx])
+AM_CONDITIONAL(ENABLE_TRX, test "x$enable_trx" = "xyes")
 
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
@@ -70,6 +79,7 @@ AC_OUTPUT(
     src/Makefile
     src/common/Makefile
     src/osmo-bts-sysmo/Makefile
+    src/osmo-bts-trx/Makefile
     include/Makefile
     include/osmo-bts/Makefile
     tests/Makefile
@@ -78,4 +88,6 @@ AC_OUTPUT(
     tests/cipher/Makefile
     tests/sysmobts/Makefile
     tests/misc/Makefile
+    tests/bursts/Makefile
+    tests/handover/Makefile
     Makefile)

@@ -40,4 +40,6 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan);
 
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
+void bts_model_abis_close(struct gsm_bts *bts);
+
 #endif

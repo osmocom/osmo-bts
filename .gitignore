@@ -29,6 +29,7 @@ src/osmo-bts-sysmo/sysmobts
 src/osmo-bts-sysmo/sysmobts-remote
 src/osmo-bts-sysmo/sysmobts-mgr
 
+src/osmo-bts-trx/osmobts-trx
 
 tests/atconfig
 tests/package.m4
@@ -37,6 +38,8 @@ tests/paging/paging_test
 tests/cipher/cipher_test
 tests/sysmobts/sysmobts_test
 tests/misc/misc_test
+tests/bursts/bursts_test
+tests/handover/handover_test
 tests/testsuite
 tests/testsuite.log
 

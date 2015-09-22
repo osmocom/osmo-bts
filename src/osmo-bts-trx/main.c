@@ -1,6 +1,7 @@
-/* Main program for Sysmocom BTS */
+/* Main program for OsmoBTS-TRX */
 
-/* (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  *
  * All Rights Reserved
  *
@@ -25,21 +26,23 @@
 #include <errno.h>
 #include <getopt.h>
 #include <limits.h>
+#include <sched.h>
 #include <sys/signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sched.h>
+#include <sys/ioctl.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
-#include <osmocom/vty/ports.h>
-#include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/gsmtap.h>
+#include <osmocom/core/gsmtap_util.h>
+#include <osmocom/core/bits.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -48,109 +51,94 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
-#include <osmo-bts/control_if.h>
 #include <osmo-bts/l1sap.h>
 
-#define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
-
-#include "utils.h"
-#include "eeprom.h"
 #include "l1_if.h"
-#include "hw_misc.h"
-#include "oml_router.h"
+#include "trx_if.h"
+#include "scheduler.h"
 
-int pcu_direct = 0;
+const int pcu_direct = 0;
 
+int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
-static unsigned int dsp_trace = 0x71c00020;
-static int rt_prio = -1;
 static char *gsmtap_ip = 0;
+static int rt_prio = -1;
+static int trx_num = 1;
+char *software_version = "0.0";
+uint8_t abis_mac[6] = { 0, 1, 2, 3, 4, 5 };
+char *bsc_host = "localhost";
+char *bts_id = "1801/0";
+
+// FIXME this is a hack
+static void get_mac(void)
+{
+	struct if_nameindex *ifn = if_nameindex();
+	struct ifreq ifr;
+	int sock;
+	int ret;
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0)
+		return;
+
+	memset(&ifr, 0, sizeof(ifr));
+	if (!ifn)
+		return;
+	while (ifn->if_name) {
+		strncpy(ifr.ifr_name, ifn->if_name, sizeof(ifr.ifr_name)-1);
+		ret = ioctl(sock, SIOCGIFHWADDR, &ifr);
+		if (ret == 0 && !!memcmp(ifr.ifr_hwaddr.sa_data,
+					"\0\0\0\0\0\0", 6)) {
+			memcpy(abis_mac, ifr.ifr_hwaddr.sa_data, 6);
+			printf("Using MAC address of %s: "
+				"'%02x:%02x:%02x:%02x:%02x:%02x'\n",
+				ifn->if_name,
+				abis_mac[0], abis_mac[1], abis_mac[2],
+				abis_mac[3], abis_mac[4], abis_mac[5]);
+			break;
+		}
+		ifn++;
+	}
+//	if_freenameindex(ifn);
+}
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct femtol1_hdl *fl1h;
-	int rc;
+	void *l1h;
+	struct gsm_bts_trx *trx;
 
-	fl1h = l1if_open(bts->c0);
-	if (!fl1h) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 Interface\n");
-		return -EIO;
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		l1h = l1if_open(trx);
+		if (!l1h) {
+			LOGP(DL1C, LOGL_FATAL, "Cannot open L1 Interface\n");
+			goto error;
+		}
+
+		trx->role_bts.l1h = l1h;
+		trx->nominal_power = 23;
+
+		l1if_reset(l1h);
 	}
-	fl1h->dsp_trace_f = dsp_trace;
-
-	bts->c0->role_bts.l1h = fl1h;
-
-	rc = sysmobts_get_nominal_power(bts->c0);
-	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
-		     "transmit power. Assuming 23dBm.\n");
-		rc = 23;
-	}
-	bts->c0->nominal_power = rc;
-	bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
 
 	bts_model_vty_init(bts);
 
 	return 0;
-}
 
-int bts_model_oml_estab(struct gsm_bts *bts)
-{
-	struct femtol1_hdl *fl1h = bts->c0->role_bts.l1h;
-
-	l1if_reset(fl1h);
-
-	return 0;
-}
-
-/* Set the clock calibration to the value
- * read from the eeprom.
- */
-void clk_cal_use_eeprom(struct gsm_bts *bts)
-{
-	int rc;
-	struct femtol1_hdl *hdl;
-	eeprom_RfClockCal_t rf_clk;
-
-	hdl = bts->c0->role_bts.l1h;
-
-	if (!hdl || !hdl->clk_use_eeprom)
-		return;
-
-	rc = eeprom_ReadRfClockCal(&rf_clk);
-	if (rc != EEPROM_SUCCESS) {
-		LOGP(DL1C, LOGL_ERROR, "Failed to read from EEPROM.\n");
-		return;
+error:
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		l1h = trx->role_bts.l1h;
+		if (l1h)
+			l1if_close(l1h);
 	}
 
-	hdl->clk_cal = rf_clk.iClkCor;
-	LOGP(DL1C, LOGL_NOTICE,
-		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
+	return -EIO;
 }
 
-void bts_update_status(enum bts_global_status which, int on)
+/* dummy, since no direct dsp support */
+uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 {
-	static uint64_t states = 0;
-	uint64_t old_states = states;
-	int led_rf_active_on;
-
-	if (on)
-		states |= (1ULL << which);
-	else
-		states &= ~(1ULL << which);
-
-	led_rf_active_on =
-		(states & (1ULL << BTS_STATUS_RF_ACTIVE)) &&
-		!(states & (1ULL << BTS_STATUS_RF_MUTE));
-
-	LOGP(DL1C, LOGL_INFO,
-	     "Set global status #%d to %d (%04llx -> %04llx), LEDs: ACT %d\n",
-	     which, on,
-	     (long long)old_states, (long long)states,
-	     led_rf_active_on);
-
-	sysmobts_led_set(LED_RF_ACTIVE, led_rf_active_on);
+	return 0;
 }
 
 static void print_help()
@@ -163,23 +151,12 @@ static void print_help()
 		"  -s	--disable-color	Don't use colors in stderr log output\n"
 		"  -T	--timestamp	Prefix every log line with a timestamp\n"
 		"  -V	--version	Print version information and exit\n"
-		"  -e 	--log-level	Set a global log-level\n"
-		"  -p	--dsp-trace	Set DSP trace flags\n"
-		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority\n"
-		"  -w	--hw-version	Print the targeted HW Version\n"
-		"  -M	--pcu-direct	Force PCU to access message queue for "
-			"PDCH dchannel directly\n"
+		"  -e	--log-level	Set a global log-level\n"
+		"  -t	--trx-num	Set number of TRX (default=%d)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
-		);
-}
-
-static void print_hwversion()
-{
-#ifdef HW_SYSMOBTS_V1
-	printf("sysmobts was compiled for hw version 1.\n");
-#else
-	printf("sysmobts was compiled for hw version 2.\n");
-#endif
+		"  -r	--realtime PRIO	Set realtime scheduler with given prio\n"
+		"  -I	--local-trx-ip	Local IP for transceiver to connect (default=%s)\n"
+		,trx_num, transceiver_ip);
 }
 
 /* FIXME: finally get some option parsing code into libosmocore */
@@ -197,15 +174,14 @@ static void handle_options(int argc, char **argv)
 			{ "timestamp", 0, 0, 'T' },
 			{ "version", 0, 0, 'V' },
 			{ "log-level", 1, 0, 'e' },
-			{ "dsp-trace", 1, 0, 'p' },
-			{ "hw-version", 0, 0, 'w' },
-			{ "pcu-direct", 0, 0, 'M' },
-			{ "realtime", 1, 0, 'r' },
+			{ "trx-num", 1, 0, 't' },
 			{ "gsmtap-ip", 1, 0, 'i' },
+			{ "realtime", 1, 0, 'r' },
+			{ "local-trx-ip", 1, 0, 'I' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:p:w:Mr:i:",
+		c = getopt_long(argc, argv, "hc:d:Dc:sTVe:t:i:r:I:",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -225,13 +201,10 @@ static void handle_options(int argc, char **argv)
 			daemonize = 1;
 			break;
 		case 'c':
-			config_file = optarg;
+			config_file = strdup(optarg);
 			break;
 		case 'T':
 			log_set_print_timestamp(osmo_stderr_target, 1);
-			break;
-		case 'M':
-			pcu_direct = 1;
 			break;
 		case 'V':
 			print_version(1);
@@ -240,18 +213,19 @@ static void handle_options(int argc, char **argv)
 		case 'e':
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
-		case 'p':
-			dsp_trace = strtoul(optarg, NULL, 16);
+		case 't':
+			trx_num = atoi(optarg);
+			if (trx_num < 1)
+				trx_num = 1;
 			break;
-		case 'w':
-			print_hwversion();
-			exit(0);
+		case 'i':
+			gsmtap_ip = optarg;
 			break;
 		case 'r':
 			rt_prio = atoi(optarg);
 			break;
-		case 'i':
-			gsmtap_ip = optarg;
+		case 'I':
+			transceiver_ip = strdup(optarg);
 			break;
 		default:
 			break;
@@ -268,7 +242,9 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		bts_shutdown(bts, "SIGINT");
+		if (!quit)
+			bts_shutdown(bts, "SIGINT");
+		quit++;
 		break;
 	case SIGABRT:
 	case SIGUSR1:
@@ -299,17 +275,17 @@ static int write_pid_file(char *procname)
 	return 0;
 }
 
-extern int sysmobts_ctrlif_inst_cmds(void);
-
 int main(int argc, char **argv)
 {
-	struct stat st;
-	struct sched_param param;
 	struct gsm_bts_role_bts *btsb;
+	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
 	void *tall_msgb_ctx;
-	struct osmo_fd accept_fd, read_fd;
-	int rc;
+	int rc, i;
+
+	printf("((*))\n  |\n / \\ OsmoBTS\n");
+
+	get_mac();
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
@@ -317,24 +293,31 @@ int main(int argc, char **argv)
 
 	bts_log_init(NULL);
 
+	handle_options(argc, argv);
+
 	bts = gsm_bts_alloc(tall_bts_ctx);
+	if (!bts) {
+		fprintf(stderr, "Failed to create BTS structure\n");
+		exit(1);
+	}
+	for (i = 1; i < trx_num; i++) {
+		trx = gsm_bts_trx_alloc(bts);
+		if (!trx) {
+			fprintf(stderr, "Failed to TRX structure\n");
+			exit(1);
+		}
+	}
+
 	vty_init(&bts_vty_info);
 	e1inp_vty_init();
 	bts_vty_init(bts, &bts_log_info);
 
-	handle_options(argc, argv);
-
-	/* enable realtime priority for us */
-	if (rt_prio != -1) {
-		memset(&param, 0, sizeof(param));
-		param.sched_priority = rt_prio;
-		rc = sched_setscheduler(getpid(), SCHED_RR, &param);
-		if (rc != 0) {
-			fprintf(stderr, "Setting SCHED_RR priority(%d) failed: %s\n",
-				param.sched_priority, strerror(errno));
-			exit(1);
-		}
+	if (bts_init(bts) < 0) {
+		fprintf(stderr, "unable to to open bts\n");
+		exit(1);
 	}
+	btsb = bts_role_bts(bts);
+	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
 
         if (gsmtap_ip) {
 		gsmtap = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
@@ -345,13 +328,6 @@ int main(int argc, char **argv)
 		gsmtap_source_add_sink(gsmtap);
 	}
 
-	if (bts_init(bts) < 0) {
-		fprintf(stderr, "unable to open bts\n");
-		exit(1);
-	}
-	btsb = bts_role_bts(bts);
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-
 	abis_init(bts);
 
 	rc = vty_read_config_file(config_file, NULL);
@@ -360,19 +336,12 @@ int main(int argc, char **argv)
 			config_file);
 		exit(1);
 	}
+	if (!settsc_enabled && !setbsic_enabled)
+		settsc_enabled = setbsic_enabled = 1;
 
-	clk_cal_use_eeprom(bts);
-
-	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
-		exit(23);
-	}
 	write_pid_file("osmo-bts");
 
-	bts_controlif_setup(bts);
-	sysmobts_ctrlif_inst_cmds();
-
-	rc = telnet_init(tall_bts_ctx, NULL, OSMO_VTY_PORT_BTS);
+	rc = telnet_init(tall_bts_ctx, NULL, 4241);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
@@ -380,7 +349,7 @@ int main(int argc, char **argv)
 
 	if (pcu_sock_init()) {
 		fprintf(stderr, "PCU L1 socket failed\n");
-		exit(1);
+		exit(-1);
 	}
 
 	signal(SIGINT, &signal_handler);
@@ -388,13 +357,6 @@ int main(int argc, char **argv)
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
-
-	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
-	if (rc < 0) {
-		fprintf(stderr, "Error creating the OML router: %s rc=%d\n",
-			OML_ROUTER_PATH, rc);
-		exit(1);
-	}
 
 	if (!btsb->bsc_oml_host) {
 		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
@@ -404,7 +366,7 @@ int main(int argc, char **argv)
 	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
-		exit(2);
+		exit(1);
 	}
 
 	if (daemonize) {
@@ -415,14 +377,30 @@ int main(int argc, char **argv)
 		}
 	}
 
-	while (1) {
+	if (rt_prio != -1) {
+		struct sched_param schedp;
+
+		/* high priority scheduling required for handling bursts */
+		memset(&schedp, 0, sizeof(schedp));
+		schedp.sched_priority = rt_prio;
+		rc = sched_setscheduler(0, SCHED_RR, &schedp);
+		if (rc) {
+			fprintf(stderr, "Error setting SCHED_RR with prio %d\n",
+				rt_prio);
+		}
+	}
+
+	while (quit < 2) {
 		log_reset_context();
 		osmo_select_main(0);
 	}
+
+#if 0
+	telnet_exit();
+
+	talloc_report_full(tall_bts_ctx, stderr);
+#endif
+
+	return 0;
 }
 
-void bts_model_abis_close(struct gsm_bts *bts)
-{
-	/* for now, we simply terminate the program and re-spawn */
-	bts_shutdown(bts, "Abis close");
-}

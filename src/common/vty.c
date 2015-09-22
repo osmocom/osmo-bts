@@ -141,7 +141,7 @@ static struct cmd_node trx_node = {
 };
 
 DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
-	"trx <0-0>",
+	"trx <0-254>",
 	"Select a TRX to configure\n" "TRX number\n")
 {
 	int trx_nr = atoi(argv[0]);
@@ -150,7 +150,8 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 
 	trx = gsm_bts_trx_num(bts, trx_nr);
 	if (!trx) {
-		vty_out(vty, "Unknown TRX %u%s", trx_nr, VTY_NEWLINE);
+		vty_out(vty, "Unknown TRX %u. Aavialable TRX are: 0..%d%s",
+			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
