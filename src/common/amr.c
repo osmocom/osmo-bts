@@ -16,9 +16,9 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 
 	for (i = 0; i < amr_mrc->num_modes; i++)
 		LOGPC(ss, logl, ", mode[%u] = %u/%u/%u",
-			i, amr_mrc->mode[i].mode,
-			amr_mrc->mode[i].threshold_bts,
-			amr_mrc->mode[i].hysteresis_bts);
+			i, amr_mrc->bts_mode[i].mode,
+			amr_mrc->bts_mode[i].threshold,
+			amr_mrc->bts_mode[i].hysteresis);
 	LOGPC(ss, logl, "\n");
 }
 
@@ -64,23 +64,23 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 
 	for (i = 0; i < 8; i++) {
 		if (mr_conf[1] & (1 << i)) {
-			amr_mrc->mode[j++].mode = i;
+			amr_mrc->bts_mode[j++].mode = i;
 		}
 	}
 
 	if (num_codecs >= 2) {
-		amr_mrc->mode[0].threshold_bts = mr_conf[1] & 0x3F;
-		amr_mrc->mode[0].hysteresis_bts = mr_conf[2] >> 4;
+		amr_mrc->bts_mode[0].threshold = mr_conf[1] & 0x3F;
+		amr_mrc->bts_mode[0].hysteresis = mr_conf[2] >> 4;
 	}
 	if (num_codecs >= 3) {
-		amr_mrc->mode[1].threshold_bts =
+		amr_mrc->bts_mode[1].threshold =
 			((mr_conf[2] & 0xF) << 2) | (mr_conf[3] >> 6);
-		amr_mrc->mode[1].hysteresis_bts = (mr_conf[3] >> 2) & 0xF;
+		amr_mrc->bts_mode[1].hysteresis = (mr_conf[3] >> 2) & 0xF;
 	}
 	if (num_codecs >= 4) {
-		amr_mrc->mode[2].threshold_bts =
+		amr_mrc->bts_mode[2].threshold =
 			((mr_conf[3] & 0x3) << 4) | (mr_conf[4] >> 4);
-		amr_mrc->mode[2].hysteresis_bts = mr_conf[4] & 0xF;
+		amr_mrc->bts_mode[2].hysteresis = mr_conf[4] & 0xF;
 	}
 
 	return num_codecs;

@@ -313,7 +313,7 @@ int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
 {
 	unsigned int i;
 	for (i = 0; i < amr_mrc->num_modes; i++) {
-		if (amr_mrc->mode[i].mode == cmi)
+		if (amr_mrc->bts_mode[i].mode == cmi)
 			return i;
 	}
 	return -EINVAL;
