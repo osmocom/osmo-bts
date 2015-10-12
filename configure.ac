@@ -29,10 +29,10 @@ PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
 PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec)
 
-AC_MSG_CHECKING([whether to enable sysmocom-bts hardware support])
+AC_MSG_CHECKING([whether to enable support for sysmoBTS L1/PHY support])
 AC_ARG_ENABLE(sysmocom-bts,
 		AC_HELP_STRING([--enable-sysmocom-bts],
-				[enable code for sysmocom femto-bts [default=no]]),
+				[enable code for sysmoBTS L1/PHY [default=no]]),
 		[enable_sysmocom_bts="yes"],[enable_sysmocom_bts="no"])
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
@@ -40,10 +40,10 @@ if test "$enable_sysmocom_bts" = "yes"; then
 	PKG_CHECK_MODULES(LIBGPS, libgps)
 fi
 
-AC_MSG_CHECKING([whether to enable trx hardware support])
+AC_MSG_CHECKING([whether to enable support for osmo-trx based L1/PHY support])
 AC_ARG_ENABLE(trx,
 		AC_HELP_STRING([--enable-trx],
-				[enable code for trx hardware [default=no]]),
+				[enable code for osmo-trx L1/PHY [default=no]]),
 		[enable_trx="yes"],[enable_trx="no"])
 AC_MSG_RESULT([$enable_trx])
 AM_CONDITIONAL(ENABLE_TRX, test "x$enable_trx" = "xyes")
