@@ -27,7 +27,6 @@ PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 0.0.7)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
 PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
-PKG_CHECK_MODULES(LIBGPS, libgps)
 PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec)
 
 AC_MSG_CHECKING([whether to enable sysmocom-bts hardware support])
@@ -37,6 +36,9 @@ AC_ARG_ENABLE(sysmocom-bts,
 		[enable_sysmocom_bts="yes"],[enable_sysmocom_bts="no"])
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
+if test "$enable_sysmocom_bts" = "yes"; then
+	PKG_CHECK_MODULES(LIBGPS, libgps)
+fi
 
 AC_MSG_CHECKING([whether to enable trx hardware support])
 AC_ARG_ENABLE(trx,
