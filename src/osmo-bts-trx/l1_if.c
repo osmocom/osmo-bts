@@ -549,10 +549,10 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				trx_sched_set_mode(l1h, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
 					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.mode[0].mode,
-					lchan->tch.amr_mr.mode[1].mode,
-					lchan->tch.amr_mr.mode[2].mode,
-					lchan->tch.amr_mr.mode[3].mode,
+					lchan->tch.amr_mr.bts_mode[0].mode,
+					lchan->tch.amr_mr.bts_mode[1].mode,
+					lchan->tch.amr_mr.bts_mode[2].mode,
+					lchan->tch.amr_mr.bts_mode[3].mode,
 					amr_get_initial_mode(lchan),
 					(lchan->ho.active == 1));
 				/* init lapdm */
@@ -577,10 +577,10 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				trx_sched_set_mode(l1h, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
 					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.mode[0].mode,
-					lchan->tch.amr_mr.mode[1].mode,
-					lchan->tch.amr_mr.mode[2].mode,
-					lchan->tch.amr_mr.mode[3].mode,
+					lchan->tch.amr_mr.bts_mode[0].mode,
+					lchan->tch.amr_mr.bts_mode[1].mode,
+					lchan->tch.amr_mr.bts_mode[2].mode,
+					lchan->tch.amr_mr.bts_mode[3].mode,
 					amr_get_initial_mode(lchan),
 					0);
 				break;
