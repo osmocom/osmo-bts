@@ -28,6 +28,7 @@ PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
 PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
 PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec)
+PKG_CHECK_MODULES(ORTP, ortp)
 
 AC_MSG_CHECKING([whether to enable support for sysmoBTS L1/PHY support])
 AC_ARG_ENABLE(sysmocom-bts,
