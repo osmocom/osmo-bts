@@ -1,3 +1,9 @@
+osmo-bts (0.3.0~fw-6) precise; urgency=low
+
+  * rebuild with libosmocore 0.8.2-3
+
+ -- Kirill Zakharenko <earwin@gmail.com>  Fri, 6 Nov 2015 16:34:58 +0200
+
 osmo-bts (0.3.0~fw-5) precise; urgency=low
 
   * trx: Add "maxdlynb" VTY command to control max TA for Normal Bursts.
