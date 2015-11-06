@@ -25,6 +25,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
+#include <inttypes.h>
 #include <unistd.h>
 
 static struct gsm_bts *bts;
@@ -143,8 +144,8 @@ static void test_agch_queue(void)
 
 	printf("AGCH filled: count %u, imm.ass %d, imm.ass.rej %d (refs %d), "
 	       "queue limit %u, occupied %d, "
-	       "dropped %llu, merged %llu, rejected %llu, "
-	       "ag-res %llu, non-res %llu\n",
+	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
+	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       count, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
 	       btsb->agch_max_queue_length, btsb->agch_queue_length,
 	       btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,
@@ -182,8 +183,8 @@ static void test_agch_queue(void)
 
 	printf("AGCH drained: multiframes %u, imm.ass %d, imm.ass.rej %d (refs %d), "
 	       "queue limit %u, occupied %d, "
-	       "dropped %llu, merged %llu, rejected %llu, "
-	       "ag-res %llu, non-res %llu\n",
+	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
+	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       multiframes, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
 	       btsb->agch_max_queue_length, btsb->agch_queue_length,
 	       btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,

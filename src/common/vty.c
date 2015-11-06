@@ -21,6 +21,7 @@
 
 #include "btsconfig.h"
 
+#include <inttypes.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -577,8 +578,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		paging_get_queue_max(btsb->paging_state), paging_queue_length(btsb->paging_state),
 		paging_get_lifetime(btsb->paging_state), VTY_NEWLINE);
 	vty_out(vty, "  AGCH: Queue limit %u, occupied %d, "
-		"dropped %llu, merged %llu, rejected %llu, "
-		"ag-res %llu, non-res %llu%s",
+		"dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
+		"ag-res %"PRIu64", non-res %"PRIu64"%s",
 		btsb->agch_max_queue_length, btsb->agch_queue_length,
 		btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,
 		btsb->agch_queue_rejected_msgs, btsb->agch_queue_agch_msgs,
