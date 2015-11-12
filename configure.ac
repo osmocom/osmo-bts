@@ -68,6 +68,14 @@ if test "$enable_octphy" = "yes" ; then
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
+AC_MSG_CHECKING([whether to enable NuRAN Wireless Litecell 1.5 hardware support])
+AC_ARG_ENABLE(litecell15-bts,
+		AC_HELP_STRING([--enable-litecell15-bts],
+				[enable code for NuRAN Wireless Litecell15 bts [default=no]]),
+		[enable_litecell15_bts="yes"],[enable_litecell15_bts="no"])
+AC_MSG_RESULT([$enable_litecell15_bts])
+AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15_bts" = "xyes")
+
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
 AC_ARG_WITH([openbsc],
@@ -101,6 +109,7 @@ AC_OUTPUT(
     src/Makefile
     src/common/Makefile
     src/osmo-bts-sysmo/Makefile
+    src/osmo-bts-litecell15/Makefile
     src/osmo-bts-trx/Makefile
     src/osmo-bts-octphy/Makefile
     include/Makefile

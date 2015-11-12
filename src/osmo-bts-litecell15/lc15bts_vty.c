@@ -1,0 +1,400 @@
+/* VTY interface for NuRAN Wireless Litecell 1.5 */
+
+/* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * 
+ * Based on sysmoBTS:
+ *     (C) 2011 by Harald Welte <laforge@gnumonks.org>
+ *     (C) 2012,2013 by Holger Hans Peter Freyther
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdint.h>
+#include <ctype.h>
+
+#include <arpa/inet.h>
+
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
+
+#include <osmocom/gsm/tlv.h>
+
+#include <osmocom/vty/vty.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/misc.h>
+
+#include <osmo-bts/gsm_data.h>
+#include <osmo-bts/logging.h>
+#include <osmo-bts/vty.h>
+
+#include "lc15bts.h"
+#include "l1_if.h"
+#include "utils.h"
+
+
+extern int lchan_activate(struct gsm_lchan *lchan);
+extern int lchan_deactivate(struct gsm_lchan *lchan);
+
+#define TRX_STR "Transceiver related commands\n" "TRX number\n"
+
+#define SHOW_TRX_STR				\
+	SHOW_STR				\
+	TRX_STR
+#define DSP_TRACE_F_STR		"DSP Trace Flag\n"
+
+static struct gsm_bts *vty_bts;
+
+/* configuration */
+
+DEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
+	"auto-band",
+	"Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
+	"no auto-band",
+	NO_STR "Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
+	"trx-calibration-path PATH",
+	"Set the path name to TRX calibration data\n" "Path name\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+
+	if (fl1h->calib_path)
+		talloc_free(fl1h->calib_path);
+
+	fl1h->calib_path = talloc_strdup(fl1h, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_min_qual_rach, cfg_trx_min_qual_rach_cmd,
+	"min-qual-rach <-100-100>",
+	"Set the minimum quality level of RACH burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+
+	fl1h->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_min_qual_norm, cfg_trx_min_qual_norm_cmd,
+	"min-qual-norm <-100-100>",
+	"Set the minimum quality level of normal burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+
+	fl1h->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
+	"nominal-tx-power <0-100>",
+	"Set the nominal transmit output power in dBm\n"
+	"Nominal transmit output power level in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->nominal_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+/* runtime */
+
+DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
+	"show trx <0-0> dsp-trace-flags",
+	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct lc15l1_hdl *fl1h;
+	int i;
+
+	if (!trx)
+		return CMD_WARNING;
+
+	fl1h = trx_lc15l1_hdl(trx);
+
+	vty_out(vty, "Litecell15 L1 DSP trace flags:%s", VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(lc15bts_tracef_names); i++) {
+		const char *endis;
+
+		if (lc15bts_tracef_names[i].value == 0 &&
+		    lc15bts_tracef_names[i].str == NULL)
+			break;
+
+		if (fl1h->dsp_trace_f & lc15bts_tracef_names[i].value)
+			endis = "enabled";
+		else
+			endis = "disabled";
+
+		vty_out(vty, "DSP Trace %-15s %s%s",
+			lc15bts_tracef_names[i].str, endis,
+			VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+
+}
+
+DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct lc15l1_hdl *fl1h;
+	unsigned int flag ;
+
+	if (!trx) {
+		vty_out(vty, "Cannot find TRX number %u%s",
+			trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	fl1h = trx_lc15l1_hdl(trx);
+	flag = get_string_value(lc15bts_tracef_names, argv[1]);
+	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f | flag);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", NO_STR TRX_STR)
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct lc15l1_hdl *fl1h;
+	unsigned int flag ;
+
+	if (!trx) {
+		vty_out(vty, "Cannot find TRX number %u%s",
+			trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	fl1h = trx_lc15l1_hdl(trx);
+	flag = get_string_value(lc15bts_tracef_names, argv[1]);
+	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f & ~flag);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_sys_info, show_sys_info_cmd,
+	"show trx <0-0> system-information",
+	SHOW_TRX_STR "Display information about system\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct lc15l1_hdl *fl1h;
+	int i;
+
+	if (!trx) {
+		vty_out(vty, "Cannot find TRX number %u%s",
+			trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	fl1h = trx_lc15l1_hdl(trx);
+
+	vty_out(vty, "DSP Version: %u.%u.%u, FPGA Version: %u.%u.%u%s",
+		fl1h->hw_info.dsp_version[0],
+		fl1h->hw_info.dsp_version[1],
+		fl1h->hw_info.dsp_version[2],
+		fl1h->hw_info.fpga_version[0],
+		fl1h->hw_info.fpga_version[1],
+		fl1h->hw_info.fpga_version[2], VTY_NEWLINE);
+
+	vty_out(vty, "GSM Band Support: ");
+	for (i = 0; i < sizeof(fl1h->hw_info.band_support); i++) {
+		if (fl1h->hw_info.band_support & (1 << i))
+			vty_out(vty, "%s ",  gsm_band_name(1 << i));
+	}
+	vty_out(vty, "%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(activate_lchan, activate_lchan_cmd,
+	"trx <0-0> <0-7> (activate|deactivate) <0-7>",
+	TRX_STR
+	"Timeslot number\n"
+	"Activate Logical Channel\n"
+	"Deactivate Logical Channel\n"
+	"Logical Channel Number\n" )
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[3]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	if (!strcmp(argv[2], "activate"))
+		lchan_activate(lchan);
+	else
+		lchan_deactivate(lchan);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(set_tx_power, set_tx_power_cmd,
+	"trx <0-0> tx-power <-110-100>",
+	TRX_STR
+	"Set transmit power (override BSC)\n"
+	"Transmit power in dBm\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int power = atoi(argv[1]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+
+	power_ramp_start(trx, to_mdB(power), 1);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(loopback, loopback_cmd,
+	"trx <0-0> <0-7> loopback <0-1>",
+	TRX_STR
+	"Timeslot number\n"
+	"Set TCH loopback\n"
+	"Logical Channel Number\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[2]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	lchan->loopback = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(no_loopback, no_loopback_cmd,
+	"no trx <0-0> <0-7> loopback <0-1>",
+	NO_STR TRX_STR
+	"Timeslot number\n"
+	"Set TCH loopback\n"
+	"Logical Channel Number\n")
+{
+	int trx_nr = atoi(argv[0]);
+	int ts_nr = atoi(argv[1]);
+	int lchan_nr = atoi(argv[2]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+
+	lchan->loopback = 0;
+
+	return CMD_SUCCESS;
+}
+
+
+void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	if (btsb->auto_band)
+		vty_out(vty, " auto-band%s", VTY_NEWLINE);
+}
+
+void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
+{
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+
+	if (fl1h->clk_use_eeprom)
+		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
+			VTY_NEWLINE);
+	if (fl1h->calib_path)
+		vty_out(vty, "  trx-calibration-path %s%s",
+			fl1h->calib_path, VTY_NEWLINE);
+	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
+		VTY_NEWLINE);
+	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
+		VTY_NEWLINE);
+	if (trx->nominal_power != lc15bts_get_nominal_power(trx))
+		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
+			VTY_NEWLINE);
+}
+
+int bts_model_vty_init(struct gsm_bts *bts)
+{
+	vty_bts = bts;
+
+	/* runtime-patch the command strings with debug levels */
+	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
+						"trx <0-0> dsp-trace-flag (",
+						"|",")", VTY_DO_LOWER);
+	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
+						TRX_STR DSP_TRACE_F_STR,
+						"\n", "", 0);
+
+	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
+						"no trx <0-0> dsp-trace-flag (",
+						"|",")", VTY_DO_LOWER);
+	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
+						NO_STR TRX_STR DSP_TRACE_F_STR,
+						"\n", "", 0);
+
+	install_element_ve(&show_dsp_trace_f_cmd);
+	install_element_ve(&show_sys_info_cmd);
+	install_element_ve(&dsp_trace_f_cmd);
+	install_element_ve(&no_dsp_trace_f_cmd);
+
+	install_element(ENABLE_NODE, &activate_lchan_cmd);
+	install_element(ENABLE_NODE, &set_tx_power_cmd);
+
+	install_element(ENABLE_NODE, &loopback_cmd);
+	install_element(ENABLE_NODE, &no_loopback_cmd);
+
+	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
+
+	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
+	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
+	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
+
+	return 0;
+}
