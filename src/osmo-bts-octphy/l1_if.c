@@ -1306,6 +1306,11 @@ int l1if_open(struct octphy_hdl *fl1h)
 	int sfd, rc;
 	char *phy_dev = fl1h->netdev_name;
 
+	if (!phy_dev) {
+		LOGP(DL1C, LOGL_ERROR, "You have to specify a phy-netdev\n");
+		return -EINVAL;
+	}
+
 	LOGP(DL1C, LOGL_NOTICE, "Opening L1 interface for OctPHY (%s)\n",
 		phy_dev);
 
