@@ -155,6 +155,10 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct octphy_hdl *fl1h = trx_octphy_hdl(bts->c0);
 
+	if (fl1h->netdev_name)
+		vty_out(vty, " phy-netdev %s%s", fl1h->netdev_name,
+			VTY_NEWLINE);
+
 	if (btsb->auto_band)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 
