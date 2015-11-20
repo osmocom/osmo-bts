@@ -559,10 +559,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	struct gsm_bts_role_bts *btsb = bts->role;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
-		"BSIC %u, TSC %u and %u TRX%s",
+		"BSIC %u and %u TRX%s",
 		bts->nr, "FIXME", gsm_band_name(bts->band),
 		bts->cell_identity,
-		bts->location_area_code, bts->bsic, bts->tsc,
+		bts->location_area_code, bts->bsic,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "  Description: %s%s",
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);

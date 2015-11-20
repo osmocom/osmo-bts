@@ -210,7 +210,7 @@ int pcu_tx_info_ind(void)
 			 && ts->pchan == GSM_PCHAN_PDCH) {
 				info_ind->trx[i].pdch_mask |= (1 << j);
 				info_ind->trx[i].tsc[j] =
-					(ts->tsc >= 0) ? ts->tsc : bts->tsc;
+					(ts->tsc >= 0) ? ts->tsc : bts->bsic & 7;
 				LOGP(DPCU, LOGL_INFO, "trx=%d ts=%d: "
 					"available (tsc=%d arfcn=%d)\n",
 					trx->nr, ts->nr,
