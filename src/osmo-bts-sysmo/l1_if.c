@@ -829,11 +829,10 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 {
 	struct gsm_bts_trx *trx = fl1->priv;
 	uint8_t chan_nr, link_id;
+	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
-	uint8_t *data, len;
 	int rc = 0;
-	int8_t rssi;
 
 	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
@@ -870,28 +869,23 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
-	/* get rssi */
-	rssi = (int8_t) (data_ind->measParam.fRssi);
-	/* get data pointer and length */
-	data = data_ind->msgUnitParam.u8Buffer;
-	len = data_ind->msgUnitParam.u8Size;
-	/* pull lower header part before data */
-	msgb_pull(l1p_msg, data - l1p_msg->data);
-	/* trim remaining data to it's size, to get rid of upper header part */
-	rc = msgb_trim(l1p_msg, len);
-	if (rc < 0)
-		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
-	l1p_msg->l2h = l1p_msg->data;
-	/* push new l1 header */
-	l1p_msg->l1h = msgb_push(l1p_msg, sizeof(*l1sap));
-	/* fill header */
-	l1sap = msgb_l1sap_prim(l1p_msg);
+	/* fill L1SAP header */
+	sap_msg = l1sap_msgb_alloc(data_ind->msgUnitParam.u8Size);
+	l1sap = msgb_l1sap_prim(sap_msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
-		PRIM_OP_INDICATION, l1p_msg);
+		PRIM_OP_INDICATION, sap_msg);
 	l1sap->u.data.link_id = link_id;
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
-	l1sap->u.data.rssi = rssi;
+	l1sap->u.data.rssi = (int8_t) (data_ind->measParam.fRssi);
+
+	/* copy data from L1 primitive to L1SAP primitive */
+	sap_msg->l2h = msgb_put(sap_msg, data_ind->msgUnitParam.u8Size);
+	memcpy(sap_msg->l2h, data_ind->msgUnitParam.u8Buffer,
+		data_ind->msgUnitParam.u8Size);
+
+
+	msgb_free(l1p_msg);
 
 	return l1sap_up(trx, l1sap);
 }
