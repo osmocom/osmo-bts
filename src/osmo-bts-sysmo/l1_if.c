@@ -330,10 +330,10 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		       struct osmo_phsap_prim *l1sap)
 {
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct msgb *l1msg = l1p_msgb_alloc();
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
 	uint8_t chan_nr, link_id;
-	GsmL1_Prim_t *l1p;
 	int len;
 
 	if (!msg) {
@@ -341,6 +341,9 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			"Please fix!\n");
 		abort();
 	}
+
+	len = msgb_l2len(msg);
+
 	chan_nr = l1sap->u.data.chan_nr;
 	link_id = l1sap->u.data.link_id;
 	u32Fn = l1sap->u.data.fn;
@@ -390,41 +393,30 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		return -EINVAL;
 	}
 
-	/* pull and trim msg to start of payload */
-	msgb_pull(msg, sizeof(*l1sap));
-	len = msg->len;
-	msgb_trim(msg, 0);
-
 	/* convert l1sap message to GsmL1 primitive, keep payload */
 	if (len) {
 		/* data request */
+		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
 
-		/* wrap zeroed l1p structure arrount payload
-		 * this must be done in three steps, since the actual
-		 * payload is not at the end but inside the l1p structure. */
-		msgb_push(msg, offsetof(GsmL1_Prim_t, u.phDataReq.msgUnitParam.u8Buffer));
-		memset(msg->data, 0, msg->len);
-		msgb_put(msg, len);
-		memset(msg->tail, 0, sizeof(*l1p) - msg->len);
-		msgb_put(msg, sizeof(*l1p) - msg->len);
-		msg->l1h = msg->data;
-
-		l1p = msgb_l1prim(msg);
 		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
+
+		OSMO_ASSERT(msgb_l2len(msg) <= sizeof(l1p->u.phDataReq.msgUnitParam.u8Buffer));
+		memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h, msgb_l2len(msg));
+		LOGP(DL1P, LOGL_DEBUG, "PH-DATA.req(%s)\n",
+			osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer,
+				     l1p->u.phDataReq.msgUnitParam.u8Size));
 	} else {
 		/* empty frame */
+		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
 
-		/* put l1p structure */
-		msgb_put(msg, sizeof(*l1p));
-		memset(msg->data, 0, msg->len);
-		msg->l1h = msg->data;
-
-		l1p = msgb_l1prim(msg);
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 
+	/* free the msgb holding the L1SAP primitive */
+	msgb_free(msg);
+
 	/* send message to DSP's queue */
-	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], msg) != 0) {
+	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
 		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(msg);
 	}
