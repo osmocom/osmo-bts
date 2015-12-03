@@ -1679,7 +1679,7 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	int res_valid = lchan->meas.flags & LC_UL_M_F_RES_VALID;
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Tx MEAS RES valid(%d)\n",
+	LOGP(DRSL, LOGL_DEBUG, "%s Tx MEAS RES valid(%d)\n",
 		gsm_lchan_name(lchan), res_valid);
 
 	if (!res_valid)
