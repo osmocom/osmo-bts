@@ -46,6 +46,23 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 
+static struct gsm_lchan *
+get_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
+{
+	return &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
+}
+
+
+static struct gsm_lchan *
+get_active_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
+{
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
+
+	if (lchan && lchan->state != LCHAN_S_ACTIVE)
+		return NULL;
+	return lchan;
+}
+
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
@@ -328,8 +345,9 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	DEBUGP(DL1P, "MPH_INFO meas ind chan_nr=%02x\n",
 		info_meas_ind->chan_nr);
 
-	lchan = &trx->ts[L1SAP_CHAN2TS(info_meas_ind->chan_nr)]
-				.lchan[l1sap_chan2ss(info_meas_ind->chan_nr)];
+	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
+	if (!lchan)
+		return 0;
 
 	/* in the GPRS case we are not interested in measurement
 	 * processing.  The PCU will take care of it */
@@ -378,8 +396,7 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 	LOGP(DL1P, LOGL_INFO, "activate confirm chan_nr=%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
-	lchan = &trx->ts[L1SAP_CHAN2TS(info_act_cnf->chan_nr)]
-				.lchan[l1sap_chan2ss(info_act_cnf->chan_nr)];
+	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
 	if (info_act_cnf->cause)
 		rsl_tx_chan_act_nack(lchan, info_act_cnf->cause);
@@ -399,8 +416,7 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 	LOGP(DL1P, LOGL_INFO, "deactivate confirm chan_nr=%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
-	lchan = &trx->ts[L1SAP_CHAN2TS(info_act_cnf->chan_nr)]
-				.lchan[l1sap_chan2ss(info_act_cnf->chan_nr)];
+	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
 	rsl_tx_rf_rel_ack(lchan);
 
@@ -437,7 +453,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr, link_id;
-	uint8_t tn, ss;
+	uint8_t tn;
 	uint32_t fn;
 	uint8_t *p, *si;
 	struct lapdm_entity *le;
@@ -487,15 +503,9 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		else
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
-		if (L1SAP_IS_CHAN_TCHH(chan_nr))
-			ss = L1SAP_CHAN2SS_TCHH(chan_nr); /* TCH/H */
-		else if (L1SAP_IS_CHAN_SDCCH4(chan_nr))
-			ss = L1SAP_CHAN2SS_SDCCH4(chan_nr); /* SDCCH/4 */
-		else if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
-			ss = L1SAP_CHAN2SS_SDCCH8(chan_nr); /* SDCCH/8 */
-		else
-			ss = 0; /* TCH/F */
-		lchan = &trx->ts[tn].lchan[ss];
+		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+		if (!lchan)
+			return 0;
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
@@ -563,13 +573,8 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
 {
 	struct gsm_lchan *lchan;
-	uint8_t chan_nr;
-	uint8_t tn, ss;
 
-	chan_nr = rach_ind->chan_nr;
-	tn = L1SAP_CHAN2TS(chan_nr);
-	ss = l1sap_chan2ss(chan_nr);
-	lchan = &trx->ts[tn].lchan[ss];
+	lchan = get_lchan_by_chan_nr(trx, rach_ind->chan_nr);
 
 	handover_rach(lchan, rach_ind->ra, rach_ind->acc_delay);
 
@@ -586,25 +591,19 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr;
-	uint8_t tn, ss;
 	uint32_t fn;
 
 	chan_nr = rts_ind->chan_nr;
 	fn = rts_ind->fn;
-	tn = L1SAP_CHAN2TS(chan_nr);
 
 	gsm_fn2gsmtime(&g_time, fn);
 
 	DEBUGP(DL1P, "Rx TCH-RTS.ind %02u/%02u/%02u chan_nr=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr);
 
-	/* get timeslot and subslot */
-	tn = L1SAP_CHAN2TS(chan_nr);
-	if (L1SAP_IS_CHAN_TCHH(chan_nr))
-		ss = L1SAP_CHAN2SS_TCHH(chan_nr); /* TCH/H */
-	else
-		ss = 0; /* TCH/F */
-	lchan = &trx->ts[tn].lchan[ss];
+	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+	if (!lchan) {
+		return 0;
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
@@ -719,7 +718,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint8_t *data = msg->l2h;
 	int len = msgb_l2len(msg);
 	uint8_t chan_nr, link_id;
-	uint8_t tn, ss;
+	uint8_t tn;
 	uint32_t fn;
 	int8_t rssi;
 
@@ -728,7 +727,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	link_id = data_ind->link_id;
 	fn = data_ind->fn;
 	tn = L1SAP_CHAN2TS(chan_nr);
-	ss = l1sap_chan2ss(chan_nr);
 
 	gsm_fn2gsmtime(&g_time, fn);
 
@@ -755,7 +753,9 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		return 0;
 	}
 
-	lchan = &trx->ts[tn].lchan[ss];
+	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+	if (!lchan)
+		return 0;
 
 	/* bad frame */
 	if (len == 0) {
@@ -809,22 +809,20 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct msgb *msg = l1sap->oph.msg;
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
-	uint8_t tn, ss, chan_nr;
+	uint8_t  chan_nr;
 	uint32_t fn;
 
 	chan_nr = tch_ind->chan_nr;
 	fn = tch_ind->fn;
-	tn = L1SAP_CHAN2TS(chan_nr);
-	if (L1SAP_IS_CHAN_TCHH(chan_nr))
-		ss = L1SAP_CHAN2SS_TCHH(chan_nr);
-	else
-		ss = 0;
-	lchan = &trx->ts[tn].lchan[ss];
 
 	gsm_fn2gsmtime(&g_time, fn);
 
 	DEBUGP(DL1P, "Rx TCH.ind %02u/%02u/%02u chan_nr=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+
+	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+	if (!lchan)
+		return 0;
 
 	msgb_pull(msg, sizeof(*l1sap));
 
@@ -1018,8 +1016,7 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp)
 {
 	struct gsm_bts_role_bts *btsb = trx->bts->role;
-	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
-				.lchan[l1sap_chan2ss(chan_nr)];
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	struct gsm48_chan_desc *cd;
 	int rc;
 
@@ -1063,8 +1060,7 @@ int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
-				.lchan[l1sap_chan2ss(chan_nr)];
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
 	LOGP(DL1P, LOGL_INFO, "deactivating sacch chan_nr=%02x trx=%d\n",
 		chan_nr, trx->nr);
