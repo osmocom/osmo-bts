@@ -63,7 +63,7 @@ int pcu_direct = 0;
 
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
-static unsigned int dsp_trace = 0x71c00020;
+static unsigned int dsp_trace = 0x00000000;
 static int rt_prio = -1;
 static char *gsmtap_ip = 0;
 

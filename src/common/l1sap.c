@@ -602,7 +602,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		g_time.t1, g_time.t2, g_time.t3, chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
-	if (!lchan) {
+	if (!lchan)
 		return 0;
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
