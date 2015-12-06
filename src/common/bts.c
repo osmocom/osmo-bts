@@ -78,6 +78,7 @@ int bts_init(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	int rc;
 	static int initialized = 0;
+	void *tall_rtp_ctx;
 
 	/* add to list of BTSs */
 	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
@@ -142,7 +143,10 @@ int bts_init(struct gsm_bts *bts)
 		tpp->ramp.step_interval_sec = 1;
 	}
 
-	osmo_rtp_init(tall_bts_ctx);
+	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
+	 * to the libc malloc all the time */
+	tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
+	osmo_rtp_init(tall_rtp_ctx);
 
 	rc = bts_model_init(bts);
 	if (rc < 0) {
