@@ -314,7 +314,7 @@ int main(int argc, char **argv)
 
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "lc15BTS context");
-	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
+	tall_msgb_ctx = talloc_pool(tall_bts_ctx, 100*1024);
 	msgb_set_talloc_ctx(tall_msgb_ctx);
 
 	bts_log_init(NULL);
