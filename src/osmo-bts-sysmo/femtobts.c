@@ -224,6 +224,9 @@ const struct value_string femtobts_l1status_names[GSML1_STATUS_NUM+1] = {
 	{ GsmL1_Status_TxBurstFifoUndr,	"FIFO underrun" },
 	{ GsmL1_Status_NotSynchronized,	"Not synchronized" },
 	{ GsmL1_Status_Unsupported,	"Unsupported feature" },
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(5,1,0)
+	{ GsmL1_Status_ClockError,	"Clock error" },
+#endif
 	{ 0, NULL }
 };
 
