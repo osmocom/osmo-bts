@@ -334,6 +334,12 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 			for (i = 0; i < ARRAY_SIZE(rx->u16IqImbalCorr); i++)
 				rx->u16IqImbalCorr[i] = rx_cal.u16IqImbalCorr[i];
 		}
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(5,1,0)
+		rx->u8DspMajVer = rx_cal.u8DspMajVer;
+		rx->u8DspMinVer = rx_cal.u8DspMinVer;
+		rx->u8FpgaMajVer = rx_cal.u8FpgaMajVer;
+		rx->u8FpgaMinVer = rx_cal.u8FpgaMinVer;
+#endif
 	} else {
 		SuperFemto_SetTxCalibTblReq_t *tx = &prim->u.setTxCalibTblReq;
 		eeprom_TxCal_t tx_cal;
@@ -361,6 +367,12 @@ static int calib_eeprom_read(const struct calib_file_desc *desc, SuperFemto_Prim
 
 		for (i = 0; i < arrsize_by_band[desc->band]; i++)
 			tx->fTxRollOffCorr[i] = tx_cal.fTxRollOffCorr[i];
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(5,1,0)
+		tx->u8DspMajVer = tx_cal.u8DspMajVer;
+		tx->u8DspMinVer = tx_cal.u8DspMinVer;
+		tx->u8FpgaMajVer = tx_cal.u8FpgaMajVer;
+		tx->u8FpgaMinVer = tx_cal.u8FpgaMinVer;
+#endif
 	}
 #endif
 
