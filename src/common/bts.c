@@ -109,6 +109,7 @@ int bts_init(struct gsm_bts *bts)
 	btsb->max_ta = 63;
 	btsb->ny1 = 4;
 	btsb->t3105_ms = 300;
+	memcpy(btsb->t200_ms, oml_default_t200_ms, sizeof(btsb->t200_ms));
 
 	/* default RADIO_LINK_TIMEOUT */
 	btsb->radio_link_timeout = 32;
@@ -260,6 +261,7 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 	lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
 	lapdm_channel_set_l1(lc, NULL, lchan);
 	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);
+	oml_set_lchan_t200(lchan);
 
 	return 0;
 }
