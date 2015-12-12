@@ -386,10 +386,68 @@ static const uint8_t abis_nm_t200_mult[] = {
 	[T200_FACCH_F]		= 5,
 	[T200_FACCH_H]		= 5,
 	[T200_SACCH_TCH_SAPI0]	= 10,
-	[T200_SACCH_SDCCH]	= 10,	
+	[T200_SACCH_SDCCH]	= 10,
 	[T200_SDCCH_SAPI3]	= 5,
 	[T200_SACCH_TCH_SAPI3]	= 10
 };
+
+/* the below defaults correpsond to the libocmocore default of 1s for
+ * DCCH and 2s for ACCH. The BSC should overried this via OML anyway. */
+const uint8_t oml_default_t200_ms[7] = {
+	[T200_SDCCH]		= 1000/5,
+	[T200_FACCH_F]		= 1000/5,
+	[T200_FACCH_H]		= 1000/5,
+	[T200_SACCH_TCH_SAPI0]	= 2000/10,
+	[T200_SACCH_SDCCH]	= 2000/10,
+	[T200_SDCCH_SAPI3]	= 1000/5,
+	[T200_SACCH_TCH_SAPI3]	= 2000/10,
+};
+
+static void dl_set_t200(struct lapdm_datalink *dl, unsigned int t200_msec)
+{
+	dl->dl.t200_sec = t200_msec / 1000;
+	dl->dl.t200_usec = (t200_msec % 1000) * 1000;
+}
+
+/* Configure LAPDm T200 timers for this lchan according to OML */
+int oml_set_lchan_t200(struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct lapdm_channel *lc = &lchan->lapdm_ch;
+	unsigned int t200_dcch, t200_dcch_sapi3, t200_acch, t200_acch_sapi3;
+
+	/* set T200 for main and associated channel */
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+		t200_dcch = btsb->t200_ms[T200_SDCCH];
+		t200_dcch_sapi3 = btsb->t200_ms[T200_SDCCH_SAPI3];
+		t200_acch = btsb->t200_ms[T200_SACCH_SDCCH];
+		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_SDCCH];
+		break;
+	case GSM_LCHAN_TCH_F:
+		t200_dcch = btsb->t200_ms[T200_FACCH_F];
+		t200_dcch_sapi3 = btsb->t200_ms[T200_FACCH_F];
+		t200_acch = btsb->t200_ms[T200_SACCH_TCH_SAPI0];
+		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_TCH_SAPI3];
+		break;
+	case GSM_LCHAN_TCH_H:
+		t200_dcch = btsb->t200_ms[T200_FACCH_H];
+		t200_dcch_sapi3 = btsb->t200_ms[T200_FACCH_H];
+		t200_acch = btsb->t200_ms[T200_SACCH_TCH_SAPI0];
+		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_TCH_SAPI3];
+		break;
+	default:
+		return -1;
+	}
+
+	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI0], t200_dcch);
+	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI3], t200_dcch_sapi3);
+	dl_set_t200(&lc->lapdm_acch.datalink[DL_SAPI0], t200_acch);
+	dl_set_t200(&lc->lapdm_acch.datalink[DL_SAPI3], t200_acch_sapi3);
+
+	return 0;
+}
 
 /* 8.6.1 Set BTS Attributes has been received */
 static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
