@@ -719,13 +719,27 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 	return 0;
 }
 
+static int parse_power_control(struct gsm_power_control *pc,
+				const uint8_t *ie_val, unsigned int ie_len)
+{
+	if (ie_len < 3)
+		return -EINVAL;
+
+	pc->rxlev.lower = ie_val[0] & 0x3f;
+	pc->rxlev.upper = ie_val[1] & 0x3f;
+	pc->rxqual.lower = (ie_val[2] >> 4) & 7;
+	pc->rxqual.upper = ie_val[2] & 7;
+
+	return 0;
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct rsl_ie_chan_mode *cm;
-	struct tlv_parsed tp;
+	struct tlv_parsed tp, tp_eie;
 	uint8_t type;
 	int rc;
 
@@ -739,7 +753,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* Initialize channel defaults */
 	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power;
-	lchan->ms_power_ctrl.fixed = 0;
+	lchan->power_control.ul.dynamic = 0;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -777,20 +791,50 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* 9.3.4 BS Power */
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER)) {
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+		lchan->power_control.dl.static_level = lchan->bs_power;
+		lchan->power_control.dl.dynamic = 0;
+	}
 	/* 9.3.13 MS Power */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
 		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
-		lchan->ms_power_ctrl.current = lchan->ms_power;
-		lchan->ms_power_ctrl.fixed = 0;
+		lchan->power_control.ul.static_level = lchan->ms_power;
+		lchan->power_control.ul.dynamic = 0;
 	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRESENT(&tp, RSL_IE_TIMING_ADVANCE))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
 
 	/* 9.3.32 BS Power Parameters */
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
+		rsl_ipac_eie_tlv_parse(&tp_eie,
+				TLVP_VAL(&tp, RSL_IE_BS_POWER_PARAM),
+				TLVP_LEN(&tp, RSL_IE_BS_POWER_PARAM));
+		if (TLVP_PRESENT(&tp_eie, RSL_IPAC_EIE_BS_PWR_CTL)) {
+			parse_power_control(&lchan->power_control.dl,
+				TLVP_VAL(&tp_eie, RSL_IPAC_EIE_BS_PWR_CTL),
+				TLVP_LEN(&tp_eie, RSL_IPAC_EIE_BS_PWR_CTL));
+		}
+		/* if this IE is present, we use dynamic control */
+		lchan->power_control.dl.dynamic = 1;
+	}
+
 	/* 9.3.31 MS Power Parameters */
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
+		rsl_ipac_eie_tlv_parse(&tp_eie,
+				TLVP_VAL(&tp, RSL_IE_MS_POWER_PARAM),
+				TLVP_LEN(&tp, RSL_IE_MS_POWER_PARAM));
+		if (TLVP_PRESENT(&tp_eie, RSL_IPAC_EIE_BS_PWR_CTL)) {
+			parse_power_control(&lchan->power_control.ul,
+				TLVP_VAL(&tp_eie, RSL_IPAC_EIE_MS_PWR_CTL),
+				TLVP_LEN(&tp_eie, RSL_IPAC_EIE_MS_PWR_CTL));
+		}
+		/* if this IE is present, we use dynamic control */
+		lchan->power_control.ul.dynamic = 1;
+		lchan->ms_power_ctrl.current = lchan->ms_power;
+	}
+
 	/* 9.3.16 Physical Context */
 
 	/* 9.3.29 SACCH Information */
@@ -1121,18 +1165,37 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 {
 	struct gsm_lchan *lchan = msg->lchan;
-	struct tlv_parsed tp;
+	struct tlv_parsed tp, tp_eie;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	/* 9.3.13 MS Power */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
-		uint8_t pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-		lchan->ms_power_ctrl.fixed = 1;
-		lchan->ms_power_ctrl.current = pwr;
+		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
+		lchan->power_control.ul.static_level = lchan->ms_power;
+		lchan->power_control.ul.dynamic = 0;
+		lchan->ms_power_ctrl.current = lchan->ms_power;
+	}
 
+	/* 9.3.31 MS Power Parameters */
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
+		rsl_ipac_eie_tlv_parse(&tp_eie,
+				TLVP_VAL(&tp, RSL_IE_MS_POWER_PARAM),
+				TLVP_LEN(&tp, RSL_IE_MS_POWER_PARAM));
+		if (TLVP_PRESENT(&tp_eie, RSL_IPAC_EIE_BS_PWR_CTL)) {
+			parse_power_control(&lchan->power_control.ul,
+				TLVP_VAL(&tp_eie, RSL_IPAC_EIE_MS_PWR_CTL),
+				TLVP_LEN(&tp_eie, RSL_IPAC_EIE_MS_PWR_CTL));
+		}
+		/* if this IE is present, we use dynamic control */
+		lchan->power_control.ul.dynamic = 1;
+	}
+
+	if (lchan->power_control.ul.dynamic == 0) {
 		LOGP(DRSL, LOGL_NOTICE, "%s forcing power to %d\n",
 			gsm_lchan_name(lchan), lchan->ms_power_ctrl.current);
-		bts_model_adjst_ms_pwr(lchan);
 	}
+
+	bts_model_adjst_ms_pwr(lchan);
 
 	return 0;
 }

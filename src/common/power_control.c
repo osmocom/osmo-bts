@@ -49,7 +49,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
 		return 0;
-	if (lchan->ms_power_ctrl.fixed)
+	if (!lchan->power_control.ul.dynamic)
 		return 0;
 
 	/* The phone hasn't reached the power level yet */
