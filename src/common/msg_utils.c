@@ -96,7 +96,7 @@ int msg_verify_ipa_structure(struct msgb *msg)
 
 	if (msgb_l1len(msg) < sizeof(struct ipaccess_head)) {
 		LOGP(DL1C, LOGL_ERROR,
-			"Ipa header insufficient space %d %d\n",
+			"Ipa header insufficient space %d %zu\n",
 			msgb_l1len(msg), sizeof(struct ipaccess_head));
 		return -1;
 	}
@@ -105,7 +105,7 @@ int msg_verify_ipa_structure(struct msgb *msg)
 
 	if (ntohs(hh->len) != msgb_l1len(msg) - sizeof(struct ipaccess_head)) {
 		LOGP(DL1C, LOGL_ERROR,
-			"Incorrect ipa header msg size %d %d\n",
+			"Incorrect ipa header msg size %d %zu\n",
 			ntohs(hh->len), msgb_l1len(msg) - sizeof(struct ipaccess_head));
 		return -1;
 	}
@@ -142,7 +142,7 @@ int msg_verify_oml_structure(struct msgb *msg)
 	struct abis_om_hdr *omh;
 
 	if (msgb_l2len(msg) < sizeof(*omh)) {
-		LOGP(DL1C, LOGL_ERROR, "Om header insufficient space %d %d\n",
+		LOGP(DL1C, LOGL_ERROR, "Om header insufficient space %d %zu\n",
 		     msgb_l2len(msg), sizeof(*omh));
 		return -1;
 	}

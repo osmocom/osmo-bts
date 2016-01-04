@@ -49,7 +49,7 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
 
-enum node_type bts_vty_go_parent(struct vty *vty)
+int bts_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
 	case TRX_NODE:
@@ -814,6 +814,8 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(TRX_NODE, &cfg_trx_ms_power_control_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
+	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
 
 	return 0;
 }

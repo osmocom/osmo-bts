@@ -4,6 +4,7 @@
 struct gsm_bts;
 struct gsm_abis_mo;
 struct msgb;
+struct gsm_lchan;
 
 
 int oml_init(void);

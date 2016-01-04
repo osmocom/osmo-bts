@@ -534,6 +534,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_clkcal_def_cmd);
 	install_element(TRX_NODE, &cfg_trx_clksrc_cmd);
 	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
+	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
 	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);

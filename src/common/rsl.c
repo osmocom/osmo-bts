@@ -47,6 +47,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/bts_model.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 

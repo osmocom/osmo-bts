@@ -12,7 +12,7 @@ enum bts_vty_node {
 extern struct cmd_element ournode_exit_cmd;
 extern struct cmd_element ournode_end_cmd;
 
-enum node_type bts_vty_go_parent(struct vty *vty);
+int bts_vty_go_parent(struct vty *vty);
 int bts_vty_is_config_node(struct vty *vty, int node);
 
 int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat);

@@ -45,6 +45,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/power_control.h>
 
 static struct gsm_lchan *
 get_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
