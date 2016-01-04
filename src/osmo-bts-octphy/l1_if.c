@@ -404,7 +404,6 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		     l1sap->oph.primitive, l1sap->oph.operation,
 		     chan_nr, link_id);
 		rc = -EINVAL;
-		msgb_free(msg);
 		goto done;
 	}
 
@@ -445,8 +444,6 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD_SWAP(empty_frame_req);
 	}
-
-	msgb_free(msg);
 
 	rc = l1if_req_compl(fl1h, l1msg, NULL, NULL);
 done:
@@ -531,7 +528,6 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD_SWAP(empty_frame_req);
 	}
 
-	msgb_free(msg);
 	return l1if_req_compl(fl1h, nmsg, NULL, NULL);
 }
 
@@ -588,12 +584,14 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	return rc;
 }
 
-/* primitive from common part */
+/* primitive from common part. We are taking ownership of msgb */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	int rc = 0;
 
+	/* called functions MUST NOT take ownership of msgb, as it is
+	 * free()d below */
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
 		rc = ph_data_req(trx, msg, l1sap);
@@ -610,10 +608,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		rc = -EINVAL;
 	}
 
-	if (rc)
-		msgb_free(msg);
-	return rc;
+	msgb_free(msg);
 
+	return rc;
 }
 
 int bts_model_init(struct gsm_bts *bts)
@@ -644,7 +641,7 @@ int bts_model_init(struct gsm_bts *bts)
  * handling of messages coming up from PHY
  ***********************************************************************/
 
-static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
+static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		     tOCTVC1_GSM_MEASUREMENT_INFO * m)
 {
 	struct osmo_phsap_prim l1sap;
@@ -659,7 +656,9 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.u.meas_ind.ber10k = (unsigned int)(m->usBERCnt * 100);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->sRSSIDbm * -1);
 
-	return l1sap_up(trx, &l1sap);
+	/* l1sap wants to take msgb ownership.  However, as there is no
+	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
+	l1sap_up(trx, &l1sap);
 }
 
 static void dump_meas_res(int ll, tOCTVC1_GSM_MEASUREMENT_INFO * m)
@@ -679,10 +678,8 @@ static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t 
 	fl1->alive_prim_cnt++;
 
 	/* ignore every time indication, except for c0 */
-	if (trx != bts->c0) {
-		/* Returning 0 will log an error */
-		return 1;
-	}
+	if (trx != bts->c0)
+		return 0;
 
 	if (trx_id != trx->nr) {
 		LOGP(DL1C, LOGL_FATAL,
@@ -697,7 +694,9 @@ static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t 
 	l1sap.u.info.type = PRIM_INFO_TIME;
 	l1sap.u.info.u.time_ind.fn = fn;
 
-	return l1sap_up(trx, &l1sap);
+	l1sap_up(trx, &l1sap);
+
+	return 0;
 }
 
 static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
@@ -756,7 +755,10 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 			l1sap->u.data.fn = fn;
 		}
 
-		return l1sap_up(trx, l1sap);
+		l1sap_up(trx, l1sap);
+
+		/* return '1' to indicate l1sap_up has taken msgb ownership */
+		return 1;
 	}
 
 	/* in all other cases, we need to allocate a new PH-DATA.ind
@@ -848,7 +850,6 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 		LOGP(DL1C, LOGL_ERROR,
 		     "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
 		     get_value_string(octphy_l1sapi_names, sapi));
-		msgb_free(l1p_msg);
 		return ENOTSUP;
 	}
 
@@ -875,7 +876,6 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	    sapi == cOCTVC1_GSM_SAPI_ENUM_TCHH) {
 		/* TCH speech frame handling */
 		rc = l1if_tch_rx(trx, chan_nr, data_ind);
-		msgb_free(l1p_msg);
 		return rc;
 	}
 
@@ -902,7 +902,10 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = rssi;
 
-	return l1sap_up(trx, l1sap);
+	l1sap_up(trx, l1sap);
+
+	/* return '1' to indicate that l1sap_up has taken msgb ownership */
+	return 1;
 }
 
 static int handle_ph_rach_ind(struct octphy_hdl *fl1,
@@ -961,7 +964,10 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	else
 		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
 
-	return l1sap_up(trx, l1sap);
+	l1sap_up(trx, l1sap);
+
+	/* return '1' to indicate l1sap_up has taken msgb ownership */
+	return 1;
 }
 
 static int rx_gsm_trx_time_ind(struct msgb *msg)
@@ -989,9 +995,11 @@ static int rx_octvc1_resp(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
 		if (wlc->prim_id == msg_id && wlc->trans_id == trans_id) {
 			llist_del(&wlc->list);
-			if (wlc->cb)
+			if (wlc->cb) {
+				/* call-back function must take msgb
+				 * ownership. */
 				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
-			else {
+			} else {
 				rc = 0;
 				msgb_free(msg);
 			}
@@ -1078,22 +1086,31 @@ static int rx_gsm_trx_rach_ind(struct msgb *msg)
 static int rx_octvc1_notif(struct msgb *msg, uint32_t msg_id)
 {
 	const char *evt_name = get_value_string(octphy_eid_vals, msg_id);
+	int rc = 0;
 
 	LOGP(DL1P, LOGL_DEBUG, "Rx NOTIF %s\n", evt_name);
 
+	/* called functions MUST NOT take ownership of the msgb,
+	 * as it is free()d below - unless they return 1 */
 	switch (msg_id) {
 	case cOCTVC1_GSM_MSG_TRX_TIME_INDICATION_EID:
-		return rx_gsm_trx_time_ind(msg);
+		rc = rx_gsm_trx_time_ind(msg);
+		break;
 	case cOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATUS_CHANGE_EID:
-		return rx_gsm_clockmgr_status_ind(msg);
+		rc = rx_gsm_clockmgr_status_ind(msg);
+		break;
 	case cOCTVC1_GSM_MSG_TRX_STATUS_CHANGE_EID:
-		return rx_gsm_trx_status_ind(msg);
+		rc = rx_gsm_trx_status_ind(msg);
+		break;
 	case cOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_DATA_INDICATION_EID:
-		return rx_gsm_trx_lchan_data_ind(msg);
+		rc = rx_gsm_trx_lchan_data_ind(msg);
+		break;
 	case cOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_READY_TO_SEND_INDICATION_EID:
-		return rx_gsm_trx_rts_ind(msg);
+		rc = rx_gsm_trx_rts_ind(msg);
+		break;
 	case cOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_RACH_INDICATION_EID:
-		return rx_gsm_trx_rach_ind(msg);
+		rc = rx_gsm_trx_rach_ind(msg);
+		break;
 	case cOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_RAW_DATA_INDICATION_EID:
 		LOGP(DL1P, LOGL_NOTICE, "Rx Unhandled event %s (%u)\n",
 			evt_name, msg_id);
@@ -1103,7 +1120,11 @@ static int rx_octvc1_notif(struct msgb *msg, uint32_t msg_id)
 			evt_name, msg_id);
 	}
 
-	return 0;
+	/* Special return value '1' means: do not free */
+	if (rc != 1)
+		msgb_free(msg);
+
+	return rc;
 }
 
 static int rx_octvc1_event_msg(struct msgb *msg)
@@ -1117,6 +1138,7 @@ static int rx_octvc1_event_msg(struct msgb *msg)
 	/* OCTSDKAN5001 Chapter 6.1 */
 	if (length < 12 || length > 1024) {
 		LOGP(DL1C, LOGL_ERROR, "Rx EVENT length %u invalid\n", length);
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1124,6 +1146,7 @@ static int rx_octvc1_event_msg(struct msgb *msg)
 	if (msgb_l2len(msg) < length) {
 		LOGP(DL1C, LOGL_ERROR, "Rx EVENT msgb_l2len(%u) < "
 		     "event_msg_length (%u)\n", msgb_l2len(msg), length);
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1148,6 +1171,7 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 	/* OCTSDKAN5001 Chapter 3.1 */
 	if (length < 24 || length > 1024) {
 		LOGP(DL1C, LOGL_ERROR, "Rx CTRL length %u invalid\n", length);
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1155,6 +1179,7 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 	if (msgb_l2len(msg) < length) {
 		LOGP(DL1C, LOGL_ERROR, "Rx CTRL msgb_l2len(%u) < "
 		     "ctrl_msg_length (%u)\n", msgb_l2len(msg), length);
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1166,6 +1191,7 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 			msg_name, octvc1_rc2string(return_code));
 	}
 
+	/* called functions must take ownership of msgb */
 	switch (msg_type) {
 	case cOCTVC1_MSG_TYPE_RESPONSE:
 		return rx_octvc1_resp(msg, msg_id, ntohl(mh->ulTransactionId));
@@ -1174,10 +1200,12 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 	case cOCTVC1_MSG_TYPE_SUPERVISORY:
 		LOGP(DL1C, LOGL_NOTICE, "Rx unhandled msg_type %s (%u)\n",
 			msg_name, msg_type);
+		msgb_free(msg);
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "Rx unknown msg_type %s (%u)\n",
 			msg_name, msg_type);
+		msgb_free(msg);
 	}
 
 	return 0;
@@ -1195,6 +1223,7 @@ static int rx_octvc1_data_f_msg(struct msgb *msg)
 	    cOCTVOCNET_PKT_DATA_LOGICAL_OBJ_PKT_PORT_EVENT_SESSION) {
 		uint32_t sub_type = ntohl(datafh->ulSubType) & 0xF;
 		if (sub_type == cOCTVOCNET_PKT_SUBTYPE_API_EVENT) {
+			/* called function must take msgb ownership */
 			return rx_octvc1_event_msg(msg);
 		} else {
 			LOGP(DL1C, LOGL_ERROR, "Unknown DATA_F "
@@ -1205,6 +1234,7 @@ static int rx_octvc1_data_f_msg(struct msgb *msg)
 			log_obj_port);
 	}
 
+	msgb_free(msg);
 	return 0;
 }
 
@@ -1212,6 +1242,7 @@ static int rx_octvc1_data_f_msg(struct msgb *msg)
 static int rx_octphy_msg(struct msgb *msg)
 {
 	tOCTVOCNET_PKT_CTL_HEADER *ctlh;
+	int rc = 0;
 
 	/* we assume that the packets start right with the OCTPKT header
 	 * and that the ethernet hardware header has already been
@@ -1228,6 +1259,7 @@ static int rx_octphy_msg(struct msgb *msg)
 		LOGP(DL1C, LOGL_ERROR, "Received length (%u) > length "
 			"as per packt header (%u)\n", msgb_length(msg),
 			len);
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1238,17 +1270,22 @@ static int rx_octphy_msg(struct msgb *msg)
 		ctlh = (tOCTVOCNET_PKT_CTL_HEADER *) (msg->l1h + 4);
 		/* FIXME: check src/dest fifo, socket ID */
 		msg->l2h = (uint8_t *) ctlh + sizeof(*ctlh);
-		return rx_octvc1_ctrl_msg(msg);
+		/* called function must take msgb ownership */
+		rc = rx_octvc1_ctrl_msg(msg);
+		break;
 	case cOCTVOCNET_PKT_FORMAT_F:
 		msg->l2h = msg->l1h + 4;
-		return rx_octvc1_data_f_msg(msg);
+		/* called function must take msgb ownership */
+		rc = rx_octvc1_data_f_msg(msg);
+		break;
 	default:
 		LOGP(DL1C, LOGL_ERROR, "Rx Unknown pkt_format 0x%x\n",
 			format);
+		msgb_free(msg);
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 /***********************************************************************

@@ -357,6 +357,9 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 	uint8_t direction;
 	uint8_t status;
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ar);
 	OSMO_ASSERT(ar->TrxId.byTrxId == trx->nr);
 
@@ -395,11 +398,12 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 		LOGP(DL1C, LOGL_ERROR,
 		     "%s Got activation confirmation with empty queue\n",
 		     gsm_lchan_name(lchan));
-		return -1;
+		goto err;
 	}
 
 	sapi_queue_dispatch(lchan, ar->Header.ulReturnCode);
 
+err:
 	msgb_free(resp);
 
 	return 0;
@@ -454,11 +458,15 @@ static int set_ciph_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_lchan *lchan;
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
 	mOCTVC1_GSM_MSG_TRX_MODIFY_PHYSICAL_CHANNEL_CIPHERING_RSP_SWAP(pcr);
 
 	if (pcr->Header.ulReturnCode != cOCTVC1_RC_OK) {
 		LOGP(DL1C, LOGL_ERROR, "Error: Cipher Request Failed!\n\n");
 		LOGP(DL1C, LOGL_ERROR, "Exiting... \n\n");
+		msgb_free(resp);
 		exit(-1);
 	}
 
@@ -485,16 +493,16 @@ static int set_ciph_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 		LOGPC(DL1C, LOGL_INFO, "unhandled state %u\n", lchan->ciph_state);
 	}
 
-	msgb_free(resp);
-
 	if (llist_empty(&lchan->sapi_cmds)) {
 		LOGP(DL1C, LOGL_ERROR,
 		     "%s Got ciphering conf with empty queue\n",
 		     gsm_lchan_name(lchan));
-		return 0;
+		goto err;
 	}
 	sapi_queue_dispatch(lchan, pcr->Header.ulReturnCode);
 
+err:
+	msgb_free(resp);
 	return 0;
 }
 
@@ -653,6 +661,9 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void
 	struct gsm_lchan *lchan;
 	struct sapi_cmd *cmd;
 	uint8_t status;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ldr);
 	OSMO_ASSERT(ldr->TrxId.byTrxId == trx->nr);
@@ -1063,6 +1074,9 @@ static int enable_events_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, vo
 	tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *mser =
 		(tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *) resp->l2h;
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
 	mOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP_SWAP(mser);
 
 	LOGP(DL1C, LOGL_INFO, "Rx ENABLE-EVT-REC.resp\n");
@@ -1096,6 +1110,9 @@ static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 {
 	tOCTVC1_GSM_MSG_TRX_OPEN_RSP *or =
 		(tOCTVC1_GSM_MSG_TRX_OPEN_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_OPEN_RSP_SWAP(or);
 
@@ -1165,6 +1182,9 @@ static int trx_close_all_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *da
 	tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *car =
 		(tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *) resp->l2h;
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
 	mOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP_SWAP(car);
 
 	msgb_free(resp);
@@ -1221,6 +1241,9 @@ static int pchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_abis_mo *mo;
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP_SWAP(ar);
 	ts_nr = ar->PchId.byTimeslotNb;
 
@@ -1238,6 +1261,7 @@ static int pchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 		     "PCHAN-ACT failed: %s\n\n",
 		     octvc1_rc2string(ar->Header.ulReturnCode));
 		LOGP(DL1C, LOGL_ERROR, "Exiting... \n\n");
+		msgb_free(resp);
 		exit(-1);
 	}
 
