@@ -974,6 +974,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 	case GsmL1_PrimId_PhReadyToSendInd:
 		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
 					       msg);
+		break;
 	case GsmL1_PrimId_PhDataInd:
 		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 		break;
