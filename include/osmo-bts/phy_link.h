@@ -10,11 +10,13 @@
 #include "btsconfig.h"
 
 struct gsm_bts_trx;
+struct virt_um_inst;
 
 enum phy_link_type {
 	PHY_LINK_T_NONE,
 	PHY_LINK_T_SYSMOBTS,
 	PHY_LINK_T_OSMOTRX,
+	PHY_LINK_T_VIRTUAL,
 };
 
 enum phy_link_state {
@@ -54,6 +56,12 @@ struct phy_link {
 			int	power_oml;
 			int	power_sent;
 		} osmotrx;
+		struct {
+			char *mcast_group;
+			char *mcast_dev;
+			uint16_t mcast_port;
+			struct virt_um_inst *virt_um;
+		} virt;
 		struct {
 			/* MAC address of the PHY */
 			struct sockaddr_ll phy_addr;
@@ -101,6 +109,9 @@ struct phy_instance {
 			struct trx_l1h *hdl;
 			bool sw_act_reported;
 		} osmotrx;
+		struct {
+			struct l1sched_trx sched;
+		} virt;
 		struct {
 			/* logical transceiver number within one PHY */
 			uint32_t trx_id;
