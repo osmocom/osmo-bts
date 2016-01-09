@@ -44,6 +44,9 @@
 #include "amr.h"
 #include "loops.h"
 
+#define GSM_SUPERFRAME	(26*51)			/* 1326 TDMA frames */
+#define GSM_HYPERFRAME	(2048*GSM_SUPERFRAME)	/* GSM_HYPERFRAME frames */
+
 /* Enable this to multiply TOA of RACH by 10.
  * This is usefull to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */
@@ -531,12 +534,12 @@ free_msg:
 		case PRIM_PH_DATA:
 			chan_nr = l1sap->u.data.chan_nr;
 			link_id = l1sap->u.data.link_id;
-			prim_fn = ((l1sap->u.data.fn + 2715648 - fn) % 2715648);
+			prim_fn = ((l1sap->u.data.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 			break;
 		case PRIM_TCH:
 			chan_nr = l1sap->u.tch.chan_nr;
 			link_id = 0;
-			prim_fn = ((l1sap->u.tch.fn + 2715648 - fn) % 2715648);
+			prim_fn = ((l1sap->u.tch.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 			break;
 		default:
 			goto wrong_type;
@@ -1226,6 +1229,7 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return 0;
 }
 
+/*! \brief a single burst was received by the PHY, process it */
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa)
@@ -1398,7 +1402,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	l2[0] = 7; /* valid frame */
 
-	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
+	return compose_ph_data_ind(l1h, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
 		l2, rc + 1, *rssi_sum / *rssi_num);
 }
 
@@ -1513,7 +1517,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	/* FACCH */
 	if (rc == 23) {
-		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
+		compose_ph_data_ind(l1h, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 			tch_data + amr, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
@@ -1548,7 +1552,7 @@ bfi:
 		return 0;
 
 	/* TCH or BFI */
-	return compose_tch_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
+	return compose_tch_ind(l1h, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 		tch_data, rc);
 }
 
@@ -1678,7 +1682,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (rc == 23) {
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
-			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
+			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
 			tch_data + amr, 23, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
@@ -1716,7 +1720,7 @@ bfi:
 	 * start of frame.
 	 */
 	return compose_tch_ind(l1h, tn,
-		(fn + 2715648 - 10 - ((fn%26)==19) - ((fn%26)==20)) % 2715648,
+		(fn + GSM_HYPERFRAME - 10 - ((fn%26)==19) - ((fn%26)==20)) % GSM_HYPERFRAME,
 		chan, tch_data, rc);
 }
 
@@ -2780,12 +2784,12 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 		return -EINVAL;
 
 	/* calculate how many frames have been elapsed */
-	elapsed = (current_fn + 2715648 - l1h->mf_last_fn[tn]) % 2715648;
+	elapsed = (current_fn + GSM_HYPERFRAME - l1h->mf_last_fn[tn]) % GSM_HYPERFRAME;
 
 	/* start counting from last fn + 1, but only if not too many fn have
 	 * been elapsed */
 	if (elapsed < 10)
-		fn = (l1h->mf_last_fn[tn] + 1) % 2715648;
+		fn = (l1h->mf_last_fn[tn] + 1) % GSM_HYPERFRAME;
 	else
 		fn = current_fn;
 
@@ -2840,7 +2844,7 @@ next_frame:
 		if (fn == current_fn)
 			break;
 
-		fn = (fn + 1) % 2715648;
+		fn = (fn + 1) % GSM_HYPERFRAME;
 	}
 
 	l1h->mf_last_fn[tn] = fn;
@@ -2862,7 +2866,7 @@ static int trx_sched_fn(uint32_t fn)
 
 	/* advance frame number, so the transceiver has more time until
 	 * it must be transmitted. */
-	fn = (fn + trx_clock_advance) % 2715648;
+	fn = (fn + trx_clock_advance) % GSM_HYPERFRAME;
 
 	/* process every TRX */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -2879,7 +2883,7 @@ static int trx_sched_fn(uint32_t fn)
 				continue;
 			/* ready-to-send */
 			trx_sched_rts(l1h, tn,
-				(fn + trx_rts_advance) % 2715648);
+				(fn + trx_rts_advance) % GSM_HYPERFRAME);
 			/* get burst for FN */
 			bits = trx_sched_dl_burst(l1h, tn, fn);
 			if (!bits) {
@@ -2959,7 +2963,7 @@ no_clock:
 			tv_clock->tv_sec++;
 			tv_clock->tv_usec -= 1000000;
 		}
-		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
 		trx_sched_fn(transceiver_last_fn);
 		elapsed -= FRAME_DURATION_uS;
 	}
@@ -3019,9 +3023,9 @@ new_clock:
 		+ (tv_now.tv_usec - tv_clock->tv_usec);
 
 	/* how much frames have been elapsed since last fn processed */
-	elapsed_fn = (fn + 2715648 - transceiver_last_fn) % 2715648;
+	elapsed_fn = (fn + GSM_HYPERFRAME - transceiver_last_fn) % GSM_HYPERFRAME;
 	if (elapsed_fn >= 135774)
-		elapsed_fn -= 2715648;
+		elapsed_fn -= GSM_HYPERFRAME;
 
 	/* check for max clock skew */
 	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
@@ -3053,7 +3057,7 @@ new_clock:
 
 	/* transmit what we still need to transmit */
 	while (fn != transceiver_last_fn) {
-		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
 		trx_sched_fn(transceiver_last_fn);
 	}
 
