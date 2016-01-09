@@ -34,7 +34,6 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <net/if.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
@@ -66,42 +65,8 @@ static char *gsmtap_ip = 0;
 static int rt_prio = -1;
 static int trx_num = 1;
 char *software_version = "0.0";
-uint8_t abis_mac[6] = { 0, 1, 2, 3, 4, 5 };
 char *bsc_host = "localhost";
 char *bts_id = "1801/0";
-
-// FIXME this is a hack
-static void get_mac(void)
-{
-	struct if_nameindex *ifn = if_nameindex();
-	struct ifreq ifr;
-	int sock;
-	int ret;
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
-		return;
-
-	memset(&ifr, 0, sizeof(ifr));
-	if (!ifn)
-		return;
-	while (ifn->if_name) {
-		strncpy(ifr.ifr_name, ifn->if_name, sizeof(ifr.ifr_name)-1);
-		ret = ioctl(sock, SIOCGIFHWADDR, &ifr);
-		if (ret == 0 && !!memcmp(ifr.ifr_hwaddr.sa_data,
-					"\0\0\0\0\0\0", 6)) {
-			memcpy(abis_mac, ifr.ifr_hwaddr.sa_data, 6);
-			printf("Using MAC address of %s: "
-				"'%02x:%02x:%02x:%02x:%02x:%02x'\n",
-				ifn->if_name,
-				abis_mac[0], abis_mac[1], abis_mac[2],
-				abis_mac[3], abis_mac[4], abis_mac[5]);
-			break;
-		}
-		ifn++;
-	}
-//	if_freenameindex(ifn);
-}
 
 int bts_model_init(struct gsm_bts *bts)
 {
@@ -284,8 +249,6 @@ int main(int argc, char **argv)
 	int rc, i;
 
 	printf("((*))\n  |\n / \\ OsmoBTS\n");
-
-	get_mac();
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
