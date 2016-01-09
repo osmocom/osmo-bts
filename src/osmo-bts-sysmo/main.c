@@ -302,8 +302,6 @@ static int write_pid_file(char *procname)
 	return 0;
 }
 
-extern int sysmobts_ctrlif_inst_cmds(void);
-
 int main(int argc, char **argv)
 {
 	struct stat st;
@@ -373,7 +371,6 @@ int main(int argc, char **argv)
 	write_pid_file("osmo-bts");
 
 	bts_controlif_setup(bts);
-	sysmobts_ctrlif_inst_cmds();
 
 	rc = telnet_init(tall_bts_ctx, NULL, OSMO_VTY_PORT_BTS);
 	if (rc < 0) {
