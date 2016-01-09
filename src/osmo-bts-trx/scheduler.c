@@ -647,7 +647,7 @@ static ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* get burst from queue */
+	/* get mac block from queue */
 	msg = dequeue_prim(l1h, tn, fn, chan);
 	if (msg)
 		goto got_msg;
@@ -732,7 +732,7 @@ static ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* get burst from queue */
+	/* get mac block from queue */
 	msg = dequeue_prim(l1h, tn, fn, chan);
 	if (msg)
 		goto got_msg;
