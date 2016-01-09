@@ -176,7 +176,7 @@ struct trx_chan_desc {
 	/*! \breif is this channel automatically active at start? */
 	int			auto_active;
 };
-const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
+static const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_IDLE,	0,	0,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
       {	0,	TRXC_FCCH,	0,	0,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
       {	0,	TRXC_SCH,	0,	0,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
