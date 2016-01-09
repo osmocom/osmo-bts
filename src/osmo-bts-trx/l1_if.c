@@ -714,3 +714,9 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 	return 0;
 }
 
+int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
+{
+#warning "implement bts_model_change_power\n"
+	LOGP(DL1C, LOGL_NOTICE, "Setting TRX output power not supported!\n");
+	return 0;
+}
