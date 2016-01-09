@@ -46,9 +46,6 @@
 #include "amr.h"
 #include "loops.h"
 
-#define GSM_SUPERFRAME	(26*51)			/* 1326 TDMA frames */
-#define GSM_HYPERFRAME	(2048*GSM_SUPERFRAME)	/* GSM_HYPERFRAME frames */
-
 /* Enable this to multiply TOA of RACH by 10.
  * This is usefull to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */

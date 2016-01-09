@@ -139,8 +139,8 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 	sscanf(buf, "IND CLOCK %u", &fn);
 	LOGP(DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
 
-	if (fn >= 2715648) {
-		fn %= 2715648;
+	if (fn >= GSM_HYPERFRAME) {
+		fn %= GSM_HYPERFRAME;
 		LOGP(DTRX, LOGL_ERROR, "Indicated clock's FN is not wrapping "
 			"correctly, correcting to fn=%u\n", fn);
 	}
@@ -437,7 +437,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		LOGP(DTRX, LOGL_ERROR, "Illegal TS %d\n", tn);
 		return -EINVAL;
 	}
-	if (fn >= 2715648) {
+	if (fn >= GSM_HYPERFRAME) {
 		LOGP(DTRX, LOGL_ERROR, "Illegal FN %u\n", fn);
 		return -EINVAL;
 	}
