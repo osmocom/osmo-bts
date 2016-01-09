@@ -39,6 +39,8 @@ src/osmo-bts-trx/osmo-bts-trx
 
 src/osmo-bts-octphy/osmo-bts-octphy
 
+src/osmo-bts-virtual/osmo-bts-virtual
+
 tests/atconfig
 tests/package.m4
 tests/agch/agch_test
