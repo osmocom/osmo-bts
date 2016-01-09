@@ -110,7 +110,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	float toa);
 
 /*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
-static ubit_t dummy_burst[148] = {
+static const ubit_t dummy_burst[148] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
 	0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,0,
@@ -121,7 +121,7 @@ static ubit_t dummy_burst[148] = {
 };
 
 /*! \brief FCCH Burst (TS 05.02 Chapter 5.2.4) */
-static ubit_t fcch_burst[148] = {
+static const ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -171,7 +171,7 @@ struct trx_chan_desc {
 	/*! \breif is this channel automatically active at start? */
 	int			auto_active;
 };
-struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
+const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_IDLE,	0,	0,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
       {	0,	TRXC_FCCH,	0,	0,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
       {	0,	TRXC_SCH,	0,	0,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
@@ -463,7 +463,7 @@ static ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr);
 
-	return fcch_burst;
+	return (ubit_t *) fcch_burst;
 }
 
 static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -2760,7 +2760,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 		LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
 			"burst=%d on C0, so filling with dummy burst\n",
 			trx_chan_desc[chan].name, fn, tn, bid);
-		bits = dummy_burst;
+		bits = (ubit_t *) dummy_burst;
 	}
 
 	return bits;
