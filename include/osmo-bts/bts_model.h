@@ -44,4 +44,7 @@ void bts_model_abis_close(struct gsm_bts *bts);
 
 int bts_model_ctrl_cmds_install(struct gsm_bts *bts);
 
+int bts_model_handle_options(int argc, char **argv);
+void bts_model_print_help();
+
 #endif

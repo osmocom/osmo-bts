@@ -44,7 +44,7 @@
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
 
 extern struct gsm_network bts_gsmnet;
-extern int pcu_direct;
+int pcu_direct = 0;
 static int avail_lai = 0, avail_nse = 0, avail_cell = 0, avail_nsvc[2] = {0, 0};
 
 static const char *sapi_string[] = {
