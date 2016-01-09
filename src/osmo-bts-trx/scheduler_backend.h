@@ -79,3 +79,4 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);
 int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);
+void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate);

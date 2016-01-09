@@ -38,7 +38,6 @@
 
 #include "scheduler.h"
 #include "scheduler_backend.h"
-//#include "trx_if.h"
 
 extern void *tall_bts_ctx;
 
@@ -1325,10 +1324,8 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 	}
 
 	/* disable handover detection (on deactivation) */
-	if (!active) {
-		struct trx_l1h *l1h = trx_l1h_hdl(l1t->trx);
-		trx_if_cmd_nohandover(l1h, tn, ss);
-	}
+	if (!active)
+		_sched_act_rach_det(l1t, tn, ss, 0);
 
 	return rc;
 }
@@ -1340,7 +1337,6 @@ int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmo
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	struct trx_l1h *l1h = trx_l1h_hdl(l1t->trx);
 	uint8_t ss = l1sap_chan2ss(chan_nr);
 	int i;
 	int rc = -EINVAL;
@@ -1385,11 +1381,7 @@ int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmo
 	 * of transceiver link).
 	 * disable handover, if state is still set, since we might not know
 	 * the actual state of transceiver (due to loss of link) */
-	if (handover) {
-		trx_if_cmd_handover(l1h, tn, ss);
-	} else {
-		trx_if_cmd_nohandover(l1h, tn, ss);
-	}
+	_sched_act_rach_det(l1t, tn, ss, handover);
 
 	return rc;
 }

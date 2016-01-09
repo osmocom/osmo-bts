@@ -1458,3 +1458,13 @@ new_clock:
 
 	return 0;
 }
+
+void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate)
+{
+	struct trx_l1h *l1h = trx_l1h_hdl(l1t->trx);
+
+	if (activate)
+		trx_if_cmd_handover(l1h, tn, ss);
+	else
+		trx_if_cmd_nohandover(l1h, tn, ss);
+}
