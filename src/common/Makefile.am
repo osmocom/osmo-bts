@@ -8,6 +8,6 @@ libbts_a_SOURCES = gsm_data_shared.c sysinfo.c logging.c abis.c oml.c bts.c \
 		   load_indication.c pcu_sock.c handover.c msg_utils.c \
 		   load_indication.c pcu_sock.c handover.c msg_utils.c \
 		   tx_power.c bts_ctrl_commands.c bts_ctrl_lookup.c \
-		   l1sap.c cbch.c power_control.c main.c
+		   l1sap.c cbch.c power_control.c main.c phy_link.c
 
 libl1sched_a_SOURCES = scheduler.c

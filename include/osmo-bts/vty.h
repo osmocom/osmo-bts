@@ -5,7 +5,12 @@
 #include <osmocom/vty/command.h>
 
 enum bts_vty_node {
-	BTS_NODE = _LAST_OSMOVTY_NODE + 1,
+	/* PHY_NODE must come before BTS node to ensure the phy
+	 * instances are created at the time the TRX nodes want to refer
+	 * to them */
+	PHY_NODE = _LAST_OSMOVTY_NODE + 1,
+	PHY_INST_NODE,
+	BTS_NODE,
 	TRX_NODE,
 };
 

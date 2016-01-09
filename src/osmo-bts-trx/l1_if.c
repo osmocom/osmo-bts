@@ -59,7 +59,7 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
  * create/destroy trx l1 instance
  */
 
-struct trx_l1h *l1if_open(struct gsm_bts_trx *trx)
+struct trx_l1h *l1if_open(struct phy_instance *pinst)
 {
 	struct trx_l1h *l1h;
 	int rc;
@@ -67,11 +67,9 @@ struct trx_l1h *l1if_open(struct gsm_bts_trx *trx)
 	l1h = talloc_zero(tall_bts_ctx, struct trx_l1h);
 	if (!l1h)
 		return NULL;
-	l1h->trx = trx;
-	l1h->l1s.trx = trx;
-	trx->role_bts.l1h = l1h;
+	l1h->phy_inst = pinst;
 
-	trx_sched_init(&l1h->l1s);
+	trx_sched_init(&l1h->l1s, pinst->trx);
 
 	rc = trx_if_open(l1h);
 	if (rc < 0) {
@@ -83,7 +81,6 @@ struct trx_l1h *l1if_open(struct gsm_bts_trx *trx)
 
 err:
 	l1if_close(l1h);
-	trx->role_bts.l1h = NULL;
 	return NULL;
 }
 
@@ -100,7 +97,8 @@ void l1if_reset(struct trx_l1h *l1h)
 
 static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 {
-	struct gsm_bts_trx *trx = l1h->trx;
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct gsm_bts_trx *trx = pinst->trx;
 	uint8_t tn;
 
 	/* HACK, we should change state when we receive first clock from
@@ -132,10 +130,10 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 int check_transceiver_availability(struct gsm_bts *bts, int avail)
 {
 	struct gsm_bts_trx *trx;
-	struct trx_l1h *l1h;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		l1h = trx_l1h_hdl(trx);
+		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		check_transceiver_availability_trx(l1h, avail);
 	}
 	return 0;
@@ -147,6 +145,7 @@ int check_transceiver_availability(struct gsm_bts *bts, int avail)
  */
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 {
+	struct phy_link *plink = l1h->phy_inst->phy_link;
 	uint8_t tn;
 
 	if (!transceiver_available)
@@ -177,18 +176,23 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		}
 
 		/* after power on */
-		if (l1h->config.rxgain_valid && !l1h->config.rxgain_sent) {
-			trx_if_cmd_setrxgain(l1h, l1h->config.rxgain);
-			l1h->config.rxgain_sent = 1;
-		}
-		if (l1h->config.power_valid && !l1h->config.power_sent) {
-			trx_if_cmd_setpower(l1h, l1h->config.power);
-			l1h->config.power_sent = 1;
+		if (l1h->phy_inst->num == 0) {
+			if (plink->u.osmotrx.rxgain_valid &&
+			    !plink->u.osmotrx.rxgain_sent) {
+				trx_if_cmd_setrxgain(l1h, plink->u.osmotrx.rxgain);
+				plink->u.osmotrx.rxgain_sent = 1;
+			}
+			if (plink->u.osmotrx.power_valid &&
+			    !plink->u.osmotrx.power_sent) {
+				trx_if_cmd_setpower(l1h, plink->u.osmotrx.power);
+				plink->u.osmotrx.power_sent = 1;
+			}
 		}
 		if (l1h->config.maxdly_valid && !l1h->config.maxdly_sent) {
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
 			l1h->config.maxdly_sent = 1;
 		}
+
 		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			if (l1h->config.slottype_valid[tn]
 			 && !l1h->config.slottype_sent[tn]) {
@@ -203,8 +207,10 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	if (!l1h->config.poweron && !l1h->config.poweron_sent) {
 		trx_if_cmd_poweroff(l1h);
 		l1h->config.poweron_sent = 1;
-		l1h->config.rxgain_sent = 0;
-		l1h->config.power_sent = 0;
+		if (l1h->phy_inst->num == 0) {
+			plink->u.osmotrx.rxgain_sent = 0;
+			plink->u.osmotrx.power_sent = 0;
+		}
 		l1h->config.maxdly_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
@@ -216,17 +222,20 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 int l1if_provision_transceiver(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	struct trx_l1h *l1h;
 	uint8_t tn;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		l1h = trx_l1h_hdl(trx);
+		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct phy_link *plink = pinst->phy_link;
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		l1h->config.arfcn_sent = 0;
 		l1h->config.tsc_sent = 0;
 		l1h->config.bsic_sent = 0;
 		l1h->config.poweron_sent = 0;
-		l1h->config.rxgain_sent = 0;
-		l1h->config.power_sent = 0;
+		if (l1h->phy_inst->num == 0) {
+			plink->u.osmotrx.rxgain_sent = 0;
+			plink->u.osmotrx.power_sent = 0;
+		}
 		l1h->config.maxdly_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
@@ -242,7 +251,8 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 /* initialize the layer1 */
 static int trx_init(struct gsm_bts_trx *trx)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	/* power on transceiver, if not already */
 	if (!l1h->config.poweron) {
@@ -264,7 +274,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 /* deactivate transceiver */
 int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	enum gsm_phys_chan_config pchan = trx->ts[0].pchan;
 
 	/* close all logical channels and reset timeslots */
@@ -308,7 +319,6 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 {
 	struct gsm_bts_trx *trx;
-	struct trx_l1h *l1h;
 	uint8_t bsic = bts->bsic;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
@@ -318,7 +328,8 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		l1h = trx_l1h_hdl(trx);
+		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		if (l1h->config.bsic != bsic || !l1h->config.bsic_valid) {
 			l1h->config.bsic = bsic;
 			l1h->config.bsic_valid = 1;
@@ -335,7 +346,9 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 /* set trx attributes */
 static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct phy_link *plink = pinst->phy_link;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint16_t arfcn = trx->arfcn;
 
 	if (l1h->config.arfcn != arfcn || !l1h->config.arfcn_valid) {
@@ -345,10 +358,10 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1if_provision_transceiver_trx(l1h);
 	}
 
-	if (l1h->config.power_oml) {
-		l1h->config.power = trx->max_power_red;
-		l1h->config.power_valid = 1;
-		l1h->config.power_sent = 0;
+	if (plink->u.osmotrx.power_oml && pinst->num == 0) {
+		plink->u.osmotrx.power = trx->max_power_red;
+		plink->u.osmotrx.power_valid = 1;
+		plink->u.osmotrx.power_sent = 0;
 		l1if_provision_transceiver_trx(l1h);
 	}
 
@@ -358,7 +371,8 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 /* set ts attributes */
 static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(ts->trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint8_t tn = ts->nr;
 	uint16_t tsc = ts->tsc;
 	enum gsm_phys_chan_config pchan = ts->pchan;
@@ -439,6 +453,7 @@ static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 static int mph_info_chan_confirm(struct trx_l1h *l1h, uint8_t chan_nr,
 	enum osmo_mph_info_type type, uint8_t cause)
 {
+	struct phy_instance *pinst = l1h->phy_inst;
 	struct osmo_phsap_prim l1sap;
 
 	memset(&l1sap, 0, sizeof(l1sap));
@@ -448,7 +463,7 @@ static int mph_info_chan_confirm(struct trx_l1h *l1h, uint8_t chan_nr,
 	l1sap.u.info.u.act_cnf.chan_nr = chan_nr;
 	l1sap.u.info.u.act_cnf.cause = cause;
 
-	return l1sap_up(l1h->trx, &l1sap);
+	return l1sap_up(pinst->trx, &l1sap);
 }
 
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
@@ -503,7 +518,8 @@ int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr;
 	uint8_t tn, ss;

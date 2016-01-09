@@ -55,12 +55,6 @@ uint32_t transceiver_last_fn;
 static struct timeval transceiver_clock_tv;
 static struct osmo_timer_list transceiver_clock_timer;
 
-/* clock advance for the transceiver */
-uint32_t trx_clock_advance = 20;
-
-/* advance RTS to give some time for data processing. (especially PCU) */
-uint32_t trx_rts_advance = 5; /* about 20ms */
-
 /* Enable this to multiply TOA of RACH by 10.
  * This is usefull to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */
@@ -1262,14 +1256,16 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
 
-	/* advance frame number, so the transceiver has more time until
-	 * it must be transmitted. */
-	fn = (fn + trx_clock_advance) % GSM_HYPERFRAME;
-
 	/* process every TRX */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct trx_l1h *l1h = trx_l1h_hdl(trx);
-		struct l1sched_trx *l1t = trx_l1sched_hdl(trx);
+		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct phy_link *plink = pinst->phy_link;
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+		struct l1sched_trx *l1t = &l1h->l1s;
+
+		/* advance frame number, so the transceiver has more
+		 * time until it must be transmitted. */
+		fn = (fn + plink->u.osmotrx.clock_advance) % GSM_HYPERFRAME;
 
 		/* we don't schedule, if power is off */
 		if (!trx_if_powered(l1h))
@@ -1279,7 +1275,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
 			/* ready-to-send */
 			_sched_rts(l1t, tn,
-				(fn + trx_rts_advance) % GSM_HYPERFRAME);
+				(fn + plink->u.osmotrx.rts_advance) % GSM_HYPERFRAME);
 			/* get burst for FN */
 			bits = _sched_dl_burst(l1t, tn, fn);
 			if (!bits) {
@@ -1323,10 +1319,12 @@ no_clock:
 		/* flush pending messages of transceiver */
 		/* close all logical channels and reset timeslots */
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			trx_if_flush(trx_l1h_hdl(trx));
-			trx_sched_reset(trx_l1sched_hdl(trx));
+			struct phy_instance *pinst = trx_phy_instance(trx);
+			struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+			trx_if_flush(l1h);
+			trx_sched_reset(&l1h->l1s);
 			if (trx->nr == 0)
-				trx_if_cmd_poweroff(trx_l1h_hdl(trx));
+				trx_if_cmd_poweroff(l1h);
 		}
 
 		/* tell BSC */
@@ -1461,7 +1459,8 @@ new_clock:
 
 void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(l1t->trx);
+	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	if (activate)
 		trx_if_cmd_handover(l1h, tn, ss);

@@ -1,6 +1,8 @@
 #ifndef TRX_SCHEDULER_H
 #define TRX_SCHEDULER_H
 
+#include <osmo-bts/gsm_data.h>
+
 /* These types define the different channels on a multiframe.
  * Each channel has queues and can be activated individually.
  */
@@ -133,7 +135,7 @@ extern uint32_t transceiver_last_fn;
 
 
 /*! \brief Initialize the scheudler data structures */
-int trx_sched_init(struct l1sched_trx *l1t);
+int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx);
 
 /*! \brief De-initialize the scheudler data structures */
 void trx_sched_exit(struct l1sched_trx *l1t);

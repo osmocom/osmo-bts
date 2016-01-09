@@ -2,6 +2,7 @@
  * OpenBTS TRX interface handling
  *
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
+ * Copyright (C) 2016  Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -34,6 +35,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
 
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/scheduler.h>
@@ -45,7 +47,6 @@
 //#define TOA_RSSI_DEBUG
 
 int transceiver_available = 0;
-const char *transceiver_ip = "127.0.0.1";
 int settsc_enabled = 0;
 int setbsic_enabled = 0;
 
@@ -53,11 +54,10 @@ int setbsic_enabled = 0;
  * socket
  */
 
-static uint16_t base_port_local = 5800;
-
 /* open socket */
-static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
-	int (*cb)(struct osmo_fd *fd, unsigned int what))
+static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host,
+			uint16_t port_local, uint16_t port_remote,
+			int (*cb)(struct osmo_fd *fd, unsigned int what))
 {
 	struct sockaddr_storage sas;
 	struct sockaddr *sa = (struct sockaddr *)&sas;
@@ -71,8 +71,8 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
 	ofd->data = priv;
 
 	/* Listen / Binds */
-	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, 0, transceiver_ip,
-		port, OSMO_SOCK_F_BIND);
+	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, 0, host,
+		port_local, OSMO_SOCK_F_BIND);
 	if (rc < 0)
 		return rc;
 
@@ -84,10 +84,10 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
 
 	if (sa->sa_family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)sa;
-		sin->sin_port = htons(ntohs(sin->sin_port) - 100);
+		sin->sin_port = htons(port_remote);
 	} else if (sa->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
-		sin6->sin6_port = htons(ntohs(sin6->sin6_port) - 100);
+		sin6->sin6_port = htons(port_remote);
 	} else {
 		return -EINVAL;
 	}
@@ -96,7 +96,6 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
 	if (rc)
 		return rc;
 
-	
 	return 0;
 }
 
@@ -115,13 +114,11 @@ static void trx_udp_close(struct osmo_fd *ofd)
  * clock
  */
 
-static struct osmo_fd trx_ofd_clk;
-
-
 /* get clock from clock socket */
 static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
-	struct trx_l1h *l1h = ofd->data;
+	struct phy_link *plink = ofd->data;
+	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
 	char buf[1500];
 	int len;
 	uint32_t fn;
@@ -146,7 +143,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"correctly, correcting to fn=%u\n", fn);
 	}
 
-	trx_sched_clock(l1h->trx->bts, fn);
+	trx_sched_clock(pinst->trx->bts, fn);
 
 	return 0;
 }
@@ -168,8 +165,8 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 		return;
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to trx=%u\n", tcm->cmd,
-		l1h->trx->nr);
+	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to %s\n", tcm->cmd,
+		phy_instance_name(l1h->phy_inst));
 	/* send command */
 	send(l1h->trx_ofd_ctrl.fd, tcm->cmd, strlen(tcm->cmd)+1, 0);
 
@@ -184,8 +181,8 @@ static void trx_ctrl_timer_cb(void *data)
 {
 	struct trx_l1h *l1h = data;
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for trx=%d\n",
-		l1h->trx->nr);
+	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s\n",
+		phy_instance_name(l1h->phy_inst));
 
 	trx_ctrl_send(l1h);
 }
@@ -232,7 +229,8 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
-	if (l1h->trx->nr == 0)
+	struct phy_instance *pinst = l1h->phy_inst;
+	if (pinst->num == 0)
 		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
 	else
 		return 0;
@@ -240,7 +238,8 @@ int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 
 int trx_if_cmd_poweron(struct trx_l1h *l1h)
 {
-	if (l1h->trx->nr == 0)
+	struct phy_instance *pinst = l1h->phy_inst;
+	if (pinst->num == 0)
 		return trx_ctrl_cmd(l1h, 1, "POWERON", "");
 	else
 		return 0;
@@ -324,6 +323,7 @@ int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
+	struct phy_instance *pinst = l1h->phy_inst;
 	char buf[1500];
 	int len, resp;
 
@@ -374,11 +374,12 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		sscanf(p + 1, "%d", &resp);
 		if (resp) {
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"transceiver (trx=%d) rejected TRX command "
-				"with response: '%s'\n", l1h->trx->nr, buf);
+				"transceiver (%s) rejected TRX command "
+				"with response: '%s'\n",
+				phy_instance_name(pinst), buf);
 rsp_error:
 			if (tcm->critical) {
-				bts_shutdown(l1h->trx->bts, "SIGINT");
+				bts_shutdown(pinst->trx->bts, "SIGINT");
 				/* keep tcm list, so process is stopped */
 				return -EIO;
 			}
@@ -493,37 +494,91 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
  * open/close
  */
 
-int trx_if_open(struct trx_l1h *l1h)
+int bts_model_phy_link_open(struct phy_link *plink)
 {
+	struct phy_instance *pinst;
 	int rc;
 
-	LOGP(DTRX, LOGL_NOTICE, "Open transceiver for trx=%u\n", l1h->trx->nr);
+	phy_link_state_set(plink, PHY_LINK_CONNECTING);
+
+	/* open the shared/common clock socket */
+	rc = trx_udp_open(plink, &plink->u.osmotrx.trx_ofd_clk,
+			  plink->u.osmotrx.transceiver_ip,
+			  plink->u.osmotrx.base_port_local,
+			  plink->u.osmotrx.base_port_remote,
+			  trx_clk_read_cb);
+	if (rc < 0) {
+		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+		return -1;
+	}
+
+	/* open the individual instances with their ctrl+data sockets */
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		pinst->u.osmotrx.hdl = l1if_open(pinst);
+		if (!pinst->u.osmotrx.hdl)
+			goto cleanup;
+	}
+
+	return 0;
+
+cleanup:
+	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		if (pinst->u.osmotrx.hdl) {
+			trx_if_close(pinst->u.osmotrx.hdl);
+			pinst->u.osmotrx.hdl = NULL;
+		}
+	}
+	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
+	return -1;
+}
+
+static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data)
+{
+	struct phy_link *plink = pinst->phy_link;
+	uint16_t inc = 1;
+
+	if (is_data)
+		inc = 2;
+
+	if (remote)
+		return plink->u.osmotrx.base_port_remote + (pinst->num << 1) + inc;
+	else
+		return plink->u.osmotrx.base_port_local + (pinst->num << 1) + inc;
+}
+
+int trx_if_open(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct phy_link *plink = pinst->phy_link;
+	int rc;
+
+	LOGP(DTRX, LOGL_NOTICE, "Open transceiver for %s\n",
+		phy_instance_name(pinst));
 
 	/* initialize ctrl queue */
 	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
 
 	/* open sockets */
-	if (l1h->trx->nr == 0) {
-		rc = trx_udp_open(l1h, &trx_ofd_clk, base_port_local,
-			trx_clk_read_cb);
-		if (rc < 0)
-			return rc;
-		LOGP(DTRX, LOGL_NOTICE, "Waiting for transceiver send clock\n");
-	}
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
-		base_port_local + (l1h->trx->nr << 1) + 1, trx_ctrl_read_cb);
+			  plink->u.osmotrx.transceiver_ip,
+			  compute_port(pinst, 0, 0),
+			  compute_port(pinst, 1, 0), trx_ctrl_read_cb);
 	if (rc < 0)
 		goto err;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
-		base_port_local + (l1h->trx->nr << 1) + 2, trx_data_read_cb);
+			  plink->u.osmotrx.transceiver_ip,
+			  compute_port(pinst, 0, 1),
+			  compute_port(pinst, 1, 1), trx_data_read_cb);
 	if (rc < 0)
 		goto err;
 
 	/* enable all slots */
 	l1h->config.slotmask = 0xff;
 
-	if (l1h->trx->nr == 0)
-		trx_if_cmd_poweroff(l1h);
+	/* FIXME: why was this only for TRX0 ? */
+	//if (l1h->trx->nr == 0)
+	trx_if_cmd_poweroff(l1h);
 
 	return 0;
 
@@ -548,13 +603,13 @@ void trx_if_flush(struct trx_l1h *l1h)
 
 void trx_if_close(struct trx_l1h *l1h)
 {
-	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for trx=%u\n", l1h->trx->nr);
+	struct phy_instance *pinst = l1h->phy_inst;
+	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for %s\n",
+		phy_instance_name(pinst));
 
 	trx_if_flush(l1h);
 
 	/* close sockets */
-	if (l1h->trx->nr == 0)
-		trx_udp_close(&trx_ofd_clk);
 	trx_udp_close(&l1h->trx_ofd_ctrl);
 	trx_udp_close(&l1h->trx_ofd_data);
 }

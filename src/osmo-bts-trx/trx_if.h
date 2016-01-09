@@ -6,6 +6,7 @@ extern const char *transceiver_ip;
 extern int settsc_enabled;
 extern int setbsic_enabled;
 
+struct trx_l1h;
 
 struct trx_ctrl_msg {
 	struct llist_head	list;

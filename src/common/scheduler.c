@@ -134,10 +134,12 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
  * init / exit
  */
 
-int trx_sched_init(struct l1sched_trx *l1t)
+int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 {
 	uint8_t tn;
 	int i;
+
+	l1t->trx = trx;
 
 	LOGP(DL1C, LOGL_NOTICE, "Init scheduler for trx=%u\n", l1t->trx->nr);
 
@@ -191,7 +193,7 @@ void trx_sched_exit(struct l1sched_trx *l1t)
 void trx_sched_reset(struct l1sched_trx *l1t)
 {
 	trx_sched_exit(l1t);
-	trx_sched_init(l1t);
+	trx_sched_init(l1t, l1t->trx);
 }
 
 struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn,

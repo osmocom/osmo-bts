@@ -42,6 +42,7 @@
 #include <osmocom/core/gsmtap.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
@@ -284,6 +285,19 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
+	if (!phy_link_by_num(0)) {
+		fprintf(stderr, "You need to configure at last phy0\n");
+		exit(1);
+	}
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (!trx->role_bts.l1h) {
+			fprintf(stderr, "TRX %u has no associated PHY instance\n",
+				trx->nr);
+			exit(1);
+		}
+	}
+
 	write_pid_file("osmo-bts");
 
 	bts_controlif_setup(bts);
@@ -314,6 +328,12 @@ int bts_main(int argc, char **argv)
 	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
+		exit(2);
+	}
+
+	rc = phy_links_open();
+	if (rc < 0) {
+		fprintf(stderr, "unable ot open PHY link(s)\n");
 		exit(2);
 	}
 

@@ -35,7 +35,7 @@
 #include <octphy/octvc1/hw/octvc1_hw_api_swap.h>
 
 /* Chapter 12.1 */
-static int get_pcb_info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int get_pcb_info_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_HW_MSG_PCB_INFO_RSP *pir =
 		(tOCTVC1_HW_MSG_PCB_INFO_RSP *) resp->l2h;
@@ -69,7 +69,7 @@ int octphy_hw_get_pcb_info(struct octphy_hdl *fl1h)
 }
 
 /* Chapter 12.9 */
-static int rf_port_info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int rf_port_info_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				 void *data)
 {
 	tOCTVC1_HW_MSG_RF_PORT_INFO_RSP *pir =
@@ -114,7 +114,7 @@ static const struct value_string radio_std_vals[] = {
 };
 
 /* Chapter 12.10 */
-static int rf_port_stats_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int rf_port_stats_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				  void *data)
 {
 	tOCTVC1_HW_MSG_RF_PORT_STATS_RSP *psr =
@@ -167,7 +167,7 @@ static const struct value_string rx_gain_mode_vals[] = {
 };
 
 /* Chapter 12.13 */
-static int rf_ant_rx_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int rf_ant_rx_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				void *data)
 {
 	tOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_RX_CONFIG_RSP *arc =
@@ -209,7 +209,7 @@ int octphy_hw_get_rf_ant_rx_config(struct octphy_hdl *fl1h, uint32_t port_idx,
 }
 
 /* Chapter 12.14 */
-static int rf_ant_tx_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int rf_ant_tx_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				void *data)
 {
 	tOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_TX_CONFIG_RSP *atc =
@@ -292,7 +292,7 @@ static const struct value_string clocksync_state_vals[] = {
 };
 
 /* Chapter 12.15 */
-static int get_clock_sync_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int get_clock_sync_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				   void *data)
 {
 	tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_INFO_RSP *cir =
@@ -326,7 +326,7 @@ int octphy_hw_get_clock_sync_info(struct octphy_hdl *fl1h)
 }
 
 /* Chapter 12.16 */
-static int get_clock_sync_stats_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+static int get_clock_sync_stats_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				   void *data)
 {
 	tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP *csr =

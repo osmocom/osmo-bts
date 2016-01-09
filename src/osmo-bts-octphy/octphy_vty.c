@@ -38,6 +38,7 @@
 #include <osmocom/vty/misc.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/vty.h>
 
@@ -51,149 +52,189 @@
 	SHOW_STR				\
 	TRX_STR
 
+#define OCT_STR	"OCTPHY Um interface\n"
+
 static struct gsm_bts *vty_bts;
 
 /* configuration */
 
-DEFUN(cfg_bts_phy_hwaddr, cfg_bts_phy_hwaddr_cmd,
-	"phy-hw-addr HWADDR",
-	"Configure the hardware addess of the OCTPHY\n"
+DEFUN(cfg_phy_hwaddr, cfg_phy_hwaddr_cmd,
+	"octphy hw-addr HWADDR",
+	OCT_STR "Configure the hardware addess of the OCTPHY\n"
 	"hardware address in aa:bb:cc:dd:ee:ff format\n")
 {
-	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_trx *trx = bts->c0;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_link *plink = vty->index;
 	int rc;
 
-	rc = osmo_macaddr_parse(fl1h->phy_addr.sll_addr, argv[0]);
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	rc = osmo_macaddr_parse(plink->u.octphy.phy_addr.sll_addr, argv[0]);
 	if (rc < 0)
 		return CMD_WARNING;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_phy_netdev, cfg_bts_phy_netdev_cmd,
-	"phy-netdev NAME",
-	"Configure the hardware device towards the OCTPHY\n"
+DEFUN(cfg_phy_netdev, cfg_phy_netdev_cmd,
+	"octphy net-device NAME",
+	OCT_STR "Configure the hardware device towards the OCTPHY\n"
 	"Ethernet device name\n")
 {
-	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_trx *trx = bts->c0;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_link *plink = vty->index;
 
-	if (fl1h->netdev_name)
-		talloc_free(fl1h->netdev_name);
-	fl1h->netdev_name = talloc_strdup(fl1h, argv[0]);
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (plink->u.octphy.netdev_name)
+		talloc_free(plink->u.octphy.netdev_name);
+	plink->u.octphy.netdev_name = talloc_strdup(plink, argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_rf_port_idx, cfg_trx_rf_port_idx_cmd,
-	"rf-port-index <0-255>",
-	"Configure the RF Port for this TRX\n"
+DEFUN(cfg_phy_rf_port_idx, cfg_phy_rf_port_idx_cmd,
+	"octphy rf-port-index <0-255>",
+	OCT_STR "Configure the RF Port for this TRX\n"
 	"RF Port Index\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_link *plink = vty->index;
 
-	fl1h->config.rf_port_index = atoi(argv[0]);
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.octphy.rf_port_index = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_rx_gain_db, cfg_trx_rx_gain_db_cmd,
-	"rx-gain <0-73>",
-	"Configure the Rx Gain in dB\n"
+DEFUN(cfg_phy_rx_gain_db, cfg_phy_rx_gain_db_cmd,
+	"octphy rx-gain <0-73>",
+	OCT_STR "Configure the Rx Gain in dB\n"
 	"Rx gain in dB\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_link *plink = vty->index;
 
-	fl1h->config.rx_gain_db = atoi(argv[0]);
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.octphy.rx_gain_db = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_tx_atten_db, cfg_trx_tx_atten_db_cmd,
-	"tx-attenuation <0-359>",
-	"Configure the Tx Attenuation in quarter-dB\n"
+DEFUN(cfg_phy_tx_atten_db, cfg_phy_tx_atten_db_cmd,
+	"octphy tx-attenuation <0-359>",
+	OCT_STR "Configure the Tx Attenuation in quarter-dB\n"
 	"Tx attenuation in quarter-dB\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_link *plink = vty->index;
 
-	fl1h->config.tx_atten_db = atoi(argv[0]);
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.octphy.tx_atten_db = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(get_rf_port_stats, get_rf_port_stats_cmd,
-	"get-rf-port-stats <0-1>",
-	"Obtain statistics for the RF Port\n"
+DEFUN(show_rf_port_stats, show_rf_port_stats_cmd,
+	"show phy <0-255> rf-port-stats <0-1>",
+	"Show statistics for the RF Port\n"
 	"RF Port Number\n")
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(vty_bts->c0);
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
 
-	octphy_hw_get_rf_port_stats(fl1h, atoi(argv[0]));
+	octphy_hw_get_rf_port_stats(plink->u.octphy.hdl, atoi(argv[1]));
+
+	/* FIXME: Actually print to VTY, not just log */
+	vty_out(vty, "Please check the log file for the response%s",
+		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(get_clk_sync_stats, get_clk_sync_stats_cmd,
-	"get-clk-sync-stats",
+DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,
+	"show phy <0-255> clk-sync-stats",
 	"Obtain statistics for the Clock Sync Manager\n")
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(vty_bts->c0);
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
 
-	octphy_hw_get_clock_sync_stats(fl1h);
+	octphy_hw_get_clock_sync_stats(plink->u.octphy.hdl);
+
+	/* FIXME: Actually print to VTY, not just log */
+	vty_out(vty, "Please check the log file for the response%s",
+		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
+}
+
+void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+{
+	if (plink->u.octphy.netdev_name)
+		vty_out(vty, " netdev %s%s", plink->u.octphy.netdev_name,
+			VTY_NEWLINE);
+
+	vty_out(vty, " hw-addr %02x:%02x:%02x:%02x:%02x:%02x%s",
+		plink->u.octphy.phy_addr.sll_addr[0],
+		plink->u.octphy.phy_addr.sll_addr[1],
+		plink->u.octphy.phy_addr.sll_addr[2],
+		plink->u.octphy.phy_addr.sll_addr[3],
+		plink->u.octphy.phy_addr.sll_addr[4],
+		plink->u.octphy.phy_addr.sll_addr[5],
+		VTY_NEWLINE);
+	vty_out(vty, "  rx-gain %u%s", plink->u.octphy.rx_gain_db,
+		VTY_NEWLINE);
+	vty_out(vty, "  tx-attenuation %u%s", plink->u.octphy.tx_atten_db,
+		VTY_NEWLINE);
+	vty_out(vty, "  rf-port-index %u%s", plink->u.octphy.rf_port_index,
+		VTY_NEWLINE);
 }
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct octphy_hdl *fl1h = trx_octphy_hdl(bts->c0);
-
-	if (fl1h->netdev_name)
-		vty_out(vty, " phy-netdev %s%s", fl1h->netdev_name,
-			VTY_NEWLINE);
 
 	if (btsb->auto_band)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 
-	vty_out(vty, " phy-hw-addr %02x:%02x:%02x:%02x:%02x:%02x%s",
-		fl1h->phy_addr.sll_addr[0], fl1h->phy_addr.sll_addr[1],
-		fl1h->phy_addr.sll_addr[2], fl1h->phy_addr.sll_addr[3],
-		fl1h->phy_addr.sll_addr[4], fl1h->phy_addr.sll_addr[5],
-		VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
-
-	vty_out(vty, "  rx-gain %u%s", fl1h->config.rx_gain_db,
-		VTY_NEWLINE);
-	vty_out(vty, "  tx-attenuation %u%s", fl1h->config.tx_atten_db,
-		VTY_NEWLINE);
 }
 
 DEFUN(show_sys_info, show_sys_info_cmd,
-	"show trx <0-255> system-information",
+	"show phy <0-255> system-information",
 	SHOW_TRX_STR "Display information about system\n")
 {
-	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
 	struct octphy_hdl *fl1h;
-	int i;
 
-	if (!trx) {
-		vty_out(vty, "Cannot find TRX number %u%s",
-			trx_nr, VTY_NEWLINE);
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY number %u%s",
+			phy_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	fl1h = trx_octphy_hdl(trx);
+	fl1h = plink->u.octphy.hdl;
 
 	vty_out(vty, "System Platform: '%s', Version: '%s'%s",
 		fl1h->info.system.platform, fl1h->info.system.version,
@@ -210,15 +251,14 @@ int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
 
-	install_element(BTS_NODE, &cfg_bts_phy_hwaddr_cmd);
-	install_element(BTS_NODE, &cfg_bts_phy_netdev_cmd);
+	install_element(PHY_NODE, &cfg_phy_hwaddr_cmd);
+	install_element(PHY_NODE, &cfg_phy_netdev_cmd);
+	install_element(PHY_NODE, &cfg_phy_rf_port_idx_cmd);
+	install_element(PHY_NODE, &cfg_phy_rx_gain_db_cmd);
+	install_element(PHY_NODE, &cfg_phy_tx_atten_db_cmd);
 
-	install_element(TRX_NODE, &cfg_trx_rf_port_idx_cmd);
-	install_element(TRX_NODE, &cfg_trx_rx_gain_db_cmd);
-	install_element(TRX_NODE, &cfg_trx_tx_atten_db_cmd);
-
-	install_element_ve(&get_rf_port_stats_cmd);
-	install_element_ve(&get_clk_sync_stats_cmd);
+	install_element_ve(&show_rf_port_stats_cmd);
+	install_element_ve(&show_clk_sync_stats_cmd);
 	install_element_ve(&show_sys_info_cmd);
 
 	return 0;
@@ -226,13 +266,5 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
 {
-	/* FIXME: really ugly hack: We can only initialize the L1 intrface
-	 * after reading the config file, and this is the only call-back after
-	 * vty_read_config_fioe() at this point.  Will be cleaned up with the
-	 * phy interface generalization patches coming up soon as part of the
-	 * multi-trx work */
-	struct octphy_hdl *fl1h = bts->c0->role_bts.l1h;
-	l1if_open(fl1h);
-
 	return 0;
 }
