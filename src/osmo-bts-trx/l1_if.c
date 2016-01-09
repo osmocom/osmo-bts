@@ -36,10 +36,10 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/abis.h>
+#include <osmo-bts/scheduler.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
-#include "scheduler.h"
 
 
 static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {

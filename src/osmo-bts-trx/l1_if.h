@@ -1,7 +1,7 @@
 #ifndef L1_IF_H_TRX
 #define L1_IF_H_TRX
 
-#include "scheduler.h"
+#include <osmo-bts/scheduler.h>
 
 struct trx_config {
 	uint8_t			poweron;	/* poweron(1) or poweroff(0) */

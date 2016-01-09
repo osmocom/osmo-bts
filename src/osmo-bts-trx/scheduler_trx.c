@@ -38,10 +38,10 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/amr.h>
+#include <osmo-bts/scheduler.h>
+#include <osmo-bts/scheduler_backend.h>
 
 #include "l1_if.h"
-#include "scheduler.h"
-#include "scheduler_backend.h"
 #include "gsm0503_coding.h"
 #include "trx_if.h"
 #include "loops.h"

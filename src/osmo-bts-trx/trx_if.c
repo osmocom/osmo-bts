@@ -36,10 +36,10 @@
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/scheduler.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
-#include "scheduler.h"
 
 /* enable to print RSSI level graph */
 //#define TOA_RSSI_DEBUG

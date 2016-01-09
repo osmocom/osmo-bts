@@ -39,9 +39,9 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/vty.h>
+#include <osmo-bts/scheduler.h>
 
 #include "l1_if.h"
-#include "scheduler.h"
 #include "trx_if.h"
 #include "loops.h"
 
