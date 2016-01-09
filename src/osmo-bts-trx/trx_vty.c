@@ -100,7 +100,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 				VTY_NEWLINE);
 		else
 			vty_out(vty, " maxdly : undefined%s", VTY_NEWLINE);
-		for (tn = 0; tn < 8; tn++) {
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			if (!((1 << tn) & l1h->config.slotmask))
 				vty_out(vty, " slot #%d: unsupported%s", tn,
 					VTY_NEWLINE);
@@ -299,7 +299,7 @@ DEFUN(cfg_trx_slotmask, cfg_trx_slotmask_cmd,
 	uint8_t tn;
 
 	l1h->config.slotmask = 0;
-	for (tn = 0; tn < 8; tn++)
+	for (tn = 0; tn < TRX_NR_TS; tn++)
 		if (argv[tn][0] == '1')
 			l1h->config.slotmask |= (1 << tn);
 

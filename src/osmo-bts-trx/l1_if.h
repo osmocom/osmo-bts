@@ -87,8 +87,8 @@ struct trx_chan_state {
 	int			dl_encr_algo;	/* A5/x encry algo uplink */
 	int			ul_encr_key_len;
 	int			dl_encr_key_len;
-	uint8_t			ul_encr_key[8];
-	uint8_t			dl_encr_key[8];
+	uint8_t			ul_encr_key[MAX_A5_KEY_LEN];
+	uint8_t			dl_encr_key[MAX_A5_KEY_LEN];
 
 	/* measurements */
 	struct {
@@ -136,9 +136,9 @@ struct trx_config {
 
 	uint8_t			slotmask;
 
-	int			slottype_valid[8];
-	uint8_t			slottype[8];
-	int			slottype_sent[8];
+	int			slottype_valid[TRX_NR_TS];
+	uint8_t			slottype[TRX_NR_TS];
+	int			slottype_sent[TRX_NR_TS];
 };
 
 struct trx_l1h {
@@ -153,15 +153,15 @@ struct trx_l1h {
 	/* transceiver config */
 	struct trx_config	config;
 
-	uint8_t			mf_index[8];	/* selected multiframe index */
-	uint32_t		mf_last_fn[8];	/* last received frame */
-	uint8_t			mf_period[8];	/* period of multiframe */
-	const struct trx_sched_frame *mf_frames[8];	/* pointer to frame layout */
+	uint8_t			mf_index[TRX_NR_TS];	/* selected multiframe index */
+	uint32_t		mf_last_fn[TRX_NR_TS];	/* last received frame */
+	uint8_t			mf_period[TRX_NR_TS];	/* period of multiframe */
+	const struct trx_sched_frame *mf_frames[TRX_NR_TS];	/* pointer to frame layout */
 
 	/* Channel states for all channels on all timeslots */
-	struct trx_chan_state	chan_states[8][_TRX_CHAN_MAX];
-	struct llist_head	dl_prims[8];	/* Queue primitves for TX */
-	uint8_t			ho_rach_detect[8][8];
+	struct trx_chan_state	chan_states[TRX_NR_TS][_TRX_CHAN_MAX];
+	struct llist_head	dl_prims[TRX_NR_TS];	/* Queue primitves for TX */
+	uint8_t			ho_rach_detect[TRX_NR_TS][TS_MAX_LCHAN];
 };
 
 struct trx_l1h *l1if_open(struct gsm_bts_trx *trx);

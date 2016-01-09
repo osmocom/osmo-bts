@@ -230,7 +230,7 @@ int trx_sched_init(struct trx_l1h *l1h)
 	/* hack to get bts */
 	bts = l1h->trx->bts;
 
-	for (tn = 0; tn < 8; tn++) {
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		l1h->mf_index[tn] = 0;
 		l1h->mf_last_fn[tn] = 0;
 		INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
@@ -251,7 +251,7 @@ void trx_sched_exit(struct trx_l1h *l1h)
 
 	LOGP(DL1C, LOGL_NOTICE, "Exit scheduler for trx=%u\n", l1h->trx->nr);
 
-	for (tn = 0; tn < 8; tn++) {
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		msgb_queue_flush(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			chan_state = &l1h->chan_states[tn][i];
@@ -265,7 +265,7 @@ void trx_sched_exit(struct trx_l1h *l1h)
 			}
 		}
 		/* clear lchan channel states */
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < TRX_NR_TS; i++)
 			l1h->trx->ts[tn].lchan[i].state = LCHAN_S_NONE;
 	}
 }
@@ -2876,7 +2876,7 @@ static int trx_sched_fn(uint32_t fn)
 			continue;
 
 		/* process every TS of TRX */
-		for (tn = 0; tn < 8; tn++) {
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			/* ignore disabled slots */
 			if (!(l1h->config.slotmask & (1 << tn)))
 				continue;
