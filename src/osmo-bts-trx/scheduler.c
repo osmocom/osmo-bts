@@ -40,7 +40,6 @@
 #include "scheduler.h"
 #include "scheduler_backend.h"
 #include "trx_if.h"
-#include "loops.h"
 
 extern void *tall_bts_ctx;
 
@@ -404,7 +403,6 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t chan_nr, link_id;
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
 	/* get data for RTS indication */
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
@@ -419,10 +417,6 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_INFO, "PH-RTS.ind: chan=%s chan_nr=0x%02x "
 		"link_id=0x%02x fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, link_id, fn, tn, l1t->trx->nr);
-
-	/* send clock information to loops process */
-	if (L1SAP_IS_LINK_SACCH(link_id))
-		trx_loop_sacch_clock(l1t, chan_nr, &l1ts->chan_state[chan]);
 
 	/* generate prim */
 	msg = l1sap_msgb_alloc(200);

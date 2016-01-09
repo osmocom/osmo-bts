@@ -127,6 +127,8 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[tn];
+	uint8_t link_id = trx_chan_desc[chan].link_id;
+	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | tn;
 	struct msgb *msg = NULL; /* make GCC happy */
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[chan].dl_bursts;
 	static ubit_t bits[148];
@@ -137,6 +139,10 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			return NULL;
 		goto send_burst;
 	}
+
+	/* send clock information to loops process */
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		trx_loop_sacch_clock(l1t, chan_nr, &l1ts->chan_state[chan]);
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
