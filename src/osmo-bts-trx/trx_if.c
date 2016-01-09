@@ -558,3 +558,7 @@ void trx_if_close(struct trx_l1h *l1h)
 	trx_udp_close(&l1h->trx_ofd_data);
 }
 
+int trx_if_powered(struct trx_l1h *l1h)
+{
+	return l1h->config.poweron;
+}

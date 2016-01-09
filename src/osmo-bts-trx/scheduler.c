@@ -1660,7 +1660,7 @@ static int trx_sched_fn(uint32_t fn)
 		struct l1sched_trx *l1t = trx_l1sched_hdl(trx);
 
 		/* we don't schedule, if power is off */
-		if (!l1h->config.poweron)
+		if (!trx_if_powered(l1h))
 			continue;
 
 		/* process every TS of TRX */
