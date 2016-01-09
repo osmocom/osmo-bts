@@ -454,7 +454,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	fprintf(stderr, "%s\n", deb);
 #endif
 
-	trx_sched_ul_burst(l1h, tn, fn, bits, rssi, toa);
+	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, rssi, toa);
 
 	return 0;
 }
