@@ -30,6 +30,7 @@
 #include <osmocom/codec/codec.h>
 
 #include <osmo-bts/logging.h>
+#include <osmo-bts/gsm_data.h>
 
 #include "gsm0503_conv.h"
 #include "gsm0503_parity.h"
@@ -722,13 +723,13 @@ int tch_fr_decode(uint8_t *tch_data, sbit_t *bursts, int net_order, int efr,
 
 		tch_efr_reassemble(tch_data, s);
 
-		len = 31;
+		len = GSM_EFR_BYTES;
 	} else {
 		tch_fr_d_to_b(w, d);
 
 		tch_fr_reassemble(tch_data, w, net_order);
 
-		len = 33;
+		len = GSM_FR_BYTES;
 	}
 
 	return len;
@@ -741,7 +742,7 @@ int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 	int i;
 
 	switch (len) {
-	case 31: /* TCH EFR */
+	case GSM_EFR_BYTES: /* TCH EFR */
 
 		tch_efr_disassemble(s, tch_data);
 
@@ -754,7 +755,7 @@ int tch_fr_encode(ubit_t *bursts, uint8_t *tch_data, int len, int net_order)
 		tch_efr_w_to_d(d, w);
 
 		goto coding_efr_fr;
-	case 33: /* TCH FR */
+	case GSM_FR_BYTES: /* TCH FR */
 		tch_fr_disassemble(w, tch_data, net_order);
 
 		tch_fr_b_to_d(d, w);

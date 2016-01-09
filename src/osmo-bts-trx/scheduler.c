@@ -30,6 +30,8 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 
+#include <osmocom/netif/rtp.h>
+
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
@@ -801,7 +803,7 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
 	 && ++(l1h->chan_states[tn][chan].lost) > 5) {
-		uint8_t tch_data[33];
+		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
 		LOGP(DL1C, LOGL_NOTICE, "Missing TCH bursts detected, sending "
@@ -816,14 +818,14 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				len = 15;
 				break;
 			}
-			memset(tch_data, 0, 33);
-			len = 33;
+			memset(tch_data, 0, GSM_FR_BYTES);
+			len = GSM_FR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
 			if (chan != TRXC_TCHF)
 				goto inval_mode1;
-			memset(tch_data, 0, 31);
-			len = 31;
+			memset(tch_data, 0, GSM_EFR_BYTES);
+			len = GSM_EFR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
 			len = amr_compose_payload(tch_data,
@@ -919,7 +921,7 @@ inval_mode1:
 				}
 				break;
 			}
-			len = 33;
+			len = GSM_FR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
@@ -932,7 +934,7 @@ inval_mode1:
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
 			if (chan != TRXC_TCHF)
 				goto inval_mode2;
-			len = 31;
+			len = GSM_EFR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xc) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
@@ -1524,12 +1526,12 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
-				memset(tch_data, 0, 33);
-				rc = 33;
+				memset(tch_data, 0, GSM_FR_BYTES);
+				rc = GSM_FR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
-				memset(tch_data, 0, 31);
-				rc = 31;
+				memset(tch_data, 0, GSM_EFR_BYTES);
+				rc = GSM_EFR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
 				rc = amr_compose_payload(tch_data,
