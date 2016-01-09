@@ -109,6 +109,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa);
 
+/*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
 static ubit_t dummy_burst[148] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
@@ -119,6 +120,7 @@ static ubit_t dummy_burst[148] = {
 	0,0,0,
 };
 
+/*! \brief FCCH Burst (TS 05.02 Chapter 5.2.4) */
 static ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -127,6 +129,7 @@ static ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
+/*! \brief Training Sequences (TS 05.02 Chapter 5.2.3) */
 static const ubit_t tsc[8][26] = {
 	{ 0,0,1,0,0,1,0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,1, },
 	{ 0,0,1,0,1,1,0,1,1,1,0,1,1,1,1,0,0,0,1,0,1,1,0,1,1,1, },
@@ -138,6 +141,7 @@ static const ubit_t tsc[8][26] = {
 	{ 1,1,1,0,1,1,1,1,0,0,0,1,0,0,1,0,1,1,1,0,1,1,1,1,0,0, },
 };
 
+/*! \brief SCH trainign sequence (TS 05.02 Chapter 5.2.5) */
 static const ubit_t sch_train[64] = {
 	1,0,1,1,1,0,0,1,0,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,
 	0,0,1,0,1,1,0,1,0,1,0,0,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,1,1,0,1,1,
@@ -148,14 +152,23 @@ static const ubit_t sch_train[64] = {
  */
 
 struct trx_chan_desc {
+	/*! \brief Is this on a PDCH (PS) ? */
 	int			pdch;
+	/*! \brief TRX Channel Type */
 	enum trx_chan_type	chan;
+	/*! \brief Channel Number (like in RSL) */
 	uint8_t			chan_nr;
+	/*! \brief Link ID (like in RSL) */
 	uint8_t			link_id;
+	/*! \brief Human-readable name */
 	const char		*name;
+	/*! \brief function to call when we want to generate RTS.req to L2 */
 	trx_sched_rts_func	*rts_fn;
+	/*! \brief function to call when DATA.req received from L2 */
 	trx_sched_dl_func	*dl_fn;
+	/*! \brief function to call when burst received from PHY */
 	trx_sched_ul_func	*ul_fn;
+	/*! \breif is this channel automatically active at start? */
 	int			auto_active;
 };
 struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
@@ -1714,9 +1727,13 @@ bfi:
 
 /* frame structures */
 struct trx_sched_frame {
+	/*! \brief downlink TRX channel type */
 	enum trx_chan_type		dl_chan;
+	/*! \brief downlink block ID */
 	uint8_t				dl_bid;
+	/*! \breff uplink TRX channel type */
 	enum trx_chan_type		ul_chan;
+	/*! \brief uplink block ID */
 	uint8_t				ul_bid;
 };
 
@@ -2429,10 +2446,15 @@ static struct trx_sched_frame frame_pdch[104] = {
 
 /* multiframe structure */
 struct trx_sched_multiframe {
+	/*! \brief physical channel config (channel combination) */
 	enum gsm_phys_chan_config	pchan;
+	/*! \brief applies to which timeslots? */
 	uint8_t				slotmask;
+	/*! \brief repeats how many frames */
 	uint8_t				period;
+	/*! \brief pointer to scheduling structure */
 	struct trx_sched_frame		*frames;
+	/*! \brife human-readable name */
 	const char 			*name;
 };
 
