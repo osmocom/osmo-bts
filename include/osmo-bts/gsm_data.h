@@ -112,6 +112,12 @@ struct gsm_bts_role_bts {
 	struct {
 		char *sock_path;
 	} pcu;
+
+	struct {
+		uint32_t last_fn;
+		struct timeval tv_clock;
+		struct osmo_timer_list fn_timer;
+	} vbts;
 };
 
 enum lchan_ciph_state {
