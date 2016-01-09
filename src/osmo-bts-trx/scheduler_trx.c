@@ -49,6 +49,18 @@
 
 extern void *tall_bts_ctx;
 
+/* clock states */
+static uint32_t transceiver_lost;
+uint32_t transceiver_last_fn;
+static struct timeval transceiver_clock_tv;
+static struct osmo_timer_list transceiver_clock_timer;
+
+/* clock advance for the transceiver */
+uint32_t trx_clock_advance = 20;
+
+/* advance RTS to give some time for data processing. (especially PCU) */
+uint32_t trx_rts_advance = 5; /* about 20ms */
+
 /* Enable this to multiply TOA of RACH by 10.
  * This is usefull to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */
@@ -1237,4 +1249,212 @@ bfi:
 	return _sched_compose_tch_ind(l1t, tn,
 		(fn + GSM_HYPERFRAME - 10 - ((fn%26)==19) - ((fn%26)==20)) % GSM_HYPERFRAME,
 		chan, tch_data, rc);
+}
+
+/* schedule all frames of all TRX for given FN */
+static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
+{
+	struct gsm_bts_trx *trx;
+	uint8_t tn;
+	const ubit_t *bits;
+	uint8_t gain;
+
+	/* send time indication */
+	l1if_mph_time_ind(bts, fn);
+
+	/* advance frame number, so the transceiver has more time until
+	 * it must be transmitted. */
+	fn = (fn + trx_clock_advance) % GSM_HYPERFRAME;
+
+	/* process every TRX */
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		struct trx_l1h *l1h = trx_l1h_hdl(trx);
+		struct l1sched_trx *l1t = trx_l1sched_hdl(trx);
+
+		/* we don't schedule, if power is off */
+		if (!trx_if_powered(l1h))
+			continue;
+
+		/* process every TS of TRX */
+		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
+			/* ready-to-send */
+			_sched_rts(l1t, tn,
+				(fn + trx_rts_advance) % GSM_HYPERFRAME);
+			/* get burst for FN */
+			bits = _sched_dl_burst(l1t, tn, fn);
+			if (!bits) {
+				/* if no bits, send no burst */
+				continue;
+			} else
+				gain = 0;
+			trx_if_data(l1h, tn, fn, gain, bits);
+		}
+	}
+
+	return 0;
+}
+
+
+/*
+ * frame clock
+ */
+
+#define FRAME_DURATION_uS	4615
+#define MAX_FN_SKEW		50
+#define TRX_LOSS_FRAMES		400
+
+extern int quit;
+/* this timer fires for every FN to be processed */
+static void trx_ctrl_timer_cb(void *data)
+{
+	struct gsm_bts *bts = data;
+	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
+	int32_t elapsed;
+
+	/* check if transceiver is still alive */
+	if (transceiver_lost++ == TRX_LOSS_FRAMES) {
+		struct gsm_bts_trx *trx;
+
+		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
+
+no_clock:
+		transceiver_available = 0;
+
+		/* flush pending messages of transceiver */
+		/* close all logical channels and reset timeslots */
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			trx_if_flush(trx_l1h_hdl(trx));
+			trx_sched_reset(trx_l1sched_hdl(trx));
+			if (trx->nr == 0)
+				trx_if_cmd_poweroff(trx_l1h_hdl(trx));
+		}
+
+		/* tell BSC */
+		check_transceiver_availability(bts, 0);
+
+		return;
+	}
+
+	gettimeofday(&tv_now, NULL);
+
+	elapsed = (tv_now.tv_sec - tv_clock->tv_sec) * 1000000
+		+ (tv_now.tv_usec - tv_clock->tv_usec);
+
+	/* if someone played with clock, or if the process stalled */
+	if (elapsed > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed < 0) {
+		LOGP(DL1C, LOGL_NOTICE, "PC clock skew: elapsed uS %d\n",
+			elapsed);
+		goto no_clock;
+	}
+
+	/* schedule next FN clock */
+	while (elapsed > FRAME_DURATION_uS / 2) {
+		tv_clock->tv_usec += FRAME_DURATION_uS;
+		if (tv_clock->tv_usec >= 1000000) {
+			tv_clock->tv_sec++;
+			tv_clock->tv_usec -= 1000000;
+		}
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
+		trx_sched_fn(bts, transceiver_last_fn);
+		elapsed -= FRAME_DURATION_uS;
+	}
+	osmo_timer_schedule(&transceiver_clock_timer, 0,
+		FRAME_DURATION_uS - elapsed);
+}
+
+
+/* receive clock from transceiver */
+int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
+{
+	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
+	int32_t elapsed;
+	int32_t elapsed_fn;
+
+	if (quit)
+		return 0;
+
+	/* reset lost counter */
+	transceiver_lost = 0;
+
+	gettimeofday(&tv_now, NULL);
+
+	/* clock becomes valid */
+	if (!transceiver_available) {
+		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n",
+			fn);
+
+		transceiver_available = 1;
+
+		/* start provisioning transceiver */
+		l1if_provision_transceiver(bts);
+
+		/* tell BSC */
+		check_transceiver_availability(bts, 1);
+
+new_clock:
+		transceiver_last_fn = fn;
+		trx_sched_fn(bts, transceiver_last_fn);
+
+		/* schedule first FN clock */
+		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
+		memset(&transceiver_clock_timer, 0,
+			sizeof(transceiver_clock_timer));
+		transceiver_clock_timer.cb = trx_ctrl_timer_cb;
+	        transceiver_clock_timer.data = bts;
+		osmo_timer_schedule(&transceiver_clock_timer, 0,
+			FRAME_DURATION_uS);
+
+		return 0;
+	}
+
+	osmo_timer_del(&transceiver_clock_timer);
+
+	/* calculate elapsed time since last_fn */
+	elapsed = (tv_now.tv_sec - tv_clock->tv_sec) * 1000000
+		+ (tv_now.tv_usec - tv_clock->tv_usec);
+
+	/* how much frames have been elapsed since last fn processed */
+	elapsed_fn = (fn + GSM_HYPERFRAME - transceiver_last_fn) % GSM_HYPERFRAME;
+	if (elapsed_fn >= 135774)
+		elapsed_fn -= GSM_HYPERFRAME;
+
+	/* check for max clock skew */
+	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
+		LOGP(DL1C, LOGL_NOTICE, "GSM clock skew: old fn=%u, "
+			"new fn=%u\n", transceiver_last_fn, fn);
+		goto new_clock;
+	}
+
+	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d\n",
+		elapsed_fn * FRAME_DURATION_uS - elapsed);
+
+	/* too many frames have been processed already */
+	if (elapsed_fn < 0) {
+		/* set clock to the time or last FN should have been
+		 * transmitted. */
+		tv_clock->tv_sec = tv_now.tv_sec;
+		tv_clock->tv_usec = tv_now.tv_usec +
+			(0 - elapsed_fn) * FRAME_DURATION_uS;
+		if (tv_clock->tv_usec >= 1000000) {
+			tv_clock->tv_sec++;
+			tv_clock->tv_usec -= 1000000;
+		}
+		/* set time to the time our next FN has to be transmitted */
+		osmo_timer_schedule(&transceiver_clock_timer, 0,
+			FRAME_DURATION_uS * (1 - elapsed_fn));
+
+		return 0;
+	}
+
+	/* transmit what we still need to transmit */
+	while (fn != transceiver_last_fn) {
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
+		trx_sched_fn(bts, transceiver_last_fn);
+	}
+
+	/* schedule next FN to be transmitted */
+	memcpy(tv_clock, &tv_now, sizeof(struct timeval));
+	osmo_timer_schedule(&transceiver_clock_timer, 0, FRAME_DURATION_uS);
+
+	return 0;
 }

@@ -77,3 +77,5 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa);
 
+const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);
+int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);

@@ -145,7 +145,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
 
 /*! \brief PHY informs us of new (current) GSM freme nunmber */
-int trx_sched_clock(uint32_t fn);
+int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
 /*! \brief handle an UL burst received by PHY */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,

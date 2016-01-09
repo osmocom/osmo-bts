@@ -121,6 +121,7 @@ static struct osmo_fd trx_ofd_clk;
 /* get clock from clock socket */
 static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
+	struct trx_l1h *l1h = ofd->data;
 	char buf[1500];
 	int len;
 	uint32_t fn;
@@ -145,7 +146,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"correctly, correcting to fn=%u\n", fn);
 	}
 
-	trx_sched_clock(fn);
+	trx_sched_clock(l1h->trx->bts, fn);
 
 	return 0;
 }
@@ -503,7 +504,7 @@ int trx_if_open(struct trx_l1h *l1h)
 
 	/* open sockets */
 	if (l1h->trx->nr == 0) {
-		rc = trx_udp_open(NULL, &trx_ofd_clk, base_port_local,
+		rc = trx_udp_open(l1h, &trx_ofd_clk, base_port_local,
 			trx_clk_read_cb);
 		if (rc < 0)
 			return rc;
