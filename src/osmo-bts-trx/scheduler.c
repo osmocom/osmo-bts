@@ -666,7 +666,7 @@ no_msg:
 
 got_msg:
 	/* check validity of message */
-	if (msgb_l2len(msg) != 23) {
+	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg));
 		/* free message */
@@ -880,7 +880,7 @@ inval_mode1:
 	}
 
 	/* check validity of message */
-	if (msg_facch && msgb_l2len(msg_facch) != 23) {
+	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg_facch));
 		/* free message */
@@ -1241,7 +1241,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t *rssi_num = &chan_state->rssi_num;
 	float *toa_sum = &chan_state->toa_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
-	uint8_t l2[23], l2_len;
+	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
 	int n_errors, n_bits_total;
 	int rc;
 
@@ -1316,7 +1316,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			trx_chan_desc[chan].name);
 		l2_len = 0;
 	} else
-		l2_len = 23;
+		l2_len = GSM_MACBLOCK_LEN;
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
@@ -1484,7 +1484,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
-		if (rc != 23 && rc >= 4) {
+		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			rc = amr_compose_payload(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
 				chan_state->codec[chan_state->ul_ft], 0);
@@ -1515,9 +1515,9 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 
 	/* FACCH */
-	if (rc == 23) {
+	if (rc == GSM_MACBLOCK_LEN) {
 		compose_ph_data_ind(l1h, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1646,7 +1646,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
-		if (rc != 23 && rc >= 4) {
+		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			rc = amr_compose_payload(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
 				chan_state->codec[chan_state->ul_ft], 0);
@@ -1678,11 +1678,11 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 
 	/* FACCH */
-	if (rc == 23) {
+	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
 			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
-			tch_data + amr, 23, rssi);
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */

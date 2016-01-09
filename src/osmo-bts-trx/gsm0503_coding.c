@@ -772,7 +772,7 @@ coding_efr_fr:
 		h = 0;
 
 		break;
-	case 23: /* FACCH */
+	case GSM_MACBLOCK_LEN: /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
 
 		h = 1;
@@ -826,7 +826,7 @@ int tch_hr_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 			return -1;
 		}
 
-		return 23;
+		return GSM_MACBLOCK_LEN;
 	}
 
 	for (i=0; i<4; i++)
@@ -884,7 +884,7 @@ int tch_hr_encode(ubit_t *bursts, uint8_t *tch_data, int len)
 				&h, i>>1);
 
 		break;
-	case 23: /* FACCH */
+	case GSM_MACBLOCK_LEN: /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
 
 		h = 1;
@@ -930,7 +930,7 @@ int tch_afs_decode(uint8_t *tch_data, sbit_t *bursts, int codec_mode_req,
 			return -1;
 		}
 
-		return 23;
+		return GSM_MACBLOCK_LEN;
 	}
 
 	for (i=0; i<4; i++) {
@@ -1104,7 +1104,7 @@ int tch_afs_encode(ubit_t *bursts, uint8_t *tch_data, int len,
 	int i;
 	uint8_t id;
 
-	if (len == 23) { /* FACCH */
+	if (len == GSM_MACBLOCK_LEN) { /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
 
 		h = 1;
@@ -1293,7 +1293,7 @@ int tch_ahs_decode(uint8_t *tch_data, sbit_t *bursts, int odd,
 			return -1;
 		}
 
-		return 23;
+		return GSM_MACBLOCK_LEN;
 	}
 
 	for (i=0; i<4; i++)
@@ -1459,7 +1459,7 @@ int tch_ahs_encode(ubit_t *bursts, uint8_t *tch_data, int len,
 	int i;
 	uint8_t id;
 
-	if (len == 23) { /* FACCH */
+	if (len == GSM_MACBLOCK_LEN) { /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
 
 		h = 1;
