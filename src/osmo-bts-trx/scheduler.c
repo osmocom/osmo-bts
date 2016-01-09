@@ -1737,7 +1737,7 @@ struct trx_sched_frame {
 	uint8_t				ul_bid;
 };
 
-static struct trx_sched_frame frame_bcch[51] = {
+static const struct trx_sched_frame frame_bcch[51] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
@@ -1762,7 +1762,7 @@ static struct trx_sched_frame frame_bcch[51] = {
       {	TRXC_IDLE,	0,	TRXC_RACH,	0 },
 };
 
-static struct trx_sched_frame frame_bcch_sdcch4[102] = {
+static const struct trx_sched_frame frame_bcch_sdcch4[102] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       {	TRXC_FCCH,	0,	TRXC_SDCCH4_3,	0 },
       {	TRXC_SCH,	0,	TRXC_SDCCH4_3,	1 },
@@ -1869,7 +1869,7 @@ static struct trx_sched_frame frame_bcch_sdcch4[102] = {
       {	TRXC_IDLE,	0,	TRXC_SDCCH4_2,	3 },
 };
 
-static struct trx_sched_frame frame_sdcch8[102] = {
+static const struct trx_sched_frame frame_sdcch8[102] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_SDCCH8_0,	0,	TRXC_SACCH8_5,	0 },
       { TRXC_SDCCH8_0,	1,	TRXC_SACCH8_5,	1 },
@@ -1976,7 +1976,7 @@ static struct trx_sched_frame frame_sdcch8[102] = {
       { TRXC_IDLE,	0,	TRXC_SACCH8_4,	3 },
 };
 
-static struct trx_sched_frame frame_tchf_ts0[104] = {
+static const struct trx_sched_frame frame_tchf_ts0[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2012,7 +2012,7 @@ static struct trx_sched_frame frame_tchf_ts0[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts1[104] = {
+static const struct trx_sched_frame frame_tchf_ts1[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2048,7 +2048,7 @@ static struct trx_sched_frame frame_tchf_ts1[104] = {
       { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
 };
 
-static struct trx_sched_frame frame_tchf_ts2[104] = {
+static const struct trx_sched_frame frame_tchf_ts2[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2084,7 +2084,7 @@ static struct trx_sched_frame frame_tchf_ts2[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts3[104] = {
+static const struct trx_sched_frame frame_tchf_ts3[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2120,7 +2120,7 @@ static struct trx_sched_frame frame_tchf_ts3[104] = {
       { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
 };
 
-static struct trx_sched_frame frame_tchf_ts4[104] = {
+static const struct trx_sched_frame frame_tchf_ts4[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2156,7 +2156,7 @@ static struct trx_sched_frame frame_tchf_ts4[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts5[104] = {
+static const struct trx_sched_frame frame_tchf_ts5[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2192,7 +2192,7 @@ static struct trx_sched_frame frame_tchf_ts5[104] = {
       { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
 };
 
-static struct trx_sched_frame frame_tchf_ts6[104] = {
+static const struct trx_sched_frame frame_tchf_ts6[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2228,7 +2228,7 @@ static struct trx_sched_frame frame_tchf_ts6[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts7[104] = {
+static const struct trx_sched_frame frame_tchf_ts7[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2264,7 +2264,7 @@ static struct trx_sched_frame frame_tchf_ts7[104] = {
       { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
 };
 
-static struct trx_sched_frame frame_tchh_ts01[104] = {
+static const struct trx_sched_frame frame_tchh_ts01[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2300,7 +2300,7 @@ static struct trx_sched_frame frame_tchh_ts01[104] = {
       { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
 };
 
-static struct trx_sched_frame frame_tchh_ts23[104] = {
+static const struct trx_sched_frame frame_tchh_ts23[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2336,7 +2336,7 @@ static struct trx_sched_frame frame_tchh_ts23[104] = {
       { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
 };
 
-static struct trx_sched_frame frame_tchh_ts45[104] = {
+static const struct trx_sched_frame frame_tchh_ts45[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2372,7 +2372,7 @@ static struct trx_sched_frame frame_tchh_ts45[104] = {
       { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
 };
 
-static struct trx_sched_frame frame_tchh_ts67[104] = {
+static const struct trx_sched_frame frame_tchh_ts67[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2408,7 +2408,7 @@ static struct trx_sched_frame frame_tchh_ts67[104] = {
       { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
 };
 
-static struct trx_sched_frame frame_pdch[104] = {
+static const struct trx_sched_frame frame_pdch[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
@@ -2453,12 +2453,12 @@ struct trx_sched_multiframe {
 	/*! \brief repeats how many frames */
 	uint8_t				period;
 	/*! \brief pointer to scheduling structure */
-	struct trx_sched_frame		*frames;
+	const struct trx_sched_frame	*frames;
 	/*! \brife human-readable name */
 	const char 			*name;
 };
 
-static struct trx_sched_multiframe trx_sched_multiframes[] = {
+static const struct trx_sched_multiframe trx_sched_multiframes[] = {
 	{ GSM_PCHAN_NONE,		0xff,	0,	NULL,			"NONE"},
 	{ GSM_PCHAN_CCCH,		0xff,	51,	frame_bcch,		"BCCH+CCCH" },
 	{ GSM_PCHAN_CCCH_SDCCH4,	0xff,	102,	frame_bcch_sdcch4,	"BCCH+CCCH+SDCCH/4+SACCH/4" },
@@ -2676,7 +2676,7 @@ int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
 /* process ready-to-send */
 static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_rts_func *func;
 	enum trx_chan_type chan;
@@ -2714,7 +2714,7 @@ static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_dl_func *func;
 	enum trx_chan_type chan;
@@ -2770,7 +2770,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 	sbit_t *bits, int8_t rssi, float toa)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_ul_func *func;
 	enum trx_chan_type chan;
