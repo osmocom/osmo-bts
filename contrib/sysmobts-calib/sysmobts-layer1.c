@@ -310,19 +310,36 @@ int print_system_info()
 #ifdef FEMTOBTS_NO_BOARD_VERSION
 #define BOARD_REV(x) -1
 #define BOARD_OPT(x) -1
+#define COMPILED_MAJOR (FEMTOBTS_API_VERSION >> 16)
+#define COMPILED_MINOR ((FEMTOBTS_API_VERSION >> 8) & 0xff)
+#define COMPILED_BUILD (FEMTOBTS_API_VERSION & 0xff)
 #else
 #define BOARD_REV(x) x.u.systemInfoCnf.boardVersion.rev
 #define BOARD_OPT(x) x.u.systemInfoCnf.boardVersion.option
+#define COMPILED_MAJOR (SUPERFEMTO_API_VERSION >> 16)
+#define COMPILED_MINOR ((SUPERFEMTO_API_VERSION >> 8) & 0xff)
+#define COMPILED_BUILD (SUPERFEMTO_API_VERSION & 0xff)
 #endif
 
-	printf("DSP v%d.%d.%d FPGA v%d.%d.%d Rev: %d Option: %d\n",
+	printf("Compiled against: v%u.%u.%u\n",
+		COMPILED_MAJOR, COMPILED_MINOR, COMPILED_BUILD);
+	printf("Running DSP v%d.%d.%d FPGA v%d.%d.%d Rev: %d Option: %d\n",
 		INFO_DSP(prim).major, INFO_DSP(prim).minor, INFO_DSP(prim).build,
 		INFO_FPGA(prim).major, INFO_FPGA(prim).minor, INFO_FPGA(prim).build,
 		BOARD_REV(prim), BOARD_OPT(prim));
+
+	if (COMPILED_MAJOR != INFO_DSP(prim).major || COMPILED_MINOR != INFO_DSP(prim).minor) {
+		printf("WARNING! WARNING! WARNING! WARNING! WARNING\n");
+		printf("You might run this against an incompatible firmware.\n");
+		printf("Continuing anyway but the result might be broken\n");
+	}
 #undef INFO_DSP
 #undef INFO_FPGA
 #undef BOARD_REV
 #undef BOARD_OPT
+#undef COMPILED_MAJOR
+#undef COMPILED_MINOR
+#undef COMPILED_BUILD
 	return 0;
 }
 
