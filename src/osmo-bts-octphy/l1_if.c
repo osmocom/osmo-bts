@@ -1086,7 +1086,15 @@ static int rx_gsm_trx_rach_ind(struct msgb *msg)
 static int rx_octvc1_notif(struct msgb *msg, uint32_t msg_id)
 {
 	const char *evt_name = get_value_string(octphy_eid_vals, msg_id);
+	struct octphy_hdl *fl1h = msg->dst;
 	int rc = 0;
+
+	if (!fl1h->opened) {
+		LOGP(DL1P, LOGL_NOTICE, "Rx NOTIF %s: Ignoring as PHY TRX "
+			"hasn't been re-opened yet\n", evt_name);
+		msgb_free(msg);
+		return 0;
+	}
 
 	LOGP(DL1P, LOGL_DEBUG, "Rx NOTIF %s\n", evt_name);
 

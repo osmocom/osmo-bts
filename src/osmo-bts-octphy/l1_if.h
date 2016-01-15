@@ -45,6 +45,9 @@ struct octphy_hdl {
 
 	struct osmo_timer_list alive_timer;
 	uint32_t alive_prim_cnt;
+
+	/* were we already (re)opened after OsmoBTS start */
+	int opened;
 };
 
 static inline struct octphy_hdl *trx_octphy_hdl(struct gsm_bts_trx *trx)

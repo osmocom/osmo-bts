@@ -1141,6 +1141,7 @@ static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 	octphy_hw_get_rf_ant_rx_config(fl1h, 0, 1);
 	octphy_hw_get_rf_ant_tx_config(fl1h, 0, 1);
 	octphy_hw_get_clock_sync_info(fl1h);
+	fl1h->opened = 1;
 
 	/* Temporary fix for enabling events after TRX Close + Reopen */
 	return l1if_enable_events(trx);
