@@ -53,14 +53,17 @@ get_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
 	return &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 }
 
-
 static struct gsm_lchan *
 get_active_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	if (lchan && lchan->state != LCHAN_S_ACTIVE)
+	if (lchan && lchan->state != LCHAN_S_ACTIVE) {
+		LOGP(DL1P, LOGL_NOTICE, "%s: assuming active lchan, but "
+		     "state is %s\n", gsm_lchan_name(lchan),
+		     gsm_lchans_name(lchan->state));
 		return NULL;
+	}
 	return lchan;
 }
 
