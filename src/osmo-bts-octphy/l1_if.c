@@ -1161,6 +1161,30 @@ static int rx_octvc1_event_msg(struct msgb *msg)
 	return rx_octvc1_notif(msg, event_id);
 }
 
+/* Receive a supervisory message from the PHY */
+static int rx_octvc1_supv(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
+{
+	tOCTVC1_MSG_HEADER *mh = (tOCTVC1_MSG_HEADER *) msg->l2h;
+	uint32_t return_code = ntohl(mh->ulReturnCode);
+	tOCTVC1_CTRL_MSG_MODULE_REJECT_SPV *rej;
+
+	switch (msg_id) {
+	case cOCTVC1_CTRL_MSG_MODULE_REJECT_SID:
+		rej = (tOCTVC1_CTRL_MSG_MODULE_REJECT_SPV *) mh;
+		mOCTVC1_CTRL_MSG_MODULE_REJECT_SPV_SWAP(rej);
+		LOGP(DL1C, LOGL_NOTICE, "Rx REJECT_SID (ExpectedTID=0x%08x, "
+		     "RejectedCmdID=0x%08x)\n", rej->ulExpectedTransactionId,
+		     rej->ulRejectedCmdId);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "Rx unhandled supervisory msg_id "
+			"%u: ReturnCode:%u\n", msg_id, return_code);
+		break;
+	}
+
+	return 0;
+}
+
 static int rx_octvc1_ctrl_msg(struct msgb *msg)
 {
 	tOCTVC1_MSG_HEADER *mh = (tOCTVC1_MSG_HEADER *) msg->l2h;
@@ -1203,9 +1227,10 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 	switch (msg_type) {
 	case cOCTVC1_MSG_TYPE_RESPONSE:
 		return rx_octvc1_resp(msg, msg_id, ntohl(mh->ulTransactionId));
+	case cOCTVC1_MSG_TYPE_SUPERVISORY:
+		return rx_octvc1_supv(msg, msg_id, ntohl(mh->ulTransactionId));
 	case cOCTVC1_MSG_TYPE_NOTIFICATION:
 	case cOCTVC1_MSG_TYPE_COMMAND:
-	case cOCTVC1_MSG_TYPE_SUPERVISORY:
 		LOGP(DL1C, LOGL_NOTICE, "Rx unhandled msg_type %s (%u)\n",
 			msg_name, msg_type);
 		msgb_free(msg);
