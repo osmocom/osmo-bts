@@ -894,7 +894,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
-/* any L1 prim received from bts model */
+/* any L1 prim received from bts model, takes ownership of the msgb */
 int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	struct msgb *msg = l1sap->oph.msg;

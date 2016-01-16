@@ -31,6 +31,8 @@ src/osmo-bts-sysmo/sysmobts-mgr
 
 src/osmo-bts-trx/osmobts-trx
 
+src/osmo-bts-octphy/osmo-bts-octphy
+
 tests/atconfig
 tests/package.m4
 tests/agch/agch_test
