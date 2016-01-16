@@ -111,7 +111,7 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
 		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
 
-		for (tn = 0; tn < 8; tn++)
+		for (tn = 0; tn < TRX_NR_TS; tn++)
 			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED,
 				(l1h->config.slotmask & (1 << tn)) ?
 					NM_AVSTATE_DEPENDENCY :
@@ -122,7 +122,7 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED,
 			NM_AVSTATE_OFF_LINE);
 
-		for (tn = 0; tn < 8; tn++)
+		for (tn = 0; tn < TRX_NR_TS; tn++)
 			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED,
 				NM_AVSTATE_OFF_LINE);
 	}
@@ -188,7 +188,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
 			l1h->config.maxdly_sent = 1;
 		}
-		for (tn = 0; tn < 8; tn++) {
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			if (l1h->config.slottype_valid[tn]
 			 && !l1h->config.slottype_sent[tn]) {
 				trx_if_cmd_setslot(l1h, tn,
@@ -205,7 +205,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
-		for (tn = 0; tn < 8; tn++)
+		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 	}
 
@@ -227,7 +227,7 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
-		for (tn = 0; tn < 8; tn++)
+		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 		l1if_provision_transceiver_trx(l1h);
 	}
@@ -714,3 +714,9 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 	return 0;
 }
 
+int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
+{
+#warning "implement bts_model_change_power\n"
+	LOGP(DL1C, LOGL_NOTICE, "Setting TRX output power not supported!\n");
+	return 0;
+}

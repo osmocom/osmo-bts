@@ -30,6 +30,8 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 
+#include <osmocom/netif/rtp.h>
+
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
@@ -109,7 +111,8 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa);
 
-static ubit_t dummy_burst[148] = {
+/*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
+static const ubit_t dummy_burst[148] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
 	0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,0,
@@ -119,7 +122,8 @@ static ubit_t dummy_burst[148] = {
 	0,0,0,
 };
 
-static ubit_t fcch_burst[148] = {
+/*! \brief FCCH Burst (TS 05.02 Chapter 5.2.4) */
+static const ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -127,6 +131,7 @@ static ubit_t fcch_burst[148] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
+/*! \brief Training Sequences (TS 05.02 Chapter 5.2.3) */
 static const ubit_t tsc[8][26] = {
 	{ 0,0,1,0,0,1,0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,1, },
 	{ 0,0,1,0,1,1,0,1,1,1,0,1,1,1,1,0,0,0,1,0,1,1,0,1,1,1, },
@@ -138,6 +143,7 @@ static const ubit_t tsc[8][26] = {
 	{ 1,1,1,0,1,1,1,1,0,0,0,1,0,0,1,0,1,1,1,0,1,1,1,1,0,0, },
 };
 
+/*! \brief SCH trainign sequence (TS 05.02 Chapter 5.2.5) */
 static const ubit_t sch_train[64] = {
 	1,0,1,1,1,0,0,1,0,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,
 	0,0,1,0,1,1,0,1,0,1,0,0,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,1,1,0,1,1,
@@ -148,17 +154,26 @@ static const ubit_t sch_train[64] = {
  */
 
 struct trx_chan_desc {
+	/*! \brief Is this on a PDCH (PS) ? */
 	int			pdch;
+	/*! \brief TRX Channel Type */
 	enum trx_chan_type	chan;
+	/*! \brief Channel Number (like in RSL) */
 	uint8_t			chan_nr;
+	/*! \brief Link ID (like in RSL) */
 	uint8_t			link_id;
+	/*! \brief Human-readable name */
 	const char		*name;
+	/*! \brief function to call when we want to generate RTS.req to L2 */
 	trx_sched_rts_func	*rts_fn;
+	/*! \brief function to call when DATA.req received from L2 */
 	trx_sched_dl_func	*dl_fn;
+	/*! \brief function to call when burst received from PHY */
 	trx_sched_ul_func	*ul_fn;
+	/*! \breif is this channel automatically active at start? */
 	int			auto_active;
 };
-struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
+static const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_IDLE,	0,	0,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
       {	0,	TRXC_FCCH,	0,	0,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
       {	0,	TRXC_SCH,	0,	0,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
@@ -173,7 +188,7 @@ struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_SDCCH4_2,	0x30,	0x00,	"SDCCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH4_3,	0x38,	0x00,	"SDCCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH8_0,	0x40,	0x00,	"SDCCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_1,	0x48,	0x00,	"SDCCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },    
+      {	0,	TRXC_SDCCH8_1,	0x48,	0x00,	"SDCCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH8_2,	0x50,	0x00,	"SDCCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH8_3,	0x58,	0x00,	"SDCCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SDCCH8_4,	0x60,	0x00,	"SDCCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
@@ -187,7 +202,7 @@ struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_SACCH4_1,	0x28,	0x40,	"SACCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH4_2,	0x30,	0x40,	"SACCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH4_3,	0x38,	0x40,	"SACCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_0,	0x40,	0x40,	"SACCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 }, 
+      {	0,	TRXC_SACCH8_0,	0x40,	0x40,	"SACCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_1,	0x48,	0x40,	"SACCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_2,	0x50,	0x40,	"SACCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_3,	0x58,	0x40,	"SACCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
@@ -215,7 +230,7 @@ int trx_sched_init(struct trx_l1h *l1h)
 	/* hack to get bts */
 	bts = l1h->trx->bts;
 
-	for (tn = 0; tn < 8; tn++) {
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		l1h->mf_index[tn] = 0;
 		l1h->mf_last_fn[tn] = 0;
 		INIT_LLIST_HEAD(&l1h->dl_prims[tn]);
@@ -236,7 +251,7 @@ void trx_sched_exit(struct trx_l1h *l1h)
 
 	LOGP(DL1C, LOGL_NOTICE, "Exit scheduler for trx=%u\n", l1h->trx->nr);
 
-	for (tn = 0; tn < 8; tn++) {
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		msgb_queue_flush(&l1h->dl_prims[tn]);
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			chan_state = &l1h->chan_states[tn][i];
@@ -250,7 +265,7 @@ void trx_sched_exit(struct trx_l1h *l1h)
 			}
 		}
 		/* clear lchan channel states */
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < TRX_NR_TS; i++)
 			l1h->trx->ts[tn].lchan[i].state = LCHAN_S_NONE;
 	}
 }
@@ -450,7 +465,7 @@ static ubit_t *tx_fcch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr);
 
-	return fcch_burst;
+	return (ubit_t *) fcch_burst;
 }
 
 static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
@@ -460,7 +475,7 @@ static ubit_t *tx_sch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t sb_info[4];
 	struct	gsm_time t;
 	uint8_t t3p, bsic;
-	
+
 	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr);
 
@@ -518,12 +533,12 @@ free_msg:
 		case PRIM_PH_DATA:
 			chan_nr = l1sap->u.data.chan_nr;
 			link_id = l1sap->u.data.link_id;
-			prim_fn = ((l1sap->u.data.fn + 2715648 - fn) % 2715648);
+			prim_fn = ((l1sap->u.data.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 			break;
 		case PRIM_TCH:
 			chan_nr = l1sap->u.tch.chan_nr;
 			link_id = 0;
-			prim_fn = ((l1sap->u.tch.fn + 2715648 - fn) % 2715648);
+			prim_fn = ((l1sap->u.tch.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 			break;
 		default:
 			goto wrong_type;
@@ -632,7 +647,7 @@ static ubit_t *tx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* get burst from queue */
+	/* get mac block from queue */
 	msg = dequeue_prim(l1h, tn, fn, chan);
 	if (msg)
 		goto got_msg;
@@ -651,7 +666,7 @@ no_msg:
 
 got_msg:
 	/* check validity of message */
-	if (msgb_l2len(msg) != 23) {
+	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg));
 		/* free message */
@@ -717,7 +732,7 @@ static ubit_t *tx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* get burst from queue */
+	/* get mac block from queue */
 	msg = dequeue_prim(l1h, tn, fn, chan);
 	if (msg)
 		goto got_msg;
@@ -785,7 +800,7 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
 	 && ++(l1h->chan_states[tn][chan].lost) > 5) {
-		uint8_t tch_data[33];
+		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
 		LOGP(DL1C, LOGL_NOTICE, "Missing TCH bursts detected, sending "
@@ -800,14 +815,14 @@ static void tx_tch_common(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				len = 15;
 				break;
 			}
-			memset(tch_data, 0, 33);
-			len = 33;
+			memset(tch_data, 0, GSM_FR_BYTES);
+			len = GSM_FR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
 			if (chan != TRXC_TCHF)
 				goto inval_mode1;
-			memset(tch_data, 0, 31);
-			len = 31;
+			memset(tch_data, 0, GSM_EFR_BYTES);
+			len = GSM_EFR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
 			len = amr_compose_payload(tch_data,
@@ -865,7 +880,7 @@ inval_mode1:
 	}
 
 	/* check validity of message */
-	if (msg_facch && msgb_l2len(msg_facch) != 23) {
+	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
 		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg_facch));
 		/* free message */
@@ -903,7 +918,7 @@ inval_mode1:
 				}
 				break;
 			}
-			len = 33;
+			len = GSM_FR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
@@ -916,7 +931,7 @@ inval_mode1:
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
 			if (chan != TRXC_TCHF)
 				goto inval_mode2;
-			len = 31;
+			len = GSM_EFR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xc) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
@@ -1213,6 +1228,7 @@ static int rx_rach_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	return 0;
 }
 
+/*! \brief a single burst was received by the PHY, process it */
 static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, int8_t rssi,
 	float toa)
@@ -1225,7 +1241,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	uint8_t *rssi_num = &chan_state->rssi_num;
 	float *toa_sum = &chan_state->toa_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
-	uint8_t l2[23], l2_len;
+	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
 	int n_errors, n_bits_total;
 	int rc;
 
@@ -1300,7 +1316,7 @@ static int rx_data_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 			trx_chan_desc[chan].name);
 		l2_len = 0;
 	} else
-		l2_len = 23;
+		l2_len = GSM_MACBLOCK_LEN;
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1h->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
@@ -1385,7 +1401,7 @@ static int rx_pdtch_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 
 	l2[0] = 7; /* valid frame */
 
-	return compose_ph_data_ind(l1h, tn, (fn + 2715648 - 3) % 2715648, chan,
+	return compose_ph_data_ind(l1h, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
 		l2, rc + 1, *rssi_sum / *rssi_num);
 }
 
@@ -1468,7 +1484,7 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
-		if (rc != 23 && rc >= 4) {
+		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			rc = amr_compose_payload(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
 				chan_state->codec[chan_state->ul_ft], 0);
@@ -1499,20 +1515,20 @@ static int rx_tchf_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 
 	/* FACCH */
-	if (rc == 23) {
-		compose_ph_data_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+	if (rc == GSM_MACBLOCK_LEN) {
+		compose_ph_data_ind(l1h, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
-				memset(tch_data, 0, 33);
-				rc = 33;
+				memset(tch_data, 0, GSM_FR_BYTES);
+				rc = GSM_FR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
-				memset(tch_data, 0, 31);
-				rc = 31;
+				memset(tch_data, 0, GSM_EFR_BYTES);
+				rc = GSM_EFR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
 				rc = amr_compose_payload(tch_data,
@@ -1535,7 +1551,7 @@ bfi:
 		return 0;
 
 	/* TCH or BFI */
-	return compose_tch_ind(l1h, tn, (fn + 2715648 - 7) % 2715648, chan,
+	return compose_tch_ind(l1h, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 		tch_data, rc);
 }
 
@@ -1556,7 +1572,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1h, tn, fn, chan, bid, bits, rssi, toa);
 
-	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1h->trx->nr, bid);
 
 	/* alloc burst memory, if not already */
@@ -1630,7 +1646,7 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
-		if (rc != 23 && rc >= 4) {
+		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			rc = amr_compose_payload(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
 				chan_state->codec[chan_state->ul_ft], 0);
@@ -1662,11 +1678,11 @@ static int rx_tchh_fn(struct trx_l1h *l1h, uint8_t tn, uint32_t fn,
 	}
 
 	/* FACCH */
-	if (rc == 23) {
+	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
 		compose_ph_data_ind(l1h, tn,
-			(fn + 2715648 - 10 - ((fn % 26) >= 19)) % 2715648, chan,
-			tch_data + amr, 23, rssi);
+			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1703,7 +1719,7 @@ bfi:
 	 * start of frame.
 	 */
 	return compose_tch_ind(l1h, tn,
-		(fn + 2715648 - 10 - ((fn%26)==19) - ((fn%26)==20)) % 2715648,
+		(fn + GSM_HYPERFRAME - 10 - ((fn%26)==19) - ((fn%26)==20)) % GSM_HYPERFRAME,
 		chan, tch_data, rc);
 }
 
@@ -1714,13 +1730,17 @@ bfi:
 
 /* frame structures */
 struct trx_sched_frame {
+	/*! \brief downlink TRX channel type */
 	enum trx_chan_type		dl_chan;
+	/*! \brief downlink block ID */
 	uint8_t				dl_bid;
+	/*! \breff uplink TRX channel type */
 	enum trx_chan_type		ul_chan;
+	/*! \brief uplink block ID */
 	uint8_t				ul_bid;
 };
 
-static struct trx_sched_frame frame_bcch[51] = {
+static const struct trx_sched_frame frame_bcch[51] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       {	TRXC_FCCH,	0,	TRXC_RACH,	0 },
       {	TRXC_SCH,	0,	TRXC_RACH,	0 },
@@ -1745,7 +1765,7 @@ static struct trx_sched_frame frame_bcch[51] = {
       {	TRXC_IDLE,	0,	TRXC_RACH,	0 },
 };
 
-static struct trx_sched_frame frame_bcch_sdcch4[102] = {
+static const struct trx_sched_frame frame_bcch_sdcch4[102] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       {	TRXC_FCCH,	0,	TRXC_SDCCH4_3,	0 },
       {	TRXC_SCH,	0,	TRXC_SDCCH4_3,	1 },
@@ -1852,7 +1872,7 @@ static struct trx_sched_frame frame_bcch_sdcch4[102] = {
       {	TRXC_IDLE,	0,	TRXC_SDCCH4_2,	3 },
 };
 
-static struct trx_sched_frame frame_sdcch8[102] = {
+static const struct trx_sched_frame frame_sdcch8[102] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_SDCCH8_0,	0,	TRXC_SACCH8_5,	0 },
       { TRXC_SDCCH8_0,	1,	TRXC_SACCH8_5,	1 },
@@ -1959,7 +1979,7 @@ static struct trx_sched_frame frame_sdcch8[102] = {
       { TRXC_IDLE,	0,	TRXC_SACCH8_4,	3 },
 };
 
-static struct trx_sched_frame frame_tchf_ts0[104] = {
+static const struct trx_sched_frame frame_tchf_ts0[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -1995,7 +2015,7 @@ static struct trx_sched_frame frame_tchf_ts0[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts1[104] = {
+static const struct trx_sched_frame frame_tchf_ts1[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2031,7 +2051,7 @@ static struct trx_sched_frame frame_tchf_ts1[104] = {
       { TRXC_SACCHTF,	3,	TRXC_SACCHTF,	3 },
 };
 
-static struct trx_sched_frame frame_tchf_ts2[104] = {
+static const struct trx_sched_frame frame_tchf_ts2[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2067,7 +2087,7 @@ static struct trx_sched_frame frame_tchf_ts2[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts3[104] = {
+static const struct trx_sched_frame frame_tchf_ts3[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2103,7 +2123,7 @@ static struct trx_sched_frame frame_tchf_ts3[104] = {
       { TRXC_SACCHTF,	2,	TRXC_SACCHTF,	2 },
 };
 
-static struct trx_sched_frame frame_tchf_ts4[104] = {
+static const struct trx_sched_frame frame_tchf_ts4[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2139,7 +2159,7 @@ static struct trx_sched_frame frame_tchf_ts4[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts5[104] = {
+static const struct trx_sched_frame frame_tchf_ts5[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2175,7 +2195,7 @@ static struct trx_sched_frame frame_tchf_ts5[104] = {
       { TRXC_SACCHTF,	1,	TRXC_SACCHTF,	1 },
 };
 
-static struct trx_sched_frame frame_tchf_ts6[104] = {
+static const struct trx_sched_frame frame_tchf_ts6[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2211,7 +2231,7 @@ static struct trx_sched_frame frame_tchf_ts6[104] = {
       { TRXC_IDLE,	0,	TRXC_IDLE,	0 },
 };
 
-static struct trx_sched_frame frame_tchf_ts7[104] = {
+static const struct trx_sched_frame frame_tchf_ts7[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
       { TRXC_TCHF,	0,	TRXC_TCHF,	0 }, { TRXC_TCHF,	1,	TRXC_TCHF,	1 }, { TRXC_TCHF,	2,	TRXC_TCHF,	2 }, { TRXC_TCHF,	3,	TRXC_TCHF,	3 },
@@ -2247,7 +2267,7 @@ static struct trx_sched_frame frame_tchf_ts7[104] = {
       { TRXC_SACCHTF,	0,	TRXC_SACCHTF,	0 },
 };
 
-static struct trx_sched_frame frame_tchh_ts01[104] = {
+static const struct trx_sched_frame frame_tchh_ts01[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2283,7 +2303,7 @@ static struct trx_sched_frame frame_tchh_ts01[104] = {
       { TRXC_SACCHTH_1,	3,	TRXC_SACCHTH_1,	3 },
 };
 
-static struct trx_sched_frame frame_tchh_ts23[104] = {
+static const struct trx_sched_frame frame_tchh_ts23[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2319,7 +2339,7 @@ static struct trx_sched_frame frame_tchh_ts23[104] = {
       { TRXC_SACCHTH_1,	2,	TRXC_SACCHTH_1,	2 },
 };
 
-static struct trx_sched_frame frame_tchh_ts45[104] = {
+static const struct trx_sched_frame frame_tchh_ts45[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2355,7 +2375,7 @@ static struct trx_sched_frame frame_tchh_ts45[104] = {
       { TRXC_SACCHTH_1,	1,	TRXC_SACCHTH_1,	1 },
 };
 
-static struct trx_sched_frame frame_tchh_ts67[104] = {
+static const struct trx_sched_frame frame_tchh_ts67[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
       { TRXC_TCHH_0,	0,	TRXC_TCHH_0,	0 }, { TRXC_TCHH_1,	0,	TRXC_TCHH_1,	0 }, { TRXC_TCHH_0,	1,	TRXC_TCHH_0,	1 }, { TRXC_TCHH_1,	1,	TRXC_TCHH_1,	1 },
@@ -2391,7 +2411,7 @@ static struct trx_sched_frame frame_tchh_ts67[104] = {
       { TRXC_SACCHTH_1,	0,	TRXC_SACCHTH_1,	0 },
 };
 
-static struct trx_sched_frame frame_pdch[104] = {
+static const struct trx_sched_frame frame_pdch[104] = {
 /*	dl_chan		dl_bid	ul_chan		ul_bid */
       { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
       { TRXC_PDTCH,	0,	TRXC_PDTCH,	0 }, { TRXC_PDTCH,	1,	TRXC_PDTCH,	1 }, { TRXC_PDTCH,	2,	TRXC_PDTCH,	2 }, { TRXC_PDTCH,	3,	TRXC_PDTCH,	3 },
@@ -2429,14 +2449,19 @@ static struct trx_sched_frame frame_pdch[104] = {
 
 /* multiframe structure */
 struct trx_sched_multiframe {
+	/*! \brief physical channel config (channel combination) */
 	enum gsm_phys_chan_config	pchan;
+	/*! \brief applies to which timeslots? */
 	uint8_t				slotmask;
+	/*! \brief repeats how many frames */
 	uint8_t				period;
-	struct trx_sched_frame		*frames;
+	/*! \brief pointer to scheduling structure */
+	const struct trx_sched_frame	*frames;
+	/*! \brife human-readable name */
 	const char 			*name;
 };
 
-static struct trx_sched_multiframe trx_sched_multiframes[] = {
+static const struct trx_sched_multiframe trx_sched_multiframes[] = {
 	{ GSM_PCHAN_NONE,		0xff,	0,	NULL,			"NONE"},
 	{ GSM_PCHAN_CCCH,		0xff,	51,	frame_bcch,		"BCCH+CCCH" },
 	{ GSM_PCHAN_CCCH_SDCCH4,	0xff,	102,	frame_bcch_sdcch4,	"BCCH+CCCH+SDCCH/4+SACCH/4" },
@@ -2654,7 +2679,7 @@ int trx_sched_set_cipher(struct trx_l1h *l1h, uint8_t chan_nr, int downlink,
 /* process ready-to-send */
 static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_rts_func *func;
 	enum trx_chan_type chan;
@@ -2692,7 +2717,7 @@ static int trx_sched_rts(struct trx_l1h *l1h, uint8_t tn, uint32_t fn)
 static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 	uint32_t fn)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_dl_func *func;
 	enum trx_chan_type chan;
@@ -2705,7 +2730,7 @@ static const ubit_t *trx_sched_dl_burst(struct trx_l1h *l1h, uint8_t tn,
 	period = l1h->mf_period[tn];
 	offset = fn % period;
 	frame = l1h->mf_frames[tn] + offset;
-  
+
 	chan = frame->dl_chan;
 	bid = frame->dl_bid;
 	func = trx_chan_desc[chan].dl_fn;
@@ -2738,7 +2763,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 		LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
 			"burst=%d on C0, so filling with dummy burst\n",
 			trx_chan_desc[chan].name, fn, tn, bid);
-		bits = dummy_burst;
+		bits = (ubit_t *) dummy_burst;
 	}
 
 	return bits;
@@ -2748,7 +2773,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 	sbit_t *bits, int8_t rssi, float toa)
 {
-	struct trx_sched_frame *frame;
+	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_ul_func *func;
 	enum trx_chan_type chan;
@@ -2758,12 +2783,12 @@ int trx_sched_ul_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t current_fn,
 		return -EINVAL;
 
 	/* calculate how many frames have been elapsed */
-	elapsed = (current_fn + 2715648 - l1h->mf_last_fn[tn]) % 2715648;
+	elapsed = (current_fn + GSM_HYPERFRAME - l1h->mf_last_fn[tn]) % GSM_HYPERFRAME;
 
 	/* start counting from last fn + 1, but only if not too many fn have
 	 * been elapsed */
 	if (elapsed < 10)
-		fn = (l1h->mf_last_fn[tn] + 1) % 2715648;
+		fn = (l1h->mf_last_fn[tn] + 1) % GSM_HYPERFRAME;
 	else
 		fn = current_fn;
 
@@ -2818,7 +2843,7 @@ next_frame:
 		if (fn == current_fn)
 			break;
 
-		fn = (fn + 1) % 2715648;
+		fn = (fn + 1) % GSM_HYPERFRAME;
 	}
 
 	l1h->mf_last_fn[tn] = fn;
@@ -2840,7 +2865,7 @@ static int trx_sched_fn(uint32_t fn)
 
 	/* advance frame number, so the transceiver has more time until
 	 * it must be transmitted. */
-	fn = (fn + trx_clock_advance) % 2715648;
+	fn = (fn + trx_clock_advance) % GSM_HYPERFRAME;
 
 	/* process every TRX */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -2851,24 +2876,18 @@ static int trx_sched_fn(uint32_t fn)
 			continue;
 
 		/* process every TS of TRX */
-		for (tn = 0; tn < 8; tn++) {
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			/* ignore disabled slots */
 			if (!(l1h->config.slotmask & (1 << tn)))
 				continue;
 			/* ready-to-send */
 			trx_sched_rts(l1h, tn,
-				(fn + trx_rts_advance) % 2715648);
+				(fn + trx_rts_advance) % GSM_HYPERFRAME);
 			/* get burst for FN */
 			bits = trx_sched_dl_burst(l1h, tn, fn);
 			if (!bits) {
-#if 0
-				/* if no bits, send dummy burst with no gain */
-				bits = dummy_burst;
-				gain = 128;
-#else
 				/* if no bits, send no burst */
 				continue;
-#endif
 			} else
 				gain = 0;
 			trx_if_data(l1h, tn, fn, gain, bits);
@@ -2937,7 +2956,7 @@ no_clock:
 			tv_clock->tv_sec++;
 			tv_clock->tv_usec -= 1000000;
 		}
-		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
 		trx_sched_fn(transceiver_last_fn);
 		elapsed -= FRAME_DURATION_uS;
 	}
@@ -2997,9 +3016,9 @@ new_clock:
 		+ (tv_now.tv_usec - tv_clock->tv_usec);
 
 	/* how much frames have been elapsed since last fn processed */
-	elapsed_fn = (fn + 2715648 - transceiver_last_fn) % 2715648;
+	elapsed_fn = (fn + GSM_HYPERFRAME - transceiver_last_fn) % GSM_HYPERFRAME;
 	if (elapsed_fn >= 135774)
-		elapsed_fn -= 2715648;
+		elapsed_fn -= GSM_HYPERFRAME;
 
 	/* check for max clock skew */
 	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
@@ -3031,7 +3050,7 @@ new_clock:
 
 	/* transmit what we still need to transmit */
 	while (fn != transceiver_last_fn) {
-		transceiver_last_fn = (transceiver_last_fn + 1) % 2715648;
+		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
 		trx_sched_fn(transceiver_last_fn);
 	}
 

@@ -90,13 +90,6 @@ void osmo_nibble_shift_left_unal(uint8_t *out, const uint8_t *in,
 }
 
 
-#define GSM_FR_BITS	260
-#define GSM_EFR_BITS	244
-
-#define GSM_FR_BYTES	33	/* TS 101318 Chapter 5.1: 260 bits + 4bit sig */
-#define GSM_HR_BYTES	14	/* TS 101318 Chapter 5.2: 112 bits, no sig */
-#define GSM_EFR_BYTES	31	/* TS 101318 Chapter 5.3: 244 bits + 4bit sig */
-
 static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
 {
 	struct msgb *msg;

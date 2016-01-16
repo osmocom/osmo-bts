@@ -61,6 +61,7 @@
 
 int pcu_direct = 0;
 
+static int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static unsigned int dsp_trace = 0x00000000;
@@ -268,7 +269,9 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		bts_shutdown(bts, "SIGINT");
+		if (!quit)
+			bts_shutdown(bts, "SIGINT");
+		quit++;
 		break;
 	case SIGABRT:
 	case SIGUSR1:
@@ -415,7 +418,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	while (1) {
+	while (quit < 2) {
 		log_reset_context();
 		osmo_select_main(0);
 	}

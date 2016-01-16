@@ -26,6 +26,7 @@
 
 #include <osmocom/core/bits.h>
 #include <osmocom/core/utils.h>
+#include <osmo-bts/gsm_data.h>
 
 #include "../../src/osmo-bts-trx/gsm0503_coding.h"
 
@@ -184,7 +185,7 @@ static void test_sch(uint8_t *info)
 
 static void test_fr(uint8_t *speech, int len)
 {
-	uint8_t result[33];
+	uint8_t result[GSM_FR_BYTES];
 	ubit_t bursts_u[116 * 8];
 	sbit_t bursts_s[116 * 8];
 	int n_errors, n_bits_total;
@@ -438,8 +439,8 @@ uint8_t test_macblock[][54] = {
 	0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 },
 };
 
-uint8_t test_speech_fr[33];
-uint8_t test_speech_efr[31];
+uint8_t test_speech_fr[GSM_FR_BYTES];
+uint8_t test_speech_efr[GSM_EFR_BYTES];
 uint8_t test_speech_hr[15];
 
 int main(int argc, char **argv)
