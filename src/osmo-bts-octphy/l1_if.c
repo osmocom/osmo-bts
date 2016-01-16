@@ -1357,8 +1357,9 @@ static int rx_octvc1_ctrl_msg(struct msgb *msg)
 	/* DO NOT YET SWAP HEADER HERE, as downstream functions want to
 	 * swap it */
 
-	/* OCTSDKAN5001 Chapter 3.1 */
-	if (length < 24 || length > 1024) {
+	/* FIXME: OCTSDKAN5001 Chapter 3.1 states max size is 1024, but we see
+	 * larger messages in practise */
+	if (length < 24 || length > 2048) {
 		LOGP(DL1C, LOGL_ERROR, "Rx CTRL length %u invalid\n", length);
 		msgb_free(msg);
 		return -1;

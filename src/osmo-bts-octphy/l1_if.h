@@ -38,6 +38,18 @@ struct octphy_hdl {
 		uint32_t tx_atten_db;
 	} config;
 
+	struct {
+		struct {
+			char *name;
+			char *description;
+			char *version;
+		} app;
+		struct {
+			char *platform;
+			char *version;
+		} system;
+	} info;
+
 	/* This is a list of outstanding commands sent to the PHY, for which we
 	 * currently still wait for a response. Represented by 'struct
 	 * wait_l1_conf' in l1_if.c - Octasic calls this the 'Unacknowledged

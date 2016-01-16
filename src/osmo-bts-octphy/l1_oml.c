@@ -1,7 +1,7 @@
 /* Layer 1 (PHY) interface of osmo-bts OCTPHY integration */
 
 /* Copyright (c) 2014 Octasic Inc. All rights reserved.
- * Copyright (c) 2015 Harald Welte <laforge@gnumonks.org>
+ * Copyright (c) 2015-2016 Harald Welte <laforge@gnumonks.org>
  *
  * based on a copy of osmo-bts-sysmo/l1_oml.c, which is
  * Copyright (C) 2011 by Harald Welte <laforge@gnumonks.org>
@@ -1105,6 +1105,94 @@ int l1if_enable_events(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, enable_events_compl_cb, 0);
 }
 
+#define talloc_replace(dst, ctx, src)			\
+	do {						\
+		if (dst)				\
+			talloc_free(dst);		\
+		dst = talloc_strdup(ctx, (const char *) src);	\
+	} while (0)
+
+static int app_info_sys_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+{
+	struct octphy_hdl *fl1h = resp->dst;
+	tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP *aisr =
+		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP_SWAP(aisr);
+
+	LOGP(DL1C, LOGL_INFO, "Rx APP-INFO-SYSTEM.resp (platform='%s', version='%s')\n",
+		aisr->szPlatform, aisr->szVersion);
+
+	talloc_replace(fl1h->info.system.platform, fl1h, aisr->szPlatform);
+	talloc_replace(fl1h->info.system.version, fl1h, aisr->szVersion);
+
+	msgb_free(resp);
+
+	return 0;
+}
+
+int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
+{
+	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct msgb *msg = l1p_msgb_alloc();
+	tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD *ais;
+
+	ais = (tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD *)
+						msgb_put(msg, sizeof(*ais));
+	l1if_fill_msg_hdr(&ais->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
+			  cOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CID);
+
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD_SWAP(ais);
+
+	LOGP(DL1C, LOGL_INFO, "Tx APP-INFO-SYSTEM.req\n");
+
+	return l1if_req_compl(fl1h, msg, app_info_sys_compl_cb, 0);
+}
+
+static int app_info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+{
+	struct octphy_hdl *fl1h = resp->dst;
+	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
+		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP_SWAP(air);
+
+	LOGP(DL1C, LOGL_INFO, "Rx APP-INFO.resp (name='%s', desc='%s', ver='%s')\n",
+		air->szName, air->szDescription, air->szVersion);
+
+	talloc_replace(fl1h->info.app.name, fl1h, air->szName);
+	talloc_replace(fl1h->info.app.description, fl1h, air->szDescription);
+	talloc_replace(fl1h->info.app.version, fl1h, air->szVersion);
+
+	msgb_free(resp);
+
+	return 0;
+}
+
+
+int l1if_check_app_version(struct gsm_bts_trx *trx)
+{
+	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct msgb *msg = l1p_msgb_alloc();
+	tOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD *ai;
+
+	ai = (tOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD *) msgb_put(msg, sizeof(*ai));
+	l1if_fill_msg_hdr(&ai->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
+			  cOCTVC1_MAIN_MSG_APPLICATION_INFO_CID);
+
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD_SWAP(ai);
+
+	LOGP(DL1C, LOGL_INFO, "Tx APP-INFO.req\n");
+
+	return l1if_req_compl(fl1h, msg, app_info_compl_cb, 0);
+}
+
 /* call-back once the TRX_OPEN_CID response arrives */
 static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
 {
@@ -1226,6 +1314,9 @@ static int trx_init(struct gsm_bts_trx *trx)
 	}
 
 	l1if_trx_close_all(trx->bts);
+
+	l1if_check_app_version(trx);
+	l1if_check_app_sys_version(trx);
 
 	return l1if_trx_open(trx);
 }

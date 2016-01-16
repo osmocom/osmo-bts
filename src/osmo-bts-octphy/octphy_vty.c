@@ -1,6 +1,6 @@
 /* VTY interface for osmo-bts OCTPHY integration */
 
-/* (C) 2015 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2015-2016 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -179,6 +179,33 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		VTY_NEWLINE);
 }
 
+DEFUN(show_sys_info, show_sys_info_cmd,
+	"show trx <0-255> system-information",
+	SHOW_TRX_STR "Display information about system\n")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct octphy_hdl *fl1h;
+	int i;
+
+	if (!trx) {
+		vty_out(vty, "Cannot find TRX number %u%s",
+			trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	fl1h = trx_octphy_hdl(trx);
+
+	vty_out(vty, "System Platform: '%s', Version: '%s'%s",
+		fl1h->info.system.platform, fl1h->info.system.version,
+		VTY_NEWLINE);
+	vty_out(vty, "Application Name: '%s', Description: '%s', Version: '%s'%s",
+		fl1h->info.app.name, fl1h->info.app.description,
+		fl1h->info.app.version, VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+
 int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
@@ -192,6 +219,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element_ve(&get_rf_port_stats_cmd);
 	install_element_ve(&get_clk_sync_stats_cmd);
+	install_element_ve(&show_sys_info_cmd);
 
 	return 0;
 }
