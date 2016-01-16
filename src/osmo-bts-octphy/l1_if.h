@@ -38,7 +38,27 @@ struct octphy_hdl {
 		uint32_t tx_atten_db;
 	} config;
 
+	/* This is a list of outstanding commands sent to the PHY, for which we
+	 * currently still wait for a response. Represented by 'struct
+	 * wait_l1_conf' in l1_if.c - Octasic calls this the 'Unacknowledged
+	 * Command Window' */
 	struct llist_head wlc_list;
+	int wlc_list_len;
+	struct {
+		/* messages retransmitted due to discontinuity of transaction
+		 * ID in responses from PHY */
+		uint32_t retrans_cmds_trans_id;
+		/* messages retransmitted due to supervisory messages by PHY */
+		uint32_t retrans_cmds_supv;
+		/* number of commands/wlcs that we ever had to postpone */
+		uint32_t wlc_postponed;
+	} stats;
+
+	/* This is a list of wait_la_conf that OsmoBTS wanted to transmit to
+	 * the PHY, but which couldn't yet been sent as the unacknowledged
+	 * command window was full. */
+	struct llist_head wlc_postponed;
+	int wlc_postponed_len;
 
 	/* private pointer, points back to TRX */
 	void *priv;

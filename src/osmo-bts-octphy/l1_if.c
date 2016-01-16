@@ -1,7 +1,7 @@
 /* Layer 1 (PHY) interface of osmo-bts OCTPHY integration */
 
 /* Copyright (c) 2014 Octasic Inc. All rights reserved.
- * Copyright (c) 2015 Harald Welte <laforge@gnumonks.org>
+ * Copyright (c) 2015-2016 Harald Welte <laforge@gnumonks.org>
  *
  * based on a copy of osmo-bts-sysmo/l1_if.c, which is
  * Copyright (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
@@ -57,6 +57,13 @@
 #include <octphy/octvc1/gsm/octvc1_gsm_default.h>
 
 #define cPKTAPI_FIFO_ID_MSG                                0xAAAA0001
+
+/* maximum window of unacknowledged commands */
+#define UNACK_CMD_WINDOW	8
+/* maximum number of re-transmissions of a command */
+#define MAX_RETRANS		3
+/* timeout until which we expect PHY to respond */
+#define CMD_TIMEOUT		5
 
 /* allocate a msgb for a Layer1 primitive */
 struct msgb *l1p_msgb_alloc(void)
@@ -137,17 +144,28 @@ struct gsm_lchan *get_lchan_by_lchid(struct gsm_bts_trx *trx,
 
 /* TODO: Unify with sysmobts? */
 struct wait_l1_conf {
+	/* list of wait_l1_conf in the phy handle */
 	struct llist_head list;
+	/* expiration timer */
 	struct osmo_timer_list timer;
+	/* primtivie / command ID */
 	uint32_t prim_id;
+	/* transaction ID */
 	uint32_t trans_id;
+	/* copy of the msgb containing the command */
+	struct msgb *cmd_msg;
+	/* call-back to call on response */
 	l1if_compl_cb *cb;
+	/* data to hand to call-back on response */
 	void *cb_data;
+	/* number of re-transmissions so far */
+	uint32_t num_retrans;
 };
 
 static void release_wlc(struct wait_l1_conf *wlc)
 {
 	osmo_timer_del(&wlc->timer);
+	msgb_free(wlc->cmd_msg);
 	talloc_free(wlc);
 }
 
@@ -155,9 +173,62 @@ static void l1if_req_timeout(void *data)
 {
 	struct wait_l1_conf *wlc = data;
 
+	/* FIXME: Implement re-transmission of command on timer expiration */
+
 	LOGP(DL1C, LOGL_FATAL, "Timeout waiting for L1 primitive %s\n",
 		get_value_string(octphy_cid_vals, wlc->prim_id));
 	exit(23);
+}
+
+/* FIXME: this should be in libosmocore */
+static struct llist_head *llist_first(struct llist_head *head)
+{
+	if (llist_empty(head))
+		return NULL;
+	return head->next;
+}
+
+static void check_refill_window(struct octphy_hdl *fl1h, struct wait_l1_conf *recent)
+{
+	struct wait_l1_conf *wlc;
+	int space = UNACK_CMD_WINDOW - fl1h->wlc_list_len;
+	int i;
+
+	for (i = 0; i < space; i++) {
+		/* get head of queue */
+		struct llist_head *first = llist_first(&fl1h->wlc_postponed);
+		struct msgb *msg;
+		if (!first)
+			break;
+		wlc = llist_entry(first, struct wait_l1_conf, list);
+
+		/* remove from head of postponed queue */
+		llist_del(&wlc->list);
+		fl1h->wlc_postponed_len--;
+
+		/* add to window */
+		llist_add_tail(&wlc->list, &fl1h->wlc_list);
+		fl1h->wlc_list_len++;
+
+		if (wlc != recent) {
+			LOGP(DL1C, LOGL_INFO, "Txing formerly postponed "
+			     "command %s (trans_id=%u)\n",
+			     get_value_string(octphy_cid_vals, wlc->prim_id),
+			     wlc->trans_id);
+		}
+		msg = msgb_copy(wlc->cmd_msg, "Tx from wlc_postponed");
+		/* queue for execution and response handling */
+		if (osmo_wqueue_enqueue(&fl1h->phy_wq, msg) != 0) {
+			LOGP(DL1C, LOGL_ERROR, "Tx Write queue full. dropping msg\n");
+			llist_del(&wlc->list);
+			msgb_free(msg);
+			exit(24);
+		}
+		/* schedule a timer for CMD_TIMEOUT seconds. If PHY fails to
+		 * respond, we terminate */
+		osmo_timer_schedule(&wlc->timer, CMD_TIMEOUT, 0);
+
+	}
 }
 
 /* send a request(command) to L1, scheduling a call-back to be executed
@@ -173,9 +244,9 @@ int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
 	uint32_t type_r_cmdid = ntohl(msg_hdr->ul_Type_R_CmdId);
 	uint32_t cmd_id = (type_r_cmdid >> cOCTVC1_MSG_ID_BIT_OFFSET) & cOCTVC1_MSG_ID_BIT_MASK;
 
-	LOGP(DL1C, LOGL_DEBUG, "l1if_req_compl(msg_len=%u, cmd_id=%s) %s\n",
+	LOGP(DL1C, LOGL_DEBUG, "l1if_req_compl(msg_len=%u, cmd_id=%s, trans_id=%u)\n",
 	     msgb_length(msg), get_value_string(octphy_cid_vals, cmd_id),
-	     osmo_hexdump(msg->data, msgb_length(msg)));
+	     ntohl(msg_hdr->ulTransactionId));
 
 	/* push the two common headers in front */
 	octvocnet_push_ctl_hdr(msg, cOCTVC1_FIFO_ID_MGW_CONTROL,
@@ -183,26 +254,28 @@ int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
 	octpkt_push_common_hdr(msg, cOCTVOCNET_PKT_FORMAT_CTRL, 0,
 			       cOCTPKT_HDR_CONTROL_PROTOCOL_TYPE_ENUM_OCTVOCNET);
 
-	if (cb) {
-		wlc = talloc_zero(fl1h, struct wait_l1_conf);
-		wlc->cb = cb;
-		wlc->cb_data = data;
-		wlc->prim_id = cmd_id;
-		wlc->trans_id = ntohl(msg_hdr->ulTransactionId);
+	wlc = talloc_zero(fl1h, struct wait_l1_conf);
+	wlc->cmd_msg = msg;
+	wlc->cb = cb;
+	wlc->cb_data = data;
+	wlc->prim_id = cmd_id;
+	wlc->trans_id = ntohl(msg_hdr->ulTransactionId);
+	wlc->timer.data = wlc;
+	wlc->timer.cb = l1if_req_timeout;
 
-		/* schedule a timer for 10 seconds. If PHY fails to
-		 * respond, we terminate */
-		wlc->timer.data = wlc;
-		wlc->timer.cb = l1if_req_timeout;
-		osmo_timer_schedule(&wlc->timer, 10, 0);
+	/* unconditionally add t to the tail of postponed commands */
+	llist_add_tail(&wlc->list, &fl1h->wlc_postponed);
+	fl1h->wlc_postponed_len++;
 
-		llist_add_tail(&wlc->list, &fl1h->wlc_list);
-	}
+	/* check if the unacknowledged window has some space to transmit */
+	check_refill_window(fl1h, wlc);
 
-	/* queue for execution and response handling */
-	if (osmo_wqueue_enqueue(&fl1h->phy_wq, msg) != 0) {
-		LOGP(DL1C, LOGL_ERROR, "Tx Write queue full. dropping msg\n");
-		msgb_free(msg);
+	/* if any messages are in the queue, it must be at least 'our' message,
+	 * as we always enqueue from the tail */
+	if (fl1h->wlc_postponed_len) {
+		fl1h->stats.wlc_postponed++;
+		LOGP(DL1C, LOGL_INFO, "Postponed command %s (trans_id=%u)\n",
+		     get_value_string(octphy_cid_vals, cmd_id), wlc->trans_id);
 	}
 
 	return 0;
@@ -622,6 +695,7 @@ int bts_model_init(struct gsm_bts *bts)
 		return -ENOMEM;
 
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
+	INIT_LLIST_HEAD(&fl1h->wlc_postponed);
 	fl1h->priv = bts->c0;
 	bts->c0->role_bts.l1h = fl1h;
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
@@ -981,20 +1055,73 @@ static int rx_gsm_trx_time_ind(struct msgb *msg)
 	return handle_mph_time_ind(fl1h, tind->TrxId.byTrxId, tind->ulFrameNumber);
 }
 
+/* mark this message as RETRANSMIT of a previous msg */
+static void msg_set_retrans_flag(struct msgb *msg)
+{
+	tOCTVC1_MSG_HEADER *mh = (tOCTVC1_MSG_HEADER *) msg->l2h;
+	uint32_t type_r_cmdid = ntohl(mh->ul_Type_R_CmdId);
+	type_r_cmdid |= cOCTVC1_MSG_RETRANSMIT_FLAG;
+	mh->ul_Type_R_CmdId = htonl(type_r_cmdid);
+}
+
+/* re-transmit all commands in the window that have a transaction ID lower than
+ * trans_id */
+static int retransmit_wlc_upto(struct octphy_hdl *fl1h, uint32_t trans_id)
+{
+	struct wait_l1_conf *wlc;
+	int count = 0;
+
+	LOGP(DL1C, LOGL_INFO, "Retransmitting up to trans_id=%u\n", trans_id);
+
+	/* trans_id represents the trans_id of the just-received response, we
+	 * therefore need to re-send any commands with a lower trans_id */
+	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
+		if (wlc->trans_id <= trans_id) {
+			struct msgb *msg;
+			if (wlc->num_retrans >= MAX_RETRANS) {
+				LOGP(DL1C, LOGL_ERROR, "Command %s: maximum "
+				     "number of retransmissions reached\n",
+				     get_value_string(octphy_cid_vals,
+						      wlc->prim_id));
+				exit(24);
+			}
+			wlc->num_retrans++;
+			msg = msgb_copy(wlc->cmd_msg, "PHY CMD Retrans");
+			msg_set_retrans_flag(msg);
+			osmo_wqueue_enqueue(&fl1h->phy_wq, msg);
+			osmo_timer_schedule(&wlc->timer, CMD_TIMEOUT, 0);
+			count++;
+			LOGP(DL1C, LOGL_INFO, "Re-transmitting %s "
+			     "(trans_id=%u, attempt %u)\n",
+			     get_value_string(octphy_cid_vals, wlc->prim_id),
+			     wlc->trans_id, wlc->num_retrans);
+		}
+	}
+
+	return count;
+}
+
 /* Receive a response (to a prior command) from the PHY */
 static int rx_octvc1_resp(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 {
 	tOCTVC1_MSG_HEADER *mh = (tOCTVC1_MSG_HEADER *) msg->l2h;
+	struct llist_head *first;
 	uint32_t return_code = ntohl(mh->ulReturnCode);
 	struct octphy_hdl *fl1h = msg->dst;
-	struct wait_l1_conf *wlc;
+	struct wait_l1_conf *wlc = NULL;
 	int rc;
 
-	/* check if anyone has registered a call-back for the given
-	 * command_id and transaction, and call them back */
-	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
-		if (wlc->prim_id == msg_id && wlc->trans_id == trans_id) {
+	LOGP(DL1C, LOGL_DEBUG, "rx_octvc1_resp(msg_id=%s, trans_id=%u)\n",
+		get_value_string(octphy_cid_vals, msg_id), trans_id);
+
+	/* check if the response is for the oldest (first) entry in wlc_list */
+	first = llist_first(&fl1h->wlc_list);
+	if (first) {
+		wlc = llist_entry(first, struct wait_l1_conf, list);
+		if (wlc->trans_id == trans_id) {
+			/* process the received response */
 			llist_del(&wlc->list);
+			fl1h->wlc_list_len--;
 			if (wlc->cb) {
 				/* call-back function must take msgb
 				 * ownership. */
@@ -1004,19 +1131,41 @@ static int rx_octvc1_resp(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 				msgb_free(msg);
 			}
 			release_wlc(wlc);
+			/* check if there are postponed wlcs and re-fill the window */
+			check_refill_window(fl1h, NULL);
 			return rc;
 		}
 	}
 
-	/* ignore unhandled responses that went ok.  The caller might just not
-	 * be interested in them (as we are in case of DATA.req and
-	 * EMPTY-FRAME.req */
+	LOGP(DL1C, LOGL_NOTICE, "Sequence error: Rx response (cmd=%s, trans_id=%u) "
+	     "for cmd != oldest entry in window (trans_id=%u)!!\n",
+	     get_value_string(octphy_cid_vals, msg_id), trans_id,
+	     wlc ? wlc->trans_id : 0);
+
+	/* check if the response is for any of the other entries in wlc_list */
+	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
+		if (wlc->prim_id == msg_id && wlc->trans_id == trans_id) {
+			/* it is assumed that all of the previous response
+			 * message(s) have been lost, and we need to
+			 * re-transmit older messages from the window */
+			rc = retransmit_wlc_upto(fl1h, trans_id);
+			fl1h->stats.retrans_cmds_trans_id += rc;
+			/* do not process the received response, we rather wait
+			 * for the in-order retransmissions to arrive */
+			msgb_free(msg);
+			return 0;
+		}
+	}
+
+	/* ignore unhandled responses that went ok, but let the user know about
+	 * failing ones.  */
 	if (return_code != cOCTVC1_RC_OK) {
-		LOGP(DL1C, LOGL_NOTICE, "Rx Unexpected response %s (trans_id=0x%x)\n",
+		LOGP(DL1C, LOGL_NOTICE, "Rx Unexpected response %s (trans_id=%u)\n",
 		     get_value_string(octphy_cid_vals, msg_id), trans_id);
 	}
 	msgb_free(msg);
 	return 0;
+
 }
 
 static int rx_gsm_clockmgr_status_ind(struct msgb *msg)
@@ -1164,17 +1313,25 @@ static int rx_octvc1_event_msg(struct msgb *msg)
 /* Receive a supervisory message from the PHY */
 static int rx_octvc1_supv(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 {
+	struct octphy_hdl *fl1h = msg->dst;
 	tOCTVC1_MSG_HEADER *mh = (tOCTVC1_MSG_HEADER *) msg->l2h;
-	uint32_t return_code = ntohl(mh->ulReturnCode);
 	tOCTVC1_CTRL_MSG_MODULE_REJECT_SPV *rej;
+	uint32_t return_code = ntohl(mh->ulReturnCode);
+	uint32_t rejected_msg_id;
+	int rc;
 
 	switch (msg_id) {
 	case cOCTVC1_CTRL_MSG_MODULE_REJECT_SID:
 		rej = (tOCTVC1_CTRL_MSG_MODULE_REJECT_SPV *) mh;
 		mOCTVC1_CTRL_MSG_MODULE_REJECT_SPV_SWAP(rej);
-		LOGP(DL1C, LOGL_NOTICE, "Rx REJECT_SID (ExpectedTID=0x%08x, "
-		     "RejectedCmdID=0x%08x)\n", rej->ulExpectedTransactionId,
-		     rej->ulRejectedCmdId);
+		rejected_msg_id = (rej->ulRejectedCmdId >> cOCTVC1_MSG_ID_BIT_OFFSET) &
+								cOCTVC1_MSG_ID_BIT_MASK;
+		LOGP(DL1C, LOGL_NOTICE, "Rx REJECT_SID (TID=%u, "
+		     "ExpectedTID=0x%08x, RejectedCmdID=%s)\n",
+		     trans_id, rej->ulExpectedTransactionId,
+		     get_value_string(octphy_cid_vals, rejected_msg_id));
+		rc = retransmit_wlc_upto(fl1h, trans_id);
+		fl1h->stats.retrans_cmds_supv += rc;
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "Rx unhandled supervisory msg_id "
@@ -1289,9 +1446,9 @@ static int rx_octphy_msg(struct msgb *msg)
 				& cOCTVOCNET_PKT_LENGTH_MASK;
 
 	if (len > msgb_length(msg)) {
-		LOGP(DL1C, LOGL_ERROR, "Received length (%u) > length "
-			"as per packt header (%u)\n", msgb_length(msg),
-			len);
+		LOGP(DL1C, LOGL_ERROR, "Received length (%u) < length "
+			"as per packet header (%u): %s\n", msgb_length(msg),
+			len, osmo_hexdump(msgb_data(msg), msgb_length(msg)));
 		msgb_free(msg);
 		return -1;
 	}
