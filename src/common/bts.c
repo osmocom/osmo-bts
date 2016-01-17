@@ -76,7 +76,7 @@ int bts_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
-	int rc;
+	int rc, i;
 	static int initialized = 0;
 	void *tall_rtp_ctx;
 
@@ -109,7 +109,8 @@ int bts_init(struct gsm_bts *bts)
 	btsb->max_ta = 63;
 	btsb->ny1 = 4;
 	btsb->t3105_ms = 300;
-	memcpy(btsb->t200_ms, oml_default_t200_ms, sizeof(btsb->t200_ms));
+	for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
+		btsb->t200_ms[i] = oml_default_t200_ms[i];
 
 	/* default RADIO_LINK_TIMEOUT */
 	btsb->radio_link_timeout = 32;
