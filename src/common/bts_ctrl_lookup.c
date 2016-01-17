@@ -24,6 +24,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
+#include <osmo-bts/bts_model.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/control_if.h>
