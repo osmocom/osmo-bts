@@ -40,6 +40,6 @@ int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 
 /* Configure LAPDm T200 timers for this lchan according to OML */
 int oml_set_lchan_t200(struct gsm_lchan *lchan);
-extern const uint8_t oml_default_t200_ms[7];
+extern const unsigned int oml_default_t200_ms[7];
 
 #endif // _OML_H */

@@ -393,7 +393,7 @@ static const uint8_t abis_nm_t200_mult[] = {
 
 /* the below defaults correpsond to the libocmocore default of 1s for
  * DCCH and 2s for ACCH. The BSC should overried this via OML anyway. */
-const uint8_t oml_default_t200_ms[7] = {
+const unsigned int oml_default_t200_ms[7] = {
 	[T200_SDCCH]		= 1000/5,
 	[T200_FACCH_F]		= 1000/5,
 	[T200_FACCH_H]		= 1000/5,
