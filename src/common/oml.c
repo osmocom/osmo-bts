@@ -471,13 +471,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	/* Test for globally unsupported stuff here */
 	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN)) {
-		const uint16_t *value = (const uint16_t *) TLVP_VAL(&tp, NM_ATT_BCCH_ARFCN);
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
-
-		LOGP(DOML, LOGL_NOTICE, "MSG: %s\n", osmo_hexdump(msgb_l3(msg), msgb_l3len(msg)));
-		LOGP(DOML, LOGL_NOTICE, "L3=%p, VAL=%p, DIF=%tu\n", msgb_l3(msg), value,
-			(void *)value - (void *) msgb_l3(msg));
-
 		if (arfcn > 1024) {
 			LOGP(DOML, LOGL_NOTICE, "Given ARFCN %d is not supported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
