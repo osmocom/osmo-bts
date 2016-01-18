@@ -164,6 +164,7 @@ int bts_init(struct gsm_bts *bts)
 	}
 
 	INIT_LLIST_HEAD(&btsb->smscb_state.queue);
+	INIT_LLIST_HEAD(&btsb->oml_queue);
 
 	return rc;
 }

@@ -54,11 +54,31 @@ static struct gsm_bts *g_bts;
 int abis_oml_sendmsg(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
-	 * the signalling link at msg->dst */
-	msg->dst = bts->oml_link;
-	return abis_sendmsg(msg);
+	if (!bts->oml_link) {
+		llist_add_tail(&msg->list, &btsb->oml_queue);
+		return 0;
+	} else {
+		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
+		 * the signalling link at msg->dst */
+		msg->dst = bts->oml_link;
+		return abis_sendmsg(msg);
+	}
+}
+
+static void drain_oml_queue(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+	struct msgb *msg, *msg2;
+
+	llist_for_each_entry_safe(msg, msg2, &btsb->oml_queue, list) {
+		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
+		 * the signalling link at msg->dst */
+		llist_del(&msg->list);
+		msg->dst = bts->oml_link;
+		abis_sendmsg(msg);
+	}
 }
 
 int abis_bts_rsl_sendmsg(struct msgb *msg)
@@ -83,6 +103,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		sign_link = g_bts->oml_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
 						E1INP_SIGN_OML, NULL, 255, 0);
+		drain_oml_queue(g_bts);
 		sign_link->trx = g_bts->c0;
 		bts_link_estab(g_bts);
 		break;
