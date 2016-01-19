@@ -265,3 +265,7 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 { return 0; }
 void bts_model_abis_close(struct gsm_bts *bts)
 { }
+void bts_model_phy_link_set_defaults(struct phy_link *plink)
+{ }
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
+{ }

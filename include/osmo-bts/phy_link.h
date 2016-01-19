@@ -82,6 +82,7 @@ struct phy_instance {
 
 	union {
 		struct {
+			struct femtol1_hdl *hdl;
 		} sysmobts;
 		struct {
 			struct trx_l1h *hdl;
