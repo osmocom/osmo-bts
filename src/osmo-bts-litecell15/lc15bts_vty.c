@@ -171,23 +171,13 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
 {
 	int phy_nr = atoi(argv[0]);
-	struct phy_link *plink = phy_link_by_num(phy_nr);
 	struct phy_instance *pinst;
 	struct lc15l1_hdl *fl1h;
 	unsigned int flag ;
 
-	if (!plink) {
-		vty_out(vty, "Cannot find PHY link number %u%s",
-			phy_nr, VTY_NEWLINE);
+	pinst = vty_get_phy_instance(vty, phy_nr, 0);
+	if (!pinst)
 		return CMD_WARNING;
-	}
-
-	pinst = phy_instance_by_num(plink, 0);
-	if (!pinst) {
-		vty_out(vty, "Cannot find PHY instance number 0%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	fl1h = pinst->u.lc15.hdl;
 	flag = get_string_value(lc15bts_tracef_names, argv[1]);
@@ -199,23 +189,13 @@ DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
 DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", NO_STR TRX_STR)
 {
 	int phy_nr = atoi(argv[0]);
-	struct phy_link *plink = phy_link_by_num(phy_nr);
 	struct phy_instance *pinst;
 	struct lc15l1_hdl *fl1h;
 	unsigned int flag ;
 
-	if (!plink) {
-		vty_out(vty, "Cannot find PHY link number %u%s",
-			phy_nr, VTY_NEWLINE);
+	pinst = vty_get_phy_instance(vty, phy_nr, 0);
+	if (!pinst)
 		return CMD_WARNING;
-	}
-
-	pinst = phy_instance_by_num(plink, 0);
-	if (!pinst) {
-		vty_out(vty, "Cannot find PHY instance number 0%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	fl1h = pinst->u.lc15.hdl;
 	flag = get_string_value(lc15bts_tracef_names, argv[1]);

@@ -51,6 +51,26 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
 
+struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_nr)
+{
+	struct phy_link *plink = phy_link_by_num(phy_nr);
+	struct phy_instance *pinst;
+
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY link number %d%s",
+			phy_nr, VTY_NEWLINE);
+		return NULL;
+	}
+
+	pinst = phy_instance_by_num(plink, inst_nr);
+	if (!pinst) {
+		vty_out(vty, "Cannot find PHY instance number %d%s",
+			inst_nr, VTY_NEWLINE);
+		return NULL;
+	}
+	return pinst;
+}
+
 int bts_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
