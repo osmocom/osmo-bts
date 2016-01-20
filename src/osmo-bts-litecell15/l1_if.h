@@ -38,9 +38,6 @@ struct lc15l1_hdl {
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;			/* currently operational DSP trace flags */
 	int clk_cal;
-	float min_qual_rach;
-	float min_qual_norm;
-	char *calib_path;
 	struct llist_head wlc_list;
 
 	struct phy_instance *phy_inst;

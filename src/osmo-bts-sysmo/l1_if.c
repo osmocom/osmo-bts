@@ -65,10 +65,6 @@
 
 extern int pcu_direct;
 
-#define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
-#define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
-
-
 struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
 	struct osmo_timer_list timer;	/* timer for L1 timeout */
@@ -791,6 +787,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	uint8_t chan_nr, link_id;
 	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
@@ -810,7 +807,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam);
 
-	if (data_ind->measParam.fLinkQuality < fl1->min_qual_norm
+	if (data_ind->measParam.fLinkQuality < btsb->min_qual_norm
 	 && data_ind->msgUnitParam.u8Size != 0) {
 		msgb_free(l1p_msg);
 		return 0;
@@ -870,7 +867,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach) {
+	if (ra_ind->measParam.fLinkQuality < btsb->min_qual_rach) {
 		msgb_free(l1p_msg);
 		return 0;
 	}
@@ -1436,6 +1433,27 @@ static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 	return 0;
 }
 
+/* Set the clock calibration to the value read from the eeprom. */
+static void clk_cal_use_eeprom(struct femtol1_hdl *hdl)
+{
+	struct phy_instance *pinst = hdl->phy_inst;
+	eeprom_RfClockCal_t rf_clk;
+	int rc;
+
+	if (!pinst->u.sysmobts.clk_use_eeprom)
+		return;
+
+	rc = eeprom_ReadRfClockCal(&rf_clk);
+	if (rc != EEPROM_SUCCESS) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to read from EEPROM.\n");
+		return;
+	}
+
+	hdl->clk_cal = rf_clk.iClkCor;
+	LOGP(DL1C, LOGL_NOTICE,
+		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
+}
+
 struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
 {
 	struct femtol1_hdl *fl1h;
@@ -1459,11 +1477,10 @@ struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	fl1h->phy_inst = pinst;
-	fl1h->clk_cal = 0;
-	fl1h->clk_use_eeprom = 1;
-	fl1h->min_qual_rach = MIN_QUAL_RACH;
-	fl1h->min_qual_norm = MIN_QUAL_NORM;
 	fl1h->dsp_trace_f = pinst->u.sysmobts.dsp_trace_f;
+	fl1h->clk_src = pinst->u.sysmobts.clk_src;
+	fl1h->clk_cal = pinst->u.sysmobts.clk_cal;
+	clk_cal_use_eeprom(fl1h);
 	get_hwinfo_eeprom(fl1h);
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
 	if (fl1h->hw_info.model_nr == 2050) {
@@ -1577,7 +1594,7 @@ static int clock_correct_info_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	}
 
 	fl1h->clk_cal = sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErr;
-	fl1h->clk_use_eeprom = 0;
+	fl1h->phy_inst->u.sysmobts.clk_use_eeprom = 0;
 	msgb_free(resp);
 
 	/*

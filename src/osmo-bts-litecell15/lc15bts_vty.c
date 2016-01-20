@@ -94,38 +94,11 @@ DEFUN(cfg_phy_cal_path, cfg_phy_cal_path_cmd,
 	"Set the path name to TRX calibration data\n" "Path name\n")
 {
 	struct phy_instance *pinst = vty->index;
-	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 
-	if (fl1h->calib_path)
-		talloc_free(fl1h->calib_path);
+	if (pinst->u.lc15.calib_path)
+		talloc_free(pinst->u.lc15.calib_path);
 
-	fl1h->calib_path = talloc_strdup(fl1h, argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phy_min_qual_rach, cfg_phy_min_qual_rach_cmd,
-	"min-qual-rach <-100-100>",
-	"Set the minimum quality level of RACH burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
-
-	fl1h->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phy_min_qual_norm, cfg_phy_min_qual_norm_cmd,
-	"min-qual-norm <-100-100>",
-	"Set the minimum quality level of normal burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
-
-	fl1h->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+	pinst->u.lc15.calib_path = talloc_strdup(pinst, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -362,7 +335,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 
 static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
-	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 	int i;
 
 	for (i = 0; i < 32; i++) {
@@ -373,13 +345,9 @@ static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 				VTY_NEWLINE);
 		}
 	}
-	if (fl1h->calib_path)
+	if (pinst->u.lc15.calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
-			fl1h->calib_path, VTY_NEWLINE);
-	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
-		VTY_NEWLINE);
-	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
-		VTY_NEWLINE);
+			pinst->u.lc15.calib_path, VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
@@ -444,8 +412,6 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_INST_NODE, &cfg_phy_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_no_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
-	install_element(PHY_INST_NODE, &cfg_phy_min_qual_rach_cmd);
-	install_element(PHY_INST_NODE, &cfg_phy_min_qual_norm_cmd);
 
 	return 0;
 }

@@ -104,6 +104,7 @@ static int calib_file_open(struct lc15l1_hdl *fl1h,
                            const struct calib_file_desc *desc)
 {
 	struct calib_send_state *st = &fl1h->st;
+	char *calib_path = fl1h->phy_inst->u.lc15.calib_path;
         char fname[PATH_MAX];
 
 	if (st->fp) {
@@ -113,7 +114,7 @@ static int calib_file_open(struct lc15l1_hdl *fl1h,
 	}
 
         fname[0] = '\0';
-        snprintf(fname, sizeof(fname)-1, "%s/%s", fl1h->calib_path, desc->fname);
+        snprintf(fname, sizeof(fname)-1, "%s/%s", calib_path, desc->fname);
         fname[sizeof(fname)-1] = '\0';
 
         st->fp = fopen(fname, "rb");
@@ -241,8 +242,9 @@ int calib_load(struct lc15l1_hdl *fl1h)
 {
 	int rc;
 	struct calib_send_state *st = &fl1h->st;
+	char *calib_path = fl1h->phy_inst->u.lc15.calib_path;
 
-        if (!fl1h->calib_path) {
+        if (!calib_path) {
                 LOGP(DL1C, LOGL_ERROR, "Calibration file path not specified\n");
                 return -1;
         }

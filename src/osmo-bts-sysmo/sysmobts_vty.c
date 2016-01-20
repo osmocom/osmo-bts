@@ -90,9 +90,8 @@ DEFUN(cfg_phy_clkcal_eeprom, cfg_phy_clkcal_eeprom_cmd,
 	"Use the eeprom clock calibration value\n")
 {
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 
-	fl1h->clk_use_eeprom = 1;
+	pinst->u.sysmobts.clk_use_eeprom = 1;
 
 	return CMD_SUCCESS;
 }
@@ -102,10 +101,9 @@ DEFUN(cfg_phy_clkcal_def, cfg_phy_clkcal_def_cmd,
 	"Set the clock calibration value\n" "Default Clock DAC value\n")
 {
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 
-	fl1h->clk_use_eeprom = 0;
-	fl1h->clk_cal = 0xffff;
+	pinst->u.sysmobts.clk_use_eeprom = 0;
+	pinst->u.sysmobts.clk_cal = 0xffff;
 
 	return CMD_SUCCESS;
 }
@@ -117,10 +115,9 @@ DEFUN(cfg_phy_clkcal, cfg_phy_clkcal_cmd,
 {
 	unsigned int clkcal = atoi(argv[0]);
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 
-	fl1h->clk_use_eeprom = 0;
-	fl1h->clk_cal = clkcal & 0xfff;
+	pinst->u.sysmobts.clk_use_eeprom = 0;
+	pinst->u.sysmobts.clk_cal = clkcal & 0xfff;
 
 	return CMD_SUCCESS;
 }
@@ -131,10 +128,9 @@ DEFUN(cfg_phy_clkcal, cfg_phy_clkcal_cmd,
 {
 	int clkcal = atoi(argv[0]);
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 
-	fl1h->clk_use_eeprom = 0;
-	fl1h->clk_cal = clkcal;
+	pinst->u.sysmobts.clk_use_eeprom = 0;
+	pinst->u.sysmobts.clk_cal = clkcal;
 
 	return CMD_SUCCESS;
 }
@@ -149,14 +145,13 @@ DEFUN(cfg_phy_clksrc, cfg_phy_clksrc_cmd,
 	"Use the GPS pps\n")
 {
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 	int rc;
 
 	rc = get_string_value(femtobts_clksrc_names, argv[0]);
 	if (rc < 0)
 		return CMD_WARNING;
 
-	fl1h->clk_src = rc;
+	pinst->u.sysmobts.clk_src = rc;
 
 	return CMD_SUCCESS;
 }
@@ -166,12 +161,11 @@ DEFUN(cfg_phy_cal_path, cfg_phy_cal_path_cmd,
 	"Set the path name to TRX calibration data\n" "Path name\n")
 {
 	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 
-	if (fl1h->calib_path)
-		talloc_free(fl1h->calib_path);
+	if (pinst->u.sysmobts.calib_path)
+		talloc_free(pinst->u.sysmobts.calib_path);
 
-	fl1h->calib_path = talloc_strdup(fl1h, argv[0]);
+	pinst->u.sysmobts.calib_path = talloc_strdup(pinst, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -185,32 +179,6 @@ DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
 	btsb->ul_power_target = atoi(argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phy_min_qual_rach, cfg_phy_min_qual_rach_cmd,
-	"min-qual-rach <-100-100>",
-	"Set the minimum quality level of RACH burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
-
-	fl1h->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phy_min_qual_norm, cfg_phy_min_qual_norm_cmd,
-	"min-qual-norm <-100-100>",
-	"Set the minimum quality level of normal burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
-
-	fl1h->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
 
 	return CMD_SUCCESS;
 }
@@ -253,22 +221,19 @@ DEFUN(cfg_phy_no_dsp_trace_f, cfg_phy_no_dsp_trace_f_cmd,
 
 /* runtime */
 
-DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
-	"show trx <0-0> clock-source",
+DEFUN(show_phy_clksrc, show_trx_clksrc_cmd,
+	"show phy <0-255> clock-source",
 	SHOW_TRX_STR "Display the clock source for this TRX")
 {
-	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
-	struct femtol1_hdl *fl1h;
+	int phy_nr = atoi(argv[0]);
+	struct phy_instance *pinst = vty_get_phy_instance(vty, phy_nr, 0);
 
-	if (!trx)
+	if (!pinst)
 		return CMD_WARNING;
 
-	fl1h = trx_femtol1_hdl(trx);
-
-	vty_out(vty, "TRX Clock Source: %s%s",
-		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
-		VTY_NEWLINE);
+	vty_out(vty, "PHY Clock Source: %s%s",
+		get_value_string(femtobts_clksrc_names,
+				 pinst->u.sysmobts.clk_src), VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -507,7 +472,6 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 
 static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
-	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
 	int i;
 
 	for (i = 0; i < 32; i++) {
@@ -519,21 +483,17 @@ static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 		}
 	}
 
-	if (fl1h->clk_use_eeprom)
+	if (pinst->u.sysmobts.clk_use_eeprom)
 		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
 	else
-		vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
-			VTY_NEWLINE);
-	if (fl1h->calib_path)
+		vty_out(vty, "  clock-calibration %d%s",
+			pinst->u.sysmobts.clk_cal, VTY_NEWLINE);
+	if (pinst->u.sysmobts.calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
-			fl1h->calib_path, VTY_NEWLINE);
+			pinst->u.sysmobts.calib_path, VTY_NEWLINE);
 	vty_out(vty, "  clock-source %s%s",
-		get_value_string(femtobts_clksrc_names, fl1h->clk_src),
-		VTY_NEWLINE);
-	vty_out(vty, "  min-qual-rach %.0f%s", fl1h->min_qual_rach * 10.0f,
-		VTY_NEWLINE);
-	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
-		VTY_NEWLINE);
+		get_value_string(femtobts_clksrc_names,
+				 pinst->u.sysmobts.clk_src), VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
@@ -590,8 +550,6 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_INST_NODE, &cfg_phy_clkcal_def_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_clksrc_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
-	install_element(PHY_INST_NODE, &cfg_phy_min_qual_rach_cmd);
-	install_element(PHY_INST_NODE, &cfg_phy_min_qual_norm_cmd);
 
 	return 0;
 }

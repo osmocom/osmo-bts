@@ -270,6 +270,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		const char *name = get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH);
 		vty_out(vty, " gsmtap-sapi %s%s", osmo_str_tolower(name), VTY_NEWLINE);
 	}
+	vty_out(vty, " min-qual-rach %.0f%s", btsb->min_qual_rach * 10.0f,
+		VTY_NEWLINE);
+	vty_out(vty, " min-qual-norm %.0f%s", btsb->min_qual_norm * 10.0f,
+		VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -531,6 +535,33 @@ DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
+	"min-qual-rach <-100-100>",
+	"Set the minimum quality level of RACH burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
+	"min-qual-norm <-100-100>",
+	"Set the minimum quality level of normal burst to be accpeted\n"
+	"C/I level in tenth of dB\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
 
 #define DB_DBM_STR 							\
 	"Unit is dB (decibels)\n"					\
@@ -1001,6 +1032,8 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
 	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
+	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
+	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);

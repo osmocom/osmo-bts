@@ -69,10 +69,6 @@
 
 extern int pcu_direct;
 
-#define MIN_QUAL_RACH	 5.0f	/* at least  5 dB C/I */
-#define MIN_QUAL_NORM	-0.5f	/* at least -1 dB C/I */
-
-
 struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
 	struct osmo_timer_list timer;	/* timer for L1 timeout */
@@ -833,6 +829,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
@@ -853,7 +850,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam);
 
-	if (data_ind->measParam.fLinkQuality < fl1->min_qual_norm
+	if (data_ind->measParam.fLinkQuality < btsb->min_qual_norm
 	 && data_ind->msgUnitParam.u8Size != 0) {
 		msgb_free(l1p_msg);
 		return 0;
@@ -918,7 +915,7 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	if (ra_ind->measParam.fLinkQuality < fl1->min_qual_rach) {
+	if (ra_ind->measParam.fLinkQuality < btsb->min_qual_rach) {
 		msgb_free(l1p_msg);
 		return 0;
 	}
@@ -1400,8 +1397,6 @@ struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 
 	fl1h->phy_inst = pinst;
 	fl1h->clk_cal = 0;
-	fl1h->min_qual_rach = MIN_QUAL_RACH;
-	fl1h->min_qual_norm = MIN_QUAL_NORM;
 	fl1h->dsp_trace_f = pinst->u.lc15.dsp_trace_f;
 
 	get_hwinfo(fl1h);
