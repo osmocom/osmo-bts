@@ -376,7 +376,14 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 
 	switch (info->type) {
 	case PRIM_INFO_TIME:
-		rc = l1sap_info_time_ind(trx->bts, l1sap, &info->u.time_ind);
+		if (trx != trx->bts->c0) {
+			LOGP(DL1P, LOGL_NOTICE, "BTS model is sending us "
+			     "PRIM_INFO_TIME for TRX %u, please fix it\n",
+			     trx->nr);
+			rc = -1;
+		} else
+			rc = l1sap_info_time_ind(trx->bts, l1sap,
+						 &info->u.time_ind);
 		break;
 	case PRIM_INFO_MEAS:
 		rc = l1sap_info_meas_ind(trx, l1sap, &info->u.meas_ind);
