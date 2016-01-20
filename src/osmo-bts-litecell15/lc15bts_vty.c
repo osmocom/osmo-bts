@@ -130,6 +130,31 @@ DEFUN(cfg_phy_min_qual_norm, cfg_phy_min_qual_norm_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_dsp_trace_f, cfg_phy_dsp_trace_f_cmd,
+	"HIDDEN", TRX_STR)
+{
+	struct phy_instance *pinst = vty->index;
+	unsigned int flag;
+
+	flag = get_string_value(lc15bts_tracef_names, argv[1]);
+	pinst->u.lc15.dsp_trace_f |= ~flag;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_no_dsp_trace_f, cfg_phy_no_dsp_trace_f_cmd,
+	"HIDDEN", NO_STR TRX_STR)
+{
+	struct phy_instance *pinst = vty->index;
+	unsigned int flag;
+
+	flag = get_string_value(lc15bts_tracef_names, argv[1]);
+	pinst->u.lc15.dsp_trace_f &= ~flag;
+
+	return CMD_SUCCESS;
+}
+
+
 /* runtime */
 
 DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
@@ -338,7 +363,16 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
 	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
+	int i;
 
+	for (i = 0; i < 32; i++) {
+		if (pinst->u.lc15.dsp_trace_f & (1 << i)) {
+			const char *name;
+			name = get_value_string(lc15bts_tracef_names, (1 << i));
+			vty_out(vty, "  dsp-trace-flag %s%s", name,
+				VTY_NEWLINE);
+		}
+	}
 	if (fl1h->calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
 			fl1h->calib_path, VTY_NEWLINE);
@@ -375,6 +409,24 @@ int bts_model_vty_init(struct gsm_bts *bts)
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
+	cfg_phy_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+						lc15bts_tracef_names,
+						"dsp-trace-flag (",
+						"|",")", VTY_DO_LOWER);
+	cfg_phy_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+						lc15bts_tracef_docs,
+						DSP_TRACE_F_STR,
+						"\n", "", 0);
+
+	cfg_phy_no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+						lc15bts_tracef_names,
+						"no dsp-trace-flag (",
+						"|",")", VTY_DO_LOWER);
+	cfg_phy_no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+						lc15bts_tracef_docs,
+						NO_STR DSP_TRACE_F_STR,
+						"\n", "", 0);
+
 	install_element_ve(&show_dsp_trace_f_cmd);
 	install_element_ve(&show_sys_info_cmd);
 	install_element_ve(&dsp_trace_f_cmd);
@@ -389,6 +441,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
 
+	install_element(PHY_INST_NODE, &cfg_phy_dsp_trace_f_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_no_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_min_qual_rach_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_min_qual_norm_cmd);

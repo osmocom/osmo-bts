@@ -227,6 +227,30 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_dsp_trace_f, cfg_phy_dsp_trace_f_cmd,
+	"HIDDEN", TRX_STR)
+{
+	struct phy_instance *pinst = vty->index;
+	unsigned int flag;
+
+	flag = get_string_value(femtobts_tracef_names, argv[1]);
+	pinst->u.sysmobts.dsp_trace_f |= ~flag;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_no_dsp_trace_f, cfg_phy_no_dsp_trace_f_cmd,
+	"HIDDEN", NO_STR TRX_STR)
+{
+	struct phy_instance *pinst = vty->index;
+	unsigned int flag;
+
+	flag = get_string_value(femtobts_tracef_names, argv[1]);
+	pinst->u.sysmobts.dsp_trace_f &= ~flag;
+
+	return CMD_SUCCESS;
+}
+
 /* runtime */
 
 DEFUN(show_trx_clksrc, show_trx_clksrc_cmd,
@@ -484,6 +508,16 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
 	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
+	int i;
+
+	for (i = 0; i < 32; i++) {
+		if (pinst->u.sysmobts.dsp_trace_f & (1 << i)) {
+			const char *name;
+			name = get_value_string(femtobts_tracef_names, (1 << i));
+			vty_out(vty, "  dsp-trace-flag %s%s", name,
+				VTY_NEWLINE);
+		}
+	}
 
 	if (fl1h->clk_use_eeprom)
 		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
@@ -549,6 +583,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_ul_power_target_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 
+	install_element(PHY_INST_NODE, &cfg_phy_dsp_trace_f_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_no_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_clkcal_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_clkcal_eeprom_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_clkcal_def_cmd);

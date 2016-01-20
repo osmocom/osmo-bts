@@ -82,6 +82,7 @@ struct phy_instance {
 
 	union {
 		struct {
+			uint32_t dsp_trace_f;
 			struct femtol1_hdl *hdl;
 		} sysmobts;
 		struct {
@@ -92,6 +93,7 @@ struct phy_instance {
 			uint32_t trx_id;
 		} octphy;
 		struct {
+			uint32_t dsp_trace_f;
 			struct lc15l1_hdl *hdl;
 		} lc15;
 	} u;

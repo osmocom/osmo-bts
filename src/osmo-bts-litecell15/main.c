@@ -60,7 +60,6 @@
 #include "misc/lc15bts_bid.h"
 
 extern int pcu_direct;
-static unsigned int dsp_trace = 0x00000000;
 
 int bts_model_init(struct gsm_bts *bts)
 {
@@ -127,8 +126,7 @@ void bts_update_status(enum bts_global_status which, int on)
 
 void bts_model_print_help()
 {
-	printf( "  -p	--dsp-trace	Set DSP trace flags\n"
-		"  -w	--hw-version	Print the targeted HW Version\n"
+	printf( "  -w	--hw-version	Print the targeted HW Version\n"
 		"  -M	--pcu-direct	Force PCU to access message queue for "
 			"PDCH dchannel directly\n"
 		);
@@ -164,7 +162,6 @@ int bts_model_handle_options(int argc, char **argv)
 	while (1) {
 		int option_idx = 0, c;
 		static const struct option long_options[] = {
-			/* FIXME: all those are generic Osmocom app options */
 			{ "dsp-trace", 1, 0, 'p' },
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu-direct", 0, 0, 'M' },
@@ -177,10 +174,6 @@ int bts_model_handle_options(int argc, char **argv)
 			break;
 
 		switch (c) {
-		case 'p':
-			dsp_trace = strtoul(optarg, NULL, 16);
-#warning use dsp_trace!!!
-			break;
 		case 'M':
 			pcu_direct = 1;
 			break;

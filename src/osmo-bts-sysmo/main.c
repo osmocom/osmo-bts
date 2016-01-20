@@ -55,7 +55,6 @@
 #include "oml_router.h"
 
 extern int pcu_direct;
-static unsigned int dsp_trace = 0x00000000;
 
 /* Set the clock calibration to the value
  * read from the eeprom.
@@ -168,22 +167,17 @@ int bts_model_handle_options(int argc, char **argv)
 		int option_idx = 0, c;
 		static const struct option long_options[] = {
 			/* specific to this hardware */
-			{ "dsp-trace", 1, 0, 'p' },
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu-direct", 0, 0, 'M' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "p:w:M",
+		c = getopt_long(argc, argv, "wM",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
 
 		switch (c) {
-		case 'p':
-			dsp_trace = strtoul(optarg, NULL, 16);
-#warning use dsp_trace!!!
-			break;
 		case 'M':
 			pcu_direct = 1;
 			break;
