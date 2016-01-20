@@ -69,12 +69,12 @@ if test "$enable_octphy" = "yes" ; then
 fi
 
 AC_MSG_CHECKING([whether to enable NuRAN Wireless Litecell 1.5 hardware support])
-AC_ARG_ENABLE(litecell15-bts,
-		AC_HELP_STRING([--enable-litecell15-bts],
+AC_ARG_ENABLE(litecell15,
+		AC_HELP_STRING([--enable-litecell15],
 				[enable code for NuRAN Wireless Litecell15 bts [default=no]]),
-		[enable_litecell15_bts="yes"],[enable_litecell15_bts="no"])
-AC_MSG_RESULT([$enable_litecell15_bts])
-AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15_bts" = "xyes")
+		[enable_litecell15="yes"],[enable_litecell15="no"])
+AC_MSG_RESULT([$enable_litecell15])
+AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15" = "xyes")
 
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
