@@ -63,8 +63,6 @@
 #include "eeprom.h"
 #include "utils.h"
 
-extern int pcu_direct;
-
 struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
 	struct osmo_timer_list timer;	/* timer for L1 timeout */

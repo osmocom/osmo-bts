@@ -48,6 +48,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
 
 /*NTQD: Change how rx_nr is handle in multi-trx*/
@@ -58,8 +59,6 @@
 #include "hw_misc.h"
 #include "oml_router.h"
 #include "misc/lc15bts_bid.h"
-
-extern int pcu_direct;
 
 int bts_model_init(struct gsm_bts *bts)
 {

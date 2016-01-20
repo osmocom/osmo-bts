@@ -44,6 +44,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
@@ -53,8 +54,6 @@
 #include "l1_if.h"
 #include "hw_misc.h"
 #include "oml_router.h"
-
-extern int pcu_direct;
 
 int bts_model_init(struct gsm_bts *bts)
 {
