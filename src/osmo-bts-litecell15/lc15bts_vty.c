@@ -1,6 +1,7 @@
 /* VTY interface for NuRAN Wireless Litecell 1.5 */
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
  * 
  * Based on sysmoBTS:
  *     (C) 2011 by Harald Welte <laforge@gnumonks.org>
@@ -43,6 +44,7 @@
 #include <osmocom/vty/misc.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/vty.h>
 
@@ -87,12 +89,12 @@ DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
+DEFUN(cfg_phy_cal_path, cfg_phy_cal_path_cmd,
 	"trx-calibration-path PATH",
 	"Set the path name to TRX calibration data\n" "Path name\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+	struct phy_instance *pinst = vty->index;
+	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 
 	if (fl1h->calib_path)
 		talloc_free(fl1h->calib_path);
@@ -102,40 +104,28 @@ DEFUN(cfg_trx_cal_path, cfg_trx_cal_path_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_min_qual_rach, cfg_trx_min_qual_rach_cmd,
+DEFUN(cfg_phy_min_qual_rach, cfg_phy_min_qual_rach_cmd,
 	"min-qual-rach <-100-100>",
 	"Set the minimum quality level of RACH burst to be accpeted\n"
 	"C/I level in tenth of dB\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+	struct phy_instance *pinst = vty->index;
+	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 
 	fl1h->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_min_qual_norm, cfg_trx_min_qual_norm_cmd,
+DEFUN(cfg_phy_min_qual_norm, cfg_phy_min_qual_norm_cmd,
 	"min-qual-norm <-100-100>",
 	"Set the minimum quality level of normal burst to be accpeted\n"
 	"C/I level in tenth of dB\n")
 {
-	struct gsm_bts_trx *trx = vty->index;
-	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+	struct phy_instance *pinst = vty->index;
+	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 
 	fl1h->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
-	"nominal-tx-power <0-100>",
-	"Set the nominal transmit output power in dBm\n"
-	"Nominal transmit output power level in dBm\n")
-{
-	struct gsm_bts_trx *trx = vty->index;
-
-	trx->nominal_power = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -180,18 +170,26 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 
 DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
 {
-	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
+	struct phy_instance *pinst;
 	struct lc15l1_hdl *fl1h;
 	unsigned int flag ;
 
-	if (!trx) {
-		vty_out(vty, "Cannot find TRX number %u%s",
-			trx_nr, VTY_NEWLINE);
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY link number %u%s",
+			phy_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	fl1h = trx_lc15l1_hdl(trx);
+	pinst = phy_instance_by_num(plink, 0);
+	if (!pinst) {
+		vty_out(vty, "Cannot find PHY instance number 0%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	fl1h = pinst->u.lc15.hdl;
 	flag = get_string_value(lc15bts_tracef_names, argv[1]);
 	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f | flag);
 
@@ -200,18 +198,26 @@ DEFUN(dsp_trace_f, dsp_trace_f_cmd, "HIDDEN", TRX_STR)
 
 DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", NO_STR TRX_STR)
 {
-	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
+	struct phy_instance *pinst;
 	struct lc15l1_hdl *fl1h;
 	unsigned int flag ;
 
-	if (!trx) {
-		vty_out(vty, "Cannot find TRX number %u%s",
-			trx_nr, VTY_NEWLINE);
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY link number %u%s",
+			phy_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	fl1h = trx_lc15l1_hdl(trx);
+	pinst = phy_instance_by_num(plink, 0);
+	if (!pinst) {
+		vty_out(vty, "Cannot find PHY instance number 0%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	fl1h = pinst->u.lc15.hdl;
 	flag = get_string_value(lc15bts_tracef_names, argv[1]);
 	l1if_set_trace_flags(fl1h, fl1h->dsp_trace_f & ~flag);
 
@@ -219,20 +225,28 @@ DEFUN(no_dsp_trace_f, no_dsp_trace_f_cmd, "HIDDEN", NO_STR TRX_STR)
 }
 
 DEFUN(show_sys_info, show_sys_info_cmd,
-	"show trx <0-0> system-information",
+	"show phy <0-1> instance <0-0> system-information",
 	SHOW_TRX_STR "Display information about system\n")
 {
-	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	int phy_nr = atoi(argv[0]);
+	int inst_nr = atoi(argv[1]);
+	struct phy_link *plink = phy_link_by_num(phy_nr);
+	struct phy_instance *pinst;
 	struct lc15l1_hdl *fl1h;
 	int i;
 
-	if (!trx) {
-		vty_out(vty, "Cannot find TRX number %u%s",
-			trx_nr, VTY_NEWLINE);
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY link %u%s",
+			phy_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	fl1h = trx_lc15l1_hdl(trx);
+	pinst = phy_instance_by_num(plink, inst_nr);
+	if (!plink) {
+		vty_out(vty, "Cannot find PHY instance %u%s",
+			phy_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	fl1h = pinst->u.lc15.hdl;
 
 	vty_out(vty, "DSP Version: %u.%u.%u, FPGA Version: %u.%u.%u%s",
 		fl1h->hw_info.dsp_version[0],
@@ -339,13 +353,12 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
-	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+}
 
-	if (fl1h->clk_use_eeprom)
-		vty_out(vty, "  clock-calibration eeprom%s", VTY_NEWLINE);
-	else
-		vty_out(vty, "  clock-calibration %d%s", fl1h->clk_cal,
-			VTY_NEWLINE);
+static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+{
+	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
+
 	if (fl1h->calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
 			fl1h->calib_path, VTY_NEWLINE);
@@ -353,9 +366,14 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
-	if (trx->nominal_power != lc15bts_get_nominal_power(trx))
-		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
-			VTY_NEWLINE);
+}
+
+void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+{
+	struct phy_instance *pinst;
+
+	llist_for_each_entry(pinst, &plink->instances, list)
+		write_phy_inst(vty, pinst);
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
@@ -364,14 +382,14 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	/* runtime-patch the command strings with debug levels */
 	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
-						"trx <0-0> dsp-trace-flag (",
+						"phy <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
 	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
 						TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
 	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
-						"no trx <0-0> dsp-trace-flag (",
+						"no phy <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
 	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
@@ -391,10 +409,14 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
 
-	install_element(TRX_NODE, &cfg_trx_cal_path_cmd);
-	install_element(TRX_NODE, &cfg_trx_min_qual_rach_cmd);
-	install_element(TRX_NODE, &cfg_trx_min_qual_norm_cmd);
-	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_min_qual_rach_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_min_qual_norm_cmd);
 
+	return 0;
+}
+
+int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
+{
 	return 0;
 }

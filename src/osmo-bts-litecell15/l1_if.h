@@ -7,6 +7,8 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/gsm_utils.h>
 
+#include <osmo-bts/phy_link.h>
+
 #include <nrw/litecell15/gsml1prim.h>
 
 enum {
@@ -43,7 +45,7 @@ struct lc15l1_hdl {
 	char *calib_path;
 	struct llist_head wlc_list;
 
-	void *priv;			/* user reference */
+	struct phy_instance *phy_inst;
 
 	struct osmo_timer_list alive_timer;
 	unsigned int alive_prim_cnt;
@@ -58,7 +60,6 @@ struct lc15l1_hdl {
 		uint32_t band_support;
 		uint8_t ver_major;
 		uint8_t ver_minor;
-		uint8_t trx_nr;	// 1 or 2
 	} hw_info;
 
 	struct calib_send_state st;
@@ -77,7 +78,7 @@ int l1if_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 int l1if_gsm_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 		l1if_compl_cb *cb, void *cb_data);
 
-struct lc15l1_hdl *l1if_open(void *priv, int trx_nr);
+struct lc15l1_hdl *l1if_open(struct phy_instance *pinst);
 int l1if_close(struct lc15l1_hdl *hdl);
 int l1if_reset(struct lc15l1_hdl *hdl);
 int l1if_activate_rf(struct lc15l1_hdl *hdl, int on);
@@ -116,6 +117,20 @@ int calib_load(struct lc15l1_hdl *fl1h);
 /* public helpers for test */
 int bts_check_for_ciph_cmd(struct lc15l1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan);
-inline int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
+int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
 			const uint8_t ms_power, const float rxLevel);
+
+static inline struct lc15l1_hdl *trx_lc15l1_hdl(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	OSMO_ASSERT(pinst);
+	return pinst->u.lc15.hdl;
+}
+
+static inline struct gsm_bts_trx *lc15l1_hdl_trx(struct lc15l1_hdl *fl1h)
+{
+	OSMO_ASSERT(fl1h->phy_inst);
+	return fl1h->phy_inst->trx;
+}
+
 #endif /* _L1_IF_H */

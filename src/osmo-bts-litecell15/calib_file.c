@@ -1,6 +1,7 @@
 /* NuRAN Wireless Litecell 1.5 BTS L1 calibration file routines*/
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
  * 
  * Based on sysmoBTS:
  *     (C) 2012 by Harald Welte <laforge@gnumonks.org>
@@ -54,31 +55,31 @@ static const struct calib_file_desc calib_files[] = {
 	{
 		.fname = "calib_rx1a.conf",
 		.rx = 1,
-		.trx = 1,
+		.trx = 0,
 		.rxpath = 0,
 	}, {
 		.fname = "calib_rx1b.conf",
 		.rx = 1,
-		.trx = 1,
+		.trx = 0,
 		.rxpath = 1,
 	}, {
 		.fname = "calib_rx2a.conf",
 		.rx = 1,
-		.trx = 2,
+		.trx = 1,
 		.rxpath = 0,
 	}, {
 		.fname = "calib_rx2b.conf",
 		.rx = 1,
-		.trx = 2,
+		.trx = 1,
 		.rxpath = 1,
 	}, {
 		.fname = "calib_tx1.conf",
 		.rx = 0,
-		.trx = 1,
+		.trx = 0,
 	}, {
 		.fname = "calib_tx2.conf",
 		.rx = 0,
-		.trx = 2,
+		.trx = 1,
 	},
 };
 
@@ -89,10 +90,11 @@ static int calib_file_send(struct lc15l1_hdl *fl1h,
 /* determine next calibration file index based on supported bands */
 static int get_next_calib_file_idx(struct lc15l1_hdl *fl1h, int last_idx)
 {
+	struct phy_link *plink = fl1h->phy_inst->phy_link;
         int i;
 
         for (i = last_idx+1; i < ARRAY_SIZE(calib_files); i++) {
-                if (calib_files[i].trx == fl1h->hw_info.trx_nr)
+                if (calib_files[i].trx == plink->num)
                         return i;
         }
         return -1;

@@ -114,14 +114,3 @@ int lc15bts_select_lc15_band(struct gsm_bts_trx *trx, uint16_t arfcn)
 	/* give up */
 	return -1;
 }
-
-int lc15bts_get_nominal_power(struct gsm_bts_trx *trx)
-{
-	return 37;
-}
-
-struct lc15l1_hdl *trx_lc15l1_hdl(struct gsm_bts_trx *trx)
-{
-        return trx->role_bts.l1h;
-}
-

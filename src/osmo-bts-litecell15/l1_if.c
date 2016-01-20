@@ -1,6 +1,7 @@
 /* Interface handler for NuRAN Wireless Litecell 1.5 L1 */
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
  * 
  * Based on sysmoBTS:
  *     (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
@@ -44,6 +45,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
@@ -583,7 +585,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
 				GsmL1_MphTimeInd_t *time_ind)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct osmo_phsap_prim l1sap;
 	uint32_t fn;
@@ -707,7 +709,7 @@ static int handle_ph_readytosend_ind(struct lc15l1_hdl *fl1,
 				     GsmL1_PhReadyToSendInd_t *rts_ind,
 				     struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
@@ -830,7 +832,7 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
@@ -902,7 +904,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 			    struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
@@ -1022,7 +1024,8 @@ int l1if_handle_l1prim(int wq, struct lc15l1_hdl *fl1h, struct msgb *msg)
 		if (is_prim_compat(l1p, wlc)) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
+				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
+					     wlc->cb_data);
 			else {
 				rc = 0;
 				msgb_free(msg);
@@ -1052,7 +1055,8 @@ int l1if_handle_sysprim(struct lc15l1_hdl *fl1h, struct msgb *msg)
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
 			if (wlc->cb)
-				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
+				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
+					     wlc->cb_data);
 			else {
 				rc = 0;
 				msgb_free(msg);
@@ -1379,7 +1383,7 @@ static int get_hwinfo(struct lc15l1_hdl *fl1h)
 	return 0;
 }
 
-struct lc15l1_hdl *l1if_open(void *priv, int trx_nr)
+struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 {
 	struct lc15l1_hdl *fl1h;
 	int rc;
@@ -1389,21 +1393,18 @@ struct lc15l1_hdl *l1if_open(void *priv, int trx_nr)
 			(LITECELL15_API_VERSION >> 8) & 0xff,
 			 LITECELL15_API_VERSION & 0xff);
 
-	fl1h = talloc_zero(priv, struct lc15l1_hdl);
+	fl1h = talloc_zero(pinst, struct lc15l1_hdl);
 	if (!fl1h)
 		return NULL;
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
-	fl1h->priv = priv;
+	fl1h->phy_inst = pinst;
 	fl1h->clk_cal = 0;
 	fl1h->clk_use_eeprom = 1;
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
 	fl1h->min_qual_norm = MIN_QUAL_NORM;
 
 	get_hwinfo(fl1h);
-
-	/* NTQD: Change how rx_nr is handle in multi-trx */
-	fl1h->hw_info.trx_nr = trx_nr;
 
 	rc = l1if_transport_open(MQ_SYS_WRITE, fl1h);
 	if (rc < 0) {
@@ -1427,3 +1428,21 @@ int l1if_close(struct lc15l1_hdl *fl1h)
 	l1if_transport_close(MQ_SYS_WRITE, fl1h);
 	return 0;
 }
+
+int bts_model_phy_link_open(struct phy_link *plink)
+{
+	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
+
+	OSMO_ASSERT(pinst);
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTING);
+
+	pinst->u.lc15.hdl = l1if_open(pinst);
+	if (!pinst->u.lc15.hdl) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 interface\n");
+		return -EIO;
+	}
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTED);
+}
+

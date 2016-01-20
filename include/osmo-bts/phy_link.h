@@ -91,6 +91,9 @@ struct phy_instance {
 			/* logical transceiver number within one PHY */
 			uint32_t trx_id;
 		} octphy;
+		struct {
+			struct lc15l1_hdl *hdl;
+		} lc15;
 	} u;
 };
 
