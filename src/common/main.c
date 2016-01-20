@@ -1,6 +1,6 @@
 /* Main program for Osmocom BTS */
 
-/* (C) 2011-2015 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2016 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -37,7 +37,6 @@
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
-#include <osmocom/vty/ports.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/gsmtap.h>
 
@@ -58,6 +57,7 @@ static int daemonize = 0;
 static int rt_prio = -1;
 static int trx_num = 1;
 static char *gsmtap_ip = 0;
+extern int g_vty_port_num;
 
 static void print_help()
 {
@@ -275,6 +275,7 @@ int bts_main(int argc, char **argv)
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
 	}
+	btsb = bts_role_bts(bts);
 
 	abis_init(bts);
 
@@ -302,13 +303,13 @@ int bts_main(int argc, char **argv)
 
 	bts_controlif_setup(bts);
 
-	rc = telnet_init(tall_bts_ctx, NULL, OSMO_VTY_PORT_BTS);
+	rc = telnet_init(tall_bts_ctx, NULL, g_vty_port_num);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
 	}
 
-	if (pcu_sock_init()) {
+	if (pcu_sock_init(btsb->pcu.sock_path)) {
 		fprintf(stderr, "PCU L1 socket failed\n");
 		exit(1);
 	}
@@ -319,7 +320,6 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	btsb = bts_role_bts(bts);
 	if (!btsb->bsc_oml_host) {
 		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
 		exit(1);

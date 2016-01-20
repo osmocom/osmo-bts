@@ -809,7 +809,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	return 0;
 }
 
-int pcu_sock_init(void)
+int pcu_sock_init(const char *path)
 {
 	struct pcu_sock_state *state;
 	struct osmo_fd *bfd;
@@ -825,7 +825,7 @@ int pcu_sock_init(void)
 
 	bfd = &state->listen_bfd;
 
-	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, "/tmp/pcu_bts");
+	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, path);
 	if (rc < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Could not create unix socket: %s\n",
 			strerror(errno));

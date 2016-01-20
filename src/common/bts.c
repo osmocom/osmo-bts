@@ -40,6 +40,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
@@ -117,6 +118,7 @@ int bts_init(struct gsm_bts *bts)
 	btsb->t3105_ms = 300;
 	btsb->min_qual_rach = MIN_QUAL_RACH;
 	btsb->min_qual_norm = MIN_QUAL_NORM;
+	btsb->pcu.sock_path = talloc_strdup(btsb, PCU_SOCK_DEFAULT);
 	for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
 		btsb->t200_ms[i] = oml_default_t200_ms[i];
 

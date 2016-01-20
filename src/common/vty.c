@@ -33,6 +33,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/misc.h>
+#include <osmocom/vty/ports.h>
 #include <osmocom/core/gsmtap.h>
 
 #include <osmocom/trau/osmo_ortp.h>
@@ -47,9 +48,14 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
+
+#define VTY_STR	"Configure the VTY\n"
+
+int g_vty_port_num = OSMO_VTY_PORT_BTS;
 
 struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_nr)
 {
@@ -298,6 +304,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " min-qual-norm %.0f%s", btsb->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
+	if (strcmp(btsb->pcu.sock_path, PCU_SOCK_DEFAULT))
+		vty_out(vty, " pcu-socket %s%s", btsb->pcu.sock_path, VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -367,6 +375,15 @@ static int config_write_phy(struct vty *vty)
 
 static int config_write_dummy(struct vty *vty)
 {
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_vty_telnet_port, cfg_vty_telnet_port_cmd,
+	"vty telnet-port <0-65535>",
+	VTY_STR "Set the VTY telnet port\n"
+	"TCP Port number\n")
+{
+	g_vty_port_num = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -582,6 +599,23 @@ DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	btsb->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
+	"pcu-socket PATH",
+	"Configure the PCU socket file/path name\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	if (btsb->pcu.sock_path) {
+		/* FIXME: close the interface? */
+		talloc_free(btsb->pcu.sock_path);
+	}
+	btsb->pcu.sock_path = talloc_strdup(btsb, argv[0]);
+	/* FIXME: re-open the interface? */
 
 	return CMD_SUCCESS;
 }
@@ -1043,6 +1077,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
+	install_element(CONFIG_NODE, &cfg_vty_telnet_port_cmd);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
@@ -1058,6 +1093,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
+	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
