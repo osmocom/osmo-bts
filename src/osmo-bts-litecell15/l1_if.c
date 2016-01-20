@@ -1400,7 +1400,6 @@ struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 
 	fl1h->phy_inst = pinst;
 	fl1h->clk_cal = 0;
-	fl1h->clk_use_eeprom = 1;
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
 	fl1h->min_qual_norm = MIN_QUAL_NORM;
 	fl1h->dsp_trace_f = pinst->u.lc15.dsp_trace_f;
