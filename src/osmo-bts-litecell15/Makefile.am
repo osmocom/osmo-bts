@@ -9,13 +9,13 @@ EXTRA_DIST = misc/lc15bts_mgr.h misc/lc15bts_misc.h misc/lc15bts_par.h \
 	misc/lc15bts_bid.h misc/lc15bts_nl.h femtobts.h hw_misc.h \
 	l1_if.h l1_transp.h utils.h oml_router.h
 
-bin_PROGRAMS = lc15bts lc15bts-mgr lc15bts-util
+bin_PROGRAMS = osmo-bts-lc15 lc15bts-mgr lc15bts-util
 
 COMMON_SOURCES = main.c lc15bts.c l1_if.c oml.c lc15bts_vty.c tch.c hw_misc.c calib_file.c \
 		 utils.c misc/lc15bts_par.c misc/lc15bts_bid.c oml_router.c
 
-lc15bts_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
-lc15bts_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
+osmo_bts_lc15_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
+osmo_bts_lc15_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
 
 lc15bts_mgr_SOURCES = \
 		misc/lc15bts_mgr.c misc/lc15bts_misc.c \
