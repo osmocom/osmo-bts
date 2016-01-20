@@ -67,28 +67,6 @@ static struct gsm_bts *vty_bts;
 
 /* configuration */
 
-DEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
-	"auto-band",
-	"Automatically select band for ARFCN based on configured band\n")
-{
-	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	btsb->auto_band = 1;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
-	"no auto-band",
-	NO_STR "Automatically select band for ARFCN based on configured band\n")
-{
-	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	btsb->auto_band = 0;
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_phy_cal_path, cfg_phy_cal_path_cmd,
 	"trx-calibration-path PATH",
 	"Set the path name to TRX calibration data\n" "Path name\n")
@@ -323,10 +301,6 @@ DEFUN(no_loopback, no_loopback_cmd,
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	if (btsb->auto_band)
-		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)

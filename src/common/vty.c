@@ -183,6 +183,28 @@ static struct cmd_node trx_node = {
 	1,
 };
 
+gDEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
+	"auto-band",
+	"Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 1;
+	return CMD_SUCCESS;
+}
+
+gDEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
+	"no auto-band",
+	NO_STR "Automatically select band for ARFCN based on configured band\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->auto_band = 0;
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	"trx <0-254>",
@@ -243,6 +265,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->description)
 		vty_out(vty, " description %s%s", bts->description, VTY_NEWLINE);
 	vty_out(vty, " band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
+	if (btsb->auto_band)
+		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
