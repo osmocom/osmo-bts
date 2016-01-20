@@ -37,7 +37,6 @@ struct lc15l1_hdl {
 	struct gsm_time gsm_time;
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;			/* currently operational DSP trace flags */
-	int clk_cal;
 	struct llist_head wlc_list;
 
 	struct phy_instance *phy_inst;

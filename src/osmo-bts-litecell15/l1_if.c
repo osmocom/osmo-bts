@@ -1396,7 +1396,6 @@ struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	fl1h->phy_inst = pinst;
-	fl1h->clk_cal = 0;
 	fl1h->dsp_trace_f = pinst->u.lc15.dsp_trace_f;
 
 	get_hwinfo(fl1h);
