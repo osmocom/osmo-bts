@@ -1142,10 +1142,10 @@ int l1if_activate_rf(struct lc15l1_hdl *hdl, int on)
 		sysp->id = Litecell15_PrimId_ActivateRfReq;
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = pcu_direct;
-		
+
 		sysp->u.activateRfReq.u8UnusedTsMode = 0;
 		sysp->u.activateRfReq.u8McCorrMode = 0;
-		
+
 		/* maximum cell size in quarter-bits, 90 == 12.456 km */
 		sysp->u.activateRfReq.u8MaxCellSize = 90;
 	} else {

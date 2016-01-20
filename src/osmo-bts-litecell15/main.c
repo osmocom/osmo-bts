@@ -128,7 +128,7 @@ void bts_update_status(enum bts_global_status which, int on)
 void bts_model_print_help()
 {
 	printf( "  -p	--dsp-trace	Set DSP trace flags\n"
-		"  -w	--hw-version	Print the targeted HW Version\n"		
+		"  -w	--hw-version	Print the targeted HW Version\n"
 		"  -M	--pcu-direct	Force PCU to access message queue for "
 			"PDCH dchannel directly\n"
 		);
@@ -141,7 +141,7 @@ static void print_hwversion()
 	static char model_name[64] = {0, };
 
 	snprintf(model_name, sizeof(model_name), "NuRAN Litecell 1.5 BTS");
-	
+
 	rev = lc15bts_rev_get();
 	if (rev >= 0) {
 		snprintf(model_name, sizeof(model_name), "%s Rev %c", 
@@ -153,7 +153,7 @@ static void print_hwversion()
 		snprintf(model_name, sizeof(model_name), "%s (%05X)", 
 			model_name, model);
 	}
-	
+
 	printf(model_name);
 }
 

@@ -217,16 +217,16 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		LOGP(DL1C, LOGL_ERROR, "L1 rejected calibration table\n");
 
 		msgb_free(l1_msg);
-	
+
 		calib_file_close(fl1h);
-	
+
 		/* Skip this one and try the next one */
 		st->last_file_idx = get_next_calib_file_idx(fl1h, st->last_file_idx);
 	        if (st->last_file_idx >= 0) {
         	        return calib_file_send(fl1h, 
 					&calib_files[st->last_file_idx]);
 		}
-	
+
 		LOGP(DL1C, LOGL_INFO, "L1 calibration table loading complete!\n");
 		return 0;
 	}
@@ -252,7 +252,7 @@ int calib_load(struct lc15l1_hdl *fl1h)
 		return -1;
 	}
 	st->last_file_idx = rc;
-	
+
 	return calib_file_send(fl1h, &calib_files[st->last_file_idx]);
 }
 

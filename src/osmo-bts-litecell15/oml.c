@@ -355,7 +355,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (Band %d, ARFCN %u, TSC %u, RxPower % 2f dBm, "
 		"TxPower % 2.2f dBm\n", dev_par->freqBand, dev_par->u16Arfcn, dev_par->u8NbTsc,
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
-	
+
 	/* send MPH-INIT-REQ, wait for MPH-INIT-CNF */
 	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb, NULL);
 }
@@ -428,7 +428,7 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConnectReq, fl1h);
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[ts->pchan];
-	
+
 	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, NULL);
 }
 
