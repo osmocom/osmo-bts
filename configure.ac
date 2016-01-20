@@ -73,8 +73,19 @@ AC_ARG_ENABLE(litecell15,
 		AC_HELP_STRING([--enable-litecell15],
 				[enable code for NuRAN Wireless Litecell15 bts [default=no]]),
 		[enable_litecell15="yes"],[enable_litecell15="no"])
+AC_ARG_WITH([litecell15], [AS_HELP_STRING([--with-litecell15=INCLUDE_DIR], [Location of the litecell 1.5 API header files])],
+			 [litecell15_incdir="$withval"],[litecell15_incdir="$incdir"])
+AC_SUBST([LITECELL15_INCDIR], $litecell15_incdir)
 AC_MSG_RESULT([$enable_litecell15])
 AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15" = "xyes")
+if test "$enable_litecell15" = "yes"; then
+	oldCPPFLAGS=$CPPFLAGS
+	CPPFLAGS="$CPPFLAGS -I$LITECELL15_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
+	AC_CHECK_HEADER([nrw/litecell15/litecell15.h],[],
+			[AC_MSG_ERROR([nrw/litecell15/litecell15.h can not be found in $litecell15_incdir])],
+			[#include <nrw/litecell15/litecell15.h>])
+	CPPFLAGS=$oldCPPFLAGS
+fi
 
 # We share gsm_data.h with OpenBSC and need to be pointed to the source
 # directory of OpenBSC for now.
