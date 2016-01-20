@@ -255,8 +255,7 @@ int l1if_transport_open(int q, struct lc15l1_hdl *hdl)
 	rc = open(buf, O_RDONLY);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue %s: %s\n",
-			rd_devnames[q],
-			strerror(errno));
+			buf, strerror(errno));
 		return rc;
 	}
 	read_ofd->fd = rc;
@@ -277,8 +276,7 @@ int l1if_transport_open(int q, struct lc15l1_hdl *hdl)
 	rc = open(buf, O_WRONLY);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue %s: %s\n",
-			wr_devnames[q],
-			strerror(errno));
+			buf, strerror(errno));
 		goto out_read;
 	}
 	osmo_wqueue_init(wq, 10);
