@@ -1437,6 +1437,8 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		return -EIO;
 	}
 
+	l1if_reset(pinst->u.lc15.hdl);
+
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 }
 

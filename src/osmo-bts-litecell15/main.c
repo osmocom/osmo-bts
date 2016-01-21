@@ -93,10 +93,6 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_oml_estab(struct gsm_bts *bts)
 {
-	struct lc15l1_hdl *fl1h = bts->c0->role_bts.l1h;
-
-	l1if_reset(fl1h);
-
 	return 0;
 }
 
