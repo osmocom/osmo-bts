@@ -62,6 +62,7 @@
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	struct gsm_bts_trx *trx;
 	struct gsm_bts_role_bts *btsb;
 	struct stat st;
 	static struct osmo_fd accept_fd, read_fd;
@@ -77,8 +78,10 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(1);
 	}
 
-	bts->c0->nominal_power = 37;
-	bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(bts->c0->nominal_power);
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		trx->nominal_power = 37;
+		trx->power_params.trx_p_max_out_mdBm = to_mdB(bts->c0->nominal_power);
+	}
 
 	if (stat(LC15BTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
