@@ -6,8 +6,8 @@ COMMON_LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOS
 
 EXTRA_DIST = misc/lc15bts_mgr.h misc/lc15bts_misc.h misc/lc15bts_par.h \
 	misc/lc15bts_temp.h misc/lc15bts_power.h misc/lc15bts_clock.h \
-	misc/lc15bts_bid.h misc/lc15bts_nl.h femtobts.h hw_misc.h \
-	l1_if.h l1_transp.h utils.h oml_router.h
+	misc/lc15bts_bid.h misc/lc15bts_nl.h \
+	hw_misc.h l1_if.h l1_transp.h lc15bts.h oml_router.h utils.h
 
 bin_PROGRAMS = osmo-bts-lc15 lc15bts-mgr lc15bts-util
 
