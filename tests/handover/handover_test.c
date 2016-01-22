@@ -40,7 +40,6 @@ static struct gsm_bts *bts;
 struct gsm_bts_trx *trx;
 int quit = 0;
 uint8_t abis_mac[6] = { 0, 1, 2, 3, 4, 5 };
-const int pcu_direct = 0;
 int modify_count = 0;
 
 static void expect_phys_info(struct lapdm_entity *le)

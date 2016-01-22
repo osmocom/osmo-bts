@@ -101,5 +101,12 @@ struct ctrl_handle *bts_controlif_setup(struct gsm_bts *bts)
 		return NULL;
 	}
 
+	rc = bts_model_ctrl_cmds_install(bts);
+	if (rc) {
+		/* FIXME: cleanup generic control commands */
+		/* FIXME: close control interface */
+		return NULL;
+	}
+
 	return hdl;
 }

@@ -5,8 +5,6 @@
  * If we ever want to re-define such a symbol we can make them weak
  * here.
  */
-int pcu_direct = 0;
-
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			    void *obj, uint8_t adm_state)
 { return 0; }

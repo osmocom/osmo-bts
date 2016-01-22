@@ -261,7 +261,7 @@ static int verify_clock_corr(struct ctrl_cmd *cmd, const char *value, void *data
 }
 #endif /* HW_SYSMOBTS_V1 */
 
-int sysmobts_ctrlif_inst_cmds(void)
+int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
 {
 	int rc = 0;
 

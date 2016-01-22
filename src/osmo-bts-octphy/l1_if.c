@@ -688,7 +688,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	struct gsm_bts_role_bts *btsb;
 	struct octphy_hdl *fl1h;
+
+	LOGP(DL1C, LOGL_NOTICE, "model_init()\n");
+
+	btsb = bts_role_bts(bts);
+	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
 	fl1h = talloc_zero(bts, struct octphy_hdl);
 	if (!fl1h)

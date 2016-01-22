@@ -29,8 +29,6 @@
 
 #include <stdio.h>
 
-int pcu_direct = 0;
-
 static int direct_map[][3] = {
 	{ GSM_BAND_850,		GsmL1_FreqBand_850,	128	},
 	{ GSM_BAND_900,		GsmL1_FreqBand_900,	1	},

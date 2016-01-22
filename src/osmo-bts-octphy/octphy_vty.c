@@ -223,3 +223,16 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	return 0;
 }
+
+int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
+{
+	/* FIXME: really ugly hack: We can only initialize the L1 intrface
+	 * after reading the config file, and this is the only call-back after
+	 * vty_read_config_fioe() at this point.  Will be cleaned up with the
+	 * phy interface generalization patches coming up soon as part of the
+	 * multi-trx work */
+	struct octphy_hdl *fl1h = bts->c0->role_bts.l1h;
+	l1if_open(fl1h);
+
+	return 0;
+}
