@@ -134,6 +134,12 @@ static void sign_link_down(struct e1inp_line *line)
 	struct gsm_bts_trx *trx;
 	LOGP(DABIS, LOGL_ERROR, "Signalling link down\n");
 
+	/* First remove the OML signalling link */
+	if (g_bts->oml_link)
+		e1inp_sign_link_destroy(g_bts->oml_link);
+	g_bts->oml_link = NULL;
+
+	/* Then iterate over the RSL signalling links */
 	llist_for_each_entry(trx, &g_bts->trx_list, list) {
 		if (trx->rsl_link) {
 			e1inp_sign_link_destroy(trx->rsl_link);
@@ -141,10 +147,6 @@ static void sign_link_down(struct e1inp_line *line)
 			trx_link_estab(trx);
 		}
 	}
-
-	if (g_bts->oml_link)
-		e1inp_sign_link_destroy(g_bts->oml_link);
-	g_bts->oml_link = NULL;
 
 	bts_model_abis_close(g_bts);
 }
