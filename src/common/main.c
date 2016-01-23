@@ -329,4 +329,6 @@ int bts_main(int argc, char **argv)
 		log_reset_context();
 		osmo_select_main(0);
 	}
+
+	return EXIT_SUCCESS;
 }
