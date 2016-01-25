@@ -536,10 +536,25 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* 9.4.53 T200 */
 	if (TLVP_PRESENT(&tp, NM_ATT_T200)) {
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
-		for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
-			btsb->t200_ms[i] = payload[i] * abis_nm_t200_mult[i];
+		for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++) {
+			uint32_t t200_ms = payload[i] * abis_nm_t200_mult[i];
+#if 0
+			btsb->t200_ms[i] = t200_ms;
+			DEBUGP(DOML, "T200[%u]: OML=%u, mult=%u => %u ms\n",
+				i, payload[i], abis_nm_t200_mult[i],
+				btsb->t200_ms[i]);
+#else
+			/* we'd rather use the 1s/2s (long) defaults by
+			 * libosmocore, as we appear to have some bug(s)
+			 * related to handling T200 expiration in
+			 * libosmogsm lapd(m) code? */
+			LOGP(DOML, LOGL_NOTICE, "Ignoring T200[%u] (%u ms) "
+				"as sent by BSC due to suspected LAPDm bug!\n",
+				i, t200_ms);
+#endif
+		}
 	}
-	
+
 	/* 9.4.31 Maximum Timing Advance */
 	if (TLVP_PRESENT(&tp, NM_ATT_MAX_TA))
 		btsb->max_ta = *TLVP_VAL(&tp, NM_ATT_MAX_TA);
