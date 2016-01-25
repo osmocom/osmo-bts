@@ -441,6 +441,10 @@ int oml_set_lchan_t200(struct gsm_lchan *lchan)
 		return -1;
 	}
 
+	DEBUGP(DLLAPD, "%s: Setting T200 D0=%u, D3=%u, S0=%u, S3=%u"
+		"(all in ms)\n", gsm_lchan_name(lchan), t200_dcch,
+		t200_dcch_sapi3, t200_acch, t200_acch_sapi3);
+
 	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI0], t200_dcch);
 	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI3], t200_dcch_sapi3);
 	dl_set_t200(&lc->lapdm_acch.datalink[DL_SAPI0], t200_acch);
