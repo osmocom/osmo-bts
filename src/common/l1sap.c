@@ -113,6 +113,7 @@ static int l1sap_tx_ciph_req(struct gsm_bts_trx *trx, uint8_t chan_nr,
 static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 	uint8_t chan_nr)
 {
+	uint8_t n_s;
 
 	/* only do this if we are in the right state */
 	switch (lchan->ciph_state) {
@@ -133,9 +134,20 @@ static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 	if ((msg->data[4] & 0x3F) != GSM48_MT_RR_CIPH_M_CMD)
 		return 0;
 
+	/* Remember N(S) + 1 to find the first ciphered frame */
+	n_s = (msg->data[1] >> 1) & 0x7;
+	lchan->ciph_ns = (n_s + 1) % 8;
+
 	l1sap_tx_ciph_req(lchan->ts->trx, chan_nr, 0, 1);
 
 	return 1;
+}
+
+/* public helpers for the test */
+int bts_check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
+			   uint8_t chan_nr)
+{
+	return check_for_ciph_cmd(msg, lchan, chan_nr);
 }
 
 struct gsmtap_inst *gsmtap = NULL;

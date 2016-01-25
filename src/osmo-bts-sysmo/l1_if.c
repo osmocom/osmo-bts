@@ -232,51 +232,6 @@ empty_req_from_rts_ind(GsmL1_Prim_t *l1p,
 	return empty_req;
 }
 
-/* check if the message is a GSM48_MT_RR_CIPH_M_CMD, and if yes, enable
- * uni-directional de-cryption on the uplink. We need this ugly layering
- * violation as we have no way of passing down L3 metadata (RSL CIPHERING CMD)
- * to this point in L1 */
-static int check_for_ciph_cmd(struct femtol1_hdl *fl1h,
-			      struct msgb *msg, struct gsm_lchan *lchan)
-{
-	uint8_t n_s;
-
-	/* only do this if we are in the right state */
-	switch (lchan->ciph_state) {
-	case LCHAN_CIPH_NONE:
-	case LCHAN_CIPH_RX_REQ:
-		break;
-	default:
-		return 0;
-	}
-
-	/* First byte (Address Field) of LAPDm header) */
-	if (msg->data[0] != 0x03)
-		return 0;
-	/* First byte (protocol discriminator) of RR */
-	if ((msg->data[3] & 0xF) != GSM48_PDISC_RR)
-		return 0;
-	/* 2nd byte (msg type) of RR */
-	if ((msg->data[4] & 0x3F) != GSM48_MT_RR_CIPH_M_CMD)
-		return 0;
-
-	/* Remember N(S) + 1 to find the first ciphered frame */
-	n_s = (msg->data[1] >> 1) & 0x7;
-	lchan->ciph_ns = (n_s + 1) % 8;
-
-	lchan->ciph_state = LCHAN_CIPH_RX_REQ;
-	l1if_set_ciphering(fl1h, lchan, 0);
-
-	return 1;
-}
-
-/* public helpers for the test */
-int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
-			      struct msgb *msg, struct gsm_lchan *lchan)
-{
-	return check_for_ciph_cmd(fl1h, msg, lchan);
-}
-
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 	0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
 	0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
