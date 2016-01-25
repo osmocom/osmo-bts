@@ -394,13 +394,13 @@ static const uint8_t abis_nm_t200_mult[] = {
 /* the below defaults correpsond to the libocmocore default of 1s for
  * DCCH and 2s for ACCH. The BSC should overried this via OML anyway. */
 const unsigned int oml_default_t200_ms[7] = {
-	[T200_SDCCH]		= 1000/5,
-	[T200_FACCH_F]		= 1000/5,
-	[T200_FACCH_H]		= 1000/5,
-	[T200_SACCH_TCH_SAPI0]	= 2000/10,
-	[T200_SACCH_SDCCH]	= 2000/10,
-	[T200_SDCCH_SAPI3]	= 1000/5,
-	[T200_SACCH_TCH_SAPI3]	= 2000/10,
+	[T200_SDCCH]		= 1000,
+	[T200_FACCH_F]		= 1000,
+	[T200_FACCH_H]		= 1000,
+	[T200_SACCH_TCH_SAPI0]	= 2000,
+	[T200_SACCH_SDCCH]	= 2000,
+	[T200_SDCCH_SAPI3]	= 1000,
+	[T200_SACCH_TCH_SAPI3]	= 2000,
 };
 
 static void dl_set_t200(struct lapdm_datalink *dl, unsigned int t200_msec)
