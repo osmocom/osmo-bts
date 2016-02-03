@@ -471,7 +471,7 @@ static int set_ciph_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 	}
 
 	OSMO_ASSERT(pcr->TrxId.byTrxId == trx->nr);
-	ts = &trx->ts[pcr->TrxId.byTrxId];
+	ts = &trx->ts[pcr->PchId.byTimeslotNb];
 	/* for some strange reason the response does not tell which
 	 * sub-channel, only th request contains this information :( */
 	lchan = &ts->lchan[(unsigned long) data];
