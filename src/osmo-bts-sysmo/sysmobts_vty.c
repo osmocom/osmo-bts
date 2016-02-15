@@ -305,7 +305,7 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 		return CMD_WARNING;
 	}
 	pinst = phy_instance_by_num(plink, inst_nr);
-	if (!plink) {
+	if (!pinst) {
 		vty_out(vty, "Cannot find PHY instance %u%s",
 			phy_nr, VTY_NEWLINE);
 		return CMD_WARNING;
