@@ -137,7 +137,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 {
 	uint8_t tn;
-	int i;
+	unsigned int i;
 
 	l1t->trx = trx;
 
