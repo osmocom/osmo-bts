@@ -38,6 +38,7 @@
 #include <osmocom/core/socket.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/bts_model.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
@@ -108,6 +109,17 @@ osmocom_to_octphy_band(enum gsm_band osmo_band, unsigned int arfcn)
 		return -EINVAL;
 	}
 };
+
+struct gsm_bts_trx *trx_by_l1h(struct octphy_hdl *fl1h, unsigned int trx_id)
+{
+	struct phy_instance *pinst;
+
+	pinst = phy_instance_by_num(fl1h->phy_link, trx_id);
+	if (!pinst)
+		return NULL;
+
+	return pinst->trx;
+}
 
 struct gsm_lchan *get_lchan_by_lchid(struct gsm_bts_trx *trx,
 				tOCTVC1_GSM_LOGICAL_CHANNEL_ID *lch_id)
@@ -282,10 +294,9 @@ int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
 }
 
 /* For OctPHY, this only about sending state changes to BSC */
-int l1if_activate_rf(struct octphy_hdl *fl1h, int on)
+int l1if_activate_rf(struct gsm_bts_trx *trx, int on)
 {
 	int i;
-	struct gsm_bts_trx *trx = fl1h->priv;
 	if (on) {
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
@@ -422,7 +433,8 @@ static void empty_req_from_rts_ind(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_E
 static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			struct osmo_phsap_prim *l1sap)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *l1msg = l1p_msgb_alloc();
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, sapi = 0;
@@ -489,7 +501,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		l1if_fill_msg_hdr(&data_req->Header, l1msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CID);
 
-		data_req->TrxId.byTrxId = trx->nr;
+		data_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
 		data_req->LchId.byTimeslotNb = u8Tn;
 		data_req->LchId.bySAPI = sapi;
 		data_req->LchId.bySubChannelNb = subCh;
@@ -508,7 +520,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		l1if_fill_msg_hdr(&empty_frame_req->Header, l1msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CID);
 
-		empty_frame_req->TrxId.byTrxId = trx->nr;
+		empty_frame_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
 		empty_frame_req->LchId.byTimeslotNb = u8Tn;
 		empty_frame_req->LchId.bySAPI = sapi;
 		empty_frame_req->LchId.bySubChannelNb = subCh;
@@ -527,7 +539,8 @@ done:
 static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		      struct osmo_phsap_prim *l1sap)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct gsm_lchan *lchan;
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, sapi, ss;
@@ -565,7 +578,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		l1if_fill_msg_hdr(&data_req->Header, nmsg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CID);
 
-		data_req->TrxId.byTrxId = trx->nr;
+		data_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
 		data_req->LchId.byTimeslotNb = u8Tn;
 		data_req->LchId.bySAPI = sapi;
 		data_req->LchId.bySubChannelNb = subCh;
@@ -590,7 +603,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		l1if_fill_msg_hdr(&empty_frame_req->Header, nmsg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CID);
 
-		empty_frame_req->TrxId.byTrxId = trx->nr;
+		empty_frame_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
 		empty_frame_req->LchId.byTimeslotNb = u8Tn;
 		empty_frame_req->LchId.bySAPI = sapi;
 		empty_frame_req->LchId.bySubChannelNb = subCh;
@@ -686,31 +699,77 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	return rc;
 }
 
+static int trx_close_all_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
+{
+	tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *car =
+		(tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
+	mOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP_SWAP(car);
+
+	/* we now know that the PHY link is connected */
+	phy_link_state_set(fl1->phy_link, PHY_LINK_CONNECTED);
+
+	msgb_free(resp);
+
+	return 0;
+}
+
+static int phy_link_trx_close_all(struct phy_link *plink)
+{
+	struct octphy_hdl *fl1h = plink->u.octphy.hdl;
+	struct msgb *msg = l1p_msgb_alloc();
+	tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD *cac;
+
+	cac = (tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD *)
+				msgb_put(msg, sizeof(*cac));
+	l1if_fill_msg_hdr(&cac->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
+			  cOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CID);
+
+	mOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD_SWAP(cac);
+
+	return l1if_req_compl(fl1h, msg, trx_close_all_cb, NULL);
+}
+
+int bts_model_phy_link_open(struct phy_link *plink)
+{
+	if (plink->u.octphy.hdl)
+		l1if_close(plink->u.octphy.hdl);
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTING);
+
+	plink->u.octphy.hdl = l1if_open(plink);
+	if (!plink->u.octphy.hdl) {
+		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+		return -1;
+	}
+
+	/* do we need to iterate over the list of instances and do some
+	 * instance-specific initialization? */
+
+	/* close all TRXs that might still exist in this link from
+	 * previous execitions / sessions */
+	phy_link_trx_close_all(plink);
+
+	/* in the call-back to the above we will set the link state to
+	 * connected */
+
+	return 0;
+}
+
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
-	struct octphy_hdl *fl1h;
 
 	LOGP(DL1C, LOGL_NOTICE, "model_init()\n");
 
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
-	fl1h = talloc_zero(bts, struct octphy_hdl);
-	if (!fl1h)
-		return -ENOMEM;
-
-	INIT_LLIST_HEAD(&fl1h->wlc_list);
-	INIT_LLIST_HEAD(&fl1h->wlc_postponed);
-	fl1h->priv = bts->c0;
-	bts->c0->role_bts.l1h = fl1h;
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;
-
-	/* configure some reasonable defaults, to be overridden by VTY */
-	fl1h->config.rf_port_index = 0;
-	fl1h->config.rx_gain_db = 70;
-	fl1h->config.tx_atten_db = 0;
 
 	bts_model_vty_init(bts);
 
@@ -750,23 +809,15 @@ static void dump_meas_res(int ll, tOCTVC1_GSM_MEASUREMENT_INFO * m)
 
 static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t fn)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
-	struct gsm_bts *bts = trx->bts;
+	struct gsm_bts_trx *trx = trx_by_l1h(fl1, trx_id);
 	struct osmo_phsap_prim l1sap;
 
 	/* increment the primitive count for the alive timer */
 	fl1->alive_prim_cnt++;
 
 	/* ignore every time indication, except for c0 */
-	if (trx != bts->c0)
+	if (trx != trx->bts->c0)
 		return 0;
-
-	if (trx_id != trx->nr) {
-		LOGP(DL1C, LOGL_FATAL,
-		     "TRX id %d from response does not match the L1 context trx %d\n",
-		     trx_id, trx->nr);
-		return 0;
-	}
 
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
@@ -783,7 +834,7 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 	tOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_READY_TO_SEND_INDICATION_EVT *evt,
 	struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = trx_by_l1h(fl1, evt->TrxId.byTrxId);
 	struct gsm_bts *bts = trx->bts;
 	struct osmo_phsap_prim *l1sap;
 	struct gsm_time g_time;
@@ -908,7 +959,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 		tOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_DATA_INDICATION_EVT *data_ind,
 		struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = trx_by_l1h(fl1, data_ind->TrxId.byTrxId);
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
@@ -992,7 +1043,7 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 		tOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_RACH_INDICATION_EVT *ra_ind,
 		struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = trx_by_l1h(fl1, ra_ind->TrxId.byTrxId);
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm_lchan *lchan;
@@ -1131,7 +1182,7 @@ static int rx_octvc1_resp(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 			if (wlc->cb) {
 				/* call-back function must take msgb
 				 * ownership. */
-				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
+				rc = wlc->cb(fl1h, msg, wlc->cb_data);
 			} else {
 				rc = 0;
 				msgb_free(msg);
@@ -1485,6 +1536,18 @@ static int rx_octphy_msg(struct msgb *msg)
 	return rc;
 }
 
+void bts_model_phy_link_set_defaults(struct phy_link *plink)
+{
+	/* configure some reasonable defaults, to be overridden by VTY */
+	plink->u.octphy.rf_port_index = 0;
+	plink->u.octphy.rx_gain_db = 70;
+	plink->u.octphy.tx_atten_db = 0;
+}
+
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
+{
+}
+
 /***********************************************************************
  * octphy socket / main loop integration
  ***********************************************************************/
@@ -1534,15 +1597,25 @@ static int octphy_write_cb(struct osmo_fd *fd, struct msgb *msg)
 	return rc;
 }
 
-int l1if_open(struct octphy_hdl *fl1h)
+struct octphy_hdl *l1if_open(struct phy_link *plink)
 {
+	struct octphy_hdl *fl1h;
 	struct ifreq ifr;
 	int sfd, rc;
-	char *phy_dev = fl1h->netdev_name;
+	char *phy_dev = plink->u.octphy.netdev_name;
+
+	fl1h = talloc_zero(plink, struct octphy_hdl);
+	if (!fl1h)
+		return NULL;
+
+	INIT_LLIST_HEAD(&fl1h->wlc_list);
+	INIT_LLIST_HEAD(&fl1h->wlc_postponed);
+	fl1h->phy_link = plink;
 
 	if (!phy_dev) {
 		LOGP(DL1C, LOGL_ERROR, "You have to specify a phy-netdev\n");
-		return -EINVAL;
+		talloc_free(fl1h);
+		return NULL;
 	}
 
 	LOGP(DL1C, LOGL_NOTICE, "Opening L1 interface for OctPHY (%s)\n",
@@ -1553,7 +1626,8 @@ int l1if_open(struct octphy_hdl *fl1h)
 	if (sfd < 0) {
 		LOGP(DL1C, LOGL_FATAL, "Error opening PHY socket: %s\n",
 			strerror(errno));
-		return -EIO;
+		talloc_free(fl1h);
+		return NULL;
 	}
 
 	/* resolve the string device name to an ifindex */
@@ -1564,18 +1638,21 @@ int l1if_open(struct octphy_hdl *fl1h)
 		LOGP(DL1C, LOGL_FATAL, "Error using network device %s: %s\n",
 			phy_dev, strerror(errno));
 		close(sfd);
-		return -EIO;
+		talloc_free(fl1h);
+		return NULL;
 	}
 
 	fl1h->session_id = rand();
 
-	/* set fl1h->phy_addr, which we use as sendto() destionation */
+	/* set fl1h->phy_addr, which we use as sendto() destination */
 	fl1h->phy_addr.sll_family = AF_PACKET;
 	fl1h->phy_addr.sll_protocol = htons(cOCTPKT_HDR_ETHERTYPE);
 	fl1h->phy_addr.sll_ifindex = ifr.ifr_ifindex;
 	fl1h->phy_addr.sll_hatype = ARPHRD_ETHER;
-	fl1h->phy_addr.sll_halen = 6;
-	/* sll_addr is filled by bts_model_vty code */
+	fl1h->phy_addr.sll_halen = ETH_ALEN;
+	/* plink->phy_addr.sll_addr is filled by bts_model_vty code */
+	memcpy(fl1h->phy_addr.sll_addr, plink->u.octphy.phy_addr.sll_addr,
+		ETH_ALEN);
 
 	/* Write queue / osmo_fd registration */
 	osmo_wqueue_init(&fl1h->phy_wq, 10);
@@ -1588,10 +1665,11 @@ int l1if_open(struct octphy_hdl *fl1h)
 	rc = osmo_fd_register(&fl1h->phy_wq.bfd);
 	if (rc < 0) {
 		close(sfd);
-		return -EIO;
+		talloc_free(fl1h);
+		return NULL;
 	}
 
-	return 0;
+	return fl1h;
 }
 
 int l1if_close(struct octphy_hdl *fl1h)

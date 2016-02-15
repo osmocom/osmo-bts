@@ -8,6 +8,9 @@
 
 #include <osmo-bts/gsm_data.h>
 
+struct phy_link;
+struct phy_instance;
+
 /* BTS model specific functions needed by the common code */
 
 int bts_model_init(struct gsm_bts *bts);
@@ -32,6 +35,8 @@ int bts_model_vty_init(struct gsm_bts *bts);
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts);
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx);
+void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink);
+void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst);
 
 int bts_model_oml_estab(struct gsm_bts *bts);
 
@@ -46,5 +51,8 @@ int bts_model_ctrl_cmds_install(struct gsm_bts *bts);
 
 int bts_model_handle_options(int argc, char **argv);
 void bts_model_print_help();
+
+void bts_model_phy_link_set_defaults(struct phy_link *plink);
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst);
 
 #endif

@@ -7,6 +7,8 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/gsm/gsm_utils.h>
 
+#include <osmo-bts/phy_link.h>
+
 #include <sysmocom/femtobts/gsml1prim.h>
 
 enum {
@@ -52,7 +54,7 @@ struct femtol1_hdl {
 	char *calib_path;
 	struct llist_head wlc_list;
 
-	void *priv;			/* user reference */
+	struct phy_instance *phy_inst;		/* Reference to PHY instance */
 
 	struct osmo_timer_list alive_timer;
 	unsigned int alive_prim_cnt;
@@ -78,6 +80,9 @@ struct femtol1_hdl {
 	struct calib_send_state st;
 
 	uint8_t last_rf_mute[8];
+
+	/* for l1_fwd */
+	void *priv;
 };
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
@@ -91,7 +96,7 @@ int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		l1if_compl_cb *cb, void *cb_data);
 
-struct femtol1_hdl *l1if_open(void *priv);
+struct femtol1_hdl *l1if_open(struct phy_instance *pinst);
 int l1if_close(struct femtol1_hdl *hdl);
 int l1if_reset(struct femtol1_hdl *hdl);
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on);
@@ -134,4 +139,17 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
 /* public helpers for test */
 int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan);
+
+static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	OSMO_ASSERT(pinst);
+	return pinst->u.sysmobts.hdl;
+}
+
+static inline struct gsm_bts_trx *femtol1_hdl_trx(struct femtol1_hdl *fl1h)
+{
+	OSMO_ASSERT(fl1h->phy_inst);
+	return fl1h->phy_inst->trx;
+}
 #endif /* _FEMTO_L1_H */

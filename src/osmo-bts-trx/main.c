@@ -45,6 +45,7 @@
 #include <osmocom/core/bits.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
@@ -58,43 +59,6 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
-int bts_model_init(struct gsm_bts *bts)
-{
-	void *l1h;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
-	if (!settsc_enabled && !setbsic_enabled)
-		settsc_enabled = setbsic_enabled = 1;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		l1h = l1if_open(trx);
-		if (!l1h) {
-			LOGP(DL1C, LOGL_FATAL, "Cannot open L1 Interface\n");
-			goto error;
-		}
-
-		trx->role_bts.l1h = l1h;
-		trx->nominal_power = 23;
-
-		l1if_reset(l1h);
-	}
-
-	bts_model_vty_init(bts);
-
-	return 0;
-
-error:
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		l1h = trx->role_bts.l1h;
-		if (l1h)
-			l1if_close(l1h);
-	}
-
-	return -EIO;
-}
-
 /* dummy, since no direct dsp support */
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 {
@@ -103,10 +67,6 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 void bts_model_print_help()
 {
-	printf(
-		"  -I	--local-trx-ip	Local IP for transceiver to connect (default=%s)\n"
-		, transceiver_ip
-		);
 }
 
 int bts_model_handle_options(int argc, char **argv)
@@ -116,21 +76,16 @@ int bts_model_handle_options(int argc, char **argv)
 	while (1) {
 		int option_idx = 0, c;
 		static const struct option long_options[] = {
-			/* specific to this hardware */
-			{ "local-trx-ip", 1, 0, 'I' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "I:",
+		c = getopt_long(argc, argv, "",
 				long_options, &option_idx);
 
 		if (c == -1)
 			break;
 
 		switch (c) {
-		case 'I':
-			transceiver_ip = strdup(optarg);
-			break;
 		default:
 			num_errors++;
 			break;
@@ -138,6 +93,35 @@ int bts_model_handle_options(int argc, char **argv)
 	}
 
 	return num_errors;
+}
+
+int bts_model_init(struct gsm_bts *bts)
+{
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
+
+	/* FIXME: this needs to be overridden with the real hardrware
+	 * value */
+	bts->c0->nominal_power = 23;
+
+	bts_model_vty_init(bts);
+
+	return 0;
+}
+
+void bts_model_phy_link_set_defaults(struct phy_link *plink)
+{
+	plink->u.osmotrx.transceiver_ip = talloc_strdup(plink, "127.0.0.1");
+	plink->u.osmotrx.base_port_local = 5800;
+	plink->u.osmotrx.base_port_remote = 5700;
+	plink->u.osmotrx.clock_advance = 20;
+	plink->u.osmotrx.rts_advance = 5;
+	plink->u.osmotrx.power_oml = 1;
+}
+
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
+{
 }
 
 int main(int argc, char **argv)

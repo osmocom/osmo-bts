@@ -40,6 +40,7 @@
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
@@ -53,6 +54,13 @@
 int bts_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
+	case PHY_INST_NODE:
+		vty->node = PHY_NODE;
+		{
+			struct phy_instance *pinst = vty->index;
+			vty->index = pinst->phy_link;
+		}
+		break;
 	case TRX_NODE:
 		vty->node = BTS_NODE;
 		{
@@ -60,6 +68,7 @@ int bts_vty_go_parent(struct vty *vty)
 			vty->index = trx->bts;
 		}
 		break;
+	case PHY_NODE:
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -71,6 +80,8 @@ int bts_vty_is_config_node(struct vty *vty, int node)
 	switch (node) {
 	case TRX_NODE:
 	case BTS_NODE:
+	case PHY_NODE:
+	case PHY_INST_NODE:
 		return 1;
 	default:
 		return 0;
@@ -81,6 +92,17 @@ gDEFUN(ournode_exit, ournode_exit_cmd, "exit",
 	"Exit current node, go down to provious node")
 {
 	switch (vty->node) {
+	case PHY_INST_NODE:
+		vty->node = PHY_NODE;
+		{
+			struct phy_instance *pinst = vty->index;
+			vty->index = pinst->phy_link;
+		}
+		break;
+	case PHY_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
 	case TRX_NODE:
 		vty->node = BTS_NODE;
 		{
@@ -141,6 +163,7 @@ static struct cmd_node trx_node = {
 	1,
 };
 
+
 DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	"trx <0-254>",
 	"Select a TRX to configure\n" "TRX number\n")
@@ -151,7 +174,7 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 
 	trx = gsm_bts_trx_num(bts, trx_nr);
 	if (!trx) {
-		vty_out(vty, "Unknown TRX %u. Aavialable TRX are: 0..%d%s",
+		vty_out(vty, "Unknown TRX %u. Aavialable TRX are: 0..%u%s",
 			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -232,6 +255,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct trx_power_params *tpp = &trx->power_params;
+		struct phy_instance *pinst = trx_phy_instance(trx);
 		vty_out(vty, " trx %u%s", trx->nr, VTY_NEWLINE);
 
 		if (trx->power_params.user_gain_mdB)
@@ -246,6 +270,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  ms-power-control %s%s",
 			trx->ms_power_control == 0 ? "dsp" : "osmo",
 			VTY_NEWLINE);
+		vty_out(vty, "  phy %u instance %u%s", pinst->phy_link->num,
+			pinst->num, VTY_NEWLINE);
 
 		bts_model_config_write_trx(vty, trx);
 	}
@@ -258,6 +284,35 @@ static int config_write_bts(struct vty *vty)
 
 	llist_for_each_entry(bts, &net->bts_list, list)
 		config_write_bts_single(vty, bts);
+
+	return CMD_SUCCESS;
+}
+
+static void config_write_phy_single(struct vty *vty, struct phy_link *plink)
+{
+	int i;
+
+	vty_out(vty, "phy %u%s", plink->num, VTY_NEWLINE);
+	bts_model_config_write_phy(vty, plink);
+
+	for (i = 0; i < 255; i++) {
+		struct phy_instance *pinst = phy_instance_by_num(plink, i);
+		if (!pinst)
+			break;
+		vty_out(vty, " instance %u%s", pinst->num, VTY_NEWLINE);
+	}
+}
+
+static int config_write_phy(struct vty *vty)
+{
+	int i;
+
+	for (i = 0; i < 255; i++) {
+		struct phy_link *plink = phy_link_by_num(i);
+		if (!plink)
+			break;
+		config_write_phy_single(vty, plink);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -532,6 +587,33 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
+	"phy <0-255> instance <0-255>",
+	"Configure PHY Link+Instance for this TRX\n"
+	"PHY Link number\n" "PHY instance\n" "PHY Instance number")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct phy_link *plink = phy_link_by_num(atoi(argv[0]));
+	struct phy_instance *pinst;
+
+	if (!plink) {
+		vty_out(vty, "phy%s does not exist%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst = phy_instance_by_num(plink, atoi(argv[1]));
+	if (!pinst) {
+		vty_out(vty, "phy%s instance %s does not exit%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	trx->role_bts.l1h = pinst;
+	pinst->trx = trx;
+
+	return CMD_SUCCESS;
+}
 
 /* ======================================================================
  * SHOW
@@ -702,6 +784,106 @@ DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
 	return CMD_SUCCESS;
 }
 
+static struct cmd_node phy_node = {
+	PHY_NODE,
+	"%s(phy)#",
+	1,
+};
+
+static struct cmd_node phy_inst_node = {
+	PHY_INST_NODE,
+	"%s(phy-inst)#",
+	1,
+};
+
+DEFUN(cfg_phy, cfg_phy_cmd,
+	"phy <0-255>",
+	"Select a PHY to configure\n" "PHY number\n")
+{
+	int phy_nr = atoi(argv[0]);
+	struct phy_link *plink;
+
+	plink = phy_link_by_num(phy_nr);
+	if (!plink)
+		plink = phy_link_create(tall_bts_ctx, phy_nr);
+	if (!plink)
+		return CMD_WARNING;
+
+	vty->index = plink;
+	vty->index_sub = &plink->description;
+	vty->node = PHY_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_inst, cfg_phy_inst_cmd,
+	"instance <0-255>",
+	"Select a PHY instance to configure\n" "PHY Instance number\n")
+{
+	int inst_nr = atoi(argv[0]);
+	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst;
+
+	pinst = phy_instance_by_num(plink, inst_nr);
+	if (!pinst) {
+		pinst = phy_instance_create(plink, inst_nr);
+		if (!pinst) {
+			vty_out(vty, "Unable to create phy%u instance %u%s",
+				plink->num, inst_nr, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
+
+	vty->index = pinst;
+	vty->index_sub = &pinst->description;
+	vty->node = PHY_INST_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_no_inst, cfg_phy_no_inst_cmd,
+	"no instance <0-255>"
+	NO_STR "Select a PHY instance to remove\n", "PHY Instance number\n")
+{
+	int inst_nr = atoi(argv[0]);
+	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst;
+
+	pinst = phy_instance_by_num(plink, inst_nr);
+	if (!pinst) {
+		vty_out(vty, "No such instance %u%s", inst_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	phy_instance_destroy(pinst);
+
+	return CMD_SUCCESS;
+}
+
+#if 0
+DEFUN(cfg_phy_type, cfg_phy_type_cmd,
+	"type (sysmobts|osmo-trx|virtual)",
+	"configure the type of the PHY\n"
+	"sysmocom sysmoBTS PHY\n"
+	"OsmoTRX based PHY\n"
+	"Virtual PHY (GSMTAP based)\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Cannot change type of active PHY%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[0], "sysmobts"))
+		plink->type = PHY_LINK_T_SYSMOBTS;
+	else if (!strcmp(argv[0], "osmo-trx"))
+		plink->type = PHY_LINK_T_OSMOTRX;
+	else if (!strcmp(argv[0], "virtual"))
+		plink->type = PHY_LINK_T_VIRTUAL;
+}
+#endif
+
 DEFUN(bts_t_t_l_jitter_buf,
 	bts_t_t_l_jitter_buf_cmd,
 	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> rtp jitter-buffer <0-10000>",
@@ -813,10 +995,20 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(TRX_NODE, &cfg_trx_pr_step_size_cmd);
 	install_element(TRX_NODE, &cfg_trx_pr_step_interval_cmd);
 	install_element(TRX_NODE, &cfg_trx_ms_power_control_cmd);
+	install_element(TRX_NODE, &cfg_trx_phy_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
+
+	install_element(CONFIG_NODE, &cfg_phy_cmd);
+	install_node(&phy_node, config_write_phy);
+	install_default(PHY_NODE);
+	install_element(PHY_NODE, &cfg_phy_inst_cmd);
+	install_element(PHY_NODE, &cfg_phy_no_inst_cmd);
+
+	install_node(&phy_inst_node, config_write_dummy);
+	install_default(PHY_INST_NODE);
 
 	return 0;
 }

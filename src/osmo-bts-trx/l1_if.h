@@ -2,6 +2,7 @@
 #define L1_IF_H_TRX
 
 #include <osmo-bts/scheduler.h>
+#include <osmo-bts/phy_link.h>
 
 struct trx_config {
 	uint8_t			poweron;	/* poweron(1) or poweroff(0) */
@@ -19,15 +20,6 @@ struct trx_config {
 	uint8_t			bsic;
 	int			bsic_sent;
 
-	int			rxgain_valid;
-	int			rxgain;
-	int			rxgain_sent;
-
-	int			power_valid;
-	int			power;
-	int			power_oml;
-	int			power_sent;
-
 	int			maxdly_valid;
 	int			maxdly;
 	int			maxdly_sent;
@@ -42,7 +34,8 @@ struct trx_config {
 struct trx_l1h {
 	struct llist_head	trx_ctrl_list;
 
-	struct gsm_bts_trx	*trx;
+	//struct gsm_bts_trx	*trx;
+	struct phy_instance	*phy_inst;
 
 	struct osmo_fd		trx_ofd_ctrl;
 	struct osmo_timer_list	trx_ctrl_timer;
@@ -55,7 +48,7 @@ struct trx_l1h {
 	struct l1sched_trx	l1s;
 };
 
-struct trx_l1h *l1if_open(struct gsm_bts_trx *trx);
+struct trx_l1h *l1if_open(struct phy_instance *pinst);
 void l1if_close(struct trx_l1h *l1h);
 void l1if_reset(struct trx_l1h *l1h);
 int check_transceiver_availability(struct gsm_bts *bts, int avail);
@@ -69,7 +62,8 @@ int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint
 
 static inline struct l1sched_trx *trx_l1sched_hdl(struct gsm_bts_trx *trx)
 {
-	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+	struct phy_instance *pinst = trx->role_bts.l1h;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	return &l1h->l1s;
 }
 

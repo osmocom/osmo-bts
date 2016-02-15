@@ -21,12 +21,12 @@ void destroy_bts(struct gsm_bts *bts);
 int work_bts(struct gsm_bts *bts);
 int bts_link_estab(struct gsm_bts *bts);
 int trx_link_estab(struct gsm_bts_trx *trx);
+int trx_set_available(struct gsm_bts_trx *trx, int avail);
 void bts_new_si(void *arg);
 void bts_setup_slot(struct gsm_bts_trx_ts *slot, uint8_t comb);
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
-void bts_update_agch_max_queue_length(struct gsm_bts *bts);
 int bts_agch_max_queue_length(int T, int bcch_conf);
 int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt,
 		      int is_ag_res);

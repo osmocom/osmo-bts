@@ -348,10 +348,11 @@ static void sapi_clear_queue(struct llist_head *queue)
 	}
 }
 
-static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int lchan_act_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_RSP *ar =
 		(tOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_RSP *) resp->l2h;
+	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 	uint8_t sapi;
 	uint8_t direction;
@@ -361,7 +362,7 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ar);
-	OSMO_ASSERT(ar->TrxId.byTrxId == trx->nr);
+	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
 
 	lchan = get_lchan_by_lchid(trx, &ar->LchId);
 	sapi = ar->LchId.bySAPI;
@@ -411,7 +412,8 @@ err:
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(lchan->ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_CMD *lac;
 
@@ -420,7 +422,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	l1if_fill_msg_hdr(&lac->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_CID);
 
-	lac->TrxId.byTrxId = lchan->ts->trx->nr;
+	lac->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	lac->LchId.byTimeslotNb = lchan->ts->nr;
 	lac->LchId.bySubChannelNb = lchan_to_GsmL1_SubCh_t(lchan);
 	lac->LchId.bySAPI = cmd->sapi;
@@ -451,10 +453,11 @@ static tOCTVC1_GSM_CIPHERING_ID_ENUM rsl2l1_ciph[] = {
 	[4] = cOCTVC1_GSM_CIPHERING_ID_ENUM_A5_3
 };
 
-static int set_ciph_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int set_ciph_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_GSM_MSG_TRX_MODIFY_PHYSICAL_CHANNEL_CIPHERING_RSP *pcr =
 		(tOCTVC1_GSM_MSG_TRX_MODIFY_PHYSICAL_CHANNEL_CIPHERING_RSP *) resp->l2h;
+	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_lchan *lchan;
 
@@ -470,6 +473,7 @@ static int set_ciph_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 		exit(-1);
 	}
 
+	trx = trx_by_l1h(fl1, pcr->TrxId.byTrxId);
 	OSMO_ASSERT(pcr->TrxId.byTrxId == trx->nr);
 	ts = &trx->ts[pcr->PchId.byTimeslotNb];
 	/* for some strange reason the response does not tell which
@@ -508,8 +512,8 @@ err:
 
 static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_MODIFY_PHYSICAL_CHANNEL_CIPHERING_CMD *pcc;
 
@@ -518,6 +522,7 @@ static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *c
 	l1if_fill_msg_hdr(&pcc->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_GSM_MSG_TRX_MODIFY_PHYSICAL_CHANNEL_CIPHERING_CID);
 
+	pcc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	pcc->PchId.byTimeslotNb = lchan->ts->nr;
 	pcc->ulSubchannelNb = lchan_to_GsmL1_SubCh_t(lchan);
 	pcc->ulDirection = cmd->dir;
@@ -627,7 +632,8 @@ static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir)
 
 static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(lchan->ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	int i, res;
 
@@ -654,10 +660,11 @@ static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 	return res;
 }
 
-static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int lchan_deact_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_RSP *ldr =
 		(tOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_RSP *) resp->l2h;
+	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 	struct sapi_cmd *cmd;
 	uint8_t status;
@@ -666,7 +673,7 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void
 	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ldr);
-	OSMO_ASSERT(ldr->TrxId.byTrxId == trx->nr);
+	trx = trx_by_l1h(fl1, ldr->TrxId.byTrxId);
 
 	lchan = get_lchan_by_lchid(trx, &ldr->LchId);
 
@@ -725,7 +732,8 @@ err:
 
 static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(lchan->ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_CMD *ldc;
 
@@ -734,6 +742,7 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 	l1if_fill_msg_hdr(&ldc->Header, msg, fl1h,cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_CID);
 
+	ldc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	ldc->LchId.byTimeslotNb = lchan->ts->nr;
 	ldc->LchId.bySubChannelNb = lchan_to_GsmL1_SubCh_t(lchan);
 	ldc->LchId.byDirection = cmd->dir;
@@ -1031,7 +1040,8 @@ static void enqueue_sapi_act_cmd(struct gsm_lchan *lchan, int sapi, int dir)
 
 int lchan_activate(struct gsm_lchan *lchan)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(lchan->ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
 	unsigned int i;
 
@@ -1069,7 +1079,7 @@ int l1if_rsl_chan_act(struct gsm_lchan *lchan)
 	return 0;
 }
 
-static int enable_events_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int enable_events_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *mser =
 		(tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *) resp->l2h;
@@ -1088,7 +1098,8 @@ static int enable_events_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, vo
 
 int l1if_enable_events(struct gsm_bts_trx *trx)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD *mse;
 
@@ -1112,9 +1123,8 @@ int l1if_enable_events(struct gsm_bts_trx *trx)
 		dst = talloc_strdup(ctx, (const char *) src);	\
 	} while (0)
 
-static int app_info_sys_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int app_info_sys_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *data)
 {
-	struct octphy_hdl *fl1h = resp->dst;
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP *aisr =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP *) resp->l2h;
 
@@ -1136,7 +1146,8 @@ static int app_info_sys_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, voi
 
 int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD *ais;
 
@@ -1152,9 +1163,8 @@ int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, app_info_sys_compl_cb, 0);
 }
 
-static int app_info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *data)
 {
-	struct octphy_hdl *fl1h = resp->dst;
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
 
@@ -1178,7 +1188,8 @@ static int app_info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 
 int l1if_check_app_version(struct gsm_bts_trx *trx)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD *ai;
 
@@ -1193,9 +1204,50 @@ int l1if_check_app_version(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, app_info_compl_cb, 0);
 }
 
-/* call-back once the TRX_OPEN_CID response arrives */
-static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int trx_close_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
+	tOCTVC1_GSM_MSG_TRX_CLOSE_RSP *car =
+		(tOCTVC1_GSM_MSG_TRX_CLOSE_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
+	mOCTVC1_GSM_MSG_TRX_CLOSE_RSP_SWAP(car);
+
+	LOGP(DL1C, LOGL_INFO, "Rx TRX-CLOSE.conf(%u)\n", car->TrxId.byTrxId);
+
+	msgb_free(resp);
+
+	return 0;
+}
+
+static int trx_close(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct phy_link *plink = pinst->phy_link;
+	struct octphy_hdl *fl1h = plink->u.octphy.hdl;
+	struct msgb *msg = l1p_msgb_alloc();
+	tOCTVC1_GSM_MSG_TRX_CLOSE_CMD *cac;
+
+	cac = (tOCTVC1_GSM_MSG_TRX_CLOSE_CMD *)
+				msgb_put(msg, sizeof(*cac));
+	l1if_fill_msg_hdr(&cac->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
+			  cOCTVC1_GSM_MSG_TRX_CLOSE_CID);
+
+	cac->TrxId.byTrxId = pinst->u.octphy.trx_id;
+
+	LOGP(DL1C, LOGL_INFO, "Tx TRX-CLOSE.req(%u)\n", cac->TrxId.byTrxId);
+
+	mOCTVC1_GSM_MSG_TRX_CLOSE_CMD_SWAP(cac);
+
+	return l1if_req_compl(fl1h, msg, trx_close_cb, NULL);
+}
+
+/* call-back once the TRX_OPEN_CID response arrives */
+static int trx_open_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *data)
+{
+	struct gsm_bts_trx *trx;
+
 	tOCTVC1_GSM_MSG_TRX_OPEN_RSP *or =
 		(tOCTVC1_GSM_MSG_TRX_OPEN_RSP *) resp->l2h;
 
@@ -1203,8 +1255,7 @@ static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_OPEN_RSP_SWAP(or);
-
-	OSMO_ASSERT(or->TrxId.byTrxId == trx->nr);
+	trx = trx_by_l1h(fl1h, or->TrxId.byTrxId);
 
 	LOGP(DL1C, LOGL_INFO, "TRX-OPEN.resp(trx=%u) = %s\n",
 		trx->nr, octvc1_rc2string(or->Header.ulReturnCode));
@@ -1221,7 +1272,6 @@ static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 
 	opstart_compl(&trx->mo);
 
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
 	octphy_hw_get_pcb_info(fl1h);
 	octphy_hw_get_rf_port_info(fl1h, 0);
 	octphy_hw_get_rf_ant_rx_config(fl1h, 0, 0);
@@ -1238,22 +1288,24 @@ static int trx_open_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *d
 int l1if_trx_open(struct gsm_bts_trx *trx)
 {
 	/* putting it all together */
-	struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct phy_link *plink = pinst->phy_link;
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_OPEN_CMD *oc;
 
 	oc = (tOCTVC1_GSM_MSG_TRX_OPEN_CMD *) msgb_put(msg, sizeof(*oc));
 	l1if_fill_msg_hdr(&oc->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_GSM_MSG_TRX_OPEN_CID);
-	oc->ulRfPortIndex = fl1h->config.rf_port_index;
-	oc->TrxId.byTrxId = trx->nr;
+	oc->ulRfPortIndex = plink->u.octphy.rf_port_index;
+	oc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	oc->Config.ulBand = osmocom_to_octphy_band(trx->bts->band, trx->arfcn);
 	oc->Config.usArfcn = trx->arfcn;
 	oc->Config.usTsc = trx->bts->bsic & 0x7;
 	oc->Config.usBcchArfcn = trx->bts->c0->arfcn;
-	oc->RfConfig.ulRxGainDb = fl1h->config.rx_gain_db;
+	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;
 	/* FIXME: compute this based on nominal transmit power, etc. */
-	oc->RfConfig.ulTxAttndB = fl1h->config.tx_atten_db;
+	oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
 
 	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "
 		"tsc=%u, rx_gain=%u, tx_atten=%u)\n",
@@ -1265,38 +1317,6 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 
 	return l1if_req_compl(fl1h, msg, trx_open_compl_cb, NULL);
 }
-
-static int trx_close_all_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
-{
-	tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *car =
-		(tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP *) resp->l2h;
-
-	/* in a completion call-back, we take msgb ownership and must
-	 * release it before returning */
-
-	mOCTVC1_GSM_MSG_TRX_CLOSE_ALL_RSP_SWAP(car);
-
-	msgb_free(resp);
-
-	return 0;
-}
-
-int l1if_trx_close_all(struct gsm_bts *bts)
-{
-	struct octphy_hdl *fl1h = trx_octphy_hdl(bts->c0);
-	struct msgb *msg = l1p_msgb_alloc();
-	tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD *cac;
-
-	cac = (tOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD *)
-				msgb_put(msg, sizeof(*cac));
-	l1if_fill_msg_hdr(&cac->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
-			  cOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CID);
-
-	mOCTVC1_GSM_MSG_TRX_CLOSE_ALL_CMD_SWAP(cac);
-
-	return l1if_req_compl(fl1h, msg, trx_close_all_cb, NULL);
-}
-
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx * trx)
 {
@@ -1313,8 +1333,6 @@ static int trx_init(struct gsm_bts_trx *trx)
 		/* return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM); */
 	}
 
-	l1if_trx_close_all(trx->bts);
-
 	l1if_check_app_version(trx);
 	l1if_check_app_sys_version(trx);
 
@@ -1325,11 +1343,12 @@ static int trx_init(struct gsm_bts_trx *trx)
  * PHYSICAL CHANNE ACTIVATION
  ***********************************************************************/
 
-static int pchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int pchan_act_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 {
 	tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP *ar =
 		(tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP *) resp->l2h;
 	uint8_t ts_nr;
+	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_abis_mo *mo;
 
@@ -1337,9 +1356,8 @@ static int pchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 	 * release it before returning */
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP_SWAP(ar);
+	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
 	ts_nr = ar->PchId.byTimeslotNb;
-
-	OSMO_ASSERT(ar->TrxId.byTrxId == trx->nr);
 	OSMO_ASSERT(ts_nr <= ARRAY_SIZE(trx->ts));
 
 	ts = &trx->ts[ts_nr];
@@ -1367,7 +1385,8 @@ static int pchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *
 
 static int ts_connect(struct gsm_bts_trx_ts *ts)
 {
-	struct octphy_hdl *fl1h = trx_octphy_hdl(ts->trx);
+	struct phy_instance *pinst = trx_phy_instance(ts->trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD *oc =
 		(tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD *) oc;
@@ -1376,7 +1395,7 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	l1if_fill_msg_hdr(&oc->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CID);
 
-	oc->TrxId.byTrxId = ts->trx->nr;
+	oc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	oc->PchId.byTimeslotNb = ts->nr;
 	oc->ulChannelType = pchan_to_logChComb[ts->pchan];
 
@@ -1430,8 +1449,7 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 	int i;
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
-		struct octphy_hdl *fl1h = trx_octphy_hdl(trx);
-		l1if_activate_rf(fl1h, 1);
+		l1if_activate_rf(trx, 1);
 	}
 	return 0;
 }
@@ -1447,14 +1465,13 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
-	struct octphy_hdl *fl1 = trx_octphy_hdl(trx);
-	return l1if_activate_rf(fl1, 0);
+	return l1if_activate_rf(trx, 0);
 }
 
 int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	/* FIXME: close only one TRX */
-	return l1if_trx_close_all(trx->bts);
+	return trx_close(trx);
 }
 
 

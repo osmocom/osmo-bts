@@ -36,6 +36,7 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/l1sap.h>
 

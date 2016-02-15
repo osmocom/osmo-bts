@@ -86,20 +86,12 @@ void clk_cal_use_eeprom(struct gsm_bts *bts)
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
-	struct femtol1_hdl *fl1h;
 	struct stat st;
-	struct osmo_fd accept_fd, read_fd;
+	static struct osmo_fd accept_fd, read_fd;
 	int rc;
 
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-
-	clk_cal_use_eeprom(bts);
-
-	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
-		exit(23);
-	}
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {
@@ -108,23 +100,12 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(1);
 	}
 
-	fl1h = l1if_open(bts->c0);
-	if (!fl1h) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 Interface\n");
-		return -EIO;
-	}
-	fl1h->dsp_trace_f = dsp_trace;
+	clk_cal_use_eeprom(bts);
 
-	bts->c0->role_bts.l1h = fl1h;
-
-	rc = sysmobts_get_nominal_power(bts->c0);
-	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
-		     "transmit power. Assuming 23dBm.\n");
-		rc = 23;
+	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
+		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
+		exit(23);
 	}
-	bts->c0->nominal_power = rc;
-	bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
 
 	bts_model_vty_init(bts);
 
@@ -133,10 +114,6 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_oml_estab(struct gsm_bts *bts)
 {
-	struct femtol1_hdl *fl1h = bts->c0->role_bts.l1h;
-
-	l1if_reset(fl1h);
-
 	return 0;
 }
 
@@ -205,6 +182,7 @@ int bts_model_handle_options(int argc, char **argv)
 		switch (c) {
 		case 'p':
 			dsp_trace = strtoul(optarg, NULL, 16);
+#warning use dsp_trace!!!
 			break;
 		case 'M':
 			pcu_direct = 1;
@@ -220,6 +198,14 @@ int bts_model_handle_options(int argc, char **argv)
 	}
 
 	return num_errors;
+}
+
+void bts_model_phy_link_set_defaults(struct phy_link *plink)
+{
+}
+
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
+{
 }
 
 void bts_model_abis_close(struct gsm_bts *bts)

@@ -44,6 +44,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 
+static void bts_update_agch_max_queue_length(struct gsm_bts *bts);
 
 struct gsm_network bts_gsmnet = {
 	.bts_list = { &bts_gsmnet.bts_list, &bts_gsmnet.bts_list },
@@ -72,6 +73,8 @@ static int bts_signal_cbfn(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+/* Initialize the BTS (and TRX) data structures, called before config
+ * file reading */
 int bts_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
@@ -255,6 +258,31 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 	return 0;
 }
 
+/* set the availability of the TRX (used by PHY driver) */
+int trx_set_available(struct gsm_bts_trx *trx, int avail)
+{
+	int tn;
+
+	LOGP(DSUM, LOGL_INFO, "TRX(%d): Setting available = %d\n",
+		trx->nr, avail);
+	if (avail) {
+		/* FIXME: This needs to be sorted out */
+#if 0
+		oml_mo_state_chg(&trx->mo,  NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OFF_LINE);
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
+			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+#endif
+	} else {
+		oml_mo_state_chg(&trx->mo,  NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_NOT_INSTALLED);
+
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
+			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	}
+	return 0;
+}
+
 int lchan_init_lapdm(struct gsm_lchan *lchan)
 {
 	struct lapdm_channel *lc = &lchan->lapdm_ch;
@@ -310,7 +338,7 @@ int bts_agch_max_queue_length(int T, int bcch_conf)
 	return (T + 2 * S) * ccch_rach_ratio256 / 256;
 }
 
-void bts_update_agch_max_queue_length(struct gsm_bts *bts)
+static void bts_update_agch_max_queue_length(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm48_system_information_type_3 *si3;

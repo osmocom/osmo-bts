@@ -1,6 +1,6 @@
 /* Interface handler for Sysmocom L1 */
 
-/* (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2016 by Harald Welte <laforge@gnumonks.org>
  * (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
@@ -41,6 +41,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/phy_link.h>
 #include <osmo-bts/paging.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
@@ -534,7 +535,7 @@ static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 				GsmL1_MphTimeInd_t *time_ind,
 				struct msgb *msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct osmo_phsap_prim l1sap;
 	uint32_t fn;
@@ -660,7 +661,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 				     GsmL1_PhReadyToSendInd_t *rts_ind,
 				     struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
@@ -789,7 +790,7 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
 	uint8_t chan_nr, link_id;
 	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
@@ -855,7 +856,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 			    struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = fl1->priv;
+	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
@@ -976,7 +977,8 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 			if (wlc->cb) {
 				/* call-back function must take
 				 * ownership of msgb */
-				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
+				rc = wlc->cb(femtol1_hdl_trx(fl1h), msg,
+					     wlc->cb_data);
 			} else {
 				rc = 0;
 				msgb_free(msg);
@@ -1008,7 +1010,8 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 			if (wlc->cb) {
 				/* call-back function must take
 				 * ownership of msgb */
-				rc = wlc->cb(fl1h->priv, msg, wlc->cb_data);
+				rc = wlc->cb(femtol1_hdl_trx(fl1h), msg,
+					     wlc->cb_data);
 			} else {
 				rc = 0;
 				msgb_free(msg);
@@ -1121,7 +1124,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-	struct gsm_bts_trx *trx = hdl->priv;
+	struct gsm_bts_trx *trx = hdl->phy_inst->trx;
 
 	if (on) {
 		sysp->id = SuperFemto_PrimId_ActivateRfReq;
@@ -1433,7 +1436,7 @@ static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 	return 0;
 }
 
-struct femtol1_hdl *l1if_open(void *priv)
+struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
 {
 	struct femtol1_hdl *fl1h;
 	int rc;
@@ -1450,12 +1453,12 @@ struct femtol1_hdl *l1if_open(void *priv)
 			 FEMTOBTS_API_VERSION & 0xff);
 #endif
 
-	fl1h = talloc_zero(priv, struct femtol1_hdl);
+	fl1h = talloc_zero(pinst, struct femtol1_hdl);
 	if (!fl1h)
 		return NULL;
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
-	fl1h->priv = priv;
+	fl1h->phy_inst = pinst;
 	fl1h->clk_cal = 0;
 	fl1h->clk_use_eeprom = 1;
 	fl1h->min_qual_rach = MIN_QUAL_RACH;
@@ -1489,6 +1492,8 @@ struct femtol1_hdl *l1if_open(void *priv)
 		talloc_free(fl1h);
 		return NULL;
 	}
+
+	l1if_reset(fl1h);
 
 	return fl1h;
 }
@@ -1617,3 +1622,35 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 }
 
 #endif
+
+int bts_model_phy_link_open(struct phy_link *plink)
+{
+	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
+	struct gsm_bts *bts;
+
+	OSMO_ASSERT(pinst);
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTING);
+
+	pinst->u.sysmobts.hdl = l1if_open(pinst);
+	if (!pinst->u.sysmobts.hdl) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 interface\n");
+		return -EIO;
+	}
+
+	bts = pinst->trx->bts;
+	if (pinst->trx == bts->c0) {
+		int rc;
+		rc = sysmobts_get_nominal_power(bts->c0);
+		if (rc < 0) {
+			LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
+			     "transmit power. Assuming 23dBm.\n");
+		}
+		bts->c0->nominal_power = rc;
+		bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
+	}
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTED);
+
+	return 0;
+}
