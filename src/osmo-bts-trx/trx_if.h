@@ -31,5 +31,6 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 int trx_if_open(struct trx_l1h *l1h);
 void trx_if_flush(struct trx_l1h *l1h);
 void trx_if_close(struct trx_l1h *l1h);
+int trx_if_powered(struct trx_l1h *l1h);
 
 #endif /* TRX_IF_H */

@@ -53,10 +53,10 @@
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/scheduler.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
-#include "scheduler.h"
 
 int bts_model_init(struct gsm_bts *bts)
 {

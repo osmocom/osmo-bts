@@ -33,7 +33,7 @@
 #include "l1_if.h"
 #include "loops.h"
 
-#define MS_PWR_DBM(lvl) ms_pwr_dbm(gsm_arfcn2band(l1h->config.arfcn), lvl)
+#define MS_PWR_DBM(arfcn, lvl) ms_pwr_dbm(gsm_arfcn2band(arfcn), lvl)
 
 /*
  * MS Power loop
@@ -42,11 +42,12 @@
 int trx_ms_power_loop = 0;
 int8_t trx_target_rssi = -10;
 
-static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	uint8_t chan_nr, struct trx_chan_state *chan_state, int8_t diff)
+static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 {
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+	uint16_t arfcn = trx->arfcn;
 	int8_t new_power;
-	
+
 	new_power = lchan->ms_power - (diff >> 1);
 
 	if (diff == 0)
@@ -56,7 +57,7 @@ static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 		new_power = 0;
 
 	// FIXME: to go above 1W, we need to know classmark of MS
-	if (l1h->config.arfcn >= 512 && l1h->config.arfcn <= 885) {
+	if (arfcn >= 512 && arfcn <= 885) {
 		if (new_power > 15)
 			new_power = 15;
 	} else {
@@ -73,8 +74,8 @@ static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	if (lchan->ms_power == new_power) {
 		LOGP(DLOOP, LOGL_INFO, "Keeping MS new_power of trx=%u "
 			"chan_nr=0x%02x at control level %d (%d dBm)\n",
-			l1h->trx->nr, chan_nr, new_power,
-			MS_PWR_DBM(new_power));
+			trx->nr, chan_nr, new_power,
+			MS_PWR_DBM(arfcn, new_power));
 
 		return 0;
 	}
@@ -82,15 +83,16 @@ static int ms_power_diff(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	LOGP(DLOOP, LOGL_INFO, "%s MS new_power of trx=%u chan_nr=0x%02x from "
 		"control level %d (%d dBm) to %d (%d dBm)\n",
 		(diff > 0) ? "Raising" : "Lowering",
-		l1h->trx->nr, chan_nr, lchan->ms_power,
-		MS_PWR_DBM(lchan->ms_power), new_power, MS_PWR_DBM(new_power));
+		trx->nr, chan_nr, lchan->ms_power,
+		MS_PWR_DBM(arfcn, lchan->ms_power), new_power,
+		MS_PWR_DBM(arfcn, new_power));
 
 	lchan->ms_power = new_power;
 
 	return 0;
 }
 
-static int ms_power_val(struct trx_chan_state *chan_state, int8_t rssi)
+static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 {
 	/* ignore inserted dummy frames, treat as lost frames */
 	if (rssi < -127)
@@ -112,9 +114,10 @@ static int ms_power_val(struct trx_chan_state *chan_state, int8_t rssi)
 	return 0;
 }
 
-static int ms_power_clock(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	uint8_t chan_nr, struct trx_chan_state *chan_state)
+static int ms_power_clock(struct gsm_lchan *lchan,
+	uint8_t chan_nr, struct l1sched_chan_state *chan_state)
 {
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 	int rssi;
 	int i;
 
@@ -134,9 +137,8 @@ static int ms_power_clock(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	if (chan_state->meas.rssi_count == 0) {
 		LOGP(DLOOP, LOGL_NOTICE, "LOST SACCH frame of trx=%u "
 			"chan_nr=0x%02x, so we raise MS power\n",
-			l1h->trx->nr, chan_nr);
-		return ms_power_diff(l1h, lchan, chan_nr, chan_state,
-			MS_RAISE_MAX);
+			trx->nr, chan_nr);
+		return ms_power_diff(lchan, chan_nr, MS_RAISE_MAX);
 	}
 
 	/* reset total counter */
@@ -157,9 +159,10 @@ static int ms_power_clock(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 	/* change RSSI */
 	LOGP(DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
 		"MS power: %d (%d dBm) of trx=%u chan_nr=0x%02x\n", rssi,
-		trx_target_rssi, lchan->ms_power, MS_PWR_DBM(lchan->ms_power),
-		l1h->trx->nr, chan_nr);
-	ms_power_diff(l1h, lchan, chan_nr, chan_state, trx_target_rssi - rssi);
+		trx_target_rssi, lchan->ms_power,
+		MS_PWR_DBM(trx->arfcn, lchan->ms_power),
+		trx->nr, chan_nr);
+	ms_power_diff(lchan, chan_nr, trx_target_rssi - rssi);
 
 	return 0;
 }
@@ -171,9 +174,11 @@ static int ms_power_clock(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 
 int trx_ta_loop = 1;
 
-int ta_val(struct trx_l1h *l1h, struct gsm_lchan *lchan, uint8_t chan_nr,
-	struct trx_chan_state *chan_state, float toa)
+int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
+	struct l1sched_chan_state *chan_state, float toa)
 {
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+
 	/* check if the current L1 header acks to the current ordered TA */
 	if (lchan->meas.l1_info[1] != lchan->rqd_ta)
 		return 0;
@@ -190,19 +195,19 @@ int ta_val(struct trx_l1h *l1h, struct gsm_lchan *lchan, uint8_t chan_nr,
 	if (toa < -0.9F && lchan->rqd_ta > 0) {
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
 			"early (%.2f), now lowering TA from %d to %d\n",
-			l1h->trx->nr, chan_nr, toa, lchan->rqd_ta,
+			trx->nr, chan_nr, toa, lchan->rqd_ta,
 			lchan->rqd_ta - 1);
 		lchan->rqd_ta--;
 	} else if (toa > 0.9F && lchan->rqd_ta < 63) {
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
 			"late (%.2f), now raising TA from %d to %d\n",
-			l1h->trx->nr, chan_nr, toa, lchan->rqd_ta,
+			trx->nr, chan_nr, toa, lchan->rqd_ta,
 			lchan->rqd_ta + 1);
 		lchan->rqd_ta++;
 	} else
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is "
 			"correct (%.2f), keeping current TA of %d\n",
-			l1h->trx->nr, chan_nr, toa, lchan->rqd_ta);
+			trx->nr, chan_nr, toa, lchan->rqd_ta);
 
 	chan_state->meas.toa_num = 0;
 	chan_state->meas.toa_sum = 0;
@@ -210,29 +215,29 @@ int ta_val(struct trx_l1h *l1h, struct gsm_lchan *lchan, uint8_t chan_nr,
 	return 0;
 }
 
-int trx_loop_sacch_input(struct trx_l1h *l1h, uint8_t chan_nr,
-	struct trx_chan_state *chan_state, int8_t rssi, float toa)
+int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
+	struct l1sched_chan_state *chan_state, int8_t rssi, float toa)
 {
-	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
+	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
 
 	if (trx_ms_power_loop)
 		ms_power_val(chan_state, rssi);
 
 	if (trx_ta_loop)
-		ta_val(l1h, lchan, chan_nr, chan_state, toa);
+		ta_val(lchan, chan_nr, chan_state, toa);
 
 	return 0;
 }
 
-int trx_loop_sacch_clock(struct trx_l1h *l1h, uint8_t chan_nr,
-	struct trx_chan_state *chan_state)
+int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
+	struct l1sched_chan_state *chan_state)
 {
-	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
+	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
 
 	if (trx_ms_power_loop)
-		ms_power_clock(l1h, lchan, chan_nr, chan_state);
+		ms_power_clock(lchan, chan_nr, chan_state);
 
 	/* count the number of SACCH clocks */
 	chan_state->meas.clock++;
@@ -240,10 +245,11 @@ int trx_loop_sacch_clock(struct trx_l1h *l1h, uint8_t chan_nr,
 	return 0;
 }
 
-int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
-	struct trx_chan_state *chan_state, float ber)
+int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
+	struct l1sched_chan_state *chan_state, float ber)
 {
-	struct gsm_lchan *lchan = &l1h->trx->ts[L1SAP_CHAN2TS(chan_nr)]
+	struct gsm_bts_trx *trx = l1t->trx;
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
 	int c_i;
 
@@ -280,7 +286,7 @@ int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
 
 	LOGP(DLOOP, LOGL_DEBUG, "Current bit error rate (BER) %.6f "
 		"codec id %d of trx=%u chan_nr=0x%02x\n", ber,
-		chan_state->ul_ft, l1h->trx->nr, chan_nr);
+		chan_state->ul_ft, trx->nr, chan_nr);
 
 	/* degrade */
 	if (chan_state->dl_cmr > 0) {
@@ -290,7 +296,7 @@ int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
 			LOGP(DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
 				"from codec id %d to %d of trx=%u "
 				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr - 1, l1h->trx->nr, chan_nr);
+				chan_state->dl_cmr - 1, trx->nr, chan_nr);
 			chan_state->dl_cmr--;
 		}
 
@@ -306,7 +312,7 @@ int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
 			LOGP(DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
 				"from codec id %d to %d of trx=%u "
 				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr + 1, l1h->trx->nr, chan_nr);
+				chan_state->dl_cmr + 1, trx->nr, chan_nr);
 			chan_state->dl_cmr++;
 		}
 
@@ -316,7 +322,7 @@ int trx_loop_amr_input(struct trx_l1h *l1h, uint8_t chan_nr,
 	return 0;
 }
 
-int trx_loop_amr_set(struct trx_chan_state *chan_state, int loop)
+int trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
 {
 	if (chan_state->amr_loop && !loop) {
 		chan_state->amr_loop = 0;
@@ -336,4 +342,3 @@ int trx_loop_amr_set(struct trx_chan_state *chan_state, int loop)
 
 	return 0;
 }
-
