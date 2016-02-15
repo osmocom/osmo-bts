@@ -149,7 +149,7 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 		l1ts->mf_index = 0;
 		l1ts->mf_last_fn = 0;
 		INIT_LLIST_HEAD(&l1ts->dl_prims);
-		for (i = 0; i < ARRAY_SIZE(&l1ts->chan_state); i++) {
+		for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
 			struct l1sched_chan_state *chan_state;
 			chan_state = &l1ts->chan_state[i];
 			chan_state->active = 0;
