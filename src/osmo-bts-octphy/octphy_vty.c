@@ -210,11 +210,6 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	if (btsb->auto_band)
-		vty_out(vty, " auto-band%s", VTY_NEWLINE);
-
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)

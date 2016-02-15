@@ -1,6 +1,10 @@
-/* Main program for Sysmocom BTS */
+/* Main program for NuRAN Wireless Litecell 1.5 BTS */
 
-/* (C) 2011-2015 by Harald Welte <laforge@gnumonks.org>
+/* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
+ * 
+ * Based on sysmoBTS:
+ *     (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -47,16 +51,18 @@
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
 
-#define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
+/*NTQD: Change how rx_nr is handle in multi-trx*/
+#define LC15BTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
 #include "utils.h"
-#include "eeprom.h"
 #include "l1_if.h"
 #include "hw_misc.h"
 #include "oml_router.h"
+#include "misc/lc15bts_bid.h"
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	struct gsm_bts_trx *trx;
 	struct gsm_bts_role_bts *btsb;
 	struct stat st;
 	static struct osmo_fd accept_fd, read_fd;
@@ -72,7 +78,12 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(1);
 	}
 
-	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		trx->nominal_power = 37;
+		trx->power_params.trx_p_max_out_mdBm = to_mdB(bts->c0->nominal_power);
+	}
+
+	if (stat(LC15BTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
 		exit(23);
 	}
@@ -108,26 +119,38 @@ void bts_update_status(enum bts_global_status which, int on)
 	     (long long)old_states, (long long)states,
 	     led_rf_active_on);
 
-	sysmobts_led_set(LED_RF_ACTIVE, led_rf_active_on);
+	lc15bts_led_set(led_rf_active_on ? LED_GREEN : LED_OFF);
 }
 
 void bts_model_print_help()
 {
-	printf(
-		"  -p	--dsp-trace	Set DSP trace flags\n"
-		"  -w	--hw-version	Print the targeted HW Version\n"
+	printf( "  -w	--hw-version	Print the targeted HW Version\n"
 		"  -M	--pcu-direct	Force PCU to access message queue for "
 			"PDCH dchannel directly\n"
-	      );
-};
+		);
+}
 
 static void print_hwversion()
 {
-#ifdef HW_SYSMOBTS_V1
-	printf("sysmobts was compiled for hw version 1.\n");
-#else
-	printf("sysmobts was compiled for hw version 2.\n");
-#endif
+	int rev;
+	int model;
+	static char model_name[64] = {0, };
+
+	snprintf(model_name, sizeof(model_name), "NuRAN Litecell 1.5 BTS");
+
+	rev = lc15bts_rev_get();
+	if (rev >= 0) {
+		snprintf(model_name, sizeof(model_name), "%s Rev %c", 
+			model_name, (char)rev);
+	} 
+
+	model = lc15bts_model_get();
+	if (model >= 0) {
+		snprintf(model_name, sizeof(model_name), "%s (%05X)", 
+			model_name, model);
+	}
+
+	printf(model_name);
 }
 
 int bts_model_handle_options(int argc, char **argv)
@@ -137,13 +160,13 @@ int bts_model_handle_options(int argc, char **argv)
 	while (1) {
 		int option_idx = 0, c;
 		static const struct option long_options[] = {
-			/* specific to this hardware */
+			{ "dsp-trace", 1, 0, 'p' },
 			{ "hw-version", 0, 0, 'w' },
 			{ "pcu-direct", 0, 0, 'M' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "wM",
+		c = getopt_long(argc, argv, "p:wM",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
@@ -163,15 +186,6 @@ int bts_model_handle_options(int argc, char **argv)
 	}
 
 	return num_errors;
-}
-
-void bts_model_phy_link_set_defaults(struct phy_link *plink)
-{
-}
-
-void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
-{
-	pinst->u.sysmobts.clk_use_eeprom = 1;
 }
 
 void bts_model_abis_close(struct gsm_bts *bts)

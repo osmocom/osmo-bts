@@ -1,7 +1,11 @@
-/* Interface handler for Sysmocom L1 */
+/* Interface handler for NuRAN Wireless Litecell 1.5 L1 */
 
-/* (C) 2011-2016 by Harald Welte <laforge@gnumonks.org>
- * (C) 2014 by Holger Hans Peter Freyther
+/* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
+ * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
+ * 
+ * Based on sysmoBTS:
+ *     (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
+ *     (C) 2014 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -50,17 +54,17 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
 
-#include <sysmocom/femtobts/superfemto.h>
-#include <sysmocom/femtobts/gsml1prim.h>
-#include <sysmocom/femtobts/gsml1const.h>
-#include <sysmocom/femtobts/gsml1types.h>
+#include <nrw/litecell15/litecell15.h>
+#include <nrw/litecell15/gsml1prim.h>
+#include <nrw/litecell15/gsml1const.h>
+#include <nrw/litecell15/gsml1types.h>
 
-#include "femtobts.h"
+#include "lc15bts.h"
 #include "l1_if.h"
 #include "l1_transp.h"
 #include "hw_misc.h"
-#include "misc/sysmobts_par.h"
-#include "eeprom.h"
+#include "misc/lc15bts_par.h"
+#include "misc/lc15bts_bid.h"
 #include "utils.h"
 
 struct wait_l1_conf {
@@ -84,14 +88,14 @@ static void l1if_req_timeout(void *data)
 
 	if (wlc->is_sys_prim)
 		LOGP(DL1C, LOGL_FATAL, "Timeout waiting for SYS primitive %s\n",
-			get_value_string(femtobts_sysprim_names, wlc->conf_prim_id));
+			get_value_string(lc15bts_sysprim_names, wlc->conf_prim_id));
 	else
 		LOGP(DL1C, LOGL_FATAL, "Timeout waiting for L1 primitive %s\n",
-			get_value_string(femtobts_l1prim_names, wlc->conf_prim_id));
+			get_value_string(lc15bts_l1prim_names, wlc->conf_prim_id));
 	exit(23);
 }
 
-static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+static int _l1if_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 		   int is_system_prim, l1if_compl_cb *cb, void *data)
 {
 	struct wait_l1_conf *wlc;
@@ -108,32 +112,32 @@ static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 		GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 
 		LOGP(DL1P, LOGL_INFO, "Tx L1 prim %s\n",
-			get_value_string(femtobts_l1prim_names, l1p->id));
+			get_value_string(lc15bts_l1prim_names, l1p->id));
 
-		if (femtobts_l1prim_type[l1p->id] != L1P_T_REQ) {
+		if (lc15bts_get_l1prim_type(l1p->id) != L1P_T_REQ) {
 			LOGP(DL1C, LOGL_ERROR, "L1 Prim %s is not a Request!\n",
-				get_value_string(femtobts_l1prim_names, l1p->id));
+				get_value_string(lc15bts_l1prim_names, l1p->id));
 			talloc_free(wlc);
 			return -EINVAL;
 		}
 		wlc->is_sys_prim = 0;
-		wlc->conf_prim_id = femtobts_l1prim_req2conf[l1p->id];
+		wlc->conf_prim_id = lc15bts_get_l1prim_conf(l1p->id);
 		wqueue = &fl1h->write_q[MQ_L1_WRITE];
 		timeout_secs = 30;
 	} else {
-		SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+		Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 
 		LOGP(DL1C, LOGL_INFO, "Tx SYS prim %s\n",
-			get_value_string(femtobts_sysprim_names, sysp->id));
+			get_value_string(lc15bts_sysprim_names, sysp->id));
 
-		if (femtobts_sysprim_type[sysp->id] != L1P_T_REQ) {
+		if (lc15bts_get_sysprim_type(sysp->id) != L1P_T_REQ) {
 			LOGP(DL1C, LOGL_ERROR, "SYS Prim %s is not a Request!\n",
-				get_value_string(femtobts_sysprim_names, sysp->id));
+				get_value_string(lc15bts_sysprim_names, sysp->id));
 			talloc_free(wlc);
 			return -EINVAL;
 		}
 		wlc->is_sys_prim = 1;
-		wlc->conf_prim_id = femtobts_sysprim_req2conf[sysp->id];
+		wlc->conf_prim_id = lc15bts_get_sysprim_conf(sysp->id);
 		wqueue = &fl1h->write_q[MQ_SYS_WRITE];
 		timeout_secs = 30;
 	}
@@ -156,13 +160,13 @@ static int _l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
 }
 
 /* send a request primitive to the L1 and schedule completion call-back */
-int l1if_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+int l1if_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 		   l1if_compl_cb *cb, void *data)
 {
 	return _l1if_req_compl(fl1h, msg, 1, cb, data);
 }
 
-int l1if_gsm_req_compl(struct femtol1_hdl *fl1h, struct msgb *msg,
+int l1if_gsm_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 		   l1if_compl_cb *cb, void *data)
 {
 	return _l1if_req_compl(fl1h, msg, 0, cb, data);
@@ -179,13 +183,13 @@ struct msgb *l1p_msgb_alloc(void)
 	return msg;
 }
 
-/* allocate a msgb containing a SuperFemto_Prim_t */
+/* allocate a msgb containing a Litecell15_Prim_t */
 struct msgb *sysp_msgb_alloc(void)
 {
-	struct msgb *msg = msgb_alloc(sizeof(SuperFemto_Prim_t), "sys_prim");
+	struct msgb *msg = msgb_alloc(sizeof(Litecell15_Prim_t), "sys_prim");
 
 	if (msg)
-		msg->l1h = msgb_put(msg, sizeof(SuperFemto_Prim_t));
+		msg->l1h = msgb_put(msg, sizeof(Litecell15_Prim_t));
 
 	return msg;
 }
@@ -235,7 +239,7 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 
 /* fill PH-DATA.req from l1sap primitive */
 static GsmL1_PhDataReq_t *
-data_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+data_req_from_l1sap(GsmL1_Prim_t *l1p, struct lc15l1_hdl *fl1,
 		uint8_t tn, uint32_t fn, uint8_t sapi, uint8_t sub_ch,
 		uint8_t block_nr, uint8_t len)
 {
@@ -244,7 +248,7 @@ data_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
 	l1p->id = GsmL1_PrimId_PhDataReq;
 
 	/* copy fields from PH-RSS.ind */
-	data_req->hLayer1	= fl1->hLayer1;
+	data_req->hLayer1	= (HANDLE)fl1->hLayer1;
 	data_req->u8Tn 		= tn;
 	data_req->u32Fn		= fn;
 	data_req->sapi		= sapi;
@@ -258,7 +262,7 @@ data_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
 
 /* fill PH-EMPTY_FRAME.req from l1sap primitive */
 static GsmL1_PhEmptyFrameReq_t *
-empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
+empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct lc15l1_hdl *fl1,
 		     uint8_t tn, uint32_t fn, uint8_t sapi,
 		     uint8_t subch, uint8_t block_nr)
 {
@@ -266,7 +270,7 @@ empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
 
 	l1p->id = GsmL1_PrimId_PhEmptyFrameReq;
 
-	empty_req->hLayer1 = fl1->hLayer1;
+	empty_req->hLayer1 = (HANDLE)fl1->hLayer1;
 	empty_req->u8Tn = tn;
 	empty_req->u32Fn = fn;
 	empty_req->sapi = sapi;
@@ -279,7 +283,7 @@ empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct femtol1_hdl *fl1,
 static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		       struct osmo_phsap_prim *l1sap)
 {
-	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct lc15l1_hdl *fl1 = trx_lc15l1_hdl(trx);
 	struct msgb *l1msg = l1p_msgb_alloc();
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
@@ -340,7 +344,6 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
 			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
 			l1sap->oph.operation, chan_nr, link_id);
-		msgb_free(l1msg);
 		return -EINVAL;
 	}
 
@@ -363,10 +366,13 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 
+	/* free the msgb holding the L1SAP primitive */
+	msgb_free(msg);
+
 	/* send message to DSP's queue */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
 		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
-		msgb_free(l1msg);
+		msgb_free(msg);
 	}
 
 	return 0;
@@ -375,7 +381,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		       struct osmo_phsap_prim *l1sap)
 {
-	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct lc15l1_hdl *fl1 = trx_lc15l1_hdl(trx);
 	struct gsm_lchan *lchan;
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi, ss;
@@ -438,13 +444,14 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
 
+	msgb_free(msg);
 	return 0;
 }
 
 static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		        struct osmo_phsap_prim *l1sap)
 {
-	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
+	struct lc15l1_hdl *fl1 = trx_lc15l1_hdl(trx);
 	uint8_t u8Tn, ss;
 	uint8_t chan_nr;
 	struct gsm_lchan *lchan;
@@ -486,6 +493,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			l1if_rsl_deact_sacch(lchan);
 		else
 			l1if_rsl_chan_rel(lchan);
+		msgb_free(msg);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
@@ -502,8 +510,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	struct msgb *msg = l1sap->oph.msg;
 	int rc = 0;
 
-	/* called functions MUST NOT take ownership of msgb, as it is
-	 * free()d below */
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
 		rc = ph_data_req(trx, msg, l1sap);
@@ -520,16 +526,15 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		rc = -EINVAL;
 	}
 
-	msgb_free(msg);
-
+	if (rc)
+		msgb_free(msg);
 	return rc;
 }
 
-static int handle_mph_time_ind(struct femtol1_hdl *fl1,
-				GsmL1_MphTimeInd_t *time_ind,
-				struct msgb *msg)
+static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
+				GsmL1_MphTimeInd_t *time_ind)
 {
-	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct osmo_phsap_prim l1sap;
 	uint32_t fn;
@@ -549,8 +554,6 @@ static int handle_mph_time_ind(struct femtol1_hdl *fl1,
 		PRIM_OP_INDICATION, NULL);
 	l1sap.u.info.type = PRIM_INFO_TIME;
 	l1sap.u.info.u.time_ind.fn = fn;
-
-	msgb_free(msg);
 
 	return l1sap_up(trx, &l1sap);
 }
@@ -651,11 +654,11 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 	return (cbits << 3) | u8Tn;
 }
 
-static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
+static int handle_ph_readytosend_ind(struct lc15l1_hdl *fl1,
 				     GsmL1_PhReadyToSendInd_t *rts_ind,
 				     struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct msgb *resp_msg;
 	GsmL1_PhDataReq_t *data_req;
@@ -676,8 +679,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 			link_id = 0x40;
 		else
 			link_id = 0;
-		/* recycle the msgb and use it for the L1 primitive,
-		 * which means that we (or our caller) must not free it */
 		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 		if (rc < 0)
 			MSGB_ABORT(l1p_msg, "No room for primitive\n");
@@ -703,7 +704,7 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 
 	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u SAPI=%s\n",
 		g_time.t1, g_time.t2, g_time.t3,
-		get_value_string(femtobts_l1sapi_names, rts_ind->sapi));
+		get_value_string(lc15bts_l1sapi_names, rts_ind->sapi));
 
 	/* in all other cases, we need to allocate a new PH-DATA.ind
 	 * primitive msgb and start to fill it */
@@ -744,8 +745,6 @@ tx:
 		msgb_free(resp_msg);
 	}
 
-	/* free the msgb, as we have not handed it to l1sap and thus
-	 * need to release its memory */
 	msgb_free(l1p_msg);
 	return 0;
 
@@ -776,21 +775,20 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 100);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
 
-	/* l1sap wants to take msgb ownership.  However, as there is no
-	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
 	return l1sap_up(trx, &l1sap);
 }
 
-static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
+static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_ind,
 			      struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	uint8_t chan_nr, link_id;
-	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
+	uint8_t *data, len;
 	int rc = 0;
+	int8_t rssi;
 
 	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
@@ -812,8 +810,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	}
 
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
-		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
-		data_ind->hLayer2,
+		get_value_string(lc15bts_l1sapi_names, data_ind->sapi),
+		(uint32_t)data_ind->hLayer2,
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
@@ -827,31 +825,36 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
-	/* fill L1SAP header */
-	sap_msg = l1sap_msgb_alloc(data_ind->msgUnitParam.u8Size);
-	l1sap = msgb_l1sap_prim(sap_msg);
+	/* get rssi */
+	rssi = (int8_t) (data_ind->measParam.fRssi);
+	/* get data pointer and length */
+	data = data_ind->msgUnitParam.u8Buffer;
+	len = data_ind->msgUnitParam.u8Size;
+	/* pull lower header part before data */
+	msgb_pull(l1p_msg, data - l1p_msg->data);
+	/* trim remaining data to it's size, to get rid of upper header part */
+	rc = msgb_trim(l1p_msg, len);
+	if (rc < 0)
+		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
+	l1p_msg->l2h = l1p_msg->data;
+	/* push new l1 header */
+	l1p_msg->l1h = msgb_push(l1p_msg, sizeof(*l1sap));
+	/* fill header */
+	l1sap = msgb_l1sap_prim(l1p_msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
-		PRIM_OP_INDICATION, sap_msg);
+		PRIM_OP_INDICATION, l1p_msg);
 	l1sap->u.data.link_id = link_id;
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
-	l1sap->u.data.rssi = (int8_t) (data_ind->measParam.fRssi);
-
-	/* copy data from L1 primitive to L1SAP primitive */
-	sap_msg->l2h = msgb_put(sap_msg, data_ind->msgUnitParam.u8Size);
-	memcpy(sap_msg->l2h, data_ind->msgUnitParam.u8Buffer,
-		data_ind->msgUnitParam.u8Size);
-
-
-	msgb_free(l1p_msg);
+	l1sap->u.data.rssi = rssi;
 
 	return l1sap_up(trx, l1sap);
 }
 
-static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
+static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 			    struct msgb *l1p_msg)
 {
-	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
+	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
@@ -874,7 +877,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
 
 	/* increment number of RACH slots with valid non-handover RACH burst */
-	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
+	lchan = l1if_hLayer_to_lchan(trx, (uint32_t)ra_ind->hLayer2);
 	if (trx == bts->c0 && !(lchan && lchan->ho.active == HANDOVER_ENABLED))
 		btsb->load.rach.access++;
 
@@ -908,33 +911,34 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 }
 
 /* handle any random indication from the L1 */
-static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
+static int l1if_handle_ind(struct lc15l1_hdl *fl1, struct msgb *msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	int rc = 0;
 
-	/* all the below called functions must take ownership of the msgb */
 	switch (l1p->id) {
 	case GsmL1_PrimId_MphTimeInd:
-		rc = handle_mph_time_ind(fl1, &l1p->u.mphTimeInd, msg);
+		rc = handle_mph_time_ind(fl1, &l1p->u.mphTimeInd);
 		break;
 	case GsmL1_PrimId_MphSyncInd:
 		break;
 	case GsmL1_PrimId_PhConnectInd:
 		break;
 	case GsmL1_PrimId_PhReadyToSendInd:
-		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
+		return handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
 					       msg);
-		break;
 	case GsmL1_PrimId_PhDataInd:
-		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
-		break;
+		return handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
 	case GsmL1_PrimId_PhRaInd:
-		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
+		return handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
 	default:
 		break;
 	}
+
+	/* Special return value '1' means: do not free */
+	if (rc != 1)
+		msgb_free(msg);
 
 	return rc;
 }
@@ -950,7 +954,7 @@ static inline int is_prim_compat(GsmL1_Prim_t *l1p, struct wait_l1_conf *wlc)
 	return 1;
 }
 
-int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
+int l1if_handle_l1prim(int wq, struct lc15l1_hdl *fl1h, struct msgb *msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	struct wait_l1_conf *wlc;
@@ -962,19 +966,17 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 		break;
 	default:
 		LOGP(DL1P, LOGL_DEBUG, "Rx L1 prim %s on queue %d\n",
-			get_value_string(femtobts_l1prim_names, l1p->id), wq);
+			get_value_string(lc15bts_l1prim_names, l1p->id), wq);
 	}
 
 	/* check if this is a resposne to a sync-waiting request */
 	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
 		if (is_prim_compat(l1p, wlc)) {
 			llist_del(&wlc->list);
-			if (wlc->cb) {
-				/* call-back function must take
-				 * ownership of msgb */
-				rc = wlc->cb(femtol1_hdl_trx(fl1h), msg,
+			if (wlc->cb)
+				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
 					     wlc->cb_data);
-			} else {
+			else {
 				rc = 0;
 				msgb_free(msg);
 			}
@@ -987,14 +989,14 @@ int l1if_handle_l1prim(int wq, struct femtol1_hdl *fl1h, struct msgb *msg)
 	return l1if_handle_ind(fl1h, msg);
 }
 
-int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
+int l1if_handle_sysprim(struct lc15l1_hdl *fl1h, struct msgb *msg)
 {
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 	struct wait_l1_conf *wlc;
 	int rc;
 
 	LOGP(DL1P, LOGL_DEBUG, "Rx SYS prim %s\n",
-		get_value_string(femtobts_sysprim_names, sysp->id));
+		get_value_string(lc15bts_sysprim_names, sysp->id));
 
 	/* check if this is a resposne to a sync-waiting request */
 	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
@@ -1002,12 +1004,10 @@ int l1if_handle_sysprim(struct femtol1_hdl *fl1h, struct msgb *msg)
 		 * sending the same primitive */
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
-			if (wlc->cb) {
-				/* call-back function must take
-				 * ownership of msgb */
-				rc = wlc->cb(femtol1_hdl_trx(fl1h), msg,
+			if (wlc->cb)
+				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
 					     wlc->cb_data);
-			} else {
+			else {
 				rc = 0;
 				msgb_free(msg);
 			}
@@ -1038,12 +1038,12 @@ int sysinfo_has_changed(struct gsm_bts *bts, int si)
 static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 				void *data)
 {
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
 
-	if (sysp->id == SuperFemto_PrimId_ActivateRfCnf)
+	if (sysp->id == Litecell15_PrimId_ActivateRfCnf)
 		on = 1;
 
 	if (on)
@@ -1052,13 +1052,13 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		status = sysp->u.deactivateRfCnf.status;
 
 	LOGP(DL1C, LOGL_INFO, "Rx RF-%sACT.conf (status=%s)\n", on ? "" : "DE",
-		get_value_string(femtobts_l1status_names, status));
+		get_value_string(lc15bts_l1status_names, status));
 
 
 	if (on) {
 		if (status != GsmL1_Status_Success) {
 			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
-				get_value_string(femtobts_l1status_names, status));
+				get_value_string(lc15bts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
 		} else
 			bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
@@ -1082,91 +1082,29 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	return 0;
 }
 
-static int get_clk_cal(struct femtol1_hdl *hdl)
-{
-#ifdef FEMTOBTS_API_VERSION
-	return hdl->clk_cal;
-#else
-	switch (hdl->clk_src) {
-	case SuperFemto_ClkSrcId_Ocxo:
-	case SuperFemto_ClkSrcId_Tcxo:
-		/* only for those on-board clocks it makes sense to use
-		 * the calibration value */
-		return hdl->clk_cal;
-	default:
-		/* external clocks like GPS are taken 1:1 without any
-		 * modification by a local calibration value */
-		LOGP(DL1C, LOGL_INFO, "Ignoring Clock Calibration for "
-		     "selected %s clock\n",
-		     get_value_string(femtobts_clksrc_names, hdl->clk_src));
-		return 0;
-	}
-#endif
-}
-
-/*
- * RevC was the last HW revision without an external
- * attenuator. Check for that.
- */
-static int has_external_atten(struct femtol1_hdl *hdl)
-{
-	/* older version doesn't have an attenuator */
-	return hdl->hw_info.ver_major > 2;
-}
-
 /* activate or de-activate the entire RF-Frontend */
-int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
+int l1if_activate_rf(struct lc15l1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-	struct gsm_bts_trx *trx = hdl->phy_inst->trx;
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 
 	if (on) {
-		sysp->id = SuperFemto_PrimId_ActivateRfReq;
-#ifdef HW_SYSMOBTS_V1
-		sysp->u.activateRfReq.u12ClkVc = get_clk_cal(hdl);
-#else
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(0,2,0)
-		sysp->u.activateRfReq.timing.u8TimSrc = 1; /* Master */
-#endif /* 0.2.0 */
+		sysp->id = Litecell15_PrimId_ActivateRfReq;
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = pcu_direct;
-		/* Use clock from OCXO or whatever source is configured */
-#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
-		sysp->u.activateRfReq.rfTrx.u8ClkSrc = hdl->clk_src;
-#else
-		sysp->u.activateRfReq.rfTrx.clkSrc = hdl->clk_src;
-#endif /* 2.1.0 */
-		sysp->u.activateRfReq.rfTrx.iClkCor = get_clk_cal(hdl);
-#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,4,0)
-#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
-		sysp->u.activateRfReq.rfRx.u8ClkSrc = hdl->clk_src;
-#else
-		sysp->u.activateRfReq.rfRx.clkSrc = hdl->clk_src;
-#endif /* 2.1.0 */
-		sysp->u.activateRfReq.rfRx.iClkCor = get_clk_cal(hdl);
-#endif /* API 2.4.0 */
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,2,0)
-		if (has_external_atten(hdl)) {
-			LOGP(DL1C, LOGL_INFO, "Using external attenuator.\n");
-			sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
-			sysp->u.activateRfReq.rfTrx.fMaxTxPower =
-					sysmobts_get_nominal_power(trx);
-		}
-#endif /* 2.2.0 */
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,8,1)
+
+		sysp->u.activateRfReq.u8UnusedTsMode = 0;
+		sysp->u.activateRfReq.u8McCorrMode = 0;
+
 		/* maximum cell size in quarter-bits, 90 == 12.456 km */
 		sysp->u.activateRfReq.u8MaxCellSize = 90;
-#endif
-#endif /* !HW_SYSMOBTS_V1 */
 	} else {
-		sysp->id = SuperFemto_PrimId_DeactivateRfReq;
+		sysp->id = Litecell15_PrimId_DeactivateRfReq;
 	}
 
 	return l1if_req_compl(hdl, msg, activate_rf_compl_cb, NULL);
 }
 
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
 static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 {
 	int i;
@@ -1197,21 +1135,21 @@ static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			    void *data)
 {
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status;
 
 	status = sysp->u.muteRfCnf.status;
 
 	if (status != GsmL1_Status_Success) {
 		LOGP(DL1C, LOGL_ERROR, "Rx RF-MUTE.conf with status %s\n",
-		     get_value_string(femtobts_l1status_names, status));
+		     get_value_string(lc15bts_l1status_names, status));
 		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 0);
 	} else {
 		int i;
 
 		LOGP(DL1C, LOGL_INFO, "Rx RF-MUTE.conf with status=%s\n",
-		     get_value_string(femtobts_l1status_names, status));
+		     get_value_string(lc15bts_l1status_names, status));
 		bts_update_status(BTS_STATUS_RF_MUTE, fl1h->last_rf_mute[0]);
 		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 1);
 
@@ -1227,40 +1165,33 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	return 0;
 }
-#endif
 
 /* mute/unmute RF time slots */
-int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
+int l1if_mute_rf(struct lc15l1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 
 	LOGP(DL1C, LOGL_INFO, "Tx RF-MUTE.req (%d, %d, %d, %d, %d, %d, %d, %d)\n",
 	     mute[0], mute[1], mute[2], mute[3],
 	     mute[4], mute[5], mute[6], mute[7]
 	    );
 
-#if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(3,6,0)
-	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
-	msgb_free(msg);
-	return -ENOTSUP;
-#else
-	sysp->id = SuperFemto_PrimId_MuteRfReq;
+	sysp->id = Litecell15_PrimId_MuteRfReq;
 	memcpy(sysp->u.muteRfReq.u8Mute, mute, sizeof(sysp->u.muteRfReq.u8Mute));
 	/* save for later use */
 	memcpy(hdl->last_rf_mute, mute, sizeof(hdl->last_rf_mute));
 
 	return l1if_req_compl(hdl, msg, cb ? cb : mute_rf_compl_cb, NULL);
-#endif /* < 3.6.0 */
 }
 
 /* call-back on arrival of DSP+FPGA version + band capability */
 static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			 void *data)
 {
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
+	Litecell15_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
 	int rc;
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
@@ -1271,26 +1202,10 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	fl1h->hw_info.fpga_version[1] = sic->fpgaVersion.minor;
 	fl1h->hw_info.fpga_version[2] = sic->fpgaVersion.build;
 
-#ifndef HW_SYSMOBTS_V1
-	fl1h->hw_info.ver_major = sic->boardVersion.rev;
-	fl1h->hw_info.ver_minor = sic->boardVersion.option;
-#endif
-
 	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\nn",
 		sic->dspVersion.major, sic->dspVersion.minor,
 		sic->dspVersion.build, sic->fpgaVersion.major,
 		sic->fpgaVersion.minor, sic->fpgaVersion.build);
-
-#ifdef HW_SYSMOBTS_V1
-	if (sic->rfBand.gsm850)
-		fl1h->hw_info.band_support |= GSM_BAND_850;
-	if (sic->rfBand.gsm900)
-		fl1h->hw_info.band_support |= GSM_BAND_900;
-	if (sic->rfBand.dcs1800)
-		fl1h->hw_info.band_support |= GSM_BAND_1800;
-	if (sic->rfBand.pcs1900)
-		fl1h->hw_info.band_support |= GSM_BAND_1900;
-#endif
 
 	if (!(fl1h->hw_info.band_support & trx->bts->band))
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
@@ -1299,30 +1214,23 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	/* Request the activation */
 	l1if_activate_rf(fl1h, 1);
 
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
-	/* load calibration tables (if we know their path) */
+	/* load calibration tables */
 	rc = calib_load(fl1h);
 	if (rc < 0)
 		LOGP(DL1C, LOGL_ERROR, "Operating without calibration; "
 			"unable to load tables!\n");
-#else
-	LOGP(DL1C, LOGL_NOTICE, "Operating without calibration "
-		"as software was compiled against old header files\n");
-#endif
 
 	msgb_free(resp);
-
-	/* FIXME: clock related */
 	return 0;
 }
 
-/* request DSP+FPGA code versions + band capability */
-static int l1if_get_info(struct femtol1_hdl *hdl)
+/* request DSP+FPGA code versions */
+static int l1if_get_info(struct lc15l1_hdl *hdl)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 
-	sysp->id = SuperFemto_PrimId_SystemInfoReq;
+	sysp->id = Litecell15_PrimId_SystemInfoReq;
 
 	return l1if_req_compl(hdl, msg, info_compl_cb, NULL);
 }
@@ -1330,19 +1238,19 @@ static int l1if_get_info(struct femtol1_hdl *hdl)
 static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			  void *data)
 {
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status = sysp->u.layer1ResetCnf.status;
 
 	LOGP(DL1C, LOGL_NOTICE, "Rx L1-RESET.conf (status=%s)\n",
-		get_value_string(femtobts_l1status_names, status));
+		get_value_string(lc15bts_l1status_names, status));
 
 	msgb_free(resp);
 
 	/* If we're coming out of reset .. */
 	if (status != GsmL1_Status_Success) {
 		LOGP(DL1C, LOGL_FATAL, "L1-RESET.conf with status %s\n",
-			get_value_string(femtobts_l1status_names, status));
+			get_value_string(lc15bts_l1status_names, status));
 		bts_shutdown(trx->bts, "L1-RESET failure");
 	}
 
@@ -1356,25 +1264,25 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	return 0;
 }
 
-int l1if_reset(struct femtol1_hdl *hdl)
+int l1if_reset(struct lc15l1_hdl *hdl)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-	sysp->id = SuperFemto_PrimId_Layer1ResetReq;
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
+	sysp->id = Litecell15_PrimId_Layer1ResetReq;
 
 	return l1if_req_compl(hdl, msg, reset_compl_cb, NULL);
 }
 
 /* set the trace flags within the DSP */
-int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
+int l1if_set_trace_flags(struct lc15l1_hdl *hdl, uint32_t flags)
 {
 	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
 
 	LOGP(DL1C, LOGL_INFO, "Tx SET-TRACE-FLAGS.req (0x%08x)\n",
 		flags);
 
-	sysp->id = SuperFemto_PrimId_SetTraceFlagsReq;
+	sysp->id = Litecell15_PrimId_SetTraceFlagsReq;
 	sysp->u.setTraceFlagsReq.u32Tf = flags;
 
 	hdl->dsp_trace_f = flags;
@@ -1388,113 +1296,62 @@ int l1if_set_trace_flags(struct femtol1_hdl *hdl, uint32_t flags)
 	return 0;
 }
 
-/* get those femtol1_hdl.hw_info elements that sre in EEPROM */
-static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
+static int get_hwinfo(struct lc15l1_hdl *fl1h)
 {
-	eeprom_SysInfo_t sysinfo;
-	int val, rc;
+	int rc;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
+	rc = lc15bts_rev_get();
 	if (rc < 0)
 		return rc;
-	fl1h->hw_info.model_nr = val;
+	fl1h->hw_info.ver_major = rc;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_FLAGS, &val);
+	rc = lc15bts_model_get();
 	if (rc < 0)
 		return rc;
-	fl1h->hw_info.model_flags = val;
+	fl1h->hw_info.ver_minor = rc;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val);
-	if (rc < 0)
+	rc = lc15bts_option_get(LC15BTS_OPTION_BAND);
+	if (rc < 0) 
 		return rc;
-	fl1h->hw_info.trx_nr = val;
 
-	rc = eeprom_ReadSysInfo(&sysinfo);
-	if (rc != EEPROM_SUCCESS) {
-		/* some early units don't yet have the EEPROM
-		 * information structure */
-		LOGP(DL1C, LOGL_ERROR, "Unable to read band support "
-			"from EEPROM, assuming all bands\n");
-		fl1h->hw_info.band_support = GSM_BAND_850 | GSM_BAND_900 | GSM_BAND_1800 | GSM_BAND_1900;
-		return 0;
+	switch (rc) {
+	case LC15BTS_BAND_850: 
+		fl1h->hw_info.band_support = GSM_BAND_850; 
+		break;
+	case LC15BTS_BAND_900: 
+		fl1h->hw_info.band_support = GSM_BAND_900; 
+		break;
+	case LC15BTS_BAND_1800: 
+		fl1h->hw_info.band_support = GSM_BAND_1800; 
+		break;
+	case LC15BTS_BAND_1900: 
+		fl1h->hw_info.band_support = GSM_BAND_1900; 
+		break;
+	default:
+		return -1;
 	}
-
-	if (sysinfo.u8GSM850)
-		fl1h->hw_info.band_support |= GSM_BAND_850;
-	if (sysinfo.u8GSM900)
-		fl1h->hw_info.band_support |= GSM_BAND_900;
-	if (sysinfo.u8DCS1800)
-	        fl1h->hw_info.band_support |= GSM_BAND_1800;
-	if (sysinfo.u8PCS1900)
-		fl1h->hw_info.band_support |= GSM_BAND_1900;
-
 	return 0;
 }
 
-/* Set the clock calibration to the value read from the eeprom. */
-static void clk_cal_use_eeprom(struct femtol1_hdl *hdl)
+struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 {
-	struct phy_instance *pinst = hdl->phy_inst;
-	eeprom_RfClockCal_t rf_clk;
+	struct lc15l1_hdl *fl1h;
 	int rc;
 
-	if (!pinst->u.sysmobts.clk_use_eeprom)
-		return;
+	LOGP(DL1C, LOGL_INFO, "Litecell 1.5 BTS L1IF compiled against API headers "
+			"v%u.%u.%u\n", LITECELL15_API_VERSION >> 16,
+			(LITECELL15_API_VERSION >> 8) & 0xff,
+			 LITECELL15_API_VERSION & 0xff);
 
-	rc = eeprom_ReadRfClockCal(&rf_clk);
-	if (rc != EEPROM_SUCCESS) {
-		LOGP(DL1C, LOGL_ERROR, "Failed to read from EEPROM.\n");
-		return;
-	}
-
-	hdl->clk_cal = rf_clk.iClkCor;
-	LOGP(DL1C, LOGL_NOTICE,
-		"Read clock calibration(%d) from EEPROM.\n", hdl->clk_cal);
-}
-
-struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
-{
-	struct femtol1_hdl *fl1h;
-	int rc;
-
-#ifndef HW_SYSMOBTS_V1
-	LOGP(DL1C, LOGL_INFO, "sysmoBTSv2 L1IF compiled against API headers "
-			"v%u.%u.%u\n", SUPERFEMTO_API_VERSION >> 16,
-			(SUPERFEMTO_API_VERSION >> 8) & 0xff,
-			 SUPERFEMTO_API_VERSION & 0xff);
-#else
-	LOGP(DL1C, LOGL_INFO, "sysmoBTSv1 L1IF compiled against API headers "
-			"v%u.%u.%u\n", FEMTOBTS_API_VERSION >> 16,
-			(FEMTOBTS_API_VERSION >> 8) & 0xff,
-			 FEMTOBTS_API_VERSION & 0xff);
-#endif
-
-	fl1h = talloc_zero(pinst, struct femtol1_hdl);
+	fl1h = talloc_zero(pinst, struct lc15l1_hdl);
 	if (!fl1h)
 		return NULL;
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	fl1h->phy_inst = pinst;
-	fl1h->dsp_trace_f = pinst->u.sysmobts.dsp_trace_f;
-	fl1h->clk_src = pinst->u.sysmobts.clk_src;
-	fl1h->clk_cal = pinst->u.sysmobts.clk_cal;
-	clk_cal_use_eeprom(fl1h);
-	get_hwinfo_eeprom(fl1h);
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
-	if (fl1h->hw_info.model_nr == 2050) {
-		/* On the sysmoBTS 2050, we don't have an OCXO but
-		 * start with the TCXO and will sync it with the PPS
-		 * of the GPS in case there is a fix. */
-		fl1h->clk_src = SuperFemto_ClkSrcId_Tcxo;
-		LOGP(DL1C, LOGL_INFO, "Clock source defaulting to GPS 1PPS "
-			"on sysmoBTS 2050\n");
-	} else {
-		/* default clock source: OCXO */
-		fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
-	}
-#else
-	fl1h->clk_src = SF_CLKSRC_OCXO;
-#endif
+	fl1h->dsp_trace_f = pinst->u.lc15.dsp_trace_f;
+
+	get_hwinfo(fl1h);
 
 	rc = l1if_transport_open(MQ_SYS_WRITE, fl1h);
 	if (rc < 0) {
@@ -1509,164 +1366,32 @@ struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
 		return NULL;
 	}
 
-	l1if_reset(fl1h);
-
 	return fl1h;
 }
 
-int l1if_close(struct femtol1_hdl *fl1h)
+int l1if_close(struct lc15l1_hdl *fl1h)
 {
 	l1if_transport_close(MQ_L1_WRITE, fl1h);
 	l1if_transport_close(MQ_SYS_WRITE, fl1h);
 	return 0;
 }
 
-#ifdef HW_SYSMOBTS_V1
-int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
-{
-	LOGP(DL1C, LOGL_ERROR, "RfClock calibration not supported on v1 hw.\n");
-	return -ENOTSUP;
-}
-
-int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
-{
-	LOGP(DL1C, LOGL_ERROR, "RfClock calibration not supported on v1 hw.\n");
-	return -ENOTSUP;
-}
-
-#else
-static int clock_reset_cb(struct gsm_bts_trx *trx, struct msgb *resp,
-			  void *data)
-{
-	msgb_free(resp);
-	return 0;
-}
-
-static int clock_setup_cb(struct gsm_bts_trx *trx, struct msgb *resp,
-			  void *data)
-{
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-
-	if (sysp->u.rfClockSetupCnf.status != GsmL1_Status_Success)
-		LOGP(DL1C, LOGL_ERROR, "Rx RfClockSetupConf failed with: %d\n",
-			sysp->u.rfClockSetupCnf.status);
-	msgb_free(resp);
-	return 0;
-}
-
-static int clock_correct_info_cb(struct gsm_bts_trx *trx, struct msgb *resp,
-				 void *data)
-{
-	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
-
-	LOGP(DL1C, LOGL_NOTICE,
-		"RfClockInfo iClkCor=%d/clkSrc=%s Err=%d/ErrRes=%d/clkSrc=%s\n",
-		sysp->u.rfClockInfoCnf.rfTrx.iClkCor,
-		get_value_string(femtobts_clksrc_names,
-				sysp->u.rfClockInfoCnf.rfTrx.clkSrc),
-		sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErr,
-		sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErrRes,
-		get_value_string(femtobts_clksrc_names,
-				sysp->u.rfClockInfoCnf.rfTrxClkCal.clkSrc));
-
-	if (sysp->u.rfClockInfoCnf.rfTrx.clkSrc == SuperFemto_ClkSrcId_GpsPps) {
-		LOGP(DL1C, LOGL_ERROR,
-		"Calibrating GPS against GPS doesn not make sense.\n");
-		msgb_free(resp);
-		return -1;
-	}
-
-	if (sysp->u.rfClockInfoCnf.rfTrxClkCal.clkSrc == SuperFemto_ClkSrcId_None) {
-		LOGP(DL1C, LOGL_ERROR,
-		"No reference clock set. Please reset first.\n");
-		msgb_free(resp);
-		return -1;
-	}
-
-	if (sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErrRes == 0) {
-		LOGP(DL1C, LOGL_ERROR,
-		"Couldn't determine the clock difference.\n");
-		msgb_free(resp);
-		return -1;
-	}
-
-	fl1h->clk_cal = sysp->u.rfClockInfoCnf.rfTrxClkCal.iClkErr;
-	fl1h->phy_inst->u.sysmobts.clk_use_eeprom = 0;
-	msgb_free(resp);
-
-	/*
-	 * Let's reset the counter and this will lead to applying the
-	 * new calibration.
-	 */
-	l1if_rf_clock_info_reset(fl1h);
-
-	return 0;
-}
-
-int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h)
-{
-	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-
-	/* Set GPS/PPS as reference */
-	sysp->id = SuperFemto_PrimId_RfClockSetupReq;
-	sysp->u.rfClockSetupReq.rfTrx.iClkCor = get_clk_cal(fl1h);
-	sysp->u.rfClockSetupReq.rfTrx.clkSrc = fl1h->clk_src;
-	sysp->u.rfClockSetupReq.rfTrxClkCal.clkSrc = SuperFemto_ClkSrcId_GpsPps;
-	l1if_req_compl(fl1h, msg, clock_setup_cb, NULL);
-
-	/* Reset the error counters */
-	msg = sysp_msgb_alloc();
-	sysp = msgb_sysprim(msg);
-
-	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
-	sysp->u.rfClockInfoReq.u8RstClkCal = 1;
-
-	return l1if_req_compl(fl1h, msg, clock_reset_cb, NULL);
-}
-
-int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
-{
-	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-
-	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
-	sysp->u.rfClockInfoReq.u8RstClkCal = 0;
-
-	return l1if_req_compl(fl1h, msg, clock_correct_info_cb, NULL);
-}
-
-#endif
-
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
-	struct gsm_bts *bts;
 
 	OSMO_ASSERT(pinst);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTING);
 
-	pinst->u.sysmobts.hdl = l1if_open(pinst);
-	if (!pinst->u.sysmobts.hdl) {
+	pinst->u.lc15.hdl = l1if_open(pinst);
+	if (!pinst->u.lc15.hdl) {
 		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 interface\n");
 		return -EIO;
 	}
 
-	bts = pinst->trx->bts;
-	if (pinst->trx == bts->c0) {
-		int rc;
-		rc = sysmobts_get_nominal_power(bts->c0);
-		if (rc < 0) {
-			LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
-			     "transmit power. Assuming 23dBm.\n");
-		}
-		bts->c0->nominal_power = rc;
-		bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
-	}
+	l1if_reset(pinst->u.lc15.hdl);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
-
-	return 0;
 }
+

@@ -11,3 +11,7 @@ endif
 if ENABLE_OCTPHY
 SUBDIRS += osmo-bts-octphy
 endif
+
+if ENABLE_LC15BTS
+SUBDIRS += osmo-bts-litecell15
+endif

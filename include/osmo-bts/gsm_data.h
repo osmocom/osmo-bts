@@ -104,6 +104,13 @@ struct gsm_bts_role_bts {
 		struct llist_head queue;	/* list of struct smscb_msg */
 		struct smscb_msg *cur_msg;	/* current SMS-CB */
 	} smscb_state;
+
+	float min_qual_rach;	/* minimum quality for RACH bursts */
+	float min_qual_norm;	/* minimum quality for normal daata */
+
+	struct {
+		char *sock_path;
+	} pcu;
 };
 
 enum lchan_ciph_state {

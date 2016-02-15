@@ -40,9 +40,13 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
+
+#define MIN_QUAL_RACH    5.0f   /* at least  5 dB C/I */
+#define MIN_QUAL_NORM   -0.5f   /* at least -1 dB C/I */
 
 static void bts_update_agch_max_queue_length(struct gsm_bts *bts);
 
@@ -112,6 +116,9 @@ int bts_init(struct gsm_bts *bts)
 	btsb->max_ta = 63;
 	btsb->ny1 = 4;
 	btsb->t3105_ms = 300;
+	btsb->min_qual_rach = MIN_QUAL_RACH;
+	btsb->min_qual_norm = MIN_QUAL_NORM;
+	btsb->pcu.sock_path = talloc_strdup(btsb, PCU_SOCK_DEFAULT);
 	for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
 		btsb->t200_ms[i] = oml_default_t200_ms[i];
 

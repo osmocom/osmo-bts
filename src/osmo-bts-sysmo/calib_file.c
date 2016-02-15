@@ -390,12 +390,13 @@ static int calib_file_send(struct femtol1_hdl *fl1h,
 {
 	struct calib_send_state *st = &fl1h->st;
 	struct msgb *msg;
+	char *calib_path = fl1h->phy_inst->u.sysmobts.calib_path;
 	int rc;
 
 	msg = sysp_msgb_alloc();
 
-	if (fl1h->calib_path)
-		rc = calib_file_read(fl1h->calib_path, desc, msgb_sysprim(msg));
+	if (calib_path)
+		rc = calib_file_read(calib_path, desc, msgb_sysprim(msg));
 	else
 		rc = calib_eeprom_read(desc, msgb_sysprim(msg));
 	if (rc < 0) {
@@ -422,10 +423,11 @@ static int calib_send_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	struct calib_send_state *st = &fl1h->st;
+	char *calib_path = fl1h->phy_inst->u.sysmobts.calib_path;
 
 	LOGP(DL1C, LOGL_NOTICE, "L1 calibration table %s loaded (src: %s)\n",
 		calib_files[st->last_file_idx].fname,
-		fl1h->calib_path ? "file" : "eeprom");
+		calib_path ? "file" : "eeprom");
 
 	msgb_free(l1_msg);
 

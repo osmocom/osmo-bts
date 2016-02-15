@@ -82,6 +82,13 @@ struct phy_instance {
 
 	union {
 		struct {
+			/* configuration */
+			uint8_t clk_use_eeprom;
+			uint32_t dsp_trace_f;
+			int clk_cal;
+			uint8_t clk_src;
+			char *calib_path;
+
 			struct femtol1_hdl *hdl;
 		} sysmobts;
 		struct {
@@ -91,6 +98,13 @@ struct phy_instance {
 			/* logical transceiver number within one PHY */
 			uint32_t trx_id;
 		} octphy;
+		struct {
+			/* configuration */
+			uint32_t dsp_trace_f;
+			char *calib_path;
+
+			struct lc15l1_hdl *hdl;
+		} lc15;
 	} u;
 };
 

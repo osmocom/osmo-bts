@@ -4,8 +4,8 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCODEC_LIBS) $(LIBOSMOVTY
 
 EXTRA_DIST = trx_if.h l1_if.h gsm0503_parity.h gsm0503_conv.h gsm0503_interleaving.h gsm0503_mapping.h gsm0503_coding.h gsm0503_tables.h loops.h amr.h
 
-bin_PROGRAMS = osmobts-trx
+bin_PROGRAMS = osmo-bts-trx
 
-osmobts_trx_SOURCES = main.c trx_if.c l1_if.c scheduler_trx.c trx_vty.c gsm0503_parity.c gsm0503_conv.c gsm0503_interleaving.c gsm0503_mapping.c gsm0503_coding.c gsm0503_tables.c loops.c amr.c
-osmobts_trx_LDADD = $(top_builddir)/src/common/libbts.a $(top_builddir)/src/common/libl1sched.a $(LDADD)
+osmo_bts_trx_SOURCES = main.c trx_if.c l1_if.c scheduler_trx.c trx_vty.c gsm0503_parity.c gsm0503_conv.c gsm0503_interleaving.c gsm0503_mapping.c gsm0503_coding.c gsm0503_tables.c loops.c amr.c
+osmo_bts_trx_LDADD = $(top_builddir)/src/common/libbts.a $(top_builddir)/src/common/libl1sched.a $(LDADD)
 
