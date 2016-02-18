@@ -744,6 +744,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint8_t tn;
 	uint32_t fn;
 	int8_t rssi;
+	enum osmo_ph_pres_info_type pr_info = data_ind->pdch_presence_info;
 
 	rssi = data_ind->rssi;
 	chan_nr = data_ind->chan_nr;
@@ -767,11 +768,11 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			return 0;
 		}
 		/* drop incomplete UL block */
-		if (data[0] != 7)
+		if (pr_info != PRES_INFO_BOTH)
 			return 0;
 		/* PDTCH / PACCH frame handling */
 		pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
-			L1SAP_FN2MACBLOCK(fn), data + 1, len - 1, rssi);
+			L1SAP_FN2MACBLOCK(fn), data, len, rssi);
 
 		return 0;
 	}

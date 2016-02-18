@@ -42,7 +42,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 				 enum trx_chan_type chan);
 
 int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-				enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi);
+				enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi, enum osmo_ph_pres_info_type presence_info);
 
 int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		    enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len);

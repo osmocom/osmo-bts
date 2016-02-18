@@ -190,7 +190,7 @@ got_msg:
 			l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 				456, 456, -110, 0);
 
-			_sched_compose_ph_data_ind(l1t, tn, 0, chan, NULL, 0, -110);
+			_sched_compose_ph_data_ind(l1t, tn, 0, chan, NULL, 0, -110, PRES_INFO_INVALID);
 		}
 	}
 
@@ -841,7 +841,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 
-	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len, *rssi_sum / *rssi_num);
+	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len, *rssi_sum / *rssi_num, PRES_INFO_UNKNOWN);
 }
 
 int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
@@ -856,7 +856,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t *rssi_num = &chan_state->rssi_num;
 	float *toa_sum = &chan_state->toa_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
-	uint8_t l2[54+1];
+	uint8_t l2[54];
 	int n_errors, n_bits_total;
 	int rc;
 
@@ -906,7 +906,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	*mask = 0x0;
 
 	/* decode */
-	rc = pdtch_decode(l2 + 1, *bursts_p, NULL, &n_errors, &n_bits_total);
+	rc = pdtch_decode(l2, *bursts_p, NULL, &n_errors, &n_bits_total);
 
 	/* Send uplnk measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
@@ -919,10 +919,8 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return 0;
 	}
 
-	l2[0] = 7; /* valid frame */
-
 	return _sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
-		l2, rc + 1, *rssi_sum / *rssi_num);
+		l2, rc, *rssi_sum / *rssi_num, PRES_INFO_BOTH);
 }
 
 int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
@@ -1038,7 +1036,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		_sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1204,7 +1202,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		chan_state->ul_ongoing_facch = 1;
 		_sched_compose_ph_data_ind(l1t, tn,
 			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi);
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */

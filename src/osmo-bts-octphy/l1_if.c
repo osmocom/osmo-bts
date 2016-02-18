@@ -1032,6 +1032,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = rssi;
+	l1sap->u.data.pdch_presence_info = PRES_INFO_BOTH; /* FIXME: consider EDGE support */
 
 	l1sap_up(trx, l1sap);
 

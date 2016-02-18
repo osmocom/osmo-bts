@@ -1,7 +1,7 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
 
-#define PCU_IF_VERSION		0x05
+#define PCU_IF_VERSION		0x06
 
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
