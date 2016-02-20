@@ -65,4 +65,10 @@
 	and no Back-Cover Texts.  A copy of the license is included in
 	the section entitled "GNU Free Documentation License".
   </para>
+  <para>
+	The Asciidoc source code of this manual can be found at
+	<ulink url="http://git.osmocom.org/osmo-gsm-manuals/">
+		http://git.osmocom.org/osmo-gsm-manuals/
+	</ulink>
+  </para>
 </legalnotice>
