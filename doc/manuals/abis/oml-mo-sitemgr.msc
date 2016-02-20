@@ -1,0 +1,17 @@
+msc {
+	bts [label="Site Manager"], bsc [label="BSC"];
+	# this is for the Site Manager Object
+	---		[label="Initial state after establishing OML"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Notinstalled)"];
+	---		[label="MO requests software activation"];
+	bts => bsc	[label="SW Activate Req"];
+	bts <= bsc	[label="SW Activate Req Ack"];
+	---		[label="BTS instructs BTS to activate software"];
+	bts <= bsc	[label="Activate SW"];
+	bts => bsc	[label="Activate SW Ack"];
+	---		[label="MO reports new state after SW activation"];
+	bts => bsc	[label="STATE CHG REP (Enabled)"];
+	bts => bsc	[label="SW Activated Report"];
+	bts <= bsc	[label="OPSTART"];
+	bts => bsc	[label="OPSTART ACK"];
+}

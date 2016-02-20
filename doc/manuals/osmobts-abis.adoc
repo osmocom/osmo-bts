@@ -1,0 +1,90 @@
+OsmoBTS Abis Protocol Specification
+===================================
+Neels Hofmeyr <nhofmeyr@sysmocom.de>
+
+== Introduction
+
+This document describes the A-bis interface of *OsmoBTS*. Based on 3GPP TS
+12.21 and 08.58, this document indicates which of the 3GPP specified A-bis
+messages and IEs are implemented according to 3GPP specifications, which of
+these are not or not fully implemented, as well as OsmoBTS-specific extensions
+to the A-bis interface not specified by 3GPP.
+
+Extensions to the A-bis interface specific to OsmoBTS are detailed in this
+document. For details on the messages and IEs that comply with abovementioned
+3GPP specifications, please refer to those documents.
+
+.3GPP document versions referred to by this document
+[cols="20%,80%"]
+|===
+|3GPP TS 08.56 | version 8.0.1 Release 1999
+|3GPP TS 08.58 | version 8.6.0 Release 1999
+|3GPP TS 08.60 | version 8.2.1 Release 1999
+|3GPP TS 12.21 | version 8.0.0 Release 1999
+|===
+
+.IETF documents referred to by his document
+[cols="20%,80%"]
+|===
+|IETF RFC 768 | User Datagram Protocol
+|IETF RFC 791 | Internet Protocol
+|IETF RFC 793 | Transmission Control Protocol
+|IETF RFC 1889 | RTP: A Transport Protocol for Real-Time Applications
+|IETF RFC 3551 | RTP Profle for Audio and Video Conferences with Minimal Control
+|IETF RFC 4867 | RTP Payload Format and Files Storage Format for the Adaptive Multi-Rate (AMR) and Adaptive Multi-Rate Wideband (AMR-WB) Audio Codecs
+|IETF RFC 5993 | RTP Payload Format for Global Systems for Mobile Communications Half Rate (GSM-HR)
+|===
+
+== Overview
+
+The OsmoBTS A-bis interface consists of traffic management messages (RSL, Radio
+Signalling Link) and network management messages (OML, Operation & Maintenance
+Link), encapsulated in an IPA multiplex.
+
+OML and RSL each use a separate TCP connection.
+
+.TCP port numbers used by OsmoBTS Abis/IP
+[options="header",width="50%",cols="35%,65%"]
+|===
+|TCP Port Number|Usage
+|3002|A-bis OML (inside IPA multiplex)
+|3003|A-bis RSL (inside IPA multiplex)
+|===
+
+Both TCP connections for OML and RSL are established in the BTS -> BSC
+direction, i.e. the BTS is running as a TCP client, while the BSC is
+running as a TCP server.
+
+The BTS first establishes the TCP connection for OML.  Via OML, the BSC
+instructs the BTS to which IP address the RSL connection shall be
+established.
+
+.Overview of A-bis connection establishment
+["mscgen"]
+----
+include::abis/abis-startup.msc[]
+----
+
+=== Identities
+
+The BTS is locally configured (via administrative means, out of band of
+this specification) to have a Unit ID.  The Unit ID consists of three
+parts:
+
+* The Site Number
+* The BTS number at the site
+* The TRX number within the BTS
+
+include::abis/ipa.adoc[]
+
+include::abis/oml.adoc[]
+
+include::abis/rsl.adoc[]
+
+include::abis/rtp.adoc[]
+
+include::../common/chapters/port_numbers.adoc[]
+
+include::../common/chapters/glossary.adoc[]
+
+include::../common/chapters/gfdl.adoc[]

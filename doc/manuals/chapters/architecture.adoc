@@ -1,0 +1,120 @@
+== OsmoBTS software architecture
+
+=== OsmoBTS PHY interface abstraction
+
+The OsmoBTS PHY interface serves as an internal abstraction layer
+between given PHY hardware (as provided by the bts_model) and the actual
+logical transceivers (TRXs) of a BTS inside the OsmoBTS code base.
+
+
+==== PHY link
+
+A PHY link is a physical connection / link towards a given PHY.  This
+might be, for example,
+
+* a set of file descriptors to device nodes in the /dev/ directory
+  (sysmobts, litecell15)
+* a packet socket for sending raw Ethernet frames to an OCTPHY
+* a set of UDP sockets for interacting with OsmoTRX
+
+Each PHY interface has a set of attribute/parameters and a list of 1 to
+n PHY instances.
+
+PHY links are numbered 0..n globally inside OsmoBTS.
+
+Each PHY link is configured via the VTY using its individual top-level
+vty node.  Given the different bts-model / phy specific properties, the
+VTY configuration options (if any) of the PHY instance differ between
+BTS models.
+
+The PHY links and instances must be configured above the BTS/TRX nodes
+in the configuration file.  If the file is saved via the VTY, the code
+automatically ensures this.
+
+
+==== PHY instance
+
+A PHY instance is an instance of a PHY, accessed via a PHY link.
+
+In the case of osmo-bts-sysmo and osmo-bts-trx, there is only one
+instance in every PHY link.  This is due to the fact that the API inside
+that PHY link does not permit for distinguishing multiple different
+logical TRXs.
+
+Other PHY implementations like the OCTPHY however do support addressing
+multiple PHY instances via a single PHY link.
+
+PHY instances are numbered 0..n inside each PHY link.
+
+Each PHY instance is configured via the VTY as a separate node beneath each
+PHY link.  Given the different bts-model / phy specific properties, the
+VTY configuration options (if any) of the PHY instance differ between
+BTS models.
+
+
+==== Mapping PHY instances to TRXs
+
+Each TRX node in the VTY must use the 'phy N instance M' command in
+order to specify which PHY instance is allocated to this specific TRX.
+
+=== Internal control flow
+
+==== start-up / sequencing during OsmoBTS start
+
+.Control flow at OsmoBTS start-up procedure
+[options="header",cols="10%,35%,55%"]
+|===
+| section | function | description
+| bts-specific | main() | Entering main() from glibc
+| common | bts_main() | initialization of talloc contexts
+| common | bts_log_init() | initialization of logging
+| common | handle_options() | common option parsing
+| bts-specific | bts_model_handle_options() | model-specific option parsing
+| common | gsm_bts_alloc() | allocation of BTS/TRX/TS data structures
+| common | vty_init() | Initialziation of VTY core, libosmo-abis and osmo-bts VTY
+| common | main() | Setting of scheduler RR priority (if configured)
+| common | main() | Initialization of GSMTAP (if configured)
+| common | bts_init() | configuration of defaults in bts/trx/s object
+| bts-specific | bts_model_init | ?
+| common | abis_init() | Initialization of libosmo-abis
+| common | vty_read_config_file() | Reading of configuration file
+| bts-specific | bts_model_phy_link_set_defaults() | Called for every PHY link created
+| bts-specific | bts_model_phy_instance_set_defaults() | Called for every PHY Instance created
+| common | bts_controlif_setup() | Initialization of Control Interface
+| bts-specific | bts_model_ctrl_cmds_install() | Install model-specific control interface commands
+| common | telnet_init() | Initialization of telnet interface
+| common | pcu_sock_init() | Initializaiton of PCU socket
+| common | main() | Installation of signal handlers
+| common | abis_open() | Start of the A-bis connection to BSC
+| common | phy_links_open() | Iterate over list of configured PHY links
+| bts-specific | bts_model_phy_link_open() | Open each of the configured PHY links
+| common | write_pid_file() | Generate the pid file
+| common | osmo_daemonize() | Fork as daemon in background (if configured)
+| common | bts_main() | Run main loop until global variable quit >= 2
+|===
+
+
+==== At time of OML establishment
+
+.Control flow at time of OML establishment
+[options="header",cols="10%,35%,55%"]
+|===
+| section | function | description
+| bts-specific | bts_model_oml_estab() | Called by core once OML link is established
+| bts-specific | bts_model_check_oml() | called each time OML sets some attributes on a MO, checks if attributes are valid
+| bts-specific | bts_model_apply_oml() | called each time OML sets some attributes on a MO, stores attribute contents in data structures
+| bts-specific | bts_model_opstart() | for NM_OC_BTS, NM_OC_SITE_MANAGER, NM_OC_GPRS_NSE, NM_OC_GPRS_CELL, NMO_OC_GPRS_NSVC
+| bts-specific | bts_model_opstart() | for NM_OC_RADIO_CARRIER for each trx
+| bts-specific | bts_model_opstart() | for NM_OC_BASEB_TRANSC for each trx
+| bts-specific | bts_model_opstart() | for NM_OC_CHANNEL for each timeslot on each trx
+| bts-specific | bts_model_change_power() | change transmit power for each trx (power ramp-up/ramp-down)
+|===
+
+==== At time of RSL connection loss
+
+.Control flow at time of RSL connection loss
+[options="header",cols="10%,35%,55%"]
+|===
+| section | function | description
+| bts-specific | bts_model_abis_close() | called when either one of the RSL links or the OML link are down
+|===

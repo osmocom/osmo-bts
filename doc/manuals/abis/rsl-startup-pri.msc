@@ -1,0 +1,22 @@
+msc {
+	bts [label="TRX"], bsc [label="BSC"];
+
+	bts => bsc	[label="TCP Connect (Port 3003, RSL)"];
+	bts box bsc	[label="IPA CCM Identification (Port 3003)"];
+	|||;
+
+	bts <= bsc	[label="BCCH Information (SI1)"];
+	bts <= bsc	[label="BCCH Information (SI2)"];
+	...;
+	bts <= bsc	[label="BCCH Information (SI3)"];
+	bts <= bsc	[label="BCCH Information (SI4)"];
+	|||;
+	bts <= bsc	[label="SACCH FILLING (SI5)"];
+	...;
+	bts <= bsc	[label="SACCH FILLING (SI6)"];
+	|||;
+	bts => bsc	[label="RF Resource Indication"];
+	...;
+	bts => bsc	[label="RF Resource Indication"];
+	...;
+}

@@ -1,0 +1,681 @@
+== Radio Signalling Link (RSL)
+
+=== List of Messages
+
+The following tables list the RSL messages used by OsmoBTS A-bis/IP,
+grouped by their level of compliance with 3GPP TS 08.58.
+
+==== Messages Compliant With TS 08.58
+
+Specific limitations apply, see the linked sections.
+
+.Messages compliant with TS 08.58
+[options="header",cols="10%,20%,45%,5%,20%"]
+|===
+| TS 08.58 § | This document § | Message | <-/-> | Received/Sent by OsmoBTS
+5+<| *Radio link layer management messages*
+| 8.3.1  | - | DATA REQUEST | <- | Received
+| 8.3.2  | - | DATA INDICATION | -> | Sent
+| 8.3.3  | - | ERROR INDICATION | -> | Sent
+| 8.3.4  | - | ESTABLISH REQUEST | <- | Received
+| 8.3.5  | - | ESTABLISH CONFIRM | -> | Sent
+| 8.3.6  | - | ESTABLISH INDICATION | -> | Sent
+| 8.3.7  | - | RELEASE REQUEST | <- | Received
+| 8.3.8  | - | RELEASE CONFIRM | -> | Sent
+| 8.3.9  | - | RELEASE INDICATION | -> | Sent
+| 8.3.10 | - | UNIT DATA REQUEST | <- | Received
+| 8.3.11 | - | UNIT DATA INDICATION | -> | Sent
+5+<| *DEDICATED CHANNEL MANAGEMENT MESSAGES*
+| 8.4.1  | - | CHANNEL ACTIVATION | <- | Received
+| 8.4.2  | - | CHANNEL ACTIVATION ACKNOWLEDGE | -> | Sent
+| 8.4.3  | - | CHANNEL ACTIVATION NEGATIVE ACKNOWLEDGE | -> | Sent
+| 8.4.4  | - | CONNECTION FAILURE INDICATION | -> | Sent
+| 8.4.5  | - | DEACTIVATE SACCH | <- | Received
+| 8.4.6  | - | ENCRYPTION COMMAND | <- | Received
+| 8.4.7  | - | HANDOVER DETECTION | -> | Sent
+| 8.4.8  | <<MEASUREMENT_RESULT>> | MEASUREMENT RESULT | -> | Sent
+| 8.4.9  | <<MODE_MODIFY>> | MODE MODIFY | <- | Received
+| 8.4.10 | - | MODE MODIFY ACKNOWLEDGE | -> | Sent
+| 8.4.11 | - | MODE MODIFY NEGATIVE ACKNOWLEDGE | -> | Sent
+| 8.4.14 | - | RF CHANNEL RELEASE | <- | Received
+| 8.4.15 | <<MS_POWER_CONTROL>> | MS POWER CONTROL | <- | Received
+| 8.4.19 | - | RF CHANNEL RELEASE ACKNOWLEDGE | -> | Sent
+| 8.4.20 | <<SACCH_INFO_MODIFY>> | SACCH INFO MODIFY | <- | Received
+5+<| *COMMON CHANNEL MANAGEMENT MESSAGES*
+| 8.5.1  | <<BCCH_INFORMATION>> | BCCH INFORMATION | <- | Received
+| 8.5.2  | - | CCCH LOAD INDICATION | -> | Sent
+| 8.5.3  | <<CHANNEL_REQUIRED>> | CHANNEL REQUIRED | -> | Sent
+| 8.5.5  | <<PAGING_COMMAND>> | PAGING COMMAND | <- | Received
+| 8.5.6  | - | IMMEDIATE ASSIGN COMMAND | <- | Received
+| 8.5.8  | <<SMS_BROADCAST_COMMAND>> | SMS BROADCAST COMMAND | <- | Received
+5+<| *TRX MANAGEMENT MESSAGES*
+| 8.6.1  | <<RF_RESOURCE_INDICATION>> | RF RESOURCE INDICATION | -> | Sent
+| 8.6.2  | <<SACCH_FILLING>> | SACCH FILLING | <- | Received
+| 8.6.4  | - | ERROR REPORT | -> | Sent
+|===
+
+==== Messages Specific to OsmoBTS
+
+.Messages specific to OsmoBTS, not found in 3GPP TS 08.58
+[options="header",cols="15%,15%,45%,5%,20%"]
+|===
+2+| This document § | Message | <-/-> | Received/Sent by OsmoBTS
+5+<| *User Plane Transport Management* (<<user_plane_txp_mgmt>>)
+.3+.| <<rsl_crcx>> | <<rsl_crcx_msg>> | RSL Create Connection (CRCX) | <- | Received
+                   | <<rsl_crcx_msg_ack>> | RSL Create Connection (CRCX) ACK | -> | Sent
+                   | <<rsl_crcx_msg_nack>> | RSL Create Connection (CRCX) NACK | -> | Sent
+.3+.| <<rsl_mdcx>> | <<rsl_mdcx_msg>> | RSL Modify Connection (MDCX) | <- | Received
+                   | <<rsl_mdcx_msg_ack>> | RSL Modify Connection (MDCX) ACK | -> | Sent
+                   | <<rsl_mdcx_msg_nack>> | RSL Modify Connection (MDCX) NACK | -> | Sent
+.3+.| <<rsl_dlcx>> | <<rsl_dlcx_msg>> | RSL Delete Connection (DLCX) | <- | Received
+                   | <<rsl_dlcx_msg_ack>> | RSL Delete Connection (DLCX) ACK | -> | Sent
+                   | <<rsl_dlcx_msg_nack>> | RSL Delete Connection (DLCX) NACK | -> | Sent
+    | <<rsl_dlcx_ind>> | <<rsl_dlcx_ind_msg>> | RSL Delete Connection (DLCX) Indication | -> | Sent
+|===
+
+==== Messages Not Implemented by OsmoBTS
+
+.3GPP TS 08.58 messages not implemented by OsmoBTS
+[options="header",cols="10%,90%"]
+|===
+| TS 08.58 § | Message
+2+<| *DEDICATED CHANNEL MANAGEMENT MESSAGES*
+| 8.4.12 | PHYSICAL CONTEXT REQUEST
+| 8.4.13 | PHYSICAL CONTEXT CONFIRM
+| 8.4.16 | BS POWER CONTROL
+| 8.4.17 | PREPROCESS CONFIGURE
+| 8.4.18 | PREPROCESSED MEASUREMENT RESULT
+| 8.4.21 | TALKER DETECTION
+| 8.4.22 | LISTENER DETECTION
+| 8.4.23 | REMOTE CODEC CONFIGURATION REPORT
+| 8.4.24 | ROUND TRIP DELAY REPORT
+| 8.4.25 | PRE-HANDOVER NOTIFICATION
+| 8.4.26 | MULTIRATE CODEC MODIFICATION REQUEST
+| 8.4.27 | MULTIRATE CODEC MODIFICATION ACKNOLEWDGE
+| 8.4.28 | MULTIRATE CODEC MODIFICATION NEGATIVE ACKNOWLEDGE
+| 8.4.29 | MULTIRATE CODEC MODIFICATION PERFORMED
+| 8.4.30 | TFO REPORT
+| 8.4.31 | TFO MODIFICATION REQUEST
+2+<| *COMMON CHANNEL MANAGEMENT MESSAGES*
+| 8.5.4  | DELETE INDICATION
+| 8.5.7  | SMS BROADCAST REQUEST
+| 8.5.9  | CBCH LOAD INDICATION
+| 8.5.10 | NOTIFICATION COMMAND
+2+<| *TRX MANAGEMENT MESSAGES*
+| 8.6.3  | OVERLOAD
+2+<| *LOCATION SERVICES MESSAGES*
+| 8.7.1  | LOCATION INFORMATION
+|===
+
+
+=== Message Limitation Details
+
+[[MEASUREMENT_RESULT]]
+==== Measurement Result
+
+Conforms to 3GPP TS 08.58 § 8.4.8 with this limitation:
+
+._Measuremet Result_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.37 | MS Timing Offset | never sent by OsmoBTS
+|===
+
+[[MODE_MODIFY]]
+==== Mode Modify
+
+Conforms to 3GPP TS 08.58 § 8.4.9 with these limitations:
+
+._Mode Modify_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.45 | Main channel reference | _ignored_
+| 9.3.53 | MultiRate Control | _ignored_
+| 9.3.54 | Supported Codec Types | _ignored_
+|===
+
+[[MS_POWER_CONTROL]]
+==== MS Power Control
+
+Conforms to 3GPP TS 08.58 § 8.4.15 with these limitations:
+
+._MS Power Control_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.31 | MS Power Parameters | _ignored_
+|===
+
+
+[[SACCH_INFO_MODIFY]]
+==== SACCH Info Modify
+
+Conforms to 3GPP TS 08.58 § 8.4.20, with these exceptions:
+
+._SACCH Info Modify_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.30 | System Info Type | See below for available types
+| 9.3.23 | Starting Time | not supported, provokes an _Error Report_ response
+|===
+
+._System Info Type_ values that can occur on the SACCH
+[options="header",width="50%",cols="20%,80%"]
+|===
+| Value | Name
+| 0x05 | RSL_SYSTEM_INFO_5
+| 0x06 | RSL_SYSTEM_INFO_6
+| 0x0d | RSL_SYSTEM_INFO_5bis
+| 0x0e | RSL_SYSTEM_INFO_5ter
+| 0x47 | RSL_EXT_MEAS_ORDER
+| 0x48 | RSL_MEAS_INFO
+|===
+
+[[BCCH_INFORMATION]]
+==== BCCH Information
+
+Conforms to 3GPP TS 08.58 § 8.5.1, with these limitations and extensions:
+
+._BCCH Information_ IE details
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.30 | System Info Type | See <<SACCH_INFO_MODIFY>> for available types
+| 9.3.11 | L3 Info | This IE may be included instead of a 9.3.39 _Full BCCH Info_ IE.
+                     The _Full BCCH Info_ takes precedence over _L3 Info_.
+		     To stop SI transmission, both of these IEs must be omitted.
+|===
+
+
+[[CHANNEL_REQUIRED]]
+==== Channel Required
+
+Conforms to 3GPP TS 08.58 § 8.5.3, with these limitations:
+
+._Channel Required_ message IE details
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.16 | Physical Context | never sent by OsmoBTS
+|===
+
+
+[[PAGING_COMMAND]]
+==== Paging Command
+
+Conforms to 3GPP TS 08.58 § 8.5.5, with these limitations:
+
+._Paging Command_ message IE details
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.49 | eMLPP Priority | _ignored_
+|===
+
+NOTE: If adding the identity to the paging queue fails, the BSC is not notified
+in any way.
+
+[[SMS_BROADCAST_COMMAND]]
+=== SMS Broadcast Command
+
+Conforms to 3GPP TS 08.58 § 8.5.8, with these limitations:
+
+._Broadcast Command_ message IE details
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.44 | SMSCB Channel Indicator | _ignored_
+|===
+
+
+[[RF_RESOURCE_INDICATION]]
+==== RF Resource Indication
+
+This message does not conform to 3GPP TS 08.58 § 8.6.1, in that it omits the
+_Resource Information_ IE that would contain the actual payload data, which
+renders this message void.
+
+._RF Resource Indication_ message IE exceptions
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.21 | Resource Information | OsmoBTS omits this IE, though TS 08.58
+                                  specifies it as mandatory.
+|===
+
+
+[[SACCH_FILLING]]
+==== SACCH Filling
+
+Conforms to 3GPP TS 08.58 § 8.6.2, with these limitations:
+
+._SACCH Filling_ message IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.3.30 | System Info Type | See <<SACCH_INFO_MODIFY>> for available types
+| 9.3.23 | Starting Time | _ignored_
+|===
+
+
+[[user_plane_txp_mgmt]]
+=== User Plane Transport Management
+
+This chapter defines the A-bis/IP specific RSL procedures that are
+introduced in addition to the 3GPP TS 08.58 standard procedures.
+
+In classic A-bis over E1, user plane traffic is carried over 16kBps
+sub-slots of 64kBps E1 time-slots according to ETSI/3GPP TS 08.60.  As
+the E1 line is a dedicated line between BTS and BSC, no further
+addressing information is required.
+
+In A-bis/IP as described by the present document, new RSL procedures
+have been introduced in order to deal with the different properties of
+the underlying IP based transport medium.
+
+[[rsl_crcx]]
+==== RSL Create Connection (CRCX)
+
+This procedure is used by the BSC to request the BTS to allocate + bind
+to a BTS-local UDP port for the subsequent transmission of user-plane
+data via RTP.
+
+To do so, the BSC sends the *Create Connection (CRCX)* message.  In case of
+successful outcome, the BTS responds with *Create Connection (CRCX)
+ACK*.  In case of any error, the BTS responds with *Create Connection
+(CRCX) NACK*.
+
+See <<rsl_crcx_msg>>, <<rsl_crcx_msg_ack>>, <<rsl_crcx_msg_nack>>
+
+[[rsl_mdcx]]
+==== RSL Modify Connection (MDCX)
+
+This procedure is used by the BSC to request the BTS to modify an
+already-bound BTS-local UDP port for user-plane RTP.  It is used in
+particular to configure the remote IP address and UDP port to which the
+BTS shall send user-plane RTP traffic.  This remote address is normally
+either a Media Gateway (MGW) of some sort, but could also be the RTP
+socket of the corresponding other leg of a mobile-to-mobile call.
+
+To modify a user-plane connection, the BSC sends the *Modify Connection*
+message.  In case of successful outcome, the BTS responds with
+*Modify Connection (MDCX) ACK*.  In case of any error, the BTS responds
+with *Modify Connection (MDCX) NACK*.
+
+See <<rsl_mdcx_msg>>, <<rsl_mdcx_msg_ack>>, <<rsl_mdcx_msg_nack>>
+
+[[rsl_dlcx]]
+==== RSL Delete Connection (DLCX)
+
+This procedure is used by the BSC to request the BTS to delete an
+already-existing BTS-local UDP port for user-plane RTP.
+
+To delete a user-plane connection, the BSC sends the *Delete Connection
+(DLCX)* message.  In case of successful outcome, the BTS responds with
+*Delete Connection (DLCX) ACK*.  In case of any error, the BTS responds
+with *Delete Connection (DLCX) NACK*.
+
+See <<rsl_dlcx_msg>>, <<rsl_dlcx_msg_ack>>, <<rsl_dlcx_msg_nack>>
+
+[[rsl_dlcx_ind]]
+==== RSL Delete Connection (DLCX) Indication
+
+When a BTS-local UDP connection for user-plane RTP is automatically
+released at the time of RF CHANNEL RELEASE, the BTS sends a unilateral,
+non-acknowledged *RSL Delete Connection (DLCX) Indication* to the BSC.
+
+See <<rsl_dlcx_ind_msg>>
+
+
+=== Message Formats and Contents
+
+[[rsl_crcx_msg]]
+==== Create Connection (CRCX)
+
+This message is sent by the BSC to the BTS in order to request the
+creation of a user-plane RTP connection for the specified *Channel
+number*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
+| Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
+| IP Speech Mode | <<RSL_IE_IPAC_SPEECH_MODE>> | O | TV | 2
+| RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+|===
+
+[[rsl_crcx_msg_ack]]
+==== Create Connection (CRCX) ACK
+
+This message is sent by the BTS to the BSC in order to acknowledge the
+successful outcome of creating a user-plane RTP connection.  It is sent
+in response to the *Create Connection (CRCX)*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | M | TV | 3
+| Source IP Address | <<RSL_IE_IPAC_LOCAL_IP>> | O | TV | 5
+| Source IP Port | <<RSL_IE_IPAC_LOCAL_PORT>> | O | TV | 3
+| RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+|===
+
+[[rsl_crcx_msg_nack]]
+==== Create Connection (CRCX) NACK
+
+This message is sent by the BTS to the BSC in order to signal the
+unsuccessful outcome of creating a user-plane RTP connection.  It is
+sent in response to the *Create Connection (CRCX)*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
+| Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
+| Cause | 08.58 9.3.26 | O | TLV | >= 3
+|===
+
+
+[[rsl_mdcx_msg]]
+==== Modify Connection (MDCX)
+
+This message is sent by the BSC to the BTS in order to modify the
+properties of a user-plane RTP connection.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
+| Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
+| Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
+| IP Speech Mode | <<RSL_IE_IPAC_SPEECH_MODE>> | O | TV | 2
+| RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+|===
+
+[[rsl_mdcx_msg_ack]]
+==== Modify Connection (MDCX) ACK
+
+This message is sent by the BTS to the BSC in order to acknowledge the
+successful modification of a user-plane RTP connection.  It is sent in
+response to a *Modify Connection (MDCX)*
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
+| Source IP Address | <<RSL_IE_IPAC_LOCAL_IP>> | C | TV | 5
+| Source IP Port | <<RSL_IE_IPAC_LOCAL_PORT>> | C | TV | 3
+| RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+|===
+
+[[rsl_mdcx_msg_nack]]
+==== Modify Connection (MDCX) NACK
+
+This message is sent by the BTS to the BSC in order to signal the
+unsuccessful outcome of modifying the user-plane RTP connection for the
+specified Channel number.  It is sent in response to the *Modify
+Connection (MDCX)*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Cause | 08.58 9.3.26 | M | TLV | >= 3
+|===
+
+[[rsl_dlcx_ind_msg]]
+==== Delete Connection (DLCX) Indication
+
+This message is sent by the BTS in order to indicate the automatic
+deletion of a BTS-local UDP connection for user-plane RTP traffic at the
+time of RF Channel release.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | M | TV | 3
+| Connection Id | <<RSL_IE_IPAC_CONN_STAT>> | M | TV | 3
+| Cause | 08.58 9.3.26 | M | TLV | >= 3
+|===
+
+[[rsl_dlcx_msg]]
+==== Delete Connection (DLCX)
+
+This message is sent by the BSC to the BTS in order to request the
+disconnection of a user-plane RTP connection for the specified Channel
+number.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
+|===
+
+[[rsl_dlcx_msg_ack]]
+==== Delete Connection (DLCX) ACK
+
+This message is sent by the BTS in order to signal the successful
+outcome of deleting the user-plane RTP connection for the specified
+Channel number.  It is sent in response to the *Delete Connection
+(DLCX)*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
+| Connection Statistics | <<RSL_IE_IPAC_CONN_STAT>> | C | TV | 29
+|===
+
+[[rsl_dlcx_msg_nack]]
+==== Delete Connection (DLCX) NACK
+
+This message is sent by the BTS in order to signal the unsuccessful
+outcome of deleting the user-plane RTP connection for the specified
+Channel number.  It is sent in response to the *Delete Connection
+(DLCX)*.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
+| Cause | 08.58 9.3.26 | M | TLV | >= 3
+|===
+
+
+=== Information Element Codings
+
+[[own_msg_types]]
+==== A-bis/IP specific RSL Message discriminators
+
+The following message descriminators are used in addition to those
+indicated in 3GPP TS 08.58 Section 9.1:
+
+.OsmoBTS specific new message discriminators
+[options="header",cols="10%,50%,40%"]
+|===
+| Message Type | Message | This document §
+| 0x70 | Create Connection (CRCX) | <<rsl_crcx_msg>>
+| 0x71 | Create Connection (CRCX) ACK | <<rsl_crcx_msg_ack>>
+| 0x72 | Create Connection (CRCX) NACK | <<rsl_crcx_msg_nack>>
+| 0x73 | Modify Connection (MDCX) | <<rsl_mdcx_msg>>
+| 0x74 | Modify Connection (MDCX) ACK | <<rsl_mdcx_msg_ack>>
+| 0x75 | Modify Connection (MDCX) NACK | <<rsl_mdcx_msg_nack>>
+| 0x76 | Delete Connection (DLCX) Indication | <<rsl_dlcx_ind_msg>>
+| 0x77 | Delete Connection (DLCX) | <<rsl_dlcx_msg>>
+| 0x78 | Delete Connection (DLCX) ACK | <<rsl_dlcx_msg_ack>>
+| 0x79 | Delete Connection (DLCX) NACK | <<rsl_dlcx_msg_nack>>
+|===
+
+==== A-bis/IP specific RSL IEIs
+
+The following Information Element Identifiers (IEIs) are used in
+addition to those indicated in 3GPP TS 08.58 Section 9.3.1:
+
+.A-bis/IP specific information elements
+[options="header",cols="10%,50%,40%"]
+|===
+| IEI  | Name | This document §
+| 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>> 
+| 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
+| 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
+| 0xf4 | RSL_IE_IPAC_SPEECH_MODE | <<RSL_IE_IPAC_SPEECH_MODE>>
+| 0xf5 | RSL_IE_IPAC_LOCAL_IP | <<RSL_IE_IPAC_LOCAL_IP>>
+| 0xf6 | RSL_IE_IPAC_CONN_STAT | <<RSL_IE_IPAC_CONN_STAT>>
+| 0xf8 | RSL_IE_IPAC_CONN_ID | <<RSL_IE_IPAC_CONN_ID>>
+| 0xfc | RSL_IE_IPAC_RTP_PAYLOAD2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>>
+|===
+
+[[RSL_IE_IPAC_REMOTE_IP]]
+==== RSL_IE_IPAC_REMOTE_IP
+
+This information element contains the remote (MGW side) IPv4 address in
+network byte order.  It is encoded as fixed-size element with one byte
+IEI followed by four bytes IPv4 address.
+
+[[RSL_IE_IPAC_REMOTE_PORT]]
+==== RSL_IE_IPAC_REMOTE_PORT
+
+This information element contains the remote (MGW side) UDP port in
+network byte order.  It is encoded as fixed-size element with one byte
+IEI followed by two bytes UDP port number.
+
+[[RSL_IE_IPAC_LOCAL_PORT]]
+==== RSL_IE_IPAC_LOCAL_PORT
+
+This information element contains the local (BTS side) IPv4 address in
+network byte order.  It is encoded as fixed-size element with one byte
+IEI followed by two bytes UDP port number.
+
+[[RSL_IE_IPAC_SPEECH_MODE]]
+==== RSL_IE_IPAC_SPEECH_MODE
+
+This information element encodes the speech mode.  It is set according
+to the voice codec used on the connection.  It is encoded as a fixed-size
+element of two bytes, with one byte IEI followed by one byte Speech mode
+indicator.
+
+.A-bis/IP Speech Mode Indicator Values
+[options="header",width="40%",cols="20%,80%"]
+|===
+| Value | Description
+| 0x00 | TCH/F with FR codec
+| 0x01 | TCH/F with EFR codec
+| 0x02 | TCH/F with AMR codec
+| 0x03 | TCH/H with HR codec
+| 0x05 | TCH/H with AMR codec
+|===
+
+[[RSL_IE_IPAC_LOCAL_IP]]
+==== RSL_IE_IPAC_LOCAL_IP
+
+This information element contains the local (BTS side) IPv4 address in
+network byte order.  It is encoded as fixed-size element with one byte
+IEI followed by four bytes IPv4 address.
+
+[[RSL_IE_IPAC_CONN_STAT]]
+==== RSL_IE_IPAC_CONN_STAT
+
+This information element contains statistics about the RTP connection.
+
+It is encoded as 29 bytes, with the first byte as IEI and 28 bytes
+fixed-length payload encoded as follows:
+
+.A-bis/IP Connection Statistics
+[options="header",width="60%",cols="15%,15%,70%"]
+|===
+| Offset | Size | Description
+| 0 | 4 | Total number of RTP packets sent
+| 4 | 4 | Total number of octets sent
+| 8 | 4 | Total number of RTP packets received
+| 12 | 4 | Total number of octets received
+| 16 | 4 | Total number of lost packets in Rx direction
+| 20 | 4 | Inter-arrival Jitter
+| 24 | 4 | Average transmission delay
+|===
+
+All the above values are each encoded in network byte order.
+
+A detailed definition of the individual values is given in RFC 1889.
+
+[[RSL_IE_IPAC_CONN_ID]]
+==== RSL_IE_IPAC_CONN_ID
+
+This IE is a TV with a value length of two bytes. The value is a 16 bit
+connection ID in network byte order.
+
+
+[[RSL_IE_IPAC_RTP_PAYLOAD2]]
+==== RSL_IE_IPAC_RTP_PAYLOAD2
+
+This information element contains the RTP payload identifier, which is
+used in the PT (Payload Type) field of the RTP header in subsequent
+transmissions of the RTP flow.
+
+=== A-bis RSL Initialization / BTS bring-up
+
+Upon receiving the 'IPA RSL CONNECT' OML message by the respective
+'Baseband Transceiver' MO, the BTS proceeds with establishing a separate
+TCP connection for the given TRX.
+
+[[rsl-msc-pri]]
+.A-bis RSL BTS bring-up for primary TRX
+["mscgen"]
+----
+include::rsl-startup-pri.msc[]
+----
+
+[[rsl-msc-sec]]
+.A-bis RSL BTS bring-up for secondary TRXs
+["mscgen"]
+----
+include::rsl-startup-sec.msc[]
+----
+
+As can be seen by the differences between <<rsl-msc-pri>> and
+<<rsl-msc-sec>>, the initialization of the primary and secondary TRX
+slightly differ.   As the secondary TRX has no BCCH, it does not (need
+to) receive any 'RSL BCCH INFORMATION' messages from the BSC.
+

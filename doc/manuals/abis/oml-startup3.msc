@@ -1,0 +1,51 @@
+msc {
+	hscale = 2;
+
+	chan [label="Channel"], rc [label="Radio Carrier"], bts [label="BTS"], bsc [label="BSC"];
+
+	...;
+	rc <= bsc   [label="(RC) SW Activate Req Ack"];
+	rc <= bsc   [label="(RC) Activate SW"];
+	rc => bsc   [label="(RC) Activate SW Ack"];
+	rc => bsc   [label="(RC) STATE CHG REP (Disabled/Offline)"];
+	rc => bsc   [label="(RC) SW Activated Report"];
+	rc <= bsc   [label="(TRANSC) IPA RSL Connect"];
+	rc => bsc   [label="(TRANSC) IPA RSL Connect Ack"];
+	rc <= bsc   [label="(TRANSC) OPSTART"];
+	rc => bsc   [label="(TRANSC) OPSTART Ack"];
+	rc <= bsc   [label="(TRANSC) Change Adm State (Unlocked)"];
+	rc => bsc   [label="(TRANSC) Change Adm State Ack (Unlocked)"];
+	rc => bsc   [label="(TRANSC) STATE CHG REP (Disabled/Dependency/Unlocked)"];
+	|||;
+	chan <= bsc [label="(CHAN 0) Set Channel Attributes"];
+	chan => bsc [label="(CHAN 0) Set Channel Attributes Ack"];
+	chan <= bsc [label="(CHAN 0) OPSTART"];
+	chan => bsc [label="(CHAN 0) OPSTART Ack"];
+	chan <= bsc [label="(CHAN 0) Change Adm State (Unlocked)"];
+	chan => bsc [label="(CHAN 0) Change Adm State Ack (Unlocked)"];
+	chan => bsc [label="(CHAN 0) STATE CHG REP (Disabled/Dependency/Unlocked)"];
+	...;
+	chan <= bsc [label="(CHAN 7) Set Channel Attributes"];
+	chan => bsc [label="(CHAN 7) Set Channel Attributes Ack"];
+	chan <= bsc [label="(CHAN 7) OPSTART"];
+	chan => bsc [label="(CHAN 7) OPSTART Ack"];
+	chan <= bsc [label="(CHAN 7) Change Adm State (Unlocked)"];
+	chan => bsc [label="(CHAN 7) Change Adm State Ack (Unlocked)"];
+	chan => bsc [label="(CHAN 7) STATE CHG REP (Disabled/Dependency/Unlocked)"];
+	|||;
+	rc <= bsc   [label="(RC) Set Radio Carrier Attributes"];
+	rc => bsc   [label="(RC) Set Radio Carrier Attributes Ack"];
+	rc <= bsc   [label="(RC) OPSTART"];
+	rc => bsc   [label="(RC) OPSTART Ack"];
+	rc <= bsc   [label="(RC) Change Adm State (Unlocked)"];
+	rc => bsc   [label="(RC) Change Adm State Ack (Unlocked)"];
+	rc => bsc   [label="(RC) STATE CHG REP (Disabled/OK/Unlocked)"];
+	rc => bsc   [label="(RC) STATE CHG REP (Enabled)"];
+	rc => bsc   [label="(TRANSC) STATE CHG REP (Disabled/Offline)"];
+	rc => bsc   [label="(TRANSC) STATE CHG REP (Enabled/OK)"];
+	|||;
+	chan => bsc [label="(CHAN 0) STATE CHG REP (Disabled/Offline)"];
+	chan => bsc [label="(CHAN 0) STATE CHG REP (Enabled/OK)"];
+	|||;
+	bts => bsc  [label="(BTS) STATE CHG REP (Enabled/OK)"];
+}

@@ -1,0 +1,23 @@
+msc {
+	bts [label="BTS"], bsc [label="BSC"];
+
+	bts => bsc  [label="TCP Connect (Port 3002, OML)"];
+	bts box bsc [label="IPA CCM Identification (Port 3002)"];
+	bts <= bsc  [label="OML Configuration of BTS via OML"];
+	...;
+	bts <= bsc  [label="OML (TRX=0) IPA RSL CONNECT"];
+	bts => bsc  [label="TCP Connect (Port 3003, RSL, TRX 0)"];
+	bts box bsc [label="IPA CCM Identification Port 3003"];
+	bts <= bsc  [label="RSL BCCH filling (System Information)"];
+	bts <= bsc  [label="RSL SACCH filling (SI 5/6)"];
+	...;
+	bts <= bsc  [label="OML (TRX=1) IPA RSL CONNECT"];
+	bts => bsc  [label="TCP Connect (Port 3003, RSL, TRX 1)"];
+	bts box bsc [label="IPA CCM Identification (Port 3003)"];
+	bts <= bsc  [label="RSL SACCH filling (SI 5/6)"];
+	...;
+	bts <= bsc  [label="OML (TRX=N) IPA RSL CONNECT"];
+	bts => bsc  [label="TCP Connect (Port 3003, RSL, TRX N)"];
+	bts box bsc [label="IPA CCM Identification (Port 3003)"];
+	bts <= bsc  [label="RSL SACCH filling (SI 5/6)"];
+}

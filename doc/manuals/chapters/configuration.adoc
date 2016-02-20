@@ -1,0 +1,154 @@
+== BTS Configuration
+
+The role of the BTS is to handle the GSM radio interface.  When the BTS
+application is starting, the A-bis OML connection is established towards
+the BSC.  Almost all BTS configuration (such as ARFCN, channel
+configuration, transmit power, etc.) will be sent from the BSC to the
+BTS via OML messages.  After OML start-up has competed, the BSC will
+instruct the BTS to establish the RSL connections.
+
+Given that most configuration is downloaded from the BSC into the BTS at
+start-up time, only some very basic settings have to be made in the
+OsmoBTS software.
+
+
+=== Command Line Options
+
+Ths OsmoBTS executables (`osmo-bts-sysmo`, `osmo-bts-trx`,
+`osmo-bts-octphy`, `osmo-bts-litecell15`, ...) share the following
+generic command line options:
+
+==== SYNOPSIS
+*osmo-bts-sysmo* [-h|-V] [-d 'DBGMASK'] [-D] [-c 'CONFIGFILE' ] [-s] [-T] [-e 'LOGLEVEL'] [-r 'PRIO'] [-i 'GSMTAP-IP'] [-t <1-255>]
+
+==== OPTIONS
+*-h, --help*::
+	Print a short help message about the supported options
+*-V, --version*::
+	Print the compile-time version number of the OsmoBTS program
+*-d, --debug 'DBGMASK','DBGLEVELS'*::
+	Set the log subsystems and levels for logging to stderr. This
+	has mostly been superseded by VTY-based logging configuration,
+	see <<logging>> for further information.
+*-D, --daemonize*::
+	Fork the process as a daemon into background.
+*-c, --config-file 'CONFIGFILE'*::
+	Specify the file and path name of the configuration file to be
+	used. If none is specified, use `osmo-bts.cfg` in the current
+	working directory.
+*-s, --disable-color*::
+	Disable colors for logging to stderr. This has mostly been
+	deprecated by VTY based logging configuration, see <<logging>>
+	for further information.
+*-T, --timestamp*::
+	Enable time-stamping of log messages to stderr. This has mostly
+	been deprecated by VTY based logging configuration, see
+	<<logging>> for further information.
+*-e, --log-level 'LOGLEVEL'*::
+	Set the global log level for logging to stderr. This has mostly
+	been deprecated by VTY based logging configuration, see
+	<<logging>> for further information.
+*-r, --realtime 'PRIO'*::
+	Enable use of the Linux kernel realtime priority scheduler with
+	the specified priority.
+	It is recommended you use this option on low-performance
+	embedded systems or systems that encounter high non-GSM/GPRS
+	load.
+*-i, --gsmtap-ip 'GSMTAP-IP'*::
+	Specify the destination IP address for GSMTAP messages.
+*-t, --trx-num <1-255>*::
+	Specify the number of TRX supported by this BTS.
+
+There may be additional, hardware specific command line options by the
+different bts_model implementations.
+
+
+=== Configuration using the VTY
+
+Most configuration as well as run-time monitoring and system
+introspection is implemented using a command-line based interface
+called _VTY_. A full reference syntax of all existing VTY command is
+available as a separate document.
+
+See <<vty>> for further information on the VTY.
+
+
+==== Required BTS/TRX configuration
+
+There are some settings that have to be configured locally in the
+sysmoBTS, as they cannot be set remotely from the BSC. Those
+settings are stored in the OsmoBTS configuration file, which commonly
+is stored in `/etc/osmocom/osmo-bts.cfg`.
+
+.Example Minimal configuration file
+----
+!
+! OsmoBTS (0.0.1.100-0455) configuration saved from vty
+!!
+!
+phy 0 <1>
+ instance 0 <2>
+bts 0 <3>
+ band DCS1800
+ ipa unit-id 1801 0 <4>
+ oml remote-ip 192.168.100.11 <5>
+ trx 0 <6>
+  phy 0 instance 0 <7>
+----
+<1> You must configure at least one PHY link by means of the PHY node
+<2> You must configure at least one PHY instance in the PHY link
+<3> There is always exactly one BTS (`bts 0`) configured in OsmoBTS
+<4> The `ipa unit-id` is what is used to identify this BTS to the BSC
+<6> The OML Remote IP is the IP address of the BSC, to which the BTS shall connect to.
+<6> There must be at least one trx (`trx 0`) in each BTS
+<7> Every TRX must be mapped to a specific PHY instance this way
+
+For a full reference of all available VTY configuration parameters,
+please refer to the OsmoBTS VTY Reference document.
+
+[[gsmtap]]
+==== Configuring GSMTAP tracing
+
+In addition to being able to obtain pcap protocol traces of the A-bis
+communication and the text-based logging from the OsmoBTS
+software, there is also the capability of tracing all communication on
+the radio interface. To do so, OsmoBTS can encapsulate
+MAC blocks (23byte messages at the L2-L1 interface) into _GSMTAP_ and send
+them via UDP/IP. At that point, they can be captured with utilities like
+*tcpdump* or *tshark* for further analysis by the *wireshark* protocol
+analyzer.
+
+In order to activate this feature, you first need to make sure to start
+OsmoBTS using the `-i` or `--gsmtap-ip` command line option, specifying
+the destination IP address for the GSMTAP messages.  In most cases,
+using 127.0.0.1 for passing the messages over the loopback (`lo`) device
+will be sufficient.
+
+OsmoBTS can selectively trace such messages by their L1 SAPI, for both
+Rx and Tx. For a complete list of L1 SAPI values, please refer to the
+_OsmoBTS VTY reference manual_ <<vty-ref-osmobts>>.
+
+For example, to enable GSMTAP tracing for messages on all SDCCH
+channels, you can use the gsmtap-sapi sdcch command at the CONFIG TRX
+node of the OsmoBTS VTY.
+
+.Example: Enabling  GSMTAP for SDCCH
+----
+OsmoBTS> enable
+OsmoBTS# configure terminal
+OsmoBTS(config)# bts
+OsmoBTS(bts)# trx 0
+OsmoBTS(trx)# gsmtap-sapi sdcch
+OsmoBTS(trx)# write <1>
+----
+<1> the `write` command will make the configuration persistent in the
+configuration file.  This is not required if you wish to enable GSMTAP
+only in the current session of OsmoBTS.
+
+De-activation can be performed similarly by using the `no gsmtap-sapi
+sdcch` command at the `trx` node of the OsmoBTS VTY.
+
+From the moment they are enabled via VTY, GSMTAP messages will be
+generated and sent in UDP encapsulation to the IANA-registered UDP port
+for GSMTAP (4729) at the IP address specified in the command line
+argument.

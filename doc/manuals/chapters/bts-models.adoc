@@ -1,0 +1,405 @@
+== OsmoBTS hardware support
+
+OsmoBTS consists of a generic part common to all BTS, and a
+hardware-specific _common_ part, and a _hardware-specific_ part.  The
+hardware specific part is generally referred to as the _bts_model_ code.
+
+The common part includes the core BTS architecture as well as code for
+implementing the external interfaces such Abis, control, PCU socket and
+GSMTAP.
+
+The bts_model parts include support for driving one particular
+implementation of a GSM physical layer (PHY).  Such a physical layer
+implementation can come in many forms.  Sometimes it runs on a general
+purpose CPU, sometimes on a dedicated ARM core, a dedicated DSP, a
+combination of DSP and FPGA.
+
+Every PHY implementation offers some kind of primitives by which the PHY
+can be controlled, and by which the PHY exchanges data with the higher
+layers of the protocol stack in the OsmoBTS code.
+
+The PHY-specific primitives are encapsulated in the bts_model code, and
+offered as a PHY-independent _L1SAP_ interface towards the common part of
+OsmoBTS.
+
+In addition, each bts_model implements a set of functions that the
+common part calls.  Those functions are pre-fixed by bts_model_.
+
+Each bts_model may offer
+
+* model-specific VTY commands for both configuration and run-time interaction
+* model-specific command line arguments
+* model-specific control interface commands
+
+== `osmo-bts-sysmo` for sysmocom sysmoBTS
+
+The sysmocom sysmoBTS is a range of GSM BTSs basd around an embedded
+system implementing the PHY in a combination of DSP+FPGA.  The PHY is
+configured by a set of primitives described by header files.  Those
+primitives are exchanged ove a set of message queues exposed on the
+Linux-running ARM core via device nodes in `/dev/msgq/`.  Internally,
+the message queues map to shared memory between the Linux-running ARM
+core and the DSP running the PHY implementation.
+
+The OsmoBTS bts_model code for the sysmoBTS can be found in the
+`src/osmo-bts-sysmo` sub-directory of the OsmoBTS code base.
+
+`osmo-bts-sysmo` has been the primary target platform for
+OsmoBTS for many years and is thus the most feature-complete and mature
+platform supported by OsmoBTS at this point.
+
+The sysmoBTS PHY supports a direct PHY interface to OsmoPCU, reducing
+the latency and amount of primitives that OsmoBTS would otherwise need
+to pass through from the PHY message queues to the PCU socket and
+vice-versa.
+
+
+=== `osmo-bts-sysmo` specific command line arguments
+
+*--dsp-trace 'DSPMASK'*::
+	Set the DSP trace flags (a single hexadecimal 32bit value).
+	This has been deprecated by VTY based commands, see
+	<<osmo-bts-sysmo-dsp-trace>> for further information.
+*--pcu-direct*::
+	Indicate that an external PCU (e.g. OsmoPCU) will directly
+	open the DSP messge queues to the PHY / PH-SAP, and only MPH
+	primitives are passed via OsmoBTS.
+
+
+=== `osmo-bts-sysmo` specific VTY commands
+
+For a auto-generated complete syntax reference of the VTY commands,
+please see the associated _OsmoBTS VTY reference manual_
+<<vty-ref-osmobts>>.  The section
+below only lists the most important commands.
+
+==== at the 'SHOW' node
+
+===== `show trx 0 clock-source`
+
+Display the currently active clock source configuration for the TRX
+
+[[osmo-bts-sysmo-dsp-trace]]
+===== `show trx 0 dsp-trace-flags`
+
+Show the currently active DSP trace flags for the TRX
+
+===== `trx 0 dsp-trace-flag`
+
+Use this command to enable/disable/configure the DSP tracing flags that
+define what debug messages will appear on `/dev/rtfifo/dsp_trace`.
+
+==== at the 'ENABLE' node
+
+===== `trx 0 tx-power <-110-100>`
+
+Change the current TRX transmit power to the given value in dBm.
+
+===== `trx 0 rf-clock-info reset`
+
+Part of the clock calibration procedure:
+Reset the clock correction value.
+
+===== `trx 0 rf-clock-info correct`
+
+Part of the clock calibration procedure:
+Apply the current measured correction value between the reference clock
+and the local clock.
+
+==== at the 'PHY instance' node
+
+==== `clock-calibration eeprom`
+
+Obtain clock calibration value from EEPROM.
+
+==== `clock-calibration default`
+
+Use hardware default clock calibration value.
+
+==== `clock-calibration <-4095-4095>`
+
+Use specified clock calibration value (not EEPROM/default).
+
+==== `clock-source (tcxo|ocxo|ext|gps)`
+
+Specify the clock source for the PHY:
+
+tcxo::
+	Use the TCXO.  This is the default on sysmoBTS 2050.
+ocxo::
+	Use the OCXO (only valid on units equipped with OCXO). This is
+	the default on all sysmoBTS 1002/1020/1100 and SOB-BTS.
+ext::
+	Use the external clock input.
+gps::
+	Use the clock derived from GPS.  You shouldn't use this clock
+	directly, but rather use the TCXO and regularly re-calibrate
+	against GPS.
+
+==== `trx-calibration-path PATH`
+
+Use calibration files from the given 'PATH', rather tan calibration
+values from the EEPROM.
+
+=== `osmo-bts-sysmo` specific control interface commands
+
+==== trx.0.clock-info
+
+Obtain information on the current clock status:
+
+----
+bsc_control.py -d localhost -p 4238 -g trx.0.clock-info
+Got message: GET_REPLY 1 trx.0.clock-info -100,ocxo,0,0,gps
+----
+
+which is to be interpreted as:
+
+* current clock correction value is -100 ppb
+* current clock source is OCXO
+* deviation between clock source and calibration source is 0 ppb
+* resolution of clock error measurement is 0 ppt (0 means no result yet)
+* current calibration source is GPS
+
+When this attribute is set, any value passed on is discarded, but the clock
+calibration process is re-started.
+
+==== trx.0.clock-correction
+
+This attribute can get and set the current clock correction value:
+
+----
+bsc_control.py -d localhost -p 4238 -g trx.0.clock-correction
+Got message: GET_REPLY 1 trx.0.clock-correction -100
+----
+
+----
+bsc_control.py -d localhost -p 4238 -s trx.0.clock-correction -- -99
+Got message: SET_REPLY 1 trx.0.clock-correction success
+----
+
+
+== `osmo-bts-trx` for OsmoTRX
+
+OsmoTRX is a C-language implementation of the GSM radio modem,
+originally developed as the 'Transceiver' part of OpenBTS.  This radio
+modem offers an interface based on top of UDP streams.
+
+The OsmoBTS bts_model code for OsmoTRX is called
+`osmo-bts-trx`.  It implements the UDP stream interface of
+OsmoTRX, so both parts can be used together to implement a complete GSM
+BTS based on general-purpose computing SDR.
+
+As OsmoTRX is general-purpose software running on top of Linux, it is
+thus not tied to any specific physical hardware.   At the time of this
+writing, OsmoTRX supports a variety of Ettus USRP SDRs via the UHD
+driver, as well as the Fairwaves UmTRX and derived products.
+
+OsmoTRX is not a complete GSM PHY but 'just' the radio modem.  This
+means that all of the Layer 1 functionality such as scheduling,
+convolutional coding, etc. is actually also implemented inside OsmoBTS.
+
+As such, the boundary between OsmoTRX and `osmo-bts-trx` is at
+a much lower interface, which is an internal interface of other more
+traditional GSM PHY implementations.
+
+Besides OsmoTRX, there are also other implementations (both Free
+Software and proprietary) that implement the same UDP stream based radio
+modem interface.
+
+
+=== `osmo-bts-trx` specific VTY commands
+
+For a auto-generated complete syntax reference of the VTY commands,
+pleas see the associated _OsmoBTS VTY reference manual_
+<<vty-ref-osmobts>>.  The section below only lists the most important
+commands.
+
+==== at the 'SHOW' node
+
+===== `show transceivers`
+
+Display information about configured/connected OsmoTRX transceivers in
+human-readable format to current VTY session.
+
+==== at the 'PHY' configuration node
+
+===== `osmotrx ip HOST`
+
+Set the IP addess of the OsmoTRX transceiver to which we should connect
+to.
+
+===== `osmotrx base-port (local|remote) <0-65535>`
+
+Configure the base UDP port for the OsmoTRX interface for either the
+local (OsmoBTS) or remote (OsmoTRX) side of the UDP flows.
+
+===== `osmotrx fn-advance <0-30>`
+
+Set the number of frames to be transmitted to transceiver in advance of
+current GSM frame number.
+
+===== `osmotrx rts-advance <0-30>`
+
+Set the number of frames to be requested from PCU in advance of current
+frame number.  Do not change this unless you have a good reason!
+
+===== `osmotrx rx-gain <0-50>`
+
+Set the receiver gain (configured in the hardware) in dB.
+
+===== `osmotrx tx-attenuation <0-50>`
+
+Set the transmitter attenuation (configured in the hardware) in dB.
+
+===== `osmotrx tx-attenuation oml`
+
+Use the Value in the A-bis OML Attribute `MAX_POWER_REDUCTION` as
+transmitter attenuation.
+
+==== at the 'PHY Instance' configuration node
+
+===== `slotmask (1|0) (1|0) (1|0) (1|0) (1|0) (1|0) (1|0) (1|0)`
+
+Configure which timeslots should be active on this TRX.  Normally all
+timeslots are enabled, unless you are running on a cpu-constrained
+deeply embedded system.
+
+===== `osmotrx maxdly <0-31>`
+
+Set the maximum delay for received symbols (in number of GSM symbols).
+
+
+== `osmo-bts-octphy` for Octasic OCTPHY-2G
+
+The Octasic OCTPHY-2G is a GSM PHY implementation inside an Octasic
+proprietary 24-core DSP called OCTDSP.
+
+This DSP has a built-in Gigabit Ethernet interface, over which it
+exchanges PHY-layer primitives in raw Ethernet frames with the upper
+layers running on another CPU attached to the same Ethernet.  Those
+primitives are described in a set of C-language header files.
+
+OsmoBTS implements the raw Ethernet frame based primitives as well as
+the associated transport protocol (OKTPKT/OCTVC1) in the
+`osmo-btso-octphy` bts_model code.
+
+You can run the `osmo-bts-octphy` on any system connected to the same
+Ethernet as the OCTDSP running the OCTPHY.  This can be either an
+embedded ARM or x86 SoM part of the OCTBTS hardware, or it can be any
+other Linux system attached via an Ethernet switch.
+
+Each OCTDSP running OCTSDR-2G offers a set of primitives part of a
+OCTPKT session, which is mapped to an OsmoBTS PHY link.  Depending on
+the OCTSDR-2G software version, you may create multiple software TRX by
+creating multiple OsmoBTS PHY instances inside that PHY link.
+
+Multiple DSPs may exsist in one circuit board, then each of the DSPs is
+interfaced by one OsmoBTS PHY link, and each of them may have one or
+more OsmoBTS PHY instances creating a Multi-TRX configuration.
+
+
+== `osmo-bts-litecell15` for Nutaq/Nuran LiteCell 1.5
+
+The Nutaq/Nuran LiteCell 1.5 implements a dual-transceiver GSM BTS based
+on a mixed ARM/DSP/FPGA architecture.  The PHY layer is implemented on
+DSP/FPGA and similar to that of the sysmoBTS:  It exchanges primitives
+described in a set of C-language header files over message queues
+between the ARM and the DSP.
+
+This interface is implemented in the `osmo-bts-litecell15` bts_model of
+OsmoBTS.  You would run `osmo-bts-litecell15` on the ARM/Linux processor
+of the Litecell 1.5.
+
+The two transceivers of the Litecell 1.5 each have their own set of DSP
+message queues.  Each set of message queues is wrapped into one OsmoBTS
+PHY link, offering one OsmoBTS PHY instance.
+
+The Litecell 1.5 PHY supports a direct PHY interface to OsmoPCU,
+reducing the latency and amount of primitives that OsmoBTS would
+otherwise need to pass through from the PHY message queues to the PCU
+socket and vice-versa.
+
+=== `osmo-bts-trx` specific VTY commands
+
+For a auto-generated complete syntax reference of the VTY commands,
+please see the associated _OsmoBTS VTY reference manual_
+<<vty-ref-osmobts>>.  The section below only lists the most important
+commands.
+
+==== at the 'SHOW' node
+
+===== `show phy <0-255> system-information`
+
+Show information about the hardware platform, DSP and OCTPHY-2G software
+version.
+
+===== `show phy <0-255> rf-port-stats <0-1>`
+
+Show information about the RF port interfaces.
+
+===== `show phy <0-255> clk-sync-stats`
+
+Show information about the clock synchronization manager.
+
+==== at the 'PHY' configuration node
+
+===== `octphy hw-addr HWADDR`
+
+Specify the Ethernet hardware address (mac address) of the DSP running
+the OCTPHY-2G software for this PHY link.
+
+===== `octphy net-device NAME`
+
+Specify the Ethernet network device (like `eth0`) through which the DSP
+can be reached from OsmoBTS.
+
+===== `octphy rf-port-index <0-255>`
+
+Specify which RF port should be used for this PHY link.
+
+===== `octphy rx-gain <0-73>`
+
+Configure the receiver gain in dB.
+
+===== `octphy tx-attenuation <0-359>`
+
+Configure the transmitter attenuation in quarter-dB
+
+
+
+
+== `osmo-bts-virtual` for Virtual Um Interface
+
+This is a special BTS model used for research, simulation and testing.
+Rather than communicating over a wireless RF interface, the GSM Um
+messages are encapsulated over GSMTAP/UDP/IP.
+
+At the time of writing, this functionality is not fully completed.  It
+is the idea to adopt the OsmocomBB MS-side GSM implementation to
+interface with this virtual Um interface, so that many instances of
+virtual MS can connect to some instances of OsmoBTS, testing MS, BTS,
+BSC and core network functionality.
+
+=== `osmo-bts-trx` specific VTY commands
+
+For a auto-generated complete syntax reference of the VTY commands,
+please see the associated _OsmoBTS VTY reference manual_
+<<vty-ref-osmobts>>.  The section below only lists the most important
+commands.
+
+==== at the 'PHY' config node
+
+===== `virtual-um net-device NETDEV`
+
+Configure the network device used for sending/receiving the virtual Um
+interface messages (e.g. `eth0`).
+
+===== `virtual-um udp-port <0-65535>`
+
+Configure the UDP port used for sending/receiving the virtual Um
+interface messages (default: GSMTAP 2775).
+
+===== `virtual-um multicast-group GROUP`
+
+Configure the IP multicast group used for sending/receiving the virtual
+Um interface messages.

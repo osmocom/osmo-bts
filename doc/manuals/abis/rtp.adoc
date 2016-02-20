@@ -1,0 +1,33 @@
+== User-Plane Traffic via RTP
+
+RTP (Realtime Transfer Protocol) is a protocol for streaming of audio
+and video streaming data.  It is specified by IETF RFC 1889.
+
+OsmoBTS A-bis/IP implements RTP as transport medium for circuit-switched
+user-plane traffic, contrary to the E1 sub-slot based transport as
+specified in 3GPP TS 08.60.
+
+The RTP transport endpoint parameters are configured using the RSL User
+Plane Transport Management procedures described in <<user_plane_txp_mgmt>>.
+
+RTCP is implemented in addition to RTP, on a UDP port number of the RTP
+port incremented by one.
+
+=== RTP Payload Formats
+
+The RTP payload format depends on the voice codec used on the radio
+channel.  The OsmoBTS is simply passing the GSM speech frames between
+the Um radio interface channels and the RTP payload (and vice-versa).
+
+No transcoding function is implemented in the BTS!
+
+.RTP Payload formats
+[options="header",width="60%",cols="15%,15%,70%"]
+|===
+| TCH | Codec | RTP payload format specification
+| TCH/F | FR | IETF RFC 3551 Section 4.5.8
+| TCH/F | EFR | IETF RFC 3551 Section 4.5.9
+| TCH/F | AMR | IETF RFC 4867
+| TCH/H | HR | IETF RFC 5993
+| TCH/H | AMR | IETF RFC 4867
+|===

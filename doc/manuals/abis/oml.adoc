@@ -1,0 +1,937 @@
+== Organization & Maintenance Link (OML)
+
+=== List of Messages
+
+The following tables list the OML messages used by OsmoBTS, grouped by their
+level of compliance with 3GPP TS 12.21.
+
+==== Messages Compliant With TS 12.21
+
+Specific limitations apply, see the linked sections.
+
+.Messages compliant with TS 12.21
+[options="header",cols="10%,10%,20%,35%,5%,20%"]
+|===
+| TS 12.21 § | type code (hex) | This document § | Message | <-/-> | Received/Sent by OsmoBTS
+6+<| *SW Download Management Messages:*
+| 8.3.7 | 0x10 | <<sw_act_rep>> | SW Activated Report | -> | Sent
+6+<| *Air Interface Management Messages:*
+.3+.| 8.6.1 | 0x41 .3+.| <<set_bts_attr>>   | Set BTS Attributes | <- | Received
+            | 0x42                          | Set BTS Attributes Ack | -> | Sent
+            | 0x43                          | Set BTS Attributes Nack | -> | Sent
+.3+.| 8.6.2 | 0x44 .3+.| <<set_radio_attr>> | Set Radio Carrier Attributes | <- | Received
+            | 0x45                          | Set Radio Carrier Attributes Ack | -> | Sent
+            | 0x46                          | Set Radio Carrier Attributes Nack | -> | Sent
+.3+.| 8.6.3 | 0x47 .3+.| <<set_chan_attr>>  | Set Channel Attributes | <- | Received
+            | 0x48                          | Set Channel Attributes Ack | -> | Sent
+            | 0x49                          | Set Channel Attributes Nack | -> | Sent
+6+<| *State Management and Event Report Messages:*
+    | 8.8.1 | 0x61 | <<state_changed_rep>> | State Changed Event Report | -> | Sent
+.3+.| 8.8.5 | 0x69 .3+.| <<chg_adm_state>> | Change Administrative State | <- | Received
+            | 0x6A                         | Change Administrative State Ack | -> | Sent
+            | 0x6B                         | Change Administrative State Nack | -> | Sent
+6+<| *Equipment Management Messages:*
+.3+.| 8.9.2 | 0x74 .3+.| <<opstart>> | Opstart | <- | Received
+            | 0x75                   | Opstart Ack | -> | Sent
+            | 0x76                   | Opstart Nack | -> | Sent
+|===
+
+
+==== Messages Specific to OsmoBTS
+
+.Messages specific to OsmoBTS, not found in 3GPP TS 12.21
+[options="header"]
+[options="header",cols="20%,55%,5%,20%"]
+|===
+| This document § | Message | <-/-> | Received/Sent by OsmoBTS
+| <<ipacc_set_attr>> | Set Attribute | <- | Received
+|===
+
+
+==== Messages Not Implemented by OsmoBTS
+.3GPP TS 12.21 messages not implemented by OsmoBTS
+[options="header",cols="10%,10%,80%"]
+|===
+| TS 12.21 § | type code (hex) | Message
+3+<| *SW Download Management Messages:*
+.3+.| 8.3.1 | 0x01 | Load Data Initiate
+            | 0x02 | Load Data Initiate Ack
+            | 0x03 | Load Data Initiate Nack
+.2+.| 8.3.2 | 0x04 | Load Data Segment
+            | 0x05 | Load Data Segment Ack
+    | 8.3.3 | 0x06 | Load Data Abort
+.3+.| 8.3.4 | 0x07 | Load Data End
+            | 0x08 | Load Data End Ack
+            | 0x09 | Load Data End Nack
+.3+.| 8.3.5 | 0x0A | SW Activate Request
+            | 0x0B | SW Activate Request Ack
+            | 0x0C | SW Activate Request Nack
+.3+.| 8.3.6 | 0x0D | Activate SW
+            | 0x0E | Activate SW Ack
+            | 0x0F | Activate SW Nack
+3+<| *A-bis Interface Management Messages:*
+.3+.| 8.4.1 | 0x21 | Establish TEI
+            | 0x22 | Establish TEI Ack
+            | 0x23 | Establish TEI Nack
+.3+.| 8.4.2 | 0x24 | Connect Terrestrial Signalling
+            | 0x25 | Connect Terrestrial Signalling Ack
+            | 0x26 | Connect Terrestrial Signalling Nack
+.3+.| 8.4.3 | 0x27 | Disconnect Terrestrial Signalling
+            | 0x28 | Disconnect Terrestrial Signalling Ack
+            | 0x29 | Disconnect Terrestrial Signalling Nack
+.3+.| 8.4.4 | 0x2A | Connect Terrestrial Traffic
+            | 0x2B | Connect Terrestrial Traffic Ack
+            | 0x2C | Connect Terrestrial Traffic Nack
+.3+.| 8.4.5 | 0x2D | Disconnect Terrestrial Traffic
+            | 0x2E | Disconnect Terrestrial Traffic Ack
+            | 0x2F | Disconnect Terrestrial Traffic Nack
+3+<| *Transmission Management Messages:*
+.3+.| 8.5.1 | 0x31 | Connect Multi-Drop Link
+            | 0x32 | Connect Multi-Drop Link Ack
+            | 0x33 | Connect Multi-Drop Link Nack
+.3+.| 8.5.2 | 0x34 | Disconnect Multi-Drop Link
+            | 0x35 | Disconnect Multi-Drop Link Ack
+            | 0x36 | Disconnect Multi-Drop Link Nack
+3+<| *Test Management Messages:*
+.3+.| 8.7.1 | 0x51 | Perform Test
+            | 0x52 | Perform Test Ack
+            | 0x53 | Perform Test Nack
+.3+.| 8.7.2 | 0x54 | Test Report
+            | 0x55 | Send Test Report
+            | 0x56 | Send Test Report Ack
+    | 8.7.3 | 0x57 | Send Test Report Nack
+.3+.| 8.7.4 | 0x58 | Stop Test
+            | 0x59 | Stop Test Ack
+            | 0x5A | Stop Test Nack
+3+<| *State Management and Event Report Messages:*
+    | 8.8.2 | 0x62 | Failure Event Report
+.3+.| 8.8.3 | 0x63 | Stop Sending Event Reports
+            | 0x64 | Stop Sending Event Reports Ack
+            | 0x65 | Stop Sending Event Reports Nack
+.3+.| 8.8.4 | 0x66 | Restart Sending Event Reports
+            | 0x67 | Restart Sending Event Reports Ack
+            | 0x68 | Restart Sending Event Reports Nack
+.3+.| 8.8.6 | 0x6C | Change Administrative State Request
+            | 0x6D | Change Administrative State Request Ack
+            | 0x6E | Change Administrative State Request Nack
+.3+.| 8.8.7 | 0x93 | Report Outstanding Alarms
+            | 0x94 | Report Outstanding Alarms Ack
+            | 0x95 | Report Outstanding Alarms Nack
+3+<| *Equipment Management Messages:*
+.3+.| 8.9.1 | 0x71 | Changeover
+            | 0x72 | Changeover Ack
+            | 0x73 | Changeover Nack
+.3+.| 8.9.3 | 0x87 | Reinitialize
+            | 0x88 | Reinitialize Ack
+            | 0x89 | Reinitialize Nack
+.3+.| 8.9.4 | 0x77 | Set Site Outputs
+            | 0x78 | Set Site Outputs Ack
+            | 0x79 | Set Site Outputs Nack
+.3+.| 8.9.5 | 0x90 | Change HW Configuration
+            | 0x91 | Change HW Configuration Ack
+            | 0x92 | Change HW Configuration Nack
+3+<| *Measurement Management Messages:*
+    | 8.10.1 | 0x8A | Measurement Result Request
+    | 8.10.2 | 0x8B | Measurement Result Response
+    | 8.10.3 | 0x8C | Stop Measurement
+    | 8.10.4 | 0x8D | Start Measurement
+3+<| *Other Messages:*
+    | 8.11.1 | 0x81 | Get Attributes
+    | 8.11.3 | 0x82 | Get Attribute(s) Response
+    | 8.11.1 | 0x83 | Get Attributes Nack
+.3+.| 8.11.2 | 0x84 | Set Alarm Threshold
+             | 0x85 | Set Alarm Threshold Ack
+             | 0x86 | Set Alarm Threshold Nack
+|===
+
+
+=== Details on Compliant OML Messages
+
+[[sw_act_rep]]
+==== SW Activated Report
+
+OsmoBTS will send an _SW Activated Report_ when RF has been activated
+successfully. The message is compliant with 3GPP TS 12.21 § 8.3.7.
+
+Upon RF activation, two _SW Activated Report_ messages will be sent, for the Object Classes
+
+- Radio Carrier (0x02)
+- Baseband Transceiver (0x04)
+
+[[set_bts_attr]]
+==== Set BTS Attributes
+
+OsmoBTS will receive a _Set BTS Attributes_ message and reply with a
+corresponding ACK message on success. IE handling is fully compliant to TS
+12.21, except that a change of BCCH ARFCN or BSIC while in operation is not
+supported, and hence the _Starting Time_ IE is rejected.
+
+._Set BTS Attributes_ IEs not handled by OsmoBTS
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 12.21 § | IE Name | Handling
+| 9.4.52 | Starting Time | not supported (provokes NACK cause 0x10)
+|===
+
+
+[[set_radio_attr]]
+==== Set Radio Carrier Attributes
+
+This message conforms to 3GPP TS 12.21, with the following limitation,
+as frequency hopping is not supported by OsmoBTS:
+
+._Set Radio Carrier Attributes_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 12.21 § | IE Name | Handling
+| 9.4.5 | ARFCN List | ignored
+|===
+
+
+[[set_chan_attr]]
+==== Set Channel Attributes
+
+This message conforms to 3GPP TS 12.21, with the following limitation: OpenBTS
+does not support frequency hopping, and the following 3GPP TS 12.21 IEs provoke
+a NACK response when sent to OsmoBTS, as frequency hopping is not
+supported:
+
+._Set Channel Attributes_ IE limitations
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 12.21 § | IE Name | Handling
+| 9.4.21 | HSN | not supported (provokes NACK cause 0x10)
+| 9.4.27 | MAIO | not supported (provokes NACK cause 0x10)
+| 9.4.52 | Starting Time | not supported (provokes NACK cause 0x10)
+|===
+
+[[state_changed_rep]]
+==== State Changed Event Report
+
+This message is compliant with 3GPP TS 12.21. Exactly these IEs are sent by
+OsmoBTS:
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message Type (0xf5) | 3GPP TS 12.21 9.1 | M | V | 1
+| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
+| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| Operational State | 3GPP TS 12.21 9.4.38 | O | TV | 2
+| Availability Status | 3GPP TS 12.21 9.4.7 | O | TL16V (with length of 1) | 3
+|===
+
+[[chg_adm_state]]
+==== Change Administrative State
+
+This message is compliant with 3GPP TS 12.21 § 8.8.5. It applies to all of the
+Objects Classes defined in 3GPP TS 12.21 § 9.2 as well as
+<<addnl_obj_classes>>.
+
+[[opstart]]
+==== Opstart
+
+This message is compliant with 3GPP TS 12.21 § 8.9.2. It applies to all of the
+Objects Classes defined in 3GPP TS 12.21 § 9.2 as well as
+<<addnl_obj_classes>>.
+
+
+=== Details on OsmoBTS Specific Messages
+
+[[ipacc_set_attr]]
+==== Set Attribute
+
+The message type is 0xf5. This message is sent to OsmoBTS to set
+attributes on instances of managed objects of the non-standard
+additional Object Classes (see <<addnl_obj_classes>>).
+
+The message specifics depend on the Object Class and are detailed in
+<<addnl_obj_classes>>.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message Type (0xf5) | 3GPP TS 12.21 9.1 | M | V | 1
+| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
+| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+5+<| _Object Class specific IEs follow, see <<addnl_obj_classes>>..._
+|===
+
+
+[[addnl_obj_classes]]
+=== Additional Object Classes
+
+In addition to 3GPP TS 12.21 Chapter 9.2, the following managed objects
+are supported:
+
+.Additional Managed Object Classes
+[options="header"]
+[cols="20%,20%,60%"]
+|===
+| Value | Name | Description
+| 0xf0 | GPRS NSE | GPRS-NS Entity
+| 0xf1 | GPRS CELL | GPRS Cell Entity
+| 0xf2 | GPRS NSVC | GPRS NS Virtual Circuit
+|===
+
+==== GPRS-NSE Managed Object
+
+There is one NS Entity per BTS.  It supports the *Set Attribute* message
+with the following Information Elements:
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
+| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
+| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| GPRS NSEI | <<NM_ATT_IPACC_NSEI>> | O | TL16V | >= 5
+| GPRS NS Configuration | <<NM_ATT_IPACC_NS_LINK_CFG>> | O | TL16V | >= 10
+| GPRS BSSGP Configuration | <<NM_ATT_IPACC_BSSGP_CFG>> | O | TL16V | >= 14
+|===
+
+==== GPRS Cell Managed Object
+
+There is one GPRS Cell entity per BTS.  It supports the *Set Attribute*
+message with the following Information Elements:
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
+| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
+| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| GPRS Routing Area Code | <<NM_ATT_IPACC_RAC>> | O | TL16V | >= 4
+| GPRS Paging Configuration | <<NM_ATT_IPACC_GPRS_PAGING_CFG>>  | O | TL16V | >= 5
+| GPRS RLC Configuration | <<NM_ATT_IPACC_RLC_CFG>> | O | TL16V | >= 12
+| GPRS Coding Schemes | <<NM_ATT_IPACC_CODING_SCHEMES>> | O | TL16V | >= 5
+| GPRS RLC Configuration 2 | <<NM_ATT_IPACC_RLC_CFG_2>> | O | TL16V | >= 8
+| GPRS RLC Configuration 3 | <<NM_ATT_IPACC_RLC_CFG_3>> | O | TL16V | >= 4
+|===
+
+==== GPRS NS-VC Managed Object
+
+There are two GPRS NS-VC instances per BTS.  It supports the *Set
+Attribute* message with the following Information Elements:
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
+| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
+| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| GPRS NSVCI | <<NM_ATT_IPACC_NSVCI>> | O | TL16V | >= 5
+| GPRS NS Link Configuration | <<NM_ATT_IPACC_NS_LINK_CFG>> | O | TL16V | >= 11
+|===
+
+
+=== Information Elements Overview
+
+All of the IEs handled by OsmoBTS are listed below, with limitations and
+additions to TS 12.21 specified in more detail.
+
+==== IEs Conforming to TS 12.21
+
+The following Information Elements are accepted by OsmoBTS. Not all IEs are
+actually evaluated.
+
+.IEs conforming to TS 12.21
+[options="header",cols="5%,10%,40%,5%,40%"]
+|===
+| tag (hex) | TS 12.21 § | IE name | <-/-> | Received/Sent by OsmoBTS
+| 0x00 | 9.4.1  | Abis Channel  |  | _ignored_
+| 0x01 | 9.4.2  | Additional Info  |  | _ignored_
+| 0x02 | 9.4.3  | Additional Text  |  | _ignored_
+| 0x03 | 9.4.4  | Administrative State  | <- -> | Received & Sent
+| 0x04 | 9.4.5  | ARFCN List  | <- | Received, with exactly 1 ARFCN: see <<NM_ATT_ARFCN_LIST>>;
+                                     ignored by _Set Radio Attribute_ message (<<set_radio_attr>>)
+| 0x05 | 9.4.6  | Autonomously Report  |  | _ignored_
+| 0x06 | 9.4.7  | Availability Status  | -> | Sent
+| 0x07 | 9.4.8  | BCCH ARFCN  | <- | Received
+| 0x08 | 9.4.9  | BSIC  | <- | Received
+| 0x09 | 9.4.10 | BTS Air Timer  | <- | Received
+| 0x0a | 9.4.11 | CCCH Load Indication Period  | <- | Received
+| 0x0b | 9.4.12 | CCCH Load Threshold  | <- | Received
+| 0x0c | 9.4.13 | Channel Combination  | <- | Received, with additional channel combinations: see <<ie_chan_comb>>
+| 0x0d | 9.4.14 | Connection Failure Criterion  | <- | Received, with limitations see <<ie_conn_fail_crit>>
+| 0x0e | 9.4.15 | Destination  |  | _ignored_
+| 0x0f | 9.4.16 | Event Type  |  | _ignored_
+| 0x11 | 9.4.17 | File Data  |  | _ignored_
+| 0x12 | 9.4.18 | File Id  |  | _ignored_
+| 0x13 | 9.4.19 | File Version  |  | _ignored_
+| 0x14 | 9.4.20 | GSM Time  |  | _ignored_
+| 0x16 | 9.4.22 | HW Configuration  |  | _ignored_
+| 0x18 | 9.4.24 | Intave Parameter  | <- | _ignored_
+| 0x19 | 9.4.25 | Interference level Boundaries  | <- | _ignored_
+| 0x1a | 9.4.26 | List of Required Attributes  |  | _ignored_
+| 0x1c | 9.4.28 | Manufacturer Dependent State  |  | _ignored_
+| 0x1d | 9.4.29 | Manufacturer Dependent Thresholds  |  | _ignored_
+| 0x1e | 9.4.30 | Manufacturer Id  |  | _ignored_
+| 0x1f | 9.4.31 | Max Timing Advance  | <- | Received
+| 0x20 | 9.4.34 | Multi-drop BSC Link  |  | _ignored_
+| 0x21 | 9.4.35 | Multi-drop next BTS Link  |  | _ignored_
+| 0x22 | 9.4.36 | Nack Causes  | -> | Sent
+| 0x23 | 9.4.37 | Ny1  | <- | Received
+| 0x24 | 9.4.38 | Operational State  | -> | Sent
+| 0x25 | 9.4.39 | Overload Period  | <- | _ignored_
+| 0x26 | 9.4.40 | Physical Config  |  | _ignored_
+| 0x27 | 9.4.41 | Power Class  |  | _ignored_
+| 0x28 | 9.4.42 | Power Output Thresholds  |  | _ignored_
+| 0x29 | 9.4.43 | Probable Cause  |  | _ignored_
+| 0x2a | 9.4.44 | RACH Busy Threshold  | <- | Received
+| 0x2b | 9.4.45 | RACH Load Averaging Slots  | <- | _ignored_
+| 0x2c | 9.4.46 | Radio Sub Channel  |  | _ignored_
+| 0x2d | 9.4.47 | RF Max Power Reduction  | <- | Received
+| 0x2e | 9.4.48 | Site Inputs  |  | _ignored_
+| 0x2f | 9.4.49 | Site Outputs  |  | _ignored_
+| 0x30 | 9.4.50 | Source  |  | _ignored_
+| 0x31 | 9.4.51 | Specific Problems  |  | _ignored_
+| 0x33 | 9.4.53 | T200  | <- | _ignored_ (1s on DCCH, 2s on ACCH)
+| 0x34 | 9.4.54 | TEI  |  | _ignored_
+| 0x35 | 9.4.55 | Test Duration  |  | _ignored_
+| 0x36 | 9.4.56 | Test No  |  | _ignored_
+| 0x37 | 9.4.57 | Test Report Info  |  | _ignored_
+| 0x38 | 9.4.58 | VSWR Thresholds  |  | _ignored_
+| 0x39 | 9.4.59 | Window Size  |  | _ignored_
+| 0x40 | 9.4.60 | TSC  | <- | Received, with limitations: see <<NM_ATT_TSC>>
+| 0x41 | 9.4.61 | SW Configuration  |  | _ignored_
+| 0x43 | 9.4.63 | Perceived Severity  |  | _ignored_
+| 0x44 | 9.4.64 | Get Attribute Response Info  |  | _ignored_
+| 0x45 | 9.4.65 | Outstanding Alarm Sequence  |  | _ignored_
+| 0x46 | 9.4.66 | HW Conf Change Info  |  | _ignored_
+| 0x47 | 9.4.32 | Measurement Result  |  | _ignored_
+|===
+
+==== IEs Not Conforming to TS 12.21
+
+.IEs not conforming to TS 12.21
+[options="header",cols="5%,10%,30%,55%"]
+|===
+| tag (hex) | TS 12.21 § | IE name | Description
+| 0x15 | 9.4.21 | HSN              | presence causes NACK response
+| 0x17 | 9.4.23 | HW Description   | _ignored_ by OsmoBTS, but coding may differ, see <<ie_hw_desc>>
+| 0x1b | 9.4.27 | MAIO             | presence causes NACK response 
+| 0x32 | 9.4.52 | Starting Time    | presence causes NACK response
+| 0x42 | 9.4.62 | SW Description   | not supported
+| 0x48 | 9.4.33 | Measurement Type | not supported
+|===
+
+
+==== Additional Attributes and Parameters
+
+The following Information Elements are defined in addition to those
+specified in 3GPP TS 12.21 Chapter 9.4.
+
+All of these additional IEs are _received_ by OsmoBTS.
+
+The content of these attributes is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+.Additional IEs handled by OsmoBTS but not defined in TS 12.21
+[options="header",cols="5%,50%,45%"]
+|===
+| tag (hex) | IE name | Description
+| 0x80 | RSL Destination IP Address | <<NM_ATT_IPACC_DST_IP>>
+| 0x81 | RSL Destination TCP Port | <<NM_ATT_IPACC_DST_IP_PORT>>
+| 0x85 | RSL IPA Stream ID | <<NM_ATT_IPACC_STREAM_ID>>
+| 0x9a | GPRS Routing Area Code | <<NM_ATT_IPACC_RAC>>
+| 0x9c | GPRS Paging Configuration | <<NM_ATT_IPACC_GPRS_PAGING_CFG>>
+| 0x9d | GPRS NSEI | <<NM_ATT_IPACC_NSEI>>
+| 0x9e | GPRS BVCI | <<NM_ATT_IPACC_BVCI>>
+| 0x9f | GPRS NSVCI | <<NM_ATT_IPACC_NSVCI>>
+| 0xa0 | GPRS NS Configuration | <<NM_ATT_IPACC_NS_CFG>>
+| 0xa1 | GPRS BSSGP Configuration | <<NM_ATT_IPACC_BSSGP_CFG>>
+| 0xa2 | GPRS NS Link Configuration | <<NM_ATT_IPACC_NS_LINK_CFG>>
+| 0xa3 | GPRS RLC Configuration | <<NM_ATT_IPACC_RLC_CFG>>
+| 0xa8 | GPRS Coding Schemes | <<NM_ATT_IPACC_CODING_SCHEMES>>
+| 0xa9 | GPRS RLC Configuration 2 | <<NM_ATT_IPACC_RLC_CFG_2>>
+| 0xac | GPRS RLC Configuration 3 | <<NM_ATT_IPACC_RLC_CFG_3>>
+|===
+
+
+=== Details on IEs
+
+[[ie_hw_desc]]
+==== HW Description
+
+TS 12.21 suggests a series of 5 length-value pairs for the _HW Description_ IE.
+Instead, OsmoBTS interprets it as a single TL16V. The value of this IE is
+ignored by OsmoBTS, yet the coding may affect message parsing.
+
+[width="40%",cols="90%,10%"]
+[grid="none"]
+|===
+| Attribute Identifier (0x17) | 1
+| Length | 2-3
+| Ignored | N
+|===
+
+
+[[NM_ATT_ARFCN_LIST]]
+==== ARFCN List
+
+Since OsmoBTS does not support frequency hopping, the _ARFCN List_ must contain
+exactly one ARFCN.
+
+[[ie_chan_comb]]
+==== Additional Channel Combinations
+
+In addition to 3GPP TS 12.21 Chapter 9.4.13, the following channel
+combinations are supported:
+
+.Additional Channel Combinations
+[options="header"]
+[cols="10%,90%"]
+|===
+| Value | Description
+| 0x0b | Reserved for PBCCH + PCCCH + PDTCH/F + PACCH/F + PTCCH/F
+| 0x0c | Reserved for PBCCH + PDTCH/F + PACCH/F + PTCCH/F
+| 0x0d | PDTCH/F + PACCH/F + PTCCH/F
+| 0x80 | Reserved for Dynamic TCH/F / PDCH
+| 0x81 | Reserved for Dynamic TCH/F / TCH/H
+|===
+
+[[ie_conn_fail_crit]]
+==== Connection Fail Criterion
+
+3GPP TS 12.21 Chapter 9.4.14 specifies two different options for the
+_Connection Failure Criterion_.  OsmoBTS only implements the option
+coded as 0x01, i.e. based upon uplink SACCH error rate
+(RADIO_LINK_TIMEOUT).
+
+[[NM_ATT_TSC]]
+==== TSC
+
+Due to limitations in the currently supported PHY implementations,
+OsmoBTS supports only one global TSC for all channels on one TRX, rather
+than a separate TSC for each timeslot, as expected by 3GPP TS 12.21.
+
+
+[[NM_ATT_IPACC_DST_IP]]
+==== RSL Destination IP Address
+
+The value part of this attribute has a length of 4 octets and is encoded
+as IPv4 address in network byte order.
+
+[width="40%",cols="90%,10%"]
+[grid="none"]
+|===
+| Attribute Identifier (0x80) | 1
+| IPv4 Address (MSB first) | 2-5
+|===
+
+
+[[NM_ATT_IPACC_DST_IP_PORT]]
+==== RSL Destination TCP Port
+
+The value part of this attribute has a length of 2 octets and contains
+the TCP destination port for the RSL connection, encoded in network byte
+order.
+
+[width="40%",cols="90%,10%"]
+[grid="none"]
+|===
+| Attribute Identifier (0x81) | 1
+| Port number (MSB first) | 2-3
+|===
+
+
+[[NM_ATT_IPACC_STREAM_ID]]
+==== RSL IPA Stream ID
+
+The value part of this attribute has a length of one octet and specifies
+the IPA stream ID to be used for the RSL connection of this TRX.
+
+[width="40%",cols="90%,10%"]
+[grid="none"]
+|===
+| Attribute Identifier (0x85) | 1
+| Stream ID | 2
+|===
+
+
+[[NM_ATT_IPACC_RAC]]
+==== GPRS Routing Area Code
+
+The value part of the GPRS Routing Area code consist of a single octet
+encoding the GPRS Routing Area Code.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_GPRS_PAGING_CFG]]
+==== GPRS Paging Configuration
+
+The value part of this attribute consists of two octets encoded as
+follows:
+
+[options="header"]
+[cols="10%,90%"]
+|===
+| Offset | Description
+| 0 | GPRS Paging repeat time in units of 50ms intervals
+| 1 | GPRS Paging repeat count
+|===
+
+
+[[NM_ATT_IPACC_NSEI]]
+==== GPRS NSEI
+
+The value part of the GPRS NSEI is encoded as 16bit integer value in
+network byte order.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_BVCI]]
+==== GPRS BVCI
+
+The value part of this attribute consists of two octets encoding the
+BSSGP Virtual Circuit Identifier (BVCI) as unsigned 16 bit integer in
+network byte order.
+
+
+[[NM_ATT_IPACC_NSVCI]]
+==== GPRS NSVCI
+
+The value part of the GPRS NSVCI attribute is a 16bit unsigned integer
+in network byte order, encoding the GPRS NSVCI as specified in 3GPP TS
+08.16.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_NS_CFG]]
+==== GPRS NS Configuration
+
+The value part of the GPRS NS Configuration consist of an array of 7 octets, each
+describing one GPRS NS related timer:
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_BSSGP_CFG]]
+==== GPRS BSSGP Configuration
+
+The value part of the GPRS BSSGP configuration consists of an array of
+11 octets, each describing one GPRS BSSGP related timer:
+
+[options="header"]
+[cols="10%,90%"]
+|===
+| Offset | Description
+| 0 | Blocking Timer (T1)
+| 1 | Blocking Retries
+| 2 | Unblocking Retries
+| 3 | Reset Timer (T2)
+| 4 | Reset Retries
+| 5 | Suspend Timer (T3) in units of 100ms
+| 6 | Suspend Retries
+| 7 | Resume Timer (T4) in units of 100ms
+| 8 | Resume Retries
+| 9 | Capability Update Timer (T5)
+| 10 | Capability Update Retries
+|===
+
+The detailed description of the meaning of those timers is given in the
+GPRS BSSGP specification 3GPP TS 08.18.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_NS_LINK_CFG]]
+==== GPRS NS Link Configuration
+
+The content of this attribute is 8 octets long and encoded as follows:
+[options="header"]
+[cols="10%,10%,80%"]
+|===
+| Offset | Length | Description
+| 0 | 2 | GPRS-NS Remote UDP Port Number (SGSN side)
+| 2 | 4 | GPRS-NS Remote IPv4 Address (SGSN side)
+| 6 | 2 | GPRS-NS Local UDP Port Number (BTS side)
+|===
+
+All values are encoded in network byte order.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_RLC_CFG]]
+==== GPRS RLC Configuration
+
+The value part of the GPRS RLC Configuration consists of an array of 9
+octets, each describing a RLC timer:
+
+[options="header"]
+[width="60%",cols="10%,80%,10%"]
+|===
+| Offset | Description | Unit
+| 0 | GPRS RLC Timer T3142 | s
+| 1 | GPRS RLC Timer T3169 | s
+| 2 | GPRS RLC Timer T3191 | s
+| 3 | GPRS RLC Timer T3193 | 10ms
+| 4 | GPRS RLC Timer T3195 | s
+| 5 | GPRS RLC Timer T3101 | s
+| 6 | GPRS RLC Timer T3103 | s
+| 7 | GPRS RLC Timer T3105 | s
+| 8 | GPRS RLC CV Countdown | -
+|===
+
+The meaning of the RLC timers are specified in 3GPP TS 04.60.
+
+The countdown value specifies the RLC CV value from which the countdown
+procedure is started.
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_CODING_SCHEMES]]
+==== GPRS Coding Schemes
+
+The value part of the GPRS Coding Schemes consists of two octets
+encoding the available GPRS and EDGE coding schemes.
+
+[options="header"]
+|===
+| *bit*            | 7    |   6 |    5 |   4  | 3   | 2    | 1    | 0
+| byte at offset 0 | MCS9 |   x |    x |   x  | CS4 | CS3  | CS2  | CS1
+| byte at offset 1 | MCS8 | MCS7| MCS6 | MCS5 | MCS4| MCS3 | MCS2 | MCS1
+|===
+        
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_RLC_CFG_2]]
+==== GPRS RLC Configuration 2
+
+The value part of this attribute is 8 octets long and encoded as
+follows:
+[options="header"]
+[width="60%",cols="10%,10%,70%,10%"]
+|===
+| Offset | Length | Description | Unit
+| 0 | 2 | Downlink TBF Extension Timer | 10ms
+| 2 | 2 | Uplink TBF Extension Timer | 10ms
+| 4 | 2 | Initial GPRS Coding Scheme | -
+|===
+
+The Initial GPRS Coding Scheme is encoded as follows:
+[options="header"]
+[width="40%",cols="50%,50%"]
+|===
+| Value | Description
+| 1 | CS 1
+| 2 | CS 2
+| 3 | CS 3
+| 4 | CS 4
+|===
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+
+[[NM_ATT_IPACC_RLC_CFG_3]]
+==== GPRS RLC Configuration 3
+
+The content of this attribute contains information about the initial MCS
+used for new EDGE TBFs.
+
+It is encoded as follows:
+[options="header"]
+[width="40%",cols="50%,50%"]
+|===
+| Value | Description
+| 1 | MCS 1
+| 2 | MCS 2
+| 3 | MCS 3
+| 4 | MCS 4
+| 5 | MCS 5
+| 6 | MCS 6
+| 7 | MCS 7
+| 8 | MCS 8
+| 9 | MCS 9
+|===
+
+The content of this attribute is not used by OsmoBTS, but
+simply passed to OsmoPCU connected to the PCU socket.
+
+=== A-bis OML Initialization / BTS bring-up
+
+At the time an Abis/IP BTS connects to via OML to the BSC, it is
+initialized according to the procedures described in 3GPP TS 12.21 as
+amended in this document.
+
+Each Managed Object (MO) is separately initialized.  The initialization
+sequence and parameters differ slightly depending on the MO involved.
+
+Some parts of the sequences described below are optional, such as the
+Software activation.  In the OsmoBTS case, the software is nod modular
+and thus all MOs start with the software fully activated.  Thus, no
+__Software Activate Request__ is being sent by the MO to the BSC, nor
+does the BSC need to initialize the __Activate Software__ procedure.
+
+Still, the full sequences are shown in order to explain the Abis/IP
+protocol.
+
+Also, the initial state of the MOs at time of OML connection
+initialization is not always guaranteed to be Disabled/Notinstalled.
+Rather, the BSC implementation has to deal with the initial state as
+reported by the MOs at time of re-connection.
+
+==== Site Manager MO Initialization
+
+.A-bis OML Initialization of Site Manager MO
+["mscgen"]
+----
+include::oml-mo-sitemgr.msc[]
+----
+
+As the Site Manager MO does not depend on other MOs, nor does it have an
+Administrative state (__Locked/Unlocked__), it immediately ends up in the
+__Enabled__ state.
+
+==== BTS MO Initialization
+
+.A-bis OML Initialization of BTS MO
+["mscgen"]
+----
+include::oml-mo-bts.msc[]
+----
+
+As can be seen in the BTS MO, its state is
+
+* Availability state __Dependency__, meaning it depends on other MOs to
+  be initialized before becoming enabled.
+* Administrative state __Locked__, as the object is first waiting to
+  receive attributes in the __Locked__ state, before the __Change
+  Administrative State (Unlocked)__ procedure is used to request
+  transitioning into Unlocked state.
+
+==== Baseband Transceiver MO Initialization
+
+.A-bis OML Initialization of Baseband Transceiver MO
+["mscgen"]
+----
+include::oml-mo-transceiver.msc[]
+----
+
+There is one Baseband Transceiver MO per TRX in the BTS.  For a
+multi-TRX BTS, the above procedure must be repeated for each TRX.
+
+
+==== Radio Carrier MO Initialization
+
+.A-bis OML Initialization of Radio Carrier MO
+["mscgen"]
+----
+include::oml-mo-carrier.msc[]
+----
+
+There is one Radio Carrier MO per TRX in the BTS.  For a multi-TRX BTS,
+the above procedure must be repeated for each TRX.
+
+
+==== Channel MO Initialization
+
+.A-bis OML Initialization of Radio Carrier MO
+["mscgen"]
+----
+include::oml-mo-channel.msc[]
+----
+
+There are 8 Timeslots in each TRX, and correspondingly 8 Channel MOs in
+every TRX.  The above procedure must thus be repeated for each timeslot
+in each transceiver of the BTS.
+
+
+==== Full Initialization of entire BTS
+
+Some of the steps are optional, as is their detailed ordering.  In
+reality, the procedures for different MOs may overlap. The message
+sequence charts in this document have been hand-crafted to avoid such
+overlap for the sake of clarity.
+
+[[oml-msc-1]]
+.A-bis OML BTS bring-up (1/3)
+["mscgen"]
+----
+include::oml-startup.msc[]
+----
+
+As can be seen in <<oml-msc-1>>, after the OML TCP connection is
+established
+
+. the identity is exchanged via IPA CCM,
+. the BTS sends an 'OML EVENT STATE CHANGED REPORT' for every
+  Managed Object
+. the BTS subsequently requests the activation of its 'Site Manager' Object
+  which the BSC performs by the 'Activate SW' command.
+. After successful activation of the software in the Site Manager,
+.. the state changes to 'Enabled', and an event report is generated
+   accordingly
+.. the BSC is notified about the SW activation in an associated report
+.  Finally, the BSC requests the start of the Site Manager
+.. using the 'OPSTART' command,
+.. which is subsequently acknowledged by the Site Manager.
+
+[[oml-msc-2]]
+.A-bis OML BTS bring-up (2/3)
+["mscgen"]
+----
+include::oml-startup2.msc[]
+----
+
+[[oml-msc-3]]
+.A-bis OML BTS bring-up (3/3)
+["mscgen"]
+----
+include::oml-startup3.msc[]
+----
+
+In <<oml-msc-2>>, we can see
+
+. Software Activation and associated state transitions of the BTS MO
+. Setting of the BTS Attributes followed by OPSTART
+. Software Activation and associated state transitions of the 'Baseband
+  Transceiver' MO
+. Software Activation and associated state transitions of the 'Radio
+  Carrier' MO
+. Once the 'Baseband Transceiver' MO has its software activated, the
+  'Channel' MOs (one for each timeslot) indicate their state change and
+  software activation, too.
+
+In <<oml-msc-3>>, we can see
+
+. The 'Radio Carrier' MO Software Activation
+. The Request to the 'Baseband Transceiver' MO to establish the RSL
+  signalling connection to the BSC.
+. Subsequent OPSTART and Change of Administrative State on the 'Baseband
+  Transceiver' MO
+. The following procedure for each of the 'Channel' MOs:
+.. Setting the Channel Attributes (such as channel combination)
+.. OPSTART
+.. Changing the Administrative State to Unlocked
+.. Subsequent State Change Event Report with the new state
+. After all 'Channel' MOs are initialized, the Radio Carrier goes through
+  a similar procedure of
+.. Setting its attributes
+.. OPSTART
+.. Changing its Administrative State to Unlocked
+.. Subsequent State Change Event Report with the new State (Enabled/OK)
+. All 'Channel' MOs now also report their state as Enabled/OK
+. Finally, the BTS reports its state as Enabled/OK
+

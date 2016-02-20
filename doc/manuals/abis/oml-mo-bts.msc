@@ -1,0 +1,26 @@
+msc {
+	bts [label="BTS"], bsc [label="BSC"];
+	# this is for the BTS Object
+	---		[label="Initial state after establishing OML"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Notinstalled/Locked)"];
+	---		[label="MO requests software activation"];
+	bts => bsc	[label="SW Activate Req"];
+	bts <= bsc	[label="SW Activate Req Ack"];
+	---		[label="BTS instructs BTS to activate software"];
+	bts <= bsc	[label="Activate SW"];
+	bts => bsc	[label="Activate SW Ack"];
+	---		[label="MO reports new state after SW activation"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency)"];
+	bts => bsc	[label="SW Activated Report"];
+	---		[label="Configure the MO with its attributes"];
+	bts <= bsc	[label="Set BTS Attributes"];
+	bts => bsc	[label="Set BTS Attributes Ack"];
+	bts <= bsc	[label="OPSTART"];
+	bts => bsc	[label="OPSTART ACK"];
+	---		[label="As this object is locked, we need to unlock it"];
+	bts <= bsc	[label="Change Adm State (Unlocked)"];
+	bts => bsc	[label="Change Adm State Ack (Unlocked)"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency/Unlocked)"];
+	---		[label="Initialize Radio Transceiver, Radio Carrier, Channels"];
+	bts => bsc	[label="STATE CHG REP (Enabled/OK)"];
+}

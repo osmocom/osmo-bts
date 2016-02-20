@@ -1,0 +1,20 @@
+msc {
+	bts [label="Channel"], bsc [label="BSC"];
+	---		[label="Initial state after establishing OML"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Notinstalled/Locked)"];
+	---		[label="MO reports new state after SW activation of Baseband Transceiver"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency)"];
+	bts => bsc	[label="SW Activated Report"];
+	---		[label="Configure the MO with its attributes"];
+	bts <= bsc	[label="Set Channel Attributes"];
+	bts => bsc	[label="Set Channel Attributes Ack"];
+	bts <= bsc	[label="OPSTART"];
+	bts => bsc	[label="OPSTART ACK"];
+	---		[label="As this object is locked, we need to unlock it"];
+	bts <= bsc	[label="Change Adm State (Unlocked)"];
+	bts => bsc	[label="Change Adm State Ack (Unlocked)"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency/Unlocked)"];
+	---		[label="Initialize Radio Carrier / Baseband Transceiver"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Offline)"];
+	bts => bsc	[label="STATE CHG REP (Enabled/OK)"];
+}

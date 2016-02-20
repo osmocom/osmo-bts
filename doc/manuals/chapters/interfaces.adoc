@@ -1,0 +1,130 @@
+== OsmoBTS Interfaces
+
+OsmoBTS offers a set of interfaces to interact with external entities:
+
+* A-bis/IP interface to talk to the BSC
+* bts_model specific PHY interface
+* VTY interface
+* Osmocom control interface
+* GSMTAP interface
+* PCU interface
+
+
+=== OsmoBTS Abis/IP Interface
+
+OsmoBTS implements the GSM A-bis interface as described in the relevant
+3GPP specifications:
+
+* A-bis RSL according to 3GPP TS 08.58
+* A-bis OML according to 3GPP TS 12.21
+
+As the 3GPP specified A-bis only over E1 interfaces and not over IP,
+significant enhancements and modifications have been performed as opposed
+to the 3GPP specifications.  Nevertheless, the implementation tries to
+stay as close a possible to the 3GPP specifications.
+
+Please see the _OsmoBTS Abis Protocol Specification_
+<<osmobts-abis-spec>> for more information on this subject.
+
+
+=== bts_model specific PHY interface
+
+This interface is specific to the bts_model that OsmoBTS was compiled
+for.  It can take any form as required by the respective hardware.
+
+Please see the PHY documentation of your respective BTS hardware for more
+details.
+
+
+=== OsmoBTS VTY Interface
+
+See <<vty>> for further information.
+
+
+=== OsmoBTS Control Interface
+
+The general structure of the Omsocom control interface is described in
+<<common-control-if>>.
+
+The number of control interface commands/attributes is currently quite
+limited and largely depends on the bts_model used.
+
+==== trx.N.thermal-attenuation
+
+The idea of this paramter is to attenuate the system output power as part of
+thermal management.  In some cases the PA might be passing a critical level,
+so an external control process can use this attribute to reduce the system
+output power.
+
+Please note that all values in the context of transmit power calculation
+are integers in milli-dB (1/10000 bel), so the below example is setting
+the attenuation at 3 dB:
+
+----
+bsc_control.py -d localhost -p 4238 -s trx.0.thermal-attenuation 3000
+Got message: SET_REPLY 1 trx.0.thermal-attenuation 3000
+----
+
+----
+bsc_control.py -d localhost -p 4238 -g trx.0.thermal-attenuation
+Got message: GET_REPLY 1 trx.0.thermal-attenuation 3000
+----
+
+
+
+=== OsmoBTS GSMTAP Interface
+
+GSMTAP is a standard created by Osmocom to UDP-encapsulate GSM protocol
+messages normally communicated over non-IP interfaces for the primary
+purpose of protocol analysis in the wireshark dissector.
+
+The initial purpose was to encapsulate GSM Um frames including some
+meta-data like ARFCN and GSM frame number into something that can be
+parsed and dispatched within the wireshark dissector.
+
+This interface has since been extended to many other
+GSM/GPRS/UMTS interfaces and protocols, and even to TETRA and GMR.
+
+In OsmoBTS, it is possible to export both uplink and downlink Um
+messages via GSMTAP.  There is a set of VTY configuration options to
+specify for which logical channels of the Um interface GSMTAP messages
+shall be emitted, and to which destination IP address they shall be
+sent.
+
+Using GSMTAP it is possible to place a virtual tap at the air interface
+between BTS and MS, without going through the trouble of setting up an
+actual radio receiver at the same frequencies.  Also, GSMTAP export is
+performed before the Um air-interface encryption (A5) is performed, so
+all frames are always in plain text.
+
+Please refer to <<gsmtap>> for more information on how to configure and
+use this interface.
+
+
+=== OsmoBTS PCU Socket Interface
+
+In order to assist the provisioning of GPRS services over the same radio
+interface as circuit-switched GSM, OsmoBTS exposes a Unix domain socket
+based interface towards OsmoPCU.
+
+OsmoPCU is the Osmocom implementation of the GPRS Packet Control Unit
+(PCU), which is co-located with the BTS in the Osmocom implementation.
+Contrary to that, many classic E1-based implementations of the GSM RAN
+co-locate the PCU with the BSC.  However, the GSM specifications keep
+the location up to the implementor.
+
+The PCU socket interface serves the following purposes:
+
+* to pass PCU relevant configuration from BTS to PCU
+* to forward paging requests from BTS to PCU
+* to forward RACH Requests from BTS to PCU
+
+Depending on your bts_model, the PCU may also be passing actual
+PH-DATA.request / PH-DATA.indication / PH-RTS.indication primitives for
+the PDCH.  This is considered sub-optimal, and some BTS models offer a
+direct interface by which the PCU can exchange those primitives directly
+with the PHY.
+
+The default PCU socket interface name is `/tmp/pcu_sock`, but this can
+be overridden by the @pcu-socket@ VTY command in the BTS configuration
+VTY node.
