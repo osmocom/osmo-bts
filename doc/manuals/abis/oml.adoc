@@ -226,14 +226,14 @@ OsmoBTS:
 ==== Change Administrative State
 
 This message is compliant with 3GPP TS 12.21 § 8.8.5. It applies to all of the
-Objects Classes defined in 3GPP TS 12.21 § 9.2 as well as
+Object Classes defined in 3GPP TS 12.21 § 9.2 as well as
 <<addnl_obj_classes>>.
 
 [[opstart]]
 ==== Opstart
 
 This message is compliant with 3GPP TS 12.21 § 8.9.2. It applies to all of the
-Objects Classes defined in 3GPP TS 12.21 § 9.2 as well as
+Object Classes defined in 3GPP TS 12.21 § 9.2 as well as
 <<addnl_obj_classes>>.
 
 
