@@ -429,7 +429,7 @@ specified in 3GPP TS 12.21 Chapter 9.4.
 
 All of these additional IEs are _received_ by OsmoBTS.
 
-The content of these attributes is not used by OsmoBTS, but
+These attributes are not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 .Additional IEs handled by OsmoBTS but not defined in TS 12.21
@@ -561,7 +561,7 @@ the IPA stream ID to be used for the RSL connection of this TRX.
 The value part of the GPRS Routing Area code consists of a single octet
 encoding the GPRS Routing Area Code.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -586,7 +586,7 @@ follows:
 The value part of the GPRS NSEI is encoded as 16bit integer value in
 network byte order.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -605,7 +605,7 @@ The value part of the GPRS NSVCI attribute is a 16bit unsigned integer
 in network byte order, encoding the GPRS NSVCI as specified in 3GPP TS
 08.16.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -615,7 +615,7 @@ simply passed to OsmoPCU connected to the PCU socket.
 The value part of the GPRS NS Configuration consists of an array of 7 octets,
 each describing one GPRS NS related timer:
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -645,14 +645,14 @@ The value part of the GPRS BSSGP configuration consists of an array of
 The detailed description of the meaning of those timers is given in the
 GPRS BSSGP specification 3GPP TS 08.18.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
 [[NM_ATT_IPACC_NS_LINK_CFG]]
 ==== GPRS NS Link Configuration
 
-The content of this attribute is 8 octets long and encoded as follows:
+This attribute is 8 octets long and encoded as follows:
 [options="header"]
 [cols="10%,10%,80%"]
 |===
@@ -664,7 +664,7 @@ The content of this attribute is 8 octets long and encoded as follows:
 
 All values are encoded in network byte order.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -694,7 +694,7 @@ The meaning of the RLC timers are specified in 3GPP TS 04.60.
 The countdown value specifies the RLC CV value from which the countdown
 procedure is started.
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -711,7 +711,7 @@ encoding the available GPRS and EDGE coding schemes.
 | byte at offset 1 | MCS8 | MCS7| MCS6 | MCS5 | MCS4| MCS3 | MCS2 | MCS1
 |===
         
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -740,7 +740,7 @@ The Initial GPRS Coding Scheme is encoded as follows:
 | 4 | CS 4
 |===
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 
@@ -766,7 +766,7 @@ It is encoded as follows:
 | 9 | MCS 9
 |===
 
-The content of this attribute is not used by OsmoBTS, but
+This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
 === A-bis OML Initialization / BTS bring-up
