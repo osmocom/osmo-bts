@@ -1,10 +1,10 @@
 == User-Plane Traffic via RTP
 
-RTP (Realtime Transfer Protocol) is a protocol for streaming of audio
-and video streaming data.  It is specified by IETF RFC 1889.
+RTP (Realtime Transfer Protocol) is a protocol for streaming audio
+and video data.  It is specified by IETF RFC 1889.
 
 OsmoBTS A-bis/IP implements RTP as transport medium for circuit-switched
-user-plane traffic, contrary to the E1 sub-slot based transport as
+user-plane traffic, contrary to the E1 sub-slot based transport
 specified in 3GPP TS 08.60.
 
 The RTP transport endpoint parameters are configured using the RSL User

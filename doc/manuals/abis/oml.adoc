@@ -497,7 +497,7 @@ combinations are supported:
 |===
 
 [[ie_conn_fail_crit]]
-==== Connection Fail Criterion
+==== Connection Failure Criterion
 
 3GPP TS 12.21 Chapter 9.4.14 specifies two different options for the
 _Connection Failure Criterion_.  OsmoBTS only implements the option
@@ -558,7 +558,7 @@ the IPA stream ID to be used for the RSL connection of this TRX.
 [[NM_ATT_IPACC_RAC]]
 ==== GPRS Routing Area Code
 
-The value part of the GPRS Routing Area code consist of a single octet
+The value part of the GPRS Routing Area code consists of a single octet
 encoding the GPRS Routing Area Code.
 
 The content of this attribute is not used by OsmoBTS, but
@@ -612,8 +612,8 @@ simply passed to OsmoPCU connected to the PCU socket.
 [[NM_ATT_IPACC_NS_CFG]]
 ==== GPRS NS Configuration
 
-The value part of the GPRS NS Configuration consist of an array of 7 octets, each
-describing one GPRS NS related timer:
+The value part of the GPRS NS Configuration consists of an array of 7 octets,
+each describing one GPRS NS related timer:
 
 The content of this attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
@@ -747,8 +747,8 @@ simply passed to OsmoPCU connected to the PCU socket.
 [[NM_ATT_IPACC_RLC_CFG_3]]
 ==== GPRS RLC Configuration 3
 
-The content of this attribute contains information about the initial MCS
-used for new EDGE TBFs.
+This attribute contains information about the initial MCS used for new EDGE
+TBFs.
 
 It is encoded as follows:
 [options="header"]
@@ -773,14 +773,14 @@ simply passed to OsmoPCU connected to the PCU socket.
 
 At the time an Abis/IP BTS connects to via OML to the BSC, it is
 initialized according to the procedures described in 3GPP TS 12.21 as
-amended in this document.
+amended by this document.
 
 Each Managed Object (MO) is separately initialized.  The initialization
 sequence and parameters differ slightly depending on the MO involved.
 
 Some parts of the sequences described below are optional, such as the
-Software activation.  In the OsmoBTS case, the software is nod modular
-and thus all MOs start with the software fully activated.  Thus, no
+Software activation.  In the OsmoBTS case, the software is not modular
+and thus all MOs start with the software fully activated.  In effect, no
 __Software Activate Request__ is being sent by the MO to the BSC, nor
 does the BSC need to initialize the __Activate Software__ procedure.
 
@@ -788,7 +788,7 @@ Still, the full sequences are shown in order to explain the Abis/IP
 protocol.
 
 Also, the initial state of the MOs at time of OML connection
-initialization is not always guaranteed to be Disabled/Notinstalled.
+initialization is not always guaranteed to be __Disabled/Notinstalled__.
 Rather, the BSC implementation has to deal with the initial state as
 reported by the MOs at time of re-connection.
 
@@ -800,9 +800,9 @@ reported by the MOs at time of re-connection.
 include::oml-mo-sitemgr.msc[]
 ----
 
-As the Site Manager MO does not depend on other MOs, nor does it have an
-Administrative state (__Locked/Unlocked__), it immediately ends up in the
-__Enabled__ state.
+The Site Manager MO does not depend on other MOs, nor does it have an
+Administrative state (__Locked/Unlocked__), thus it immediately commences in
+the __Enabled__ state.
 
 ==== BTS MO Initialization
 
@@ -812,7 +812,7 @@ __Enabled__ state.
 include::oml-mo-bts.msc[]
 ----
 
-As can be seen in the BTS MO, its state is
+As shown in the BTS MO, its state is
 
 * Availability state __Dependency__, meaning it depends on other MOs to
   be initialized before becoming enabled.
@@ -853,15 +853,15 @@ the above procedure must be repeated for each TRX.
 include::oml-mo-channel.msc[]
 ----
 
-There are 8 Timeslots in each TRX, and correspondingly 8 Channel MOs in
+There are 8 timeslots in each TRX, and correspondingly 8 Channel MOs in
 every TRX.  The above procedure must thus be repeated for each timeslot
 in each transceiver of the BTS.
 
 
-==== Full Initialization of entire BTS
+==== Complete BTS Initialization Procedure
 
-Some of the steps are optional, as is their detailed ordering.  In
-reality, the procedures for different MOs may overlap. The message
+Some of below steps are optional, as is their detailed ordering.  In
+practice, the procedures for different MOs may overlap. The message
 sequence charts in this document have been hand-crafted to avoid such
 overlap for the sake of clarity.
 
@@ -872,18 +872,17 @@ overlap for the sake of clarity.
 include::oml-startup.msc[]
 ----
 
-As can be seen in <<oml-msc-1>>, after the OML TCP connection is
-established
+As shown in <<oml-msc-1>>, after the OML TCP connection is established,
 
 . the identity is exchanged via IPA CCM,
 . the BTS sends an 'OML EVENT STATE CHANGED REPORT' for every
-  Managed Object
+  Managed Object, and
 . the BTS subsequently requests the activation of its 'Site Manager' Object
   which the BSC performs by the 'Activate SW' command.
 . After successful activation of the software in the Site Manager,
 .. the state changes to 'Enabled', and an event report is generated
-   accordingly
-.. the BSC is notified about the SW activation in an associated report
+   accordingly, and
+.. the BSC is notified about the SW activation in an associated report.
 .  Finally, the BSC requests the start of the Site Manager
 .. using the 'OPSTART' command,
 .. which is subsequently acknowledged by the Site Manager.
@@ -902,36 +901,36 @@ include::oml-startup2.msc[]
 include::oml-startup3.msc[]
 ----
 
-In <<oml-msc-2>>, we can see
+<<oml-msc-2>> shows:
 
-. Software Activation and associated state transitions of the BTS MO
-. Setting of the BTS Attributes followed by OPSTART
+. Software Activation and associated state transitions of the BTS MO;
+. Setting of the BTS Attributes followed by OPSTART;
 . Software Activation and associated state transitions of the 'Baseband
-  Transceiver' MO
+  Transceiver' MO;
 . Software Activation and associated state transitions of the 'Radio
-  Carrier' MO
+  Carrier' MO;
 . Once the 'Baseband Transceiver' MO has its software activated, the
-  'Channel' MOs (one for each timeslot) indicate their state change and
-  software activation, too.
+  'Channel' MOs (one for each timeslot) indicate their state change as
+  well as software activation.
 
-In <<oml-msc-3>>, we can see
+<<oml-msc-3>> shows:
 
-. The 'Radio Carrier' MO Software Activation
+. The 'Radio Carrier' MO Software Activation;
 . The Request to the 'Baseband Transceiver' MO to establish the RSL
-  signalling connection to the BSC.
+  signalling connection to the BSC;
 . Subsequent OPSTART and Change of Administrative State on the 'Baseband
-  Transceiver' MO
-. The following procedure for each of the 'Channel' MOs:
-.. Setting the Channel Attributes (such as channel combination)
-.. OPSTART
-.. Changing the Administrative State to Unlocked
-.. Subsequent State Change Event Report with the new state
+  Transceiver' MO;
+. The following procedure takes place for each of the 'Channel' MOs:
+.. Set the Channel Attributes (such as channel combination),
+.. OPSTART,
+.. change the Administrative State to Unlocked,
+.. followed by a State Change Event Report with the new state.
 . After all 'Channel' MOs are initialized, the Radio Carrier goes through
-  a similar procedure of
-.. Setting its attributes
-.. OPSTART
-.. Changing its Administrative State to Unlocked
-.. Subsequent State Change Event Report with the new State (Enabled/OK)
-. All 'Channel' MOs now also report their state as Enabled/OK
-. Finally, the BTS reports its state as Enabled/OK
+  a similar procedure:
+.. Set attributes,
+.. OPSTART,
+.. change Administrative State to Unlocked,
+.. followed by a State Change Event Report with the new State (Enabled/OK)
+. All 'Channel' MOs now also report their state as Enabled/OK.
+. Finally, the BTS reports its state as Enabled/OK.
 
