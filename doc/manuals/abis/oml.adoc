@@ -337,8 +337,15 @@ additions to TS 12.21 specified in more detail.
 
 ==== IEs Conforming to TS 12.21
 
-The following Information Elements are accepted by OsmoBTS. Not all IEs are
-actually evaluated.
+The following Information Elements are accepted by OsmoBTS.
+
+IEs marked __ignored__ may be sent to OsmoBTS without causing error
+conditions. These IEs are skipped during message parsing and are never
+evaluated.
+
+IEs marked __ignored__ and additionally marked as being received by OsmoBTS
+(<-) are in fact parsed and their values are stored by OsmoBTS, but these
+stored items are currently not used in the OsmoBTS code base.
 
 .IEs conforming to TS 12.21
 [options="header",cols="5%,10%,40%,5%,40%"]
