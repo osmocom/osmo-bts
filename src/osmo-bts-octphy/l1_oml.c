@@ -48,6 +48,7 @@
 #include <octphy/octvc1/gsm/octvc1_gsm_api_swap.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_default.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_id.h>
+#include <octphy/octvc1/main/octvc1_main_default.h>
 
 /* Map OSMOCOM logical channel type to OctPHY Logical channel type */
 static tOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM pchan_to_logChComb[_GSM_PCHAN_MAX] =
@@ -1105,6 +1106,8 @@ int l1if_enable_events(struct gsm_bts_trx *trx)
 
 	mse = (tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD *)
 					msgb_put(msg, sizeof(*mse));
+	mOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD_DEF(mse);
+
 	l1if_fill_msg_hdr(&mse->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CID);
 	mse->ulEvtActiveFlag = cOCT_TRUE;
