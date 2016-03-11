@@ -82,7 +82,7 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 		}
 		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
 		    (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) ||
-		     BTS_HAS_SI(bts, SYSINFO_TYPE_2bis))) {
+		     BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_2quater;
 			tc4_cnt += 1;
 		}
