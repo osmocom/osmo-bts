@@ -11,5 +11,5 @@ EXTRA_DIST = \
 	contrib/sysmobts-calib/sysmobts-calib.c \
 	contrib/sysmobts-calib/sysmobts-layer1.c \
 	contrib/sysmobts-calib/sysmobts-layer1.h \
-	doc/examples/osmo-bts.cfg \
+	doc/examples/sysmo/osmo-bts.cfg \
 	doc/examples/sysmobts-mgr.cfg

@@ -10,7 +10,7 @@ env = os.environ
 env['L1FWD_BTS_HOST'] = '127.0.0.1'
 
 bts_proc = subprocess.Popen(["./src/osmo-bts-sysmo/sysmobts-remote",
-		"-c", "./doc/examples/osmo-bts.cfg"], env = env,
+		"-c", "./doc/examples/sysmo/osmo-bts.cfg"], env = env,
 		stdin=None, stdout=None)
 time.sleep(1)
 
