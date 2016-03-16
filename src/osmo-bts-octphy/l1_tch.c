@@ -277,11 +277,8 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		rmsg = l1_to_rtppayload_fr(payload, payload_len);
 		break;
 	case cOCTVC1_GSM_PAYLOAD_TYPE_ENUM_HALF_RATE:
-		/* Currently not supported */
-#if 0
 		rmsg = l1_to_rtppayload_hr(payload, payload_len);
 		break;
-#endif
 	case cOCTVC1_GSM_PAYLOAD_TYPE_ENUM_ENH_FULL_RATE:
 		/* Currently not supported */
 #if 0
