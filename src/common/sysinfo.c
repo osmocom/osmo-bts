@@ -76,9 +76,10 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 		/* iterate over 2ter, 2quater, 9, 13 */
 		/* determine how many SI we need to send on TC=4,
 		 * and which of them we send when */
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2ter)) {
+		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2ter) &&
+		    BTS_HAS_SI(bts, SYSINFO_TYPE_2bis)) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_2ter;
-			tc4_cnt += 1; /* 2bis */
+			tc4_cnt += 1;
 		}
 		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
 		    (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) ||
