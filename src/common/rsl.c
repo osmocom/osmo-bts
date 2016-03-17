@@ -298,9 +298,10 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct gsm_bts *bts = trx->bts;
 	struct tlv_parsed tp;
-	uint8_t rsl_si;
+	uint8_t rsl_si, si2q_index, si2q_count;
 	enum osmo_sysinfo_type osmo_si;
-
+	struct gsm48_system_information_type_2quater *si2q;
+	struct bitvec bv;
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.30 System Info Type */
@@ -327,6 +328,24 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
+
+		if (SYSINFO_TYPE_2quater == osmo_si) {
+			si2q = (struct gsm48_system_information_type_2quater *)
+				bts->si_buf[SYSINFO_TYPE_2quater];
+			bv.data = si2q->rest_octets;
+			bv.data_len = 20;
+			bv.cur_bit = 3;
+			si2q_index = (uint8_t) bitvec_get_uint(&bv, 4);
+			si2q_count = (uint8_t) bitvec_get_uint(&bv, 4);
+			if (si2q_index || si2q_count) {
+				LOGP(DRSL, LOGL_ERROR,
+				     " Rx RSL SI2quater witn unsupported "
+				     "index %u, count %u\n",
+				     si2q_index, si2q_count);
+				return rsl_tx_error_report(trx,
+							   RSL_ERR_IE_CONTENT);
+			}
+		}
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 		if (len > sizeof(sysinfo_buf_t))
