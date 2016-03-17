@@ -222,7 +222,7 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 
 	trx = gsm_bts_trx_num(bts, trx_nr);
 	if (!trx) {
-		vty_out(vty, "Unknown TRX %u. Aavialable TRX are: 0..%u%s",
+		vty_out(vty, "Unknown TRX %u. Available TRX are: 0..%u%s",
 			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
