@@ -56,6 +56,7 @@
 #include <octphy/octvc1/gsm/octvc1_gsm_evt_swap.h>
 #define OCTVC1_OPT_DECLARE_DEFAULTS
 #include <octphy/octvc1/gsm/octvc1_gsm_default.h>
+#include <octphy/octvc1/main/octvc1_main_default.h>
 
 #define cPKTAPI_FIFO_ID_MSG                                0xAAAA0001
 
