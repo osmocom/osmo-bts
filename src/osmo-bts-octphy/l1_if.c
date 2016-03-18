@@ -53,6 +53,8 @@
 #include <octphy/octpkt/octpkt_hdr.h>
 #define OCTVC1_RC2STRING_DECLARE
 #include <octphy/octvc1/octvc1_rc2string.h>
+#define OCTVC1_ID2STRING_DECLARE
+#include <octphy/octvc1/octvc1_id2string.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_evt_swap.h>
 #define OCTVC1_OPT_DECLARE_DEFAULTS
 #include <octphy/octvc1/gsm/octvc1_gsm_default.h>
@@ -258,7 +260,7 @@ int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
 	uint32_t cmd_id = (type_r_cmdid >> cOCTVC1_MSG_ID_BIT_OFFSET) & cOCTVC1_MSG_ID_BIT_MASK;
 
 	LOGP(DL1C, LOGL_DEBUG, "l1if_req_compl(msg_len=%u, cmd_id=%s, trans_id=%u)\n",
-	     msgb_length(msg), get_value_string(octphy_cid_vals, cmd_id),
+	     msgb_length(msg), octvc1_id2string(cmd_id),
 	     ntohl(msg_hdr->ulTransactionId));
 
 	/* push the two common headers in front */
@@ -1171,7 +1173,7 @@ static int rx_octvc1_resp(struct msgb *msg, uint32_t msg_id, uint32_t trans_id)
 	int rc;
 
 	LOGP(DL1C, LOGL_DEBUG, "rx_octvc1_resp(msg_id=%s, trans_id=%u)\n",
-		get_value_string(octphy_cid_vals, msg_id), trans_id);
+		octvc1_rc2string(msg_id), trans_id);
 
 	/* check if the response is for the oldest (first) entry in wlc_list */
 	first = llist_first(&fl1h->wlc_list);
