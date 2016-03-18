@@ -1550,6 +1550,7 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 {
+	pinst->u.octphy.trx_id = pinst->num;
 }
 
 /***********************************************************************
