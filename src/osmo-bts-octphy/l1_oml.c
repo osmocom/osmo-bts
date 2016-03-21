@@ -1304,7 +1304,14 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	oc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	oc->Config.ulBand = osmocom_to_octphy_band(trx->bts->band, trx->arfcn);
 	oc->Config.usArfcn = trx->arfcn;
-	oc->Config.usCentreArfcn = trx->bts->c0->arfcn;
+
+	if (pinst->u.octphy.trx_id)
+		oc->Config.usCentreArfcn = plink->u.octphy.center_arfcn;
+	else {
+		oc->Config.usCentreArfcn = trx->arfcn;
+		plink->u.octphy.center_arfcn = trx->arfcn;
+	}
+
 	oc->Config.usTsc = trx->bts->bsic & 0x7;
 	oc->Config.usBcchArfcn = trx->bts->c0->arfcn;
 	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;

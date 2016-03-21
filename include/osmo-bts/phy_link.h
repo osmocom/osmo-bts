@@ -62,7 +62,8 @@ struct phy_link {
 			uint32_t rf_port_index;
 			uint32_t rx_gain_db;
 			uint32_t tx_atten_db;
-
+			/* arfcn used by TRX with id 0 */
+			uint16_t center_arfcn;
 			struct octphy_hdl *hdl;
 		} octphy;
 	} u;
