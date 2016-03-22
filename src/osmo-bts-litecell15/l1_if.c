@@ -1382,6 +1382,11 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	OSMO_ASSERT(pinst);
 
+	if (!pinst->trx) {
+		LOGP(DL1C, LOGL_NOTICE, "Ignoring phy link %d instance %d "
+		     "because no TRX is associated with it\n", plink->num, pinst->num);
+		return 0;
+	}
 	phy_link_state_set(plink, PHY_LINK_CONNECTING);
 
 	pinst->u.lc15.hdl = l1if_open(pinst);
@@ -1393,5 +1398,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	l1if_reset(pinst->u.lc15.hdl);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
+
+	return 0;
 }
 
