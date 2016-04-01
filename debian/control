@@ -1,0 +1,24 @@
+Source: osmo-bts
+Section: net
+Priority: optional
+Maintainer: Holger Hans Peter Freyther <holger@moiji-mobile.com>
+Build-Depends: debhelper (>= 7.0.0~), dh-autoreconf, dh-systemd (>= 1.5), autotools-dev, pkg-config, libosmocore-dev, libortp-dev, libosmo-abis-dev, libosmo-netif-dev
+Standards-Version: 3.8.4
+Homepage: http://osmocom.org/projects/osmobts
+Vcs-Git: git://git.osmocom.org/osmo-bts
+Vcs-Browser: http://git.osmocom.org/osmo-bts/
+
+Package: osmo-bts-trx
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: osmo-bts-trx GSM BTS with osmo-trx
+ osmo-bts-trx to be used with the osmo-trx application
+
+Package: osmo-bts-trx-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmo-bts-trx (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the osmo-bts-trx
+ Make debugging possible
+
