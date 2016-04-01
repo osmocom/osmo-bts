@@ -59,3 +59,14 @@ doc/vty_reference.xml
 *.sw?
 *.orig
 *.sav
+
+# debian
+.tarball-version
+debian/autoreconf.after
+debian/autoreconf.before
+debian/files
+debian/*.debhelper.log
+debian/*.substvars
+debian/osmo-bts-trx-dbg/
+debian/osmo-bts-trx/
+debian/tmp/
