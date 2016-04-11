@@ -1097,6 +1097,23 @@ static int enable_events_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, voi
 	return 0;
 }
 
+static int disable_events_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
+{
+	tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *mser =
+		(tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP *) resp->l2h;
+
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
+
+	mOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_RSP_SWAP(mser);
+
+	LOGP(DL1C, LOGL_INFO, "Rx DISABLE-EVT-REC.resp\n");
+
+	msgb_free(resp);
+
+	return 0;
+}
+
 int l1if_enable_events(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -1116,7 +1133,29 @@ int l1if_enable_events(struct gsm_bts_trx *trx)
 
 	LOGP(DL1C, LOGL_INFO, "Tx ENABLE-EVT-REC.req\n");
 
-	return l1if_req_compl(fl1h, msg, enable_events_compl_cb, 0);
+	return l1if_req_compl(fl1h, msg, disable_events_compl_cb, 0);
+}
+
+int l1if_disable_events(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
+	struct msgb *msg = l1p_msgb_alloc();
+	tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD *mse;
+
+	mse = (tOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD *)
+					msgb_put(msg, sizeof(*mse));
+	mOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD_DEF(mse);
+
+	l1if_fill_msg_hdr(&mse->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
+			  cOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CID);
+	mse->ulEvtActiveFlag = cOCT_FALSE;
+
+	mOCTVC1_MAIN_MSG_API_SYSTEM_MODIFY_SESSION_EVT_CMD_SWAP(mse);
+
+	LOGP(DL1C, LOGL_INFO, "Tx DISABLE-EVT-REC.req\n");
+
+	return l1if_req_compl(fl1h, msg, disable_events_compl_cb, 0);
 }
 
 #define talloc_replace(dst, ctx, src)			\
@@ -1483,6 +1522,9 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 
 int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
+	/* disable events */
+	l1if_disable_events(trx);
+
 	/* FIXME: close only one TRX */
 	return trx_close(trx);
 }
