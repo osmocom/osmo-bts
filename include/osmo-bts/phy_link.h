@@ -125,6 +125,7 @@ void phy_user_statechg_notif(struct phy_instance *pinst, enum phy_link_state lin
 
 static inline struct phy_instance *trx_phy_instance(struct gsm_bts_trx *trx)
 {
+	OSMO_ASSERT(trx);
 	return trx->role_bts.l1h;
 }
 
