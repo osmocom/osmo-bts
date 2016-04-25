@@ -26,6 +26,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include <osmocom/core/select.h>
@@ -57,7 +59,7 @@ static uint16_t base_port_local = 5800;
 
 /* open socket */
 static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
-	int (*cb)(struct osmo_fd *fd, unsigned int what))
+	int (*cb)(struct osmo_fd *fd, unsigned int what), unsigned int flags)
 {
 	struct sockaddr_storage sas;
 	struct sockaddr *sa = (struct sockaddr *)&sas;
@@ -92,11 +94,12 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, uint16_t port,
 		return -EINVAL;
 	}
 
-	rc = connect(ofd->fd, sa, sa_len);
-	if (rc)
-		return rc;
+	if (flags & OSMO_SOCK_F_CONNECT) {
+		rc = connect(ofd->fd, sa, sa_len);
+		if (rc)
+			return rc;
+	}
 
-	
 	return 0;
 }
 
@@ -462,6 +465,8 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits)
 {
+	struct sockaddr_in rem_addr;
+	char *rem_ip = "127.0.0.1";
 	uint8_t buf[256];
 
 	LOGP(DTRX, LOGL_DEBUG, "TX burst tn=%u fn=%u pwr=%u\n", tn, fn, pwr);
@@ -476,10 +481,15 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	/* copy ubits {0,1} */
 	memcpy(buf + 6, bits, 148);
 
+	memset((char *) &rem_addr, 0, sizeof(rem_addr));
+	rem_addr.sin_family = AF_INET;
+	rem_addr.sin_port = htons(base_port_local - 100 + (l1h->trx->nr << 1) + 2);
+	inet_aton(rem_ip, &rem_addr.sin_addr);
+
 	/* we must be sure that we have clock, and we have sent all control
 	 * data */
 	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
-		send(l1h->trx_ofd_data.fd, buf, 154, 0);
+		sendto(l1h->trx_ofd_data.fd, buf, 154, 0, (struct sockaddr *)&rem_addr, sizeof(rem_addr));
 	} else
 		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, transceiver "
 			"offline.\n");
@@ -504,17 +514,17 @@ int trx_if_open(struct trx_l1h *l1h)
 	/* open sockets */
 	if (l1h->trx->nr == 0) {
 		rc = trx_udp_open(NULL, &trx_ofd_clk, base_port_local,
-			trx_clk_read_cb);
+			trx_clk_read_cb, OSMO_SOCK_F_CONNECT);
 		if (rc < 0)
 			return rc;
 		LOGP(DTRX, LOGL_NOTICE, "Waiting for transceiver send clock\n");
 	}
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
-		base_port_local + (l1h->trx->nr << 1) + 1, trx_ctrl_read_cb);
+		base_port_local + (l1h->trx->nr << 1) + 1, trx_ctrl_read_cb, OSMO_SOCK_F_CONNECT);
 	if (rc < 0)
 		goto err;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
-		base_port_local + (l1h->trx->nr << 1) + 2, trx_data_read_cb);
+		base_port_local + (l1h->trx->nr << 1) + 2, trx_data_read_cb, OSMO_SOCK_F_BIND);
 	if (rc < 0)
 		goto err;
 
