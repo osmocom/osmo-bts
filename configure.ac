@@ -13,7 +13,7 @@ dnl checks for programs
 AC_PROG_MAKE_SET
 AC_PROG_CC
 AC_PROG_INSTALL
-AC_PROG_RANLIB
+LT_INIT
 
 dnl checks for header files
 AC_HEADER_STDC
