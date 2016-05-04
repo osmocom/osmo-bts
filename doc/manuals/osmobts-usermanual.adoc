@@ -10,6 +10,8 @@ include::chapters/abis.adoc[]
 
 include::chapters/interfaces.adoc[]
 
+include::chapters/control.adoc[]
+
 include::../common/chapters/vty.adoc[]
 
 include::../common/chapters/logging.adoc[]
