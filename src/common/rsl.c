@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 
@@ -31,6 +32,7 @@
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -1692,7 +1694,8 @@ static int rslms_is_meas_rep(struct msgb *msg)
 }
 
 /* 8.4.8 MEASUREMENT RESult */
-static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
+static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len,
+			   bool dtxd_used)
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
@@ -1710,7 +1713,8 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 		return -ENOMEM;
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
-	int ie_len = lchan_build_rsl_ul_meas(lchan, meas_res);
+	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res, dtxd_used,
+						meas_res);
 	if (ie_len >= 3) {
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
@@ -1751,8 +1755,9 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 
 		LOGP(DRSL, LOGL_INFO, "%s Handing RLL msg %s from LAPDm to MEAS REP\n",
 			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
-
-		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg));
+		/* FIXME: add dtx downlink support */
+		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg),
+				     false);
 		msgb_free(msg);
 		return rc;
 	} else {

@@ -200,17 +200,6 @@ static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	return 1;
 }
 
-/* build the 3 byte RSL uplinke measurement IE content */
-int lchan_build_rsl_ul_meas(struct gsm_lchan *lchan, uint8_t *buf)
-{
-	struct gsm_meas_rep_unidir *mru = &lchan->meas.ul_res;
-	buf[0] = (mru->full.rx_lev & 0x3f); /* FIXME: DTXu support */
-	buf[1] = (mru->sub.rx_lev & 0x3f);
-	buf[2] = ((mru->full.rx_qual & 7) << 3) | (mru->sub.rx_qual & 7);
-
-	return 3;
-}
-
 /* Copied from OpenBSC and enlarged to _GSM_PCHAN_MAX */
 static const uint8_t subslots_per_pchan[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE] = 0,
