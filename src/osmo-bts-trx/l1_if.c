@@ -188,6 +188,10 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
 			l1h->config.maxdly_sent = 1;
 		}
+		if (l1h->config.maxdlynb_valid && !l1h->config.maxdlynb_sent) {
+			trx_if_cmd_setmaxdlynb(l1h, l1h->config.maxdlynb);
+			l1h->config.maxdlynb_sent = 1;
+		}
 		for (tn = 0; tn < 8; tn++) {
 			if (l1h->config.slottype_valid[tn]
 			 && !l1h->config.slottype_sent[tn]) {
@@ -205,6 +209,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
+		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < 8; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 	}
@@ -227,6 +232,7 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
+		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < 8; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 		l1if_provision_transceiver_trx(l1h);

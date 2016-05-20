@@ -100,6 +100,11 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 				VTY_NEWLINE);
 		else
 			vty_out(vty, " maxdly : undefined%s", VTY_NEWLINE);
+		if (l1h->config.maxdlynb_valid)
+			vty_out(vty, " maxdlynb : %d%s", l1h->config.maxdlynb,
+				VTY_NEWLINE);
+		else
+			vty_out(vty, " maxdlynb : undefined%s", VTY_NEWLINE);
 		for (tn = 0; tn < 8; tn++) {
 			if (!((1 << tn) & l1h->config.slotmask))
 				vty_out(vty, " slot #%d: unsupported%s", tn,
@@ -286,6 +291,22 @@ DEFUN(cfg_trx_maxdly, cfg_trx_maxdly_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_maxdlynb, cfg_trx_maxdlynb_cmd,
+	"maxdlynb <0-31>",
+	"Set the maximum delay of GSM symbols\n"
+	"GSM symbols (approx. 1.1km per symbol)\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+
+	l1h->config.maxdlynb = atoi(argv[0]);
+	l1h->config.maxdlynb_valid = 1;
+	l1h->config.maxdlynb_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_slotmask, cfg_trx_slotmask_cmd,
 	"slotmask (1|0) (1|0) (1|0) (1|0) (1|0) (1|0) (1|0) (1|0)",
 	"Set the supported slots\n"
@@ -345,6 +366,19 @@ DEFUN(cfg_trx_no_maxdly, cfg_trx_no_maxdly_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_no_maxdlynb, cfg_trx_no_maxdlynb_cmd,
+	"no maxdlynb <0-31>",
+	NO_STR "Unset the maximum delay of GSM symbols\n"
+	"GSM symbols (approx. 1.1km per symbol)\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct trx_l1h *l1h = trx_l1h_hdl(trx);
+
+	l1h->config.maxdlynb_valid = 0;
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	vty_out(vty, " fn-advance %d%s", trx_clock_advance, VTY_NEWLINE);
@@ -378,6 +412,8 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	}
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, "  maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
+	if (l1h->config.maxdlynb_valid)
+		vty_out(vty, "  maxdlynb %d%s", l1h->config.maxdlynb, VTY_NEWLINE);
 	if (l1h->config.slotmask != 0xff)
 		vty_out(vty, "  slotmask %d %d %d %d %d %d %d %d%s",
 			l1h->config.slotmask & 1,
@@ -412,10 +448,12 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(TRX_NODE, &cfg_trx_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_power_oml_cmd);
 	install_element(TRX_NODE, &cfg_trx_maxdly_cmd);
+	install_element(TRX_NODE, &cfg_trx_maxdlynb_cmd);
 	install_element(TRX_NODE, &cfg_trx_slotmask_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_rxgain_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_maxdly_cmd);
+	install_element(TRX_NODE, &cfg_trx_no_maxdlynb_cmd);
 
 	return 0;
 }

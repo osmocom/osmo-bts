@@ -278,6 +278,11 @@ int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly)
 	return trx_ctrl_cmd(l1h, 0, "SETMAXDLY", "%d", dly);
 }
 
+int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly)
+{
+	return trx_ctrl_cmd(l1h, 0, "SETMAXDLYNB", "%d", dly);
+}
+
 int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
 {
 	return trx_ctrl_cmd(l1h, 1, "SETSLOT", "%d %d", tn, type);
