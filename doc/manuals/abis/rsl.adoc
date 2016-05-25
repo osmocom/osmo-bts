@@ -91,7 +91,7 @@ Specific limitations apply, see the linked sections.
 | 8.4.24 | ROUND TRIP DELAY REPORT
 | 8.4.25 | PRE-HANDOVER NOTIFICATION
 | 8.4.26 | MULTIRATE CODEC MODIFICATION REQUEST
-| 8.4.27 | MULTIRATE CODEC MODIFICATION ACKNOLEWDGE
+| 8.4.27 | MULTIRATE CODEC MODIFICATION ACKNOWLEDGE
 | 8.4.28 | MULTIRATE CODEC MODIFICATION NEGATIVE ACKNOWLEDGE
 | 8.4.29 | MULTIRATE CODEC MODIFICATION PERFORMED
 | 8.4.30 | TFO REPORT
@@ -115,7 +115,7 @@ Specific limitations apply, see the linked sections.
 
 Conforms to 3GPP TS 08.58 § 8.4.8 with this limitation:
 
-._Measuremet Result_ IE limitations
+._Measurement Result_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
 | TS 08.58 § | IE Name | Handling

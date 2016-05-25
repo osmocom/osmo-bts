@@ -83,7 +83,7 @@ order to specify which PHY instance is allocated to this specific TRX.
 | common | bts_controlif_setup() | Initialization of Control Interface
 | bts-specific | bts_model_ctrl_cmds_install() | Install model-specific control interface commands
 | common | telnet_init() | Initialization of telnet interface
-| common | pcu_sock_init() | Initializaiton of PCU socket
+| common | pcu_sock_init() | Initialization of PCU socket
 | common | main() | Installation of signal handlers
 | common | abis_open() | Start of the A-bis connection to BSC
 | common | phy_links_open() | Iterate over list of configured PHY links

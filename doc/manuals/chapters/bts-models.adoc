@@ -33,10 +33,10 @@ Each bts_model may offer
 
 == `osmo-bts-sysmo` for sysmocom sysmoBTS
 
-The sysmocom sysmoBTS is a range of GSM BTSs basd around an embedded
+The sysmocom sysmoBTS is a range of GSM BTSs based around an embedded
 system implementing the PHY in a combination of DSP+FPGA.  The PHY is
 configured by a set of primitives described by header files.  Those
-primitives are exchanged ove a set of message queues exposed on the
+primitives are exchanged over a set of message queues exposed on the
 Linux-running ARM core via device nodes in `/dev/msgq/`.  Internally,
 the message queues map to shared memory between the Linux-running ARM
 core and the DSP running the PHY implementation.
@@ -62,7 +62,7 @@ vice-versa.
 	<<osmo-bts-sysmo-dsp-trace>> for further information.
 *--pcu-direct*::
 	Indicate that an external PCU (e.g. OsmoPCU) will directly
-	open the DSP messge queues to the PHY / PH-SAP, and only MPH
+	open the DSP message queues to the PHY / PH-SAP, and only MPH
 	primitives are passed via OsmoBTS.
 
 
@@ -225,7 +225,7 @@ human-readable format to current VTY session.
 
 ===== `osmotrx ip HOST`
 
-Set the IP addess of the OsmoTRX transceiver to which we should connect
+Set the IP address of the OsmoTRX transceiver to which we should connect
 to.
 
 ===== `osmotrx base-port (local|remote) <0-65535>`
@@ -293,7 +293,7 @@ OCTPKT session, which is mapped to an OsmoBTS PHY link.  Depending on
 the OCTSDR-2G software version, you may create multiple software TRX by
 creating multiple OsmoBTS PHY instances inside that PHY link.
 
-Multiple DSPs may exsist in one circuit board, then each of the DSPs is
+Multiple DSPs may exist in one circuit board, then each of the DSPs is
 interfaced by one OsmoBTS PHY link, and each of them may have one or
 more OsmoBTS PHY instances creating a Multi-TRX configuration.
 

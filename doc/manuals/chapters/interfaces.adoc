@@ -51,7 +51,7 @@ limited and largely depends on the bts_model used.
 
 ==== trx.N.thermal-attenuation
 
-The idea of this paramter is to attenuate the system output power as part of
+The idea of this parameter is to attenuate the system output power as part of
 thermal management.  In some cases the PA might be passing a critical level,
 so an external control process can use this attribute to reduce the system
 output power.

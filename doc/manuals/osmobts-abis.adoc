@@ -11,7 +11,7 @@ these are not or not fully implemented, as well as OsmoBTS-specific extensions
 to the A-bis interface not specified by 3GPP.
 
 Extensions to the A-bis interface specific to OsmoBTS are detailed in this
-document. For details on the messages and IEs that comply with abovementioned
+document. For details on the messages and IEs that comply with above mentioned
 3GPP specifications, please refer to those documents.
 
 .3GPP document versions referred to by this document
