@@ -1618,7 +1618,7 @@ struct octphy_hdl *l1if_open(struct phy_link *plink)
 	fl1h->phy_link = plink;
 
 	if (!phy_dev) {
-		LOGP(DL1C, LOGL_ERROR, "You have to specify a phy-netdev\n");
+		LOGP(DL1C, LOGL_ERROR, "You have to specify a octphy net-device\n");
 		talloc_free(fl1h);
 		return NULL;
 	}
