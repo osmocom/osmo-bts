@@ -69,6 +69,20 @@ get_active_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
 
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
+static uint32_t fn_ms_adj(uint32_t fn, uint32_t last_fn)
+{
+	if (last_fn) {
+		uint32_t ms_passed = GSM_FN_TO_MS(fn - last_fn),
+			samples_passed = GSM_MS_TO_SAMPLES(ms_passed);
+		/* round number of samples to the nearest multiple of
+		   GSM_RTP_DURATION */
+		uint32_t r = samples_passed + GSM_RTP_DURATION / 2;
+		r -= r % GSM_RTP_DURATION;
+		return r;
+	}
+	return GSM_RTP_DURATION;
+}
+
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
         0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
         0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
@@ -853,7 +867,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	/* hand msg to RTP code for transmission */
 	if (lchan->abis_ip.rtp_socket)
 		osmo_rtp_send_frame(lchan->abis_ip.rtp_socket,
-			msg->data, msg->len, 160);
+			msg->data, msg->len, fn_ms_adj(fn, lchan->tch.last_fn));
 
 	/* if loopback is enabled, also queue received RTP data */
 	if (lchan->loopback) {
@@ -871,7 +885,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 		msgb_enqueue(&lchan->dl_tch_queue, msg);
 	}
-
+	lchan->tch.last_fn = fn;
 	return 0;
 }
 
