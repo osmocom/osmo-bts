@@ -32,6 +32,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/codec/codec.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -298,10 +299,6 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	return msg;
 }
 
-enum amr_frame_type {
-	AMR_FT_SID_AMR	= 8,
-};
-
 int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
 {
 	unsigned int i;
@@ -323,12 +320,15 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				struct gsm_lchan *lchan)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
-	uint8_t ft = (rtp_payload[1] >> 3) & 0xf;
-	uint8_t cmr = rtp_payload[0] >> 4;
-	uint8_t cmi, sti;
+	enum osmo_amr_type ft;
+	enum osmo_amr_quality bfi;
+	uint8_t cmr;
+	int8_t sti, cmi;
 	uint8_t *l1_cmi_idx = l1_payload;
 	uint8_t *l1_cmr_idx = l1_payload+1;
 	int rc;
+
+	osmo_amr_rtp_dec(rtp_payload, payload_len, &cmr, &cmi, &ft, &bfi, &sti);
 
 #ifdef USE_L1_RTP_MODE
 	memcpy(l1_payload+2, rtp_payload, payload_len);
@@ -353,11 +353,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 		cmi = ft;
 		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame with CMI %u\n", cmi);
 		break;
-	case AMR_FT_SID_AMR:
-		/* extract the mode indiciation from last bits of
-		 * 39 bit SID frame (Table 6 / 26.101) */
-		cmi = (rtp_payload[2+4] >> 1) & 0x7;
-		sti = rtp_payload[2+4] & 0x10;
+	case AMR_SID:
 		LOGP(DRTP, LOGL_DEBUG, "SID %s frame with CMI %u\n",
 		     sti ? "UPDATE" : "FIRST", cmi);
 		break;
@@ -391,12 +387,12 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	}
 #if 0
 	/* check for bad quality indication */
-	if (rtp_payload[1] & AMR_TOC_QBIT) {
+	if (bfi == AMR_GOOD) {
 		/* obtain frame type from AMR FT */
 		l1_payload[2] = ft;
 	} else {
 		/* bad quality, we should indicate that... */
-		if (ft == AMR_FT_SID_AMR) {
+		if (ft == AMR_SID) {
 			/* FIXME: Should we do GsmL1_TchPlType_Amr_SidBad? */
 			l1_payload[2] = ft;
 		} else {
@@ -405,7 +401,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	}
 #endif
 
-	if (ft == AMR_FT_SID_AMR) {
+	if (ft == AMR_SID) {
 		/* store the last SID frame in lchan context */
 		unsigned int copy_len;
 		copy_len = OSMO_MIN(payload_len+1,
