@@ -13,11 +13,6 @@ int bts_model_init(struct gsm_bts *bts)
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 { return 0; }
-int bts_model_rsl_chan_rel(struct gsm_lchan *lchan)
-{ return 0;}
-
-int bts_model_rsl_deact_sacch(struct gsm_lchan *lchan)
-{ return 0; }
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 { return 0; }
@@ -30,19 +25,7 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj)
 { return 0; }
-int bts_model_rsl_chan_act(struct gsm_lchan *lchan, struct tlv_parsed *tp)
-{ return 0; }
-int bts_model_rsl_mode_modify(struct gsm_lchan *lchan)
-{ return 0; }
-int bts_model_rsl_chan_mod(struct gsm_lchan *lchan)
-{ return 0; }
-void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-			 unsigned int rtp_pl_len) {}
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
-{ return 0; }
-
-int l1if_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-        uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
 { return 0; }
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
