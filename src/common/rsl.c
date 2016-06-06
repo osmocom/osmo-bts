@@ -1838,13 +1838,13 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
-			rsl_msg_name(dch->c.msg_type));
+			rsl_or_ipac_msg_name(dch->c.msg_type));
 		msgb_free(msg);
 		return report_error(trx);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
-		rsl_msg_name(dch->c.msg_type));
+		rsl_or_ipac_msg_name(dch->c.msg_type));
 
 	switch (dch->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV:
