@@ -287,7 +287,7 @@ int bts_main(int argc, char **argv)
 	}
 
 	if (!phy_link_by_num(0)) {
-		fprintf(stderr, "You need to configure at last phy0\n");
+		fprintf(stderr, "You need to configure at least phy0\n");
 		exit(1);
 	}
 
