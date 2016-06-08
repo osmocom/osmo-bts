@@ -736,8 +736,9 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 		lchan->type = GSM_LCHAN_PDTCH;
 		break;
 	default:
-		/* FIXME */
-		break;
+		LOGP(DOML, LOGL_ERROR, "Unknown/unhandled PCHAN type: %u %s\n",
+		     ts->pchan, gsm_pchan_name(ts->pchan));
+		return -NM_NACK_PARAM_RANGE;
 	}
 	return 0;
 }
@@ -790,7 +791,12 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	if (TLVP_PRESENT(&tp, NM_ATT_CHAN_COMB)) {
 		uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
 		ts->pchan = abis_nm_pchan4chcomb(comb);
-		conf_lchans_for_pchan(ts);
+		rc = conf_lchans_for_pchan(ts);
+		if (rc < 0) {
+			talloc_free(tp_merged);
+			/* Send NACK */
+			return oml_fom_ack_nack(msg, -rc);
+		}
 	}
 
 	/* 9.4.5 ARFCN List */
