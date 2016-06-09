@@ -103,7 +103,8 @@ struct phy_instance {
 			/* configuration */
 			uint32_t dsp_trace_f;
 			char *calib_path;
-
+			int minTxPower;
+			int maxTxPower;
 			struct lc15l1_hdl *hdl;
 		} lc15;
 	} u;

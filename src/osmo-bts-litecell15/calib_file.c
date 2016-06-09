@@ -42,7 +42,11 @@
 #include "lc15bts.h"
 #include "utils.h"
 
-
+/**
+ *  * Maximum calibration data chunk size
+ *   */
+#define MAX_CALIB_TBL_SIZE  65536
+#define CALIB_HDR_V1  0x01
 
 struct calib_file_desc {
 	const char *fname;
@@ -83,9 +87,37 @@ static const struct calib_file_desc calib_files[] = {
 	},
 };
 
+static struct calTbl_t
+{
+    union
+    {
+        struct
+        {
+            uint8_t u8Version;                // Header version (1)
+            uint8_t u8Parity;                 // Parity byte (xor)
+            uint8_t u8Type;                   // Table type (0:TX Downlink, 1:RX-A Uplink, 2:RX-B Uplink)
+            uint8_t u8Band;                   // GSM Band (0:GSM-850, 1:EGSM-900, 2:DCS-1800, 3:PCS-1900)
+            uint32_t u32Len;                  // Table length in bytes including the header
+            struct
+            {
+                uint32_t u32DescOfst;         // Description section offset
+                uint32_t u32DateOfst;         // Date section offset
+                uint32_t u32StationOfst;      // Calibration test station section offset
+                uint32_t u32FpgaFwVerOfst;    // Calibration FPGA firmware version section offset
+                uint32_t u32DspFwVerOfst;     // Calibration DSP firmware section offset
+                uint32_t u32DataOfst;         // Calibration data section offset
+            } toc;
+        } v1;
+    } hdr;
+
+    uint8_t u8RawData[MAX_CALIB_TBL_SIZE - 32];
+};
+
 
 static int calib_file_send(struct lc15l1_hdl *fl1h,
 			   const struct calib_file_desc *desc);
+static int calib_verify(struct lc15l1_hdl *fl1h,
+			const struct calib_file_desc *desc);
 
 /* determine next calibration file index based on supported bands */
 static int get_next_calib_file_idx(struct lc15l1_hdl *fl1h, int last_idx)
@@ -203,6 +235,20 @@ static int calib_file_send(struct lc15l1_hdl *fl1h,
                 return 0;
 	}
 
+	rc = calib_verify(fl1h, desc);
+	if ( rc < 0 ) {
+		LOGP(DL1C, LOGL_ERROR, "Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
+		st->last_file_idx = get_next_calib_file_idx(fl1h, st->last_file_idx);
+
+		if (st->last_file_idx >= 0)
+			return calib_file_send(fl1h,
+				&calib_files[st->last_file_idx]);
+		return 0;
+
+	}
+
+	LOGP(DL1C, LOGL_INFO, "Verify L1 calibration table %s -> done\n", desc->fname);
+
 	return calib_file_send_next_chunk(fl1h);
 }
 
@@ -256,5 +302,157 @@ int calib_load(struct lc15l1_hdl *fl1h)
 	st->last_file_idx = rc;
 
 	return calib_file_send(fl1h, &calib_files[st->last_file_idx]);
+}
+
+
+static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *desc)
+{
+       int i, rc, sz;
+       struct calib_send_state *st = &fl1h->st;
+       struct phy_link *plink = fl1h->phy_inst->phy_link;
+       char *rbuf;
+       struct calTbl_t *calTbl;
+       char calChkSum ;
+
+
+       //calculate file size in bytes
+       fseek(st->fp, 0L, SEEK_END);
+       sz = ftell(st->fp);
+
+       //rewind read poiner
+       fseek(st->fp, 0L, SEEK_SET);
+
+       //read file
+       rbuf = (char *) malloc( sizeof(char) * sz );
+
+       rc = fread(rbuf, 1, sizeof(char) * sz, st->fp);
+       if ( rc != sz) {
+
+               LOGP(DL1C, LOGL_ERROR, "%s reading error\n", desc->fname);
+               free(rbuf);
+
+               //close file
+               rc = calib_file_close(fl1h);
+               if (rc < 0 ) {
+                       LOGP(DL1C, LOGL_ERROR, "%s can not close\n", desc->fname);
+                       return rc;
+               }
+
+               return -2;
+       }
+
+
+       calTbl = (struct calTbl_t*) rbuf;
+       //calcualte file checksum
+       calChkSum = 0;
+       while ( sz-- ) {
+               calChkSum ^= rbuf[sz];
+       }
+
+       //validate Tx calibration parity
+       if ( calChkSum ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid checksum %x.\n", desc->fname, calChkSum);
+               return -4;
+       }
+
+       //validate Tx calibration header
+       if ( calTbl->hdr.v1.u8Version != CALIB_HDR_V1 ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid header version %u.\n", desc->fname, calTbl->hdr.v1.u8Version);
+               return -5;
+       }
+
+       //validate calibration description
+       if ( calTbl->hdr.v1.toc.u32DescOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration description  offset.\n", desc->fname);
+               return -6;
+       }
+
+       //validate calibration date
+       if ( calTbl->hdr.v1.toc.u32DateOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration date offset.\n", desc->fname);
+               return -7;
+       }
+
+       LOGP(DL1C, LOGL_INFO, "L1 calibration table %s created on %s\n",
+               desc->fname,
+               calTbl->u8RawData + calTbl->hdr.v1.toc.u32DateOfst);
+
+       //validate calibration station
+       if ( calTbl->hdr.v1.toc.u32StationOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration station ID offset.\n", desc->fname);
+               return -8;
+       }
+
+       //validate FPGA FW version
+       if ( calTbl->hdr.v1.toc.u32FpgaFwVerOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid FPGA FW version offset.\n", desc->fname);
+               return -9;
+       }
+       //validate DSP FW version
+       if ( calTbl->hdr.v1.toc.u32DspFwVerOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid DSP FW version offset.\n", desc->fname);
+               return -10;
+       }
+
+       //validate Tx calibration data offset
+       if ( calTbl->hdr.v1.toc.u32DataOfst == 0xFFFFFFFF ) {
+               LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration data offset.\n", desc->fname);
+               return -11;
+       }
+
+       if ( !desc->rx ) {
+
+               //parse min/max Tx power
+               fl1h->phy_inst->u.lc15.minTxPower = calTbl->u8RawData[calTbl->hdr.v1.toc.u32DataOfst + (5 << 2)];
+               fl1h->phy_inst->u.lc15.maxTxPower = calTbl->u8RawData[calTbl->hdr.v1.toc.u32DataOfst + (6 << 2)];
+
+               //override nominal Tx power of given TRX if needed
+               if ( fl1h->phy_inst->trx->nominal_power > fl1h->phy_inst->u.lc15.maxTxPower) {
+                       LOGP(DL1C, LOGL_INFO, "Set TRX %u nominal Tx power to %d dBm (%d)\n",
+                                       plink->num,
+                                       fl1h->phy_inst->u.lc15.maxTxPower,
+                                       fl1h->phy_inst->trx->nominal_power);
+
+                       fl1h->phy_inst->trx->nominal_power = fl1h->phy_inst->u.lc15.maxTxPower;
+               }
+
+               if ( fl1h->phy_inst->trx->nominal_power < fl1h->phy_inst->u.lc15.minTxPower) {
+                       LOGP(DL1C, LOGL_INFO, "Set TRX %u nominal Tx power to %d dBm (%d)\n",
+                                       plink->num,
+                                       fl1h->phy_inst->u.lc15.minTxPower,
+                                       fl1h->phy_inst->trx->nominal_power);
+
+                       fl1h->phy_inst->trx->nominal_power = fl1h->phy_inst->u.lc15.minTxPower;
+               }
+
+               if ( fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm > to_mdB(fl1h->phy_inst->u.lc15.maxTxPower) ) {
+                       LOGP(DL1C, LOGL_INFO, "Set TRX %u Tx power parameter to %d dBm (%d)\n",
+                                       plink->num,
+                                       to_mdB(fl1h->phy_inst->u.lc15.maxTxPower),
+                                       fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm);
+
+                       fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm = to_mdB(fl1h->phy_inst->u.lc15.maxTxPower);
+               }
+
+               if ( fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm < to_mdB(fl1h->phy_inst->u.lc15.minTxPower) ) {
+                       LOGP(DL1C, LOGL_INFO, "Set TRX %u Tx power parameter to %d dBm (%d)\n",
+                                       plink->num,
+                                       to_mdB(fl1h->phy_inst->u.lc15.minTxPower),
+                                       fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm);
+
+                       fl1h->phy_inst->trx->power_params.trx_p_max_out_mdBm = to_mdB(fl1h->phy_inst->u.lc15.minTxPower);
+               }
+
+               LOGP(DL1C, LOGL_DEBUG, "%s: minTxPower=%d, maxTxPower=%d\n",
+                               desc->fname,
+                               fl1h->phy_inst->u.lc15.minTxPower,
+                               fl1h->phy_inst->u.lc15.maxTxPower );
+       }
+
+       //rewind read poiner for subsequence tasks
+       fseek(st->fp, 0L, SEEK_SET);
+       free(rbuf);
+
+       return 0;
 }
 

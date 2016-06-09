@@ -81,7 +81,7 @@ int bts_model_init(struct gsm_bts *bts)
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		trx->nominal_power = 37;
+		trx->nominal_power = 40;
 		trx->power_params.trx_p_max_out_mdBm = to_mdB(bts->c0->nominal_power);
 	}
 

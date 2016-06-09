@@ -218,6 +218,8 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 			vty_out(vty, "%s ",  gsm_band_name(1 << i));
 	}
 	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "Min Tx Power: %d dBm%s", fl1h->phy_inst->u.lc15.minTxPower, VTY_NEWLINE);
+	vty_out(vty, "Max Tx Power: %d dBm%s", fl1h->phy_inst->u.lc15.maxTxPower, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -246,8 +248,9 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 }
 
 DEFUN(set_tx_power, set_tx_power_cmd,
-	"trx <0-0> tx-power <-110-100>",
+	"trx nr <0-1> tx-power <-110-100>",
 	TRX_STR
+	"TRX number \n"
 	"Set transmit power (override BSC)\n"
 	"Transmit power in dBm\n")
 {
@@ -298,6 +301,25 @@ DEFUN(no_loopback, no_loopback_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
+       "nominal-tx-power <0-40>",
+       "Set the nominal transmit output power in dBm\n"
+       "Nominal transmit output power level in dBm\n")
+{
+	int nominal_power = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+
+	if (( nominal_power >  40 ) ||  ( nominal_power < 0 )) {
+		vty_out(vty, "Nominal Tx power level must be between 0 and 40 dBm (%d) %s",
+		nominal_power, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	trx->nominal_power = nominal_power;
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
+
+	return CMD_SUCCESS;
+}
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
@@ -305,6 +327,7 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
+	vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,VTY_NEWLINE);
 }
 
 static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
