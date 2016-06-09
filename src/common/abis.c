@@ -144,7 +144,6 @@ static void sign_link_down(struct e1inp_line *line)
 		if (trx->rsl_link) {
 			e1inp_sign_link_destroy(trx->rsl_link);
 			trx->rsl_link = NULL;
-			trx_link_estab(trx);
 		}
 	}
 
