@@ -67,11 +67,12 @@ static int go_to_parent(struct vty *vty)
 	case LIMIT_SUPPLY_NODE:
 	case LIMIT_SOC_NODE:
 	case LIMIT_FPGA_NODE:
-	case LIMIT_MEMORY_NODE:
+	case LIMIT_LOGRF_NODE:
+	case LIMIT_OCXO_NODE:
+	case LIMIT_TX0_NODE:
 	case LIMIT_TX1_NODE:
-	case LIMIT_TX2_NODE:
+	case LIMIT_PA0_NODE:
 	case LIMIT_PA1_NODE:
-	case LIMIT_PA2_NODE:
 		vty->node = MGR_NODE;
 		break;
 	default:
@@ -90,11 +91,12 @@ static int is_config_node(struct vty *vty, int node)
 	case LIMIT_SUPPLY_NODE:
 	case LIMIT_SOC_NODE:
 	case LIMIT_FPGA_NODE:
-	case LIMIT_MEMORY_NODE:
+	case LIMIT_LOGRF_NODE:
+	case LIMIT_OCXO_NODE:
+	case LIMIT_TX0_NODE:
 	case LIMIT_TX1_NODE:
-	case LIMIT_TX2_NODE:
+	case LIMIT_PA0_NODE:
 	case LIMIT_PA1_NODE:
-	case LIMIT_PA2_NODE:
 		return 1;
 	default:
 		return 0;
@@ -154,30 +156,36 @@ static struct cmd_node limit_fpga_node = {
 	1,
 };
 
-static struct cmd_node limit_memory_node = {
-	LIMIT_MEMORY_NODE,
-	"%s(limit-memory)# ",
+static struct cmd_node limit_logrf_node = {
+	LIMIT_LOGRF_NODE,
+	"%s(limit-logrf)# ",
 	1,
 };
 
+static struct cmd_node limit_ocxo_node = {
+	LIMIT_OCXO_NODE,
+	"%s(limit-ocxo)# ",
+	1,
+};
+
+static struct cmd_node limit_tx0_node = {
+	LIMIT_TX0_NODE,
+	"%s(limit-tx0)# ",
+	1,
+};
 static struct cmd_node limit_tx1_node = {
 	LIMIT_TX1_NODE,
 	"%s(limit-tx1)# ",
 	1,
 };
-static struct cmd_node limit_tx2_node = {
-	LIMIT_TX2_NODE,
-	"%s(limit-tx2)# ",
+static struct cmd_node limit_pa0_node = {
+	LIMIT_PA0_NODE,
+	"%s(limit-pa0)# ",
 	1,
 };
 static struct cmd_node limit_pa1_node = {
 	LIMIT_PA1_NODE,
 	"%s(limit-pa1)# ",
-	1,
-};
-static struct cmd_node limit_pa2_node = {
-	LIMIT_PA2_NODE,
-	"%s(limit-pa2)# ",
 	1,
 };
 
@@ -202,10 +210,10 @@ static void write_temp_limit(struct vty *vty, const char *name,
 static void write_norm_action(struct vty *vty, const char *name, int actions)
 {
 	vty_out(vty, " %s%s", name, VTY_NEWLINE);
+	vty_out(vty, "  %spa0-on%s",
+		(actions & TEMP_ACT_NORM_PA0_ON) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %spa1-on%s",
 		(actions & TEMP_ACT_NORM_PA1_ON) ? "" : "no ", VTY_NEWLINE);
-	vty_out(vty, "  %spa2-on%s",
-		(actions & TEMP_ACT_NORM_PA2_ON) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %sbts-service-on%s",
 		(actions & TEMP_ACT_NORM_BTS_SRV_ON) ? "" : "no ", VTY_NEWLINE);
 }
@@ -213,10 +221,10 @@ static void write_norm_action(struct vty *vty, const char *name, int actions)
 static void write_action(struct vty *vty, const char *name, int actions)
 {
 	vty_out(vty, " %s%s", name, VTY_NEWLINE);
+	vty_out(vty, "  %spa0-off%s",
+		(actions & TEMP_ACT_PA0_OFF) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %spa1-off%s",
 		(actions & TEMP_ACT_PA1_OFF) ? "" : "no ", VTY_NEWLINE);
-	vty_out(vty, "  %spa2-off%s",
-		(actions & TEMP_ACT_PA2_OFF) ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, "  %sbts-service-off%s",
 		(actions & TEMP_ACT_BTS_SRV_OFF) ? "" : "no ", VTY_NEWLINE);
 }
@@ -228,11 +236,12 @@ static int config_write_mgr(struct vty *vty)
 	write_temp_limit(vty, "limits supply", &s_mgr->temp.supply_limit);
 	write_temp_limit(vty, "limits soc", &s_mgr->temp.soc_limit);
 	write_temp_limit(vty, "limits fpga", &s_mgr->temp.fpga_limit);
-	write_temp_limit(vty, "limits memory", &s_mgr->temp.memory_limit);
+	write_temp_limit(vty, "limits logrf", &s_mgr->temp.logrf_limit);
+	write_temp_limit(vty, "limits ocxo", &s_mgr->temp.ocxo_limit);
+	write_temp_limit(vty, "limits tx0", &s_mgr->temp.tx0_limit);
 	write_temp_limit(vty, "limits tx1", &s_mgr->temp.tx1_limit);
-	write_temp_limit(vty, "limits tx2", &s_mgr->temp.tx2_limit);
+	write_temp_limit(vty, "limits pa0", &s_mgr->temp.pa0_limit);
 	write_temp_limit(vty, "limits pa1", &s_mgr->temp.pa1_limit);
-	write_temp_limit(vty, "limits pa2", &s_mgr->temp.pa2_limit);
 
 	write_norm_action(vty, "actions normal", s_mgr->temp.action_norm);
 	write_action(vty, "actions warn", s_mgr->temp.action_warn);
@@ -259,11 +268,12 @@ DEFUN(cfg_limit_##name, cfg_limit_##name##_cmd,				\
 CFG_LIMIT(supply, "SUPPLY\n", LIMIT_SUPPLY_NODE, supply_limit)
 CFG_LIMIT(soc, "SOC\n", LIMIT_SOC_NODE, soc_limit)
 CFG_LIMIT(fpga, "FPGA\n", LIMIT_FPGA_NODE, fpga_limit)
-CFG_LIMIT(memory, "MEMORY\n", LIMIT_MEMORY_NODE, memory_limit)
+CFG_LIMIT(logrf, "LOGRF\n", LIMIT_LOGRF_NODE, logrf_limit)
+CFG_LIMIT(ocxo, "OCXO\n", LIMIT_OCXO_NODE, ocxo_limit)
+CFG_LIMIT(tx0, "TX0\n", LIMIT_TX0_NODE, tx0_limit)
 CFG_LIMIT(tx1, "TX1\n", LIMIT_TX1_NODE, tx1_limit)
-CFG_LIMIT(tx2, "TX2\n", LIMIT_TX2_NODE, tx2_limit)
+CFG_LIMIT(pa0, "PA0\n", LIMIT_PA0_NODE, pa0_limit)
 CFG_LIMIT(pa1, "PA1\n", LIMIT_PA1_NODE, pa1_limit)
-CFG_LIMIT(pa2, "PA2\n", LIMIT_PA2_NODE, pa2_limit)
 #undef CFG_LIMIT
 
 DEFUN(cfg_limit_warning, cfg_thresh_warning_cmd,
@@ -298,6 +308,24 @@ CFG_ACTION(warn, "Warning Actions\n", ACT_WARN_NODE, action_warn)
 CFG_ACTION(critical, "Critical Actions\n", ACT_CRIT_NODE, action_crit)
 #undef CFG_ACTION
 
+DEFUN(cfg_action_pa0_on, cfg_action_pa0_on_cmd,
+	"pa0-on",
+	"Switch the Power Amplifier #0 on\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_NORM_PA0_ON;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_pa0_on, cfg_no_action_pa0_on_cmd,
+	"no pa0-on",
+	NO_STR "Switch the Power Amplifieri #0 on\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_NORM_PA0_ON;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_action_pa1_on, cfg_action_pa1_on_cmd,
 	"pa1-on",
 	"Switch the Power Amplifier #1 on\n")
@@ -313,24 +341,6 @@ DEFUN(cfg_no_action_pa1_on, cfg_no_action_pa1_on_cmd,
 {
 	int *action = vty->index;
 	*action &= ~TEMP_ACT_NORM_PA1_ON;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_action_pa2_on, cfg_action_pa2_on_cmd,
-	"pa2-on",
-	"Switch the Power Amplifier #2 on\n")
-{
-	int *action = vty->index;
-	*action |= TEMP_ACT_NORM_PA2_ON;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_no_action_pa2_on, cfg_no_action_pa2_on_cmd,
-	"no pa2-on",
-	NO_STR "Switch the Power Amplifieri #2 on\n")
-{
-	int *action = vty->index;
-	*action &= ~TEMP_ACT_NORM_PA2_ON;
 	return CMD_SUCCESS;
 }
 
@@ -352,39 +362,39 @@ DEFUN(cfg_no_action_bts_srv_on, cfg_no_action_bts_srv_on_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_action_pa0_off, cfg_action_pa0_off_cmd,
+	"pa0-off",
+	"Switch the Power Amplifier #0 off\n")
+{
+	int *action = vty->index;
+	*action |= TEMP_ACT_PA0_OFF;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_action_pa0_off, cfg_no_action_pa0_off_cmd,
+	"no pa0-off",
+	NO_STR "Do not switch off the Power Amplifier #0\n")
+{
+	int *action = vty->index;
+	*action &= ~TEMP_ACT_PA0_OFF;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_action_pa1_off, cfg_action_pa1_off_cmd,
-	"pa1-off",
-	"Switch the Power Amplifier #1 off\n")
-{
-	int *action = vty->index;
-	*action |= TEMP_ACT_PA1_OFF;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_no_action_pa1_off, cfg_no_action_pa1_off_cmd,
-	"no pa1-off",
-	NO_STR "Do not switch off the Power Amplifier #1\n")
-{
-	int *action = vty->index;
-	*action &= ~TEMP_ACT_PA1_OFF;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_action_pa2_off, cfg_action_pa2_off_cmd,
-        "pa2-off",
-        "Switch the Power Amplifier #2 off\n")
+        "pa1-off",
+        "Switch the Power Amplifier #1 off\n")
 {
         int *action = vty->index;
-        *action |= TEMP_ACT_PA2_OFF;
+        *action |= TEMP_ACT_PA1_OFF;
         return CMD_SUCCESS;
 }
 
-DEFUN(cfg_no_action_pa2_off, cfg_no_action_pa2_off_cmd,
-        "no pa2-off",
-        NO_STR "Do not switch off the Power Amplifier #2\n")
+DEFUN(cfg_no_action_pa1_off, cfg_no_action_pa1_off_cmd,
+        "no pa1-off",
+        NO_STR "Do not switch off the Power Amplifier #1\n")
 {
         int *action = vty->index;
-        *action &= ~TEMP_ACT_PA2_OFF;
+        *action &= ~TEMP_ACT_PA1_OFF;
         return CMD_SUCCESS;
 }
 
@@ -413,45 +423,49 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		lc15bts_mgr_temp_get_state(s_mgr->temp.state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
 	vty_out(vty, " Main Supply : %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_SUPPLY,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+		lc15bts_temp_get(LC15BTS_TEMP_SUPPLY) / 1000.0f, 
 		VTY_NEWLINE);
 	vty_out(vty, " SoC         : %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_SOC,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+		lc15bts_temp_get(LC15BTS_TEMP_SOC) / 1000.0f, 
 		VTY_NEWLINE);
 	vty_out(vty, " FPGA        : %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_FPGA,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+		lc15bts_temp_get(LC15BTS_TEMP_FPGA) / 1000.0f, 
 		VTY_NEWLINE);
-	vty_out(vty, " Memory (DDR): %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_MEMORY,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+	vty_out(vty, " LogRF       : %f Celcius%s",
+		lc15bts_temp_get(LC15BTS_TEMP_LOGRF) / 1000.0f, 
+		VTY_NEWLINE);
+	vty_out(vty, " OCXO        : %f Celcius%s",
+		lc15bts_temp_get(LC15BTS_TEMP_OCXO) / 1000.0f, 
+		VTY_NEWLINE);
+	vty_out(vty, " TX 0        : %f Celcius%s",
+		lc15bts_temp_get(LC15BTS_TEMP_TX0) / 1000.0f, 
 		VTY_NEWLINE);
 	vty_out(vty, " TX 1        : %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_TX1,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+		lc15bts_temp_get(LC15BTS_TEMP_TX1) / 1000.0f, 
 		VTY_NEWLINE);
-	vty_out(vty, " TX 2        : %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_TX2,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+	vty_out(vty, " Power Amp #0: %f Celcius%s",
+		lc15bts_temp_get(LC15BTS_TEMP_PA0) / 1000.0f, 
 		VTY_NEWLINE);
 	vty_out(vty, " Power Amp #1: %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_PA1,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
-		VTY_NEWLINE);
-	vty_out(vty, " Power Amp #2: %f Celcius%s",
-		lc15bts_temp_get(LC15BTS_TEMP_PA2,
-			LC15BTS_TEMP_INPUT) / 1000.0f, 
+		lc15bts_temp_get(LC15BTS_TEMP_PA1) / 1000.0f, 
 		VTY_NEWLINE);
 
 	vty_out(vty, "Power Status%s", VTY_NEWLINE);
-	vty_out(vty, " Main Supply : (ON) [%6.2f Vdc, %4.2f A, %6.2f W]%s",
+	vty_out(vty, " Main Supply :  ON  [%6.2f Vdc, %4.2f A, %6.2f W]%s",
 		lc15bts_power_sensor_get(LC15BTS_POWER_SUPPLY, 
 			LC15BTS_POWER_VOLTAGE)/1000.0f,
 		lc15bts_power_sensor_get(LC15BTS_POWER_SUPPLY, 
 			LC15BTS_POWER_CURRENT)/1000.0f,
 		lc15bts_power_sensor_get(LC15BTS_POWER_SUPPLY, 
+			LC15BTS_POWER_POWER)/1000000.0f,
+		VTY_NEWLINE);
+	vty_out(vty, " Power Amp #0:  %s [%6.2f Vdc, %4.2f A, %6.2f W]%s",
+		lc15bts_power_get(LC15BTS_POWER_PA0) ? "ON " : "OFF",
+		lc15bts_power_sensor_get(LC15BTS_POWER_PA0, 
+			LC15BTS_POWER_VOLTAGE)/1000.0f,
+		lc15bts_power_sensor_get(LC15BTS_POWER_PA0, 
+			LC15BTS_POWER_CURRENT)/1000.0f,
+		lc15bts_power_sensor_get(LC15BTS_POWER_PA0, 
 			LC15BTS_POWER_POWER)/1000000.0f,
 		VTY_NEWLINE);
 	vty_out(vty, " Power Amp #1:  %s [%6.2f Vdc, %4.2f A, %6.2f W]%s",
@@ -461,15 +475,6 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		lc15bts_power_sensor_get(LC15BTS_POWER_PA1, 
 			LC15BTS_POWER_CURRENT)/1000.0f,
 		lc15bts_power_sensor_get(LC15BTS_POWER_PA1, 
-			LC15BTS_POWER_POWER)/1000000.0f,
-		VTY_NEWLINE);
-	vty_out(vty, " Power Amp #2:  %s [%6.2f Vdc, %4.2f A, %6.2f W]%s",
-		lc15bts_power_get(LC15BTS_POWER_PA2) ? "ON " : "OFF",
-		lc15bts_power_sensor_get(LC15BTS_POWER_PA2, 
-			LC15BTS_POWER_VOLTAGE)/1000.0f,
-		lc15bts_power_sensor_get(LC15BTS_POWER_PA2, 
-			LC15BTS_POWER_CURRENT)/1000.0f,
-		lc15bts_power_sensor_get(LC15BTS_POWER_PA2, 
 			LC15BTS_POWER_POWER)/1000000.0f,
 		VTY_NEWLINE);
 
@@ -496,20 +501,20 @@ static void register_limit(int limit)
 
 static void register_normal_action(int act)
 {
+	install_element(act, &cfg_action_pa0_on_cmd);
+	install_element(act, &cfg_no_action_pa0_on_cmd);
 	install_element(act, &cfg_action_pa1_on_cmd);
 	install_element(act, &cfg_no_action_pa1_on_cmd);
-	install_element(act, &cfg_action_pa2_on_cmd);
-	install_element(act, &cfg_no_action_pa2_on_cmd);
 	install_element(act, &cfg_action_bts_srv_on_cmd);
 	install_element(act, &cfg_no_action_bts_srv_on_cmd);
 }
 
 static void register_action(int act)
 {
+	install_element(act, &cfg_action_pa0_off_cmd);
+	install_element(act, &cfg_no_action_pa0_off_cmd);
 	install_element(act, &cfg_action_pa1_off_cmd);
 	install_element(act, &cfg_no_action_pa1_off_cmd);
-	install_element(act, &cfg_action_pa2_off_cmd);
-	install_element(act, &cfg_no_action_pa2_off_cmd);
 	install_element(act, &cfg_action_bts_srv_off_cmd);
 	install_element(act, &cfg_no_action_bts_srv_off_cmd);
 }
@@ -542,30 +547,35 @@ int lc15bts_mgr_vty_init(void)
 	register_limit(LIMIT_FPGA_NODE);
 	vty_install_default(LIMIT_FPGA_NODE);
 
-	install_node(&limit_memory_node, config_write_dummy);
-	install_element(MGR_NODE, &cfg_limit_memory_cmd);
-	register_limit(LIMIT_MEMORY_NODE);
-	vty_install_default(LIMIT_MEMORY_NODE);
+	install_node(&limit_logrf_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_logrf_cmd);
+	register_limit(LIMIT_LOGRF_NODE);
+	vty_install_default(LIMIT_LOGRF_NODE);
+
+	install_node(&limit_ocxo_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_ocxo_cmd);
+	register_limit(LIMIT_OCXO_NODE);
+	vty_install_default(LIMIT_OCXO_NODE);
+
+	install_node(&limit_tx0_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_tx0_cmd);
+	register_limit(LIMIT_TX0_NODE);
+	vty_install_default(LIMIT_TX0_NODE);
 
 	install_node(&limit_tx1_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_tx1_cmd);
 	register_limit(LIMIT_TX1_NODE);
 	vty_install_default(LIMIT_TX1_NODE);
 
-	install_node(&limit_tx2_node, config_write_dummy);
-	install_element(MGR_NODE, &cfg_limit_tx2_cmd);
-	register_limit(LIMIT_TX2_NODE);
-	vty_install_default(LIMIT_TX2_NODE);
+	install_node(&limit_pa0_node, config_write_dummy);
+	install_element(MGR_NODE, &cfg_limit_pa0_cmd);
+	register_limit(LIMIT_PA0_NODE);
+	vty_install_default(LIMIT_PA0_NODE);
 
 	install_node(&limit_pa1_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_pa1_cmd);
 	register_limit(LIMIT_PA1_NODE);
 	vty_install_default(LIMIT_PA1_NODE);
-
-	install_node(&limit_pa2_node, config_write_dummy);
-	install_element(MGR_NODE, &cfg_limit_pa2_cmd);
-	register_limit(LIMIT_PA2_NODE);
-	vty_install_default(LIMIT_PA2_NODE);
 
 	/* install the normal node */
 	install_node(&act_norm_node, config_write_dummy);

@@ -63,7 +63,7 @@ int lc15bts_led_set(enum lc15bts_led_color c)
 		return -EINVAL;
 	}
 
-	fd = open("/sys/class/leds/usr0/brightness", O_WRONLY);
+	fd = open("/var/lc15/leds/led0/brightness", O_WRONLY);
 	if (fd < 0)
 		return -ENODEV;
 
@@ -73,7 +73,7 @@ int lc15bts_led_set(enum lc15bts_led_color c)
 	}
 	close(fd);
 
-	fd = open("/sys/class/leds/usr1/brightness", O_WRONLY);
+	fd = open("/var/lc15/leds/led1/brightness", O_WRONLY);
 	if (fd < 0)
 		return -ENODEV;
 

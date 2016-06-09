@@ -74,37 +74,41 @@ static const struct {
 		.ee_par = LC15BTS_PAR_TEMP_FPGA_MAX,
 
 	}, {
-		.name = "memory",
+		.name = "logrf",
 		.has_max = 1,
-		.sensor = LC15BTS_TEMP_MEMORY,
-		.ee_par = LC15BTS_PAR_TEMP_MEMORY_MAX,
+		.sensor = LC15BTS_TEMP_LOGRF,
+		.ee_par = LC15BTS_PAR_TEMP_LOGRF_MAX,
+	}, {
+		.name = "ocxo",
+		.has_max = 1,
+		.sensor = LC15BTS_TEMP_OCXO,
+		.ee_par = LC15BTS_PAR_TEMP_OCXO_MAX,
+	}, {
+		.name = "tx0",
+		.has_max = 0,
+		.sensor = LC15BTS_TEMP_TX0,
+		.ee_par = LC15BTS_PAR_TEMP_TX0_MAX,
 	}, {
 		.name = "tx1",
 		.has_max = 0,
 		.sensor = LC15BTS_TEMP_TX1,
 		.ee_par = LC15BTS_PAR_TEMP_TX1_MAX,
 	}, {
-		.name = "tx2",
-		.has_max = 0,
-		.sensor = LC15BTS_TEMP_TX2,
-		.ee_par = LC15BTS_PAR_TEMP_TX2_MAX,
+		.name = "pa0",
+		.has_max = 1,
+		.sensor = LC15BTS_TEMP_PA0,
+		.ee_par = LC15BTS_PAR_TEMP_PA0_MAX,
 	}, {
 		.name = "pa1",
 		.has_max = 1,
 		.sensor = LC15BTS_TEMP_PA1,
 		.ee_par = LC15BTS_PAR_TEMP_PA1_MAX,
-	}, {
-		.name = "pa2",
-		.has_max = 1,
-		.sensor = LC15BTS_TEMP_PA2,
-		.ee_par = LC15BTS_PAR_TEMP_PA2_MAX,
 	}
 };
 
 void lc15bts_check_temp(int no_rom_write)
 {
 	int temp_old[ARRAY_SIZE(temp_data)];
-	int temp_hi[ARRAY_SIZE(temp_data)];
 	int temp_cur[ARRAY_SIZE(temp_data)];
 	int i, rc;
 
@@ -112,40 +116,24 @@ void lc15bts_check_temp(int no_rom_write)
 		int ret;
 		rc = lc15bts_par_get_int(temp_data[i].ee_par, &ret);
 		temp_old[i] = ret * 1000;
-		if (temp_data[i].has_max) {
-			temp_hi[i] = lc15bts_temp_get(temp_data[i].sensor,
-							LC15BTS_TEMP_HIGHEST);
-			temp_cur[i] = lc15bts_temp_get(temp_data[i].sensor,
-							LC15BTS_TEMP_INPUT);
 
-			if ((temp_cur[i] < 0 && temp_cur[i] > -1000) ||
-			    (temp_hi[i] < 0 && temp_hi[i] > -1000)) {
-				LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
-				continue;
-			}
+		temp_cur[i] = lc15bts_temp_get(temp_data[i].sensor);
+		if (temp_cur[i] < 0 && temp_cur[i] > -1000) {
+			LOGP(DTEMP, LOGL_ERROR, "Error reading temperature (%d)\n", temp_data[i].sensor);
+			continue;
 		}
-		else {
-			temp_cur[i] = lc15bts_temp_get(temp_data[i].sensor,
-							LC15BTS_TEMP_INPUT);
-
-			if (temp_cur[i] < 0 && temp_cur[i] > -1000) {
-				LOGP(DTEMP, LOGL_ERROR, "Error reading temperature\n");
-				continue;
-			}
-			temp_hi[i] = temp_cur[i];
-		}
-
+	
 		LOGP(DTEMP, LOGL_DEBUG, "Current %s temperature: %d.%d C\n",
 		     temp_data[i].name, temp_cur[i]/1000, temp_cur[i]%1000);
 
-		if (temp_hi[i] > temp_old[i]) {
+		if (temp_cur[i] > temp_old[i]) {
 			LOGP(DTEMP, LOGL_NOTICE, "New maximum %s "
 			     "temperature: %d.%d C\n", temp_data[i].name,
-			     temp_hi[i]/1000, temp_hi[i]%1000);
+			     temp_cur[i]/1000, temp_old[i]%1000);
 
 			if (!no_rom_write) {
 				rc = lc15bts_par_set_int(temp_data[i].ee_par,
-						  temp_hi[i]/1000);
+						  temp_cur[i]/1000);
 				if (rc < 0)
 					LOGP(DTEMP, LOGL_ERROR, "error writing new %s "
 					     "max temp %d (%s)\n", temp_data[i].name,

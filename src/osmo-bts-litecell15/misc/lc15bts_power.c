@@ -30,24 +30,24 @@
 
 #define LC15BTS_PA_VOLTAGE      24000000
 
-#define PA_SUPPLY_MIN_SYSFS     "/sys/devices/0.pa-supply/min_microvolts"
-#define PA_SUPPLY_MAX_SYSFS     "/sys/devices/0.pa-supply/max_microvolts"
+#define PA_SUPPLY_MIN_SYSFS     "/var/lc15/pa-supply/min_microvolts"
+#define PA_SUPPLY_MAX_SYSFS     "/var/lc15/pa-supply/max_microvolts"
 
 static const char *power_enable_devs[_NUM_POWER_SOURCES] = {
-        [LC15BTS_POWER_PA1]     = "/sys/devices/0.pa1/state",
-        [LC15BTS_POWER_PA2]     = "/sys/devices/0.pa2/state",
+	[LC15BTS_POWER_PA0]     = "/var/lc15/pa-state/pa0/state",
+	[LC15BTS_POWER_PA1]     = "/var/lc15/pa-state/pa1/state",
 };
 
 static const char *power_sensor_devs[_NUM_POWER_SOURCES] = {
-        [LC15BTS_POWER_SUPPLY]	= "/sys/bus/i2c/devices/2-0040/hwmon/hwmon6/",
-        [LC15BTS_POWER_PA1]	= "/sys/bus/i2c/devices/2-0044/hwmon/hwmon7/",
-        [LC15BTS_POWER_PA2]	= "/sys/bus/i2c/devices/2-0045/hwmon/hwmon8/",
+	[LC15BTS_POWER_SUPPLY]	= "/var/lc15/pwr-sense/pa-supply/",
+	[LC15BTS_POWER_PA0]	= "/var/lc15/pwr-sense/pa0/",
+	[LC15BTS_POWER_PA1]	= "/var/lc15/pwr-sense/pa1/",
 };
 
 static const char *power_sensor_type_str[_NUM_POWER_TYPES] = {
-	[LC15BTS_POWER_POWER]	= "power1_input",
-	[LC15BTS_POWER_VOLTAGE]	= "in1_input",
-	[LC15BTS_POWER_CURRENT]	= "curr1_input",
+	[LC15BTS_POWER_POWER]	= "power",
+	[LC15BTS_POWER_VOLTAGE]	= "voltage",
+	[LC15BTS_POWER_CURRENT]	= "current",
 };
 
 int lc15bts_power_sensor_get(
@@ -94,8 +94,8 @@ int lc15bts_power_set(
 	int fd;
 	int rc;
 
-	if ((source != LC15BTS_POWER_PA1) 
-		&& (source != LC15BTS_POWER_PA2) ) {
+	if ((source != LC15BTS_POWER_PA0) 
+		&& (source != LC15BTS_POWER_PA1) ) {
 		return -EINVAL;
 	}
             
@@ -144,6 +144,7 @@ int lc15bts_power_get(
 {
 	int fd;
 	int rc;
+	int retVal = 0;
 	char enstr[10];
 
 	fd = open(power_enable_devs[source], O_RDONLY);
@@ -152,7 +153,7 @@ int lc15bts_power_get(
 	}
 
 	rc = read(fd, enstr, sizeof(enstr));
-        enstr[sizeof(enstr)-1] = '\0';
+        enstr[rc-1] = '\0';
         
 	close(fd);
 
@@ -163,5 +164,10 @@ int lc15bts_power_get(
                 return -EIO;
         }
 
-        return atoi(enstr);
+	rc = strcmp(enstr, "enabled");
+	if(rc == 0) {
+		retVal = 1;
+	}
+	
+        return retVal;
 }

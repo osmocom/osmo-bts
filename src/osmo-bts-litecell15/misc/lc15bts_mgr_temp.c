@@ -85,6 +85,16 @@ static int next_state(enum lc15bts_temp_state current_state, int critical, int w
 static void handle_normal_actions(int actions)
 {
 	/* switch on the PA */
+	if (actions & TEMP_ACT_NORM_PA0_ON) {
+		if (lc15bts_power_set(LC15BTS_POWER_PA0, 1) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch on the PA #0\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched on the PA #0 as normal action.\n");
+		}
+	}
+
 	if (actions & TEMP_ACT_NORM_PA1_ON) {
 		if (lc15bts_power_set(LC15BTS_POWER_PA1, 1) != 0) {
 			LOGP(DTEMP, LOGL_ERROR,
@@ -92,16 +102,6 @@ static void handle_normal_actions(int actions)
 		} else {
 			LOGP(DTEMP, LOGL_NOTICE,
 				"Switched on the PA #1 as normal action.\n");
-		}
-	}
-
-	if (actions & TEMP_ACT_NORM_PA2_ON) {
-		if (lc15bts_power_set(LC15BTS_POWER_PA2, 1) != 0) {
-			LOGP(DTEMP, LOGL_ERROR,
-				"Failed to switch on the PA #2\n");
-		} else {
-			LOGP(DTEMP, LOGL_NOTICE,
-				"Switched on the PA #2 as normal action.\n");
 		}
 	}
 
@@ -120,16 +120,6 @@ static void handle_normal_actions(int actions)
 static void handle_actions(int actions)
 {
 	/* switch off the PA */
-	if (actions & TEMP_ACT_PA2_OFF) {
-		if (lc15bts_power_set(LC15BTS_POWER_PA2, 0) != 0) {
-			LOGP(DTEMP, LOGL_ERROR,
-				"Failed to switch off the PA #2. Stop BTS?\n");
-		} else {
-			LOGP(DTEMP, LOGL_NOTICE,
-				"Switched off the PA #2 due temperature.\n");
-		}
-	}
-
 	if (actions & TEMP_ACT_PA1_OFF) {
 		if (lc15bts_power_set(LC15BTS_POWER_PA1, 0) != 0) {
 			LOGP(DTEMP, LOGL_ERROR,
@@ -137,6 +127,16 @@ static void handle_actions(int actions)
 		} else {
 			LOGP(DTEMP, LOGL_NOTICE,
 				"Switched off the PA #1 due temperature.\n");
+		}
+	}
+
+	if (actions & TEMP_ACT_PA0_OFF) {
+		if (lc15bts_power_set(LC15BTS_POWER_PA0, 0) != 0) {
+			LOGP(DTEMP, LOGL_ERROR,
+				"Failed to switch off the PA #0. Stop BTS?\n");
+		} else {
+			LOGP(DTEMP, LOGL_NOTICE,
+				"Switched off the PA #0 due temperature.\n");
 		}
 	}
 
@@ -215,7 +215,7 @@ static void temp_ctrl_check()
 	LOGP(DTEMP, LOGL_DEBUG, "Going to check the temperature.\n");
 
 	/* Read the current supply temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_SUPPLY, LC15BTS_TEMP_INPUT);
+	rc = lc15bts_temp_get(LC15BTS_TEMP_SUPPLY);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
 			"Failed to read the supply temperature. rc=%d\n", rc);
@@ -230,7 +230,7 @@ static void temp_ctrl_check()
 	}
 
 	/* Read the current SoC temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_SOC, LC15BTS_TEMP_INPUT);
+	rc = lc15bts_temp_get(LC15BTS_TEMP_SOC);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
 			"Failed to read the SoC temperature. rc=%d\n", rc);
@@ -245,7 +245,7 @@ static void temp_ctrl_check()
 	}
 
 	/* Read the current fpga temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_FPGA, LC15BTS_TEMP_INPUT);
+	rc = lc15bts_temp_get(LC15BTS_TEMP_FPGA);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
 			"Failed to read the fpga temperature. rc=%d\n", rc);
@@ -259,23 +259,53 @@ static void temp_ctrl_check()
 		LOGP(DTEMP, LOGL_DEBUG, "FPGA temperature is: %d\n", temp);
 	}
 
-	/* Read the current memory temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_MEMORY, LC15BTS_TEMP_INPUT);
+	/* Read the current RF log detector temperature */
+	rc = lc15bts_temp_get(LC15BTS_TEMP_LOGRF);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
-			"Failed to read the memory temperature. rc=%d\n", rc);
+			"Failed to read the RF log detector temperature. rc=%d\n", rc);
 		warn_thresh_passed = crit_thresh_passed = 1;
 	} else {
 		int temp = rc / 1000;
-		if (temp > s_mgr->temp.memory_limit.thresh_warn)
+		if (temp > s_mgr->temp.logrf_limit.thresh_warn)
 			warn_thresh_passed = 1;
-		if (temp > s_mgr->temp.memory_limit.thresh_crit)
+		if (temp > s_mgr->temp.logrf_limit.thresh_crit)
 			crit_thresh_passed = 1;
-		LOGP(DTEMP, LOGL_DEBUG, "Memory temperature is: %d\n", temp);
+		LOGP(DTEMP, LOGL_DEBUG, "RF log detector temperature is: %d\n", temp);
+	}
+
+	/* Read the current OCXO temperature */
+	rc = lc15bts_temp_get(LC15BTS_TEMP_OCXO);
+	if (rc < 0) {
+		LOGP(DTEMP, LOGL_ERROR,
+			"Failed to read the OCXO temperature. rc=%d\n", rc);
+		warn_thresh_passed = crit_thresh_passed = 1;
+	} else {
+		int temp = rc / 1000;
+		if (temp > s_mgr->temp.ocxo_limit.thresh_warn)
+			warn_thresh_passed = 1;
+		if (temp > s_mgr->temp.ocxo_limit.thresh_crit)
+			crit_thresh_passed = 1;
+		LOGP(DTEMP, LOGL_DEBUG, "OCXO temperature is: %d\n", temp);
 	}
 
 	/* Read the current TX #1 temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_TX1, LC15BTS_TEMP_INPUT);
+	rc = lc15bts_temp_get(LC15BTS_TEMP_TX0);
+	if (rc < 0) {
+		LOGP(DTEMP, LOGL_ERROR,
+			"Failed to read the TX #0 temperature. rc=%d\n", rc);
+		warn_thresh_passed = crit_thresh_passed = 1;
+	} else {
+		int temp = rc / 1000;
+		if (temp > s_mgr->temp.tx0_limit.thresh_warn)
+			warn_thresh_passed = 1;
+		if (temp > s_mgr->temp.tx0_limit.thresh_crit)
+			crit_thresh_passed = 1;
+		LOGP(DTEMP, LOGL_DEBUG, "TX #0 temperature is: %d\n", temp);
+	}
+
+	/* Read the current TX #2 temperature */
+	rc = lc15bts_temp_get(LC15BTS_TEMP_TX1);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
 			"Failed to read the TX #1 temperature. rc=%d\n", rc);
@@ -289,23 +319,23 @@ static void temp_ctrl_check()
 		LOGP(DTEMP, LOGL_DEBUG, "TX #1 temperature is: %d\n", temp);
 	}
 
-	/* Read the current TX #2 temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_TX2, LC15BTS_TEMP_INPUT);
+	/* Read the current PA #1 temperature */
+	rc = lc15bts_temp_get(LC15BTS_TEMP_PA0);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
-			"Failed to read the TX #2 temperature. rc=%d\n", rc);
+			"Failed to read the PA #0 temperature. rc=%d\n", rc);
 		warn_thresh_passed = crit_thresh_passed = 1;
 	} else {
 		int temp = rc / 1000;
-		if (temp > s_mgr->temp.tx2_limit.thresh_warn)
+		if (temp > s_mgr->temp.pa0_limit.thresh_warn)
 			warn_thresh_passed = 1;
-		if (temp > s_mgr->temp.tx2_limit.thresh_crit)
+		if (temp > s_mgr->temp.pa0_limit.thresh_crit)
 			crit_thresh_passed = 1;
-		LOGP(DTEMP, LOGL_DEBUG, "TX #2 temperature is: %d\n", temp);
+		LOGP(DTEMP, LOGL_DEBUG, "PA #0 temperature is: %d\n", temp);
 	}
 
-	/* Read the current PA #1 temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_PA1, LC15BTS_TEMP_INPUT);
+	/* Read the current PA #2 temperature */
+	rc = lc15bts_temp_get(LC15BTS_TEMP_PA1);
 	if (rc < 0) {
 		LOGP(DTEMP, LOGL_ERROR,
 			"Failed to read the PA #1 temperature. rc=%d\n", rc);
@@ -317,21 +347,6 @@ static void temp_ctrl_check()
 		if (temp > s_mgr->temp.pa1_limit.thresh_crit)
 			crit_thresh_passed = 1;
 		LOGP(DTEMP, LOGL_DEBUG, "PA #1 temperature is: %d\n", temp);
-	}
-
-	/* Read the current PA #2 temperature */
-	rc = lc15bts_temp_get(LC15BTS_TEMP_PA2, LC15BTS_TEMP_INPUT);
-	if (rc < 0) {
-		LOGP(DTEMP, LOGL_ERROR,
-			"Failed to read the PA #2 temperature. rc=%d\n", rc);
-		warn_thresh_passed = crit_thresh_passed = 1;
-	} else {
-		int temp = rc / 1000;
-		if (temp > s_mgr->temp.pa2_limit.thresh_warn)
-			warn_thresh_passed = 1;
-		if (temp > s_mgr->temp.pa2_limit.thresh_crit)
-			crit_thresh_passed = 1;
-		LOGP(DTEMP, LOGL_DEBUG, "PA #2 temperature is: %d\n", temp);
 	}
 
 	lc15bts_mgr_temp_handle(s_mgr, crit_thresh_passed, warn_thresh_passed);	

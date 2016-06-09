@@ -249,7 +249,7 @@ int l1if_transport_open(int q, struct lc15l1_hdl *hdl)
 	struct osmo_wqueue *wq = &hdl->write_q[q];
 	struct osmo_fd *write_ofd = &hdl->write_q[q].bfd;
 
-        snprintf(buf, sizeof(buf)-1, "%s%d", rd_devnames[q], plink->num+1);
+        snprintf(buf, sizeof(buf)-1, "%s%d", rd_devnames[q], plink->num);
         buf[sizeof(buf)-1] = '\0';
 
 	rc = open(buf, O_RDONLY);
@@ -270,7 +270,7 @@ int l1if_transport_open(int q, struct lc15l1_hdl *hdl)
 		return rc;
 	}
 
-        snprintf(buf, sizeof(buf)-1, "%s%d", wr_devnames[q], plink->num+1);
+        snprintf(buf, sizeof(buf)-1, "%s%d", wr_devnames[q], plink->num);
         buf[sizeof(buf)-1] = '\0';
 
 	rc = open(buf, O_WRONLY);

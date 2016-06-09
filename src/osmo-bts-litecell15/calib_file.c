@@ -53,31 +53,31 @@ struct calib_file_desc {
 
 static const struct calib_file_desc calib_files[] = {
 	{
-		.fname = "calib_rx1a.conf",
+		.fname = "calib_rx0a.conf",
 		.rx = 1,
 		.trx = 0,
+		.rxpath = 0,
+	}, {
+		.fname = "calib_rx0b.conf",
+		.rx = 1,
+		.trx = 0,
+		.rxpath = 1,
+	}, {
+		.fname = "calib_rx1a.conf",
+		.rx = 1,
+		.trx = 1,
 		.rxpath = 0,
 	}, {
 		.fname = "calib_rx1b.conf",
 		.rx = 1,
-		.trx = 0,
-		.rxpath = 1,
-	}, {
-		.fname = "calib_rx2a.conf",
-		.rx = 1,
-		.trx = 1,
-		.rxpath = 0,
-	}, {
-		.fname = "calib_rx2b.conf",
-		.rx = 1,
 		.trx = 1,
 		.rxpath = 1,
 	}, {
-		.fname = "calib_tx1.conf",
+		.fname = "calib_tx0.conf",
 		.rx = 0,
 		.trx = 0,
 	}, {
-		.fname = "calib_tx2.conf",
+		.fname = "calib_tx1.conf",
 		.rx = 0,
 		.trx = 1,
 	},

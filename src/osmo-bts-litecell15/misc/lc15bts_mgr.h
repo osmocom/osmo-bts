@@ -21,8 +21,8 @@ enum {
 #if 0
 	TEMP_ACT_PWR_CONTRL	=	0x1,
 #endif
-	TEMP_ACT_PA1_OFF	=	0x2,
-	TEMP_ACT_PA2_OFF	=	0x4,
+	TEMP_ACT_PA0_OFF	=	0x2,
+	TEMP_ACT_PA1_OFF	=	0x4,
 	TEMP_ACT_BTS_SRV_OFF	=	0x10,
 };
 
@@ -31,8 +31,8 @@ enum {
 #if 0
 	TEMP_ACT_NORM_PW_CONTRL	=	0x1,
 #endif
-	TEMP_ACT_NORM_PA1_ON	=	0x2,
-	TEMP_ACT_NORM_PA2_ON	=	0x4,
+	TEMP_ACT_NORM_PA0_ON	=	0x2,
+	TEMP_ACT_NORM_PA1_ON	=	0x4,
 	TEMP_ACT_NORM_BTS_SRV_ON=	0x10,
 };
 
@@ -62,11 +62,12 @@ enum mgr_vty_node {
 	LIMIT_SUPPLY_NODE,
 	LIMIT_SOC_NODE,
 	LIMIT_FPGA_NODE,
-	LIMIT_MEMORY_NODE,
+	LIMIT_LOGRF_NODE,
+	LIMIT_OCXO_NODE,
+	LIMIT_TX0_NODE,
 	LIMIT_TX1_NODE,
-	LIMIT_TX2_NODE,
+	LIMIT_PA0_NODE,
 	LIMIT_PA1_NODE,
-	LIMIT_PA2_NODE,
 };
 
 struct lc15bts_mgr_instance {
@@ -82,11 +83,12 @@ struct lc15bts_mgr_instance {
 		struct lc15bts_temp_limit supply_limit;
 		struct lc15bts_temp_limit soc_limit;
 		struct lc15bts_temp_limit fpga_limit;
-		struct lc15bts_temp_limit memory_limit;
+		struct lc15bts_temp_limit logrf_limit;
+		struct lc15bts_temp_limit ocxo_limit;
+		struct lc15bts_temp_limit tx0_limit;
 		struct lc15bts_temp_limit tx1_limit;
-		struct lc15bts_temp_limit tx2_limit;
+		struct lc15bts_temp_limit pa0_limit;
 		struct lc15bts_temp_limit pa1_limit;
-		struct lc15bts_temp_limit pa2_limit;
 	} temp;
 
 	struct {

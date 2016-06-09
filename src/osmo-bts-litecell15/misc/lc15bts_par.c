@@ -46,11 +46,12 @@ const struct value_string lc15bts_par_names[_NUM_LC15BTS_PAR+1] = {
 	{ LC15BTS_PAR_TEMP_SUPPLY_MAX,	"temp-supply-max" },
 	{ LC15BTS_PAR_TEMP_SOC_MAX,	"temp-soc-max" },
 	{ LC15BTS_PAR_TEMP_FPGA_MAX,	"temp-fpga-max" },
-	{ LC15BTS_PAR_TEMP_MEMORY_MAX,	"temp-memory-max" },
+	{ LC15BTS_PAR_TEMP_LOGRF_MAX,	"temp-logrf-max" },
+	{ LC15BTS_PAR_TEMP_OCXO_MAX,	"temp-ocxo-max" },
+	{ LC15BTS_PAR_TEMP_TX0_MAX,	"temp-tx0-max" },
 	{ LC15BTS_PAR_TEMP_TX1_MAX,	"temp-tx1-max" },
-	{ LC15BTS_PAR_TEMP_TX2_MAX,	"temp-tx2-max" },
+	{ LC15BTS_PAR_TEMP_PA0_MAX,	"temp-pa0-max" },
 	{ LC15BTS_PAR_TEMP_PA1_MAX,	"temp-pa1-max" },
-	{ LC15BTS_PAR_TEMP_PA2_MAX,	"temp-pa2-max" },
 	{ LC15BTS_PAR_SERNR,		"serial-nr" },
 	{ LC15BTS_PAR_HOURS, 		"hours-running" },
 	{ LC15BTS_PAR_BOOTS, 		"boot-count" },
@@ -64,11 +65,12 @@ int lc15bts_par_is_int(enum lc15bts_par par)
 	case LC15BTS_PAR_TEMP_SUPPLY_MAX:
         case LC15BTS_PAR_TEMP_SOC_MAX:
         case LC15BTS_PAR_TEMP_FPGA_MAX:
-        case LC15BTS_PAR_TEMP_MEMORY_MAX:
+        case LC15BTS_PAR_TEMP_LOGRF_MAX:
+        case LC15BTS_PAR_TEMP_OCXO_MAX:
+        case LC15BTS_PAR_TEMP_TX0_MAX:
         case LC15BTS_PAR_TEMP_TX1_MAX:
-        case LC15BTS_PAR_TEMP_TX2_MAX:
+        case LC15BTS_PAR_TEMP_PA0_MAX:
         case LC15BTS_PAR_TEMP_PA1_MAX:
-        case LC15BTS_PAR_TEMP_PA2_MAX:
 	case LC15BTS_PAR_SERNR:
 	case LC15BTS_PAR_HOURS:
 	case LC15BTS_PAR_BOOTS:

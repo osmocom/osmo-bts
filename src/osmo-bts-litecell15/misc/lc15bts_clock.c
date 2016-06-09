@@ -27,15 +27,15 @@
 
 #include "lc15bts_clock.h"
 
-#define CLKERR_ERR_SYSFS	"/sys/devices/5002000.clkerr/clkerr1_average"
-#define CLKERR_ACC_SYSFS	"/sys/devices/5002000.clkerr/clkerr1_average_accuracy"
-#define CLKERR_INT_SYSFS	"/sys/devices/5002000.clkerr/clkerr1_average_interval"
-#define CLKERR_FLT_SYSFS	"/sys/devices/5002000.clkerr/clkerr1_fault"
-#define CLKERR_RFS_SYSFS	"/sys/devices/5002000.clkerr/refresh"
-#define CLKERR_RST_SYSFS	"/sys/devices/5002000.clkerr/reset"
+#define CLKERR_ERR_SYSFS	"/var/lc15/clkerr/clkerr1_average"
+#define CLKERR_ACC_SYSFS	"/var/lc15/clkerr/clkerr1_average_accuracy"
+#define CLKERR_INT_SYSFS	"/var/lc15/clkerr/clkerr1_average_interval"
+#define CLKERR_FLT_SYSFS	"/var/lc15/clkerr/clkerr1_fault"
+#define CLKERR_RFS_SYSFS	"/var/lc15/clkerr/refresh"
+#define CLKERR_RST_SYSFS	"/var/lc15/clkerr/reset"
 
-#define OCXODAC_VAL_SYSFS	"/sys/bus/iio/devices/iio:device0/out_voltage0_raw"
-#define OCXODAC_ROM_SYSFS	"/sys/bus/iio/devices/iio:device0/store_eeprom"
+#define OCXODAC_VAL_SYSFS	"/var/lc15/ocxo/voltage"
+#define OCXODAC_ROM_SYSFS	"/var/lc15/ocxo/eeprom"
 
 /* clock error */
 static int clkerr_fd_err = -1;

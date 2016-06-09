@@ -47,7 +47,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define ETH0_ADDR_SYSFS		"/sys/class/net/eth0/address"
+#define ETH0_ADDR_SYSFS		"/var/lc15/net/eth0/address"
 
 static struct osmo_fd nl_fd;
 

@@ -74,7 +74,15 @@ static struct lc15bts_mgr_instance manager = {
 			.thresh_warn	= 60,
 			.thresh_crit	= 78,
 		},
-		.memory_limit	= {
+		.logrf_limit	= {
+			.thresh_warn	= 60,
+			.thresh_crit	= 78,
+		},
+		.ocxo_limit	= {
+			.thresh_warn	= 60,
+			.thresh_crit	= 78,
+		},
+		.tx0_limit	= {
 			.thresh_warn	= 60,
 			.thresh_crit	= 78,
 		},
@@ -82,7 +90,7 @@ static struct lc15bts_mgr_instance manager = {
 			.thresh_warn	= 60,
 			.thresh_crit	= 78,
 		},
-		.tx2_limit	= {
+		.pa0_limit	= {
 			.thresh_warn	= 60,
 			.thresh_crit	= 78,
 		},
@@ -90,12 +98,8 @@ static struct lc15bts_mgr_instance manager = {
 			.thresh_warn	= 60,
 			.thresh_crit	= 78,
 		},
-		.pa2_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
-		},
 		.action_warn		= 0,
-		.action_crit		= TEMP_ACT_PA1_OFF | TEMP_ACT_PA2_OFF,
+		.action_crit		= TEMP_ACT_PA0_OFF | TEMP_ACT_PA1_OFF,
 		.state			= STATE_NORMAL,
 	}
 };
@@ -260,12 +264,12 @@ int main(int argc, char **argv)
 	hours_timer_cb(NULL);
 
  	/* Enable the PAs */
-	rc = lc15bts_power_set(LC15BTS_POWER_PA1, 1);
+	rc = lc15bts_power_set(LC15BTS_POWER_PA0, 1);
 	if (rc < 0) {
 		exit(3);
 	}
 
-	rc = lc15bts_power_set(LC15BTS_POWER_PA2, 1);
+	rc = lc15bts_power_set(LC15BTS_POWER_PA1, 1);
 	if (rc < 0) {
 		exit(3);
 	}

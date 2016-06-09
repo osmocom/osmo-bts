@@ -27,8 +27,8 @@
 
 #include "lc15bts_bid.h"
 
-#define BOARD_REV_SYSFS		"/sys/devices/0.lc15/revision"
-#define BOARD_OPT_SYSFS		"/sys/devices/0.lc15/option"
+#define BOARD_REV_SYSFS		"/var/lc15/platform/revision"
+#define BOARD_OPT_SYSFS		"/var/lc15/platform/option"
  
 static const int option_type_mask[_NUM_OPTION_TYPES] = {
         [LC15BTS_OPTION_OCXO]		= 0x07,
