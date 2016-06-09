@@ -25,7 +25,7 @@
 
 /* PTCH layout from frame number */
 #define L1SAP_FN2MACBLOCK(fn) ((fn % 52) / 4)
-#define L1SAP_FN2PTCCHBLOCK(fn) ((fn / 52) & 7)
+#define L1SAP_FN2PTCCHBLOCK(fn) ((fn / 104) & 3)
 #define L1SAP_IS_PTCCH(fn) ((fn % 52) == 12)
 
 /* subslot from any chan_nr */
