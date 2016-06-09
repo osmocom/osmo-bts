@@ -60,6 +60,8 @@
 #include "oml_router.h"
 #include "misc/lc15bts_bid.h"
 
+unsigned int dsp_trace = 0x00000000;
+
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
@@ -133,8 +135,8 @@ void bts_update_status(enum bts_global_status which, int on)
 void bts_model_print_help()
 {
 	printf( "  -w	--hw-version	Print the targeted HW Version\n"
-		"  -M	--pcu-direct	Force PCU to access message queue for "
-			"PDCH dchannel directly\n"
+		"  -M	--pcu-direct	Force PCU to access message queue for PDCH dchannel directly\n"
+		"  -p	--dsp-trace 	Set DSP trace flags\n"
 		);
 }
 
@@ -180,6 +182,9 @@ int bts_model_handle_options(int argc, char **argv)
 			break;
 
 		switch (c) {
+		case 'p':
+			dsp_trace = strtoul(optarg, NULL, 16);
+			break;
 		case 'M':
 			pcu_direct = 1;
 			break;

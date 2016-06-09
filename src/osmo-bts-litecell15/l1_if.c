@@ -67,6 +67,8 @@
 #include "misc/lc15bts_bid.h"
 #include "utils.h"
 
+extern unsigned int dsp_trace;
+
 struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
 	struct osmo_timer_list timer;	/* timer for L1 timeout */
@@ -1396,6 +1398,10 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		LOGP(DL1C, LOGL_FATAL, "Cannot open L1 interface\n");
 		return -EIO;
 	}
+
+
+	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
+	fl1h->dsp_trace_f = dsp_trace;
 
 	l1if_reset(pinst->u.lc15.hdl);
 
