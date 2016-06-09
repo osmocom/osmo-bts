@@ -111,7 +111,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 
 	if (msg_len > sizeof(scm->msg)) {
 		LOGP(DLSMS, LOGL_ERROR,
-		     "Cannot process SMSCB of %u bytes (max %lu)\n",
+		     "Cannot process SMSCB of %u bytes (max %zu)\n",
 		     msg_len, sizeof(scm->msg));
 		return -EINVAL;
 	}
