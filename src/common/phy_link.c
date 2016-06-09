@@ -71,6 +71,9 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 			LOGP(DL1C, LOGL_INFO, "trx_set_avail(0)\n");
 			trx_set_available(trx, 0);
 			break;
+		case PHY_LINK_CONNECTING:
+			/* nothing to do */
+			break;
 		}
 	}
 
