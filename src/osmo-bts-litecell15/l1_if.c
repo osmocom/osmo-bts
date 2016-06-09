@@ -439,6 +439,8 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 				    l1p->u.phDataReq.msgUnitParam.u8Size);
 	} else {
 		/* empty frame */
+		if (trx->bts->dtxd && trx != trx->bts->c0)
+			lchan->tch.dtxd_active = true;
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 	/* send message to DSP's queue */

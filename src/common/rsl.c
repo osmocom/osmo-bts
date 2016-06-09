@@ -103,6 +103,8 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
 				     struct rsl_ie_chan_mode *cm)
 {
 	lchan->rsl_cmode = cm->spd_ind;
+	lchan->ts->trx->bts->dtxd = (cm->dtx_dtu & RSL_CMOD_DTXd) ? true : false;
+
 	switch (cm->chan_rate) {
 	case RSL_CMOD_SP_GSM1:
 		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
@@ -1694,8 +1696,7 @@ static int rslms_is_meas_rep(struct msgb *msg)
 }
 
 /* 8.4.8 MEASUREMENT RESult */
-static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len,
-			   bool dtxd_used)
+static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
@@ -1713,8 +1714,10 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len,
 		return -ENOMEM;
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
-	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res, dtxd_used,
+	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res,
+						lchan->tch.dtxd_active,
 						meas_res);
+	lchan->tch.dtxd_active = false;
 	if (ie_len >= 3) {
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
@@ -1755,9 +1758,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 
 		LOGP(DRSL, LOGL_INFO, "%s Handing RLL msg %s from LAPDm to MEAS REP\n",
 			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
-		/* FIXME: add dtx downlink support */
-		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg),
-				     false);
+		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg));
 		msgb_free(msg);
 		return rc;
 	} else {
