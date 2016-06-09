@@ -1,5 +1,8 @@
 #include <osmo-bts/bts.h>
 
+struct femtol1_hdl;
+struct bts_model_set_dyn_pdch_data;
+
 /*
  * Stubs to provide an empty bts model implementation for testing.
  * If we ever want to re-define such a symbol we can make them weak
