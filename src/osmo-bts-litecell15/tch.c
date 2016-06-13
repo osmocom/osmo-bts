@@ -467,6 +467,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		l1sap = msgb_l1sap_prim(rmsg);
 		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, rmsg);
 		l1sap->u.tch.chan_nr = chan_nr;
+		l1sap->u.tch.fn = data_ind->u32Fn;
 
 		return l1sap_up(trx, l1sap);
 	}
