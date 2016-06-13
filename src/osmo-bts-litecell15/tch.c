@@ -101,7 +101,8 @@ void osmo_nibble_shift_left_unal(uint8_t *out, const uint8_t *in,
 #define GSM_HR_BYTES	14	/* TS 101318 Chapter 5.2: 112 bits, no sig */
 #define GSM_EFR_BYTES	31	/* TS 101318 Chapter 5.3: 244 bits + 4bit sig */
 
-static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
+static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len,
+					struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
 	uint8_t *cur;
@@ -113,6 +114,13 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 	/* new L1 can deliver bits like we need them */
 	cur = msgb_put(msg, GSM_FR_BYTES);
 	memcpy(cur, l1_payload, GSM_FR_BYTES);
+
+	if (osmo_fr_check_sid(l1_payload, payload_len))
+		lchan->tch.ul_sid = true;
+	else if (lchan->tch.ul_sid) {
+		lchan->tch.ul_sid = false;
+		lchan->rtp_tx_marker = true;
+	}
 
 	return msg;
 }
@@ -131,7 +139,9 @@ static int rtppayload_to_l1_fr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	return GSM_FR_BYTES;
 }
 
-static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload, uint8_t payload_len)
+static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload,
+					 uint8_t payload_len,
+					 struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
 	uint8_t *cur;
@@ -143,6 +153,17 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload, uint8_t payload_le
 	/* new L1 can deliver bits like we need them */
 	cur = msgb_put(msg, GSM_EFR_BYTES);
 	memcpy(cur, l1_payload, GSM_EFR_BYTES);
+	enum osmo_amr_type ft;
+	enum osmo_amr_quality bfi;
+	uint8_t cmr;
+	int8_t sti, cmi;
+	osmo_amr_rtp_dec(l1_payload, payload_len, &cmr, &cmi, &ft, &bfi, &sti);
+	if (ft == AMR_GSM_EFR_SID)
+		lchan->tch.ul_sid = true;
+	else if (lchan->tch.ul_sid) {
+		lchan->tch.ul_sid = false;
+		lchan->rtp_tx_marker = true;
+	}
 	return msg;
 }
 
@@ -154,7 +175,8 @@ static int rtppayload_to_l1_efr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	return payload_len;
 }
 
-static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len)
+static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len,
+					struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
 	uint8_t *cur;
@@ -171,6 +193,13 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 
 	cur = msgb_put(msg, GSM_HR_BYTES);
 	memcpy(cur, l1_payload, GSM_HR_BYTES);
+
+	if (osmo_hr_check_sid(l1_payload, payload_len))
+		lchan->tch.ul_sid = true;
+	else if (lchan->tch.ul_sid) {
+		lchan->tch.ul_sid = false;
+		lchan->rtp_tx_marker = true;
+	}
 
 	return msg;
 }
@@ -431,6 +460,15 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		    lchan->type != GSM_LCHAN_TCH_F)
 			goto err_payload_match;
 		break;
+	case GsmL1_TchPlType_Amr_Onset:
+		if (lchan->type != GSM_LCHAN_TCH_H &&
+		    lchan->type != GSM_LCHAN_TCH_F)
+			goto err_payload_match;
+		/* according to 3GPP TS 26.093 ONSET frames precede the first
+		   speech frame of a speech burst - set the marker for next RTP
+		   frame and drop last SID */
+		lchan->rtp_tx_marker = true;
+		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "%s Rx Payload Type %s is unsupported\n",
 			gsm_lchan_name(lchan),
@@ -441,13 +479,13 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:
-		rmsg = l1_to_rtppayload_fr(payload, payload_len);
+		rmsg = l1_to_rtppayload_fr(payload, payload_len, lchan);
 		break;
 	case GsmL1_TchPlType_Hr:
-		rmsg = l1_to_rtppayload_hr(payload, payload_len);
+		rmsg = l1_to_rtppayload_hr(payload, payload_len, lchan);
 		break;
 	case GsmL1_TchPlType_Efr:
-		rmsg = l1_to_rtppayload_efr(payload, payload_len);
+		rmsg = l1_to_rtppayload_efr(payload, payload_len, lchan);
 		break;
 	case GsmL1_TchPlType_Amr:
 		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);

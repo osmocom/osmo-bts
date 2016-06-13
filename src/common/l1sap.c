@@ -866,8 +866,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	/* hand msg to RTP code for transmission */
 	if (lchan->abis_ip.rtp_socket)
-		osmo_rtp_send_frame(lchan->abis_ip.rtp_socket,
-			msg->data, msg->len, fn_ms_adj(fn, lchan->tch.last_fn));
+		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+			msg->data, msg->len, fn_ms_adj(fn, lchan->tch.last_fn), lchan->rtp_tx_marker);
 
 	/* if loopback is enabled, also queue received RTP data */
 	if (lchan->loopback) {
@@ -885,6 +885,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 		msgb_enqueue(&lchan->dl_tch_queue, msg);
 	}
+
+	lchan->rtp_tx_marker = false;
 	lchan->tch.last_fn = fn;
 	return 0;
 }
