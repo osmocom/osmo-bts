@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -577,7 +577,66 @@ err_payload_match:
 	return -EINVAL;
 }
 
-struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan)
+static inline bool fn_chk(uint8_t *t, uint32_t fn)
+{
+	uint8_t i;
+	for (i = 0; i < ARRAY_SIZE(t); i++)
+		if (fn % 104 == t[i])
+			return false;
+	return true;
+}
+
+static bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
+{
+	/* 3GPP TS 45.008 § 8.3 */
+	uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
+		h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
+		h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			return fn_chk(f, fn);
+		else
+			return fn_chk(lchan->nr ? h1 : h0, fn);
+	}
+	return false;
+}
+
+static bool repeat_last_sid(struct gsm_lchan *lchan, struct msgb *msg)
+{
+	GsmL1_Prim_t *l1p;
+	GsmL1_PhDataReq_t *data_req;
+	GsmL1_MsgUnitParam_t *msu_param;
+	uint8_t *l1_payload;
+
+	l1p = msgb_l1prim(msg);
+	data_req = &l1p->u.phDataReq;
+	msu_param = &data_req->msgUnitParam;
+	l1_payload = &msu_param->u8Buffer[1];
+
+	if (lchan->tch.last_sid.len) {
+		memcpy(l1_payload, lchan->tch.last_sid.buf,
+		       lchan->tch.last_sid.len);
+		msu_param->u8Size = lchan->tch.last_sid.len + 1;
+		return true;
+	}
+	return false;
+}
+
+/* store the last SID frame in lchan context */
+void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
+		   uint32_t fn, bool update)
+{
+	size_t copy_len = OSMO_MIN(length + 1,
+				   ARRAY_SIZE(lchan->tch.last_sid.buf));
+
+	lchan->tch.last_sid.len = copy_len;
+	lchan->tch.last_sid.fn = fn;
+	lchan->tch.last_sid.is_update = update;
+
+	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
+}
+
+struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct msgb *msg;
 	GsmL1_Prim_t *l1p;
@@ -599,21 +658,63 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan)
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
-		if (lchan->tch.last_sid.len) {
-			memcpy(l1_payload, lchan->tch.last_sid.buf,
-				lchan->tch.last_sid.len);
-			msu_param->u8Size = lchan->tch.last_sid.len+1;
+		/* according to 3GPP TS 26.093 A.5.1.1: */
+		if (lchan->tch.last_sid.is_update) {
+			/* SID UPDATE should be repeated every 8th frame */
+			if (fn - lchan->tch.last_sid.fn < 7) {
+				msgb_free(msg);
+				return NULL;
+			}
 		} else {
-			/* FIXME: decide if we should send SPEECH_BAD or
-			 * SID_BAD */
-#if 0
-			*payload_type = GsmL1_TchPlType_Amr_SidBad;
-			memset(l1_payload, 0xFF, 5);
-			msu_param->u8Size = 5 + 3;
-#else
-			/* send an all-zero SID */
-			msu_param->u8Size = 8;
-#endif
+			/* 3rd frame after SID FIRST should be SID UPDATE */
+			if (fn - lchan->tch.last_sid.fn < 3) {
+				msgb_free(msg);
+				return NULL;
+			}
+		}
+		if (repeat_last_sid(lchan, msg))
+			return msg;
+		else {
+			LOGP(DL1C, LOGL_NOTICE, "Have to send AMR frame on TCH "
+			     "(FN=%u) but SID buffer is empty - sent NO_DATA\n",
+			     fn);
+			osmo_amr_rtp_enc(l1_payload, 0, AMR_NO_DATA,
+					 AMR_GOOD);
+			return msg;
+		}
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			*payload_type = GsmL1_TchPlType_Fr;
+		else
+			*payload_type = GsmL1_TchPlType_Hr;
+		/* unlike AMR, FR & HR schedued based on absolute FN value */
+		if (dtx_sched_optional(lchan, fn)) {
+			msgb_free(msg);
+			return NULL;
+		}
+		if (repeat_last_sid(lchan, msg))
+			return msg;
+		else {
+			LOGP(DL1C, LOGL_NOTICE, "Have to send V1 frame on TCH "
+			     "(FN=%u) but SID buffer is empty - sent nothing\n",
+			     fn);
+			return NULL;
+		}
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		*payload_type = GsmL1_TchPlType_Efr;
+		if (dtx_sched_optional(lchan, fn)) {
+			msgb_free(msg);
+			return NULL;
+		}
+		if (repeat_last_sid(lchan, msg))
+			return msg;
+		else {
+			LOGP(DL1C, LOGL_NOTICE, "Have to send EFR frame on TCH "
+			     "(FN=%u) but SID buffer is empty - sent nothing\n",
+			     fn);
+			return NULL;
 		}
 		break;
 	default:
