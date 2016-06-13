@@ -1156,6 +1156,7 @@ int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
 
 	ais = (tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD *)
 						msgb_put(msg, sizeof(*ais));
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CMD_DEF(ais);
 	l1if_fill_msg_hdr(&ais->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CID);
 
@@ -1197,6 +1198,7 @@ int l1if_check_app_version(struct gsm_bts_trx *trx)
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD *ai;
 
 	ai = (tOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD *) msgb_put(msg, sizeof(*ai));
+	mOCTVC1_MAIN_MSG_APPLICATION_INFO_CMD_DEF(ai);
 	l1if_fill_msg_hdr(&ai->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
 			  cOCTVC1_MAIN_MSG_APPLICATION_INFO_CID);
 
