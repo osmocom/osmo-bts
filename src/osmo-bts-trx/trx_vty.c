@@ -273,6 +273,24 @@ DEFUN(cfg_phyinst_slotmask, cfg_phyinst_slotmask_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_power_on, cfg_phy_power_on_cmd,
+	"osmotrx power (on|off)",
+	OSMOTRX_STR
+	"Change TRX state\n"
+	"Turn it ON or OFF\n")
+{
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	if (strcmp(argv[0], "on"))
+		vty_out(vty, "OFF: %d%s", trx_if_cmd_poweroff(l1h), VTY_NEWLINE);
+	else {
+		vty_out(vty, "ON: %d%s", trx_if_cmd_poweron(l1h), VTY_NEWLINE);
+		settsc_enabled = 1;
+	}
+
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_phy_fn_advance, cfg_phy_fn_advance_cmd,
 	"osmotrx fn-advance <0-30>",
@@ -499,6 +517,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_no_tx_atten_cmd);
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_slotmask_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_power_on_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_maxdly_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_no_maxdly_cmd);
 

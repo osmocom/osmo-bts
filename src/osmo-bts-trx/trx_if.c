@@ -195,9 +195,10 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	va_list ap;
 	int l, pending = 0;
 
-	if (!transceiver_available && !!strcmp(cmd, "POWEROFF")) {
-		LOGP(DTRX, LOGL_ERROR, "CTRL ignored: No clock from "
-			"transceiver, please fix!\n");
+	if (!transceiver_available &&
+	    !(!strcmp(cmd, "POWEROFF") || !strcmp(cmd, "POWERON"))) {
+		LOGP(DTRX, LOGL_ERROR, "CTRL %s ignored: No clock from "
+		     "transceiver, please fix!\n", cmd);
 		return -EIO;
 	}
 
