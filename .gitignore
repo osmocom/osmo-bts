@@ -53,6 +53,8 @@ tests/testsuite.log
 
 # Possible generated file
 doc/vty_reference.xml
+doc/dyn_pdch.svg
+doc/dyn_pdch.png
 
 # Backups, vi, merges
 *~
