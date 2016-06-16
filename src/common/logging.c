@@ -136,6 +136,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 #endif
+	[DSUM] = {
+		.name = "DSUM",
+		.description = "DSUM",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
+	},
 };
 
 const struct log_info bts_log_info = {
