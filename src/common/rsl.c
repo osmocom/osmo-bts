@@ -1622,6 +1622,269 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 }
 
 /*
+ * dynamic TCH/F_PDCH related messages, originally ip.access specific but
+ * reused for other BTS models (sysmo-bts, ...)
+ */
+
+/* PDCH ACT/DEACT ACKNOWLEDGE */
+static int rsl_tx_dyn_pdch_ack(struct gsm_lchan *lchan, bool pdch_act)
+{
+	struct msgb *msg;
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx PDCH %s ACK\n",
+	     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT");
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	msg->len = 0;
+	msg->data = msg->tail = msg->l3h;
+
+	rsl_dch_push_hdr(msg,
+			 pdch_act? RSL_MT_IPAC_PDCH_ACT_ACK
+				 : RSL_MT_IPAC_PDCH_DEACT_ACK,
+			 chan_nr);
+	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
+
+	return abis_bts_rsl_sendmsg(msg);
+}
+
+/* PDCH ACT/DEACT NEGATIVE ACKNOWLEDGE */
+static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
+				uint8_t cause)
+{
+	struct msgb *msg;
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Tx PDCH %s NACK (cause = 0x%02x)\n",
+	     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT", cause);
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	msg->len = 0;
+	msg->data = msg->tail = msg->l3h;
+
+	/* 9.3.26 Cause */
+	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
+	rsl_dch_push_hdr(msg,
+			 pdch_act? RSL_MT_IPAC_PDCH_ACT_NACK
+				 : RSL_MT_IPAC_PDCH_DEACT_NACK,
+			 chan_nr);
+	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
+
+	return abis_bts_rsl_sendmsg(msg);
+}
+
+/* Starting point for dynamic PDCH switching. See doc/dyn_pdch.msc for a
+ * diagram of what will happen here. The implementation is as follows:
+ *
+ * PDCH ACT == TCH/F -> PDCH:
+ * 1. call bts_model_ts_disconnect() to disconnect TCH/F;
+ * 2. dyn_pdch_ts_disconnected() is called when done;
+ * 3. call bts_model_ts_connect() to connect as PDTCH;
+ * 4. dyn_pdch_ts_connected() is called when done;
+ * 5. instruct the PCU to enable PDTCH;
+ * 6. the PCU will call back with an activation request;
+ * 7. l1sap_info_act_cnf() will call dyn_pdch_complete() when SAPI activations
+ *    are done;
+ * 8. send a PDCH ACT ACK.
+ *
+ * PDCH DEACT == PDCH -> TCH/F:
+ * 1. instruct the PCU to disable PDTCH;
+ * 2. the PCU will call back with a deactivation request;
+ * 3. l1sap_info_rel_cnf() will call bts_model_ts_disconnect() when SAPI
+ *    deactivations are done;
+ * 4. dyn_pdch_ts_disconnected() is called when done;
+ * 5. call bts_model_ts_connect() to connect as TCH/F;
+ * 6. dyn_pdch_ts_connected() is called when done;
+ * 7. directly call dyn_pdch_complete(), since no further action required for
+ *    TCH/F;
+ * 8. send a PDCH DEACT ACK.
+ *
+ * When an error happens along the way, a PDCH DE/ACT NACK is sent.
+ * TODO: may need to be made more waterproof in all stages, to send a NACK and
+ * clear the PDCH pending flags from ts->flags.
+ */
+static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
+{
+	int rc;
+	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+	bool is_pdch_act = (ts->flags & TS_F_PDCH_ACTIVE);
+
+	if (ts->flags & TS_F_PDCH_PENDING_MASK) {
+		/* Only one of the pending flags should ever be set at the same
+		 * time, but just log both in case both should be set. */
+		LOGP(DL1C, LOGL_ERROR,
+		     "%s Request to PDCH %s, but PDCH%s%s is still pending\n",
+		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT",
+		     (ts->flags & TS_F_PDCH_ACT_PENDING)? " ACT" : "",
+		     (ts->flags & TS_F_PDCH_DEACT_PENDING)? " DEACT" : "");
+		rsl_tx_dyn_pdch_nack(lchan, pdch_act, RSL_ERR_NORMAL_UNSPEC);
+		return;
+	}
+
+	ts->flags |= pdch_act? TS_F_PDCH_ACT_PENDING
+			     : TS_F_PDCH_DEACT_PENDING;
+
+	/* ensure that this is indeed a dynamic-PDCH channel */
+	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Attempt to PDCH %s on TS that is not a TCH/F_PDCH (is %s)\n",
+		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT",
+		     gsm_pchan_name(ts->pchan));
+		dyn_pdch_complete(ts, -EINVAL);
+		return;
+	}
+
+	if (is_pdch_act == pdch_act) {
+		LOGP(DL1C, LOGL_NOTICE,
+		     "%s Request to PDCH %s, but is already so\n",
+		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT");
+		dyn_pdch_complete(ts, 0);
+		return;
+	}
+
+	if (pdch_act) {
+		/* First, disconnect the TCH channel, to connect PDTCH later */
+		rc = bts_model_ts_disconnect(ts);
+	} else {
+		/* First, deactivate PDTCH through the PCU, to connect TCH
+		 * later.
+		 * pcu_tx_info_ind() will pick up TS_F_PDCH_DEACT_PENDING and
+		 * trigger a deactivation.
+		 * Except when the PCU is not connected yet, then trigger
+		 * disconnect immediately from here. The PCU will catch up when
+		 * it connects. */
+		/* TODO: timeout on channel connect / disconnect request from PCU? */
+		if (pcu_connected())
+			rc = pcu_tx_info_ind();
+		else
+			rc = bts_model_ts_disconnect(ts);
+	}
+
+	/* Error? then NACK right now. */
+	if (rc)
+		dyn_pdch_complete(ts, rc);
+}
+
+void dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
+{
+	int rc;
+	enum gsm_phys_chan_config as_pchan;
+
+	if (ts->flags & TS_F_PDCH_DEACT_PENDING) {
+		LOGP(DRSL, LOGL_DEBUG,
+		     "%s PDCH DEACT operation: channel disconnected, will reconnect as TCH\n",
+		     gsm_lchan_name(ts->lchan));
+		ts->lchan[0].type = GSM_LCHAN_TCH_F;
+		as_pchan = GSM_PCHAN_TCH_F;
+	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
+		LOGP(DRSL, LOGL_DEBUG,
+		     "%s PDCH ACT operation: channel disconnected, will reconnect as PDTCH\n",
+		     gsm_lchan_name(ts->lchan));
+		ts->lchan[0].type = GSM_LCHAN_PDTCH;
+		as_pchan = GSM_PCHAN_PDCH;
+	}
+
+	rc = bts_model_ts_connect(ts, as_pchan);
+	/* Error? then NACK right now. */
+	if (rc)
+		dyn_pdch_complete(ts, rc);
+}
+
+void dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
+{
+	int rc;
+
+	if (ts->flags & TS_F_PDCH_DEACT_PENDING) {
+		if (ts->lchan[0].type != GSM_LCHAN_TCH_F)
+			LOGP(DRSL, LOGL_ERROR, "%s PDCH DEACT error:"
+			     " timeslot connected, so expecting"
+			     " lchan type TCH/F, but is %s\n",
+			     gsm_lchan_name(ts->lchan),
+			     gsm_lchant_name(ts->lchan[0].type));
+
+		LOGP(DRSL, LOGL_DEBUG, "%s PDCH DEACT operation:"
+		     " timeslot connected as TCH/F\n",
+		     gsm_lchan_name(ts->lchan));
+
+		/* During PDCH DEACT, we're done right after the TCH/F came
+		 * back up. */
+		dyn_pdch_complete(ts, 0);
+
+	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
+		if (ts->lchan[0].type != GSM_LCHAN_PDTCH)
+			LOGP(DRSL, LOGL_ERROR, "%s PDCH ACT error:"
+			     " timeslot connected, so expecting"
+			     " lchan type PDTCH, but is %s\n",
+			     gsm_lchan_name(ts->lchan),
+			     gsm_lchant_name(ts->lchan[0].type));
+
+		LOGP(DRSL, LOGL_DEBUG, "%s PDCH ACT operation:"
+		     " timeslot connected as PDTCH\n",
+		     gsm_lchan_name(ts->lchan));
+
+		/* The PDTCH is connected, now tell the PCU about it. Except
+		 * when the PCU is not connected (yet), then there's nothing
+		 * left to do now. The PCU will catch up when it connects. */
+		if (!pcu_connected()) {
+			dyn_pdch_complete(ts, 0);
+			return;
+		}
+
+		/* The PCU will request to activate the PDTCH SAPIs, which,
+		 * when done, will call back to dyn_pdch_complete(). */
+		/* TODO: timeout on channel connect / disconnect request from PCU? */
+		rc = pcu_tx_info_ind();
+
+		/* Error? then NACK right now. */
+		if (rc)
+			dyn_pdch_complete(ts, rc);
+	}
+}
+
+void dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
+{
+	bool pdch_act = ts->flags & TS_F_PDCH_ACT_PENDING;
+
+	if ((ts->flags & TS_F_PDCH_PENDING_MASK) == TS_F_PDCH_PENDING_MASK)
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Internal Error: both PDCH ACT and PDCH DEACT pending\n",
+		     gsm_lchan_name(ts->lchan));
+
+	ts->flags &= ~TS_F_PDCH_PENDING_MASK;
+
+	if (rc != 0) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "PDCH %s on dynamic TCH/F_PDCH returned error %d\n",
+		     pdch_act? "ACT" : "DEACT", rc);
+		rsl_tx_dyn_pdch_nack(ts->lchan, pdch_act, RSL_ERR_NORMAL_UNSPEC);
+		return;
+	}
+
+	if (pdch_act)
+		ts->flags |= TS_F_PDCH_ACTIVE;
+	else
+		ts->flags &= ~TS_F_PDCH_ACTIVE;
+	DEBUGP(DL1C, "%s %s switched to %s mode (ts->flags == %x)\n",
+	       gsm_lchan_name(ts->lchan), gsm_pchan_name(ts->pchan),
+	       pdch_act? "PDCH" : "TCH/F", ts->flags);
+
+	rc = rsl_tx_dyn_pdch_ack(ts->lchan, pdch_act);
+	if (rc)
+		LOGP(DRSL, LOGL_ERROR,
+		     "Failed to transmit PDCH %s ACK, rc %d\n",
+		     pdch_act? "ACT" : "DEACT", rc);
+}
+
+/*
  * selecting message
  */
 
@@ -1867,6 +2130,11 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		break;
 	case RSL_MT_MS_POWER_CONTROL:
 		ret = rsl_rx_ms_pwr_ctrl(msg);
+		break;
+	case RSL_MT_IPAC_PDCH_ACT:
+	case RSL_MT_IPAC_PDCH_DEACT:
+		rsl_rx_dyn_pdch(msg, dch->c.msg_type == RSL_MT_IPAC_PDCH_ACT);
+		ret = 0;
 		break;
 	case RSL_MT_PHY_CONTEXT_REQ:
 	case RSL_MT_PREPROC_CONFIG:

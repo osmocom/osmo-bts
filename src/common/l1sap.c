@@ -440,6 +440,12 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 	else
 		rsl_tx_chan_act_ack(lchan);
 
+	/* During PDCH ACT, this is where we know that the PCU is done
+	 * activating a PDCH, and PDCH switchover is complete.  See
+	 * rsl_rx_dyn_pdch() */
+	if (lchan->ts->flags & TS_F_PDCH_ACT_PENDING)
+		dyn_pdch_complete(lchan->ts, info_act_cnf->cause? -EIO : 0);
+
 	return 0;
 }
 
@@ -456,6 +462,12 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
 	rsl_tx_rf_rel_ack(lchan);
+
+	/* During PDCH DEACT, this marks the deactivation of the PDTCH as
+	 * requested by the PCU. Next up, we disconnect the TS completely and
+	 * call back to dyn_pdch_ts_disconnected(). See rsl_rx_dyn_pdch(). */
+	if (lchan->ts->flags & TS_F_PDCH_DEACT_PENDING)
+		bts_model_ts_disconnect(lchan->ts);
 
 	return 0;
 }

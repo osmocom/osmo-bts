@@ -35,5 +35,9 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr);
 
+void dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts);
+void dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts);
+void dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);
+
 #endif // _RSL_H */
 
