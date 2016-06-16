@@ -1,3 +1,10 @@
+osmo-bts (0.3.0~fw-5) precise; urgency=low
+
+  * trx: Add "maxdlynb" VTY command to control max TA for Normal Bursts.
+  * rsl: Output RTP stats before closing the socket.
+
+ -- Alexander Chemeris  <Alexander.Chemeris@fairwaves.co>  Fri, 20 May 2016 22:25:40 +0300
+
 osmo-bts (0.3.0~fw-4) precise; urgency=low
 
   * Fix loopback support, which allows us to run BER tests.
