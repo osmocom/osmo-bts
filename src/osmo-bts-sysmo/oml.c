@@ -525,6 +525,7 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 	case GSM_PCHAN_CCCH:
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
 	case GSM_PCHAN_UNKNOWN:
 	default:
 		return GsmL1_SubCh_NA;
