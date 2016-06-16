@@ -1846,13 +1846,60 @@ int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 	return l1if_set_txpower(trx_femtol1_hdl(trx), ((float) p_trxout_mdBm)/1000.0);
 }
 
+static int ts_disconnect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			       void *data)
+{
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphDisconnectCnf_t *cnf = &l1p->u.mphDisconnectCnf;
+	struct gsm_bts_trx_ts *ts = &trx->ts[cnf->u8Tn];
+	OSMO_ASSERT(cnf->u8Tn < TRX_NR_TS);
+
+	LOGP(DL1C, LOGL_DEBUG, "%s Rx mphDisconnectCnf\n",
+	     gsm_lchan_name(ts->lchan));
+
+	if (ts->flags & TS_F_PDCH_PENDING_MASK)
+		dyn_pdch_ts_disconnected(ts);
+
+	return 0;
+}
+
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 {
-	return -ENOTSUP;
+	struct msgb *msg = l1p_msgb_alloc();
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(ts->trx);
+	GsmL1_MphDisconnectReq_t *cr;
+
+	DEBUGP(DRSL, "%s TS disconnect\n", gsm_lchan_name(ts->lchan));
+	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDisconnectReq, fl1h,
+		       l1p_handle_for_ts(ts));
+	cr->u8Tn = ts->nr;
+
+	return l1if_gsm_req_compl(fl1h, msg, ts_disconnect_cb, NULL);
+}
+
+static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+			 void *data)
+{
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphConnectCnf_t *cnf = &l1p->u.mphConnectCnf;
+	struct gsm_bts_trx_ts *ts = &trx->ts[cnf->u8Tn];
+	OSMO_ASSERT(cnf->u8Tn < TRX_NR_TS);
+
+	DEBUGP(DL1C, "%s %s Rx mphConnectCnf flags=%s%s%s\n",
+	       gsm_lchan_name(ts->lchan),
+	       gsm_pchan_name(ts->pchan),
+	       ts->flags & TS_F_PDCH_ACTIVE ? "ACTIVE " : "",
+	       ts->flags & TS_F_PDCH_ACT_PENDING ? "ACT_PENDING " : "",
+	       ts->flags & TS_F_PDCH_DEACT_PENDING ? "DEACT_PENDING " : "");
+
+	if (ts->flags & TS_F_PDCH_PENDING_MASK)
+		dyn_pdch_ts_connected(ts);
+
+	return 0;
 }
 
 int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 {
-	return -ENOTSUP;
+	return ts_connect_as(ts, as_pchan, ts_connect_cb, NULL);
 }
