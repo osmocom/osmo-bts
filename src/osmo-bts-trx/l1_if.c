@@ -23,10 +23,12 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/gsm/abis_nm.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -106,9 +108,12 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 	if (avail) {
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->mo);
 		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+		if (!pinst->u.osmotrx.sw_act_reported) {
+			oml_mo_tx_sw_act_rep(&trx->mo);
+			oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+			pinst->u.osmotrx.sw_act_reported = true;
+		}
 
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED,
@@ -685,7 +690,8 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj)
 {
 	int rc;
-
+	LOGP(DOML, LOGL_DEBUG, "bts_model_opstart: %s received\n",
+	     get_value_string(abis_nm_obj_class_names, mo->obj_class));
 	switch (mo->obj_class) {
 	case NM_OC_RADIO_CARRIER:
 		/* activate transceiver */

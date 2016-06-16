@@ -518,7 +518,9 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		if (!pinst->u.osmotrx.hdl)
 			goto cleanup;
 	}
-
+	/* FIXME: is there better way to check/report TRX availability? */
+	transceiver_available = 1;
+	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 	return 0;
 
 cleanup:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <osmocom/core/linuxlist.h>
 
 #include <osmo-bts/scheduler.h>
@@ -94,6 +95,7 @@ struct phy_instance {
 		} sysmobts;
 		struct {
 			struct trx_l1h *hdl;
+			bool sw_act_reported;
 		} osmotrx;
 		struct {
 			/* logical transceiver number within one PHY */
