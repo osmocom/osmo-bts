@@ -19,4 +19,6 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len);
 int pcu_sock_init(const char *path);
 void pcu_sock_exit(void);
 
+bool pcu_connected(void);
+
 #endif /* _PCU_IF_H */

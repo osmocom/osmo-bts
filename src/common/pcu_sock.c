@@ -922,3 +922,13 @@ int osmo_unixsock_listen(struct osmo_fd *bfd, int type, const char *path)
 	return 0;
 }
 
+bool pcu_connected(void) {
+	struct gsm_network *net = &bts_gsmnet;
+	struct pcu_sock_state *state = net->pcu_state;
+
+	if (!state)
+		return false;
+	if (state->conn_bfd.fd <= 0)
+		return false;
+	return true;
+}
