@@ -19,9 +19,15 @@
  *
  */
 
+#include <osmocom/core/logging.h>
+#include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 {
+	DEBUGP(DL1C, "%s state %s -> %s\n",
+	       gsm_lchan_name(lchan),
+	       gsm_lchans_name(lchan->state),
+	       gsm_lchans_name(state));
 	lchan->state = state;
 }
