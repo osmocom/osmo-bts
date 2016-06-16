@@ -275,3 +275,5 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx) { return 0; }
 int bts_model_trx_close(struct gsm_bts_trx *trx) { return 0; }
 void trx_get_hlayer1(void) {}
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan) { return 0; }
+int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts) { return 0; }
+int bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan) { return 0; }

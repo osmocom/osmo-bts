@@ -55,4 +55,7 @@ void bts_model_print_help();
 void bts_model_phy_link_set_defaults(struct phy_link *plink);
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst);
 
+int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts);
+int bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan);
+
 #endif
