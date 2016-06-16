@@ -95,6 +95,24 @@ struct msgb *pcu_msgb_alloc(uint8_t msg_type, uint8_t bts_nr)
 	return msg;
 }
 
+static bool ts_is_pdch(struct gsm_bts_trx_ts *ts) {
+	if (ts->pchan == GSM_PCHAN_PDCH)
+		return true;
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
+		/* When we're busy deactivating the PDCH, we first set
+		 * DEACT_PENDING, tell the PCU about it and wait for a
+		 * response. So DEACT_PENDING means "no PDCH" to the PCU.
+		 * Similarly, when we're activating PDCH, we set the
+		 * ACT_PENDING and wait for an activation response from the
+		 * PCU, so ACT_PENDING means "is PDCH". */
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			return !(ts->flags & TS_F_PDCH_DEACT_PENDING);
+		else
+			return (ts->flags & TS_F_PDCH_ACT_PENDING);
+	}
+	return false;
+}
+
 int pcu_tx_info_ind(void)
 {
 	struct gsm_network *net = &bts_gsmnet;
@@ -207,7 +225,7 @@ int pcu_tx_info_ind(void)
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
-			 && ts->pchan == GSM_PCHAN_PDCH) {
+			    && ts_is_pdch(ts)) {
 				info_ind->trx[i].pdch_mask |= (1 << j);
 				info_ind->trx[i].tsc[j] =
 					(ts->tsc >= 0) ? ts->tsc : bts->bsic & 7;
