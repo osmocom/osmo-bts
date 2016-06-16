@@ -755,7 +755,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	if (lchan->state != LCHAN_S_NONE) {
 		LOGP(DRSL, LOGL_ERROR,
-		     "%s: error lchan is not available state: %s.\n",
+		     "%s: error: lchan is not available, but in state: %s.\n",
 		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
