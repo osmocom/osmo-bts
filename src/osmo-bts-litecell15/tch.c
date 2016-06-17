@@ -431,7 +431,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
 	uint8_t payload_type = data_ind->msgUnitParam.u8Buffer[0];
 	uint8_t *payload = data_ind->msgUnitParam.u8Buffer + 1;
-	uint8_t payload_len;
+	uint8_t payload_len, sid_first[7] = {0};
 	struct msgb *rmsg = NULL;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
@@ -469,6 +469,32 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		   frame and drop last SID */
 		lchan->rtp_tx_marker = true;
 		break;
+	case GsmL1_TchPlType_Amr_SidFirstP1:
+		if (lchan->type != GSM_LCHAN_TCH_H)
+			goto err_payload_match;
+		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_P1 from L1 "
+		     "(%d bytes)\n", payload_len);
+		break;
+	case GsmL1_TchPlType_Amr_SidFirstP2:
+		if (lchan->type != GSM_LCHAN_TCH_H)
+			goto err_payload_match;
+		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_P2 from L1 "
+		     "(%d bytes)\n", payload_len);
+		break;
+	case GsmL1_TchPlType_Amr_SidFirstInH:
+		if (lchan->type != GSM_LCHAN_TCH_H)
+			goto err_payload_match;
+		lchan->rtp_tx_marker = true;
+		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_INH from L1 "
+		     "(%d bytes)\n", payload_len);
+		break;
+	case GsmL1_TchPlType_Amr_SidUpdateInH:
+		if (lchan->type != GSM_LCHAN_TCH_H)
+			goto err_payload_match;
+		lchan->rtp_tx_marker = true;
+		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_UPDATE_INH from L1 "
+		     "(%d bytes)\n", payload_len);
+		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "%s Rx Payload Type %s is unsupported\n",
 			gsm_lchan_name(lchan),
@@ -489,6 +515,14 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		break;
 	case GsmL1_TchPlType_Amr:
 		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
+		break;
+	case GsmL1_TchPlType_Amr_SidFirstP2:
+		/* L1 do not give us SID_FIRST data, just indication */
+		memcpy(sid_first, payload, payload_len);
+		int len = osmo_amr_rtp_enc(sid_first, 0, AMR_SID, AMR_GOOD);
+		if (len < 0)
+			return 0;
+		rmsg = l1_to_rtppayload_amr(sid_first, len, lchan);
 		break;
 	}
 
