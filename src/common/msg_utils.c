@@ -86,6 +86,49 @@ static int check_manuf(struct msgb *msg, struct abis_om_hdr *omh, size_t msg_siz
 	return type;
 }
 
+/* store the last SID frame in lchan context */
+void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
+		   uint32_t fn, bool update)
+{
+	size_t copy_len = OSMO_MIN(length + 1,
+				   ARRAY_SIZE(lchan->tch.last_sid.buf));
+
+	lchan->tch.last_sid.len = copy_len;
+	lchan->tch.last_sid.fn = fn;
+	lchan->tch.last_sid.is_update = update;
+
+	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
+}
+
+static inline bool fn_chk(uint8_t *t, uint32_t fn)
+{
+	uint8_t i;
+	for (i = 0; i < ARRAY_SIZE(t); i++)
+		if (fn % 104 == t[i])
+			return false;
+	return true;
+}
+
+/*! \brief Check if TX scheduling is optional for a given FN in case of DTX
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] fn Frame Number for which we check scheduling
+ *  \returns true if transmission can be omitted, false otherwise
+ */
+bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
+{
+	/* According to 3GPP TS 45.008 § 8.3: */
+	uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
+		h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
+		h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			return fn_chk(f, fn);
+		else
+			return fn_chk(lchan->nr ? h1 : h0, fn);
+	}
+	return false;
+}
+
 /**
  * Return 0 in case the IPA structure is okay and in this
  * case the l2h will be set to the beginning of the data.

@@ -22,6 +22,15 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 	LOGPC(ss, logl, "\n");
 }
 
+int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
+{
+	unsigned int i;
+	for (i = 0; i < amr_mrc->num_modes; i++) {
+		if (amr_mrc->bts_mode[i].mode == cmi)
+			return i;
+	}
+	return -EINVAL;
+}
 
 /* parse a GSM 04.08 MultiRate Config IE (10.5.2.21aa) in a more
  * comfortable internal data structure */

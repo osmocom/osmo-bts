@@ -39,6 +39,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/msg_utils.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/l1sap.h>
@@ -328,16 +329,6 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	return msg;
 }
 
-int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
-{
-	unsigned int i;
-	for (i = 0; i < amr_mrc->num_modes; i++) {
-		if (amr_mrc->bts_mode[i].mode == cmi)
-			return i;
-	}
-	return -EINVAL;
-}
-
 /*! \brief convert AMR from RTP payload to L1 format
  *  \param[out] l1_payload payload part of L1 buffer
  *  \param[in] rtp_payload pointer to RTP payload data
@@ -622,23 +613,9 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		break;
 	}
 
-	if (rmsg) {
-		struct osmo_phsap_prim *l1sap;
-
-		LOGP(DL1C, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
-			gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
-
-		/* add l1sap header */
-		rmsg->l2h = rmsg->data;
-		msgb_push(rmsg, sizeof(*l1sap));
-		rmsg->l1h = rmsg->data;
-		l1sap = msgb_l1sap_prim(rmsg);
-		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, rmsg);
-		l1sap->u.tch.chan_nr = chan_nr;
-		l1sap->u.tch.fn = data_ind->u32Fn;
-
-		return l1sap_up(trx, l1sap);
-	}
+	if (rmsg)
+		return add_l1sap_header(trx, rmsg, lchan, chan_nr,
+					data_ind->u32Fn);
 
 	return 0;
 
@@ -647,30 +624,6 @@ err_payload_match:
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_tch_pl_names, payload_type));
 	return -EINVAL;
-}
-
-static inline bool fn_chk(uint8_t *t, uint32_t fn)
-{
-	uint8_t i;
-	for (i = 0; i < ARRAY_SIZE(t); i++)
-		if (fn % 104 == t[i])
-			return false;
-	return true;
-}
-
-static bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
-{
-	/* 3GPP TS 45.008 § 8.3 */
-	uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
-		h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
-		h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
-		if (lchan->type == GSM_LCHAN_TCH_F)
-			return fn_chk(f, fn);
-		else
-			return fn_chk(lchan->nr ? h1 : h0, fn);
-	}
-	return false;
 }
 
 static bool repeat_last_sid(struct gsm_lchan *lchan, struct msgb *msg)
@@ -692,20 +645,6 @@ static bool repeat_last_sid(struct gsm_lchan *lchan, struct msgb *msg)
 		return true;
 	}
 	return false;
-}
-
-/* store the last SID frame in lchan context */
-void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
-		   uint32_t fn, bool update)
-{
-	size_t copy_len = OSMO_MIN(length + 1,
-				   ARRAY_SIZE(lchan->tch.last_sid.buf));
-
-	lchan->tch.last_sid.len = copy_len;
-	lchan->tch.last_sid.fn = fn;
-	lchan->tch.last_sid.is_update = update;
-
-	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
 }
 
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)

@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <osmo-bts/gsm_data.h>
+
+#include <stdbool.h>
+
 struct msgb;
 
 /**
@@ -16,5 +20,8 @@ enum {
 	OML_MSG_TYPE_OSMO,
 };
 
+void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
+		   uint32_t fn, bool update);
+bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn);
 int msg_verify_ipa_structure(struct msgb *msg);
 int msg_verify_oml_structure(struct msgb *msg);

@@ -38,13 +38,6 @@
 
 #include "l1_if.h"
 
-#define GSM_FR_BITS	260
-#define GSM_EFR_BITS	244
-
-#define GSM_FR_BYTES	33	/* TS 101318 Chapter 5.1: 260 bits + 4bit sig */
-#define GSM_HR_BYTES	14	/* TS 101318 Chapter 5.2: 112 bits, no sig */
-#define GSM_EFR_BYTES	31	/* TS 101318 Chapter 5.3: 244 bits + 4bit sig */
-
 /* input octet-aligned, output not octet-aligned */
 void osmo_nibble_shift_right(uint8_t *out, const uint8_t *in,
 			     unsigned int num_nibbles)
@@ -298,24 +291,9 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		break;
 	}
 
-	if (rmsg) {
-		struct osmo_phsap_prim *l1sap;
-
-		LOGP(DL1C, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
-		     gsm_lchan_name(lchan), osmo_hexdump(rmsg->data,
-							 rmsg->len));
-
-		/* add l1sap header */
-		rmsg->l2h = rmsg->data;
-		msgb_push(rmsg, sizeof(*l1sap));
-		rmsg->l1h = rmsg->data;
-		l1sap = msgb_l1sap_prim(rmsg);
-		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH,
-			       PRIM_OP_INDICATION, rmsg);
-		l1sap->u.tch.chan_nr = chan_nr;
-
-		return l1sap_up(trx, l1sap);
-	}
+	if (rmsg)
+		return add_l1sap_header(trx, rmsg, lchan, chan_nr,
+					data_ind->u32Fn);
 
 	return 0;
 
