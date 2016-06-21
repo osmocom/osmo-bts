@@ -1791,7 +1791,9 @@ void dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 		     gsm_lchan_name(ts->lchan));
 		ts->lchan[0].type = GSM_LCHAN_PDTCH;
 		as_pchan = GSM_PCHAN_PDCH;
-	}
+	} else
+		/* No reconnect pending. */
+		return;
 
 	rc = bts_model_ts_connect(ts, as_pchan);
 	/* Error? then NACK right now. */
