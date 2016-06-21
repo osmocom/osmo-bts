@@ -27,7 +27,7 @@ lc15bts_mgr_SOURCES = \
 		misc/lc15bts_mgr_temp.c \
 		misc/lc15bts_mgr_calib.c 
 
-lc15bts_mgr_LDADD = $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS) $(top_builddir)/src/common/libbts.a
+lc15bts_mgr_LDADD = $(top_builddir)/src/common/libbts.a $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS)
 
 lc15bts_util_SOURCES = misc/lc15bts_util.c misc/lc15bts_par.c
 lc15bts_util_LDADD = $(LIBOSMOCORE_LIBS)
