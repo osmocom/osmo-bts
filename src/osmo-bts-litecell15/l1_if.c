@@ -615,11 +615,23 @@ static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
 	return l1sap_up(trx, &l1sap);
 }
 
-static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
+static enum gsm_phys_chan_config pick_pchan(struct gsm_bts_trx_ts *ts)
+{
+	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH)
+		return ts->pchan;
+	if (ts->flags & TS_F_PDCH_ACTIVE)
+		return GSM_PCHAN_PDCH;
+	return GSM_PCHAN_TCH_F;
+}
+
+static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 			       GsmL1_Sapi_t sapi, GsmL1_SubCh_t subCh,
 			       uint8_t u8Tn, uint32_t u32Fn)
 {
 	uint8_t cbits = 0;
+	enum gsm_phys_chan_config pchan = pick_pchan(ts);
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
+
 	switch (sapi) {
 	case GsmL1_Sapi_Bcch:
 		cbits = 0x10;
@@ -728,7 +740,7 @@ static int handle_ph_readytosend_ind(struct lc15l1_hdl *fl1,
 	uint32_t fn;
 
 	/* check if primitive should be handled by common part */
-	chan_nr = chan_nr_by_sapi(trx->ts[rts_ind->u8Tn].pchan, rts_ind->sapi,
+	chan_nr = chan_nr_by_sapi(&trx->ts[rts_ind->u8Tn], rts_ind->sapi,
 		rts_ind->subCh, rts_ind->u8Tn, rts_ind->u32Fn);
 	if (chan_nr) {
 		fn = rts_ind->u32Fn;
@@ -847,7 +859,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	int rc = 0;
 	int8_t rssi;
 
-	chan_nr = chan_nr_by_sapi(trx->ts[data_ind->u8Tn].pchan, data_ind->sapi,
+	chan_nr = chan_nr_by_sapi(&trx->ts[data_ind->u8Tn], data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
 	if (!chan_nr) {
 		LOGP(DL1C, LOGL_ERROR, "PH-DATA-INDICATION for unknown sapi "
