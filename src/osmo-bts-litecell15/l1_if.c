@@ -73,6 +73,7 @@ struct wait_l1_conf {
 	struct llist_head list;		/* internal linked list */
 	struct osmo_timer_list timer;	/* timer for L1 timeout */
 	unsigned int conf_prim_id;	/* primitive we expect in response */
+	HANDLE conf_hLayer3;		/* layer 3 handle we expect in response */
 	unsigned int is_sys_prim;	/* is this a system (1) or L1 (0) primitive */
 	l1if_compl_cb *cb;
 	void *cb_data;
@@ -95,6 +96,57 @@ static void l1if_req_timeout(void *data)
 		LOGP(DL1C, LOGL_FATAL, "Timeout waiting for L1 primitive %s\n",
 			get_value_string(lc15bts_l1prim_names, wlc->conf_prim_id));
 	exit(23);
+}
+
+static HANDLE l1p_get_hLayer3(GsmL1_Prim_t *prim)
+{
+	switch (prim->id) {
+	case GsmL1_PrimId_MphInitReq:
+		return prim->u.mphInitReq.hLayer3;
+	case GsmL1_PrimId_MphCloseReq:
+		return prim->u.mphCloseReq.hLayer3;
+	case GsmL1_PrimId_MphConnectReq:
+		return prim->u.mphConnectReq.hLayer3;
+	case GsmL1_PrimId_MphDisconnectReq:
+		return prim->u.mphDisconnectReq.hLayer3;
+	case GsmL1_PrimId_MphActivateReq:
+		return prim->u.mphActivateReq.hLayer3;
+	case GsmL1_PrimId_MphDeactivateReq:
+		return prim->u.mphDeactivateReq.hLayer3;
+	case GsmL1_PrimId_MphConfigReq:
+		return prim->u.mphConfigReq.hLayer3;
+	case GsmL1_PrimId_MphMeasureReq:
+		return prim->u.mphMeasureReq.hLayer3;
+	case GsmL1_PrimId_MphInitCnf:
+		return prim->u.mphInitCnf.hLayer3;
+	case GsmL1_PrimId_MphCloseCnf:
+		return prim->u.mphCloseCnf.hLayer3;
+	case GsmL1_PrimId_MphConnectCnf:
+		return prim->u.mphConnectCnf.hLayer3;
+	case GsmL1_PrimId_MphDisconnectCnf:
+		return prim->u.mphDisconnectCnf.hLayer3;
+	case GsmL1_PrimId_MphActivateCnf:
+		return prim->u.mphActivateCnf.hLayer3;
+	case GsmL1_PrimId_MphDeactivateCnf:
+		return prim->u.mphDeactivateCnf.hLayer3;
+	case GsmL1_PrimId_MphConfigCnf:
+		return prim->u.mphConfigCnf.hLayer3;
+	case GsmL1_PrimId_MphMeasureCnf:
+		return prim->u.mphMeasureCnf.hLayer3;
+	case GsmL1_PrimId_MphTimeInd:
+	case GsmL1_PrimId_MphSyncInd:
+	case GsmL1_PrimId_PhEmptyFrameReq:
+	case GsmL1_PrimId_PhDataReq:
+	case GsmL1_PrimId_PhConnectInd:
+	case GsmL1_PrimId_PhReadyToSendInd:
+	case GsmL1_PrimId_PhDataInd:
+	case GsmL1_PrimId_PhRaInd:
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "unknown L1 primitive %u\n", prim->id);
+		break;
+	}
+	return 0;
 }
 
 static int _l1if_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
@@ -124,6 +176,7 @@ static int _l1if_req_compl(struct lc15l1_hdl *fl1h, struct msgb *msg,
 		}
 		wlc->is_sys_prim = 0;
 		wlc->conf_prim_id = lc15bts_get_l1prim_conf(l1p->id);
+		wlc->conf_hLayer3 = l1p_get_hLayer3(l1p);
 		wqueue = &fl1h->write_q[MQ_L1_WRITE];
 		timeout_secs = 30;
 	} else {
@@ -949,11 +1002,11 @@ static int l1if_handle_ind(struct lc15l1_hdl *fl1, struct msgb *msg)
 
 static inline int is_prim_compat(GsmL1_Prim_t *l1p, struct wait_l1_conf *wlc)
 {
-	/* the limitation here is that we cannot have multiple callers
-	 * sending the same primitive */
 	if (wlc->is_sys_prim != 0)
 		return 0;
 	if (l1p->id != wlc->conf_prim_id)
+		return 0;
+	if (l1p_get_hLayer3(l1p) != wlc->conf_hLayer3)
 		return 0;
 	return 1;
 }

@@ -95,43 +95,71 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 
 static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
 
-static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct lc15l1_hdl *gl1)
+static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct lc15l1_hdl *gl1,
+		       uint32_t hLayer3_uint32)
 {
+	HANDLE hLayer3;
 	prim->id = id;
+
+	osmo_static_assert(sizeof(HANDLE) >= 4, l1p_handle_is_at_least_32bit);
+	hLayer3 = (void*)hLayer3_uint32;
 
 	switch (id) {
 	case GsmL1_PrimId_MphInitReq:
 		//prim->u.mphInitReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphInitReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphCloseReq:
 		prim->u.mphCloseReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphCloseReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphConnectReq:
 		prim->u.mphConnectReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphConnectReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphDisconnectReq:
 		prim->u.mphDisconnectReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphDisconnectReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphActivateReq:
 		prim->u.mphActivateReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphActivateReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphDeactivateReq:
 		prim->u.mphDeactivateReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphDeactivateReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphConfigReq:
 		prim->u.mphConfigReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphConfigReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphMeasureReq:
 		prim->u.mphMeasureReq.hLayer1 = (HANDLE)gl1->hLayer1;
+		prim->u.mphMeasureReq.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphInitCnf:
+		prim->u.mphInitCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphCloseCnf:
+		prim->u.mphCloseCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphConnectCnf:
+		prim->u.mphConnectCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphDisconnectCnf:
+		prim->u.mphDisconnectCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphActivateCnf:
+		prim->u.mphActivateCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphDeactivateCnf:
+		prim->u.mphDeactivateCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphConfigCnf:
+		prim->u.mphConfigCnf.hLayer3 = hLayer3;
+		break;
 	case GsmL1_PrimId_MphMeasureCnf:
+		prim->u.mphMeasureCnf.hLayer3 = hLayer3;
 		break;
 	case GsmL1_PrimId_MphTimeInd:
 		break;
@@ -156,6 +184,34 @@ static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct lc15l1_hdl 
 		break;
 	}
 	return &prim->u;
+}
+
+static uint32_t l1p_handle_for_trx(struct gsm_bts_trx *trx)
+{
+	struct gsm_bts *bts = trx->bts;
+
+	osmo_static_assert(sizeof(trx->nr) == 1, trx_nr_is_8bit);
+	osmo_static_assert(sizeof(bts->nr) == 1, bts_nr_is_8bit);
+
+	return   bts->nr << 24
+	       | trx->nr << 16;
+}
+
+static uint32_t l1p_handle_for_ts(struct gsm_bts_trx_ts *ts)
+{
+	osmo_static_assert(sizeof(ts->nr) == 1, ts_nr_is_8bit);
+
+	return   l1p_handle_for_trx(ts->trx)
+	       | ts->nr << 8;
+}
+
+
+static uint32_t l1p_handle_for_lchan(struct gsm_lchan *lchan)
+{
+	osmo_static_assert(sizeof(lchan->nr) == 1, lchan_nr_is_8bit);
+
+	return   l1p_handle_for_ts(lchan->ts)
+	       | lchan->nr;
 }
 
 GsmL1_Status_t prim_status(GsmL1_Prim_t *prim)
@@ -341,7 +397,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 	}
 
 	msg = l1p_msgb_alloc();
-	mi_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphInitReq, fl1h);
+	mi_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphInitReq, fl1h,
+			   l1p_handle_for_trx(trx));
 	dev_par = &mi_req->deviceParam;
 	dev_par->devType = GsmL1_DevType_TxdRxu;
 	dev_par->freqBand = lc15_band;
@@ -380,7 +437,8 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 
 	msg = l1p_msgb_alloc();
-	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h);
+	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h,
+		  l1p_handle_for_trx(trx));
 	LOGP(DL1C, LOGL_NOTICE, "Close TRX %u\n", trx->nr);
 
 	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb, NULL);
@@ -425,7 +483,8 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(ts->trx);
 	GsmL1_MphConnectReq_t *cr;
 
-	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConnectReq, fl1h);
+	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConnectReq, fl1h,
+		       l1p_handle_for_ts(ts));
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[ts->pchan];
 
@@ -906,7 +965,8 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	GsmL1_MphActivateReq_t *act_req;
 	GsmL1_LogChParam_t *lch_par;
 
-	act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq, fl1h);
+	act_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphActivateReq,
+			    fl1h, l1p_handle_for_lchan(lchan));
 	lch_par = &act_req->logChPrm;
 	act_req->u8Tn = lchan->ts->nr;
 	act_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
@@ -1199,7 +1259,8 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 	/* channel mode, encryption and/or multirate have changed */
 
 	/* update multi-rate config */
-	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
+	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h,
+			     l1p_handle_for_lchan(lchan));
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetLogChParams;
 	conf_req->cfgParams.setLogChParams.sapi = cmd->sapi;
 	conf_req->cfgParams.setLogChParams.u8Tn = lchan->ts->nr;
@@ -1252,7 +1313,7 @@ int l1if_set_txpower(struct lc15l1_hdl *fl1h, float tx_power)
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphConfigReq_t *conf_req;
 
-	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
+	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h, 0);
 	conf_req->cfgParamId = GsmL1_ConfigParamId_SetTxPowerLevel;
 	conf_req->cfgParams.setTxPowerLevel.fTxPowerLevel = tx_power;
 
@@ -1273,7 +1334,8 @@ static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *c
 	struct msgb *msg = l1p_msgb_alloc();
 	struct GsmL1_MphConfigReq_t *cfgr;
 
-	cfgr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h);
+	cfgr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h,
+			 l1p_handle_for_lchan(lchan));
 
 	cfgr->cfgParamId = GsmL1_ConfigParamId_SetCipheringParams;
 	cfgr->cfgParams.setCipheringParams.u8Tn = lchan->ts->nr;
@@ -1420,7 +1482,8 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphDeactivateReq_t *deact_req;
 
-	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq, fl1h);
+	deact_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDeactivateReq,
+			      fl1h, l1p_handle_for_lchan(lchan));
 	deact_req->u8Tn = lchan->ts->nr;
 	deact_req->subCh = lchan_to_GsmL1_SubCh_t(lchan);
 	deact_req->dir = cmd->dir;
