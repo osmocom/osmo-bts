@@ -477,7 +477,9 @@ int oml_mo_rf_lock_chg(struct gsm_abis_mo *mo, uint8_t mute_state[8],
 	}
 }
 
-static int ts_connect(struct gsm_bts_trx_ts *ts)
+static int ts_connect_as(struct gsm_bts_trx_ts *ts,
+			 enum gsm_phys_chan_config pchan,
+			 l1if_compl_cb *cb, void *data)
 {
 	struct msgb *msg = l1p_msgb_alloc();
 	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(ts->trx);
@@ -486,9 +488,14 @@ static int ts_connect(struct gsm_bts_trx_ts *ts)
 	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConnectReq, fl1h,
 		       l1p_handle_for_ts(ts));
 	cr->u8Tn = ts->nr;
-	cr->logChComb = pchan_to_logChComb[ts->pchan];
+	cr->logChComb = pchan_to_logChComb[pchan];
 
-	return l1if_gsm_req_compl(fl1h, msg, opstart_compl_cb, NULL);
+	return l1if_gsm_req_compl(fl1h, msg, cb, NULL);
+}
+
+static int ts_connect(struct gsm_bts_trx_ts *ts)
+{
+	return ts_connect_as(ts, ts->pchan, opstart_compl_cb, NULL);
 }
 
 GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
