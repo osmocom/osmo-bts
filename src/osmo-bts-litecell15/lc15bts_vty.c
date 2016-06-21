@@ -406,6 +406,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
 
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
+
 	install_element(PHY_INST_NODE, &cfg_phy_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_no_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
