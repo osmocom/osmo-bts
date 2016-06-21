@@ -28,6 +28,7 @@
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/codec/codec.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 
@@ -45,7 +46,6 @@
 #include "gsm0503_coding.h"
 #include "trx_if.h"
 #include "loops.h"
-#include "amr.h"
 
 extern void *tall_bts_ctx;
 
@@ -335,9 +335,9 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			len = GSM_EFR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-			len = amr_compose_payload(tch_data,
+			len = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->dl_cmr],
-				chan_state->codec[chan_state->dl_ft], 1);
+				chan_state->codec[chan_state->dl_ft], AMR_BAD);
 			if (len < 2)
 				break;
 			memset(tch_data + 2, 0, len - 2);
@@ -401,8 +401,11 @@ inval_mode1:
 	/* check validity of message, get AMR ft and cmr */
 	if (!msg_facch && msg_tch) {
 		int len;
-		uint8_t bfi, cmr_codec, ft_codec;
+		uint8_t cmr_codec;
 		int cmr, ft, i;
+		enum osmo_amr_type ft_codec;
+		enum osmo_amr_quality bfi;
+		int8_t sti, cmi;
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
 			LOGP(DL1C, LOGL_NOTICE, "%s Dropping speech frame, "
@@ -452,9 +455,9 @@ inval_mode1:
 			}
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-			len = amr_decompose_payload(msg_tch->l2h,
-				msgb_l2len(msg_tch), &cmr_codec, &ft_codec,
-				&bfi);
+			len = osmo_amr_rtp_dec(msg_tch->l2h, msgb_l2len(msg_tch),
+					       &cmr_codec, &cmi, &ft_codec,
+					       &bfi, &sti);
 			cmr = -1;
 			ft = -1;
 			for (i = 0; i < chan_state->codecs; i++) {
@@ -488,7 +491,7 @@ inval_mode1:
 				goto free_bad_msg;
 			}
 			chan_state->dl_ft = ft;
-			if (bfi) {
+			if (bfi == AMR_BAD) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
 					"AMR frame' trx=%u ts=%u at fn=%u.\n",
 					trx_chan_desc[chan].name,
@@ -1004,9 +1007,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
-			rc = amr_compose_payload(tch_data,
+			rc = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
-				chan_state->codec[chan_state->ul_ft], 0);
+				chan_state->codec[chan_state->ul_ft], AMR_GOOD);
 		}
 		break;
 	default:
@@ -1050,10 +1053,10 @@ bfi:
 				rc = GSM_EFR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
-				rc = amr_compose_payload(tch_data,
+				rc = osmo_amr_rtp_enc(tch_data,
 					chan_state->codec[chan_state->dl_cmr],
 					chan_state->codec[chan_state->dl_ft],
-					1);
+					AMR_BAD);
 				if (rc < 2)
 					break;
 				memset(tch_data + 2, 0, rc - 2);
@@ -1167,9 +1170,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
-			rc = amr_compose_payload(tch_data,
+			rc = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
-				chan_state->codec[chan_state->ul_ft], 0);
+				chan_state->codec[chan_state->ul_ft], AMR_GOOD);
 		}
 		break;
 	default:
@@ -1213,10 +1216,10 @@ bfi:
 				rc = 15;
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
-				rc = amr_compose_payload(tch_data,
+				rc = osmo_amr_rtp_enc(tch_data,
 					chan_state->codec[chan_state->dl_cmr],
 					chan_state->codec[chan_state->dl_ft],
-					1);
+					AMR_BAD);
 				if (rc < 2)
 					break;
 				memset(tch_data + 2, 0, rc - 2);
