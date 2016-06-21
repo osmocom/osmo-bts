@@ -8,6 +8,7 @@
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/logging.h>
+#include <osmo-bts/bts_model.h>
 
 static LLIST_HEAD(g_phy_links);
 
