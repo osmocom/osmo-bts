@@ -307,7 +307,7 @@ int calib_load(struct lc15l1_hdl *fl1h)
 
 static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *desc)
 {
-       int i, rc, sz;
+       int rc, sz;
        struct calib_send_state *st = &fl1h->st;
        struct phy_link *plink = fl1h->phy_inst->phy_link;
        char *rbuf;
