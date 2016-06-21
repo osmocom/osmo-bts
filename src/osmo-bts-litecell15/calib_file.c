@@ -87,7 +87,7 @@ static const struct calib_file_desc calib_files[] = {
 	},
 };
 
-static struct calTbl_t
+struct calTbl_t
 {
     union
     {
