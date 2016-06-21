@@ -89,7 +89,8 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_SDCCH8_SACCH8C]	= GsmL1_LogChComb_VII,
 	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH]	= GsmL1_LogChComb_VII,
 	[GSM_PCHAN_PDCH]		= GsmL1_LogChComb_XIII,
-	//[GSM_PCHAN_TCH_F_PDCH]		= FIXME,
+	[GSM_PCHAN_TCH_F_PDCH]		= GsmL1_LogChComb_I, /*< first init
+						like TCH/F, until PDCH ACT */
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 };
 
