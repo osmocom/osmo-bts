@@ -47,8 +47,8 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
 
-static struct gsm_lchan *
-get_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
+struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
+				       unsigned int chan_nr)
 {
 	return &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 }

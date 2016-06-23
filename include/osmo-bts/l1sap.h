@@ -40,6 +40,8 @@ static inline uint8_t l1sap_chan2ss(uint8_t chan_nr)
 	return 0;
 }
 
+struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
+				       unsigned int chan_nr);
 
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data */
 struct msgb *l1sap_msgb_alloc(unsigned int l2_len);

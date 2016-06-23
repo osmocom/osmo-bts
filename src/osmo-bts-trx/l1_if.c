@@ -527,7 +527,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr;
-	uint8_t tn, ss;
 	int rc = 0;
 	struct gsm_lchan *lchan;
 
@@ -546,9 +545,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		switch (l1sap->u.info.type) {
 		case PRIM_INFO_ACT_CIPH:
 			chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
-			tn = L1SAP_CHAN2TS(chan_nr);
-			ss = l1sap_chan2ss(chan_nr);
-			lchan = &trx->ts[tn].lchan[ss];
+			lchan = get_lchan_by_chan_nr(trx, chan_nr);
 			if (l1sap->u.info.u.ciph_req.uplink)
 				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
 			if (l1sap->u.info.u.ciph_req.downlink)
@@ -558,9 +555,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		case PRIM_INFO_DEACTIVATE:
 		case PRIM_INFO_MODIFY:
 			chan_nr = l1sap->u.info.u.act_req.chan_nr;
-			tn = L1SAP_CHAN2TS(chan_nr);
-			ss = l1sap_chan2ss(chan_nr);
-			lchan = &trx->ts[tn].lchan[ss];
+			lchan = get_lchan_by_chan_nr(trx, chan_nr);
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
 				if ((chan_nr & 0x80)) {
 					LOGP(DL1C, LOGL_ERROR, "Cannot activate"

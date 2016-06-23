@@ -546,7 +546,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct gsm_lchan *lchan;
 	uint32_t u32Fn;
-	uint8_t u8Tn, subCh, sapi, ss;
+	uint8_t u8Tn, subCh, sapi;
 	uint8_t chan_nr;
 	struct msgb *nmsg = NULL;
 
@@ -554,15 +554,14 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	u32Fn = l1sap->u.tch.fn;
 	u8Tn = L1SAP_CHAN2TS(chan_nr);
 	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
-		ss = subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+		subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
 		sapi = cOCTVC1_GSM_SAPI_ENUM_TCHH;
 	} else {
 		subCh = 0xf1;
-		ss = 0;
 		sapi = cOCTVC1_GSM_SAPI_ENUM_TCHF;
 	}
 
-	lchan = &trx->ts[u8Tn].lchan[ss];
+	lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
 	/* create new message */
 	nmsg = l1p_msgb_alloc();
@@ -623,7 +622,6 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			struct osmo_phsap_prim *l1sap)
 {
-	uint8_t u8Tn, ss;
 	uint8_t chan_nr;
 	struct gsm_lchan *lchan;
 	int rc = 0;
@@ -631,9 +629,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	switch (l1sap->u.info.type) {
 	case PRIM_INFO_ACT_CIPH:
 		chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
-		u8Tn = L1SAP_CHAN2TS(chan_nr);
-		ss = l1sap_chan2ss(chan_nr);
-		lchan = &trx->ts[u8Tn].lchan[ss];
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (l1sap->u.info.u.ciph_req.uplink) {
 			l1if_set_ciphering(lchan, 0);
 			lchan->ciph_state = LCHAN_CIPH_RX_REQ;
@@ -650,9 +646,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	case PRIM_INFO_DEACTIVATE:
 	case PRIM_INFO_MODIFY:
 		chan_nr = l1sap->u.info.u.act_req.chan_nr;
-		u8Tn = L1SAP_CHAN2TS(chan_nr);
-		ss = l1sap_chan2ss(chan_nr);
-		lchan = &trx->ts[u8Tn].lchan[ss];
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
 		if (l1sap->u.info.type == PRIM_INFO_ACTIVATE)
 			l1if_rsl_chan_act(lchan);

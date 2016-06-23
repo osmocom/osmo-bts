@@ -432,7 +432,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
 	struct gsm_lchan *lchan;
 	uint32_t u32Fn;
-	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi, ss;
+	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi;
 	uint8_t chan_nr;
 	GsmL1_Prim_t *l1p;
 	struct msgb *nmsg = NULL;
@@ -442,15 +442,14 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	u8Tn = L1SAP_CHAN2TS(chan_nr);
 	u8BlockNbr = (u32Fn % 13) >> 2;
 	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
-		ss = subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+		subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
 		sapi = GsmL1_Sapi_TchH;
 	} else {
 		subCh = 0x1f;
-		ss = 0;
 		sapi = GsmL1_Sapi_TchF;
 	}
 
-	lchan = &trx->ts[u8Tn].lchan[ss];
+	lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
 	/* create new message and fill data */
 	if (msg) {
@@ -501,7 +500,6 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		        struct osmo_phsap_prim *l1sap)
 {
 	struct femtol1_hdl *fl1 = trx_femtol1_hdl(trx);
-	uint8_t u8Tn, ss;
 	uint8_t chan_nr;
 	struct gsm_lchan *lchan;
 	int rc = 0;
@@ -509,9 +507,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	switch (l1sap->u.info.type) {
 	case PRIM_INFO_ACT_CIPH:
 		chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
-		u8Tn = L1SAP_CHAN2TS(chan_nr);
-		ss = l1sap_chan2ss(chan_nr);
-		lchan = &trx->ts[u8Tn].lchan[ss];
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (l1sap->u.info.u.ciph_req.uplink) {
 			l1if_set_ciphering(fl1, lchan, 0);
 			lchan->ciph_state = LCHAN_CIPH_RX_REQ;
@@ -528,9 +524,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	case PRIM_INFO_DEACTIVATE:
 	case PRIM_INFO_MODIFY:
 		chan_nr = l1sap->u.info.u.act_req.chan_nr;
-		u8Tn = L1SAP_CHAN2TS(chan_nr);
-		ss = l1sap_chan2ss(chan_nr);
-		lchan = &trx->ts[u8Tn].lchan[ss];
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (l1sap->u.info.type == PRIM_INFO_ACTIVATE)
 			l1if_rsl_chan_act(lchan);
 		else if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
