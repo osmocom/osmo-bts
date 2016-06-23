@@ -118,12 +118,7 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 	cur[0] |= 0xD0;
 #endif /* USE_L1_RTP_MODE */
 
-	if (osmo_fr_check_sid(l1_payload, payload_len))
-		lchan->tch.ul_sid = true;
-	else if (lchan->tch.ul_sid) {
-		lchan->tch.ul_sid = false;
-		lchan->rtp_tx_marker = true;
-	}
+	lchan_set_marker(osmo_fr_check_sid(l1_payload, payload_len), lchan);
 
 	return msg;
 }
@@ -182,12 +177,8 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload,
 	uint8_t cmr;
 	int8_t sti, cmi;
 	osmo_amr_rtp_dec(l1_payload, payload_len, &cmr, &cmi, &ft, &bfi, &sti);
-	if (ft == AMR_GSM_EFR_SID)
-		lchan->tch.ul_sid = true;
-	else if (lchan->tch.ul_sid) {
-		lchan->tch.ul_sid = false;
-		lchan->rtp_tx_marker = true;
-	}
+	lchan_set_marker(ft == AMR_GSM_EFR_SID, lchan);
+
 	return msg;
 }
 
@@ -230,12 +221,7 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 	osmo_revbytebits_buf(cur, GSM_HR_BYTES);
 #endif /* USE_L1_RTP_MODE */
 
-	if (osmo_hr_check_sid(l1_payload, payload_len))
-		lchan->tch.ul_sid = true;
-	else if (lchan->tch.ul_sid) {
-		lchan->tch.ul_sid = false;
-		lchan->rtp_tx_marker = true;
-	}
+	lchan_set_marker(osmo_hr_check_sid(l1_payload, payload_len), lchan);
 
 	return msg;
 }

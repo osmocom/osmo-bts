@@ -86,6 +86,17 @@ static int check_manuf(struct msgb *msg, struct abis_om_hdr *omh, size_t msg_siz
 	return type;
 }
 
+/* update lchan SID status */
+void lchan_set_marker(bool t, struct gsm_lchan *lchan)
+{
+	if (t)
+		lchan->tch.ul_sid = true;
+	else if (lchan->tch.ul_sid) {
+		lchan->tch.ul_sid = false;
+		lchan->rtp_tx_marker = true;
+	}
+}
+
 /* store the last SID frame in lchan context */
 void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
 		   uint32_t fn, bool update)
