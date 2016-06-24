@@ -55,45 +55,6 @@
 #include "lc15bts.h"
 #include "l1_if.h"
 
-/* input octet-aligned, output not octet-aligned */
-void osmo_nibble_shift_right(uint8_t *out, const uint8_t *in,
-			     unsigned int num_nibbles)
-{
-	unsigned int i;
-	unsigned int num_whole_bytes = num_nibbles / 2;
-
-	/* first byte: upper nibble empty, lower nibble from src */
-	out[0] = (in[0] >> 4);
-
-	/* bytes 1.. */
-	for (i = 1; i < num_whole_bytes; i++)
-		out[i] = ((in[i-1] & 0xF) << 4) | (in[i] >> 4);
-
-	/* shift the last nibble, in case there's an odd count */
-	i = num_whole_bytes;
-	if (num_nibbles & 1)
-		out[i] = ((in[i-1] & 0xF) << 4) | (in[i] >> 4);
-	else
-		out[i] = (in[i-1] & 0xF) << 4;
-}
-
-
-/* input unaligned, output octet-aligned */
-void osmo_nibble_shift_left_unal(uint8_t *out, const uint8_t *in,
-				unsigned int num_nibbles)
-{
-	unsigned int i;
-	unsigned int num_whole_bytes = num_nibbles / 2;
-
-	for (i = 0; i < num_whole_bytes; i++)
-		out[i] = ((in[i] & 0xF) << 4) | (in[i+1] >> 4);
-
-	/* shift the last nibble, in case there's an odd count */
-	i = num_whole_bytes;
-	if (num_nibbles & 1)
-		out[i] = (in[i] & 0xF) << 4;
-}
-
 static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len,
 					struct gsm_lchan *lchan)
 {
