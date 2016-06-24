@@ -38,7 +38,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/l1sap.h>
-#include <osmo-bts/amr.h>
+#include <osmo-bts/msg_utils.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
 
@@ -341,7 +341,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			if (len < 2)
 				break;
 			memset(tch_data + 2, 0, len - 2);
-			_sched_compose_tch_ind(l1t, tn, 0, chan, tch_data, len);
+			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len);
 			break;
 		default:
 inval_mode1:
@@ -350,7 +350,7 @@ inval_mode1:
 			len = 0;
 		}
 		if (len)
-			_sched_compose_tch_ind(l1t, tn, 0, chan, tch_data, len);
+			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len);
 	}
 
 	/* get frame and unlink from queue */
@@ -939,6 +939,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
 	int n_errors, n_bits_total;
+	struct gsm_lchan *lchan =
+		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -987,6 +989,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 								: tch_mode) {
 	case GSM48_CMODE_SPEECH_V1: /* FR */
 		rc = tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
+		lchan_set_marker(osmo_fr_check_sid(tch_data, rc), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
 		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
@@ -1045,6 +1048,8 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
+				if (lchan->tch.ul_sid)
+					return 0; /* DTXu: pause in progress */
 				memset(tch_data, 0, GSM_FR_BYTES);
 				rc = GSM_FR_BYTES;
 				break;
@@ -1090,6 +1095,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
 	int n_errors, n_bits_total;
+	struct gsm_lchan *lchan =
+		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1152,6 +1159,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		rc = tch_hr_decode(tch_data, *bursts_p,
 			(((fn + 26 - 10) % 26) >> 2) & 1,
 			&n_errors, &n_bits_total);
+		lchan_set_marker(osmo_hr_check_sid(tch_data, rc), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 or 1,9,18 defines that CMI is included
@@ -1211,6 +1219,8 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* HR */
+				if (lchan->tch.ul_sid)
+					return 0; /* DTXu: pause in progress */
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
 				rc = 15;
