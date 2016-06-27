@@ -191,10 +191,9 @@ as frequency hopping is not supported by OsmoBTS:
 [[set_chan_attr]]
 ==== Set Channel Attributes
 
-This message conforms to 3GPP TS 12.21, with the following limitation: OpenBTS
-does not support frequency hopping, and the following 3GPP TS 12.21 IEs provoke
-a NACK response when sent to OsmoBTS, as frequency hopping is not
-supported:
+This message conforms to 3GPP TS 12.21, with the following limitation: the
+following 3GPP TS 12.21 IEs provoke a NACK response when sent to OsmoBTS, as
+frequency hopping is not supported:
 
 ._Set Channel Attributes_ IE limitations
 [options="header",cols="10%,30%,60%"]
