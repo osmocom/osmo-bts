@@ -291,6 +291,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " min-qual-norm %.0f%s", btsb->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
+	vty_out(vty, " max-ber10k-rach %u%s", btsb->max_ber10k_rach,
+		VTY_NEWLINE);
 	if (strcmp(btsb->pcu.sock_path, PCU_SOCK_DEFAULT))
 		vty_out(vty, " pcu-socket %s%s", btsb->pcu.sock_path, VTY_NEWLINE);
 
@@ -588,6 +590,19 @@ DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	btsb->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
+	"max-ber10k-rach <0-10000>",
+	"Set the maximum BER for valid RACH requests\n"
+	"BER in 1/10000 units (0=no BER; 100=1% BER)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	btsb->max_ber10k_rach = strtoul(argv[0], NULL, 10);
 
 	return CMD_SUCCESS;
 }
@@ -1542,6 +1557,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
+	install_element(BTS_NODE, &cfg_bts_max_ber_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);

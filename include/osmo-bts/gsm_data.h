@@ -111,6 +111,7 @@ struct gsm_bts_role_bts {
 
 	float min_qual_rach;	/* minimum quality for RACH bursts */
 	float min_qual_norm;	/* minimum quality for normal daata */
+	uint16_t max_ber10k_rach;	/* Maximum permitted RACH BER in 0.01% */
 
 	struct {
 		char *sock_path;

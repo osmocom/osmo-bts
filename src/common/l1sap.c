@@ -1203,7 +1203,12 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if (rach_ind->rssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	/* FIXME: RACH filtering due to BER limit */
+	/* check for RACH exceeding BER threshold (ghost RACH) */
+	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
+		DEBUGPFN(DL1C, rach_ind->fn, "ignoring RACH request: %u > %u (max BER)\n",
+			rach_ind->ber10k, btsb->max_ber10k_rach);
+		return 0;
+	}
 
 	/* increment number of RACH slots with valid non-handover RACH burst */
 	btsb->load.rach.access++;

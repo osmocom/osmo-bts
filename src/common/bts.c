@@ -149,6 +149,7 @@ int bts_init(struct gsm_bts *bts)
 	btsb->t3105_ms = 300;
 	btsb->min_qual_rach = MIN_QUAL_RACH;
 	btsb->min_qual_norm = MIN_QUAL_NORM;
+	btsb->max_ber10k_rach = 1707; /* 7 of 41 bits is Eb/N0 of 0 dB = 0.1707 */
 	btsb->pcu.sock_path = talloc_strdup(btsb, PCU_SOCK_DEFAULT);
 	for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
 		btsb->t200_ms[i] = oml_default_t200_ms[i];
