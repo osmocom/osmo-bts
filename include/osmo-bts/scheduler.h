@@ -48,11 +48,21 @@ enum trx_chan_type {
 	_TRX_CHAN_MAX
 };
 
+#define GSM_BURST_LEN		148
+#define GPRS_BURST_LEN		GSM_BURST_LEN
+#define EGPRS_BURST_LEN		444
+
+enum trx_burst_type {
+	TRX_BURST_GMSK,
+	TRX_BURST_8PSK,
+};
+
 /* States each channel on a multiframe */
 struct l1sched_chan_state {
 	/* scheduler */
 	uint8_t			active;		/* Channel is active */
 	ubit_t			*dl_bursts;	/* burst buffer for TX */
+	enum trx_burst_type	dl_burst_type;  /* GMSK or 8PSK burst type */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
@@ -151,7 +161,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
 /*! \brief handle an UL burst received by PHY */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-        sbit_t *bits, int8_t rssi, float toa);
+        sbit_t *bits, uint16_t nbits, int8_t rssi, float toa);
 
 /*! \brief set multiframe scheduler to given physical channel config */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,

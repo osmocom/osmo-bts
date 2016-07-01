@@ -1353,7 +1353,7 @@ int pdtch_encode(ubit_t *bursts, uint8_t *l2_data, uint8_t l2_len)
 		gsm0503_xcch_burst_map(&iB[i * 114], &bursts[i * 116],
 			hl_hn + i*2, hl_hn + i*2 + 1);
 
-	return 0;
+	return GSM0503_GPRS_BURSTS_NBITS;
 }
 
 

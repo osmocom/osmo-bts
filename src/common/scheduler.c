@@ -47,7 +47,7 @@ static int rts_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 static int rts_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
 /*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
-static const ubit_t dummy_burst[148] = {
+static const ubit_t dummy_burst[GSM_BURST_LEN] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
 	0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,0,
@@ -58,7 +58,7 @@ static const ubit_t dummy_burst[148] = {
 };
 
 /*! \brief FCCH Burst (TS 05.02 Chapter 5.2.4) */
-const ubit_t _sched_fcch_burst[148] = {
+const ubit_t _sched_fcch_burst[GSM_BURST_LEN] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -1504,7 +1504,8 @@ int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
 }
 
 /* process downlink burst */
-const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
+const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
+				uint32_t fn, uint16_t *nbits)
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *l1cs;
@@ -1529,11 +1530,14 @@ const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
 	l1cs = &l1ts->chan_state[chan];
 
 	/* check if channel is active */
-	if (!trx_chan_desc[chan].auto_active && !l1cs->active)
-	 	goto no_data;
+	if (!trx_chan_desc[chan].auto_active && !l1cs->active) {
+		if (nbits)
+			*nbits = GSM_BURST_LEN;
+		goto no_data;
+	}
 
 	/* get burst from function */
-	bits = func(l1t, tn, fn, chan, bid);
+	bits = func(l1t, tn, fn, chan, bid, nbits);
 
 	/* encrypt */
 	if (bits && l1cs->dl_encr_algo) {
@@ -1562,7 +1566,7 @@ if (0)		if (chan != TRXC_IDLE) // hack
 
 /* process uplink burst */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
-	sbit_t *bits, int8_t rssi, float toa)
+	sbit_t *bits, uint16_t nbits, int8_t rssi, float toa)
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *l1cs;
@@ -1623,12 +1627,12 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
 				}
 			}
 
-			func(l1t, tn, fn, chan, bid, bits, rssi, toa);
+			func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa);
 		} else if (chan != TRXC_RACH && !l1cs->ho_rach_detect) {
-			sbit_t spare[148];
+			sbit_t spare[GSM_BURST_LEN];
 
-			memset(spare, 0, 148);
-			func(l1t, tn, fn, chan, bid, spare, -128, 0);
+			memset(spare, 0, GSM_BURST_LEN);
+			func(l1t, tn, fn, chan, bid, spare, GSM_BURST_LEN, -128, 0);
 		}
 
 next_frame:

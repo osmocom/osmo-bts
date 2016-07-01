@@ -50,6 +50,8 @@ int transceiver_available = 0;
 int settsc_enabled = 0;
 int setbsic_enabled = 0;
 
+#define TRX_MAX_BURST_LEN	512
+
 /*
  * socket
  */
@@ -406,19 +408,21 @@ rsp_error:
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
-	uint8_t buf[256];
+	uint8_t buf[TRX_MAX_BURST_LEN];
 	int len;
 	uint8_t tn;
 	int8_t rssi;
 	float toa = 0.0;
 	uint32_t fn;
-	sbit_t bits[148];
-	int i;
+	sbit_t bits[EGPRS_BURST_LEN];
+	int i, burst_len = GSM_BURST_LEN;
 
 	len = recv(ofd->fd, buf, sizeof(buf), 0);
-	if (len <= 0)
+	if (len <= 0) {
 		return len;
-	if (len != 158) {
+	} else if (len == EGPRS_BURST_LEN + 10) {
+		burst_len = EGPRS_BURST_LEN;
+	} else if (len != GSM_BURST_LEN + 10) {
 		LOGP(DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
 			"'%d'\n", len);
 		return -EINVAL;
@@ -429,7 +433,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
 
 	/* copy and convert bits {254..0} to sbits {-127..127} */
-	for (i = 0; i < 148; i++) {
+	for (i = 0; i < burst_len; i++) {
 		if (buf[8 + i] == 255)
 			bits[i] = -127;
 		else
@@ -457,15 +461,20 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	fprintf(stderr, "%s\n", deb);
 #endif
 
-	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, rssi, toa);
+	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, burst_len, rssi, toa);
 
 	return 0;
 }
 
 int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
-	const ubit_t *bits)
+	const ubit_t *bits, uint16_t nbits)
 {
-	uint8_t buf[256];
+	uint8_t buf[TRX_MAX_BURST_LEN];
+
+	if ((nbits != GSM_BURST_LEN) && (nbits != EGPRS_BURST_LEN)) {
+		LOGP(DTRX, LOGL_ERROR, "Tx burst length %u invalid\n", nbits);
+		return -1;
+	}
 
 	LOGP(DTRX, LOGL_DEBUG, "TX burst tn=%u fn=%u pwr=%u\n", tn, fn, pwr);
 
@@ -477,12 +486,12 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	buf[5] = pwr;
 
 	/* copy ubits {0,1} */
-	memcpy(buf + 6, bits, 148);
+	memcpy(buf + 6, bits, nbits);
 
 	/* we must be sure that we have clock, and we have sent all control
 	 * data */
 	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
-		send(l1h->trx_ofd_data.fd, buf, 154, 0);
+		send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
 	} else
 		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, transceiver "
 			"offline.\n");
