@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <osmocom/core/crc8gen.h>
 #include <osmocom/core/utils.h>
 
 #include "sysmobts_eeprom.h"
@@ -37,6 +38,13 @@
 #include "eeprom.h"
 
 #define EEPROM_PATH	"/sys/devices/platform/i2c_davinci.1/i2c-1/1-0050/eeprom"
+
+static const struct osmo_crc8gen_code crc8_ccit = {
+	.bits = 8,
+	.poly = 0x83,
+	.init = 0xFF,
+	.remainder = 0x00,
+};
 
 const struct value_string sysmobts_par_names[_NUM_SYSMOBTS_PAR+1] = {
 	{ SYSMOBTS_PAR_MAC,		"ethaddr" },
@@ -289,6 +297,50 @@ int sysmobts_par_set_buf(enum sysmobts_par par, const uint8_t *buf,
 	memcpy(ptr, buf, size);
 
 	return len;
+}
+
+int sysmobts_par_get_net(struct sysmobts_net_cfg *cfg)
+{
+	struct sysmobts_eeprom *ee = get_eeprom(0);
+	ubit_t bits[sizeof(*cfg) * 8];
+	uint8_t crc;
+	int rc;
+
+	if (!ee)
+		return -EIO;
+
+	/* convert the net_cfg to unpacked bits */
+	rc = osmo_pbit2ubit(bits, (uint8_t *) &ee->net_cfg, sizeof(bits));
+	if (rc != sizeof(bits))
+		return -EFAULT;
+	/* compute the crc and compare */
+	crc = osmo_crc8gen_compute_bits(&crc8_ccit, bits, sizeof(bits));
+	if (crc != ee->crc) {
+		fprintf(stderr, "Computed CRC(%d) wanted CRC(%d)\n", crc, ee->crc);
+		return -EBADMSG;
+	}
+	/* return the actual data */
+	*cfg = ee->net_cfg;
+	return 0;
+}
+
+int sysmobts_par_set_net(struct sysmobts_net_cfg *cfg)
+{
+	struct sysmobts_eeprom *ee = get_eeprom(1);
+	ubit_t bits[sizeof(*cfg) * 8];
+	int rc;
+
+	if (!ee)
+		return -EIO;
+
+	/* convert the net_cfg to unpacked bits */
+	rc = osmo_pbit2ubit(bits, (uint8_t *) cfg, sizeof(bits));
+	if (rc != sizeof(bits))
+		return -EFAULT;
+	/* compute and store the result */
+	ee->net_cfg = *cfg;
+	ee->crc = osmo_crc8gen_compute_bits(&crc8_ccit, bits, sizeof(bits));
+	return set_eeprom(ee);
 }
 
 osmo_static_assert(offsetof(struct sysmobts_eeprom, trx_nr) == 36, offset_36);

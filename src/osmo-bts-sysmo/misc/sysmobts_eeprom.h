@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+struct sysmobts_net_cfg {
+	uint8_t  mode;		/* 0 */
+	uint32_t ip;		/* 1 - 4 */
+	uint32_t mask;		/* 5 - 8 */
+	uint32_t gw;		/* 9 - 12 */
+	uint32_t dns;		/* 13 - 16 */
+} __attribute__((packed));
+
 struct sysmobts_eeprom {		/* offset */
 	uint8_t eth_mac[6];		/* 0-5 */
 	uint8_t _pad0[10];		/* 6-15 */
@@ -17,13 +25,7 @@ struct sysmobts_eeprom {		/* offset */
 	uint8_t trx_nr;			/* 36 */
 	uint8_t boot_state[48];		/* 37-84 */
 	uint8_t _pad1[18];              /* 85-102 */
-	struct {
-		uint8_t  mode;		/* 103 */
-		uint32_t ip;		/* 104 - 107 */
-		uint32_t mask;		/* 108 - 111 */
-		uint32_t gw;		/* 112 - 115 */
-		uint32_t dns;		/* 116 - 119 */
-	} __attribute__((packed)) net_cfg;
+	struct sysmobts_net_cfg net_cfg;/* 103-119 */
 	uint8_t crc;			/* 120 */
 	uint8_t gpg_key[128];		/* 121-249 */
 } __attribute__((packed));

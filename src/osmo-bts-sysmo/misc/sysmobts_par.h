@@ -3,6 +3,8 @@
 
 #include <osmocom/core/utils.h>
 
+struct sysmobts_net_cfg;
+
 enum sysmobts_par {
 	SYSMOBTS_PAR_MAC,
 	SYSMOBTS_PAR_CLK_FACTORY,
@@ -26,6 +28,8 @@ int sysmobts_par_get_buf(enum sysmobts_par par, uint8_t *buf,
 			 unsigned int size);
 int sysmobts_par_set_buf(enum sysmobts_par par, const uint8_t *buf,
 			 unsigned int size);
+int sysmobts_par_get_net(struct sysmobts_net_cfg *cfg);
+int sysmobts_par_set_net(struct sysmobts_net_cfg *cfg);
 
 int sysmobts_par_is_int(enum sysmobts_par par);
 
