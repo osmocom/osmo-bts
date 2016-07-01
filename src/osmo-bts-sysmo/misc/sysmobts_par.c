@@ -294,4 +294,6 @@ int sysmobts_par_set_buf(enum sysmobts_par par, const uint8_t *buf,
 osmo_static_assert(offsetof(struct sysmobts_eeprom, trx_nr) == 36, offset_36);
 osmo_static_assert(offsetof(struct sysmobts_eeprom, boot_state) == 37, offset_37);
 osmo_static_assert(offsetof(struct sysmobts_eeprom, _pad1) == 85, offset_85);
+osmo_static_assert(offsetof(struct sysmobts_eeprom, net_cfg.mode) == 103, offset_103);
+osmo_static_assert((offsetof(struct sysmobts_eeprom, net_cfg.ip) & 0x3)  == 0, ip_32bit_aligned);
 osmo_static_assert(offsetof(struct sysmobts_eeprom, gpg_key) == 121, offset_121);

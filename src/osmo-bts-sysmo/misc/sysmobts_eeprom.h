@@ -16,13 +16,26 @@ struct sysmobts_eeprom {		/* offset */
 	uint16_t model_flags;		/* 34-35 */
 	uint8_t trx_nr;			/* 36 */
 	uint8_t boot_state[48];		/* 37-84 */
-	uint8_t _pad1[36];		/* 85-120 */
+	uint8_t _pad1[18];              /* 85-102 */
+	struct {
+		uint8_t  mode;		/* 103 */
+		uint32_t ip;		/* 104 - 107 */
+		uint32_t mask;		/* 108 - 111 */
+		uint32_t gw;		/* 112 - 115 */
+		uint32_t dns;		/* 116 - 119 */
+	} __attribute__((packed)) net_cfg;
+	uint8_t crc;			/* 120 */
 	uint8_t gpg_key[128];		/* 121-249 */
 } __attribute__((packed));
 
 enum sysmobts_model_number {
 	MODEL_SYSMOBTS_1020	= 1002,
 	MODEL_SYSMOBTS_2050	= 2050,
+};
+
+enum sysmobts_net_mode {
+	NET_MODE_DHCP,
+	NET_MODE_STATIC,
 };
 
 #endif
