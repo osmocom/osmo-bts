@@ -16,7 +16,7 @@ struct sysmobts_eeprom {		/* offset */
 	uint16_t model_flags;		/* 34-35 */
 	uint8_t trx_nr;			/* 36 */
 	uint8_t boot_state[48];		/* 37-84 */
-	uint8_t _pad1[35];		/* 85-120 */
+	uint8_t _pad1[36];		/* 85-120 */
 	uint8_t gpg_key[128];		/* 121-249 */
 } __attribute__((packed));
 
