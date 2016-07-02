@@ -44,8 +44,9 @@ static char *write_arg;
 static int void_warranty;
 
 
-static struct in_addr net_ip = { 0, }, net_dns = { 0, }, net_gw = { 0, }, net_mask = { 0, };
+static struct in_addr net_ip = { 0, }, net_dns = { 0, }, net_gw = { 0, };
 static uint8_t net_mode = 0;
+static uint8_t net_mask = 0;
 
 static void print_help()
 {
@@ -53,7 +54,7 @@ static void print_help()
 
 	printf("sysmobts-util [--void-warranty -r | -w value] param_name\n");
 	printf("sysmobts-util --net-read\n");
-	printf("sysmobts-util --net-write --mode INT --ip IP_STR --gw IP_STR --dns IP_STR --net-mask IP_STR\n");
+	printf("sysmobts-util --net-write --mode INT --ip IP_STR/mask --gw IP_STR --dns IP_STR\n");
 	printf("Possible param names:\n");
 
 	for (; par->str != NULL; par += 1) {
@@ -61,6 +62,29 @@ static void print_help()
 			continue;
 		printf(" %s\n", par->str);
 	}
+}
+
+/*
+ * Parse 8.8.8.8 and 8.8.8.8/24 like ip addresses and netmask
+ */
+static int parse_ip_mask(const char *ip_str, struct in_addr *out_ip, uint8_t *out_mask)
+{
+	char *lasts = NULL;
+	char *ip;
+	char *mask = NULL;
+
+	char *str = talloc_strdup(NULL, ip_str);
+	ip = strtok_r(str, "/", &lasts);
+	mask = strtok_r(NULL, "/", &lasts);
+
+	inet_aton(ip, out_ip);
+	if (mask)
+		*out_mask = atoi(mask);
+	else
+		*out_mask = 0;
+
+	talloc_free(str);
+	return 0;
 }
 
 static int parse_options(int argc, char **argv)
@@ -75,7 +99,6 @@ static int parse_options(int argc, char **argv)
 			{ "ip",  1, 0, 241 },
 			{ "gw",  1, 0, 242 },
 			{ "dns", 1, 0, 243 },
-			{ "net-mask", 1, 0, 244 },
 			{ "mode", 1, 0, 245 },
 			{ "net-read", 0, 0, 246 },
 			{ "net-write", 0, 0, 247 },
@@ -111,8 +134,6 @@ static int parse_options(int argc, char **argv)
 		case 245:
 			net_mode = atoi(optarg);
 			break;
-		case 244:
-			inet_aton(optarg, &net_mask);
 			break;
 		case 243:
 			inet_aton(optarg, &net_dns);
@@ -121,7 +142,7 @@ static int parse_options(int argc, char **argv)
 			inet_aton(optarg, &net_gw);
 			break;
 		case 241:
-			inet_aton(optarg, &net_ip);
+			parse_ip_mask(optarg, &net_ip, &net_mask);
 			break;
 		default:
 			printf("Unknown option %d/%c\n", c, c);
@@ -145,12 +166,13 @@ static void dump_net_cfg(struct sysmobts_net_cfg *net_cfg)
 		printf("IP=dhcp\n");
 		printf("DNS=\n");
 		printf("GATEWAY=\n");
-		printf("NETMASK=\n");
 	} else {
-		printf("IP=%s\n", make_addr(net_cfg->ip));
+		if (net_cfg->mask == 0)
+			printf("IP=%s\n", make_addr(net_cfg->ip));
+		else
+			printf("IP=%s/%d\n", make_addr(net_cfg->ip), net_cfg->mask);
 		printf("GATEWAY=%s\n", make_addr(net_cfg->gw));
 		printf("DNS=%s\n", make_addr(net_cfg->dns));
-		printf("NETMASK=%s\n", make_addr(net_cfg->mask));
 	}
 }
 
@@ -172,7 +194,7 @@ static int handle_net(void)
 		memset(&net_cfg, 0, sizeof(net_cfg));
 		net_cfg.mode = net_mode;
 		net_cfg.ip = htonl(net_ip.s_addr);
-		net_cfg.mask = htonl(net_mask.s_addr);
+		net_cfg.mask = net_mask;
 		net_cfg.gw = htonl(net_gw.s_addr);
 		net_cfg.dns = htonl(net_dns.s_addr);
 		printf("Going to write\n");

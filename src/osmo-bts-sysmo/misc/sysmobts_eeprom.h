@@ -6,9 +6,9 @@
 struct sysmobts_net_cfg {
 	uint8_t  mode;		/* 0 */
 	uint32_t ip;		/* 1 - 4 */
-	uint32_t mask;		/* 5 - 8 */
-	uint32_t gw;		/* 9 - 12 */
-	uint32_t dns;		/* 13 - 16 */
+	uint32_t gw;		/* 5 - 8 */
+	uint32_t dns;		/* 9 - 12 */
+	uint8_t  mask;		/* 13 */
 } __attribute__((packed));
 
 struct sysmobts_eeprom {		/* offset */
@@ -25,8 +25,9 @@ struct sysmobts_eeprom {		/* offset */
 	uint8_t trx_nr;			/* 36 */
 	uint8_t boot_state[48];		/* 37-84 */
 	uint8_t _pad1[18];              /* 85-102 */
-	struct sysmobts_net_cfg net_cfg;/* 103-119 */
-	uint8_t crc;			/* 120 */
+	struct sysmobts_net_cfg net_cfg;/* 103-116 */
+	uint8_t crc;			/* 117 */
+	uint8_t _pad2[3];		/* 118-120 */
 	uint8_t gpg_key[128];		/* 121-249 */
 } __attribute__((packed));
 
