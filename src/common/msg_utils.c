@@ -128,9 +128,9 @@ static inline bool fn_chk(uint8_t *t, uint32_t fn)
 bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 {
 	/* According to 3GPP TS 45.008 § 8.3: */
-	uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
-		h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
-		h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
+	static const uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
+				h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
+				h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
 		if (lchan->type == GSM_LCHAN_TCH_F)
 			return fn_chk(f, fn);
