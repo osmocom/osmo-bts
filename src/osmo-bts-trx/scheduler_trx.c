@@ -901,7 +901,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete PDTCH block "
+		LOGP(DL1C, LOGL_DEBUG, "Received incomplete PDTCH block "
 			"ending at fn=%u (%u/%u) for %s\n", fn,
 			fn % l1ts->mf_period, l1ts->mf_period,
 			trx_chan_desc[chan].name);
@@ -916,7 +916,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 
 	if (rc <= 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad PDTCH block ending at "
+		LOGP(DL1C, LOGL_DEBUG, "Received bad PDTCH block ending at "
 			"fn=%u (%u/%u) for %s\n", fn, fn % l1ts->mf_period,
 			l1ts->mf_period, trx_chan_desc[chan].name);
 		return 0;
