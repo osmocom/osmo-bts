@@ -606,6 +606,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					0);
 				break;
 			}
+			/* here, type == PRIM_INFO_DEACTIVATE */
 			if ((chan_nr & 0x80)) {
 				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
 					"chan_nr 0x%02x\n", chan_nr);

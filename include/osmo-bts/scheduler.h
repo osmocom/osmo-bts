@@ -134,10 +134,10 @@ extern uint32_t trx_rts_advance;
 extern uint32_t transceiver_last_fn;
 
 
-/*! \brief Initialize the scheudler data structures */
+/*! \brief Initialize the scheduler data structures */
 int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx);
 
-/*! \brief De-initialize the scheudler data structures */
+/*! \brief De-initialize the scheduler data structures */
 void trx_sched_exit(struct l1sched_trx *l1t);
 
 /*! \brief Handle a PH-DATA.req from L2 down to L1 */
