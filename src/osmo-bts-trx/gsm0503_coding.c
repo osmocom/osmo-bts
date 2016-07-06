@@ -1,5 +1,6 @@
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
+ * (C) 2016 by Tom Tsou <tom.tsou@ettus.com>
  *
  * All Rights Reserved
  *
@@ -27,7 +28,10 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/conv.h>
 #include <osmocom/core/crcgen.h>
+#include <osmocom/core/endian.h>
 #include <osmocom/codec/codec.h>
+#include <osmocom/gprs/gprs_rlc.h>
+#include <osmocom/gprs/protocol/gsm_04_60.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -39,24 +43,427 @@
 #include "gsm0503_tables.h"
 #include "gsm0503_coding.h"
 
+/*
+ * EGPRS coding limits
+ */
+
+/* Max header size with parity bits */
+#define EGPRS_HDR_UPP_MAX	54
+
+/* Max encoded header size */
+#define EGPRS_HDR_C_MAX		162
+
+/* Max punctured header size */
+#define EGPRS_HDR_HC_MAX	160
+
+/* Max data block size with parity bits */
+#define EGPRS_DATA_U_MAX	612
+
+/* Max encoded data block size */
+#define EGPRS_DATA_C_MAX	1836
+
+/* Max single block punctured data size */
+#define EGPRS_DATA_DC_MAX	1248
+
+/* Dual block punctured data size */
+#define EGPRS_DATA_C1		612
+#define EGPRS_DATA_C2		EGPRS_DATA_C1
+
+struct gsm0503_mcs_code {
+	uint8_t mcs;
+	uint8_t usf_len;
+
+	/* Header coding */
+	uint8_t hdr_len;
+	uint8_t hdr_code_len;
+	uint8_t hdr_punc_len;
+	const struct osmo_conv_code *hdr_conv;
+	const uint8_t *hdr_punc;
+
+	/* Data coding */
+	uint16_t data_len;
+	uint16_t data_code_len;
+	uint16_t data_punc_len;
+	const struct osmo_conv_code *data_conv;
+	const uint8_t *data_punc[3];
+};
+
+/*
+ * EGPRS UL coding parameters
+ */
+struct gsm0503_mcs_code gsm0503_mcs_ul_codes[EGPRS_NUM_MCS] = {
+	{
+		.mcs = EGPRS_MCS0,
+	},
+	{
+		.mcs = EGPRS_MCS1,
+		.hdr_len = 31,
+		.hdr_code_len = 117,
+		.hdr_punc_len = 80,
+		.hdr_conv = &gsm0503_conv_mcs1_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_ul_hdr,
+
+		.data_len = 178,
+		.data_code_len = 588,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs1,
+		.data_punc = {
+			gsm0503_puncture_mcs1_p1,
+			gsm0503_puncture_mcs1_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS2,
+		.hdr_len = 31,
+		.hdr_code_len = 117,
+		.hdr_punc_len = 80,
+		.hdr_conv = &gsm0503_conv_mcs1_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_ul_hdr,
+
+		.data_len = 226,
+		.data_code_len = 732,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs2,
+		.data_punc = {
+			gsm0503_puncture_mcs2_p1,
+			gsm0503_puncture_mcs2_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS3,
+		.hdr_len = 31,
+		.hdr_code_len = 117,
+		.hdr_punc_len = 80,
+		.hdr_conv = &gsm0503_conv_mcs1_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_ul_hdr,
+
+		.data_len = 298,
+		.data_code_len = 948,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs3,
+		.data_punc = {
+			gsm0503_puncture_mcs3_p1,
+			gsm0503_puncture_mcs3_p2,
+			gsm0503_puncture_mcs3_p3,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS4,
+		.hdr_len = 31,
+		.hdr_code_len = 117,
+		.hdr_punc_len = 80,
+		.hdr_conv = &gsm0503_conv_mcs1_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_ul_hdr,
+
+		.data_len = 354,
+		.data_code_len = 1116,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs4,
+		.data_punc = {
+			gsm0503_puncture_mcs4_p1,
+			gsm0503_puncture_mcs4_p2,
+			gsm0503_puncture_mcs4_p3,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS5,
+		.hdr_len = 37,
+		.hdr_code_len = 135,
+		.hdr_punc_len = 136,
+		.hdr_conv = &gsm0503_conv_mcs5_ul_hdr,
+		.hdr_punc = NULL,
+
+		.data_len = 450,
+		.data_code_len = 1404,
+		.data_punc_len = 1248,
+		.data_conv = &gsm0503_conv_mcs5,
+		.data_punc = {
+			gsm0503_puncture_mcs5_p1,
+			gsm0503_puncture_mcs5_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS6,
+		.hdr_len = 37,
+		.hdr_code_len = 135,
+		.hdr_punc_len = 136,
+		.hdr_conv = &gsm0503_conv_mcs5_ul_hdr,
+		.hdr_punc = NULL,
+
+		.data_len = 594,
+		.data_code_len = 1836,
+		.data_punc_len = 1248,
+		.data_conv = &gsm0503_conv_mcs6,
+		.data_punc = {
+			gsm0503_puncture_mcs6_p1,
+			gsm0503_puncture_mcs6_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS7,
+		.hdr_len = 46,
+		.hdr_code_len = 162,
+		.hdr_punc_len = 160,
+		.hdr_conv = &gsm0503_conv_mcs7_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_ul_hdr,
+		.hdr_len = 46,
+
+		.data_len = 900,
+		.data_code_len = 1404,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs7,
+		.data_punc = {
+			gsm0503_puncture_mcs7_p1,
+			gsm0503_puncture_mcs7_p2,
+			gsm0503_puncture_mcs7_p3,
+		}
+	},
+	{
+		.mcs = EGPRS_MCS8,
+		.hdr_len = 46,
+		.hdr_code_len = 162,
+		.hdr_punc_len = 160,
+		.hdr_conv = &gsm0503_conv_mcs7_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_ul_hdr,
+		.hdr_len = 46,
+
+		.data_len = 1092,
+		.data_code_len = 1692,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs8,
+		.data_punc = {
+			gsm0503_puncture_mcs8_p1,
+			gsm0503_puncture_mcs8_p2,
+			gsm0503_puncture_mcs8_p3,
+		}
+	},
+	{
+		.mcs = EGPRS_MCS9,
+		.hdr_len = 46,
+		.hdr_code_len = 162,
+		.hdr_punc_len = 160,
+		.hdr_conv = &gsm0503_conv_mcs7_ul_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_ul_hdr,
+		.hdr_len = 46,
+
+		.data_len = 1188,
+		.data_code_len = 1836,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs9,
+		.data_punc = {
+			gsm0503_puncture_mcs9_p1,
+			gsm0503_puncture_mcs9_p2,
+			gsm0503_puncture_mcs9_p3,
+		}
+	},
+};
+
+/*
+ * EGPRS DL coding parameters
+ */
+struct gsm0503_mcs_code gsm0503_mcs_dl_codes[EGPRS_NUM_MCS] = {
+	{
+		.mcs = EGPRS_MCS0,
+	},
+	{
+		.mcs = EGPRS_MCS1,
+		.usf_len = 3,
+		.hdr_len = 28,
+		.hdr_code_len = 108,
+		.hdr_punc_len = 68,
+		.hdr_conv = &gsm0503_conv_mcs1_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_dl_hdr,
+
+		.data_len = 178,
+		.data_code_len = 588,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs1,
+		.data_punc = {
+			gsm0503_puncture_mcs1_p1,
+			gsm0503_puncture_mcs1_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS2,
+		.usf_len = 3,
+		.hdr_len = 28,
+		.hdr_code_len = 108,
+		.hdr_punc_len = 68,
+		.hdr_conv = &gsm0503_conv_mcs1_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_dl_hdr,
+
+		.data_len = 226,
+		.data_code_len = 732,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs2,
+		.data_punc = {
+			gsm0503_puncture_mcs2_p1,
+			gsm0503_puncture_mcs2_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS3,
+		.usf_len = 3,
+		.hdr_len = 28,
+		.hdr_code_len = 108,
+		.hdr_punc_len = 68,
+		.hdr_conv = &gsm0503_conv_mcs1_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_dl_hdr,
+
+		.data_len = 298,
+		.data_code_len = 948,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs3,
+		.data_punc = {
+			gsm0503_puncture_mcs3_p1,
+			gsm0503_puncture_mcs3_p2,
+			gsm0503_puncture_mcs3_p3,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS4,
+		.usf_len = 3,
+		.hdr_len = 28,
+		.hdr_code_len = 108,
+		.hdr_punc_len = 68,
+		.hdr_conv = &gsm0503_conv_mcs1_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs1_dl_hdr,
+
+		.data_len = 354,
+		.data_code_len = 1116,
+		.data_punc_len = 372,
+		.data_conv = &gsm0503_conv_mcs4,
+		.data_punc = {
+			gsm0503_puncture_mcs4_p1,
+			gsm0503_puncture_mcs4_p2,
+			gsm0503_puncture_mcs4_p3,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS5,
+		.usf_len = 3,
+		.hdr_len = 25,
+		.hdr_code_len = 99,
+		.hdr_punc_len = 100,
+		.hdr_conv = &gsm0503_conv_mcs5_dl_hdr,
+		.hdr_punc = NULL,
+
+		.data_len = 450,
+		.data_code_len = 1404,
+		.data_punc_len = 1248,
+		.data_conv = &gsm0503_conv_mcs5,
+		.data_punc = {
+			gsm0503_puncture_mcs5_p1,
+			gsm0503_puncture_mcs5_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS6,
+		.usf_len = 3,
+		.hdr_len = 25,
+		.hdr_code_len = 99,
+		.hdr_punc_len = 100,
+		.hdr_conv = &gsm0503_conv_mcs5_dl_hdr,
+		.hdr_punc = NULL,
+
+		.data_len = 594,
+		.data_code_len = 1836,
+		.data_punc_len = 1248,
+		.data_conv = &gsm0503_conv_mcs6,
+		.data_punc = {
+			gsm0503_puncture_mcs6_p1,
+			gsm0503_puncture_mcs6_p2,
+			NULL,
+		},
+	},
+	{
+		.mcs = EGPRS_MCS7,
+		.usf_len = 3,
+		.hdr_len = 37,
+		.hdr_code_len = 135,
+		.hdr_punc_len = 124,
+		.hdr_conv = &gsm0503_conv_mcs7_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_dl_hdr,
+
+		.data_len = 900,
+		.data_code_len = 1404,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs7,
+		.data_punc = {
+			gsm0503_puncture_mcs7_p1,
+			gsm0503_puncture_mcs7_p2,
+			gsm0503_puncture_mcs7_p3,
+		}
+	},
+	{
+		.mcs = EGPRS_MCS8,
+		.usf_len = 3,
+		.hdr_len = 37,
+		.hdr_code_len = 135,
+		.hdr_punc_len = 124,
+		.hdr_conv = &gsm0503_conv_mcs7_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_dl_hdr,
+
+		.data_len = 1092,
+		.data_code_len = 1692,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs8,
+		.data_punc = {
+			gsm0503_puncture_mcs8_p1,
+			gsm0503_puncture_mcs8_p2,
+			gsm0503_puncture_mcs8_p3,
+		}
+	},
+	{
+		.mcs = EGPRS_MCS9,
+		.usf_len = 3,
+		.hdr_len = 37,
+		.hdr_code_len = 135,
+		.hdr_punc_len = 124,
+		.hdr_conv = &gsm0503_conv_mcs7_dl_hdr,
+		.hdr_punc = gsm0503_puncture_mcs7_dl_hdr,
+
+		.data_len = 1188,
+		.data_code_len = 1836,
+		.data_punc_len = 612,
+		.data_conv = &gsm0503_conv_mcs9,
+		.data_punc = {
+			gsm0503_puncture_mcs9_p1,
+			gsm0503_puncture_mcs9_p2,
+			gsm0503_puncture_mcs9_p3,
+		}
+	},
+};
+
 int osmo_conv_decode_ber(const struct osmo_conv_code *code,
 	const sbit_t *input, ubit_t *output,
 	int *n_errors, int *n_bits_total)
 {
 	int res, i;
-	ubit_t recoded[1024]; /* TODO: We can do smaller, I guess */
+	ubit_t recoded[EGPRS_DATA_C_MAX];
 
 	res = osmo_conv_decode(code, input, output);
 
-	*n_bits_total = osmo_conv_encode(code, output, recoded);
-	OSMO_ASSERT(sizeof(recoded)/sizeof(recoded[0]) >= *n_bits_total);
+	if (n_bits_total) {
+		*n_bits_total = osmo_conv_encode(code, output, recoded);
+		OSMO_ASSERT(sizeof(recoded)/sizeof(recoded[0]) >= *n_bits_total);
+	}
 
 	/* Count bit errors */
-	*n_errors = 0;
-	for (i=0; i< *n_bits_total; i++) {
-		if (! ((recoded[i] && input[i]<0) ||
-		       (!recoded[i] && input[i]>0)) )
-			*n_errors += 1;
+	if (n_errors) {
+		*n_errors = 0;
+		for (i=0; i< *n_bits_total; i++) {
+			if (! ((recoded[i] && input[i]<0) ||
+			       (!recoded[i] && input[i]>0)) )
+				*n_errors += 1;
+		}
 	}
 
 	return res;
@@ -129,6 +536,335 @@ int xcch_encode(ubit_t *bursts, uint8_t *l2_data)
 	return 0;
 }
 
+/*
+ * EGPRS PDTCH UL block decoding
+ */
+
+/*
+ * Type 3 - MCS-1,2,3,4
+ * Unmapping and deinterleaving
+ */
+static int egprs_type3_unmap(const sbit_t *bursts, sbit_t *hc, sbit_t *dc)
+{
+	int i;
+	sbit_t iB[456], q[8];
+
+	for (i=0; i<4; i++)
+		gsm0503_xcch_burst_unmap(&iB[i * 114], &bursts[i * 116],
+					q + i*2, q + i*2 + 1);
+
+	gsm0503_mcs1_ul_deinterleave(hc, dc, iB);
+
+	return 0;
+}
+
+/*
+ * Type 2 - MCS-5,6
+ * Unmapping and deinterleaving
+ */
+static int egprs_type2_unmap(const sbit_t *bursts, sbit_t *hc, sbit_t *dc)
+{
+	int i;
+	sbit_t burst[348];
+	sbit_t hi[EGPRS_HDR_HC_MAX];
+	sbit_t di[EGPRS_DATA_DC_MAX];
+
+	for (i=0; i<4; i++) {
+		memcpy(burst, &bursts[i * 348], 348);
+
+		gsm0503_mcs5_burst_swap(burst);
+		gsm0503_mcs5_ul_burst_unmap(di, burst, hi, i);
+	}
+
+	gsm0503_mcs5_ul_deinterleave(hc, dc, hi, di);
+
+	return 0;
+}
+
+/*
+ * Type 1 - MCS-7,8,9
+ * Unmapping and deinterleaving - Note that MCS-7 interleaver is unique
+ */
+static int egprs_type1_unmap(const sbit_t *bursts, sbit_t *hc,
+			     sbit_t *c1, sbit_t *c2, int msc)
+{
+	int i;
+	sbit_t burst[348];
+	sbit_t hi[EGPRS_HDR_HC_MAX];
+	sbit_t di[EGPRS_DATA_C1 * 2];
+
+	for (i = 0; i < 4; i++) {
+		memcpy(burst, &bursts[i * 348], 348);
+
+		gsm0503_mcs5_burst_swap(burst);
+		gsm0503_mcs7_ul_burst_unmap(di, burst, hi, i);
+	}
+
+	if (msc == EGPRS_MCS7)
+		gsm0503_mcs7_ul_deinterleave(hc, c1, c2, hi, di);
+	else
+		gsm0503_mcs8_ul_deinterleave(hc, c1, c2, hi, di);
+
+	return 0;
+}
+
+union gprs_rlc_ul_hdr_egprs {
+        struct gprs_rlc_ul_header_egprs_1 type1;
+        struct gprs_rlc_ul_header_egprs_2 type2;
+        struct gprs_rlc_ul_header_egprs_3 type3;
+};
+
+/*
+ * Decode EGPRS UL header section
+ *
+ * 1. Depuncture
+ * 2. Convolutional decoding
+ * 3. CRC check
+ */
+static int _egprs_decode_hdr(const sbit_t *hc, int mcs,
+			     union gprs_rlc_ul_hdr_egprs *hdr)
+{
+	sbit_t C[EGPRS_HDR_C_MAX];
+	ubit_t upp[EGPRS_HDR_UPP_MAX];
+	int i, j, rc;
+	struct gsm0503_mcs_code *code;
+
+	code = &gsm0503_mcs_ul_codes[mcs];
+
+	/* Skip depuncturing on MCS-5,6 header */
+	if ((mcs == EGPRS_MCS5) || (mcs == EGPRS_MCS6)) {
+		memcpy(C, hc, code->hdr_code_len);
+		goto hdr_conv_decode;
+	}
+
+	if (!code->hdr_punc) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Invalid MCS-%u header puncture matrix\n", mcs);
+		return -1;
+	}
+
+	i = code->hdr_code_len - 1;
+	j = code->hdr_punc_len - 1;
+
+	for (; i >= 0; i--) {
+		if (!code->hdr_punc[i])
+			C[i] = hc[j--];
+		else
+			C[i] = 0;
+	}
+
+hdr_conv_decode:
+	osmo_conv_decode_ber(code->hdr_conv, C, upp, NULL, NULL);
+	rc = osmo_crc8gen_check_bits(&gsm0503_mcs_crc8_hdr, upp,
+				     code->hdr_len, upp + code->hdr_len);
+	if (rc)
+		return -1;
+
+	osmo_ubit2pbit_ext((pbit_t *) hdr, 0, upp, 0, code->hdr_len, 1);
+
+	return 0;
+}
+
+/*
+ * Blind MCS header decoding based on burst length and CRC validation.
+ * Ignore 'q' value coding indentification. This approach provides
+ * the strongest chance of header recovery.
+ */
+static int egprs_decode_hdr(union gprs_rlc_ul_hdr_egprs *hdr,
+			    const sbit_t *bursts, uint16_t nbits)
+{
+	int rc;
+	sbit_t hc[EGPRS_HDR_HC_MAX];
+
+	if (nbits == GSM0503_GPRS_BURSTS_NBITS) {
+		/* MCS-1,2,3,4 */
+		egprs_type3_unmap(bursts, hc, NULL);
+		rc = _egprs_decode_hdr(hc, EGPRS_MCS1, hdr);
+		if (!rc)
+			return EGPRS_HDR_TYPE3;
+	} else if (nbits == GSM0503_EGPRS_BURSTS_NBITS) {
+		/* MCS-5,6 */
+		egprs_type2_unmap(bursts, hc, NULL);
+		rc = _egprs_decode_hdr(hc, EGPRS_MCS5, hdr);
+		if (!rc)
+			return EGPRS_HDR_TYPE2;
+
+		/* MCS-7,8,9 */
+		egprs_type1_unmap(bursts, hc, NULL, NULL, EGPRS_MCS7);
+		rc = _egprs_decode_hdr(hc, EGPRS_MCS7, hdr);
+		if (!rc)
+			return EGPRS_HDR_TYPE1;
+	}
+
+	return -1;
+}
+
+/*
+ * Parse EGPRS UL header for coding and puncturing scheme (CPS)
+ *
+ * Type 1 - MCS-7,8,9
+ * Type 2 - MCS-5,6
+ * Type 3 - MCS-1,2,3,4
+ */
+static int egprs_parse_ul_cps(struct egprs_cps *cps,
+			      union gprs_rlc_ul_hdr_egprs *hdr, int type)
+{
+	uint8_t bits;
+
+	switch (type) {
+	case EGPRS_HDR_TYPE1:
+		bits = hdr->type1.cps;
+		break;
+	case EGPRS_HDR_TYPE2:
+		bits = (hdr->type2.cps_lo << 2) | hdr->type2.cps_hi;
+		break;
+	case EGPRS_HDR_TYPE3:
+		bits = (hdr->type3.cps_lo << 2) | hdr->type3.cps_hi;
+		break;
+	default:
+		return -1;
+	}
+
+	return egprs_get_cps(cps, type, bits);
+}
+
+#define NUM_BYTES(N) ((N + 8 - 1) / 8)
+
+/*
+ * Decode EGPRS UL data section
+ *
+ * 1. Depuncture
+ * 2. Convolutional decoding
+ * 3. CRC check
+ * 4. Block combining (MCS-7,8,9 only)
+ */
+static int egprs_decode_data(uint8_t *l2_data, sbit_t *c,
+			     int mcs, int p, int blk,
+			     int *n_errors, int *n_bits_total)
+{
+	ubit_t u[EGPRS_DATA_U_MAX];
+	sbit_t C[EGPRS_DATA_C_MAX];
+
+	int i, j, rc, data_len;
+	struct gsm0503_mcs_code *code;
+
+	if (blk && mcs < EGPRS_MCS7) {
+		LOGP(DL1C, LOGL_ERROR, "Invalid MCS-%u block state\n", mcs);
+		return -1;
+	}
+
+	code = &gsm0503_mcs_ul_codes[mcs];
+	if (!code->data_punc[p]) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Invalid MCS-%u data puncture matrix %i\n", mcs, p);
+		return -1;
+	}
+
+	/*
+	 * MCS-1,6 - single block processing
+	 * MCS-7,9 - dual block processing
+	 */
+	if (mcs >= EGPRS_MCS7)
+		data_len = code->data_len / 2;
+	else
+		data_len = code->data_len;
+
+	i = code->data_code_len - 1;
+	j = code->data_punc_len - 1;
+
+	for (; i >= 0; i--) {
+		if (!code->data_punc[p][i])
+			C[i] = c[j--];
+		else
+			C[i] = 0;
+	}
+
+	osmo_conv_decode_ber(code->data_conv, C, u, n_errors, n_bits_total);
+	rc = osmo_crc16gen_check_bits(&gsm0503_mcs_crc12, u,
+				      data_len, u + data_len);
+	if (rc)
+		return -1;
+
+	/* Offsets output pointer on the second block of Type 1 MCS */
+	osmo_ubit2pbit_ext(l2_data, code->hdr_len + blk * data_len,
+			   u, 0, data_len, 1);
+
+	/* Return the number of bytes required for the bit message */
+	return NUM_BYTES(code->hdr_len + code->data_len);
+}
+
+/*
+ * Decode EGPRS UL message
+ *
+ * 1. Header section decoding
+ * 2. Extract CPS settings
+ * 3. Burst unmapping and deinterleaving
+ * 4. Data section decoding
+ */
+int pdtch_egprs_decode(uint8_t *l2_data, sbit_t *bursts, uint16_t nbits,
+		      uint8_t *usf_p, int *n_errors, int *n_bits_total)
+{
+	sbit_t dc[EGPRS_DATA_DC_MAX];
+	sbit_t c1[EGPRS_DATA_C1], c2[EGPRS_DATA_C2];
+	int type, rc;
+	struct egprs_cps cps;
+	union gprs_rlc_ul_hdr_egprs *hdr;
+
+	if ((nbits != GSM0503_GPRS_BURSTS_NBITS) &&
+	    (nbits != GSM0503_EGPRS_BURSTS_NBITS)) {
+		LOGP(DL1C, LOGL_ERROR, "Invalid EGPRS bit length %u\n", nbits);
+		return -1;
+	}
+
+	hdr = (union gprs_rlc_ul_hdr_egprs *) l2_data;
+	type = egprs_decode_hdr(hdr, bursts, nbits);
+	if (egprs_parse_ul_cps(&cps, hdr, type) < 0)
+		return -1;
+
+	switch (cps.mcs) {
+	case EGPRS_MCS1:
+	case EGPRS_MCS2:
+	case EGPRS_MCS3:
+	case EGPRS_MCS4:
+		egprs_type3_unmap(bursts, NULL, dc);
+		break;
+	case EGPRS_MCS5:
+	case EGPRS_MCS6:
+		egprs_type2_unmap(bursts, NULL, dc);
+		break;
+	case EGPRS_MCS7:
+	case EGPRS_MCS8:
+	case EGPRS_MCS9:
+		egprs_type1_unmap(bursts, NULL, c1, c2, cps.mcs);
+		break;
+	default:
+		LOGP(DL1C, LOGL_ERROR, "Invalid MCS-%u\n", cps.mcs);
+		return -1;
+	}
+
+	LOGP(DL1C, LOGL_DEBUG, "Decoding MCS-%i block\n", cps.mcs);
+
+	if (cps.mcs < EGPRS_MCS7) {
+		rc = egprs_decode_data(l2_data, dc, cps.mcs, cps.p[0],
+				       0, n_errors, n_bits_total);
+		if (rc < 0)
+			return -1;
+	} else {
+		/* MCS-7,8,9 block 1 */
+		rc = egprs_decode_data(l2_data, c1, cps.mcs, cps.p[0],
+				       0, n_errors, n_bits_total);
+		if (rc < 0)
+			return -1;
+
+		/* MCS-7,8,9 block 2 */
+		rc = egprs_decode_data(l2_data, c2, cps.mcs, cps.p[1],
+				       1, n_errors, n_bits_total);
+		if (rc < 0)
+			return -1;
+	}
+
+	return rc;
+}
 
 /*
  * GSM PDTCH block transcoding
@@ -275,6 +1011,268 @@ int pdtch_decode(uint8_t *l2_data, sbit_t *bursts, uint8_t *usf_p,
 		break;
 	}
 
+	return -1;
+}
+
+/*
+ * EGPRS PDTCH UL block encoding
+ */
+static int egprs_type3_map(ubit_t *bursts, ubit_t *hc, ubit_t *dc, int usf)
+{
+	int i;
+	ubit_t iB[456];
+	const ubit_t *hl_hn = gsm0503_pdtch_hl_hn_ubit[3];
+
+	gsm0503_mcs1_dl_interleave(gsm0503_usf2six[usf], hc, dc, iB);
+
+	for (i=0; i<4; i++)
+		gsm0503_xcch_burst_map(&iB[i * 114], &bursts[i * 116],
+				       hl_hn + i * 2, hl_hn + i * 2 + 1);
+
+	return 0;
+}
+
+static int egprs_type2_map(ubit_t *bursts, ubit_t *hc, ubit_t *dc, int usf)
+{
+	int i;
+	const ubit_t *up;
+	ubit_t hi[EGPRS_HDR_HC_MAX];
+	ubit_t di[EGPRS_DATA_DC_MAX];
+
+	gsm0503_mcs5_dl_interleave(hc, dc, hi, di);
+	up = gsm0503_mcs5_usf_precode_table[usf];
+
+	for (i = 0; i < 4; i++) {
+		gsm0503_mcs5_dl_burst_map(di, &bursts[i * 348], hi, up, i);
+		gsm0503_mcs5_burst_swap((sbit_t *) &bursts[i * 348]);
+	}
+
+	return 0;
+}
+
+static int egprs_type1_map(ubit_t *bursts, ubit_t *hc,
+			   ubit_t *c1, ubit_t *c2, int usf, int mcs)
+{
+	int i;
+	const ubit_t *up;
+	ubit_t hi[EGPRS_HDR_HC_MAX];
+	ubit_t di[EGPRS_DATA_C1 * 2];
+
+	if (mcs == EGPRS_MCS7)
+		gsm0503_mcs7_dl_interleave(hc, c1, c2, hi, di);
+	else
+		gsm0503_mcs8_dl_interleave(hc, c1, c2, hi, di);
+
+	up = gsm0503_mcs5_usf_precode_table[usf];
+
+	for (i = 0; i < 4; i++) {
+		gsm0503_mcs7_dl_burst_map(di, &bursts[i * 348], hi, up, i);
+		gsm0503_mcs5_burst_swap((sbit_t *) &bursts[i * 348]);
+	}
+
+	return 0;
+}
+
+static int egprs_encode_hdr(ubit_t *hc, uint8_t *l2_data, int mcs)
+{
+	int i, j;
+	ubit_t upp[EGPRS_HDR_UPP_MAX], C[EGPRS_HDR_C_MAX];
+	struct gsm0503_mcs_code *code;
+
+	code = &gsm0503_mcs_dl_codes[mcs];
+
+	osmo_pbit2ubit_ext(upp, 0, l2_data, code->usf_len, code->hdr_len, 1);
+	osmo_crc8gen_set_bits(&gsm0503_mcs_crc8_hdr, upp,
+			      code->hdr_len, upp + code->hdr_len);
+
+	osmo_conv_encode(code->hdr_conv, upp, C);
+
+	/* MCS-5,6 header direct puncture instead of table */
+	if ((mcs == EGPRS_MCS5) || (mcs == EGPRS_MCS6)) {
+		memcpy(hc, C, code->hdr_code_len);
+		hc[99] = hc[98];
+		return 0;
+	}
+
+	if (!code->hdr_punc) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Invalid MCS-%u header puncture matrix\n", mcs);
+		return -1;
+	}
+
+	for (i = 0, j = 0; i < code->hdr_code_len; i++) {
+		if (!code->hdr_punc[i])
+			hc[j++] = C[i];
+	}
+
+	return 0;
+}
+
+static int egprs_encode_data(ubit_t *c, uint8_t *l2_data,
+			     int mcs, int p, int blk)
+{
+	int i, j, data_len;
+	ubit_t u[EGPRS_DATA_U_MAX], C[EGPRS_DATA_C_MAX];
+	struct gsm0503_mcs_code *code;
+
+	code = &gsm0503_mcs_dl_codes[mcs];
+
+	/*
+	 * Dual block   - MCS-7,8,9
+	 * Single block - MCS-1,2,3,4,5,6
+	 */
+	if (mcs >= EGPRS_MCS7)
+		data_len = code->data_len / 2;
+	else
+		data_len = code->data_len;
+
+	osmo_pbit2ubit_ext(u, 0, l2_data,
+			   code->usf_len + code->hdr_len + blk * data_len,
+			   data_len, 1);
+	osmo_crc16gen_set_bits(&gsm0503_mcs_crc12, u, data_len, u + data_len);
+
+	osmo_conv_encode(code->data_conv, u, C);
+
+	if (!code->data_punc[p]) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Invalid MCS-%u data puncture matrix %i\n", mcs, p);
+		return -1;
+	}
+
+	for (i = 0, j = 0; i < code->data_code_len; i++) {
+		if (!code->data_punc[p][i])
+			c[j++] = C[i];
+	}
+
+	return 0;
+}
+
+union gprs_rlc_dl_hdr_egprs {
+	struct gprs_rlc_dl_header_egprs_1 type1;
+	struct gprs_rlc_dl_header_egprs_2 type2;
+	struct gprs_rlc_dl_header_egprs_3 type3;
+};
+
+/*
+ * Parse EGPRS DL header for coding and puncturing scheme (CPS)
+ *
+ * Type 1 - MCS-7,8,9
+ * Type 2 - MCS-5,6
+ * Type 3 - MCS-1,2,3,4
+ */
+static int egprs_parse_dl_cps(struct egprs_cps *cps,
+			      union gprs_rlc_dl_hdr_egprs *hdr, int type)
+{
+	uint8_t bits;
+
+	switch (type) {
+	case EGPRS_HDR_TYPE1:
+		bits = hdr->type1.cps;
+		break;
+	case EGPRS_HDR_TYPE2:
+		bits = hdr->type2.cps;
+		break;
+	case EGPRS_HDR_TYPE3:
+		bits = hdr->type3.cps;
+		break;
+	default:
+		return -1;
+	}
+
+	return egprs_get_cps(cps, type, bits);
+}
+
+/*
+ * EGPRS DL message encoding
+ */
+int pdtch_egprs_encode(ubit_t *bursts, uint8_t *l2_data, uint8_t l2_len)
+{
+	ubit_t hc[EGPRS_DATA_C_MAX], dc[EGPRS_DATA_DC_MAX];
+	ubit_t c1[EGPRS_DATA_C1], c2[EGPRS_DATA_C2];
+	uint8_t mcs;
+	struct egprs_cps cps;
+	union gprs_rlc_dl_hdr_egprs *hdr;
+
+	switch (l2_len) {
+	case 27:
+		mcs = EGPRS_MCS1;
+		break;
+	case 33:
+		mcs = EGPRS_MCS2;
+		break;
+	case 42:
+		mcs = EGPRS_MCS3;
+		break;
+	case 49:
+		mcs = EGPRS_MCS4;
+		break;
+	case 60:
+		mcs = EGPRS_MCS5;
+		break;
+	case 78:
+		mcs = EGPRS_MCS6;
+		break;
+	case 118:
+		mcs = EGPRS_MCS7;
+		break;
+	case 142:
+		mcs = EGPRS_MCS8;
+		break;
+	case 154:
+		mcs = EGPRS_MCS9;
+		break;
+	default:
+		return -1;
+	}
+
+	/* Read header for USF and puncturing matrix selection. */
+	hdr = (union gprs_rlc_dl_hdr_egprs *) l2_data;
+
+	switch (mcs) {
+	case EGPRS_MCS1:
+	case EGPRS_MCS2:
+	case EGPRS_MCS3:
+	case EGPRS_MCS4:
+		/* Check for valid CPS and matching MCS to message size */
+		if ((egprs_parse_dl_cps(&cps, hdr, EGPRS_HDR_TYPE3) < 0) ||
+		    (cps.mcs != mcs))
+			goto bad_header;
+
+		egprs_encode_hdr(hc, l2_data, mcs);
+		egprs_encode_data(dc, l2_data, mcs, cps.p[0], 0);
+		egprs_type3_map(bursts, hc, dc, hdr->type3.usf);
+		break;
+	case EGPRS_MCS5:
+	case EGPRS_MCS6:
+		if ((egprs_parse_dl_cps(&cps, hdr, EGPRS_HDR_TYPE2) < 0) ||
+		    (cps.mcs != mcs))
+			goto bad_header;
+
+		egprs_encode_hdr(hc, l2_data, mcs);
+		egprs_encode_data(dc, l2_data, mcs, cps.p[0], 0);
+		egprs_type2_map(bursts, hc, dc, hdr->type2.usf);
+		break;
+	case EGPRS_MCS7:
+	case EGPRS_MCS8:
+	case EGPRS_MCS9:
+		if ((egprs_parse_dl_cps(&cps, hdr, EGPRS_HDR_TYPE1) < 0) ||
+		    (cps.mcs != mcs))
+			goto bad_header;
+
+		egprs_encode_hdr(hc, l2_data, mcs);
+		egprs_encode_data(c1, l2_data, mcs, cps.p[0], 0);
+		egprs_encode_data(c2, l2_data, mcs, cps.p[1], 1);
+		egprs_type1_map(bursts, hc, c1, c2, hdr->type1.usf, mcs);
+		break;
+	}
+
+	LOGP(DL1C, LOGL_DEBUG, "Encoded PDTCH mcs=%i, len=%u\n", mcs, l2_len);
+
+	return mcs >= EGPRS_MCS5 ? GSM0503_EGPRS_BURSTS_NBITS :
+				   GSM0503_GPRS_BURSTS_NBITS;
+
+bad_header:
+	LOGP(DL1C, LOGL_ERROR, "Invalid EGPRS MCS-%i header\n", mcs);
 	return -1;
 }
 
