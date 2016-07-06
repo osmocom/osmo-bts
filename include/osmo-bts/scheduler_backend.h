@@ -35,6 +35,7 @@ struct trx_chan_desc {
 extern const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX];
 
 extern const ubit_t _sched_tsc[8][26];
+extern const ubit_t _sched_egprs_tsc[8][78];
 const ubit_t _sched_fcch_burst[148];
 const ubit_t _sched_sch_train[64];
 

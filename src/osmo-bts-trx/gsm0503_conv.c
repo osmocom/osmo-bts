@@ -26,6 +26,43 @@ static const uint8_t conv_xcch_next_state[][2] = {
 	{  8,  9 }, { 10, 11 }, { 12, 13 }, { 14, 15 },
 };
 
+static const uint8_t conv_mcs_next_output[][2] = {
+	{ 0, 7 }, { 3, 4 }, { 6, 1 }, { 5, 2 },
+	{ 6, 1 }, { 5, 2 }, { 0, 7 }, { 3, 4 },
+	{ 1, 6 }, { 2, 5 }, { 7, 0 }, { 4, 3 },
+	{ 7, 0 }, { 4, 3 }, { 1, 6 }, { 2, 5 },
+	{ 4, 3 }, { 7, 0 }, { 2, 5 }, { 1, 6 },
+	{ 2, 5 }, { 1, 6 }, { 4, 3 }, { 7, 0 },
+	{ 5, 2 }, { 6, 1 }, { 3, 4 }, { 0, 7 },
+	{ 3, 4 }, { 0, 7 }, { 5, 2 }, { 6, 1 },
+	{ 7, 0 }, { 4, 3 }, { 1, 6 }, { 2, 5 },
+	{ 1, 6 }, { 2, 5 }, { 7, 0 }, { 4, 3 },
+	{ 6, 1 }, { 5, 2 }, { 0, 7 }, { 3, 4 },
+	{ 0, 7 }, { 3, 4 }, { 6, 1 }, { 5, 2 },
+	{ 3, 4 }, { 0, 7 }, { 5, 2 }, { 6, 1 },
+	{ 5, 2 }, { 6, 1 }, { 3, 4 }, { 0, 7 },
+	{ 2, 5 }, { 1, 6 }, { 4, 3 }, { 7, 0 },
+	{ 4, 3 }, { 7, 0 }, { 2, 5 }, { 1, 6 },
+};
+
+static const uint8_t conv_mcs_next_state[][2] = {
+	{  0,  1 }, {  2,  3 }, {  4,  5 }, {  6,  7 },
+	{  8,  9 }, { 10, 11 }, { 12, 13 }, { 14, 15 },
+	{ 16, 17 }, { 18, 19 }, { 20, 21 }, { 22, 23 },
+	{ 24, 25 }, { 26, 27 }, { 28, 29 }, { 30, 31 },
+	{ 32, 33 }, { 34, 35 }, { 36, 37 }, { 38, 39 },
+	{ 40, 41 }, { 42, 43 }, { 44, 45 }, { 46, 47 },
+	{ 48, 49 }, { 50, 51 }, { 52, 53 }, { 54, 55 },
+	{ 56, 57 }, { 58, 59 }, { 60, 61 }, { 62, 63 },
+	{  0,  1 }, {  2,  3 }, {  4,  5 }, {  6,  7 },
+	{  8,  9 }, { 10, 11 }, { 12, 13 }, { 14, 15 },
+	{ 16, 17 }, { 18, 19 }, { 20, 21 }, { 22, 23 },
+	{ 24, 25 }, { 26, 27 }, { 28, 29 }, { 30, 31 },
+	{ 32, 33 }, { 34, 35 }, { 36, 37 }, { 38, 39 },
+	{ 40, 41 }, { 42, 43 }, { 44, 45 }, { 46, 47 },
+	{ 48, 49 }, { 50, 51 }, { 52, 53 }, { 54, 55 },
+	{ 56, 57 }, { 58, 59 }, { 60, 61 }, { 62, 63 },
+};
 
 const struct osmo_conv_code gsm0503_conv_xcch = {
 	.N = 2,
@@ -51,6 +88,147 @@ const struct osmo_conv_code gsm0503_conv_cs3 = {
 	.len = 334,
 	.next_output = conv_xcch_next_output,
 	.next_state  = conv_xcch_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs1_dl_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 36,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs1_ul_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 39,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs1 = {
+	.N = 3,
+	.K = 7,
+	.len = 190,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs2 = {
+	.N = 3,
+	.K = 7,
+	.len = 238,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs3 = {
+	.N = 3,
+	.K = 7,
+	.len = 310,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs4 = {
+	.N = 3,
+	.K = 7,
+	.len = 366,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs5_dl_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 33,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs5_ul_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 45,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs5 = {
+	.N = 3,
+	.K = 7,
+	.len = 462,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs6 = {
+	.N = 3,
+	.K = 7,
+	.len = 606,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs7_dl_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 45,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs7_ul_hdr = {
+	.N = 3,
+	.K = 7,
+	.len = 54,
+	.term = CONV_TERM_TAIL_BITING,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs7 = {
+	.N = 3,
+	.K = 7,
+	.len = 462,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs8 = {
+	.N = 3,
+	.K = 7,
+	.len = 558,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
+};
+
+
+const struct osmo_conv_code gsm0503_conv_mcs9 = {
+	.N = 3,
+	.K = 7,
+	.len = 606,
+	.next_output = conv_mcs_next_output,
+	.next_state  = conv_mcs_next_state,
 };
 
 

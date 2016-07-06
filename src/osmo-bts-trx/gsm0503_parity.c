@@ -33,6 +33,29 @@ const struct osmo_crc16gen_code gsm0503_cs234_crc16 = {
 	.remainder = 0xffff,
 };
 
+/*
+ * EDGE MCS header parity
+ *
+ */
+
+const struct osmo_crc8gen_code gsm0503_mcs_crc8_hdr = {
+	.bits = 8,
+	.poly = 0x49,
+	.init = 0x00,
+	.remainder = 0xff,
+};
+
+/*
+ * EDGE MCS data parity
+ *
+ */
+
+const struct osmo_crc16gen_code gsm0503_mcs_crc12 = {
+	.bits = 12,
+	.poly = 0x0d31,
+	.init = 0x0000,
+	.remainder = 0x0fff,
+};
 
 /*
  * GSM RACH parity
