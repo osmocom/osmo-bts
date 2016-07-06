@@ -718,13 +718,13 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
 
-	LOGP(DL1C, LOGL_NOTICE, "Received Access Burst on %s fn=%u toa=%.2f\n",
+	LOGP(DL1C, LOGL_DEBUG, "Received Access Burst on %s fn=%u toa=%.2f\n",
 		trx_chan_desc[chan].name, fn, toa);
 
 	/* decode */
 	rc = rach_decode(&ra, bits + 8 + 41, l1t->trx->bts->bsic);
 	if (rc) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad AB frame at fn=%u "
+		LOGP(DL1C, LOGL_DEBUG, "Received bad AB frame at fn=%u "
 			"(%u/51)\n", fn, fn % 51);
 		return 0;
 	}
