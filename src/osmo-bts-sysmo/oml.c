@@ -1173,7 +1173,12 @@ static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sap
 			lch_par->tch.amrActiveCodecSet[i]);
 		}
 		break;
-	/* FIXME: PRACH / PTCCH */
+	case GsmL1_Sapi_Ptcch:
+		LOGPC(DL1C, logl, "BSIC=0x%08x", lch_par->ptcch.u8Bsic);
+		break;
+	case GsmL1_Sapi_Prach:
+		LOGPC(DL1C, logl, "BSIC=0x%08x", lch_par->prach.u8Bsic);
+		break;
 	default:
 		break;
 	}
