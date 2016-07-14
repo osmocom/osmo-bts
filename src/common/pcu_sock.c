@@ -110,6 +110,14 @@ static bool ts_should_be_pdch(struct gsm_bts_trx_ts *ts) {
 		else
 			return (ts->flags & TS_F_PDCH_ACT_PENDING);
 	}
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		/*
+		 * When we're busy de-/activating the PDCH, we first set
+		 * ts->dyn.pchan_want, tell the PCU about it and wait for a
+		 * response. So only care about dyn.pchan_want here.
+		 */
+		return ts->dyn.pchan_want == GSM_PCHAN_PDCH;
+	}
 	return false;
 }
 

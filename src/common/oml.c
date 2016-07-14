@@ -694,6 +694,15 @@ static int conf_lchans(struct gsm_bts_trx_ts *ts)
 		pchan = ts->flags & TS_F_PDCH_ACTIVE? GSM_PCHAN_PDCH
 						    : GSM_PCHAN_TCH_F;
 
+	/* Osmocom RSL CHAN ACT style dyn TS */
+	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		pchan = ts->dyn.pchan_is;
+
+		/* If the dyn TS doesn't have a pchan yet, do nothing. */
+		if (pchan == GSM_PCHAN_NONE)
+			return 0;
+	}
+
 	return conf_lchans_as_pchan(ts, pchan);
 }
 

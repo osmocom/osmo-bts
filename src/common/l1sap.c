@@ -1078,6 +1078,11 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 {
 	struct osmo_phsap_prim l1sap;
 
+	/* The caller may pass a non-standard RSL_CHAN_OSMO_PDCH, which the L1
+	 * doesn't understand. Use the normal TCH/F cbits instead. */
+	if ((chan_nr & RSL_CHAN_NR_MASK) == RSL_CHAN_OSMO_PDCH)
+		chan_nr = RSL_CHAN_Bm_ACCHs | (chan_nr & ~RSL_CHAN_NR_MASK);
+
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_REQUEST,
 		NULL);

@@ -502,7 +502,15 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
+	/*
+	 * Normally, PDCH deactivation via PCU does not ack back to the BSC.
+	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard rel ack for
+	 * LCHAN_REL_ACT_PCU, since the rel req came from RSL initially.
+	 */
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
+	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+		 && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
+		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
 		LOGP(DRSL, LOGL_NOTICE, "%s not sending REL ACK\n",
 			gsm_lchan_name(lchan));
 		return 0;
@@ -534,7 +542,15 @@ int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
 
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
+	/*
+	 * Normally, PDCH activation via PCU does not ack back to the BSC.
+	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard act ack for
+	 * LCHAN_REL_ACT_PCU, since the act req came from RSL initially.
+	 */
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
+	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+		 && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
+		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
 		LOGP(DRSL, LOGL_NOTICE, "%s not sending CHAN ACT ACK\n",
 			gsm_lchan_name(lchan));
 		return 0;
@@ -703,11 +719,60 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 	return 0;
 }
 
+/*!
+ * Store the CHAN_ACTIV msg, connect the L1 timeslot in the proper type and
+ * then invoke rsl_rx_chan_activ() with msg.
+ */
+static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
+{
+	DEBUGP(DRSL, "%s dyn_ts_l1_reconnect\n", gsm_ts_and_pchan_name(ts));
+
+	switch (ts->dyn.pchan_want) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_PDCH:
+		break;
+	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Cannot reconnect as pchan %s\n",
+		     gsm_ts_and_pchan_name(ts),
+		     gsm_pchan_name(ts->dyn.pchan_want));
+		return -EINVAL;
+	}
+
+	/* We will feed this back to rsl_rx_chan_activ() later */
+	ts->dyn.pending_chan_activ = msg;
+
+	/* Disconnect, continue connecting from cb_ts_disconnected(). */
+	DEBUGP(DRSL, "%s Disconnect\n", gsm_ts_and_pchan_name(ts));
+	return bts_model_ts_disconnect(ts);
+}
+
+static enum gsm_phys_chan_config dyn_pchan_from_chan_nr(uint8_t chan_nr)
+{
+	uint8_t cbits = chan_nr & RSL_CHAN_NR_MASK;
+	switch (cbits) {
+	case RSL_CHAN_Bm_ACCHs:
+		return GSM_PCHAN_TCH_F;
+	case RSL_CHAN_Lm_ACCHs:
+	case (RSL_CHAN_Lm_ACCHs + RSL_CHAN_NR_1):
+		return GSM_PCHAN_TCH_H;
+	case RSL_CHAN_OSMO_PDCH:
+		return GSM_PCHAN_PDCH;
+	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "chan nr 0x%x not covered by dyn_pchan_from_chan_nr()\n",
+		     chan_nr);
+		return GSM_PCHAN_UNKNOWN;
+	}
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts_trx_ts *ts = lchan->ts;
 	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
 	uint8_t type;
@@ -718,6 +783,25 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		     "%s: error: lchan is not available, but in state: %s.\n",
 		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+	}
+
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		ts->dyn.pchan_want = dyn_pchan_from_chan_nr(dch->chan_nr);
+		DEBUGP(DRSL, "%s rx chan activ\n", gsm_ts_and_pchan_name(ts));
+
+		if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
+			/*
+			 * The phy has the timeslot connected in a different
+			 * mode than this activation needs it to be.
+			 * Re-connect, then come back to rsl_rx_chan_activ().
+			 */
+			rc = dyn_ts_l1_reconnect(ts, msg);
+			if (rc)
+				return rsl_tx_chan_act_nack(lchan,
+							    RSL_ERR_NORMAL_UNSPEC);
+			/* indicate that the msgb should not be freed. */
+			return 1;
+		}
 	}
 
 	/* Initialize channel defaults */
@@ -735,12 +819,14 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
 	/* 9.3.6 Channel Mode */
-	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
-		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+	if (type != RSL_ACT_OSMO_PDCH) {
+		if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
+			LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+		}
+		cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
+		lchan_tchmode_from_cmode(lchan, cm);
 	}
-	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
-	lchan_tchmode_from_cmode(lchan, cm);
 
 	/* 9.3.7 Encryption Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
@@ -839,13 +925,64 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n",
 		dch->chan_nr, type, lchan->tch_mode);
 
-	/* actually activate the channel in the BTS */
+	/* Connecting PDCH on dyn TS goes via PCU instead. */
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	    && ts->dyn.pchan_want == GSM_PCHAN_PDCH) {
+		/*
+		 * pcu_tx_info_ind() will pick up the ts->dyn.pchan_want. If
+		 * the PCU is not connected yet, ignore for now; the PCU will
+		 * catch up (and send the RSL ack) once it connects.
+		 */
+		if (pcu_connected()) {
+			DEBUGP(DRSL, "%s Activate via PCU\n", gsm_ts_and_pchan_name(ts));
+			rc = pcu_tx_info_ind();
+		}
+		else {
+			DEBUGP(DRSL, "%s Activate via PCU when PCU connects\n",
+			       gsm_ts_and_pchan_name(ts));
+			rc = 0;
+		}
+		if (rc)
+			return rsl_tx_error_report(msg->trx,
+						   RSL_ERR_NORMAL_UNSPEC);
+		return 0;
+	}
+
+	/* Remember to send an RSL ACK once the lchan is active */
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+
+	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
 	if (rc < 0)
 		return rsl_tx_chan_act_nack(lchan, -rc);
 
 	return 0;
+}
+
+static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
+		LOGP(DRSL, LOGL_ERROR, "%s: PDCH release requested but already"
+		     " in switchover\n", gsm_ts_and_pchan_name(ts));
+		return -EINVAL;
+	}
+
+	/*
+	 * Indicate PDCH Disconnect in dyn_pdch.want, let pcu_tx_info_ind()
+	 * pick it up and wait for PCU to disable the channel.
+	 */
+	ts->dyn.pchan_want = GSM_PCHAN_NONE;
+
+	if (!pcu_connected()) {
+		/* PCU not connected yet. Just record the new type and done,
+		 * the PCU will pick it up once connected. */
+		ts->dyn.pchan_is = GSM_PCHAN_NONE;
+		return 0;
+	}
+
+	return pcu_tx_info_ind();
 }
 
 /* 8.4.14 RF CHANnel RELease is received */
@@ -862,6 +999,12 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 	handover_reset(lchan);
 
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+
+	/* Dynamic channel in PDCH mode is released via PCU */
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH)
+		return dyn_ts_pdch_release(lchan);
+
 	l1sap_chan_rel(lchan->ts->trx, chan_nr);
 
 	lapdm_channel_exit(&lchan->lapdm_ch);
@@ -1766,10 +1909,40 @@ error_nack:
 		ipacc_dyn_pdch_complete(ts, rc);
 }
 
+static void osmo_dyn_ts_disconnected(struct gsm_bts_trx_ts *ts)
+{
+	DEBUGP(DRSL, "%s Disconnected\n", gsm_ts_and_pchan_name(ts));
+	ts->dyn.pchan_is = GSM_PCHAN_NONE;
+
+	switch (ts->dyn.pchan_want) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_PDCH:
+		break;
+	default:
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Dyn TS disconnected, but invalid desired pchan",
+		     gsm_ts_and_pchan_name(ts));
+		ts->dyn.pchan_want = GSM_PCHAN_NONE;
+		/* TODO: how would this recover? */
+		return;
+	}
+
+	conf_lchans_as_pchan(ts, ts->dyn.pchan_want);
+	DEBUGP(DRSL, "%s Connect\n", gsm_ts_and_pchan_name(ts));
+	bts_model_ts_connect(ts, ts->dyn.pchan_want);
+}
+
 void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
-		ipacc_dyn_pdch_ts_disconnected(ts);
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		return ipacc_dyn_pdch_ts_disconnected(ts);
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return osmo_dyn_ts_disconnected(ts);
+	default:
+		return;
+	}
 }
 
 static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
@@ -1823,10 +1996,38 @@ static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
 	}
 }
 
+static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts)
+{
+	int rc;
+	struct msgb *msg = ts->dyn.pending_chan_activ;
+	ts->dyn.pending_chan_activ = NULL;
+
+	if (!msg) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s TS re-connected, but no chan activ msg pending\n",
+		     gsm_ts_and_pchan_name(ts));
+		return;
+	}
+
+	ts->dyn.pchan_is = ts->dyn.pchan_want;
+	DEBUGP(DRSL, "%s Connected\n", gsm_ts_and_pchan_name(ts));
+
+	/* continue where we left off before re-connecting the TS. */
+	rc = rsl_rx_chan_activ(msg);
+	if (rc != 1)
+		msgb_free(msg);
+}
+
 void cb_ts_connected(struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
-		ipacc_dyn_pdch_ts_connected(ts);
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		return ipacc_dyn_pdch_ts_connected(ts);
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return osmo_dyn_ts_connected(ts);
+	default:
+		return;
+	}
 }
 
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
