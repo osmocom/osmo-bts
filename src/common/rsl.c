@@ -1784,19 +1784,23 @@ static void ipacc_dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 		LOGP(DRSL, LOGL_DEBUG,
 		     "%s PDCH DEACT operation: channel disconnected, will reconnect as TCH\n",
 		     gsm_lchan_name(ts->lchan));
-		ts->lchan[0].type = GSM_LCHAN_TCH_F;
 		as_pchan = GSM_PCHAN_TCH_F;
 	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
 		LOGP(DRSL, LOGL_DEBUG,
 		     "%s PDCH ACT operation: channel disconnected, will reconnect as PDTCH\n",
 		     gsm_lchan_name(ts->lchan));
-		ts->lchan[0].type = GSM_LCHAN_PDTCH;
 		as_pchan = GSM_PCHAN_PDCH;
 	} else
 		/* No reconnect pending. */
 		return;
 
+	rc = conf_lchans_as_pchan(ts, as_pchan);
+	if (rc)
+		goto error_nack;
+
 	rc = bts_model_ts_connect(ts, as_pchan);
+
+error_nack:
 	/* Error? then NACK right now. */
 	if (rc)
 		ipacc_dyn_pdch_complete(ts, rc);
