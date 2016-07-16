@@ -1867,7 +1867,7 @@ static int ts_disconnect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	     gsm_lchan_name(ts->lchan));
 
 	if (ts->flags & TS_F_PDCH_PENDING_MASK)
-		dyn_pdch_ts_disconnected(ts);
+		cb_ts_disconnected(ts);
 
 	return 0;
 }
@@ -1902,7 +1902,7 @@ static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	       ts->flags & TS_F_PDCH_DEACT_PENDING ? "DEACT_PENDING " : "");
 
 	if (ts->flags & TS_F_PDCH_PENDING_MASK)
-		dyn_pdch_ts_connected(ts);
+		cb_ts_connected(ts);
 
 	return 0;
 }

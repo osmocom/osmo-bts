@@ -1687,13 +1687,13 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
  *
  * PDCH ACT == TCH/F -> PDCH:
  * 1. call bts_model_ts_disconnect() to disconnect TCH/F;
- * 2. dyn_pdch_ts_disconnected() is called when done;
+ * 2. cb_ts_disconnected() is called when done;
  * 3. call bts_model_ts_connect() to connect as PDTCH;
- * 4. dyn_pdch_ts_connected() is called when done;
+ * 4. cb_ts_connected() is called when done;
  * 5. instruct the PCU to enable PDTCH;
  * 6. the PCU will call back with an activation request;
- * 7. l1sap_info_act_cnf() will call dyn_pdch_complete() when SAPI activations
- *    are done;
+ * 7. l1sap_info_act_cnf() will call ipacc_dyn_pdch_complete() when SAPI
+ *    activations are done;
  * 8. send a PDCH ACT ACK.
  *
  * PDCH DEACT == PDCH -> TCH/F:
@@ -1701,11 +1701,11 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
  * 2. the PCU will call back with a deactivation request;
  * 3. l1sap_info_rel_cnf() will call bts_model_ts_disconnect() when SAPI
  *    deactivations are done;
- * 4. dyn_pdch_ts_disconnected() is called when done;
+ * 4. cb_ts_disconnected() is called when done;
  * 5. call bts_model_ts_connect() to connect as TCH/F;
- * 6. dyn_pdch_ts_connected() is called when done;
- * 7. directly call dyn_pdch_complete(), since no further action required for
- *    TCH/F;
+ * 6. cb_ts_connected() is called when done;
+ * 7. directly call ipacc_dyn_pdch_complete(), since no further action required
+ *    for TCH/F;
  * 8. send a PDCH DEACT ACK.
  *
  * When an error happens along the way, a PDCH DE/ACT NACK is sent.
@@ -1740,7 +1740,7 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 		     "%s Attempt to PDCH %s on TS that is not a TCH/F_PDCH (is %s)\n",
 		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT",
 		     gsm_pchan_name(ts->pchan));
-		dyn_pdch_complete(ts, -EINVAL);
+		ipacc_dyn_pdch_complete(ts, -EINVAL);
 		return;
 	}
 
@@ -1748,7 +1748,7 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 		LOGP(DL1C, LOGL_NOTICE,
 		     "%s Request to PDCH %s, but is already so\n",
 		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT");
-		dyn_pdch_complete(ts, 0);
+		ipacc_dyn_pdch_complete(ts, 0);
 		return;
 	}
 
@@ -1772,10 +1772,10 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 
 	/* Error? then NACK right now. */
 	if (rc)
-		dyn_pdch_complete(ts, rc);
+		ipacc_dyn_pdch_complete(ts, rc);
 }
 
-void dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
+static void ipacc_dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 {
 	int rc;
 	enum gsm_phys_chan_config as_pchan;
@@ -1799,10 +1799,16 @@ void dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	rc = bts_model_ts_connect(ts, as_pchan);
 	/* Error? then NACK right now. */
 	if (rc)
-		dyn_pdch_complete(ts, rc);
+		ipacc_dyn_pdch_complete(ts, rc);
 }
 
-void dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
+void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
+{
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		ipacc_dyn_pdch_ts_disconnected(ts);
+}
+
+static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
 {
 	int rc;
 
@@ -1820,7 +1826,7 @@ void dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
 
 		/* During PDCH DEACT, we're done right after the TCH/F came
 		 * back up. */
-		dyn_pdch_complete(ts, 0);
+		ipacc_dyn_pdch_complete(ts, 0);
 
 	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
 		if (ts->lchan[0].type != GSM_LCHAN_PDTCH)
@@ -1838,22 +1844,28 @@ void dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
 		 * when the PCU is not connected (yet), then there's nothing
 		 * left to do now. The PCU will catch up when it connects. */
 		if (!pcu_connected()) {
-			dyn_pdch_complete(ts, 0);
+			ipacc_dyn_pdch_complete(ts, 0);
 			return;
 		}
 
 		/* The PCU will request to activate the PDTCH SAPIs, which,
-		 * when done, will call back to dyn_pdch_complete(). */
+		 * when done, will call back to ipacc_dyn_pdch_complete(). */
 		/* TODO: timeout on channel connect / disconnect request from PCU? */
 		rc = pcu_tx_info_ind();
 
 		/* Error? then NACK right now. */
 		if (rc)
-			dyn_pdch_complete(ts, rc);
+			ipacc_dyn_pdch_complete(ts, rc);
 	}
 }
 
-void dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
+void cb_ts_connected(struct gsm_bts_trx_ts *ts)
+{
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		ipacc_dyn_pdch_ts_connected(ts);
+}
+
+void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 {
 	bool pdch_act = ts->flags & TS_F_PDCH_ACT_PENDING;
 

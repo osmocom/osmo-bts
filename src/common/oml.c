@@ -691,6 +691,7 @@ static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
 	unsigned int i;
 	enum gsm_phys_chan_config pchan = ts->pchan;
 
+	/* RSL_MT_IPAC_PDCH_ACT style dyn PDCH */
 	if (pchan == GSM_PCHAN_TCH_F_PDCH)
 		pchan = ts->flags & TS_F_PDCH_ACTIVE? GSM_PCHAN_PDCH
 						    : GSM_PCHAN_TCH_F;
