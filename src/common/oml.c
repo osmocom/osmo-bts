@@ -685,16 +685,23 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	return bts_model_apply_oml(trx->bts, msg, tp_merged, NM_OC_RADIO_CARRIER, trx);
 }
 
-static int conf_lchans_for_pchan(struct gsm_bts_trx_ts *ts)
+static int conf_lchans(struct gsm_bts_trx_ts *ts)
 {
-	struct gsm_lchan *lchan;
-	unsigned int i;
 	enum gsm_phys_chan_config pchan = ts->pchan;
 
 	/* RSL_MT_IPAC_PDCH_ACT style dyn PDCH */
 	if (pchan == GSM_PCHAN_TCH_F_PDCH)
 		pchan = ts->flags & TS_F_PDCH_ACTIVE? GSM_PCHAN_PDCH
 						    : GSM_PCHAN_TCH_F;
+
+	return conf_lchans_as_pchan(ts, pchan);
+}
+
+int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
+			 enum gsm_phys_chan_config pchan)
+{
+	struct gsm_lchan *lchan;
+	unsigned int i;
 
 	switch (pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
@@ -797,7 +804,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	if (TLVP_PRESENT(&tp, NM_ATT_CHAN_COMB)) {
 		uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
 		ts->pchan = abis_nm_pchan4chcomb(comb);
-		rc = conf_lchans_for_pchan(ts);
+		rc = conf_lchans(ts);
 		if (rc < 0) {
 			talloc_free(tp_merged);
 			/* Send NACK */

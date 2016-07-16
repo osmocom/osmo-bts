@@ -127,6 +127,8 @@ enum lchan_ciph_state {
 #include "openbsc/gsm_data_shared.h"
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
+int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
+			 enum gsm_phys_chan_config pchan);
 
 /* cipher code */
 #define CIPHER_A5(x) (1 << (x-1))
