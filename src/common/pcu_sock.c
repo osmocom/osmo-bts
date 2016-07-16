@@ -95,7 +95,7 @@ struct msgb *pcu_msgb_alloc(uint8_t msg_type, uint8_t bts_nr)
 	return msg;
 }
 
-static bool ts_is_pdch(struct gsm_bts_trx_ts *ts) {
+static bool ts_should_be_pdch(struct gsm_bts_trx_ts *ts) {
 	if (ts->pchan == GSM_PCHAN_PDCH)
 		return true;
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
@@ -225,7 +225,7 @@ int pcu_tx_info_ind(void)
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
-			    && ts_is_pdch(ts)) {
+			    && ts_should_be_pdch(ts)) {
 				info_ind->trx[i].pdch_mask |= (1 << j);
 				info_ind->trx[i].tsc[j] =
 					(ts->tsc >= 0) ? ts->tsc : bts->bsic & 7;
