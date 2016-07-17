@@ -111,7 +111,7 @@ void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
 	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
 }
 
-static inline bool fn_chk(uint8_t *t, uint32_t fn)
+static inline bool fn_chk(const uint8_t *t, uint32_t fn)
 {
 	uint8_t i;
 	for (i = 0; i < ARRAY_SIZE(t); i++)
