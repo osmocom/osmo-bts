@@ -32,6 +32,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/socket.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/pcu_if.h>
@@ -58,8 +59,6 @@ static const char *sapi_string[] = {
 };
 
 static int pcu_sock_send(struct gsm_network *net, struct msgb *msg);
-/* FIXME: move this to libosmocore */
-int osmo_unixsock_listen(struct osmo_fd *bfd, int type, const char *path);
 
 
 static struct gsm_bts_trx *trx_by_nr(struct gsm_bts *bts, uint8_t trx_nr)
@@ -853,12 +852,13 @@ int pcu_sock_init(const char *path)
 
 	bfd = &state->listen_bfd;
 
-	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, path);
-	if (rc < 0) {
+	bfd->fd = osmo_sock_unix_init(SOCK_SEQPACKET, 0, path,
+		OSMO_SOCK_F_BIND);
+	if (bfd->fd < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Could not create unix socket: %s\n",
 			strerror(errno));
 		talloc_free(state);
-		return rc;
+		return -1;
 	}
 
 	bfd->when = BSC_FD_READ;
@@ -898,56 +898,6 @@ void pcu_sock_exit(void)
 	osmo_fd_unregister(bfd);
 	talloc_free(state);
 	bts_gsmnet.pcu_state = NULL;
-}
-
-/* FIXME: move this to libosmocore */
-int osmo_unixsock_listen(struct osmo_fd *bfd, int type, const char *path)
-{
-	struct sockaddr_un local;
-	unsigned int namelen;
-	int rc;
-
-	bfd->fd = socket(AF_UNIX, type, 0);
-
-	if (bfd->fd < 0) {
-		fprintf(stderr, "Failed to create Unix Domain Socket.\n");
-		return -1;
-	}
-
-	local.sun_family = AF_UNIX;
-	strncpy(local.sun_path, path, sizeof(local.sun_path));
-	local.sun_path[sizeof(local.sun_path) - 1] = '\0';
-	unlink(local.sun_path);
-
-	/* we use the same magic that X11 uses in Xtranssock.c for
-	 * calculating the proper length of the sockaddr */
-#if defined(BSD44SOCKETS) || defined(__UNIXWARE__)
-	local.sun_len = strlen(local.sun_path);
-#endif
-#if defined(BSD44SOCKETS) || defined(SUN_LEN)
-	namelen = SUN_LEN(&local);
-#else
-	namelen = strlen(local.sun_path) +
-		  offsetof(struct sockaddr_un, sun_path);
-#endif
-
-	rc = bind(bfd->fd, (struct sockaddr *) &local, namelen);
-	if (rc != 0) {
-		fprintf(stderr, "Failed to bind the unix domain socket. '%s'\n",
-			local.sun_path);
-		close(bfd->fd);
-		bfd->fd = -1;
-		return -1;
-	}
-
-	if (listen(bfd->fd, 0) != 0) {
-		fprintf(stderr, "Failed to listen.\n");
-		close(bfd->fd);
-		bfd->fd = -1;
-		return -1;
-	}
-
-	return 0;
 }
 
 bool pcu_connected(void) {
