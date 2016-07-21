@@ -611,11 +611,16 @@ static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
 
 static enum gsm_phys_chan_config pick_pchan(struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH)
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			return GSM_PCHAN_PDCH;
+		return GSM_PCHAN_TCH_F;
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return ts->dyn.pchan_is;
+	default:
 		return ts->pchan;
-	if (ts->flags & TS_F_PDCH_ACTIVE)
-		return GSM_PCHAN_PDCH;
-	return GSM_PCHAN_TCH_F;
+	}
 }
 
 static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,

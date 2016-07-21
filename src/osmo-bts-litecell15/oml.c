@@ -91,6 +91,8 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_PDCH]		= GsmL1_LogChComb_XIII,
 	[GSM_PCHAN_TCH_F_PDCH]		= GsmL1_LogChComb_I, /*< first init
 						like TCH/F, until PDCH ACT */
+	[GSM_PCHAN_TCH_F_TCH_H_PDCH]    = GsmL1_LogChComb_0, /*< first unused,
+						until first RSL CHAN ACT */
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 };
 
@@ -486,6 +488,14 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(ts->trx);
 	GsmL1_MphConnectReq_t *cr;
 
+	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "%s Requested TS connect as %s,"
+		     " expected a specific pchan instead\n",
+		     gsm_ts_and_pchan_name(ts), gsm_pchan_name(pchan));
+		return -EINVAL;
+	}
+
 	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConnectReq, fl1h,
 		       l1p_handle_for_ts(ts));
 	cr->u8Tn = ts->nr;
@@ -496,6 +506,11 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 
 static int ts_opstart(struct gsm_bts_trx_ts *ts)
 {
+	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+		/* First connect as NONE, until first RSL CHAN ACT. */
+		ts->dyn.pchan_is = ts->dyn.pchan_want = GSM_PCHAN_NONE;
+		return ts_connect_as(ts, GSM_PCHAN_NONE, opstart_compl_cb, NULL);
+	}
 	return ts_connect_as(ts, ts->pchan, opstart_compl_cb, NULL);
 }
 
@@ -516,7 +531,12 @@ GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
 
 GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 {
-	switch (lchan->ts->pchan) {
+	enum gsm_phys_chan_config pchan = lchan->ts->pchan;
+
+	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		pchan = lchan->ts->dyn.pchan_want;
+
+	switch (pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		if (lchan->type == GSM_LCHAN_CCCH)
@@ -532,6 +552,7 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 	case GSM_PCHAN_PDCH:
 	case GSM_PCHAN_UNKNOWN:
 	default:
+	/* case GSM_PCHAN_TCH_F_TCH_H_PDCH: is caught above */
 		return GsmL1_SubCh_NA;
 	}
 
@@ -1847,8 +1868,7 @@ static int ts_disconnect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	LOGP(DL1C, LOGL_DEBUG, "%s Rx mphDisconnectCnf\n",
 	     gsm_lchan_name(ts->lchan));
 
-	if (ts->flags & TS_F_PDCH_PENDING_MASK)
-		cb_ts_disconnected(ts);
+	cb_ts_disconnected(ts);
 
 	return 0;
 }
@@ -1882,8 +1902,7 @@ static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	       ts->flags & TS_F_PDCH_ACT_PENDING ? "ACT_PENDING " : "",
 	       ts->flags & TS_F_PDCH_DEACT_PENDING ? "DEACT_PENDING " : "");
 
-	if (ts->flags & TS_F_PDCH_PENDING_MASK)
-		cb_ts_connected(ts);
+	cb_ts_connected(ts);
 
 	return 0;
 }
