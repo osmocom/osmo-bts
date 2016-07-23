@@ -33,8 +33,6 @@ int rsl_tx_ccch_load_ind_pch(struct gsm_bts *bts, uint16_t paging_avail);
 int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 			      uint16_t busy, uint16_t access);
 
-struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr);
-
 void cb_ts_disconnected(struct gsm_bts_trx_ts *ts);
 void cb_ts_connected(struct gsm_bts_trx_ts *ts);
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);

@@ -144,59 +144,19 @@ static int report_error(struct gsm_bts_trx *trx)
 	return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 }
 
-#warning merge lchan_lookup with OpenBSC
-/* determine logical channel based on TRX and channel number IE */
-struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
+static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	struct gsm_lchan *lchan;
-	uint8_t ts_nr = chan_nr & 0x07;
-	uint8_t cbits = chan_nr >> 3;
-	uint8_t lch_idx;
-	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+	int rc;
+	struct gsm_lchan *lchan = rsl_lchan_lookup(trx, chan_nr, &rc);
 
-	if (cbits == 0x01) {
-		lch_idx = 0;	/* TCH/F */	
-		if (ts->pchan != GSM_PCHAN_TCH_F &&
-		    ts->pchan != GSM_PCHAN_PDCH &&
-		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x1e) == 0x02) {
-		lch_idx = cbits & 0x1;	/* TCH/H */
-		if (ts->pchan != GSM_PCHAN_TCH_H)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x1c) == 0x04) {
-		lch_idx = cbits & 0x3;	/* SDCCH/4 */
-		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if ((cbits & 0x18) == 0x08) {
-		lch_idx = cbits & 0x7;	/* SDCCH/8 */
-		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
-		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
-		lch_idx = 0;
-		if (ts->pchan != GSM_PCHAN_CCCH &&
-		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
-			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
-				chan_nr, ts->pchan);
-		/* FIXME: we should not return first sdcch4 !!! */
-	} else {
+	if (!lchan) {
 		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
 		return NULL;
 	}
 
-	lchan = &ts->lchan[lch_idx];
-#if 0
-	log_set_context(BSC_CTX_LCHAN, lchan);
-	if (lchan->conn)
-		log_set_context(BSC_CTX_SUBSCR, lchan->conn->subscr);
-#endif
-
+	if (rc < 0)
+		LOGP(DRSL, LOGL_ERROR, "%s mismatching chan_nr=0x%02x\n",
+		     gsm_ts_and_pchan_name(lchan->ts), chan_nr);
 	return lchan;
 }
 
@@ -1919,7 +1879,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)rh + sizeof(*rh);
 
-	lchan = rsl_lchan_lookup(trx, rh->chan_nr);
+	lchan = lchan_lookup(trx, rh->chan_nr);
 	if (!lchan) {
 		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
 			rsl_msg_name(rh->c.msg_type));
@@ -2063,7 +2023,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)cch + sizeof(*cch);
 
-	msg->lchan = rsl_lchan_lookup(trx, cch->chan_nr);
+	msg->lchan = lchan_lookup(trx, cch->chan_nr);
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_msg_name(cch->c.msg_type));
@@ -2117,7 +2077,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
-	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
+	msg->lchan = lchan_lookup(trx, dch->chan_nr);
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_or_ipac_msg_name(dch->c.msg_type));
@@ -2216,7 +2176,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
-	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
+	msg->lchan = lchan_lookup(trx, dch->chan_nr);
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(dch->c.msg_type));
