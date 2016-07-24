@@ -2049,7 +2049,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	msg->lchan = rsl_lchan_lookup(trx, cch->chan_nr);
 	if (!msg->lchan) {
-		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_msg_name(cch->c.msg_type));
 		msgb_free(msg);
 		return report_error(trx);
@@ -2103,7 +2103,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	msg->lchan = rsl_lchan_lookup(trx, dch->chan_nr);
 	if (!msg->lchan) {
-		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_or_ipac_msg_name(dch->c.msg_type));
 		msgb_free(msg);
 		return report_error(trx);
