@@ -450,7 +450,7 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1P, LOGL_INFO, "activate confirm chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "activate confirm chan_nr=0x%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
@@ -1092,7 +1092,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm48_chan_desc *cd;
 	int rc;
 
-	LOGP(DL1P, LOGL_INFO, "activating channel chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "activating channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
