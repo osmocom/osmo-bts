@@ -494,7 +494,7 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	return l1if_gsm_req_compl(fl1h, msg, cb, NULL);
 }
 
-static int ts_connect(struct gsm_bts_trx_ts *ts)
+static int ts_opstart(struct gsm_bts_trx_ts *ts)
 {
 	return ts_connect_as(ts, ts->pchan, opstart_compl_cb, NULL);
 }
@@ -1695,7 +1695,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		rc = trx_init(obj);
 		break;
 	case NM_OC_CHANNEL:
-		rc = ts_connect(obj);
+		rc = ts_opstart(obj);
 		break;
 	case NM_OC_BTS:
 	case NM_OC_SITE_MANAGER:
