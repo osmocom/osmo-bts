@@ -1681,7 +1681,8 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
 	return abis_bts_rsl_sendmsg(msg);
 }
 
-/* Starting point for dynamic PDCH switching. See doc/dyn_pdch.msc for a
+/*
+ * Starting point for dynamic PDCH switching. See osmo-gsm-manuals.git for a
  * diagram of what will happen here. The implementation is as follows:
  *
  * PDCH ACT == TCH/F -> PDCH:
