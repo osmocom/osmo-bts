@@ -497,6 +497,23 @@ int bts_model_vty_init(struct gsm_bts *bts)
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
+	cfg_phy_dsp_trace_f_cmd.string =
+		vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+					   "dsp-trace-flag (", "|", ")",
+					   VTY_DO_LOWER);
+	cfg_phy_dsp_trace_f_cmd.doc =
+		vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+					   DSP_TRACE_F_STR, "\n", "", 0);
+
+	cfg_phy_no_dsp_trace_f_cmd.string =
+		vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+					   "no dsp-trace-flag (", "|", ")",
+					   VTY_DO_LOWER);
+	cfg_phy_no_dsp_trace_f_cmd.doc =
+		vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+					   NO_STR DSP_TRACE_F_STR, "\n",
+					   "", 0);
+
 	install_element_ve(&show_dsp_trace_f_cmd);
 	install_element_ve(&show_sys_info_cmd);
 	install_element_ve(&show_trx_clksrc_cmd);
