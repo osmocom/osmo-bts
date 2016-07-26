@@ -487,7 +487,7 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 
 	/* During PDCH DEACT, this marks the deactivation of the PDTCH as
 	 * requested by the PCU. Next up, we disconnect the TS completely and
-	 * call back to dyn_pdch_ts_disconnected(). See rsl_rx_dyn_pdch(). */
+	 * call back to cb_ts_disconnected(). See rsl_rx_dyn_pdch(). */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_PDCH
 	    && (lchan->ts->flags & TS_F_PDCH_DEACT_PENDING))
 		bts_model_ts_disconnect(lchan->ts);
