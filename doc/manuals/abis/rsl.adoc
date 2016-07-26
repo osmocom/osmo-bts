@@ -7,7 +7,7 @@ grouped by their level of compliance with 3GPP TS 08.58.
 
 ==== Messages Compliant With TS 08.58
 
-Specific limitations apply, see the linked sections.
+Specific additions and limitations apply, see the linked sections.
 
 .Messages compliant with TS 08.58
 [options="header",cols="10%,20%,45%,5%,20%"]
@@ -26,9 +26,9 @@ Specific limitations apply, see the linked sections.
 | 8.3.10 | - | UNIT DATA REQUEST | <- | Received
 | 8.3.11 | - | UNIT DATA INDICATION | -> | Sent
 5+<| *DEDICATED CHANNEL MANAGEMENT MESSAGES*
-| 8.4.1  | - | CHANNEL ACTIVATION | <- | Received
-| 8.4.2  | - | CHANNEL ACTIVATION ACKNOWLEDGE | -> | Sent
-| 8.4.3  | - | CHANNEL ACTIVATION NEGATIVE ACKNOWLEDGE | -> | Sent
+| 8.4.1  | <<CHANNEL_ACTIVATION>> | CHANNEL ACTIVATION | <- | Received
+| 8.4.2  | <<CHANNEL_ACTIVATION>> | CHANNEL ACTIVATION ACKNOWLEDGE | -> | Sent
+| 8.4.3  | <<CHANNEL_ACTIVATION>> | CHANNEL ACTIVATION NEGATIVE ACKNOWLEDGE | -> | Sent
 | 8.4.4  | - | CONNECTION FAILURE INDICATION | -> | Sent
 | 8.4.5  | - | DEACTIVATE SACCH | <- | Received
 | 8.4.6  | - | ENCRYPTION COMMAND | <- | Received
@@ -71,6 +71,13 @@ Specific limitations apply, see the linked sections.
                    | <<rsl_dlcx_msg_ack>> | RSL Delete Connection (DLCX) ACK | -> | Sent
                    | <<rsl_dlcx_msg_nack>> | RSL Delete Connection (DLCX) NACK | -> | Sent
     | <<rsl_dlcx_ind>> | <<rsl_dlcx_ind_msg>> | RSL Delete Connection (DLCX) Indication | -> | Sent
+5+<| *IPA style PDCH Management* (<<ipa_style_pdch_mgmt>>)
+.3+.| <<pdch_act>> | <<rsl_pdch_act>> | RSL PDCH Activation | <- | Received
+                   | <<rsl_pdch_act_ack>> | RSL PDCH Activation ACK | -> | Sent
+                   | <<rsl_pdch_act_nack>> | RSL PDCH Activation NACK | -> | Sent
+.3+.| <<pdch_deact>> | <<rsl_pdch_deact>> | RSL PDCH Deactivation | <- | Received
+                   | <<rsl_pdch_deact_ack>> | RSL PDCH Deactivation ACK | -> | Sent
+                   | <<rsl_pdch_deact_nack>> | RSL PDCH Deactivation NACK | -> | Sent
 |===
 
 ==== Messages Not Implemented by OsmoBTS
@@ -109,6 +116,16 @@ Specific limitations apply, see the linked sections.
 
 
 === Message Limitation Details
+
+[[CHANNEL_ACTIVATION]]
+
+When used on a timeslot using the non-standard channel combination
+'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' as configured by OML, the regular
+RSL channel activation procedures can not only be used for activation
+of circuit-switched channels, but also for activation of a PDCH.
+
+NOTE:: Do not confuse this with the ip.access style _PDCH ACT_ type
+dynamic PDCH protocol employed by nanoBTS devices.
 
 [[MEASUREMENT_RESULT]]
 ==== Measurement Result
@@ -330,6 +347,41 @@ non-acknowledged *RSL Delete Connection (DLCX) Indication* to the BSC.
 See <<rsl_dlcx_ind_msg>>
 
 
+[[ipa_style_pdch_mgmt]]
+=== IPA style PDCH Management
+
+When using an IPA-style dynamic TCH/F+PDCH channel type on an
+on-air timeslot, there are a couple of non-standard RSL messages used
+in order to activate or deactivate this timeslot in PDCH mode.
+
+When the channel is used as TCH/F, regular circuit-switched activation
+is performed, like on any traditional TCH/F.   However, the BSC must
+make sure to first disable the PDCH on the timeslot, before activating
+it as TCH/F. Likewise, any circuit-switched TCH/F on the channel must
+be deactivated using standard RSL signalling, before the specific PDCH
+related procedures are used to enable the PDCH.
+
+[[pdch_act]]
+==== PDCH Activate
+
+This procedure is used by the BSC to request the BTS to activate an
+IPA-style dynamic TCH/F+PDCH channel in PDCH mode.
+
+The operation is not supported on any other physical channel type.
+
+See <<rsl_pdch_act>>, <<rsl_pdch_act_ack>>, <<rsl_pdch_act_nack>>
+
+[[pdch_deact]]
+==== PDCH Deactivate
+
+This procedure is used by the BSC to request the BTS to deactivate an
+active PDCH on any an IPA-style dynamic TCH/F+PDCH channel.
+
+The operation is not supported on any other physical channel type.
+
+See <<rsl_pdch_deact>>, <<rsl_pdch_deact_ack>>, <<rsl_pdch_deact_nack>>
+
+
 === Message Formats and Contents
 
 [[rsl_crcx_msg]]
@@ -524,6 +576,110 @@ Channel number.  It is sent in response to the *Delete Connection
 | Cause | 08.58 9.3.26 | M | TLV | >= 3
 |===
 
+[[rsl_pdch_act]]
+==== PDCH Activate
+
+This message is sent by the BSC to request the activation of a PDCH on
+a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
+
+[[rsl_pdch_act_ack]]
+==== PDCH Activate ACK
+
+This message is sent by the BTS to confirm the successful activation
+of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Frame Number | 08.58 9.3.8 | O | TV | 3
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
+
+[[rsl_pdch_act_nack]]
+==== PDCH Activate NACK
+
+This message is sent by the BTS to reject the successful activation
+of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Cause | 08.58 9.3.26 | M | TLV | >= 3
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
+
+[[rsl_pdch_deact]]
+==== PDCH Deactivate
+
+This message is sent by the BSC to request the deactivation of a PDCH
+on a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
+
+[[rsl_pdch_deact_ack]]
+==== PDCH Deactivate ACK
+
+This message is sent by the BTS to confirm the successful deactivation
+of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
+
+[[rsl_pdch_deact_nack]]
+==== PDCH Deactivate NACK
+
+This message is sent by the BTS to reject the deactivation of a PDCH
+on a IPA-style dynamic TCH/F+PDCH channel.
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| Cause | 08.58 9.3.26 | M | TLV | >= 3
+|===
+
+NOTE:: This message is *not* used by Osmocom style dynamic channels
 
 === Information Element Codings
 
@@ -547,17 +703,24 @@ indicated in 3GPP TS 08.58 Section 9.1:
 | 0x77 | Delete Connection (DLCX) | <<rsl_dlcx_msg>>
 | 0x78 | Delete Connection (DLCX) ACK | <<rsl_dlcx_msg_ack>>
 | 0x79 | Delete Connection (DLCX) NACK | <<rsl_dlcx_msg_nack>>
+| 0x48 | PDCH Activate | <<rsl_pdch_act>>
+| 0x49 | PDCH Activate ACK | <<rsl_pdch_act_ack>>
+| 0x4a | PDCH Activate NACK | <<rsl_pdch_act_nack>>
+| 0x4b | PDCH Deactivate | <<rsl_pdch_deact>>
+| 0x4c | PDCH Deactivate ACK | <<rsl_pdch_deact_ack>>
+| 0x4d | PDCH Deactivate NACK | <<rsl_pdch_deact_nack>>
 |===
 
 ==== A-bis/IP specific RSL IEIs
 
 The following Information Element Identifiers (IEIs) are used in
-addition to those indicated in 3GPP TS 08.58 Section 9.3.1:
+addition to those indicated in 3GPP TS 08.58 Section 9.3:
 
 .A-bis/IP specific information elements
 [options="header",cols="10%,50%,40%"]
 |===
 | IEI  | Name | This document §
+| 0x01 | RSL_IE_CHAN_NR | <<RSL_IE_CHAN_NR>>
 | 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>> 
 | 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
 | 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
@@ -567,6 +730,21 @@ addition to those indicated in 3GPP TS 08.58 Section 9.3.1:
 | 0xf8 | RSL_IE_IPAC_CONN_ID | <<RSL_IE_IPAC_CONN_ID>>
 | 0xfc | RSL_IE_IPAC_RTP_PAYLOAD2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>>
 |===
+
+[[RSL_IE_CHAN_NR]]
+==== RSL_IE_CHAN_NR
+
+This information element is coded like 3GPP TS 08.58 Section 9.3.1,
+but in addition supports the following extended coding:
+
+* C5..C1 bits 0b11000 for PDCH type channels
+
+The TN-Bits are not re-defined in this case but use the same encoding
+as specified in TS 08.58 Section 9.3.1.
+
+NOTE:: The above extension is only valid on an Osmocom-style dynamic
+channel, having configured the 'NM_CHANC_IPAC_TCHFull_PDCH' channel
+combination by OML.
 
 [[RSL_IE_IPAC_REMOTE_IP]]
 ==== RSL_IE_IPAC_REMOTE_IP
@@ -678,4 +856,54 @@ The initialization of the primary and secondary TRX slightly differ, as
 illustrated by the differences of <<rsl-msc-pri>> and <<rsl-msc-sec>>.
 Since the secondary TRX has no BCCH, it does not (need to) receive any 'RSL
 BCCH INFORMATION' messages from the BSC.
+
+[[rsl-dynamic-channels]]
+=== Dynamic Channel Combinations
+
+In the classic data model established by ETSI/3GPP for A-bis, each
+timeslot (channel) is configured using a static channel combination by
+means of A-bis OML.  Particularly in presence of GPRS services, this
+is very unflexible and leads to inefficient use of air interface
+resources.
+
+As such, several methods have been implemented to overcome this
+limitation.  The fundamental operation can be outlined like this:
+
+* Configuration of a particular _dynamic_ channel combination via OML
+* activation of TCH works like on a classic TCH channel combination
+* activation of PDCH requires some specific PDCH activation procedure
+
+There are two variants implemented in the OsmoBTS A-bis dialect:
+
+==== ip.access style Dynamic Channels
+
+This method is used when OML uses 'NM_CHANC_IPAC_TCHFull_PDCH' (0x80)
+as channel combination for the given time-slot.
+
+When the ip.access style dynamic channel combination _TCH/F or PDCH_
+is set, the non-standard 'PDCH ACTIVATE' (<<pdch_act>>) and 'PDCH
+DEACTIVATE' (<<pdch_deact>>) procedures are used for switching an idle
+channel into PDCH mode and back into idle mode.
+
+.Example for dynamic channel switchover, for ip.access style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_ipa_style.msc[]
+----
+
+==== Osmocom style Dynamic Channels
+
+This method is in use when OML uses
+'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' (0x90) for the given time-slot.
+
+The activation of PDCH is performed by using the regular 'RSL CHANNEL
+ACTIVATE' procedure according to <<CHANNEL_ACTIVATION>>, with the
+exception that the 'cbits' part of the '
+
+.Example for dynamic channel switchover, for ip.access style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_osmocom_style.msc[]
+----
+
 

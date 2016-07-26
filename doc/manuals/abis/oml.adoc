@@ -498,9 +498,17 @@ combinations are supported:
 | 0x0b | Reserved for PBCCH + PCCCH + PDTCH/F + PACCH/F + PTCCH/F
 | 0x0c | Reserved for PBCCH + PDTCH/F + PACCH/F + PTCCH/F
 | 0x0d | PDTCH/F + PACCH/F + PTCCH/F
-| 0x80 | Reserved for Dynamic TCH/F / PDCH
+| 0x80 | ip.access style Dynamic TCH/F / PDCH
 | 0x81 | Reserved for Dynamic TCH/F / TCH/H
+| 0x90 | Osmocom style Dynamic TCH/F / TCH/H / PDCH
 |===
+
+The _Reserved_ combinations are not actually supported/implemented
+yet, but merely reserved for such functionality, if it is eventually
+implemented.
+
+For more information on how the different dynamic channel combinations
+work, please see the <<rsl-dynamic-channels>>.
 
 [[ie_conn_fail_crit]]
 ==== Connection Failure Criterion

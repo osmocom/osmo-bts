@@ -1,0 +1,21 @@
+== Support for Dynamic Timeslots (TCH/F, TCH/H, PDCH)
+
+OsmoBTS supports dynamic switchover of timeslots between different physical
+channel configurations, initiated by the BSC via (non-standard) Abis messages
+-- see the _OsmoBTS Abis Protocol Specification_ <<osmobts-abis-spec>>.
+
+The Abis message handling for dynamic timeslots is independent of the BTS
+model. However, dynamic switchover will only work for BTS models that implement
+the internal API to reconnect a timeslot (_bts_model_ts_disconnect()_ and
+_bts_model_ts_connect()_).  Currently, these BTS models support dynamic
+timeslots:
+
+* _osmo-bts-sysmo_
+* _osmo-bts-litecell15_
+* _osmo-bts-trx_
+
+See also <<osmobts_hardware_support>>.
+
+include::../../common/snippets/dyn_pdch_ladder.adoc[]
+
+include::../../common/snippets/dyn_ts_ladder_TCH_H.adoc[]

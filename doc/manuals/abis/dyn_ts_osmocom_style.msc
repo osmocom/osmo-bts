@@ -1,0 +1,60 @@
+msc {
+	hscale = "1.5";
+	phy,bts,pcu,bsc;
+
+	bts => bsc	[ label = "RSL Chan Requested" ];
+	phy box bsc	[ label = "TS is in PDCH mode, deactivate" ];
+	bsc => bts	[ label = "RSL RF Channel Release (PDCH)" ];
+	bts => pcu	[ label = "Info Ind (Deactivate)" ];
+	pcu => bts	[ label = "Chan Deactivate request" ];
+	bts => phy	[ label = "L1 chan Deactivate PDTCH SAPIs" ];
+	phy -> bts	[ label = "L1 chan Deactivate SAPIs confirm" ];
+	bts -> bsc	[ label = "RSL RF Channel Release Ack (PDCH)" ];
+
+	phy box bsc	[ label = "Activate TCH/H" ];
+	bsc => bts	[ label = "RSL Channel Activation (TCH/H)" ];
+	---  		[ label = "BTS notices: chan still connected as PDTCH, reconnect" ];
+	bts => phy	[ label = "L1 chan Disconnect PDTCH" ];
+	phy -> bts	[ label = "L1 chan Disconnect confirm" ];
+	bts => phy	[ label = "L1 chan Connect TCH/H" ];
+	phy -> bts	[ label = "L1 chan Connect confirm" ];
+	---  		[ label = "chan reconnect as TCH/H complete" ];
+	bts => phy	[ label = "L1 chan Activate SAPIs" ];
+	bts -> bsc	[ label = "RSL Channel Activation Ack (TCH/H)" ];
+	---  		[ label = "Voice call 1 commences..." ];
+
+	phy box bsc	[ label = "A second voice call is requested" ];
+	bts => bsc	[ label = "RSL Chan Requested" ];
+	phy box bsc	[ label = "BSC finds second slot on dynamic TS in TCH/H mode" ];
+	bsc => bts	[ label = "RSL Channel Activation (TCH/H)" ];
+	bts => phy	[ label = "L1 chan Activate SAPIs" ];
+	bts -> bsc	[ label = "RSL Channel Activation Ack (TCH/H)" ];
+	---  		[ label = "Voice call 2 commences..." ];
+
+	---  		[ label = "...Voice call 1 ends" ];
+	bts => bsc	[ label = "Release Ind" ];
+	bsc => bts	[ label = "RSL RF Channel Release (TCH/H)" ];
+	bts => phy	[ label = "L1 chan Deactivate SAPIs" ];
+	bts -> bsc	[ label = "RSL RF Channel Release Ack (TCH/H)" ];
+	---  		[ label = "BSC notices: one chan still in use"];
+
+	---  		[ label = "...Voice call 2 ends" ];
+	bts => bsc	[ label = "Release Ind" ];
+	bsc => bts	[ label = "RSL RF Channel Release (TCH/H)" ];
+	bts => phy	[ label = "L1 chan Deactivate SAPIs" ];
+	bts -> bsc	[ label = "RSL RF Channel Release Ack (TCH/H)" ];
+
+	phy box bsc	[ label = "If all channels on TS are released, PDCH Activation" ];
+	bsc => bts	[ label = "RSL Channel Activation (PDCH)" ];
+	---  		[ label = "BTS notices: chan still connected as TCH/H, reconnect" ];
+	bts => phy	[ label = "L1 chan Disconnect TCH/H" ];
+	phy -> bts	[ label = "L1 chan Disconnect confirm" ];
+	bts => phy	[ label = "L1 chan Connect PDTCH" ];
+	phy -> bts	[ label = "L1 chan Connect confirm" ];
+	---  		[ label = "chan reconnect as PDTCH complete" ];
+	bts => pcu	[ label = "Info Ind (Activate)" ];
+	pcu => bts	[ label = "chan Activate request" ];
+	bts => phy	[ label = "L1 chan Activate PDTCH SAPIs" ];
+	phy -> bts	[ label = "L1 chan Activate SAPIs confirm" ];
+	bts -> bsc	[ label = "RSL Channel Activation Ack (PDCH)" ];
+}

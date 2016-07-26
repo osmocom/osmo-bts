@@ -18,6 +18,8 @@ include::../common/chapters/logging.adoc[]
 
 include::chapters/configuration.adoc[]
 
+include::chapters/dynamic-timeslots.adoc[]
+
 include::chapters/bts-models.adoc[]
 
 include::chapters/architecture.adoc[]

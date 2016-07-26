@@ -1,3 +1,4 @@
+[[osmobts_hardware_support]]
 == OsmoBTS hardware support
 
 OsmoBTS consists of a _common_ part that applies to all BTS models as well as
@@ -23,7 +24,7 @@ offered as a PHY-independent _L1SAP_ interface towards the common part of
 OsmoBTS.
 
 In addition, each bts_model implements a set of functions that the
-common part calls.  Those functions are pre-fixed by bts_model_.
+common part calls.  Those functions are pre-fixed by _bts_model__.
 
 Each bts_model may offer
 
