@@ -18,10 +18,10 @@ OsmoBTS implements the GSM A-bis interface as described in the relevant
 * A-bis RSL according to 3GPP TS 08.58
 * A-bis OML according to 3GPP TS 12.21
 
-As the 3GPP specified A-bis only over E1 interfaces and not over IP,
+As the 3GPP specifies A-bis only over E1 interfaces and not over IP,
 significant enhancements and modifications have been performed as opposed
 to the 3GPP specifications.  Nevertheless, the implementation tries to
-stay as close a possible to the 3GPP specifications.
+stay as close as possible to the 3GPP specifications.
 
 Please see the _OsmoBTS Abis Protocol Specification_
 <<osmobts-abis-spec>> for more information on this subject.
