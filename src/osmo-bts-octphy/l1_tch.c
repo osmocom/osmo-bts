@@ -255,7 +255,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 	if (rmsg)
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr,
-					data_ind->u32Fn);
+					data_ind->Data.ulFrameNumber);
 
 	return 0;
 
