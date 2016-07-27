@@ -630,6 +630,7 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 	uint8_t cbits = 0;
 	enum gsm_phys_chan_config pchan = pick_pchan(ts);
 	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
 
 	switch (sapi) {
 	case GsmL1_Sapi_Bcch:
