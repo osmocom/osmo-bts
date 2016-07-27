@@ -200,24 +200,10 @@ static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	return 1;
 }
 
-/* Copied from OpenBSC and enlarged to _GSM_PCHAN_MAX */
-static const uint8_t subslots_per_pchan[_GSM_PCHAN_MAX] = {
-	[GSM_PCHAN_NONE] = 0,
-	[GSM_PCHAN_CCCH] = 0,
-	[GSM_PCHAN_CCCH_SDCCH4] = 4,
-	[GSM_PCHAN_CCCH_SDCCH4_CBCH] = 4,
-	[GSM_PCHAN_TCH_F] = 1,
-	[GSM_PCHAN_TCH_H] = 2,
-	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
-	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
-	[GSM_PCHAN_TCH_F_PDCH] = 1,
-	/* dynamic pchan are handled outside of this array */
-};
-
 static int ts_meas_check_compute(struct gsm_bts_trx_ts *ts, uint32_t fn)
 {
 	int i;
-	const int num_subslots = subslots_per_pchan[ts->pchan];
+	const int num_subslots = ts_subslots(ts);
 
 	for (i = 0; i < num_subslots; ++i) {
 		struct gsm_lchan *lchan = &ts->lchan[i];
