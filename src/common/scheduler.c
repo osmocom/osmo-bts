@@ -1302,7 +1302,7 @@ int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 		}
 	}
 
-	LOGP(DL1C, LOGL_NOTICE, "Failed to configuring multiframe "
+	LOGP(DL1C, LOGL_NOTICE, "Failed to configure multiframe "
 		"trx=%d ts=%d\n", l1t->trx->nr, tn);
 
 	return -ENOTSUP;
