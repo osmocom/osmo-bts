@@ -517,7 +517,7 @@ static int l1sap_mph_info_cnf(struct gsm_bts_trx *trx,
 	return rc;
 }
 
-/* PH-RTS-IND prim recevied from bts model */
+/* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
 {
