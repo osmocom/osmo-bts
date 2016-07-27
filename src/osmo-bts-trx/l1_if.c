@@ -374,13 +374,13 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 }
 
 /* set ts attributes */
-static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
+static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
+				   enum gsm_phys_chan_config pchan)
 {
 	struct phy_instance *pinst = trx_phy_instance(ts->trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint8_t tn = ts->nr;
 	uint16_t tsc = ts->tsc;
-	enum gsm_phys_chan_config pchan = ts->pchan;
 	uint8_t slottype;
 	int rc;
 
@@ -398,7 +398,9 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 	if (!(l1h->config.slotmask & (1 << tn)))
 		return NM_NACK_RES_NOTAVAIL;
 
-	/* set physical channel */
+	/* set physical channel. For dynamic TCH/F_PDCH, the caller should have
+	 * decided on a more specific PCHAN type already. */
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
 	rc = trx_sched_set_pchan(&l1h->l1s, tn, pchan);
 	if (rc)
 		return NM_NACK_RES_NOTAVAIL;
@@ -420,6 +422,21 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 	}
 
 	return 0;
+}
+
+static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
+{
+	enum gsm_phys_chan_config pchan = ts->pchan;
+
+	/* For dynamic TCH/F_PDCH, pick the pchan type that should currently be
+	 * active according to TS flags. This should only be called during
+	 * init, PDCH transitions will call trx_set_ts_as_pchan() directly. */
+	OSMO_ASSERT((ts->flags & TS_F_PDCH_PENDING_MASK) == 0);
+	if (pchan == GSM_PCHAN_TCH_F_PDCH)
+		pchan = (ts->flags & TS_F_PDCH_ACTIVE)? GSM_PCHAN_PDCH
+			                              : GSM_PCHAN_TCH_F;
+
+	return trx_set_ts_as_pchan(ts, pchan);
 }
 
 
