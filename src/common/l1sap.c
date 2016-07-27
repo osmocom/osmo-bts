@@ -294,6 +294,14 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	return 0;
 }
 
+static bool ts_is_pdch(const struct gsm_bts_trx_ts *ts)
+{
+	return ts->pchan == GSM_PCHAN_PDCH
+		|| (ts->pchan == GSM_PCHAN_TCH_F_PDCH
+		    && (ts->flags & TS_F_PDCH_ACTIVE)
+		    && !(ts->flags & TS_F_PDCH_PENDING_MASK));
+}
+
 static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	uint8_t *data;
@@ -311,7 +319,7 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		uplink = 0;
 		/* fall through */
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
-		if (trx->ts[tn].pchan == GSM_PCHAN_PDCH)
+		if (ts_is_pdch(&trx->ts[tn]))
 			rc = gsmtap_pdch(l1sap, &chan_type, &tn, &ss, &fn, &data,
 				&len);
 		else
@@ -542,7 +550,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
 
-	if (trx->ts[tn].pchan == GSM_PCHAN_PDCH) {
+	if (ts_is_pdch(&trx->ts[tn])) {
 		if (L1SAP_IS_PTCCH(rts_ind->fn)) {
 			pcu_tx_rts_req(&trx->ts[tn], 1, fn, 1 /* ARFCN */,
 				L1SAP_FN2PTCCHBLOCK(fn));
@@ -806,7 +814,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	DEBUGP(DL1P, "Rx PH-DATA.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
 
-	if (trx->ts[tn].pchan == GSM_PCHAN_PDCH) {
+	if (ts_is_pdch(&trx->ts[tn])) {
 		if (len == 0)
 			return -EINVAL;
 		if (L1SAP_IS_PTCCH(fn)) {
