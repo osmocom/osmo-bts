@@ -52,7 +52,7 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_TCH_H]               = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C]      = 7,
 	[GSM_PCHAN_PDCH]                = 13,
-	//[GSM_PCHAN_TCH_F_PDCH]                = FIXME,
+	/* [GSM_PCHAN_TCH_F_PDCH] not needed here, see trx_set_ts_as_pchan() */
 	[GSM_PCHAN_UNKNOWN]             = 0,
 };
 
