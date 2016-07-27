@@ -753,11 +753,26 @@ int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 {
-	return -ENOTSUP;
+	/* no action required, signal completion right away. */
+	cb_ts_disconnected(ts);
+	return 0;
 }
 
 int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 {
-	return -ENOTSUP;
+	int rc;
+	LOGP(DL1C, LOGL_DEBUG, "%s bts_model_ts_connect(as_pchan=%s)\n",
+	     gsm_ts_name(ts), gsm_pchan_name(as_pchan));
+
+	rc = trx_set_ts_as_pchan(ts, as_pchan);
+	if (rc)
+		return rc;
+
+	LOGP(DL1C, LOGL_NOTICE, "%s bts_model_ts_connect(as_pchan=%s) success,"
+	     " calling cb_ts_connected()\n",
+	     gsm_ts_name(ts), gsm_pchan_name(as_pchan));
+
+	cb_ts_connected(ts);
+	return 0;
 }
