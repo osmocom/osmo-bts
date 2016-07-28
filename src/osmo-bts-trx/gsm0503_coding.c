@@ -442,29 +442,32 @@ struct gsm0503_mcs_code gsm0503_mcs_dl_codes[EGPRS_NUM_MCS] = {
 	},
 };
 
-int osmo_conv_decode_ber(const struct osmo_conv_code *code,
+static int osmo_conv_decode_ber(const struct osmo_conv_code *code,
 	const sbit_t *input, ubit_t *output,
 	int *n_errors, int *n_bits_total)
 {
-	int res, i;
+	int res, i, coded_len;
 	ubit_t recoded[EGPRS_DATA_C_MAX];
 
 	res = osmo_conv_decode(code, input, output);
 
-	if (n_bits_total) {
-		*n_bits_total = osmo_conv_encode(code, output, recoded);
-		OSMO_ASSERT(sizeof(recoded)/sizeof(recoded[0]) >= *n_bits_total);
+	if (n_bits_total || n_errors) {
+		coded_len = osmo_conv_encode(code, output, recoded);
+		OSMO_ASSERT(sizeof(recoded)/sizeof(recoded[0]) >= coded_len);
 	}
 
 	/* Count bit errors */
 	if (n_errors) {
 		*n_errors = 0;
-		for (i=0; i< *n_bits_total; i++) {
+		for (i = 0; i < coded_len; i++) {
 			if (! ((recoded[i] && input[i]<0) ||
 			       (!recoded[i] && input[i]>0)) )
 				*n_errors += 1;
 		}
 	}
+
+	if (n_bits_total)
+		*n_bits_total = coded_len;
 
 	return res;
 }
