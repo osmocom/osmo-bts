@@ -295,7 +295,11 @@ found_msg:
 }
 
 int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-				enum trx_chan_type chan, uint8_t *l2, uint8_t l2_len, float rssi, enum osmo_ph_pres_info_type presence_info)
+			       enum trx_chan_type chan, uint8_t *l2,
+			       uint8_t l2_len, float rssi,
+			       int16_t ta_offs_qbits, int16_t link_qual_cb,
+			       uint16_t ber10k,
+			       enum osmo_ph_pres_info_type presence_info)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
@@ -311,6 +315,9 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	l1sap->u.data.link_id = trx_chan_desc[chan].link_id;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = (int8_t) (rssi);
+	l1sap->u.data.ber10k = ber10k;
+	l1sap->u.data.ta_offs_qbits = ta_offs_qbits;
+	l1sap->u.data.lqual_cb = link_qual_cb;
 	l1sap->u.data.pdch_presence_info = presence_info;
 	msg->l2h = msgb_put(msg, l2_len);
 	if (l2_len)

@@ -961,7 +961,8 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
 	uint8_t *data;
-	uint16_t len;
+	uint16_t len, b_total, b_error;
+	int16_t snr;
 	int8_t rssi;
 	int rc;
 
@@ -1029,6 +1030,16 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = rssi;
+	b_total = data_ind->MeasurementInfo.usBERTotalBitCnt;
+	b_error =data_ind->MeasurementInfo.usBERCnt;
+	l1sap->u.data.ber10k = b_total ? 10000 * b_error / b_total : 0;
+	l1sap->u.data.ta_offs_qbits = data_ind->MeasurementInfo.sBurstTiming4x;
+	snr = data_ind->MeasurementInfo.sSNRDb;
+	/* FIXME: better converion formulae for SnR -> C / I?
+	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;
+	LOGP(DL1C, LOGL_ERROR, "SnR: raw %d, computed %d\n", snr, l1sap->u.data.lqual_cb);
+	*/
+	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 100;
 	l1sap->u.data.pdch_presence_info = PRES_INFO_BOTH; /* FIXME: consider EDGE support */
 
 	l1sap_up(trx, l1sap);

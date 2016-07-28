@@ -337,7 +337,7 @@ int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 
 int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len,
-	int8_t rssi)
+	int8_t rssi, uint16_t ber10k, int16_t bto, int16_t lqual)
 {
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
@@ -362,6 +362,9 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	data_ind->ts_nr = ts->nr;
 	data_ind->block_nr = block_nr;
 	data_ind->rssi = rssi;
+	data_ind->ber10k = ber10k;
+	data_ind->ta_offs_qbits = bto;
+	data_ind->lqual_cb = lqual;
 	memcpy(data_ind->data, data, len);
 	data_ind->len = len;
 

@@ -916,7 +916,11 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = rssi;
-
+	if (!pcu_direct) {
+		l1sap->u.data.ber10k = data_ind->measParam.fBer * 10000;
+		l1sap->u.data.ta_offs_qbits = data_ind->measParam.i16BurstTiming;
+		l1sap->u.data.lqual_cb = data_ind->measParam.fLinkQuality * 10;
+	}
 	return l1sap_up(trx, l1sap);
 }
 

@@ -820,7 +820,9 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		if (L1SAP_IS_PTCCH(fn)) {
 			pcu_tx_data_ind(&trx->ts[tn], 1, fn,
 				0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
-				data, len, rssi);
+					data, len, rssi, data_ind->ber10k,
+					data_ind->ta_offs_qbits,
+					data_ind->lqual_cb);
 
 			return 0;
 		}
@@ -829,7 +831,8 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			return 0;
 		/* PDTCH / PACCH frame handling */
 		pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
-			L1SAP_FN2MACBLOCK(fn), data, len, rssi);
+			L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
+				data_ind->ta_offs_qbits, data_ind->lqual_cb);
 
 		return 0;
 	}
