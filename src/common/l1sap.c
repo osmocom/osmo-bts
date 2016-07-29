@@ -299,7 +299,10 @@ static bool ts_is_pdch(const struct gsm_bts_trx_ts *ts)
 	return ts->pchan == GSM_PCHAN_PDCH
 		|| (ts->pchan == GSM_PCHAN_TCH_F_PDCH
 		    && (ts->flags & TS_F_PDCH_ACTIVE)
-		    && !(ts->flags & TS_F_PDCH_PENDING_MASK));
+		    && !(ts->flags & TS_F_PDCH_PENDING_MASK))
+		|| (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+		    && ts->dyn.pchan_want == ts->dyn.pchan_is
+		    && ts->dyn.pchan_is == GSM_PCHAN_PDCH);
 }
 
 static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
