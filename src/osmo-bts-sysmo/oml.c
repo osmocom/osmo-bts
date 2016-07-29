@@ -491,7 +491,8 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(ts->trx);
 	GsmL1_MphConnectReq_t *cr;
 
-	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	if (pchan == GSM_PCHAN_TCH_F_PDCH
+	    || pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
 		LOGP(DL1C, LOGL_ERROR,
 		     "%s Requested TS connect as %s,"
 		     " expected a specific pchan instead\n",
