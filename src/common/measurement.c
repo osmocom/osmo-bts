@@ -210,8 +210,8 @@ static const uint8_t subslots_per_pchan[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
 	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
-	/* FIXME: what about dynamic TCH_F_TCH_H ? */
 	[GSM_PCHAN_TCH_F_PDCH] = 1,
+	/* dynamic pchan are handled outside of this array */
 };
 
 static int ts_meas_check_compute(struct gsm_bts_trx_ts *ts, uint32_t fn)
