@@ -686,7 +686,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 [[own_msg_types]]
 ==== A-bis/IP specific RSL Message discriminators
 
-The following message descriminators are used in addition to those
+The following message discriminators are used in addition to those
 indicated in 3GPP TS 08.58 Section 9.1:
 
 .OsmoBTS specific new message discriminators
