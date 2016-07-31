@@ -24,6 +24,15 @@
 	    Fix A-bis OML/RSL port number swap in message seqeuence charts.
     </revremark>
   </revision>
+  <revision>
+    <revnumber>2.2</revnumber>
+    <date>July 2016</date>
+    <authorinitials>NJH, HW</authorinitials>
+    <revremark>
+	Add description on Dynamic Channel Configuration in OML and activation in RSL.
+    </revremark>
+  </revision>
+
 </revhistory>
 
 <authorgroup>
