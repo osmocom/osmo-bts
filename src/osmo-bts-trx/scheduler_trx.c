@@ -877,7 +877,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* decode */
 	rc = xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad data frame at fn=%u "
+		LOGP(DL1C, LOGL_DEBUG, "Received bad data frame at fn=%u "
 			"(%u/%u) for %s\n", *first_fn,
 			(*first_fn) % l1ts->mf_period, l1ts->mf_period,
 			trx_chan_desc[chan].name);
