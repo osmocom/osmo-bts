@@ -288,11 +288,16 @@ int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
 
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 {
+	struct phy_instance *pinst = l1h->phy_inst;
 	uint16_t freq10;
+
+	if (pinst->trx->bts->band == GSM_BAND_1900)
+		arfcn |= ARFCN_PCS;
 
 	freq10 = gsm_arfcn2freq10(arfcn, 1); /* RX = uplink */
 	if (freq10 == 0xffff) {
-		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n", arfcn);
+		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
+		     arfcn & ~ARFCN_FLAG_MASK);
 		return -ENOTSUP;
 	}
 
@@ -301,11 +306,16 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 {
+	struct phy_instance *pinst = l1h->phy_inst;
 	uint16_t freq10;
+
+	if (pinst->trx->bts->band == GSM_BAND_1900)
+		arfcn |= ARFCN_PCS;
 
 	freq10 = gsm_arfcn2freq10(arfcn, 0); /* TX = downlink */
 	if (freq10 == 0xffff) {
-		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n", arfcn);
+		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
+		     arfcn & ~ARFCN_FLAG_MASK);
 		return -ENOTSUP;
 	}
 
