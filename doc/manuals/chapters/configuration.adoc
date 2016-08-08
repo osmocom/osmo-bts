@@ -152,3 +152,30 @@ From the moment they are enabled via VTY, GSMTAP messages will be
 generated and sent in UDP encapsulation to the IANA-registered UDP port
 for GSMTAP (4729) at the IP address specified in the command line
 argument.
+
+==== Configuring power ramping
+
+OsmoBTS can ramp up the power of its trx over time. This helps reduce
+cell congestion in busy environments.
+
+In this example, the trx starts with 5dBm output power which increases by 1dB
+every two seconds until it reaches nominal power.
+Power ramping can use the power-ramp commands at the CONFIG TRX node of the
+OsmoBTS VTY.
+
+.Example: Configure power ramping on trx 0
+----
+OsmoBTS> enable
+OsmoBTS# configure terminal
+OsmoBTS(config)# bts
+OsmoBTS(bts)# trx 0
+OsmoBTS(trx)# power-ramp max-initial 5 dBm
+OsmoBTS(trx)# power-ramp step-size 1 dB
+OsmoBTS(trx)# power-ramp step-interval 2
+OsmoBTS(trx)# write <1>
+----
+<1> the `write` command will make the configuration persistent in the
+configuration file.
+
+De-activating power-ramping can be performed by setting the max-initial value
+to the nominal power. The default max-initial value is 23 dBm.
