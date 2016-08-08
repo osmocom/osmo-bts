@@ -15,9 +15,6 @@ git pull --rebase
 # Build the dependency
 cd ../
 
-# Analysis code
-osmo-deps.sh osmo-static-analysis
-
 osmo-deps.sh libosmocore
 cd libosmocore
 autoreconf --install --force
@@ -62,13 +59,3 @@ DISTCHECK_CONFIGURE_FLAGS="--enable-sysmocom-bts --with-openbsc=$PWD/deps/openbs
 if [ $FIRMWARE_VERSION != "femtobts_v2.7" ]; then
   PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE -C contrib/sysmobts-calib
 fi
-
-# Use spatch to find common issues
-spatch -include_headers -in_place -sp_file deps/osmo-static-analysis/coccinelle/memcpy.cocci .
-RES=`git status --porcelain | grep ' M' | wc -l`
-git checkout .
-
-if [ $RES -gt 0 ]; then
-   echo "Static analysis failed. Please fix the code."
-   exit 23
-fi 

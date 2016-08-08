@@ -15,9 +15,6 @@ git pull --rebase
 # Build the dependency
 cd ../
 
-# Analysis code
-osmo-deps.sh osmo-static-analysis
-
 osmo-deps.sh libosmocore
 cd libosmocore
 autoreconf --install --force
@@ -54,15 +51,3 @@ PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig ./configure --with-openbsc=$PWD/
 PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE $PARALLEL_MAKE
 PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE check
 DISTCHECK_CONFIGURE_FLAGS="--with-octsdr-2g=$PWD/deps/layer1-api/ --with-openbsc=$PWD/deps/openbsc/openbsc/include" PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE distcheck
-
-
-
-# Use spatch to find common issues
-spatch -include_headers -in_place -sp_file deps/osmo-static-analysis/coccinelle/memcpy.cocci .
-RES=`git status --porcelain | grep ' M' | wc -l`
-git checkout .
-
-if [ $RES -gt 0 ]; then
-   echo "Static analysis failed. Please fix the code."
-   exit 23
-fi 
