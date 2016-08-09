@@ -31,3 +31,19 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 	       gsm_lchans_name(state));
 	lchan->state = state;
 }
+
+bool ts_is_pdch(const struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_PDCH:
+		return true;
+	case GSM_PCHAN_TCH_F_PDCH:
+		return (ts->flags & TS_F_PDCH_ACTIVE)
+		       && !(ts->flags & TS_F_PDCH_PENDING_MASK);
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return ts->dyn.pchan_is == GSM_PCHAN_PDCH
+		       && ts->dyn.pchan_want == ts->dyn.pchan_is;
+	default:
+		return false;
+	}
+}

@@ -135,5 +135,6 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 
 int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher);
 
+bool ts_is_pdch(const struct gsm_bts_trx_ts *ts);
 
 #endif /* _GSM_DATA_H */
