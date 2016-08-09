@@ -363,7 +363,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (!L1SAP_IS_CHAN_TCHF(chan_nr))
 			subCh = l1sap_chan2ss(chan_nr);
 	} else if (L1SAP_IS_CHAN_TCHF(chan_nr)) {
-		if (trx->ts[u8Tn].pchan == GSM_PCHAN_PDCH) {
+		if (ts_is_pdch(&trx->ts[u8Tn])) {
 			if (L1SAP_IS_PTCCH(u32Fn)) {
 				sapi = GsmL1_Sapi_Ptcch;
 				u8BlockNbr = L1SAP_FN2PTCCHBLOCK(u32Fn);
