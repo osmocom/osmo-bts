@@ -618,9 +618,8 @@ static const struct sapi_dir pdtch_sapis[] = {
 	{ GsmL1_Sapi_Pdtch,	GsmL1_Dir_RxUplink },
 	{ GsmL1_Sapi_Ptcch,	GsmL1_Dir_TxDownlink },
 	{ GsmL1_Sapi_Prach,	GsmL1_Dir_RxUplink },
-	{ GsmL1_Sapi_Ptcch,	GsmL1_Dir_RxUplink },
-	/* FIXME: do we still need this if? */
 #if 0
+	{ GsmL1_Sapi_Ptcch,	GsmL1_Dir_RxUplink },
 	{ GsmL1_Sapi_Pacch,	GsmL1_Dir_TxDownlink },
 #endif
 };
