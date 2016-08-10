@@ -505,9 +505,10 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[pchan];
 
-	DEBUGP(DL1C, "%s pchan=%s ts_connect_as(%s) logChComb=%d\n",
+	DEBUGP(DL1C, "%s pchan=%s ts_connect_as(%s) logChComb=%s\n",
 	       gsm_lchan_name(ts->lchan), gsm_pchan_name(ts->pchan),
-	       gsm_pchan_name(pchan), cr->logChComb);
+	       gsm_pchan_name(pchan), get_value_string(femtobts_chcomb_names,
+						       cr->logChComb));
 
 	return l1if_gsm_req_compl(fl1h, msg, cb, NULL);
 }
