@@ -445,8 +445,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	case GsmL1_TchPlType_Amr:
 		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
 		break;
-	case GsmL1_TchPlType_Amr_SidFirstP2:
-		/* L1 do not give us SID_FIRST data, just indication */
+	case GsmL1_TchPlType_Amr_SidFirstP1:
 		memcpy(sid_first, payload, payload_len);
 		int len = osmo_amr_rtp_enc(sid_first, 0, AMR_SID, AMR_GOOD);
 		if (len < 0)
