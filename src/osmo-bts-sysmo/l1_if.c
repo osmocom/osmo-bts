@@ -929,7 +929,8 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
-	uint8_t ra, acc_delay = 0;
+	uint8_t acc_delay = 0;
+	uint16_t ra = 0, is_11bit = 0, burst_type = 0, temp = 0;
 	int rc;
 
 	/* increment number of busy RACH slots, if required */
@@ -951,16 +952,28 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		btsb->load.rach.access++;
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
+	burst_type = ra_ind->burstType;
 
-	if (ra_ind->msgUnitParam.u8Size != 1) {
+	if ((ra_ind->msgUnitParam.u8Size != 1) &&
+		(ra_ind->msgUnitParam.u8Size != 2)) {
 		LOGP(DL1C, LOGL_ERROR, "PH-RACH-INDICATION has %d bits\n",
 			ra_ind->sapi);
 		msgb_free(l1p_msg);
 		return 0;
 	}
 
+	if (ra_ind->msgUnitParam.u8Size == 2) {
+		is_11bit = 1;
+		ra = ra_ind->msgUnitParam.u8Buffer[0];
+		ra = ra << 3;
+		temp = (ra_ind->msgUnitParam.u8Buffer[1] & 0x7);
+		ra = ra | temp;
+	} else {
+		is_11bit = 0;
+		ra = ra_ind->msgUnitParam.u8Buffer[0];
+	}
+
 	fn = ra_ind->u32Fn;
-	ra = ra_ind->msgUnitParam.u8Buffer[0];
 	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 	if (rc < 0)
 		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
@@ -970,11 +983,28 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	l1sap->u.rach_ind.ra = ra;
 	l1sap->u.rach_ind.acc_delay = acc_delay;
 	l1sap->u.rach_ind.fn = fn;
+	l1sap->u.rach_ind.is_11bit = is_11bit;	/* no of bits in 11 bit RACH */
 
-	/* Initialising the parameters needs to be handled when 11 bit RACH */
+	/*mapping of the burst type, the values are specific to osmo-bts-sysmo*/
 
-	l1sap->u.rach_ind.is_11bit = 0;
-	l1sap->u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+	switch (burst_type) {
+	case GsmL1_BurstType_Access_0:
+		l1sap->u.rach_ind.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_0;
+		break;
+	case GsmL1_BurstType_Access_1:
+		l1sap->u.rach_ind.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_1;
+		break;
+	case GsmL1_BurstType_Access_2:
+		l1sap->u.rach_ind.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_2;
+		break;
+	default:
+		l1sap->u.rach_ind.burst_type =
+			GSM_L1_BURST_TYPE_NONE;
+		break;
+	}
 
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4)
