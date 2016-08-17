@@ -371,7 +371,8 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
-int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint8_t ra, uint32_t fn)
+int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
+	uint8_t is_11bit, enum ph_burst_type burst_type)
 {
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
@@ -390,6 +391,8 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint8_t ra, uint32_t fn)
 	rach_ind->ra = ra;
 	rach_ind->qta = qta;
 	rach_ind->fn = fn;
+	rach_ind->is_11bit = is_11bit;
+	rach_ind->burst_type = burst_type;
 
 	return pcu_sock_send(&bts_gsmnet, msg);
 }

@@ -288,7 +288,7 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 		*ss = L1SAP_CHAN2SS_SDCCH4(chan_nr);
 	else if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
 		*ss = L1SAP_CHAN2SS_SDCCH8(chan_nr);
-	*data = &l1sap->u.rach_ind.ra;
+	*data = (uint8_t *)&l1sap->u.rach_ind.ra;
 	*len = 1;
 
 	return 0;
@@ -965,10 +965,13 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		return l1sap_handover_rach(trx, l1sap, rach_ind);
 
 	/* check for packet access */
-	if (trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) {
+	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||
+		(trx == bts->c0 && rach_ind->is_11bit)) {
+
 		LOGP(DL1P, LOGL_INFO, "RACH for packet access\n");
 		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
-			rach_ind->ra, rach_ind->fn);
+			rach_ind->ra, rach_ind->fn,
+			rach_ind->is_11bit, rach_ind->burst_type);
 		return 0;
 	}
 

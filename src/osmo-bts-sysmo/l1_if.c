@@ -970,6 +970,12 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	l1sap->u.rach_ind.ra = ra;
 	l1sap->u.rach_ind.acc_delay = acc_delay;
 	l1sap->u.rach_ind.fn = fn;
+
+	/* Initialising the parameters needs to be handled when 11 bit RACH */
+
+	l1sap->u.rach_ind.is_11bit = 0;
+	l1sap->u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4)
 		l1sap->u.rach_ind.chan_nr = 0x88;
