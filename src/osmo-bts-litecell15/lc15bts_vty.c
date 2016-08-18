@@ -88,7 +88,7 @@ DEFUN(cfg_phy_dsp_trace_f, cfg_phy_dsp_trace_f_cmd,
 	unsigned int flag;
 
 	flag = get_string_value(lc15bts_tracef_names, argv[1]);
-	pinst->u.lc15.dsp_trace_f |= ~flag;
+	pinst->u.lc15.dsp_trace_f |= flag;
 
 	return CMD_SUCCESS;
 }
