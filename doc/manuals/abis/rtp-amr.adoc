@@ -1,0 +1,858 @@
+= AMR-RTP in Combination with DTX
+
+The purpose of this document is to describe the sometimes quite
+intricate interactions between a MS, the BTS-PHY and the BTS softare
+in case of AMR (Adaptive Multi Rate) codec and DTX (Discontinuous
+Transmission).
+
+It is written with the OsmoBTS implementation and the Nutaq GSM PHY
+API in mind, but should more or less be applicable to any GSM BTS
+PHY or any BTS software implementation, assuming it uses RTP on the
+back-haul towards the MGW.
+
+== Full-Rate (TCH/AFS)
+
+=== TCH/AFS Uplink (MS to Network)
+
+==== TCH/AFS Uplink: During Talk-Spurt
+
+During a talk-spurt, the system behaves identical to a system without
+DTX enabled: Every four radio bursts, the BTS-PHY has one AMR frame
+ready and hands it up to the BTS process, which creates an RTP AMR
+frame from it and sends that to the MGW.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	--- 		[label="Regular AMR Speech (has been ongoing for some time)"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N-1 + sub-block 1 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N-1 + sub-block 2 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N-1 + sub-block 3 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N-1 + sub-block 4 of speech frame N)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 3 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 4 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+}
+----
+
+==== TCH/AFS Uplink: End of Voice; Start of Silence
+
+When the voice encoder in the MS detects no voice activity anymore, it
+signals towards the MS-PHY that SID_FIRST shall be transmitted.
+
+The BTS-PHY reports the following primitives to the BTS after all four
+related bursts have been received:
+
+The BTS sends an RTP frame with AMR Frame Type SID, in which the STI
+is set to indicate a SID_FIRST message.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Last AMR Speech (end of talk-spurt) and SID"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N-1, sub-block 1 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N-1, sub-block 2 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N-1, sub-block 3 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N-1, sub-block 4 of SID_FIRST)", id="ULSF2"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_FIRST)"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_NA"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)", id="ULSU2"];
+	ms => phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+}
+----
+
+ULSF2:: The sub-blocks 5-8 of SID_FIRST are not transmitted, as all
+information bits are contained in sub-blocks 1-4 only.
+
+ULSU2:: There must be exactly two suppressed voice frames between the
+SID_FIRST and the SID_UPDATE, i.e. 60ms between SID_FIRST and
+SID_UPDATE.
+
+==== TCH/AFS Uplink: During Silence
+
+While the period of silence is ongoing, the MS pauses all
+transmissions, except the periodic scheduling of SID_UPDATE every 8
+voice frames (160ms).
+
+NOTE:: Silence can also be interrupted at any time by ONSET, see
+<<afs-ul-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Every 8 voice frames (160ms)", id="8VF"];
+
+	ms => phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+}
+----
+
+8VF:: This happens every 8 *voice frames* (160ms), not every 8 GSM
+TDMA frames!
+
+[[afs-ul-onset]]
+==== TCH/AFS Uplink: End of Silence; Start of Voice
+
+Once the voice encoder in the MS detects voice activity again, it
+asks its transmitter to perform transmission of SID_ONSET, which is a
+special frame whose information is encoded only in sub-blocks 3+4, and
+sub-blocks 1+2 are discarded before transmission.
+
+A set of four radio bursts is sent, containing
+
+* the only four transmitted sub-blocks of the SID_ONSET frame
+* all four sub-blocks of the first voice codec frame
+* the first two blocks of the second voice codec frame
+
+The BTS-PHY informs the BTS using two primitives:
+
+* PH-DATA.ind GsmL1_TchPlType_Amr_Onset indicates the presence of
+  SID_ONSET, including the Channel Mode Indication (irrespective of
+  CMI Phase)
+* PH-DATA.ind GsmL1_TchPlType_Amr indicates the first voice frame
+
+The BTS transmits an RTP frame with AMR payload of the corresponding
+speech frame type, and sets the RTP MARKER bit to indicate the ONSET
+condition.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Once voice is active again"];
+
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms => phy	[label="L1 burst (sub-block 5 of SID_ONSET + sub-block 1 of speech frame N)", id="ULSO2"];
+	ms => phy	[label="L1 burst (sub-block 6 of SID_ONSET + sub-block 2 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 7 of SID_ONSET + sub-block 3 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 8 of SID_ONSET + sub-block 4 of speech frame N)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
+	bts => bts	[label="lchan_set_marker() and store CMI"];
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 3 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 4 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1), MARKER=1"];
+	...;
+}
+----
+
+ULSO2:: sub-blocks 1..4 of SID_ONSET are never transmitted as all
+infomration is contained in blocks 5..8.
+
+=== TCH/AFS Downlink (Network to MS)
+
+[[afs-dl-talk]]
+==== TCH/AFS Downlink: During Talk-Spurt
+
+During a talk-spurt, the system behaves identical to a system without
+DTX enabled: an RTP frame arrives every 20ms.
+
+The PHY sends a PH-RTS.ind in similar intervals, to which the BTS
+responds with a PH-DATA.req containing GsmL1_TchPlType_Amr.
+
+The BTS-PHY then encodes and interleaves the codec frame into eight
+sub-blocks. Due to the interleaving, one new PH-RTS.ind is issued
+every four bursts.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	--- 		[label="Regular AMR Speech (has been ongoing for some time)"];
+
+	mgw => bts	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N-1 + sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N-1 + sub-block 2 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N-1 + sub-block 3 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N-1 + sub-block 4 of speech frame N)"];
+	mgw => bts	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 3 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+==== TCH/AFS Downlink: End of Voice; Start of Silence
+
+When the BTS receives the first RTP frame with Frame Type SID, it will
+generate a SID_FIRST AMR frame. The AMR frame is interleaved in a way
+that all information is contained in the first four sub-blocks, with
+the latter four sub-blocks being dropped and not transmitted.
+
+Three codec frames (60ms) later, the BTS needs to transmit a
+SID_UPDATE AMR frame, which should consist of comfort noise parameters
+received in either the first AMR SID frame, or a subsequent AMR SID
+frame received meanwhile.
+
+In between SID_FIRST and SID_UPDATE, and after the SID_UPDATE, the BTS
+sends PH-EMPTY-FRAME.req to all PH-RTS.ind, causing the BTS-PHY to
+cease transmission in those periods.
+
+NOTE:: At any time, the BTS can end the silence period by issuing
+ONSET (in case of a new downlink talk-spurt or a FACCH downlink
+frame).  See <<afs-dl-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Last AMR Speech (end of talk-spurt) and SID First"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_FIRST)"];
+	bts => bts	[label="Store SID frame in case it contains comfort noise parameters"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N-1 + sub-block 1 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N-1 + sub-block 2 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N-1 + sub-block 3 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N-1 + sub-block 4 of SID_FIRST)", id="DLSF2"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	bts => bts	[label="Store SID frame in case it contains comfort noise parameters"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_UPDATE)", id="DLSU2"];
+	ms <= phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+}
+----
+
+DLSF2:: sub-frames 5..8 of SID_FIRST are not transmitted, as all
+information is contained in sub-frames 1..4
+
+DLSU2:: The SID_UPDATE must be sent exactly three voice frames (60ms)
+after the SID_FIRST, resulting in two suppressed voice frame periods of
+empty bursts in-between.
+
+==== TCH/AFS Downlink: During Silence
+
+During Silence periods, the BTS may at any time receive RTP AMR SID
+frames, and keep a copy of the last received frame around.
+
+Every eight voice frames (160ms), the BTS shall respond to the
+PH-RTS.ind with a PH-DATA.req containing a GsmL1_TchPlType_Amr with
+SID_UPDATE frame.
+
+At all other times, the BTS sends PH-EMPTY-FRAME.req to any received
+PH-RTS.ind, causing the BTS-PHY to cease transmission in those
+periods.
+
+NOTE:: At any time, the BTS can end the silence period by issuing
+ONSET (in case of a new downlink talk-spurt or a FACCH downlink
+frame).  See <<afs-dl-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Every 8 voice frames (160ms)", id="8VF"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	bts => bts	[label="Store SID frame in case it contains comfort noise parameters"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+}
+----
+
+8VF:: This happens every 8 *voice frames* (160ms), not every 8 GSM
+TDMA frames!
+
+[[afs-dl-onset]]
+==== TCH/AFS Downlink: End of Silence; Start of Voice
+
+Once the BTS receives a non-SID AMR RTP frame (which should also have
+the MARKER bit set to 1, but let's not take that for granted), the
+contained AMR voice data is passed to the BTS-PHY in the next
+PH-DATA.req (GsmL1_TchPlType_Amr_Onset).
+
+From that point onwards, regular transmission resumes, see
+<<afs-dl-talk>>
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Once voice is active again"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_Onset", id="DLOS2"];
+	ms <= phy	[label="L1 burst (sub-block 5 of SID_ONSET + sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of SID_ONSET + sub-block 2 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of SID_ONSET + sub-block 3 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of SID_ONSET + sub-block 4 of speech frame N)"];
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+DLOS1:: The SID_ONSET and the first voice frame are sent in the same
+block of four radio busts.  Hence, the BTS must be able ot to send
+actual codec payload along with the GsmL1_TchPlType_Amr_Onset
+primitive.
+
+== Half-Rate (TCH/AHS)
+
+=== TCH/AHS Uplink (MS to Network)
+
+==== TCH/AHS Uplink: During Talk-Spurt
+
+During a talk-spurt, the system behaves identical to a system without
+DTX enabled:  Every two radio bursts, the BTS-PHY has one AMR frame
+ready and hands it up to the BTS process, which creates an RTP AMR
+frame from it and sends that to the MGW.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	--- 		[label="Regular AMR Speech (has been ongoing for some time)"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N-1 + sub-block 1 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N-1 + sub-block 2 of speech frame N)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+}
+----
+
+==== TCH AHS Uplink: End of Voice; Start of Silence
+
+When the voice encoder in the MS detects no voice activity anymore, it
+signals towards the MS-PHY that SID_FIRST_P1 and SID_FIRST_P2 shall be
+transmitted.
+
+The BTS-PHY reports the following primitives to the BTS after all four
+related bursts have been received:
+
+* PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP1
+* PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP2
+
+The BTS sends an RTP frame with AMR Frame Type SID, in which the STI
+is set to indicate a SID_FIRST message.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Last AMR Speech (end of talk-spurt) and SID P1/P2"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N-1, sub-block 1 of SID_FIRST_P1)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N-1, sub-block 2 of SID_FIRST_P1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	ms => phy	[label="L1 burst (sub-block 3 of SID_FIRST_P1, sub-block 1 of SID_FIRST_P2)"];
+	ms => phy	[label="L1 burst (sub-block 4 of SID_FIRST_P1, sub-block 2 of SID_FIRST_P2)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP1", id="ULSF1"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP2"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_NA"];
+
+	ms => phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)", id="ULSU1"];
+	ms => phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_NA"];
+	ms => phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+}
+----
+
+ULSF1:: There are two separate indications for P1 and P2, despite both
+P1 and P2 being multiplexed together in one batch of four bursts. Not
+sure why they result in two separate PH-DATA.ind. Based on what we
+know: If the MS sends P1 and P2, the PHY should receive SidFirstP1 and
+SidFirstP2 indications immediately after each other, both for the same
+GSM frame number.
+
+ULSU1:: There must be exactly two suppressed voice frames between the
+SID_FIRST and the SID_UPDATE, i.e. 60ms between SID_FIRST and
+SID_UPDATE.
+
+==== TCH/AFS Uplink: During Silence
+
+While the period of silence is ongoing, the MS pauses all
+transmissions, except the periodic scheduling of SID_UPDATE every
+8 voice frames (160ms).
+
+NOTE:: Silence can also be interrupted at any time by ONSET, see
+<<ahs-ul-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Every 8 voice frames (160ms)", id="8VF"];
+
+	ms => phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_NA"];
+	ms => phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+}
+----
+
+8VF:: This happens every 8 *voice frames* (160ms), not every 8 GSM
+TDMA frames!
+
+[[ahs-ul-onset]]
+==== TCH/AHS Uplink: End of Silence; Start of Voice
+
+Once the voice encoder in the MS detects voice activity again, it
+asks its transmitter to perform transmission of SID_ONSET, which is a
+special frame which has information encoded only in sub-blocks 3+4, and
+sub-blocks 1+2 are discarded before transmission.
+
+A set of four radio bursts is sent, containing
+
+* the only two transmitted sub-blocks of the SID_ONSET frame
+* all four sub-blocks of the first voice codec frame
+* the first two blocks of the second voice codec frame
+
+The BTS-PHY informs the BTS using two primitives:
+
+* PH-DATA.ind GsmL1_TchPlType_Amr_Onset indicates the presence of
+  SID_ONSET, including the Channel Mode Indication (irrespective of
+  CMI Phase)
+* PH-DATA.ind GsmL1_TchPlType_Amr indicates the first voice frame
+
+The BTS transmits a RTP frame with AMR payload of the corresponding
+speech frame type, and sets the RTP MARKER bit to indicate the ONSET
+condition.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Once voice is active again"];
+
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of speech frame N)"];
+	ms => phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of speech frame N)"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N+1 + sub-block 1 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N+1 + sub-block 2 of speech frame N+2)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
+	bts => bts	[label="lchan_set_marker() and store CMI"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	...;
+}
+----
+
+==== TCH/AHS Uplink: Inhibited SID_FIRST
+
+In case voice activity is detected again while the SID_FIRST_P1
+transmission is ongoing or completed, but the SID_FIRST_P2 has not
+been transmitted yet, SID_FIRST can be inhibited by means of a
+SID_FIRST_INH frame. This allows the first voice frame to be
+transmitted with minimal delay, compared to first completing
+the regular SID_FIRTS_P2 and SID_ONSET procedure.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	ms .. mgw	[label="End of talk-spurt with inhibited SID_FIRST"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of last speech frame N + sub-block 1 of SID_FIRST_P1)"];
+	ms => phy	[label="L1 burst (sub-block 4 of last speech frame N + sub-block 2 of SID_FIRST_P1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+
+	ms => phy	[label="L1 burst (block 1 of SID_FIRST_INH and sub-block 1 of speech frame N+1", id="SFI1"];
+	ms => phy	[label="L1 burst (block 2 of SID_FIRST_INH and sub-block 2 of speech frame N+1"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N+1 + sub-block 1 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N+1 + sub-block 2 of speech frame N+2)"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N+2 + sub-block 1 of speech frame N+3)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N+2 + sub-block 2 of speech frame N+3)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidInh", id="SFI2"];
+	bts => bts	[label="store CMI from SID_FIRST_INH"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N+1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+}
+----
+
+==== TCH/AHS Uplink: Inhibited SID_UPDATE
+
+In case voice activity is detected again while the SID_UPDATE
+transmission of the first two sub-blocks is ongoing or completed, but
+the second two sub-blocks have not been transmitted yet, SID_UPDATE can
+be inhibited by means of a SID_UPDATE_INH frame. This allows the
+first voice frame to be transmitted with minimal delay, compared to
+first completing the regular SID_UPDATE and SID_ONSET procedure.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	ms .. mgw	[label="pre-empted SID Update (during silence period)"];
+
+	ms => phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms => phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_NA"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of SID_UPD_INH + sub-block 1 of speech frame N-1)", id="SFU1"];
+	ms => phy	[label="L1 burst (sub-block 4 of SID_UPD_INH + sub-block 2 of speech frame N-1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidUpdateInH", id="SFU2"];
+	bts => bts	[label="lchan_set_marker() and store CMI from SID_UPD_INH"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N-1 + sub-block 1 of speech frame N)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N-1 + sub-block 2 of speech frame N)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N-1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1), MARKER=1"];
+
+	ms => phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+}
+----
+
+=== TCH/AHS Downlink (Network to MS)
+
+[[ahs-dl-talk]]
+==== TCH/AHS Downlink: During Talk-Spurt
+
+During a talk-spurt, the system behaves identically to a system without
+DTX enabled: an RTP frame arrives every 20ms.
+
+The PHY sends a PH-RTS.ind in similar intervals, to which the BTS
+responds with a PH-DATA.req containing GsmL1_TchPlType_Amr.
+
+The BTS-PHY then encodes and interleaves the codec frame into four
+sub-blocks. Due to the interleaving, one new PH-RTS.ind is issued
+every two bursts.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	--- 		[label="Regular AMR Speech (has been ongoing for some time)"];
+
+	mgw => bts	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N-1 + sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N-1 + sub-block 2 of speech frame N)"];
+	mgw => bts	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+==== TCH/AHS Downlink: End of Voice; Start of Silence
+
+
+When the BTS receives the first RTP frame with Frame Type SID, it will
+first issue a GsmL1_TchPlType_Amr_SidFirstP1 primitive towards the
+BTS-PHY, followed by a GsmL1_TchPlType_Amr_SidFirstP2 primitive.
+
+The SID_FIRST_P2 is interleaved in a way that all information is
+contained in the first two sub-blocks, with the latter two
+sub-blocks being dropped and not transmitted.
+
+Three codec frames (60ms) later, the BTS needs to transmit a
+SID_UPDATE AMR frame, which should consist of comfort noise
+parameters received in either the first RTP AMR SID frame, or a
+subsequent RTP AMR SID frame received meanwhile.
+
+In between SID_FIRST_P2 and SID_UPDATE, and after the SID_UPDATE, the
+BTS sends PH-EMPTY-FRAME.req to all PH-RTS.ind, causing the BTS-PHY to
+cease transmission in those periods.
+
+NOTE:: At any time, the BTS can end the silence period by issuing
+ONSET (in case of a new downlink talk-spurt or a FACCH
+downlink frame). See Section <<ahs-dl-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Last AMR Speech (end of talk-spurt) and SID P1/P2"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstP1"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N-1 + sub-block 1 of SID_FIRST_P1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N-1 + sub-block 2 of SID_FIRST_P1)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstP2"];
+	ms <= phy	[label="L1 burst (sub-block 3 of SID_FIRST_P1, sub-block 1 of SID_FIRST_P2)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of SID_FIRST_P1, sub-block 2 of SID_FIRST_P2)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_UPDATE)", id="ULSU2"];
+	ms <= phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	phy => bts	[label="PH-RTS.ind (TCH)", id="RTDSU1"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms <= phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+}
+----
+
+ULSU2:: The SID_UPDATE must be sent exactly three voice frames (60ms)
+after the SID_FIRST, resulting in two suppressed voice frame periods of
+empty bursts in between.
+
+RTDSU1:: Not sure whether BTS-PHY actually sends PH-RTS.ind during the
+"double-length" SID-UPDATE?
+
+==== TCH/AHS Downlink: During Silence
+
+During Silence periods, the BTS may at any time receive RTP AMR SID
+frames and keep a copy of the last received frame around.
+
+Every eight voice frames (160ms), the BTS shall respond to the
+PH-RTS.ind with a PH-DATA.req containing a GsmL1_TchPlType_Amr with
+SID_UPDATE frame.
+
+At all other times, the BTS sends PH-EMPTY-FRAME.req to any received
+PH-RTS.ind, causing the BTS-PHY to cease transmission in those
+periods.
+
+NOTE:: At any time, the BTS can end the silence period by issuing
+ONSET (in case of a new downlink talk-spurt or a FACCH downlink
+frame). See Section <<ahs-dl-onset>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Every 8 voice frames (160ms)", id="8VF"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+	phy => bts	[label="PH-RTS.ind (TCH)", id="RTDSU2"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms <= phy	[label="L1 burst (sub-block 5+6 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 7+8 of SID_UPDATE)"];
+	phy => bts	[label="PH-DATA.req GsmL1_TchPlType_Amr"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+}
+----
+
+8VF:: This happens every 8 *voice frames* (160ms), not every 8 GSM
+TDMA frames!
+
+RTDSU2:: Not sure whether BTS-PHY actually sends PH-RTS.ind during the
+"double-length" SID-UPDATE?
+
+[[ahs-dl-onset]]
+==== TCH/AHS Downlink: End of Silence; Start of Voice
+
+Once the BTS receives a non-SID AMR RTP frame (which should also have
+the MARKER bit set to 1, but let’s not take that for granted), the
+contained AMR voice data is passed to the BTS-PHY in the next
+PH-DATA.req (GsmL1_TchPlType_Amr_Onset).
+
+From that point onwards, regular transmission resumes, see
+<<ahs-dl-talk>>.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Once voice is active again"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_Onset", id="DLOS2"];
+	ms <= phy	[label="L1 burst (sub-block 3 of SID_ONSET + sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of SID_ONSET + sub-block 2 of speech frame N)"];
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+DLOS2:: The SID_ONSET and the first voice frame are sent in the same
+block of four radio bursts. Hence, the BTS must be able ot to send
+actual codec payload along with the GsmL1_TchPlType_Amr_Onset
+primitive.
