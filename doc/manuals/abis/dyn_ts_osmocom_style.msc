@@ -46,6 +46,7 @@ msc {
 
 	phy box bsc	[ label = "If all channels on TS are released, PDCH Activation" ];
 	bsc => bts	[ label = "RSL Channel Activation (PDCH)" ];
+	bts -> bsc	[ label = "RSL Channel Activation Ack (PDCH) (unconditionally)" ];
 	---  		[ label = "BTS notices: chan still connected as TCH/H, reconnect" ];
 	bts => phy	[ label = "L1 chan Disconnect TCH/H" ];
 	phy -> bts	[ label = "L1 chan Disconnect confirm" ];
@@ -56,5 +57,4 @@ msc {
 	pcu => bts	[ label = "chan Activate request" ];
 	bts => phy	[ label = "L1 chan Activate PDTCH SAPIs" ];
 	phy -> bts	[ label = "L1 chan Activate SAPIs confirm" ];
-	bts -> bsc	[ label = "RSL Channel Activation Ack (PDCH)" ];
 }
