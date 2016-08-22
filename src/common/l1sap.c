@@ -403,7 +403,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	struct bts_ul_meas ulm;
 	struct gsm_lchan *lchan;
 
-	DEBUGP(DL1P, "MPH_INFO meas ind chan_nr=%02x\n",
+	DEBUGP(DL1P, "MPH_INFO meas ind chan_nr=0x%02x\n",
 		info_meas_ind->chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
@@ -489,7 +489,7 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1P, LOGL_INFO, "deactivate confirm chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "deactivate confirm chan_nr=0x%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
@@ -1148,7 +1148,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	LOGP(DL1P, LOGL_INFO, "deactivating channel chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "deactivating channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
@@ -1159,7 +1159,7 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	LOGP(DL1P, LOGL_INFO, "deactivating sacch chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "deactivating sacch chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	lchan->sacch_deact = 1;
@@ -1170,7 +1170,7 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	LOGP(DL1P, LOGL_INFO, "modifying channel chan_nr=%02x trx=%d\n",
+	LOGP(DL1P, LOGL_INFO, "modifying channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
