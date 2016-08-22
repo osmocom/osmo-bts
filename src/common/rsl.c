@@ -535,26 +535,12 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 }
 
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
-int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
+static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 {
 	struct gsm_time *gtime = get_time(lchan->ts->trx->bts);
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
-
-	/*
-	 * Normally, PDCH activation via PCU does not ack back to the BSC.
-	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard act ack for
-	 * LCHAN_REL_ACT_PCU, since the act req came from RSL initially.
-	 */
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
-	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
-		 && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
-		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
-		LOGP(DRSL, LOGL_NOTICE, "%s not sending CHAN ACT ACK\n",
-			gsm_lchan_name(lchan));
-		return 0;
-	}
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
 
@@ -596,16 +582,10 @@ int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
-int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
+static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
-
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
-		LOGP(DRSL, LOGL_DEBUG, "%s not sending CHAN ACT NACK.\n",
-			gsm_lchan_name(lchan));
-		return 0;
-	}
 
 	LOGP(DRSL, LOGL_NOTICE,
 		"%s Sending Channel Activated NACK: cause = 0x%02x\n",
@@ -621,6 +601,27 @@ int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 	msg->trx = lchan->ts->trx;
 
 	return abis_bts_rsl_sendmsg(msg);
+}
+
+/* Send an RSL Channel Activation Ack if cause is zero, a Nack otherwise. */
+int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
+{
+	/*
+	 * Normally, PDCH activation via PCU does not ack back to the BSC.
+	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard act ack for
+	 * LCHAN_REL_ACT_PCU, since the act req came from RSL initially.
+	 */
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
+	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
+		LOGP(DRSL, LOGL_NOTICE, "%s not sending CHAN ACT %s\n",
+			gsm_lchan_name(lchan), cause ? "NACK" : "ACK");
+		return 0;
+	}
+
+	if (cause)
+		return rsl_tx_chan_act_nack(lchan, cause);
+	return rsl_tx_chan_act_ack(lchan);
 }
 
 /* 8.4.4 sending CONNection FAILure */
@@ -782,7 +783,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		LOGP(DRSL, LOGL_ERROR,
 		     "%s: error: lchan is not available, but in state: %s.\n",
 		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
-		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+		return rsl_tx_chan_act_acknack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
 	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
@@ -797,8 +798,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			 */
 			rc = dyn_ts_l1_reconnect(ts, msg);
 			if (rc)
-				return rsl_tx_chan_act_nack(lchan,
-							    RSL_ERR_NORMAL_UNSPEC);
+				return rsl_tx_chan_act_acknack(lchan,
+						       RSL_ERR_NORMAL_UNSPEC);
 			/* indicate that the msgb should not be freed. */
 			return 1;
 		}
@@ -814,7 +815,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.3 Activation Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Activation Type\n");
-		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_chan_act_acknack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
@@ -822,7 +823,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (type != RSL_ACT_OSMO_PDCH) {
 		if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 			LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+			return rsl_tx_chan_act_acknack(lchan,
+						       RSL_ERR_MAND_IE_ERROR);
 		}
 		cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 		lchan_tchmode_from_cmode(lchan, cm);
@@ -954,7 +956,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
 	if (rc < 0)
-		return rsl_tx_chan_act_nack(lchan, -rc);
+		return rsl_tx_chan_act_acknack(lchan, -rc);
 
 	return 0;
 }

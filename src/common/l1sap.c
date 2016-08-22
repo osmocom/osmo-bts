@@ -455,10 +455,7 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
-	if (info_act_cnf->cause)
-		rsl_tx_chan_act_nack(lchan, info_act_cnf->cause);
-	else
-		rsl_tx_chan_act_ack(lchan);
+	rsl_tx_chan_act_acknack(lchan, info_act_cnf->cause);
 
 	/* During PDCH ACT, this is where we know that the PCU is done
 	 * activating a PDCH, and PDCH switchover is complete.  See
