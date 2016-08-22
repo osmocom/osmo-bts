@@ -900,7 +900,7 @@ The activation of PDCH is performed by using the regular 'RSL CHANNEL
 ACTIVATE' procedure according to <<CHANNEL_ACTIVATION>>, with the
 exception that the 'cbits' part of the '
 
-.Example for dynamic channel switchover, for ip.access style dynamic timeslots
+.Example for dynamic channel switchover, for Osmocom style dynamic timeslots
 ["mscgen"]
 ----
 include::dyn_ts_osmocom_style.msc[]
