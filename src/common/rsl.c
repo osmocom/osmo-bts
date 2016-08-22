@@ -606,14 +606,7 @@ static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 /* Send an RSL Channel Activation Ack if cause is zero, a Nack otherwise. */
 int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
 {
-	/*
-	 * Normally, PDCH activation via PCU does not ack back to the BSC.
-	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard act ack for
-	 * LCHAN_REL_ACT_PCU, since the act req came from RSL initially.
-	 */
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
-	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
-		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
+	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
 		LOGP(DRSL, LOGL_NOTICE, "%s not sending CHAN ACT %s\n",
 			gsm_lchan_name(lchan), cause ? "NACK" : "ACK");
 		return 0;
@@ -931,6 +924,29 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
 	    && ts->dyn.pchan_want == GSM_PCHAN_PDCH) {
 		/*
+		 * We ack the activation to the BSC right away, regardless of
+		 * the PCU succeeding or not; if a dynamic timeslot fails to go
+		 * to PDCH mode for any reason, the BSC should still be able to
+		 * switch it back to TCH modes and should not put the time slot
+		 * in an error state. So for operating dynamic TS, the BSC
+		 * would not take any action if the PDCH mode failed, e.g.
+		 * because the PCU is not yet running. Even if alerting the
+		 * core network of broken GPRS service is desired, this only
+		 * makes sense when the PCU has not shown up for some time.
+		 * It's easiest to not forward activation delays to the BSC: if
+		 * the BSC tells us to do PDCH, we do our best, and keep the
+		 * details on the BTS and PCU level. This is kind of analogous
+		 * to how plain PDCH TS operate. Directly call
+		 * rsl_tx_chan_act_ack() instead of rsl_tx_chan_act_acknack()
+		 * because we don't want/need to decide whether to drop due to
+		 * lchan->rel_act_kind.
+		 */
+		rc = rsl_tx_chan_act_ack(lchan);
+		if (rc < 0)
+			LOGP(DRSL, LOGL_ERROR, "%s Cannot send act ack: %d\n",
+			     gsm_ts_and_pchan_name(ts), rc);
+
+		/*
 		 * pcu_tx_info_ind() will pick up the ts->dyn.pchan_want. If
 		 * the PCU is not connected yet, ignore for now; the PCU will
 		 * catch up (and send the RSL ack) once it connects.
@@ -981,7 +997,7 @@ static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
 		/* PCU not connected yet. Just record the new type and done,
 		 * the PCU will pick it up once connected. */
 		ts->dyn.pchan_is = GSM_PCHAN_NONE;
-		return 0;
+		return 1;
 	}
 
 	return pcu_tx_info_ind();
@@ -990,6 +1006,8 @@ static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
 /* 8.4.14 RF CHANnel RELease is received */
 static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 {
+	int rc;
+
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
 		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
@@ -1004,8 +1022,13 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 
 	/* Dynamic channel in PDCH mode is released via PCU */
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
-	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH)
-		return dyn_ts_pdch_release(lchan);
+	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
+		rc = dyn_ts_pdch_release(lchan);
+		if (rc != 1)
+			return rc;
+		/* If the PCU is not connected, continue right away. */
+		return rsl_tx_rf_rel_ack(lchan);
+	}
 
 	l1sap_chan_rel(lchan->ts->trx, chan_nr);
 
