@@ -144,19 +144,21 @@ static int report_error(struct gsm_bts_trx *trx)
 	return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 }
 
-static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr)
+static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				      const char *log_name)
 {
 	int rc;
 	struct gsm_lchan *lchan = rsl_lchan_lookup(trx, chan_nr, &rc);
 
 	if (!lchan) {
-		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "%sunknown chan_nr=0x%02x\n", log_name,
+		     chan_nr);
 		return NULL;
 	}
 
 	if (rc < 0)
-		LOGP(DRSL, LOGL_ERROR, "%s mismatching chan_nr=0x%02x\n",
-		     gsm_ts_and_pchan_name(lchan->ts), chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "%s %smismatching chan_nr=0x%02x\n",
+		     gsm_ts_and_pchan_name(lchan->ts), log_name, chan_nr);
 	return lchan;
 }
 
@@ -2105,7 +2107,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)rh + sizeof(*rh);
 
-	lchan = lchan_lookup(trx, rh->chan_nr);
+	lchan = lchan_lookup(trx, rh->chan_nr, "RSL rx RLL: ");
 	if (!lchan) {
 		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
 			rsl_msg_name(rh->c.msg_type));
@@ -2249,7 +2251,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)cch + sizeof(*cch);
 
-	msg->lchan = lchan_lookup(trx, cch->chan_nr);
+	msg->lchan = lchan_lookup(trx, cch->chan_nr, "RSL rx CCHAN: ");
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_msg_name(cch->c.msg_type));
@@ -2303,7 +2305,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
-	msg->lchan = lchan_lookup(trx, dch->chan_nr);
+	msg->lchan = lchan_lookup(trx, dch->chan_nr, "RSL rx DCHAN: ");
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_or_ipac_msg_name(dch->c.msg_type));
@@ -2402,7 +2404,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
 
-	msg->lchan = lchan_lookup(trx, dch->chan_nr);
+	msg->lchan = lchan_lookup(trx, dch->chan_nr, "RSL rx IPACC: ");
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(dch->c.msg_type));
