@@ -86,11 +86,12 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_SDCCH8_SACCH8C]	= GsmL1_LogChComb_VII,
 	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH]	= GsmL1_LogChComb_VII,
 	[GSM_PCHAN_PDCH]		= GsmL1_LogChComb_XIII,
-	[GSM_PCHAN_TCH_F_PDCH]		= GsmL1_LogChComb_I, /*< first init
-						like TCH/F, until PDCH ACT */
-	[GSM_PCHAN_TCH_F_TCH_H_PDCH]	= GsmL1_LogChComb_0, /*< first unused,
-						until first RSL CHAN ACT */
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
+	/*
+	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_TCH_F_TCH_H_PDCH should not be
+	 * part of this, only "real" pchan values will be looked up here.
+	 * See the callers of ts_connect_as().
+	 */
 };
 
 static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
@@ -515,12 +516,22 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 
 static int ts_opstart(struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
-		/* First connect as NONE, until first RSL CHAN ACT. */
+	enum gsm_phys_chan_config pchan = ts->pchan;
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		ts->dyn.pchan_is = ts->dyn.pchan_want = GSM_PCHAN_NONE;
-		return ts_connect_as(ts, GSM_PCHAN_NONE, opstart_compl_cb, NULL);
+		/* First connect as NONE, until first RSL CHAN ACT. */
+		pchan = GSM_PCHAN_NONE;
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		/* First connect as TCH/F, expecting PDCH ACT. */
+		pchan = GSM_PCHAN_TCH_F;
+		break;
+	default:
+		/* simply use ts->pchan */
+		break;
 	}
-	return ts_connect_as(ts, ts->pchan, opstart_compl_cb, NULL);
+	return ts_connect_as(ts, pchan, opstart_compl_cb, NULL);
 }
 
 GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
