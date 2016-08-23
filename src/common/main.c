@@ -303,7 +303,8 @@ int bts_main(int argc, char **argv)
 
 	bts_controlif_setup(bts);
 
-	rc = telnet_init(tall_bts_ctx, NULL, g_vty_port_num);
+	rc = telnet_init_dynif(tall_bts_ctx, NULL, vty_get_bind_addr(),
+			       g_vty_port_num);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
