@@ -561,6 +561,22 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	return abis_bts_rsl_sendmsg(msg);
 }
 
+struct osmo_timer_list xxx_timer;
+
+static void xxx_timer_cb(void *data)
+{
+	rsl_tx_chan_act_ack(data);
+}
+
+static int rsl_tx_chan_act_ack_later(struct gsm_lchan *lchan)
+{
+	xxx_timer.cb = xxx_timer_cb;
+	xxx_timer.data = lchan;
+	osmo_timer_schedule(&xxx_timer, 10, 0);
+	return 0;
+}
+
+
 /* 8.4.7 sending HANDOver DETection */
 int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
 {
@@ -616,6 +632,18 @@ int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
 
 	if (cause)
 		return rsl_tx_chan_act_nack(lchan, cause);
+
+	static int xxx = 0;
+
+	DEBUGP(DRSL, "%s XXXXXXXXXXXXXXXXXXXXX %d %s\n",
+	      gsm_lchan_name(lchan), xxx, gsm_lchant_name(lchan->type));
+
+	if (lchan->type == GSM_LCHAN_TCH_H) {
+		if (!xxx) {
+			xxx ++;
+			return rsl_tx_chan_act_ack_later(lchan);
+		}
+	}
 	return rsl_tx_chan_act_ack(lchan);
 }
 
