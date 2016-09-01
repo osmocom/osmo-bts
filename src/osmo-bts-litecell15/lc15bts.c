@@ -121,6 +121,8 @@ enum l1prim_type lc15bts_get_sysprim_type(Litecell15_PrimId_t id)
 	case Litecell15_PrimId_MuteRfCnf:        return L1P_T_CONF;
 	case Litecell15_PrimId_SetRxAttenReq:    return L1P_T_REQ;
 	case Litecell15_PrimId_SetRxAttenCnf:    return L1P_T_CONF;
+	case Litecell15_PrimId_IsAliveReq:       return L1P_T_REQ;
+	case Litecell15_PrimId_IsAliveCnf:       return L1P_T_CONF;
 	default:                                 return L1P_T_INVALID;
 	}
 }
@@ -142,6 +144,8 @@ const struct value_string lc15bts_sysprim_names[Litecell15_PrimId_NUM+1] = {
 	{ Litecell15_PrimId_MuteRfCnf,	        "MUTE-RF.cnf" },
 	{ Litecell15_PrimId_SetRxAttenReq,	"SET-RX-ATTEN.req" },
 	{ Litecell15_PrimId_SetRxAttenCnf,	"SET-RX-ATTEN-CNF.cnf" },
+	{ Litecell15_PrimId_IsAliveReq,         "IS-ALIVE.req" },
+	{ Litecell15_PrimId_IsAliveCnf,         "IS-ALIVE-CNF.cnf" },
 	{ 0, NULL }
 };
 
@@ -155,6 +159,7 @@ Litecell15_PrimId_t lc15bts_get_sysprim_conf(Litecell15_PrimId_t id)
 	case Litecell15_PrimId_SetCalibTblReq:   return Litecell15_PrimId_SetCalibTblCnf;
 	case Litecell15_PrimId_MuteRfReq:        return Litecell15_PrimId_MuteRfCnf;
 	case Litecell15_PrimId_SetRxAttenReq:    return Litecell15_PrimId_SetRxAttenCnf;
+	case Litecell15_PrimId_IsAliveReq:       return Litecell15_PrimId_IsAliveCnf;
         default:                                 return -1;	// Weak
         }
 }

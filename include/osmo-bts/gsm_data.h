@@ -111,6 +111,12 @@ struct gsm_bts_role_bts {
 	struct {
 		char *sock_path;
 	} pcu;
+#ifdef ENABLE_LC15BTS
+	/* specific to LC15 BTS */
+	struct {
+		uint8_t led_ctrl_mode;		/* 0: control by BTS, 1: not control by BTS */
+	} lc15;
+#endif
 };
 
 enum lchan_ciph_state {
