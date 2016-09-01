@@ -41,6 +41,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/oml.h>
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
 
@@ -131,12 +132,14 @@ int pcu_tx_info_ind(void)
 	struct gsm_bts_gprs_nsvc *nsvc;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
-	int i, j;
+	int i, j, rc;
+	struct gsm_bts_role_bts *btsb;
 
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
 
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
+	btsb = bts_role_bts(bts);
 	rlcc = &bts->gprs.cell.rlc_cfg;
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_INFO_IND, bts->nr);
@@ -245,7 +248,25 @@ int pcu_tx_info_ind(void)
 		}
 	}
 
-	return pcu_sock_send(net, msg);
+	rc = pcu_sock_send(net, msg);
+	if (rc < 0)
+		return rc;
+
+#ifdef ENABLE_LC15BTS
+	struct oml_alarm_list *ceased_alarm;
+	/* check for pending ceased alarm */
+	llist_for_each_entry(ceased_alarm, &btsb->lc15.ceased_alarm_list, list) {
+		llist_del(&ceased_alarm->list);
+		if (ceased_alarm->alarm_signal != S_NM_OML_PCU_CONN_LOST_ALARM)
+			continue;
+
+		LOGP(DPCU, LOGL_ERROR, "Alarm %d has removed from pending ceased alarm list\n", ceased_alarm->alarm_signal);
+		alarm_sig_data.mo = &bts->mo;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_PCU_CONN_LOST_CEASED, &alarm_sig_data);
+		break;
+	}
+#endif
+	return 0;
 }
 
 static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
@@ -603,6 +624,9 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Received unknwon PCU msg type %d\n",
 			msg_type);
+		alarm_sig_data.mo = &bts->mo;
+		alarm_sig_data.spare[0] = msg_type;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_UNKN_PCU_MSG_ALARM, &alarm_sig_data);
 		rc = -EINVAL;
 	}
 
@@ -654,11 +678,27 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	int i, j;
+	struct gsm_bts_role_bts *btsb;
 
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(state->net->bts_list.next, struct gsm_bts, list);
+	btsb = bts_role_bts(bts);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket has LOST connection\n");
+#ifdef ENABLE_LC15BTS
+	struct oml_alarm_list *ceased_alarm;
+	/*dispatch alarm signal */
+	alarm_sig_data.mo = &bts->mo;
+	osmo_signal_dispatch(SS_NM, S_NM_OML_PCU_CONN_LOST_ALARM, &alarm_sig_data);
+	/* allocate new list of pending ceased alarm */
+	ceased_alarm = talloc_zero(NULL, struct oml_alarm_list);
+	if (ceased_alarm) {
+		ceased_alarm->alarm_signal = S_NM_OML_PCU_CONN_LOST_ALARM;
+		/* add ceased alarm to pending list */
+		llist_add(&ceased_alarm->list, &btsb->lc15.ceased_alarm_list);
+		LOGP(DPCU, LOGL_ERROR, "Alarm %d has added to pending ceased alarm list\n", ceased_alarm->alarm_signal);
+	}
+#endif
 
 	close(bfd->fd);
 	bfd->fd = -1;

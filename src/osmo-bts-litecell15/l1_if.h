@@ -38,6 +38,7 @@ struct lc15l1_hdl {
 	uint32_t hLayer1;			/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;			/* currently operational DSP trace flags */
 	struct llist_head wlc_list;
+	struct llist_head alarm_list;	/* list of sent alarms */
 
 	struct phy_instance *phy_inst;
 

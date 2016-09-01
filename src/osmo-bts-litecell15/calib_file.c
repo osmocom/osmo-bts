@@ -41,6 +41,7 @@
 #include "l1_if.h"
 #include "lc15bts.h"
 #include "utils.h"
+#include "osmo-bts/oml.h"
 
 /* Maximum calibration data chunk size */
 #define MAX_CALIB_TBL_SIZE  65536
@@ -148,12 +149,19 @@ static int calib_file_open(struct lc15l1_hdl *fl1h,
 	snprintf(fname, sizeof(fname)-1, "%s/%s", calib_path, desc->fname);
 	fname[sizeof(fname)-1] = '\0';
 
-        st->fp = fopen(fname, "rb");
-        if (!st->fp) {
-                LOGP(DL1C, LOGL_ERROR,
-                        "Failed to open '%s' for calibration data.\n", fname);
-                return -1;
-        }
+	st->fp = fopen(fname, "rb");
+	if (!st->fp) {
+		LOGP(DL1C, LOGL_NOTICE, "Failed to open '%s' for calibration data.\n", fname);
+
+		if( fl1h->phy_inst->trx ){
+			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
+
+			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
+			alarm_sig_data.add_text = (char*)&fname[0];
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_OPEN_CALIB_ALARM, &alarm_sig_data);
+		}
+		return -1;
+	}
 	return 0;
 }
 
@@ -235,8 +243,18 @@ static int calib_file_send(struct lc15l1_hdl *fl1h,
 	}
 
 	rc = calib_verify(fl1h, desc);
-	if ( rc < 0 ) {
-		LOGP(DL1C, LOGL_ERROR, "Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_NOTICE,"Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
+
+		if (fl1h->phy_inst->trx) {
+			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
+
+			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
+			alarm_sig_data.add_text = (char*)&desc->fname[0];
+			memcpy(alarm_sig_data.spare, &rc, sizeof(int));
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_VERIFY_CALIB_ALARM, &alarm_sig_data);
+		}
+
 		st->last_file_idx = get_next_calib_file_idx(fl1h, st->last_file_idx);
 
 		if (st->last_file_idx >= 0)
@@ -289,10 +307,17 @@ int calib_load(struct lc15l1_hdl *fl1h)
 	struct calib_send_state *st = &fl1h->st;
 	char *calib_path = fl1h->phy_inst->u.lc15.calib_path;
 
-        if (!calib_path) {
-                LOGP(DL1C, LOGL_ERROR, "Calibration file path not specified\n");
-                return -1;
-        }
+	if (!calib_path) {
+		LOGP(DL1C, LOGL_NOTICE, "Calibration file path not specified\n");
+
+		if( fl1h->phy_inst->trx ){
+			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
+
+			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_NO_CALIB_PATH_ALARM, &alarm_sig_data);
+		}
+		return -1;
+	}
 
 	rc = get_next_calib_file_idx(fl1h, -1);
 	if (rc < 0) {

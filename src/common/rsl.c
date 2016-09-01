@@ -50,6 +50,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
+#include "osmo-bts/oml.h"
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -392,6 +393,19 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 				 identity_lv, chan_needed);
 	if (rc < 0) {
 		/* FIXME: notfiy the BSC somehow ?*/
+		switch (rc) {
+			/* Send Failure event report of BTS page table is full to BSC */
+			case -ENOSPC:
+				if (trx) {
+					alarm_sig_data.mo = &trx->mo;
+					osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_PAG_TBL_FULL_ALARM, &alarm_sig_data);
+				}
+				break;
+
+			default:
+				break;
+		}
+
 	}
 
 	pcu_tx_pag_req(identity_lv, chan_needed);
@@ -1600,6 +1614,11 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to create RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
+			alarm_sig_data.mo = &lchan->ts->trx->mo;
+			alarm_sig_data.spare[0] = lchan->ts->nr;
+			alarm_sig_data.spare[1] = lchan->nr;
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_RTP_SOCK_ALARM, &alarm_sig_data);
+
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
@@ -1629,6 +1648,11 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			LOGP(DRSL, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
+			alarm_sig_data.mo = &lchan->ts->trx->mo;
+			alarm_sig_data.spare[0] = lchan->ts->nr;
+			alarm_sig_data.spare[1] = lchan->nr;
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_RTP_BIND_ALARM, &alarm_sig_data);
+
 			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 			lchan->abis_ip.rtp_socket = NULL;
 			msgb_queue_flush(&lchan->dl_tch_queue);
@@ -1642,6 +1666,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC MDCX, "
 				"but we have no RTP socket!\n",
 				gsm_lchan_name(lchan));
+
+			alarm_sig_data.mo = &lchan->ts->trx->mo;
+			alarm_sig_data.spare[0] = lchan->ts->nr;
+			alarm_sig_data.spare[1] = lchan->nr;
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_NO_RTP_SOCK_ALARM, &alarm_sig_data);
+
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}

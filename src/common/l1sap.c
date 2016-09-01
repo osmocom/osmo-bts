@@ -46,6 +46,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
+#include "osmo-bts/oml.h"
 
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
@@ -1003,7 +1004,11 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown prim %d op %d\n",
-			l1sap->oph.primitive, l1sap->oph.operation);
+				l1sap->oph.primitive, l1sap->oph.operation);
+
+		alarm_sig_data.mo = &trx->mo;
+		memcpy(alarm_sig_data.spare, &l1sap->oph.primitive, sizeof(unsigned int));
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_UNKN_L1SAP_UP_MSG_ALARM, &alarm_sig_data);
 		break;
 	}
 

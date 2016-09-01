@@ -41,6 +41,12 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/signal.h>
+#include <osmo-bts/pcu_if.h>
+#include <osmo-bts/pcuif_proto.h>
+#ifdef ENABLE_LC15BTS
+#include "../osmo-bts-litecell15/lc15bts.h"
+struct oml_fail_evt_rep_sig_data alarm_sig_data;
+#endif
 
 /* FIXME: move this to libosmocore */
 static struct tlv_definition abis_nm_att_tlvdef_ipa = {
@@ -367,6 +373,37 @@ int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
 
 	msgb_put(nmsg, sizeof(struct abis_om_fom_hdr));
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
+}
+
+/* TS 12.21 8.8.2 */
+int oml_tx_nm_fail_evt_rep(struct gsm_abis_mo *mo, uint8_t event_type, uint8_t event_serverity, uint8_t cause_type, uint16_t event_cause, char *add_text)
+{
+	struct msgb *nmsg;
+	uint8_t cause[3];
+	int i, len;
+
+	LOGP(DOML, LOGL_INFO, "%s Tx FAILure EVT REP\n", gsm_abis_mo_name(mo));
+
+	nmsg = oml_msgb_alloc();
+	if (!nmsg)
+		return -ENOMEM;
+
+	msgb_tv_put(nmsg, NM_ATT_EVENT_TYPE, event_type);
+	msgb_tv_put(nmsg, NM_ATT_SEVERITY, event_serverity);
+
+	cause[0] = cause_type;
+	for (i = 0; i < 2 ; i++)
+		cause[i + 1] = ((uint8_t*)&event_cause)[1 - i];
+
+	msgb_tv_fixed_put(nmsg, NM_ATT_PROB_CAUSE, 3, cause);
+
+	len = strlen(add_text);
+	if(len){
+		LOGP(DOML, LOGL_DEBUG, "%s Tx FAILure EVT REP Additional Text = %s (%d)\n", gsm_abis_mo_name(mo), add_text, len);
+		msgb_tl16v_put(nmsg, NM_ATT_ADD_TEXT, len, add_text);
+	}
+
+	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
 }
 
 /* TS 12.21 9.4.53 */
@@ -1265,6 +1302,268 @@ int oml_init(void)
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa, &abis_nm_att_tlvdef);
+
+	return 0;
+}
+
+static int handle_oml_fail_evt_rep_sig(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *_signal_data)
+{
+	struct oml_fail_evt_rep_sig_data *sig_data = _signal_data;
+	int rc = 0;
+	unsigned int res;
+	char log_msg[100];
+
+	if (subsys != SS_NM)
+		return 0;
+
+	switch (signal) {
+	case S_NM_OML_PCU_CONN_LOST_ALARM:
+		snprintf(log_msg, 100, "PCU socket has LOST connection\n");
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_SW_FATAL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_PCU_CONN_LOST_CEASED:
+		snprintf(log_msg, 100, "PCU socket has LOST connection\n");
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_CEASED,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_SW_FATAL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RX_UNKN_PCU_MSG_ALARM:
+		snprintf(log_msg, 100, "Received unknown PCU msg type 0x%02x\n", sig_data->spare[0]);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_PCU_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RSL_FAILED_ALARM:
+		snprintf(log_msg, 100, "Failed to establish RSL link (%d)\n", sig_data->mo->obj_inst.trx_nr);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_RSL_FAIL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RF_DEACT_FAILED_ALARM:
+		snprintf(log_msg, 100, "Failed to deactivate RF (%d)\n", sig_data->mo->obj_inst.trx_nr);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_DEACT_RF_FAIL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RX_UNKN_L1SAP_UP_MSG_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(unsigned int));
+		snprintf(log_msg, 100, "unknown prim %d L1SAP UP trx %d\n", sig_data->mo->obj_inst.trx_nr, res);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_UL_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RX_UNKN_L1SAP_DOWN_MSG_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(unsigned int));
+		snprintf(log_msg, 100, "unknown prim %d L1SAP DOWN trx %d\n", sig_data->mo->obj_inst.trx_nr, res);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_DL_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_RX_SIGINT_MSG_ALARM:
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_PROC_STOP,
+				"BTS: signal SIGINT received -> shutdown\n");
+		break;
+
+	case S_NM_OML_BTS_RX_SIGX_MSG_ALARM:
+		snprintf(log_msg, 100, "BTS: signal %d received\n", sig_data->spare[0]);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_PROC_STOP,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_DSP_ALIVE_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(unsigned int));
+		snprintf(log_msg, 100, "Timeout waiting for SYS primitive %s (%d)\n",
+				get_value_string(lc15bts_sysprim_names, res + 1), sig_data->mo->obj_inst.trx_nr);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_DSP_FATAL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_UNKN_MPH_INFO_REQ_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(unsigned int));
+		snprintf(log_msg, 100, "unknown MPH-INFO.req %d\n", res);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_MPH_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_PAG_TBL_FULL_ALARM:
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_ENV_FAIL,
+				NM_SEVER_MINOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MIN_PAG_TAB_FULL,
+				"BTS page table is full\n");
+		break;
+
+	case S_NM_OML_BTS_FAIL_RTP_SOCK_ALARM:
+		snprintf(log_msg, 100, "IPAC Failed to create RTP/RTCP sockets, trx=%d, ts=%d, ss=%d\n",
+				sig_data->mo->obj_inst.trx_nr,
+				sig_data->spare[0],
+				sig_data->spare[1]);
+
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_RTP_CREATE_FAIL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_FAIL_RTP_BIND_ALARM:
+		snprintf(log_msg, 100, "IPAC Failed to bind RTP/RTCP sockets, trx=%d, ts=%d, ss=%d\n",
+				sig_data->mo->obj_inst.trx_nr,
+				sig_data->spare[0],
+				sig_data->spare[1]);
+
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_RTP_BIND_FAIL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_NO_RTP_SOCK_ALARM:
+		snprintf(log_msg, 100, "Rx RSL IPAC MDCX, but we have no RTP socket! trx=%d, ts=%d, ss=%d\n",
+				sig_data->mo->obj_inst.trx_nr,
+				sig_data->spare[0],
+				sig_data->spare[1]);
+
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_RTP_NO_SOCK,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_NO_CALIB_PATH_ALARM:
+		snprintf(log_msg, 100, "Calibration file path for trx=%d not specified\n", sig_data->mo->obj_inst.trx_nr);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_BAD_CALIB_PATH,
+				sig_data->add_text);
+		break;
+
+
+	case S_NM_OML_BTS_FAIL_OPEN_CALIB_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(int));
+		snprintf(log_msg, 100, "Failed to open L1 calibration table %s -> failed (%d)\n",
+				sig_data->add_text,
+				res);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_OPEN_CALIB_FAIL,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_FAIL_VERIFY_CALIB_ALARM:
+		memcpy(&res, sig_data->spare, sizeof(int));
+		snprintf(log_msg, 100, "Verify L1 calibration table %s -> failed (%d)\n",
+				sig_data->add_text,
+				res);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_PROC_FAIL,
+				NM_SEVER_CRITICAL,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_CRIT_VERIFY_CALIB_FAIL,
+				sig_data->add_text);
+		break;
+
+	default:
+		break;
+	}
+
+	sig_data->rc = rc;
+	return 0;
+}
+
+int oml_failure_report_init(void *handler)
+{
+	/* register for failure report events */
+	osmo_signal_register_handler(SS_NM, handle_oml_fail_evt_rep_sig, handler);
 
 	return 0;
 }

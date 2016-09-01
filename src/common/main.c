@@ -50,6 +50,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/oml.h>
 
 int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
@@ -181,13 +182,21 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		if (!quit)
+		if (!quit) {
+			alarm_sig_data.mo = &bts->mo;
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_SIGINT_MSG_ALARM, &alarm_sig_data);
+
 			bts_shutdown(bts, "SIGINT");
+		}
 		quit++;
 		break;
 	case SIGABRT:
 	case SIGUSR1:
 	case SIGUSR2:
+		alarm_sig_data.mo = &bts->mo;
+		alarm_sig_data.spare[0] = signal;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_SIGX_MSG_ALARM, &alarm_sig_data);
+
 		talloc_report_full(tall_bts_ctx, stderr);
 		break;
 	default:
@@ -247,6 +256,8 @@ int bts_main(int argc, char **argv)
 	vty_init(&bts_vty_info);
 	e1inp_vty_init();
 	bts_vty_init(bts, &bts_log_info);
+
+	oml_failure_report_init(NULL);
 
 	/* enable realtime priority for us */
 	if (rt_prio != -1) {

@@ -66,6 +66,7 @@
 #include "misc/lc15bts_par.h"
 #include "misc/lc15bts_bid.h"
 #include "utils.h"
+#include "osmo-bts/oml.h"
 
 extern unsigned int dsp_trace;
 
@@ -548,7 +549,10 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
-			l1sap->u.info.type);
+				l1sap->u.info.type);
+		alarm_sig_data.mo = &trx->mo;
+		memcpy(alarm_sig_data.spare, &l1sap->u.info.type, sizeof(unsigned int));
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_UNKN_MPH_INFO_REQ_ALARM, &alarm_sig_data);
 		rc = -EINVAL;
 	}
 
@@ -574,6 +578,10 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d\n",
 			l1sap->oph.primitive, l1sap->oph.operation);
+
+		alarm_sig_data.mo = &trx->mo;
+		memcpy(alarm_sig_data.spare, &l1sap->oph.primitive, sizeof(unsigned int));
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_UNKN_L1SAP_DOWN_MSG_ALARM, &alarm_sig_data);
 		rc = -EINVAL;
 	}
 
@@ -1438,6 +1446,7 @@ struct lc15l1_hdl *l1if_open(struct phy_instance *pinst)
 	if (!fl1h)
 		return NULL;
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
+	INIT_LLIST_HEAD(&fl1h->alarm_list);
 
 	fl1h->phy_inst = pinst;
 	fl1h->dsp_trace_f = pinst->u.lc15.dsp_trace_f;
@@ -1486,16 +1495,43 @@ static int dsp_alive_timer_cb(void *data)
 	struct gsm_bts_trx *trx = fl1h->phy_inst->trx;
 	struct msgb *msg = sysp_msgb_alloc();
 	int rc;
+	struct oml_alarm_list *alarm_sent;
 
 	Litecell15_Prim_t *sys_prim =  msgb_sysprim(msg);
 	sys_prim->id = Litecell15_PrimId_IsAliveReq;
 
 	if (fl1h->hw_alive.dsp_alive_cnt == 0) {
+		/* check for the alarm has already sent or not */
+		llist_for_each_entry(alarm_sent, &fl1h->alarm_list, list) {
+			llist_del(&alarm_sent->list);
+			if (alarm_sent->alarm_signal != S_NM_OML_BTS_DSP_ALIVE_ALARM)
+				continue;
+
+			LOGP(DL1C, LOGL_ERROR, "Alarm %d has removed from sent alarm list (%d)\n", alarm_sent->alarm_signal, trx->nr);
+			exit(23);
+		}
 
 		LOGP(DL1C, LOGL_ERROR, "Timeout waiting for SYS prim %s primitive (%d)\n",
 				get_value_string(lc15bts_sysprim_names, sys_prim->id + 1), trx->nr);
 
-		exit(23);
+		if( fl1h->phy_inst->trx ){
+			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
+
+			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
+			memcpy(alarm_sig_data.spare, &sys_prim->id, sizeof(unsigned int));
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_DSP_ALIVE_ALARM, &alarm_sig_data);
+			if (!alarm_sig_data.rc) {
+				/* allocate new list of sent alarms */
+				alarm_sent = talloc_zero(fl1h, struct oml_alarm_list);
+				if (!alarm_sent)
+					return -EIO;
+
+				alarm_sent->alarm_signal = S_NM_OML_BTS_DSP_ALIVE_ALARM;
+				/* add alarm to sent list */
+				llist_add(&alarm_sent->list, &fl1h->alarm_list);
+				LOGP(DL1C, LOGL_ERROR, "Alarm %d has added to sent alarm list (%d)\n", alarm_sent->alarm_signal, trx->nr);
+			}
+		}
 	}
 
 	LOGP(DL1C, LOGL_NOTICE, "Tx SYS prim %s (%d)\n",
