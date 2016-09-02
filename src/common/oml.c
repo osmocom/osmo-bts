@@ -94,6 +94,9 @@ static struct tlv_definition abis_nm_att_tlvdef_ipa = {
 		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
+		/* GSM 12.21 attributes */
+		[NM_ATT_MEAS_TYPE] = { TLV_TYPE_TV },
+		[NM_ATT_MEAS_RES] = { TLV_TYPE_TV },
 	},
 };
 
@@ -404,6 +407,81 @@ int oml_tx_nm_fail_evt_rep(struct gsm_abis_mo *mo, uint8_t event_type, uint8_t e
 	}
 
 	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
+}
+
+/* TS 12.21 8.10.2 */
+int oml_tx_nm_meas_res_resp(struct gsm_abis_mo *mo, struct gsm_pcu_if_meas_resp meas_resp)
+{
+	struct msgb *nmsg;
+
+	LOGP(DOML, LOGL_INFO, "%s Tx MEASurement RESult RESPonse\n", gsm_abis_mo_name(mo));
+
+	nmsg = oml_msgb_alloc();
+	if (!nmsg)
+		return -ENOMEM;
+
+	msgb_tv_put(nmsg, NM_ATT_MEAS_TYPE, meas_resp.meas_id);
+	msgb_tl16v_put(nmsg, NM_ATT_MEAS_RES, meas_resp.len, meas_resp.data);
+
+	return oml_mo_send_msg(mo, nmsg, NM_MT_MEAS_RES_RESP);
+}
+
+int oml_tx_nm_start_meas_ack_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause)
+{
+	struct msgb *msg;
+	uint8_t msg_type;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	if (nack_cause) {
+		msg_type =  NM_MT_IPACC_START_MEAS_NACK;
+		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, nack_cause);
+		msgb_tv_put(msg, NM_ATT_MEAS_TYPE, meas_id);
+	} else {
+		msg_type = NM_MT_IPACC_START_MEAS_ACK;
+		msgb_tv_put(msg, NM_ATT_MEAS_TYPE, meas_id);
+	}
+
+	return oml_mo_send_msg(mo, msg, msg_type);
+}
+
+int oml_tx_nm_stop_meas_ack_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause)
+{
+	struct msgb *msg;
+	uint8_t msg_type;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	if (nack_cause) {
+		msg_type =  NM_MT_IPACC_STOP_MEAS_NACK;
+		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, nack_cause);
+		msgb_tv_put(msg, NM_ATT_MEAS_TYPE, meas_id);
+	} else {
+		msg_type = NM_MT_IPACC_STOP_MEAS_ACK;
+		msgb_tv_put(msg, NM_ATT_MEAS_TYPE, meas_id);
+	}
+
+	return oml_mo_send_msg(mo, msg, msg_type);
+}
+
+int oml_tx_nm_meas_res_req_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause)
+{
+	struct msgb *msg;
+	uint8_t msg_type;
+
+	msg = oml_msgb_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	msg_type =  NM_MT_IPACC_MEAS_RES_REQ_NACK;
+	msgb_tv_put(msg, NM_ATT_NACK_CAUSES, nack_cause);
+	msgb_tv_put(msg, NM_ATT_MEAS_TYPE, meas_id);
+
+	return oml_mo_send_msg(mo, msg, msg_type);
 }
 
 /* TS 12.21 9.4.53 */
@@ -941,6 +1019,226 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	return bts_model_chg_adm_state(bts, mo, obj, adm_state);
 }
 
+/* GSM 12.21 section 8.10.1 */
+static int  oml_rx_nm_meas_res_req(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_abis_mo *mo = &bts->gprs.cell.mo;
+	struct tlv_parsed tp;
+	int rc;
+	uint8_t meas_id;
+
+	LOGP(DOML, LOGL_DEBUG, "%s Rx MEAS RES REQ\n", gsm_abis_mo_name(mo));
+
+	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "New value for Attribute not supported\n");
+		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
+
+	if (!TLVP_PRESENT(&tp, NM_ATT_MEAS_TYPE)) {
+		LOGP(DOML, LOGL_NOTICE, "%s NM_ATT_MEAS_TYPE not found\n", gsm_abis_mo_name(mo));
+		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
+	}
+
+	/* Get measurement ID */
+	meas_id = *TLVP_VAL(&tp, NM_ATT_MEAS_TYPE);
+
+	/* Set start measurement ID flags*/
+	switch(meas_id) {
+	case NM_IPACC_MEAS_TYPE_CCCH:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_CCCH;
+		break;
+	case NM_IPACC_MEAS_TYPE_UL_TBF:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_UL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_DL_TBF:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_DL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_TBF_USE:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_TBF_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_LLC_USE:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_LLC_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_CS_CHG:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_CS_CHG;
+		break;
+	default:
+		LOGP(DOML, LOGL_NOTICE, "%s Unsupported NM START MEASurement type received 0x%02x\n", gsm_abis_mo_name(mo), meas_id);
+
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_UNKN_MEAS_REQ_ALARM, &alarm_sig_data);
+
+		/*send START MEAS NACK */
+		return oml_tx_nm_start_meas_ack_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	/* send request to PCU */
+	rc = pcu_tx_nm_meas_res_req(bts, meas_id);
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "%s PCU socket may not be ready for measurement ID (%d)\n", gsm_abis_mo_name(mo), meas_id);
+
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_PCU_CONN_NOT_AVAIL_ALARM, &alarm_sig_data);
+
+		/*send MEAS RES REQ NACK */
+		return oml_tx_nm_meas_res_req_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	return 0;
+}
+
+/* GSM 12.21 section 8.10.3 */
+static int  oml_rx_nm_start_meas(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_abis_mo *mo = &bts->gprs.cell.mo;
+	struct tlv_parsed tp;
+	int rc;
+	uint8_t meas_id;
+
+	LOGP(DOML, LOGL_DEBUG, "%s Rx START MEAS\n", gsm_abis_mo_name(mo));
+
+	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "New value for Attribute not supported\n");
+		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
+
+	if (!TLVP_PRESENT(&tp, NM_ATT_MEAS_TYPE)) {
+		LOGP(DOML, LOGL_NOTICE, "New value for Attribute not supported\n");
+		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
+	}
+
+	/* Get measurement ID */
+	meas_id = *TLVP_VAL(&tp, NM_ATT_MEAS_TYPE);
+
+	/* Set start measurement ID flags*/
+	switch(meas_id) {
+	case NM_IPACC_MEAS_TYPE_CCCH:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_CCCH;
+		break;
+	case NM_IPACC_MEAS_TYPE_UL_TBF:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_UL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_DL_TBF:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_DL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_TBF_USE:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_TBF_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_LLC_USE:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_LLC_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_CS_CHG:
+		pcu_start_meas_flags |= PCU_IF_FLAG_START_MEAS_CS_CHG;
+		break;
+	default:
+		LOGP(DOML, LOGL_NOTICE, "%s Unsupported NM START MEASurement type received 0x%02x\n", gsm_abis_mo_name(mo), meas_id);
+
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_UNKN_START_MEAS_REQ_ALARM, &alarm_sig_data);
+
+		/*send START MEAS NACK */
+		return oml_tx_nm_start_meas_ack_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	/* send request to PCU */
+	rc = pcu_tx_nm_start_meas(bts, meas_id, 0);
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "%s PCU socket may not be ready\n", gsm_abis_mo_name(mo));
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_PCU_CONN_NOT_AVAIL_ALARM, &alarm_sig_data);
+
+		/*send START MEAS NACK */
+		return oml_tx_nm_start_meas_ack_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	return 0;
+}
+
+static int  oml_rx_nm_stop_meas(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_abis_mo *mo = &bts->gprs.cell.mo;
+	struct tlv_parsed tp;
+	int rc;
+	uint8_t meas_id;
+
+	LOGP(DOML, LOGL_DEBUG, "%s Rx STOP MEAS\n", gsm_abis_mo_name(mo));
+
+	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "New value for Attribute not supported\n");
+		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
+
+	if (!TLVP_PRESENT(&tp, NM_ATT_MEAS_TYPE)) {
+		LOGP(DOML, LOGL_NOTICE, "New value for Attribute not supported\n");
+		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
+	}
+
+	/* Get measurement ID */
+	meas_id = *TLVP_VAL(&tp, NM_ATT_MEAS_TYPE);
+
+	/* Validate measurement ID */
+	switch(meas_id) {
+	case NM_IPACC_MEAS_TYPE_CCCH:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_CCCH;
+		break;
+	case NM_IPACC_MEAS_TYPE_UL_TBF:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_UL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_DL_TBF:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_DL_TBF;
+		break;
+	case NM_IPACC_MEAS_TYPE_TBF_USE:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_TBF_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_LLC_USE:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_LLC_USE;
+		break;
+	case NM_IPACC_MEAS_TYPE_CS_CHG:
+		pcu_start_meas_flags &= ~PCU_IF_FLAG_START_MEAS_CS_CHG;
+		break;
+	default:
+		LOGP(DOML, LOGL_NOTICE, "%s Unsupported NM STOP MEASurement type received 0x%02x\n", gsm_abis_mo_name(mo), meas_id);
+
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_UNKN_STOP_MEAS_REQ_ALARM, &alarm_sig_data);
+
+		/*send START MEAS NACK */
+		return oml_tx_nm_start_meas_ack_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	/* send request to PCU */
+	rc = pcu_tx_nm_stop_meas(bts, meas_id);
+	if (rc < 0) {
+		LOGP(DOML, LOGL_NOTICE, "%s PCU socket may not be ready\n", gsm_abis_mo_name(mo));
+
+		/*send alarm to indicate PCU link is not ready */
+		alarm_sig_data.mo = mo;
+		alarm_sig_data.spare[0] = meas_id;
+		osmo_signal_dispatch(SS_NM, S_NM_OML_PCU_CONN_NOT_AVAIL_ALARM, &alarm_sig_data);
+
+		/*send STOP MEAS NACK */
+		return oml_tx_nm_stop_meas_ack_nack(mo, meas_id, NM_NACK_NOTH_REPORT_EXIST);
+	}
+
+	return 0;
+}
+
 static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
@@ -983,6 +1281,15 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	case NM_MT_IPACC_SET_ATTR:
 		ret = oml_ipa_set_attr(bts, msg);
+		break;
+	case NM_MT_START_MEAS:
+		ret = oml_rx_nm_start_meas(bts, msg);
+		break;
+	case NM_MT_MEAS_RES_REQ:
+		ret = oml_rx_nm_meas_res_req(bts, msg);
+		break;
+	case NM_MT_STOP_MEAS:
+		ret = oml_rx_nm_stop_meas(bts, msg);
 		break;
 	default:
 		LOGP(DOML, LOGL_INFO, "unknown Formatted O&M msg_type 0x%02x\n",
@@ -1560,6 +1867,43 @@ static int handle_oml_fail_evt_rep_sig(unsigned int subsys, unsigned int signal,
 				sig_data->event_cause,
 				sig_data->add_text);
 		break;
+
+	case S_NM_OML_BTS_UNKN_START_MEAS_REQ_ALARM:
+		snprintf(log_msg, 100, "Unsupported START MEASurement ID (0x%02x)\n", sig_data->spare[0]);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_MEAS_START_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_UNKN_STOP_MEAS_REQ_ALARM:
+		snprintf(log_msg, 100, "Unsupported STOP MEASurement ID (0x%02x)\n", sig_data->spare[0]);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_MEAS_STOP_MSG,
+				sig_data->add_text);
+		break;
+
+	case S_NM_OML_BTS_UNKN_MEAS_REQ_ALARM:
+		snprintf(log_msg, 100, "Unsupported MEASurement REQuest ID (0x%02x)\n", sig_data->spare[0]);
+		sig_data->add_text = (char*)&log_msg;
+
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				NM_EVT_COMM_FAIL,
+				NM_SEVER_MAJOR,
+				NM_PCAUSE_T_MANUF,
+				NM_EVT_CAUSE_MAJ_UKWN_MEAS_REQ_MSG,
+				sig_data->add_text);
+		break;
+
 	default:
 		break;
 	}

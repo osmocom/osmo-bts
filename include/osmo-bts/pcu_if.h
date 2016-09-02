@@ -4,6 +4,7 @@
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
 extern int pcu_direct;
+extern int pcu_start_meas_flags;
 
 int pcu_tx_info_ind(void);
 int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
@@ -21,5 +22,9 @@ int pcu_sock_init(const char *path);
 void pcu_sock_exit(void);
 
 bool pcu_connected(void);
+
+int  pcu_tx_nm_start_meas(struct gsm_bts *bts, uint8_t meas_id, uint8_t ack_flag);
+int  pcu_tx_nm_meas_res_req(struct gsm_bts *bts, uint8_t meas_id);
+int  pcu_tx_nm_stop_meas(struct gsm_bts *bts, uint8_t meas_id);
 
 #endif /* _PCU_IF_H */

@@ -1,5 +1,6 @@
 #ifndef _OML_H
 #define _OML_H
+#include <osmo-bts/pcuif_proto.h>
 #include "openbsc/signal.h"
 
 struct gsm_bts;
@@ -28,6 +29,9 @@ enum oml_fail_evt_rep_sig {
 	S_NM_OML_BTS_FAIL_VERIFY_CALIB_ALARM,
 	S_NM_OML_BTS_NO_CALIB_PATH_ALARM,
 	S_NM_OML_BTS_RX_PCU_FAIL_EVT_ALARM,
+	S_NM_OML_BTS_UNKN_START_MEAS_REQ_ALARM,
+	S_NM_OML_BTS_UNKN_STOP_MEAS_REQ_ALARM,
+	S_NM_OML_BTS_UNKN_MEAS_REQ_ALARM,
 };
 
 struct oml_fail_evt_rep_sig_data {
@@ -46,9 +50,27 @@ struct oml_alarm_list {
 	uint16_t alarm_signal;	/* Failure alarm report signal cause */
 };
 
+enum abis_nm_msgtype_ipacc_appended {
+	NM_MT_IPACC_START_MEAS_ACK 		= 0xde,
+	NM_MT_IPACC_MEAS_RES_REQ_NACK		= 0xfc,
+	NM_MT_IPACC_START_MEAS_NACK		= 0xfd,
+	NM_MT_IPACC_STOP_MEAS_ACK 		= 0xdf,
+	NM_MT_IPACC_STOP_MEAS_NACK		= 0xfe,
+};
+
+enum abis_nm_ipacc_meas_type {
+	NM_IPACC_MEAS_TYPE_CCCH 		= 0x45,
+	NM_IPACC_MEAS_TYPE_UL_TBF 		= 0x49,
+	NM_IPACC_MEAS_TYPE_DL_TBF 		= 0x4a,
+	NM_IPACC_MEAS_TYPE_TBF_USE 		= 0x4c,
+	NM_IPACC_MEAS_TYPE_LLC_USE 		= 0x4d,
+	NM_IPACC_MEAS_TYPE_CS_CHG 		= 0x50,
+	NM_IPACC_MEAS_TYPE_UNKN
+};
+
 enum abis_nm_failure_event_causes {
 	/* Critical causes */
-	NM_EVT_CAUSE_CRIT_SW_FATAL 			= 0x3000,
+	NM_EVT_CAUSE_CRIT_SW_FATAL 		= 0x3000,
 	NM_EVT_CAUSE_CRIT_DSP_FATAL 		= 0x3001,
 	NM_EVT_CAUSE_CRIT_PROC_STOP 		= 0x3006,
 	NM_EVT_CAUSE_CRIT_RTP_CREATE_FAIL	= 0x332a,
@@ -56,18 +78,21 @@ enum abis_nm_failure_event_causes {
 	NM_EVT_CAUSE_CRIT_RTP_NO_SOCK		= 0x332c,
 	NM_EVT_CAUSE_CRIT_BAD_CALIB_PATH	= 0x3401,
 	NM_EVT_CAUSE_CRIT_OPEN_CALIB_FAIL 	= 0x3403,
-	NM_EVT_CAUSE_CRIT_VERIFY_CALIB_FAIL = 0x3404,
+	NM_EVT_CAUSE_CRIT_VERIFY_CALIB_FAIL 	= 0x3404,
 	/* Major causes */
 	NM_EVT_CAUSE_MAJ_UKWN_PCU_MSG		= 0x3002,
 	NM_EVT_CAUSE_MAJ_UKWN_DL_MSG		= 0x3003,
 	NM_EVT_CAUSE_MAJ_UKWN_UL_MSG		= 0x3004,
 	NM_EVT_CAUSE_MAJ_UKWN_MPH_MSG		= 0x3005,
-	NM_EVT_CAUSE_MAJ_RSL_FAIL			= 0x3309,
+	NM_EVT_CAUSE_MAJ_UKWN_MEAS_START_MSG	= 0x3007,
+	NM_EVT_CAUSE_MAJ_UKWN_MEAS_REQ_MSG	= 0x3008,
+	NM_EVT_CAUSE_MAJ_UKWN_MEAS_STOP_MSG	= 0x3009,
+	NM_EVT_CAUSE_MAJ_RSL_FAIL		= 0x3309,
 	NM_EVT_CAUSE_MAJ_DEACT_RF_FAIL 		= 0x330a,
 	/* Minor causes */
 	NM_EVT_CAUSE_MIN_PAG_TAB_FULL		= 0x3402,
 	/* Warning causes */
-	NM_EVT_CAUSE_WARN_SW_WARN			= 0x0001,
+	NM_EVT_CAUSE_WARN_SW_WARN		= 0x0001,
 
 };
 
@@ -113,5 +138,11 @@ int oml_tx_nm_fail_evt_rep(struct gsm_abis_mo *mo, uint8_t event_type, uint8_t e
 
 /* Initialize failure report signalling */
 int oml_failure_report_init(void *handler);
+
+/* NM measurement related messages */
+int oml_tx_nm_start_meas_ack_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause);
+int oml_tx_nm_meas_res_req_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause);
+int oml_tx_nm_meas_res_resp(struct gsm_abis_mo *mo, struct gsm_pcu_if_meas_resp meas_resp);
+int oml_tx_nm_stop_meas_ack_nack(struct gsm_abis_mo *mo, uint8_t meas_id, uint8_t nack_cause);
 
 #endif // _OML_H */

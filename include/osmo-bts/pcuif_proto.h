@@ -1,5 +1,6 @@
 #ifndef _PCUIF_PROTO_H
 #define _PCUIF_PROTO_H
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #define PCU_IF_VERSION		0x07
 
@@ -16,6 +17,15 @@
 
 /*alarms & performance counters */
 #define PCU_IF_MSG_FAILURE_EVT_IND 	0x61 /* PCU failure event report indication*/
+#define PCU_IF_MSG_START_MEAS_REQ 	0x62 /* PCU start measurement request */
+#define PCU_IF_MSG_START_MEAS_ACK 	0x63 /* PCU start measurement ACK */
+#define PCU_IF_MSG_START_MEAS_NACK 	0x64 /* PCU start measurement NACK */
+#define PCU_IF_MSG_MEAS_RES_REQ 	0x65 /* PCU measurement result request*/
+#define PCU_IF_MSG_MEAS_RES_RESP 	0x66 /* PCU measurement result response*/
+#define PCU_IF_MSG_MEAS_RES_NACK 	0x67 /* PCU measurement result NACK*/
+#define PCU_IF_MSG_STOP_MEAS_REQ 	0x68 /* PCU stop measurement request */
+#define PCU_IF_MSG_STOP_MEAS_ACK 	0x69 /* PCU stop measurement ACK */
+#define PCU_IF_MSG_STOP_MEAS_NACK 	0x6a /* PCU stop measurement NACK */
 
 /* sapi */
 #define PCU_IF_SAPI_RACH	0x01	/* channel request on CCCH */
@@ -42,6 +52,14 @@
 #define PCU_IF_FLAG_MCS7	(1 << 26)
 #define PCU_IF_FLAG_MCS8	(1 << 27)
 #define PCU_IF_FLAG_MCS9	(1 << 28)
+
+/* PCU start measurement flags */
+#define PCU_IF_FLAG_START_MEAS_CCCH	(1 << 0)
+#define PCU_IF_FLAG_START_MEAS_UL_TBF	(1 << 1)
+#define PCU_IF_FLAG_START_MEAS_DL_TBF	(1 << 2)
+#define PCU_IF_FLAG_START_MEAS_TBF_USE	(1 << 3)
+#define PCU_IF_FLAG_START_MEAS_LLC_USE	(1 << 4)
+#define PCU_IF_FLAG_START_MEAS_CS_CHG	(1 << 5)
 
 struct gsm_pcu_if_data {
 	uint8_t		sapi;
@@ -147,6 +165,24 @@ struct gsm_pcu_if_fail_evt_ind {
 	char		add_text[100];
 }__attribute__ ((packed));
 
+struct gsm_pcu_if_start_meas_req {
+	uint8_t 	meas_id;	/*measurement ID */
+	uint8_t		nack_cause;
+	uint8_t		spare[2];
+}__attribute__ ((packed));
+
+struct gsm_pcu_if_meas_req {
+	uint8_t 	meas_id;	/*measurement ID */
+	uint8_t		spare[2];
+}__attribute__ ((packed));
+
+struct gsm_pcu_if_meas_resp {
+	uint8_t 	meas_id;	/*measurement ID */
+	uint8_t		nack_cause;	/*NACK cause */
+	uint16_t	len;		/*total result length */
+	uint8_t		data[100];	/*PM counter result must be started from here */
+}__attribute__ ((packed));
+
 struct gsm_pcu_if {
 	/* context based information */
 	uint8_t		msg_type;	/* message type */
@@ -164,6 +200,10 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_time_ind	time_ind;
 		struct gsm_pcu_if_pag_req	pag_req;
 		struct gsm_pcu_if_fail_evt_ind	failure_evt_ind;
+		struct gsm_pcu_if_start_meas_req start_meas_req;
+		struct gsm_pcu_if_start_meas_req stop_meas_req;
+		struct gsm_pcu_if_meas_req meas_req;
+		struct gsm_pcu_if_meas_resp meas_resp;
 	} u;
 } __attribute__ ((packed));
 

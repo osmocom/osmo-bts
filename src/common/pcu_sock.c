@@ -47,6 +47,7 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
 
 extern struct gsm_network bts_gsmnet;
 int pcu_direct = 0;
+int pcu_start_meas_flags = 0;
 static int avail_lai = 0, avail_nse = 0, avail_cell = 0, avail_nsvc[2] = {0, 0};
 
 static const char *sapi_string[] = {
@@ -132,7 +133,7 @@ int pcu_tx_info_ind(void)
 	struct gsm_bts_gprs_nsvc *nsvc;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
-	int i, j, rc;
+	int i, j, rc, meas_id;
 	struct gsm_bts_role_bts *btsb;
 
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
@@ -251,6 +252,43 @@ int pcu_tx_info_ind(void)
 	rc = pcu_sock_send(net, msg);
 	if (rc < 0)
 		return rc;
+	/* send pending start measurement messages to PCU */
+	for(i = 0; i < 32; i++) {
+
+		meas_id = pcu_start_meas_flags & (1 << i);
+		if(!meas_id)
+			continue;
+
+		/* decode start measurement flags */
+		switch (meas_id) {
+		case PCU_IF_FLAG_START_MEAS_CCCH:
+			meas_id = NM_IPACC_MEAS_TYPE_CCCH;
+			break;
+		case PCU_IF_FLAG_START_MEAS_UL_TBF:
+			meas_id = NM_IPACC_MEAS_TYPE_UL_TBF;
+			break;
+		case PCU_IF_FLAG_START_MEAS_DL_TBF:
+			meas_id = NM_IPACC_MEAS_TYPE_DL_TBF;
+			break;
+		case PCU_IF_FLAG_START_MEAS_TBF_USE:
+			meas_id = NM_IPACC_MEAS_TYPE_TBF_USE;
+			break;
+		case PCU_IF_FLAG_START_MEAS_LLC_USE:
+			meas_id = NM_IPACC_MEAS_TYPE_LLC_USE;
+			break;
+		case PCU_IF_FLAG_START_MEAS_CS_CHG:
+			meas_id = NM_IPACC_MEAS_TYPE_CS_CHG;
+			break;
+		default:
+			meas_id = NM_IPACC_MEAS_TYPE_UNKN;
+			break;
+		}
+
+		/* send request to PCU */
+		rc = pcu_tx_nm_start_meas(bts, meas_id, 1);
+		if (rc < 0)
+			return rc;
+	}
 
 #ifdef ENABLE_LC15BTS
 	struct oml_alarm_list *ceased_alarm;
@@ -500,6 +538,65 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
+int  pcu_tx_nm_start_meas(struct gsm_bts *bts, uint8_t meas_id, uint8_t ack_flag)
+{
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_start_meas_req *start_meas_req;
+	struct msgb *msg;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_START_MEAS_REQ, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	start_meas_req = &pcu_prim->u.start_meas_req;
+	start_meas_req->meas_id = meas_id;
+	start_meas_req->spare[0] = ack_flag;
+
+	LOGP(DPCU, LOGL_INFO, "[BTS->PCU] Sent START MEASurement REQuest: 0x%02x\n", start_meas_req->meas_id);
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
+int  pcu_tx_nm_stop_meas(struct gsm_bts *bts, uint8_t meas_id)
+{
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_start_meas_req *stop_meas_req;
+	struct msgb *msg;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_STOP_MEAS_REQ, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	stop_meas_req = &pcu_prim->u.start_meas_req;
+	stop_meas_req->meas_id = meas_id;
+
+	LOGP(DPCU, LOGL_INFO, "[BTS->PCU] Sent STOP MEASurement REQuest: 0x%02x\n", stop_meas_req->meas_id);
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
+int  pcu_tx_nm_meas_res_req(struct gsm_bts *bts, uint8_t meas_id)
+{
+	struct gsm_pcu_if *pcu_prim;
+	struct gsm_pcu_if_meas_req *meas_req;
+	struct msgb *msg;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_MEAS_RES_REQ, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	meas_req = &pcu_prim->u.meas_req;
+	meas_req->meas_id = meas_id;
+
+	LOGP(DPCU, LOGL_INFO, "[BTS->PCU ]Sent MEASurement RESult REQuest: 0x%02x\n", meas_req->meas_id);
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
+
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_pcu_if_data *data_req)
 {
@@ -624,6 +721,60 @@ static int pcu_rx_failure_event_rep(struct gsm_bts *bts, struct gsm_pcu_if_fail_
 	return alarm_sig_data.rc;
 }
 
+static int pcu_rx_nm_start_meas_ack_nack(struct gsm_bts *bts, struct gsm_pcu_if_start_meas_req *start_meas, uint8_t nack_cause)
+{
+	int rc;
+
+	/* don't send ACK/NACK to MSS if BTS does not request send ACK/NACK */
+	if (start_meas->spare[0])
+		return 0;
+
+	rc = oml_tx_nm_start_meas_ack_nack(&bts->gprs.cell.mo, start_meas->meas_id, nack_cause);
+	if (rc < 0 )
+		return rc;
+
+	return 0;
+}
+
+static int pcu_rx_nm_stop_meas_ack_nack(struct gsm_bts *bts, struct gsm_pcu_if_start_meas_req *stop_meas, uint8_t nack_cause)
+{
+	int rc;
+
+	rc = oml_tx_nm_stop_meas_ack_nack(&bts->gprs.cell.mo, stop_meas->meas_id, nack_cause);
+	if (rc < 0 )
+		return rc;
+
+	return 0;
+}
+
+static int pcu_rx_nm_meas_res_req_nack(struct gsm_bts *bts, struct gsm_pcu_if_meas_resp *meas_resp, uint8_t nack_cause)
+{
+	int rc;
+
+	rc = oml_tx_nm_meas_res_req_nack(&bts->gprs.cell.mo, meas_resp->meas_id, nack_cause);
+	if (rc < 0 )
+		return rc;
+
+	return 0;
+}
+
+static int pcu_rx_nm_meas_res_resp(struct gsm_bts *bts, struct gsm_pcu_if_meas_resp *meas_resp)
+{
+	struct gsm_pcu_if_meas_resp res_resp;
+	int rc;
+
+	res_resp.meas_id = meas_resp->meas_id;
+	res_resp.len = meas_resp->len;
+	memcpy(res_resp.data, meas_resp->data, meas_resp->len);
+
+	rc = oml_tx_nm_meas_res_resp(&bts->gprs.cell.mo, res_resp);
+	if (rc < 0 )
+		return rc;
+
+	return 0;
+}
+
+
 static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 	struct gsm_pcu_if *pcu_prim)
 {
@@ -643,6 +794,24 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 		break;
 	case PCU_IF_MSG_FAILURE_EVT_IND:
 		rc = pcu_rx_failure_event_rep(bts, &pcu_prim->u.failure_evt_ind);
+		break;
+	case PCU_IF_MSG_START_MEAS_ACK:
+		rc =  pcu_rx_nm_start_meas_ack_nack(bts, &pcu_prim->u.start_meas_req, 0);
+		break;
+	case PCU_IF_MSG_START_MEAS_NACK:
+		rc =  pcu_rx_nm_start_meas_ack_nack(bts, &pcu_prim->u.start_meas_req, pcu_prim->u.start_meas_req.nack_cause);
+		break;
+	case PCU_IF_MSG_MEAS_RES_NACK:
+		rc =  pcu_rx_nm_meas_res_req_nack(bts, &pcu_prim->u.meas_resp, pcu_prim->u.meas_resp.nack_cause);
+		break;
+	case PCU_IF_MSG_MEAS_RES_RESP:
+		rc = pcu_rx_nm_meas_res_resp(bts, &pcu_prim->u.meas_resp);
+		break;
+	case PCU_IF_MSG_STOP_MEAS_ACK:
+		rc =  pcu_rx_nm_stop_meas_ack_nack(bts, &pcu_prim->u.stop_meas_req, 0);
+		break;
+	case PCU_IF_MSG_STOP_MEAS_NACK:
+		rc =  pcu_rx_nm_stop_meas_ack_nack(bts, &pcu_prim->u.stop_meas_req, pcu_prim->u.stop_meas_req.nack_cause);
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Received unknwon PCU msg type %d\n",
