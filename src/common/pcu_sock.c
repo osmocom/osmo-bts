@@ -604,6 +604,26 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 	return 0;
 }
 
+static int pcu_rx_failure_event_rep(struct gsm_bts *bts, struct gsm_pcu_if_fail_evt_ind *fail_ind)
+{
+	LOGP(DPCU, LOGL_DEBUG, "[PCU] Failure EVT REP detailed: evt_type=%02x, evt_serv=%02x, cause_type=%02x, cause_id=%04x, text=%s\n",
+			fail_ind->event_type,
+			fail_ind->event_serverity,
+			fail_ind->cause_type,
+			fail_ind->event_cause,
+			fail_ind->add_text);
+
+	alarm_sig_data.mo  = &bts->gprs.cell.mo;
+	alarm_sig_data.event_type = fail_ind->event_type;
+	alarm_sig_data.event_serverity = fail_ind->event_serverity;
+	alarm_sig_data.cause_type = fail_ind->cause_type;
+	alarm_sig_data.event_cause = fail_ind->event_cause;
+	alarm_sig_data.add_text = &fail_ind->add_text[0];
+	osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_RX_PCU_FAIL_EVT_ALARM, &alarm_sig_data);
+
+	return alarm_sig_data.rc;
+}
+
 static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 	struct gsm_pcu_if *pcu_prim)
 {
@@ -620,6 +640,9 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 		break;
 	case PCU_IF_MSG_ACT_REQ:
 		rc = pcu_rx_act_req(bts, &pcu_prim->u.act_req);
+		break;
+	case PCU_IF_MSG_FAILURE_EVT_IND:
+		rc = pcu_rx_failure_event_rep(bts, &pcu_prim->u.failure_evt_ind);
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Received unknwon PCU msg type %d\n",

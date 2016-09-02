@@ -14,6 +14,9 @@
 #define PCU_IF_MSG_TIME_IND	0x52	/* GSM time indication */
 #define PCU_IF_MSG_PAG_REQ	0x60	/* paging request */
 
+/*alarms & performance counters */
+#define PCU_IF_MSG_FAILURE_EVT_IND 	0x61 /* PCU failure event report indication*/
+
 /* sapi */
 #define PCU_IF_SAPI_RACH	0x01	/* channel request on CCCH */
 #define PCU_IF_SAPI_AGCH	0x02	/* assignment on AGCH */
@@ -136,6 +139,14 @@ struct gsm_pcu_if_pag_req {
 	uint8_t		identity_lv[9];
 } __attribute__ ((packed));
 
+struct gsm_pcu_if_fail_evt_ind {
+	uint8_t 	event_type;
+	uint8_t 	event_serverity;
+	uint8_t 	cause_type;
+	uint16_t 	event_cause;
+	char		add_text[100];
+}__attribute__ ((packed));
+
 struct gsm_pcu_if {
 	/* context based information */
 	uint8_t		msg_type;	/* message type */
@@ -152,6 +163,7 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_act_req	act_req;
 		struct gsm_pcu_if_time_ind	time_ind;
 		struct gsm_pcu_if_pag_req	pag_req;
+		struct gsm_pcu_if_fail_evt_ind	failure_evt_ind;
 	} u;
 } __attribute__ ((packed));
 

@@ -27,6 +27,7 @@ enum oml_fail_evt_rep_sig {
 	S_NM_OML_BTS_FAIL_OPEN_CALIB_ALARM,
 	S_NM_OML_BTS_FAIL_VERIFY_CALIB_ALARM,
 	S_NM_OML_BTS_NO_CALIB_PATH_ALARM,
+	S_NM_OML_BTS_RX_PCU_FAIL_EVT_ALARM,
 };
 
 struct oml_fail_evt_rep_sig_data {

@@ -1552,6 +1552,14 @@ static int handle_oml_fail_evt_rep_sig(unsigned int subsys, unsigned int signal,
 				sig_data->add_text);
 		break;
 
+	case S_NM_OML_BTS_RX_PCU_FAIL_EVT_ALARM:
+		rc = oml_tx_nm_fail_evt_rep(sig_data->mo,
+				sig_data->event_type,
+				sig_data->event_serverity,
+				sig_data->cause_type,
+				sig_data->event_cause,
+				sig_data->add_text);
+		break;
 	default:
 		break;
 	}
