@@ -45,8 +45,9 @@
 #include <osmo-bts/pcuif_proto.h>
 #ifdef ENABLE_LC15BTS
 #include "../osmo-bts-litecell15/lc15bts.h"
-struct oml_fail_evt_rep_sig_data alarm_sig_data;
 #endif
+
+struct oml_fail_evt_rep_sig_data alarm_sig_data;
 
 /* FIXME: move this to libosmocore */
 static struct tlv_definition abis_nm_att_tlvdef_ipa = {
@@ -1732,6 +1733,7 @@ static int handle_oml_fail_evt_rep_sig(unsigned int subsys, unsigned int signal,
 				sig_data->add_text);
 		break;
 
+#ifdef ENABLE_LC15BTS
 	case S_NM_OML_BTS_DSP_ALIVE_ALARM:
 		memcpy(&res, sig_data->spare, sizeof(unsigned int));
 		snprintf(log_msg, 100, "Timeout waiting for SYS primitive %s (%d)\n",
@@ -1745,6 +1747,7 @@ static int handle_oml_fail_evt_rep_sig(unsigned int subsys, unsigned int signal,
 				NM_EVT_CAUSE_CRIT_DSP_FATAL,
 				sig_data->add_text);
 		break;
+#endif
 
 	case S_NM_OML_BTS_UNKN_MPH_INFO_REQ_ALARM:
 		memcpy(&res, sig_data->spare, sizeof(unsigned int));
