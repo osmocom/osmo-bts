@@ -279,7 +279,7 @@ static const struct value_string clocksync_source_state_vals[] = {
 static const struct value_string clocksync_state_vals[] = {
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNINITIALIZE,
 							"Uninitialized" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE,	"Idle" },
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED,	"Unused" },
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_NO_EXT_CLOCK,
 							"No External Clock" },
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_LOCKED,	"Locked" },
