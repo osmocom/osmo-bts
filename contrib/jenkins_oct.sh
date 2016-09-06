@@ -47,7 +47,7 @@ fi
 # Build osmo-bts
 cd ../../
 autoreconf --install --force
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig ./configure --with-openbsc=$PWD/deps/openbsc/openbsc/include --with-octsdr-2g=$PWD/deps/layer1-api/
+PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig ./configure --with-openbsc=$PWD/deps/openbsc/openbsc/include --with-octsdr-2g=$PWD/deps/layer1-api/ --enable-octphy
 PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE $PARALLEL_MAKE
 PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE check
-DISTCHECK_CONFIGURE_FLAGS="--with-octsdr-2g=$PWD/deps/layer1-api/ --with-openbsc=$PWD/deps/openbsc/openbsc/include" PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE distcheck
+DISTCHECK_CONFIGURE_FLAGS="--with-octsdr-2g=$PWD/deps/layer1-api/ --with-openbsc=$PWD/deps/openbsc/openbsc/include --enable-octphy" PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE distcheck
