@@ -1345,7 +1345,6 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	oc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	oc->Config.ulBand = osmocom_to_octphy_band(trx->bts->band, trx->arfcn);
 	oc->Config.usArfcn = trx->arfcn;
-	oc->Config.usCentreArfcn = trx->bts->c0->arfcn;
 	oc->Config.usTsc = trx->bts->bsic & 0x7;
 	oc->Config.usBcchArfcn = trx->bts->c0->arfcn;
 	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;
@@ -1353,9 +1352,9 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
 
 	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "
-		"center=%u, tsc=%u, rx_gain=%u, tx_atten=%u)\n",
+		"tsc=%u, rx_gain=%u, tx_atten=%u)\n",
 		oc->TrxId.byTrxId, oc->ulRfPortIndex, oc->Config.usArfcn,
-		oc->Config.usCentreArfcn, oc->Config.usTsc, oc->RfConfig.ulRxGainDb,
+		oc->Config.usTsc, oc->RfConfig.ulRxGainDb,
 		oc->RfConfig.ulTxAttndB);
 
 	mOCTVC1_GSM_MSG_TRX_OPEN_CMD_SWAP(oc);
