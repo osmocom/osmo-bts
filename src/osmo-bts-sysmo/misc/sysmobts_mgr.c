@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = telnet_init(tall_msgb_ctx, NULL, OSMO_VTY_PORT_BTSMGR);
+	rc = telnet_init(tall_mgr_ctx, NULL, OSMO_VTY_PORT_BTSMGR);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
