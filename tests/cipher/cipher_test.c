@@ -66,11 +66,8 @@ static void test_cipher_parsing(void)
 
 int main(int argc, char **argv)
 {
-	void *tall_msgb_ctx;
-
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
-	tall_msgb_ctx = talloc_named_const(tall_bts_ctx, 1, "msgb");
-	msgb_set_talloc_ctx(tall_msgb_ctx);
+	msgb_talloc_ctx_init(tall_bts_ctx, 0);
 
 	bts_log_init(NULL);
 

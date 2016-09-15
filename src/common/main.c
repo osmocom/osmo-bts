@@ -219,14 +219,12 @@ int bts_main(int argc, char **argv)
 	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
-	void *tall_msgb_ctx;
 	int rc, i;
 
 	printf("((*))\n  |\n / \\ OsmoBTS\n");
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
-	tall_msgb_ctx = talloc_pool(tall_bts_ctx, 100*1024);
-	msgb_set_talloc_ctx(tall_msgb_ctx);
+	msgb_talloc_ctx_init(tall_bts_ctx, 100*1024);
 
 	bts_log_init(NULL);
 

@@ -222,13 +222,11 @@ static int mgr_log_init(void)
 
 int main(int argc, char **argv)
 {
-	void *tall_msgb_ctx;
 	int rc;
 
 
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
-	tall_msgb_ctx = talloc_named_const(tall_mgr_ctx, 1, "msgb");
-	msgb_set_talloc_ctx(tall_msgb_ctx);
+	msgb_talloc_ctx_init(tall_mgr_ctx);
 
 	mgr_log_init();
 
