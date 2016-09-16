@@ -108,7 +108,7 @@ struct gsm_lchan *l1if_hLayer_to_lchan(struct gsm_bts_trx *trx, uint32_t hLayer)
 
 /* tch.c */
 void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
-	const uint8_t *rtp_pl, unsigned int rtp_pl_len);
+	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn);
 int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg);
 int l1if_tch_fill(struct gsm_lchan *lchan, uint8_t *l1_buffer);
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn);

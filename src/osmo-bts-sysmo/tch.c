@@ -283,7 +283,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
  */
 static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				uint8_t payload_len,
-				struct gsm_lchan *lchan)
+				struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 	enum osmo_amr_type ft;
@@ -367,14 +367,8 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	}
 #endif
 
-	if (ft == AMR_SID) {
-		/* store the last SID frame in lchan context */
-		unsigned int copy_len;
-		copy_len = OSMO_MIN(payload_len+1,
-				    ARRAY_SIZE(lchan->tch.last_sid.buf));
-		lchan->tch.last_sid.len = copy_len;
-		memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
-	}
+	if (ft == AMR_SID)
+		save_last_sid(lchan, l1_payload, payload_len, fn, sti);
 
 	return payload_len+1;
 }
@@ -394,7 +388,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * pre-fill the primtive.
  */
 void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
-	const uint8_t *rtp_pl, unsigned int rtp_pl_len)
+	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn)
 {
 	uint8_t *payload_type;
 	uint8_t *l1_payload;
@@ -428,7 +422,7 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
 		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
-					  rtp_pl_len, lchan);
+					  rtp_pl_len, lchan, fn);
 		break;
 	default:
 		/* we don't support CSD modes */
