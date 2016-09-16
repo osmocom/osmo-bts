@@ -25,6 +25,7 @@
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/trau/osmo_ortp.h>
 
 #include <arpa/inet.h>
 
@@ -109,6 +110,49 @@ void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
 	lchan->tch.last_sid.is_update = update;
 
 	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
+}
+
+/* repeat last SID if possible, returns SID length + 1 or 0 */
+/*! \brief Repeat last SID if possible in case of DTX
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] dst Buffer to copy last SID into
+ *  \returns Number of bytes copied + 1 (to accommodate for extra byte with
+ *           payload type) or 0 if there's nothing to copy
+ */
+uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
+{
+	if (lchan->tch.last_sid.len) {
+		memcpy(dst, lchan->tch.last_sid.buf, lchan->tch.last_sid.len);
+		lchan->tch.last_sid.fn = fn;
+		return lchan->tch.last_sid.len + 1;
+	}
+	LOGP(DL1C, LOGL_NOTICE, "Have to send %s frame on TCH but SID buffer "
+	     "is empty - sent nothing\n",
+	     get_value_string(gsm48_chan_mode_names, lchan->tch_mode));
+	return 0;
+}
+
+/*! \brief Check if enough time has passed since last SID (if any) to repeat it
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] fn Frame Number for which we check scheduling
+ *  \returns true if transmission can be omitted, false otherwise
+ */
+bool dtx_amr_sid_optional(const struct gsm_lchan *lchan, uint32_t fn)
+{
+	/* Compute approx. time delta based on Fn duration */
+	uint32_t delta = GSM_FN_TO_MS(fn - lchan->tch.last_sid.fn);
+
+	/* according to 3GPP TS 26.093 A.5.1.1: */
+	if (lchan->tch.last_sid.is_update) {
+		/* SID UPDATE should be repeated every 8th RTP frame */
+		if (delta < GSM_RTP_FRAME_DURATION_MS * 8)
+			return true;
+		return false;
+	}
+	/* 3rd frame after SID FIRST should be SID UPDATE */
+	if (delta < GSM_RTP_FRAME_DURATION_MS * 3)
+		return true;
+	return false;
 }
 
 static inline bool fn_chk(const uint8_t *t, uint32_t fn)

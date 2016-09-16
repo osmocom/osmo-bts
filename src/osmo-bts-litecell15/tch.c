@@ -463,27 +463,6 @@ err_payload_match:
 	return -EINVAL;
 }
 
-static bool repeat_last_sid(struct gsm_lchan *lchan, struct msgb *msg)
-{
-	GsmL1_Prim_t *l1p;
-	GsmL1_PhDataReq_t *data_req;
-	GsmL1_MsgUnitParam_t *msu_param;
-	uint8_t *l1_payload;
-
-	l1p = msgb_l1prim(msg);
-	data_req = &l1p->u.phDataReq;
-	msu_param = &data_req->msgUnitParam;
-	l1_payload = &msu_param->u8Buffer[1];
-
-	if (lchan->tch.last_sid.len) {
-		memcpy(l1_payload, lchan->tch.last_sid.buf,
-		       lchan->tch.last_sid.len);
-		msu_param->u8Size = lchan->tch.last_sid.len + 1;
-		return true;
-	}
-	return false;
-}
-
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct msgb *msg;
@@ -506,30 +485,13 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
-		/* according to 3GPP TS 26.093 A.5.1.1: */
-		if (lchan->tch.last_sid.is_update) {
-			/* SID UPDATE should be repeated every 8th frame */
-			if (fn - lchan->tch.last_sid.fn < 7) {
-				msgb_free(msg);
-				return NULL;
-			}
-		} else {
-			/* 3rd frame after SID FIRST should be SID UPDATE */
-			if (fn - lchan->tch.last_sid.fn < 3) {
-				msgb_free(msg);
-				return NULL;
-			}
+		if (dtx_amr_sid_optional(lchan, fn)) {
+			msgb_free(msg);
+			return NULL;
 		}
-		if (repeat_last_sid(lchan, msg))
-			return msg;
-		else {
-			LOGP(DL1C, LOGL_NOTICE, "Have to send AMR frame on TCH "
-			     "(FN=%u) but SID buffer is empty - sent NO_DATA\n",
-			     fn);
-			osmo_amr_rtp_enc(l1_payload, 0, AMR_NO_DATA,
-					 AMR_GOOD);
-			return msg;
-		}
+		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
+		if (!msu_param->u8Size)
+			osmo_amr_rtp_enc(l1_payload, 0, AMR_NO_DATA, AMR_GOOD);
 		break;
 	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
@@ -541,14 +503,9 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 			msgb_free(msg);
 			return NULL;
 		}
-		if (repeat_last_sid(lchan, msg))
-			return msg;
-		else {
-			LOGP(DL1C, LOGL_NOTICE, "Have to send V1 frame on TCH "
-			     "(FN=%u) but SID buffer is empty - sent nothing\n",
-			     fn);
+		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
+		if (!msu_param->u8Size)
 			return NULL;
-		}
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		*payload_type = GsmL1_TchPlType_Efr;
@@ -556,14 +513,9 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 			msgb_free(msg);
 			return NULL;
 		}
-		if (repeat_last_sid(lchan, msg))
-			return msg;
-		else {
-			LOGP(DL1C, LOGL_NOTICE, "Have to send EFR frame on TCH "
-			     "(FN=%u) but SID buffer is empty - sent nothing\n",
-			     fn);
+		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
+		if (!msu_param->u8Size)
 			return NULL;
-		}
 		break;
 	default:
 		msgb_free(msg);
