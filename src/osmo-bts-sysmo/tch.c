@@ -367,8 +367,10 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 	}
 #endif
 
-	if (ft == AMR_SID)
+	if (ft == AMR_SID) {
 		save_last_sid(lchan, l1_payload, payload_len, fn, sti);
+		return -EALREADY;
+	}
 
 	return payload_len+1;
 }
@@ -376,9 +378,9 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 #define RTP_MSGB_ALLOC_SIZE	512
 
 /*! \brief function for incoming RTP via TCH.req
- *  \param rs RTP Socket
  *  \param[in] rtp_pl buffer containing RTP payload
  *  \param[in] rtp_pl_len length of \a rtp_pl
+ *  \returns true if encoding result can be sent further to L1, false otherwise
  *
  * This function prepares a msgb with a L1 PH-DATA.req primitive and
  * queues it into lchan->dl_tch_queue.
@@ -387,7 +389,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * yet, as things like the frame number, etc. are unknown at the time we
  * pre-fill the primtive.
  */
-void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
+bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn)
 {
 	uint8_t *payload_type;
@@ -423,6 +425,8 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 		*payload_type = GsmL1_TchPlType_Amr;
 		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
 					  rtp_pl_len, lchan, fn);
+		if (-EALREADY == rc)
+			return false;
 		break;
 	default:
 		/* we don't support CSD modes */
@@ -433,13 +437,14 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	if (rc < 0) {
 		LOGP(DRTP, LOGL_ERROR, "%s unable to parse RTP payload\n",
 		     gsm_lchan_name(lchan));
-		return;
+		return false;
 	}
 
 	*len = rc + 1;
 
 	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(data, *len));
+	return true;
 }
 
 static int is_recv_only(uint8_t speech_mode)

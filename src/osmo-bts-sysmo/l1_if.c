@@ -459,10 +459,13 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (!nmsg)
 			return -ENOMEM;
 		l1p = msgb_l1prim(nmsg);
-		l1if_tch_encode(lchan,
-			l1p->u.phDataReq.msgUnitParam.u8Buffer,
-			&l1p->u.phDataReq.msgUnitParam.u8Size,
-			msg->data, msg->len, u32Fn);
+		if (!l1if_tch_encode(lchan,
+				     l1p->u.phDataReq.msgUnitParam.u8Buffer,
+				     &l1p->u.phDataReq.msgUnitParam.u8Size,
+				     msg->data, msg->len, u32Fn)) {
+			msgb_free(nmsg);
+			nmsg = NULL;
+		}
 	}
 
 	/* no message/data, we generate an empty traffic msg */
