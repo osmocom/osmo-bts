@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -46,6 +46,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
+#include <osmo-bts/msg_utils.h>
 
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
@@ -659,7 +660,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
-	uint8_t chan_nr;
+	uint8_t chan_nr, marker = 0;
 	uint32_t fn;
 
 	chan_nr = rts_ind->chan_nr;
@@ -691,6 +692,9 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 			gsm_lchan_name(lchan));
 		resp_l1sap = &empty_l1sap;
 	} else {
+		/* Obtain RTP header Marker bit from control buffer */
+		marker = rtpmsg_marker_bit(resp_msg);
+
 		resp_msg->l2h = resp_msg->data;
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
 		resp_msg->l1h = resp_msg->data;
@@ -702,6 +706,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		resp_msg);
 	resp_l1sap->u.tch.chan_nr = chan_nr;
 	resp_l1sap->u.tch.fn = fn;
+	resp_l1sap->u.tch.marker = marker;
 
 	DEBUGP(DL1P, "Tx TCH.req %02u/%02u/%02u chan_nr=%d\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr);
@@ -1050,7 +1055,7 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 
 /*! \brief call-back function for incoming RTP */
 void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-                     unsigned int rtp_pl_len)
+                     unsigned int rtp_pl_len, bool marker)
 {
 	struct gsm_lchan *lchan = rs->priv;
 	struct msgb *msg, *tmp;
@@ -1063,6 +1068,8 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
 	msgb_pull(msg, sizeof(*l1sap));
 
+	/* Store RTP header Marker bit in control buffer */
+	rtpmsg_marker_bit(msg) = marker;
 
 	 /* make sure the queue doesn't get too long */
 	llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)

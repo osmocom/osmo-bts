@@ -55,7 +55,7 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 
 /* call-back function for incoming RTP */
 void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-	unsigned int rtp_pl_len);
+		     unsigned int rtp_pl_len, bool marker);
 
 /* channel control */
 int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp);

@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -222,6 +222,9 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 		cmi = ft;
 		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame with CMI %u\n", cmi);
 		break;
+	case AMR_NO_DATA:
+		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame AMR NO_DATA\n");
+		break;
 	case AMR_SID:
 		LOGP(DRTP, LOGL_DEBUG, "SID %s frame with CMI %u\n",
 		     sti ? "UPDATE" : "FIRST", cmi);
@@ -283,6 +286,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 /*! \brief function for incoming RTP via TCH.req
  *  \param[in] rtp_pl buffer containing RTP payload
  *  \param[in] rtp_pl_len length of \a rtp_pl
+ *  \param[in] marker RTP header Marker bit (indicates speech onset)
  *  \returns true if encoding result can be sent further to L1, false otherwise
  *
  * This function prepares a msgb with a L1 PH-DATA.req primitive and
@@ -293,10 +297,13 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * pre-fill the primtive.
  */
 bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
-	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn)
+	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn, bool marker)
 {
 	uint8_t *payload_type;
-	uint8_t *l1_payload;
+	uint8_t *l1_payload, cmr;
+	enum osmo_amr_type ft;
+	enum osmo_amr_quality bfi;
+	int8_t sti, cmi;
 	int rc;
 
 	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
@@ -323,11 +330,21 @@ bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 					  rtp_pl_len);
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
-		*payload_type = GsmL1_TchPlType_Amr;
-		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
-					  rtp_pl_len, lchan, fn);
-		if (-EALREADY == rc)
-			return false;
+		if (marker) {
+			*payload_type = GsmL1_TchPlType_Amr_Onset;
+			rc = 0;
+			osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft,
+					 &bfi, &sti);
+			LOGP(DRTP, LOGL_ERROR, "Marker SPEECH frame AMR %s\n",
+			     get_value_string(osmo_amr_type_names, ft));
+		}
+		else {
+			*payload_type = GsmL1_TchPlType_Amr;
+			rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
+						  rtp_pl_len, lchan, fn);
+			if (-EALREADY == rc)
+				return false;
+		}
 		break;
 	default:
 		/* we don't support CSD modes */

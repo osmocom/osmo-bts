@@ -469,7 +469,8 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (!l1if_tch_encode(lchan,
 				     l1p->u.phDataReq.msgUnitParam.u8Buffer,
 				     &l1p->u.phDataReq.msgUnitParam.u8Size,
-				     msg->data, msg->len, u32Fn)) {
+				     msg->data, msg->len, u32Fn,
+				     l1sap->u.tch.marker)) {
 			msgb_free(nmsg);
 			nmsg = NULL;
 		}
@@ -503,7 +504,13 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
 
-	msgb_free(msg);
+	if (l1sap->u.tch.marker) { /* Send voice after ONSET was sent */
+		l1sap->u.tch.marker = 0;
+		return ph_tch_req(trx, l1sap->oph.msg, l1sap);
+	}
+
+	if (msg)
+		msgb_free(msg);
 	return 0;
 }
 
