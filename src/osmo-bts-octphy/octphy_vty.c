@@ -136,10 +136,16 @@ DEFUN(cfg_phy_rx_gain_db, cfg_phy_rx_gain_db_cmd,
 }
 
 DEFUN(cfg_phy_tx_atten_db, cfg_phy_tx_atten_db_cmd,
-	"octphy tx-attenuation <0-359>",
-	OCT_STR "Configure the Tx Attenuation in quarter-dB\n"
-	"Tx attenuation in quarter-dB\n")
+	"octphy tx-attenuation (oml|<0-359>)",
+	OCT_STR "Set attenuation on transmitted RF\n"
+	"Use tx-attenuation according to OML instructions from BSC\n"
+	"Fixed tx-attenuation in quarter-dB\n")
 {
+
+
+
+
+
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
@@ -148,7 +154,12 @@ DEFUN(cfg_phy_tx_atten_db, cfg_phy_tx_atten_db_cmd,
 		return CMD_WARNING;
 	}
 
-	plink->u.octphy.tx_atten_db = atoi(argv[0]);
+	if (strcmp(argv[0], "oml") == 0) {
+		plink->u.octphy.tx_atten_flag = false;
+	} else {
+		plink->u.octphy.tx_atten_db = atoi(argv[0]);
+		plink->u.octphy.tx_atten_flag = true;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -202,8 +213,13 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		VTY_NEWLINE);
 	vty_out(vty, "  rx-gain %u%s", plink->u.octphy.rx_gain_db,
 		VTY_NEWLINE);
-	vty_out(vty, "  tx-attenuation %u%s", plink->u.octphy.tx_atten_db,
-		VTY_NEWLINE);
+
+	if (plink->u.octphy.tx_atten_flag) {
+		vty_out(vty, "  tx-attenuation %u%s",
+			plink->u.octphy.tx_atten_db, VTY_NEWLINE);
+	} else
+		vty_out(vty, "  tx-attenuation oml%s", VTY_NEWLINE);
+
 	vty_out(vty, "  rf-port-index %u%s", plink->u.octphy.rf_port_index,
 		VTY_NEWLINE);
 }

@@ -1373,7 +1373,13 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	oc->Config.usTsc = trx->bts->bsic & 0x7;
 	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;
 	/* FIXME: compute this based on nominal transmit power, etc. */
-	oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
+	if (plink->u.octphy.tx_atten_flag) {
+		oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
+	} else {
+		/* Take the Tx Attn received in set radio attribures
+		 * x4 is for the value in db */
+		oc->RfConfig.ulTxAttndB = (trx->max_power_red) << 2;
+	}
 
 #if OCTPHY_MULTI_TRX == 1
 	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "

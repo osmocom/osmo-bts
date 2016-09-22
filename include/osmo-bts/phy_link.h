@@ -63,6 +63,7 @@ struct phy_link {
 			/* configuration */
 			uint32_t rf_port_index;
 			uint32_t rx_gain_db;
+			bool tx_atten_flag;
 			uint32_t tx_atten_db;
 #if OCTPHY_MULTI_TRX == 1
 			/* arfcn used by TRX with id 0 */
