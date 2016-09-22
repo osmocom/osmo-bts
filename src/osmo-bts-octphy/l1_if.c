@@ -98,7 +98,9 @@ osmocom_to_octphy_band(enum gsm_band osmo_band, unsigned int arfcn)
 	case GSM_BAND_850:
 		return cOCTVC1_RADIO_STANDARD_FREQ_BAND_GSM_ENUM_850;
 	case GSM_BAND_900:
-		if (arfcn >= 955 && arfcn <= 974)
+		if (arfcn == 0)
+			return cOCTVC1_RADIO_STANDARD_FREQ_BAND_GSM_ENUM_E_900;
+		else if (arfcn >= 955 && arfcn <= 974)
 			return cOCTVC1_RADIO_STANDARD_FREQ_BAND_GSM_ENUM_R_900;
 		else if (arfcn >= 975 && arfcn <= 1023)
 			return cOCTVC1_RADIO_STANDARD_FREQ_BAND_GSM_ENUM_E_900;
