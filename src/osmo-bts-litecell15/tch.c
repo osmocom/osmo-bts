@@ -412,7 +412,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 			goto err_payload_match;
 		/* according to 3GPP TS 26.093 ONSET frames precede the first
 		   speech frame of a speech burst - set the marker for next RTP
-		   frame and drop last SID */
+		   frame */
 		lchan->rtp_tx_marker = true;
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstP1:
