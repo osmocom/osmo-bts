@@ -20,6 +20,7 @@
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/amr.h>
 
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -99,17 +100,30 @@ void lchan_set_marker(bool t, struct gsm_lchan *lchan)
 }
 
 /* store the last SID frame in lchan context */
-void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
-		   uint32_t fn, bool update)
+/*! \brief Store the last SID frame in lchan context
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] l1_payload buffer with SID data
+ *  \param[in] length length of l1_payload
+ *  \param[in] fn Frame Number for which we check scheduling
+ *  \param[in] update 0 if SID_FIRST, 1 if SID_UPDATE, -1 if not AMR SID
+ *  \param[in] cmr Codec Mode Request (AMR-specific, ignored otherwise)
+ *  \param[in] cmi Codec Mode Indication (AMR-specific, ignored otherwise)
+ */
+void save_last_sid(struct gsm_lchan *lchan, const uint8_t *l1_payload,
+		   size_t length, uint32_t fn, int update, uint8_t cmr,
+		   int8_t cmi)
 {
-	size_t copy_len = OSMO_MIN(length + 1,
-				   ARRAY_SIZE(lchan->tch.last_sid.buf));
+	size_t amr = (update < 0) ? 0 : 2,
+	    copy_len = OSMO_MIN(length + 1, ARRAY_SIZE(lchan->tch.last_sid.buf));
 
-	lchan->tch.last_sid.len = copy_len;
+	lchan->tch.last_sid.len = copy_len + amr;
 	lchan->tch.last_sid.fn = fn;
 	lchan->tch.last_sid.is_update = update;
 
-	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
+	if (amr)
+		amr_set_mode_pref(lchan->tch.last_sid.buf, &lchan->tch.amr_mr,
+				  cmi, cmr);
+	memcpy(lchan->tch.last_sid.buf + amr, l1_payload, copy_len);
 }
 
 /*! \brief Check if enough time has passed since last SID (if any) to repeat it

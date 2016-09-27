@@ -199,85 +199,13 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
  */
 static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 				uint8_t payload_len,
-				struct gsm_lchan *lchan, uint32_t fn)
+				struct gsm_lchan *lchan, uint8_t cmr, int8_t cmi,
+				uint8_t ft)
 {
-	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
-	enum osmo_amr_type ft;
-	enum osmo_amr_quality bfi;
-	uint8_t cmr;
-	int8_t sti, cmi;
-	uint8_t *l1_cmi_idx = l1_payload;
-	uint8_t *l1_cmr_idx = l1_payload+1;
-	int rc;
-
-	osmo_amr_rtp_dec(rtp_payload, payload_len, &cmr, &cmi, &ft, &bfi, &sti);
 	memcpy(l1_payload+2, rtp_payload, payload_len);
+	amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi, cmr);
 
-	/* CMI in downlink tells the L1 encoder which encoding function
-	 * it will use, so we have to use the frame type */
-	switch (ft) {
-	case 0: case 1: case 2: case 3:
-	case 4: case 5: case 6: case 7:
-		cmi = ft;
-		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame with CMI %u\n", cmi);
-		break;
-	case AMR_NO_DATA:
-		LOGP(DRTP, LOGL_DEBUG, "SPEECH frame AMR NO_DATA\n");
-		break;
-	case AMR_SID:
-		LOGP(DRTP, LOGL_DEBUG, "SID %s frame with CMI %u\n",
-		     sti ? "UPDATE" : "FIRST", cmi);
-		break;
-	default:
-		LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
-		return -EINVAL;
-		break;
-	}
-
-	rc = get_amr_mode_idx(amr_mrc, cmi);
-	if (rc < 0) {
-		LOGP(DRTP, LOGL_ERROR, "AMR CMI %u not part of AMR MR set\n",
-			cmi);
-		*l1_cmi_idx = 0;
-	} else
-		*l1_cmi_idx = rc;
-
-	/* Codec Mode Request is in upper 4 bits of RTP payload header,
-	 * and we simply copy the CMR into the CMC */
-	if (cmr == 0xF) {
-		/* FIXME: we need some state about the last codec mode */
-		*l1_cmr_idx = 0;
-	} else {
-		rc = get_amr_mode_idx(amr_mrc, cmr);
-		if (rc < 0) {
-			/* FIXME: we need some state about the last codec mode */
-			LOGP(DRTP, LOGL_INFO, "RTP->L1: overriding CMR %u\n", cmr);
-			*l1_cmr_idx = 0;
-		} else
-			*l1_cmr_idx = rc;
-	}
-#if 0
-	/* check for bad quality indication */
-	if (bfi == AMR_GOOD) {
-		/* obtain frame type from AMR FT */
-		l1_payload[2] = ft;
-	} else {
-		/* bad quality, we should indicate that... */
-		if (ft == AMR_SID) {
-			/* FIXME: Should we do GsmL1_TchPlType_Amr_SidBad? */
-			l1_payload[2] = ft;
-		} else {
-			l1_payload[2] = ft;
-		}
-	}
-#endif
-
-	if (ft == AMR_SID) {
-		save_last_sid(lchan, l1_payload, payload_len, fn, sti);
-		return -EALREADY;
-	}
-
-	return payload_len+1;
+	return payload_len + 2;
 }
 
 #define RTP_MSGB_ALLOC_SIZE	512
@@ -304,6 +232,7 @@ bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	enum osmo_amr_quality bfi;
 	int8_t sti, cmi;
 	int rc;
+	bool is_sid = false;
 
 	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(rtp_pl, rtp_pl_len));
@@ -317,32 +246,55 @@ bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			*payload_type = GsmL1_TchPlType_Fr;
 			rc = rtppayload_to_l1_fr(l1_payload,
 						 rtp_pl, rtp_pl_len);
+			if (rc)
+				is_sid = osmo_fr_check_sid(rtp_pl, rtp_pl_len);
 		} else{
 			*payload_type = GsmL1_TchPlType_Hr;
 			rc = rtppayload_to_l1_hr(l1_payload,
 						 rtp_pl, rtp_pl_len);
+			if (rc)
+				is_sid = osmo_hr_check_sid(rtp_pl, rtp_pl_len);
 		}
+		if (is_sid)
+			save_last_sid(lchan, rtp_pl, rtp_pl_len, fn, -1, 0, 0);
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		*payload_type = GsmL1_TchPlType_Efr;
 		rc = rtppayload_to_l1_efr(l1_payload, rtp_pl,
 					  rtp_pl_len);
+		/* FIXME: detect and save EFR SID */
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
+		osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi,
+				 &sti);
+		if (ft == AMR_SID) {
+			save_last_sid(lchan, rtp_pl, rtp_pl_len, fn, sti, cmr,
+				      cmi);
+			return false;
+		}
+		if (ft != AMR_NO_DATA && !osmo_amr_is_speech(ft)) {
+			LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n",
+			     ft);
+			return false;
+		}
+		if (osmo_amr_is_speech(ft)) {
+			if (lchan->tch.last_sid.len) { /* FIXME: force ONSET */
+				marker = true;
+			}
+			/* We received AMR SPEECH frame - invalidate saved SID */
+			lchan->tch.last_sid.len = 0;
+		}
 		if (marker) {
 			*payload_type = GsmL1_TchPlType_Amr_Onset;
 			rc = 0;
-			osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft,
-					 &bfi, &sti);
 			LOGP(DRTP, LOGL_ERROR, "Marker SPEECH frame AMR %s\n",
 			     get_value_string(osmo_amr_type_names, ft));
 		}
 		else {
 			*payload_type = GsmL1_TchPlType_Amr;
 			rc = rtppayload_to_l1_amr(l1_payload, rtp_pl,
-						  rtp_pl_len, lchan, fn);
-			if (-EALREADY == rc)
-				return false;
+						  rtp_pl_len, lchan, cmr, cmi,
+						  ft);
 		}
 		break;
 	default:

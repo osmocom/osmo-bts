@@ -11,7 +11,8 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 
 int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 		      const uint8_t *mr_conf, unsigned int len);
-int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi);
+void amr_set_mode_pref(uint8_t *data, const struct amr_multirate_conf *amr_mrc,
+		       uint8_t cmi, uint8_t cmr);
 unsigned int amr_get_initial_mode(struct gsm_lchan *lchan);
 
 #endif /* _OSMO_BTS_AMR_H */

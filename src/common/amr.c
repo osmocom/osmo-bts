@@ -22,7 +22,8 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 	LOGPC(ss, logl, "\n");
 }
 
-int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
+static inline int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc,
+				   uint8_t cmi)
 {
 	unsigned int i;
 	for (i = 0; i < amr_mrc->num_modes; i++) {
@@ -30,6 +31,46 @@ int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc, uint8_t cmi)
 			return i;
 	}
 	return -EINVAL;
+}
+
+static inline uint8_t set_cmr_mode_idx(const struct amr_multirate_conf *amr_mrc,
+				       uint8_t cmr)
+{
+	int rc;
+
+	/* Codec Mode Request is in upper 4 bits of RTP payload header,
+	 * and we simply copy the CMR into the CMC */
+	if (cmr == 0xF) {
+		/* FIXME: we need some state about the last codec mode */
+		return 0;
+	}
+
+	rc = get_amr_mode_idx(amr_mrc, cmr);
+	if (rc < 0) {
+		/* FIXME: we need some state about the last codec mode */
+		LOGP(DRTP, LOGL_INFO, "RTP->L1: overriding CMR %u\n", cmr);
+		return 0;
+	}
+	return rc;
+}
+
+static inline uint8_t set_cmi_mode_idx(const struct amr_multirate_conf *amr_mrc,
+				       uint8_t cmi)
+{
+	int rc = get_amr_mode_idx(amr_mrc, cmi);
+	if (rc < 0) {
+		LOGP(DRTP, LOGL_ERROR, "AMR CMI %u not part of AMR MR set\n",
+		     cmi);
+		return 0;
+	}
+	return rc;
+}
+
+void amr_set_mode_pref(uint8_t *data, const struct amr_multirate_conf *amr_mrc,
+		      uint8_t cmi, uint8_t cmr)
+{
+	data[0] = set_cmi_mode_idx(amr_mrc, cmi);
+	data[1] = set_cmr_mode_idx(amr_mrc, cmr);
 }
 
 /* parse a GSM 04.08 MultiRate Config IE (10.5.2.21aa) in a more
