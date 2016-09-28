@@ -1539,8 +1539,65 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			    void *obj, uint8_t adm_state)
 {
-	/* TODO: implement this properly */
-	/* blindly accept all state changes */
+	int rc;
+
+	struct gsm_bts_trx *trx;
+	struct phy_instance *pinst;
+	struct octphy_hdl *fl1h;
+
+	switch (mo->obj_class) {
+	case NM_OC_RADIO_CARRIER:
+
+		trx = ((struct gsm_bts_trx *)obj);
+		pinst = trx_phy_instance(trx);
+		fl1h = pinst->phy_link->u.octphy.hdl;
+
+		if (mo->procedure_pending) {
+			LOGP(DL1C, LOGL_ERROR, "Discarding adm change command: "
+			     "pending procedure on TRX %d\n", trx->nr);
+			return 0;
+		}
+		mo->procedure_pending = 1;
+		switch (adm_state) {
+		case NM_STATE_LOCKED:
+
+			pinst->u.octphy.trx_locked = 1;
+
+			/* Stop heartbeat check */
+			osmo_timer_del(&fl1h->alive_timer);
+
+			bts_model_trx_deact_rf(trx);
+
+			/* Close TRX */
+			rc = bts_model_trx_close(trx);
+			if (rc != 0) {
+				LOGP(DL1C, LOGL_ERROR,
+				     "Cannot close TRX %d, it is already closed.\n",
+				     trx->nr);
+			}
+			break;
+
+		case NM_STATE_UNLOCKED:
+
+			if (pinst->u.octphy.trx_locked) {
+				pinst->u.octphy.trx_locked = 0;
+				l1if_activate_rf(trx, 1);
+			}
+
+			break;
+
+		default:
+			break;
+		}
+
+		mo->procedure_pending = 0;
+		break;
+
+	default:
+		/* blindly accept all state changes */
+		break;
+	}
+
 	mo->nm_state.administrative = adm_state;
 	return oml_mo_statechg_ack(mo);
 }

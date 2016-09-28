@@ -105,6 +105,8 @@ struct phy_instance {
 		struct {
 			/* logical transceiver number within one PHY */
 			uint32_t trx_id;
+			/* trx lock state variable */
+			int trx_locked;
 		} octphy;
 		struct {
 			/* configuration */
