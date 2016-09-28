@@ -6,6 +6,8 @@
 
 #include <osmo-bts/gsm_data.h>
 
+#include <osmocom/codec/codec.h>
+
 #include <stdbool.h>
 
 struct msgb;
@@ -27,7 +29,5 @@ void lchan_set_marker(bool t, struct gsm_lchan *lchan);
 void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
 		   uint32_t fn, bool update);
 uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn);
-bool dtx_amr_sid_optional(const struct gsm_lchan *lchan, uint32_t fn);
-bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn);
 int msg_verify_ipa_structure(struct msgb *msg);
 int msg_verify_oml_structure(struct msgb *msg);

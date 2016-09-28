@@ -29,7 +29,7 @@ sysmobts_mgr_SOURCES = \
 		misc/sysmobts_mgr_temp.c \
 		misc/sysmobts_mgr_calib.c \
 		eeprom.c
-sysmobts_mgr_LDADD = $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS) $(top_builddir)/src/common/libbts.a
+sysmobts_mgr_LDADD = $(LIBGPS_LIBS) $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOABIS_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCTRL_LIBS) $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
 
 sysmobts_util_SOURCES = misc/sysmobts_util.c misc/sysmobts_par.c eeprom.c
 sysmobts_util_LDADD = $(LIBOSMOCORE_LIBS)

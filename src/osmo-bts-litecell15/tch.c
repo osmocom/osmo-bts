@@ -35,7 +35,6 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/bits.h>
-#include <osmocom/codec/codec.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -492,6 +491,7 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 	GsmL1_MsgUnitParam_t *msu_param;
 	uint8_t *payload_type;
 	uint8_t *l1_payload;
+	int rc;
 
 	msg = l1p_msgb_alloc();
 	if (!msg)
@@ -506,43 +506,27 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
 		*payload_type = GsmL1_TchPlType_Amr;
-		if (dtx_amr_sid_optional(lchan, fn)) {
-			msgb_free(msg);
-			return NULL;
-		}
-		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
-		if (!msu_param->u8Size)
-			osmo_amr_rtp_enc(l1_payload, 0, AMR_NO_DATA, AMR_GOOD);
 		break;
 	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
 			*payload_type = GsmL1_TchPlType_Fr;
 		else
 			*payload_type = GsmL1_TchPlType_Hr;
-		/* unlike AMR, FR & HR schedued based on absolute FN value */
-		if (dtx_sched_optional(lchan, fn)) {
-			msgb_free(msg);
-			return NULL;
-		}
-		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
-		if (!msu_param->u8Size)
-			return NULL;
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		*payload_type = GsmL1_TchPlType_Efr;
-		if (dtx_sched_optional(lchan, fn)) {
-			msgb_free(msg);
-			return NULL;
-		}
-		msu_param->u8Size = repeat_last_sid(lchan, l1_payload, fn);
-		if (!msu_param->u8Size)
-			return NULL;
 		break;
 	default:
 		msgb_free(msg);
-		msg = NULL;
-		break;
+		return NULL;
 	}
+
+	rc = repeat_last_sid(lchan, l1_payload, fn);
+	if (!rc) {
+		msgb_free(msg);
+		return NULL;
+	}
+	msu_param->u8Size = rc;
 
 	return msg;
 }

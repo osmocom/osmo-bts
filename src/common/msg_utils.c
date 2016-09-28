@@ -112,32 +112,13 @@ void save_last_sid(struct gsm_lchan *lchan, uint8_t *l1_payload, size_t length,
 	memcpy(lchan->tch.last_sid.buf, l1_payload, copy_len);
 }
 
-/* repeat last SID if possible, returns SID length + 1 or 0 */
-/*! \brief Repeat last SID if possible in case of DTX
- *  \param[in] lchan Logical channel on which we check scheduling
- *  \param[in] dst Buffer to copy last SID into
- *  \returns Number of bytes copied + 1 (to accommodate for extra byte with
- *           payload type) or 0 if there's nothing to copy
- */
-uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
-{
-	if (lchan->tch.last_sid.len) {
-		memcpy(dst, lchan->tch.last_sid.buf, lchan->tch.last_sid.len);
-		lchan->tch.last_sid.fn = fn;
-		return lchan->tch.last_sid.len + 1;
-	}
-	LOGP(DL1C, LOGL_NOTICE, "Have to send %s frame on TCH but SID buffer "
-	     "is empty - sent nothing\n",
-	     get_value_string(gsm48_chan_mode_names, lchan->tch_mode));
-	return 0;
-}
-
 /*! \brief Check if enough time has passed since last SID (if any) to repeat it
  *  \param[in] lchan Logical channel on which we check scheduling
  *  \param[in] fn Frame Number for which we check scheduling
  *  \returns true if transmission can be omitted, false otherwise
  */
-bool dtx_amr_sid_optional(const struct gsm_lchan *lchan, uint32_t fn)
+static inline bool dtx_amr_sid_optional(const struct gsm_lchan *lchan,
+					uint32_t fn)
 {
 	/* Compute approx. time delta based on Fn duration */
 	uint32_t delta = GSM_FN_TO_MS(fn - lchan->tch.last_sid.fn);
@@ -169,7 +150,7 @@ static inline bool fn_chk(const uint8_t *t, uint32_t fn)
  *  \param[in] fn Frame Number for which we check scheduling
  *  \returns true if transmission can be omitted, false otherwise
  */
-bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
+static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 {
 	/* According to 3GPP TS 45.008 § 8.3: */
 	static const uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
@@ -182,6 +163,39 @@ bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 			return fn_chk(lchan->nr ? h1 : h0, fn);
 	}
 	return false;
+}
+
+/* repeat last SID if possible, returns SID length + 1 or 0 */
+/*! \brief Repeat last SID if possible in case of DTX
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] dst Buffer to copy last SID into
+ *  \returns Number of bytes copied + 1 (to accommodate for extra byte with
+ *           payload type), 0 if there's nothing to copy
+ */
+uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
+{
+	/* FIXME: add EFR support */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)
+		return 0;
+
+	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+		if (dtx_sched_optional(lchan, fn))
+			return 0;
+	} else
+		if (dtx_amr_sid_optional(lchan, fn))
+			return 0;
+
+	if (lchan->tch.last_sid.len) {
+		memcpy(dst, lchan->tch.last_sid.buf, lchan->tch.last_sid.len);
+		lchan->tch.last_sid.fn = fn;
+		return lchan->tch.last_sid.len + 1;
+	}
+
+	LOGP(DL1C, LOGL_DEBUG, "Have to send %s frame on TCH but SID buffer "
+	     "is empty - sent nothing\n",
+	     get_value_string(gsm48_chan_mode_names, lchan->tch_mode));
+
+	return 0;
 }
 
 /**
