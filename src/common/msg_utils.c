@@ -29,7 +29,7 @@
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <arpa/inet.h>
-
+#include <errno.h>
 
 static int check_fom(struct abis_om_hdr *omh, size_t len)
 {
@@ -99,7 +99,7 @@ void lchan_set_marker(bool t, struct gsm_lchan *lchan)
 	}
 }
 
-/* store the last SID frame in lchan context */
+
 /*! \brief Store the last SID frame in lchan context
  *  \param[in] lchan Logical channel on which we check scheduling
  *  \param[in] l1_payload buffer with SID data
@@ -124,6 +124,59 @@ void save_last_sid(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 		amr_set_mode_pref(lchan->tch.last_sid.buf, &lchan->tch.amr_mr,
 				  cmi, cmr);
 	memcpy(lchan->tch.last_sid.buf + amr, l1_payload, copy_len);
+}
+
+/*! \brief Check current and cached SID to decide if talkspurt takes place
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] rtp_pl buffer with RTP data
+ *  \param[in] rtp_pl_len length of rtp_pl
+ *  \param[in] fn Frame Number for which we check scheduling
+ *  \param[in] l1_payload buffer where CMR and CMI prefix should be added
+ *  \param[out] ft_out Frame Type to be populated after decoding
+ *  \returns 0 if frame should be send immediately (2 byte CMR,CMI prefix added:
+ *           caller must adjust length as necessary),
+ *           1 if ONSET event is detected
+ *           negative if no sending is necessary (either error or cached SID
+ *           UPDATE)
+ */
+int dtx_amr_check_onset(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
+			size_t rtp_pl_len, uint32_t fn, uint8_t *l1_payload,
+			uint8_t *ft_out)
+{
+	uint8_t cmr;
+	enum osmo_amr_type ft;
+	enum osmo_amr_quality bfi;
+	int8_t sti, cmi;
+	osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
+	*ft_out = ft; /* only needed for old sysmo firmware */
+
+	if (ft == AMR_SID) {
+		save_last_sid(lchan, rtp_pl, rtp_pl_len, fn, sti, cmr, cmi);
+		if (sti) /* SID_UPDATE should be cached and send later */
+			return -EAGAIN;
+		else { /* SID_FIRST - cached and send right away */
+			amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi,
+					  cmr);
+			return 0;
+		}
+	}
+
+	if (ft != AMR_NO_DATA && !osmo_amr_is_speech(ft)) {
+		LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
+		return -ENOTSUP;
+	}
+
+	if (osmo_amr_is_speech(ft)) {
+		if (lchan->tch.last_sid.len) { /* force ONSET */
+			lchan->tch.last_sid.len = 0;
+			return 1;
+		}
+		/* We received AMR SPEECH frame - invalidate saved SID */
+		lchan->tch.last_sid.len = 0;
+		amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi, cmr);
+	}
+
+	return 0;
 }
 
 /*! \brief Check if enough time has passed since last SID (if any) to repeat it
