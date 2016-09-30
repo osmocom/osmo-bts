@@ -399,6 +399,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
 			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
 			l1sap->oph.operation, chan_nr, link_id);
+		msgb_free(l1msg);
 		return -EINVAL;
 	}
 
@@ -421,13 +422,10 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 
-	/* free the msgb holding the L1SAP primitive */
-	msgb_free(msg);
-
 	/* send message to DSP's queue */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
 		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
-		msgb_free(msg);
+		msgb_free(l1msg);
 	}
 
 	return 0;
@@ -509,8 +507,6 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		return ph_tch_req(trx, l1sap->oph.msg, l1sap);
 	}
 
-	if (msg)
-		msgb_free(msg);
 	return 0;
 }
 
@@ -554,7 +550,6 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			l1if_rsl_deact_sacch(lchan);
 		else
 			l1if_rsl_chan_rel(lchan);
-		msgb_free(msg);
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
@@ -571,6 +566,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	struct msgb *msg = l1sap->oph.msg;
 	int rc = 0;
 
+	/* called functions MUST NOT take ownership of msgb, as it is
+	 * free()d below */
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
 		rc = ph_data_req(trx, msg, l1sap);
@@ -587,13 +584,14 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		rc = -EINVAL;
 	}
 
-	if (rc)
-		msgb_free(msg);
+	msgb_free(msg);
+
 	return rc;
 }
 
 static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
-				GsmL1_MphTimeInd_t *time_ind)
+				GsmL1_MphTimeInd_t *time_ind,
+				struct msgb *msg)
 {
 	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
@@ -615,6 +613,8 @@ static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
 		PRIM_OP_INDICATION, NULL);
 	l1sap.u.info.type = PRIM_INFO_TIME;
 	l1sap.u.info.u.time_ind.fn = fn;
+
+	msgb_free(msg);
 
 	return l1sap_up(trx, &l1sap);
 }
@@ -758,6 +758,8 @@ static int handle_ph_readytosend_ind(struct lc15l1_hdl *fl1,
 			link_id = 0x40;
 		else
 			link_id = 0;
+		/* recycle the msgb and use it for the L1 primitive,
+		 * which means that we (or our caller) must not free it */
 		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 		if (rc < 0)
 			MSGB_ABORT(l1p_msg, "No room for primitive\n");
@@ -824,6 +826,8 @@ tx:
 		msgb_free(resp_msg);
 	}
 
+	/* free the msgb, as we have not handed it to l1sap and thus
+	 * need to release its memory */
 	msgb_free(l1p_msg);
 	return 0;
 
@@ -854,6 +858,8 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 100);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
 
+	/* l1sap wants to take msgb ownership.  However, as there is no
+	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
 	return l1sap_up(trx, &l1sap);
 }
 
@@ -999,29 +1005,28 @@ static int l1if_handle_ind(struct lc15l1_hdl *fl1, struct msgb *msg)
 	GsmL1_Prim_t *l1p = msgb_l1prim(msg);
 	int rc = 0;
 
+	/* all the below called functions must take ownership of the msgb */
 	switch (l1p->id) {
 	case GsmL1_PrimId_MphTimeInd:
-		rc = handle_mph_time_ind(fl1, &l1p->u.mphTimeInd);
+		rc = handle_mph_time_ind(fl1, &l1p->u.mphTimeInd, msg);
 		break;
 	case GsmL1_PrimId_MphSyncInd:
 		break;
 	case GsmL1_PrimId_PhConnectInd:
 		break;
 	case GsmL1_PrimId_PhReadyToSendInd:
-		return handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
+		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
 					       msg);
+		break;
 	case GsmL1_PrimId_PhDataInd:
-		return handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
+		rc = handle_ph_data_ind(fl1, &l1p->u.phDataInd, msg);
+		break;
 	case GsmL1_PrimId_PhRaInd:
-		return handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
+		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
 	default:
 		break;
 	}
-
-	/* Special return value '1' means: do not free */
-	if (rc != 1)
-		msgb_free(msg);
 
 	return rc;
 }
@@ -1056,10 +1061,12 @@ int l1if_handle_l1prim(int wq, struct lc15l1_hdl *fl1h, struct msgb *msg)
 	llist_for_each_entry(wlc, &fl1h->wlc_list, list) {
 		if (is_prim_compat(l1p, wlc)) {
 			llist_del(&wlc->list);
-			if (wlc->cb)
+			if (wlc->cb) {
+				/* call-back function must take
+				 * ownership of msgb */
 				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
 					     wlc->cb_data);
-			else {
+			} else {
 				rc = 0;
 				msgb_free(msg);
 			}
@@ -1087,10 +1094,12 @@ int l1if_handle_sysprim(struct lc15l1_hdl *fl1h, struct msgb *msg)
 		 * sending the same primitive */
 		if (wlc->is_sys_prim && sysp->id == wlc->conf_prim_id) {
 			llist_del(&wlc->list);
-			if (wlc->cb)
+			if (wlc->cb) {
+				/* call-back function must take
+				 * ownership of msgb */
 				rc = wlc->cb(lc15l1_hdl_trx(fl1h), msg,
 					     wlc->cb_data);
-			else {
+			} else {
 				rc = 0;
 				msgb_free(msg);
 			}
