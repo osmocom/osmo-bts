@@ -436,6 +436,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	uint8_t chan_nr;
 	GsmL1_Prim_t *l1p;
 	struct msgb *nmsg = NULL;
+	int rc = -1;
 
 	chan_nr = l1sap->u.tch.chan_nr;
 	u32Fn = l1sap->u.tch.fn;
@@ -459,17 +460,20 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (!nmsg)
 			return -ENOMEM;
 		l1p = msgb_l1prim(nmsg);
-		if (!l1if_tch_encode(lchan,
+		rc = l1if_tch_encode(lchan,
 				     l1p->u.phDataReq.msgUnitParam.u8Buffer,
 				     &l1p->u.phDataReq.msgUnitParam.u8Size,
 				     msg->data, msg->len, u32Fn,
-				     l1sap->u.tch.marker)) {
+				     l1sap->u.tch.marker);
+		if (rc < 0) {
+		/* no data encoded for L1: smth will be generated below */
 			msgb_free(nmsg);
 			nmsg = NULL;
 		}
 	}
 
-	/* no message/data, we generate an empty traffic msg */
+	/* no message/data, we might generate an empty traffic msg or re-send
+	   cached SID in case of DTX */
 	if (!nmsg)
 		nmsg = gen_empty_tch_msg(lchan, u32Fn);
 
@@ -497,7 +501,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
 
-	if (l1sap->u.tch.marker) { /* Send voice after ONSET was sent */
+	if (l1sap->u.tch.marker) { /* DTX: send voice after ONSET was sent */
 		l1sap->u.tch.marker = 0;
 		return ph_tch_req(trx, l1sap->oph.msg, l1sap);
 	}

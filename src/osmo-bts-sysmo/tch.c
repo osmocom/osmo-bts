@@ -307,7 +307,9 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  *  \param[in] rtp_pl buffer containing RTP payload
  *  \param[in] rtp_pl_len length of \a rtp_pl
  *  \param[in] marker RTP header Marker bit (indicates speech onset)
- *  \returns true if encoding result can be sent further to L1, false otherwise
+ *  \returns 0 if encoding result can be sent further to L1 without extra actions
+ *           positive value if data is ready AND extra actions are required
+ *           negative value otherwise
  *
  * This function prepares a msgb with a L1 PH-DATA.req primitive and
  * queues it into lchan->dl_tch_queue.
@@ -316,7 +318,7 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * yet, as things like the frame number, etc. are unknown at the time we
  * pre-fill the primtive.
  */
-bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
+int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn, bool marker)
 {
 	uint8_t *payload_type;
@@ -367,7 +369,7 @@ bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 				LOGP(DRTP, LOGL_NOTICE, "%s SPEECH frame without"
 				     " Marker: ONSET forced\n",
 				     get_value_string(osmo_amr_type_names, ft));
-				return true;
+				return rc;
 			}
 			LOGP(DRTP, LOGL_DEBUG, "%s SPEECH frame with Marker\n",
 			     get_value_string(osmo_amr_type_names, ft));
@@ -387,14 +389,14 @@ bool l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 	if (rc < 0) {
 		LOGP(DRTP, LOGL_ERROR, "%s unable to parse RTP payload\n",
 		     gsm_lchan_name(lchan));
-		return false;
+		return -EBADMSG;
 	}
 
 	*len = rc + 1;
 
 	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
 		osmo_hexdump(data, *len));
-	return true;
+	return 0;
 }
 
 static int is_recv_only(uint8_t speech_mode)
