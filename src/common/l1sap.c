@@ -39,6 +39,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/bts.h>
@@ -524,6 +525,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	uint8_t *p, *si;
 	struct lapdm_entity *le;
 	struct osmo_phsap_prim pp;
+	bool dtxd_facch = false;
 	int rc;
 
 	chan_nr = rts_ind->chan_nr;
@@ -578,8 +580,11 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p[0] = lchan->ms_power_ctrl.current;
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
-		} else
+		} else {
+			if (lchan->ts->trx->bts->dtxd)
+				dtxd_facch = true;
 			le = &lchan->lapdm_ch.lapdm_dcch;
+		}
 		rc = lapdm_phsap_dequeue_prim(le, &pp);
 		if (rc < 0) {
 			if (L1SAP_IS_LINK_SACCH(link_id)) {
@@ -605,6 +610,10 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				memcpy(p, pp.oph.msg->data, GSM_MACBLOCK_LEN);
 				/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
 				check_for_ciph_cmd(pp.oph.msg, lchan, chan_nr);
+				if (dtxd_facch && lchan->tch.dtx.dl_amr_fsm)
+					osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+							       E_FACCH,
+							       (void *)lchan);
 			}
 			msgb_free(pp.oph.msg);
 		}
@@ -1132,13 +1141,26 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)
 		return -RSL_ERR_EQUIPMENT_FAIL;
+
+	/* Init DTX DL FSM if necessary */
+	//FIXME: only do it for AMR TCH/*
+	osmo_fsm_register(&dtx_dl_amr_fsm);
+	lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
+							tall_bts_ctx, lchan,
+							LOGL_DEBUG, lchan->name);
 	return 0;
 }
 
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	LOGP(DL1P, LOGL_INFO, "deactivating channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
+
+	if (lchan->tch.dtx.dl_amr_fsm) {
+		osmo_fsm_inst_free(lchan->tch.dtx.dl_amr_fsm);
+		lchan->tch.dtx.dl_amr_fsm = NULL;
+	}
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
 		0);

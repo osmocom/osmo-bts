@@ -2199,9 +2199,9 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
 	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res,
-						lchan->tch.dtxd_active,
+						lchan->tch.dtx.dl_active,
 						meas_res);
-	lchan->tch.dtxd_active = false;
+	lchan->tch.dtx.dl_active = false;
 	if (ie_len >= 3) {
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;

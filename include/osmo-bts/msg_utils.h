@@ -26,12 +26,11 @@ enum {
 };
 
 void lchan_set_marker(bool t, struct gsm_lchan *lchan);
-void save_last_sid(struct gsm_lchan *lchan, const uint8_t *l1_payload,
-		   size_t length, uint32_t fn, int update, uint8_t cmr,
-		   int8_t cmi);
-int dtx_amr_check_onset(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
+void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
+		       size_t length, uint32_t fn, int update);
+int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 			size_t rtp_pl_len, uint32_t fn, uint8_t *l1_payload,
-			uint8_t *ft_out);
+			bool marker, uint8_t *len, uint8_t *ft_out);
 uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn);
 int msg_verify_ipa_structure(struct msgb *msg);
 int msg_verify_oml_structure(struct msgb *msg);

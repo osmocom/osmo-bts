@@ -426,7 +426,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 }
 
 static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
-		       struct osmo_phsap_prim *l1sap)
+		      struct osmo_phsap_prim *l1sap, bool use_cache, bool marker)
 {
 	struct lc15l1_hdl *fl1 = trx_lc15l1_hdl(trx);
 	struct gsm_lchan *lchan;
@@ -462,7 +462,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		rc = l1if_tch_encode(lchan,
 				     l1p->u.phDataReq.msgUnitParam.u8Buffer,
 				     &l1p->u.phDataReq.msgUnitParam.u8Size,
-				     msg->data, msg->len, u32Fn,
+				     msg->data, msg->len, u32Fn, use_cache,
 				     l1sap->u.tch.marker);
 		if (rc < 0) {
 		/* no data encoded for L1: smth will be generated below */
@@ -494,16 +494,14 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	} else {
 		/* empty frame */
 		if (trx->bts->dtxd && trx != trx->bts->c0)
-			lchan->tch.dtxd_active = true;
+			lchan->tch.dtx.dl_active = true;
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
 
-	if (l1sap->u.tch.marker) { /* DTX: send voice after ONSET was sent */
-		l1sap->u.tch.marker = 0;
-		return ph_tch_req(trx, l1sap->oph.msg, l1sap);
-	}
+	if (rc > 0 && trx->bts->dtxd) /* DTX: send voice after ONSET was sent */
+		return ph_tch_req(trx, l1sap->oph.msg, l1sap, true, false);
 
 	return 0;
 }
@@ -571,7 +569,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		rc = ph_data_req(trx, msg, l1sap);
 		break;
 	case OSMO_PRIM(PRIM_TCH, PRIM_OP_REQUEST):
-		rc = ph_tch_req(trx, msg, l1sap);
+		rc = ph_tch_req(trx, msg, l1sap, false, l1sap->u.tch.marker);
 		break;
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
 		rc = mph_info_req(trx, msg, l1sap);

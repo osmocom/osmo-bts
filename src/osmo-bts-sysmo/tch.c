@@ -42,6 +42,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -281,8 +282,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
  *  \returns number of \a l1_payload bytes filled
  */
 static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
-				uint8_t payload_len,
-				struct gsm_lchan *lchan, uint8_t ft)
+				uint8_t payload_len, uint8_t ft)
 {
 #ifdef USE_L1_RTP_MODE
 	memcpy(l1_payload, rtp_payload, payload_len);
@@ -306,10 +306,11 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 /*! \brief function for incoming RTP via TCH.req
  *  \param[in] rtp_pl buffer containing RTP payload
  *  \param[in] rtp_pl_len length of \a rtp_pl
+ *  \param[in] use_cache Use cached payload instead of parsing RTP
  *  \param[in] marker RTP header Marker bit (indicates speech onset)
  *  \returns 0 if encoding result can be sent further to L1 without extra actions
  *           positive value if data is ready AND extra actions are required
- *           negative value otherwise
+ *           negative value otherwise (no data for L1 encoded)
  *
  * This function prepares a msgb with a L1 PH-DATA.req primitive and
  * queues it into lchan->dl_tch_queue.
@@ -319,7 +320,8 @@ static int rtppayload_to_l1_amr(uint8_t *l1_payload, const uint8_t *rtp_payload,
  * pre-fill the primtive.
  */
 int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
-	const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn, bool marker)
+		    const uint8_t *rtp_pl, unsigned int rtp_pl_len, uint32_t fn,
+		    bool use_cache, bool marker)
 {
 	uint8_t *payload_type;
 	uint8_t *l1_payload, ft;
@@ -338,17 +340,17 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			*payload_type = GsmL1_TchPlType_Fr;
 			rc = rtppayload_to_l1_fr(l1_payload,
 						 rtp_pl, rtp_pl_len);
-			if (rc)
+			if (rc && lchan->ts->trx->bts->dtxd)
 				is_sid = osmo_fr_check_sid(rtp_pl, rtp_pl_len);
 		} else{
 			*payload_type = GsmL1_TchPlType_Hr;
 			rc = rtppayload_to_l1_hr(l1_payload,
 						 rtp_pl, rtp_pl_len);
-			if (rc)
+			if (rc && lchan->ts->trx->bts->dtxd)
 				is_sid = osmo_hr_check_sid(rtp_pl, rtp_pl_len);
 		}
 		if (is_sid)
-			save_last_sid(lchan, rtp_pl, rtp_pl_len, fn, -1, 0, 0);
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, -1);
 		break;
 #if defined(L1_HAS_EFR) && defined(USE_L1_RTP_MODE)
 	case GSM48_CMODE_SPEECH_EFR:
@@ -359,25 +361,75 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 		break;
 #endif
 	case GSM48_CMODE_SPEECH_AMR:
-		rc = dtx_amr_check_onset(lchan, rtp_pl, rtp_pl_len, fn,
-					 l1_payload, &ft);
-
-		if (marker || rc > 0) {
-			*payload_type = GsmL1_TchPlType_Amr_Onset;
-			*len = 1;
-			if (rc != 0) {
-				LOGP(DRTP, LOGL_NOTICE, "%s SPEECH frame without"
-				     " Marker: ONSET forced\n",
-				     get_value_string(osmo_amr_type_names, ft));
-				return rc;
-			}
-			LOGP(DRTP, LOGL_DEBUG, "%s SPEECH frame with Marker\n",
-			     get_value_string(osmo_amr_type_names, ft));
-		}
-		else {
+		if (use_cache) {
 			*payload_type = GsmL1_TchPlType_Amr;
-			rc = 2 + rtppayload_to_l1_amr(l1_payload + 2, rtp_pl,
-						      rtp_pl_len, lchan, ft);
+			rtppayload_to_l1_amr(l1_payload, lchan->tch.dtx.cache,
+					     lchan->tch.dtx.len, ft);
+			*len = lchan->tch.dtx.len + 1;
+			return 0;
+		}
+
+		rc = dtx_dl_amr_fsm_step(lchan, rtp_pl, rtp_pl_len, fn,
+					 l1_payload, marker, len, &ft);
+		if (rc < 0)
+			return rc;
+		if (!lchan->ts->trx->bts->dtxd) {
+			*payload_type = GsmL1_TchPlType_Amr;
+			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
+					     ft);
+			return 0;
+		}
+
+		/* DTX DL-specific logic below: */
+		switch (lchan->tch.dtx.dl_amr_fsm->state) {
+		case ST_ONSET_V:
+		case ST_ONSET_F:
+			*payload_type = GsmL1_TchPlType_Amr_Onset;
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
+			*len = 1;
+			return 1;
+		case ST_VOICE:
+			*payload_type = GsmL1_TchPlType_Amr;
+			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
+					     ft);
+			return 0;
+		case ST_SID_F1:
+			if (lchan->type == GSM_LCHAN_TCH_H) { /* AMR HR */
+				*payload_type = GsmL1_TchPlType_Amr_SidFirstP1;
+				rtppayload_to_l1_amr(l1_payload + 2, rtp_pl,
+						     rtp_pl_len, ft);
+				return 0;
+			}
+			/* AMR FR */
+			*payload_type = GsmL1_TchPlType_Amr;
+			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
+					     ft);
+			return 0;
+		case ST_SID_F2:
+			*payload_type = GsmL1_TchPlType_Amr;
+			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
+					     ft);
+			return 0;
+		case ST_F1_INH:
+			*payload_type = GsmL1_TchPlType_Amr_SidFirstInH;
+			*len = 3;
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
+			return 1;
+		case ST_U_INH:
+			*payload_type = GsmL1_TchPlType_Amr_SidUpdateInH;
+			*len = 3;
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
+			return 1;
+		case ST_SID_U:
+			return -EAGAIN;
+		case ST_FACCH_V:
+		case ST_FACCH:
+			/* FIXME: if this possible at all? */
+			return 0;
+		default:
+			LOGP(DRTP, LOGL_ERROR, "Unhandled DTX DL AMR FSM state "
+			     "%d\n", lchan->tch.dtx.dl_amr_fsm->state);
+			return -EINVAL;
 		}
 		break;
 	default:
@@ -544,7 +596,20 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
-		*payload_type = GsmL1_TchPlType_Amr;
+		if (lchan->type == GSM_LCHAN_TCH_H &&
+		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 &&
+		    lchan->ts->trx->bts->dtxd) {
+			*payload_type = GsmL1_TchPlType_Amr_SidFirstP2;
+			rc = dtx_dl_amr_fsm_step(lchan, NULL, 0, fn, l1_payload,
+						 false, &(msu_param->u8Size),
+						 NULL);
+			if (rc < 0) {
+				msgb_free(msg);
+				return NULL;
+			}
+			return msg;
+		} else
+			*payload_type = GsmL1_TchPlType_Amr;
 		break;
 	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
@@ -560,12 +625,13 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 		return NULL;
 	}
 
-	rc = repeat_last_sid(lchan, l1_payload, fn);
-	if (!rc) {
-		msgb_free(msg);
-		return NULL;
+	if (lchan->ts->trx->bts->dtxd) {
+		rc = repeat_last_sid(lchan, l1_payload, fn);
+		if (!rc) {
+			msgb_free(msg);
+			return NULL;
+		}
+		msu_param->u8Size = rc;
 	}
-	msu_param->u8Size = rc;
-
 	return msg;
 }

@@ -17,6 +17,7 @@
  *
  */
 
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
@@ -26,6 +27,7 @@
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/fsm.h>
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <arpa/inet.h>
@@ -92,13 +94,12 @@ static int check_manuf(struct msgb *msg, struct abis_om_hdr *omh, size_t msg_siz
 void lchan_set_marker(bool t, struct gsm_lchan *lchan)
 {
 	if (t)
-		lchan->tch.ul_sid = true;
-	else if (lchan->tch.ul_sid) {
-		lchan->tch.ul_sid = false;
+		lchan->tch.dtx.ul_sid = true;
+	else if (lchan->tch.dtx.ul_sid) {
+		lchan->tch.dtx.ul_sid = false;
 		lchan->rtp_tx_marker = true;
 	}
 }
-
 
 /*! \brief Store the last SID frame in lchan context
  *  \param[in] lchan Logical channel on which we check scheduling
@@ -106,76 +107,106 @@ void lchan_set_marker(bool t, struct gsm_lchan *lchan)
  *  \param[in] length length of l1_payload
  *  \param[in] fn Frame Number for which we check scheduling
  *  \param[in] update 0 if SID_FIRST, 1 if SID_UPDATE, -1 if not AMR SID
- *  \param[in] cmr Codec Mode Request (AMR-specific, ignored otherwise)
- *  \param[in] cmi Codec Mode Indication (AMR-specific, ignored otherwise)
  */
-void save_last_sid(struct gsm_lchan *lchan, const uint8_t *l1_payload,
-		   size_t length, uint32_t fn, int update, uint8_t cmr,
-		   int8_t cmi)
+void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
+		       size_t length, uint32_t fn, int update)
 {
 	size_t amr = (update < 0) ? 0 : 2,
-	    copy_len = OSMO_MIN(length + 1, ARRAY_SIZE(lchan->tch.last_sid.buf));
+	    copy_len = OSMO_MIN(length + 1, ARRAY_SIZE(lchan->tch.dtx.cache));
 
-	lchan->tch.last_sid.len = copy_len + amr;
-	lchan->tch.last_sid.fn = fn;
-	lchan->tch.last_sid.is_update = update;
+	lchan->tch.dtx.len = copy_len + amr;
+	lchan->tch.dtx.fn = fn;
+	lchan->tch.dtx.is_update = update;
 
-	if (amr)
-		amr_set_mode_pref(lchan->tch.last_sid.buf, &lchan->tch.amr_mr,
-				  cmi, cmr);
-	memcpy(lchan->tch.last_sid.buf + amr, l1_payload, copy_len);
+	memcpy(lchan->tch.dtx.cache + amr, l1_payload, copy_len);
 }
 
-/*! \brief Check current and cached SID to decide if talkspurt takes place
+/*! \brief Check current state of DTX DL AMR FSM and dispatch necessary events
  *  \param[in] lchan Logical channel on which we check scheduling
  *  \param[in] rtp_pl buffer with RTP data
  *  \param[in] rtp_pl_len length of rtp_pl
  *  \param[in] fn Frame Number for which we check scheduling
  *  \param[in] l1_payload buffer where CMR and CMI prefix should be added
+ *  \param[out] len Length of expected L1 payload
  *  \param[out] ft_out Frame Type to be populated after decoding
- *  \returns 0 if frame should be send immediately (2 byte CMR,CMI prefix added:
- *           caller must adjust length as necessary),
- *           1 if ONSET event is detected
- *           negative if no sending is necessary (either error or cached SID
- *           UPDATE)
+ *  \returns 0 in case of success; negative on error
  */
-int dtx_amr_check_onset(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
+int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 			size_t rtp_pl_len, uint32_t fn, uint8_t *l1_payload,
-			uint8_t *ft_out)
+			bool marker, uint8_t *len, uint8_t *ft_out)
 {
 	uint8_t cmr;
 	enum osmo_amr_type ft;
 	enum osmo_amr_quality bfi;
 	int8_t sti, cmi;
-	osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
-	*ft_out = ft; /* only needed for old sysmo firmware */
+	int rc;
 
-	if (ft == AMR_SID) {
-		save_last_sid(lchan, rtp_pl, rtp_pl_len, fn, sti, cmr, cmi);
-		if (sti) /* SID_UPDATE should be cached and send later */
-			return -EAGAIN;
-		else { /* SID_FIRST - cached and send right away */
-			amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi,
-					  cmr);
-			return 0;
-		}
+	if (rtp_pl == NULL) { /* SID-FIRST P1 -> P2 */
+		*len = 3;
+		memcpy(l1_payload, lchan->tch.dtx.cache, 2);
+		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_COMPL,
+				       (void *)lchan);
+		return 0;
 	}
 
-	if (ft != AMR_NO_DATA && !osmo_amr_is_speech(ft)) {
+	rc = osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
+	if (rc < 0) {
+		LOGP(DRTP, LOGL_ERROR, "failed to decode AMR RTP (length %zu)\n",
+		     rtp_pl_len);
+		return rc;
+	}
+
+	/* only needed for old sysmo firmware: */
+	*ft_out = ft;
+
+	/* CMI in downlink tells the L1 encoder which encoding function
+	 * it will use, so we have to use the frame type */
+	if (osmo_amr_is_speech(ft))
+		cmi = ft;
+
+	/* populate L1 payload with CMR/CMI - might be ignored by caller: */
+	amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi, cmr);
+
+	/* populate DTX cache with CMR/CMI - overwrite cache which will be
+	   either updated or invalidated by caller anyway: */
+	amr_set_mode_pref(lchan->tch.dtx.cache, &lchan->tch.amr_mr, cmi, cmr);
+	*len = 3 + rtp_pl_len;
+
+	/* DTX DL is not enabled, move along */
+	if (!lchan->ts->trx->bts->dtxd)
+		return 0;
+
+	if (osmo_amr_is_speech(ft)) {
+		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 ||
+		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U) /* AMR HR */
+			if (lchan->type == GSM_LCHAN_TCH_H && marker)
+				return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+							      E_INHIB,
+							      (void *)lchan);
+		/* AMR FR */
+		if (marker && lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_ONSET, (void *)lchan);
+		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_VOICE,
+					      (void *)lchan);
+	}
+
+	if (ft == AMR_SID) {
+		dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
+		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+					      sti ? E_SID_U : E_SID_F,
+					      (void *)lchan);
+	}
+
+	if (ft != AMR_NO_DATA) {
 		LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
 		return -ENOTSUP;
 	}
 
-	if (osmo_amr_is_speech(ft)) {
-		if (lchan->tch.last_sid.len) { /* force ONSET */
-			lchan->tch.last_sid.len = 0;
-			return 1;
-		}
-		/* We received AMR SPEECH frame - invalidate saved SID */
-		lchan->tch.last_sid.len = 0;
-		amr_set_mode_pref(l1_payload, &lchan->tch.amr_mr, cmi, cmr);
-	}
-
+	if (marker)
+		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_VOICE,
+				       (void *)lchan);
+	*len = 0;
 	return 0;
 }
 
@@ -188,10 +219,10 @@ static inline bool dtx_amr_sid_optional(const struct gsm_lchan *lchan,
 					uint32_t fn)
 {
 	/* Compute approx. time delta based on Fn duration */
-	uint32_t delta = GSM_FN_TO_MS(fn - lchan->tch.last_sid.fn);
+	uint32_t delta = GSM_FN_TO_MS(fn - lchan->tch.dtx.fn);
 
 	/* according to 3GPP TS 26.093 A.5.1.1: */
-	if (lchan->tch.last_sid.is_update) {
+	if (lchan->tch.dtx.is_update) {
 		/* SID UPDATE should be repeated every 8th RTP frame */
 		if (delta < GSM_RTP_FRAME_DURATION_MS * 8)
 			return true;
@@ -252,10 +283,10 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 		if (dtx_amr_sid_optional(lchan, fn))
 			return 0;
 
-	if (lchan->tch.last_sid.len) {
-		memcpy(dst, lchan->tch.last_sid.buf, lchan->tch.last_sid.len);
-		lchan->tch.last_sid.fn = fn;
-		return lchan->tch.last_sid.len + 1;
+	if (lchan->tch.dtx.len) {
+		memcpy(dst, lchan->tch.dtx.cache, lchan->tch.dtx.len);
+		lchan->tch.dtx.fn = fn;
+		return lchan->tch.dtx.len + 1;
 	}
 
 	LOGP(DL1C, LOGL_DEBUG, "Have to send %s frame on TCH but SID buffer "
