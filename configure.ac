@@ -70,6 +70,7 @@ AC_SUBST([OCTSDR2G_INCDIR], $octsdr2g_incdir)
 AC_MSG_RESULT([$enable_octphy])
 AM_CONDITIONAL(ENABLE_OCTPHY, test "x$enable_octphy" = "xyes")
 if test "$enable_octphy" = "yes" ; then
+	AC_CHECK_MEMBER([tOCTVC1_GSM_TRX_CONFIG.usCentreArfcn], AC_DEFINE([OCTPHY_MULTI_TRX], [1], [Define to 1 if your octphy header files support multi-trx]), [], [[#include <octphy/octvc1/gsm/octvc1_gsm_api.h>]])
 	oldCPPFLAGS=$CPPFLAGS
 	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
 	AC_CHECK_HEADER([octphy/octvc1/gsm/octvc1_gsm_default.h],[],

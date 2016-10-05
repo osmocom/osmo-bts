@@ -7,6 +7,7 @@
 #include <osmo-bts/scheduler.h>
 
 #include <linux/if_packet.h>
+#include "btsconfig.h"
 
 struct gsm_bts_trx;
 
@@ -63,6 +64,10 @@ struct phy_link {
 			uint32_t rf_port_index;
 			uint32_t rx_gain_db;
 			uint32_t tx_atten_db;
+#if OCTPHY_MULTI_TRX == 1
+			/* arfcn used by TRX with id 0 */
+			uint16_t center_arfcn;
+#endif
 
 			struct octphy_hdl *hdl;
 		} octphy;

@@ -43,6 +43,7 @@
 #include "l1_oml.h"
 #include "l1_utils.h"
 #include "octphy_hw_api.h"
+#include "btsconfig.h"
 
 #include <octphy/octvc1/octvc1_rc2string.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_api_swap.h>
@@ -1345,17 +1346,34 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	oc->TrxId.byTrxId = pinst->u.octphy.trx_id;
 	oc->Config.ulBand = osmocom_to_octphy_band(trx->bts->band, trx->arfcn);
 	oc->Config.usArfcn = trx->arfcn;
-	oc->Config.usTsc = trx->bts->bsic & 0x7;
+
+#if OCTPHY_MULTI_TRX == 1
+	if (pinst->u.octphy.trx_id)
+		oc->Config.usCentreArfcn = plink->u.octphy.center_arfcn;
+	else {
+		oc->Config.usCentreArfcn = trx->arfcn;
+		plink->u.octphy.center_arfcn = trx->arfcn;
+	}
 	oc->Config.usBcchArfcn = trx->bts->c0->arfcn;
+#endif
+	oc->Config.usTsc = trx->bts->bsic & 0x7;
 	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;
 	/* FIXME: compute this based on nominal transmit power, etc. */
 	oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
 
+#if OCTPHY_MULTI_TRX == 1
+	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "
+		"center=%u, tsc=%u, rx_gain=%u, tx_atten=%u)\n",
+		oc->TrxId.byTrxId, oc->ulRfPortIndex, oc->Config.usArfcn,
+		oc->Config.usCentreArfcn, oc->Config.usTsc, oc->RfConfig.ulRxGainDb,
+		oc->RfConfig.ulTxAttndB);
+#else
 	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "
 		"tsc=%u, rx_gain=%u, tx_atten=%u)\n",
 		oc->TrxId.byTrxId, oc->ulRfPortIndex, oc->Config.usArfcn,
 		oc->Config.usTsc, oc->RfConfig.ulRxGainDb,
 		oc->RfConfig.ulTxAttndB);
+#endif
 
 	mOCTVC1_GSM_MSG_TRX_OPEN_CMD_SWAP(oc);
 
