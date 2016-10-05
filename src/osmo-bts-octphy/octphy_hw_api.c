@@ -279,7 +279,14 @@ static const struct value_string clocksync_source_state_vals[] = {
 static const struct value_string clocksync_state_vals[] = {
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNINITIALIZE,
 							"Uninitialized" },
+/* Note: Octasic renamed cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED to
+ * cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE. The following ifdef
+ * statement ensures that older headers still work. */
+#ifdef cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED,	"Unused" },
+#else
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE,	"Idle" },
+#endif
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_NO_EXT_CLOCK,
 							"No External Clock" },
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_LOCKED,	"Locked" },

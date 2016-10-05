@@ -62,7 +62,15 @@ const struct value_string octphy_dir_names[5] =
 
 const struct value_string octphy_clkmgr_state_vals[8] = {
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNINITIALIZE, "UNINITIALIZED" },
+
+/* Note: Octasic renamed cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED to
+ * cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE. The following ifdef
+ * statement ensures that older headers still work. */
+#ifdef cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED,		"UNUSED" },
+#else
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE,		"IDLE" },
+#endif
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_NO_EXT_CLOCK, 	"NO_EXT_CLOCK" },
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_LOCKED,		"LOCKED" },
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNLOCKED,	"UNLOCKED" },
