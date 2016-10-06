@@ -1621,6 +1621,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		}
 		/* FIXME: select default value depending on speech_mode */
 		//if (!payload_type)
+		lchan->tch.last_fn = LCHAN_FN_DUMMY;
 		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx,
 								OSMO_RTP_F_POLL);
 		if (!lchan->abis_ip.rtp_socket) {

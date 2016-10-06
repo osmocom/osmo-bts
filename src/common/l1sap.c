@@ -72,7 +72,7 @@ static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
 static uint32_t fn_ms_adj(uint32_t fn, uint32_t last_fn)
 {
-	if (last_fn) {
+	if (last_fn != LCHAN_FN_DUMMY) {
 		uint32_t ms_passed = GSM_FN_TO_MS(fn - last_fn),
 			samples_passed = GSM_MS_TO_SAMPLES(ms_passed);
 		/* round number of samples to the nearest multiple of

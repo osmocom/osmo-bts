@@ -11,6 +11,8 @@ enum {
 	LCHAN_REL_ACT_OML,
 };
 
+#define LCHAN_FN_DUMMY 0xFFFFFFFF
+
 int msgb_queue_flush(struct llist_head *list);
 
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg);
