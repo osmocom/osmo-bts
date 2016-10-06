@@ -50,6 +50,7 @@
 #include <octphy/octvc1/gsm/octvc1_gsm_default.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_id.h>
 #include <octphy/octvc1/main/octvc1_main_default.h>
+#include <octphy/octvc1/main/octvc1_main_version.h>
 
 /* Map OSMOCOM logical channel type to OctPHY Logical channel type */
 static tOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM pchan_to_logChComb[_GSM_PCHAN_MAX] =
@@ -1207,28 +1208,41 @@ int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
 	return l1if_req_compl(fl1h, msg, app_info_sys_compl_cb, 0);
 }
 
-static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *data)
+static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
+			     void *data)
 {
+	char ver_hdr[32];
+
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
 
-	/* in a completion call-back, we take msgb ownership and must
-	 * release it before returning */
+	sprintf(ver_hdr, "%02i.%02i.%02i-B%i", cOCTVC1_MAIN_VERSION_MAJOR,
+		cOCTVC1_MAIN_VERSION_MINOR, cOCTVC1_MAIN_VERSION_MAINTENANCE,
+		cOCTVC1_MAIN_VERSION_BUILD);
 
 	mOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP_SWAP(air);
 
-	LOGP(DL1C, LOGL_INFO, "Rx APP-INFO.resp (name='%s', desc='%s', ver='%s')\n",
-		air->szName, air->szDescription, air->szVersion);
+	LOGP(DL1C, LOGL_INFO,
+	     "Rx APP-INFO.resp (name='%s', desc='%s', ver='%s', ver_hdr='%s')\n",
+	     air->szName, air->szDescription, air->szVersion, ver_hdr);
+
+	/* Bail if dsp firmware does not match up the header version info */
+	if (strcmp(air->szVersion, ver_hdr) != 0) {
+		LOGP(DL1C, LOGL_ERROR,
+		     "Invalid header-file / dsp-firmware combination, exiting...\n");
+		exit(1);
+	}
 
 	talloc_replace(fl1h->info.app.name, fl1h, air->szName);
 	talloc_replace(fl1h->info.app.description, fl1h, air->szDescription);
 	talloc_replace(fl1h->info.app.version, fl1h, air->szVersion);
 
+	/* in a completion call-back, we take msgb ownership and must
+	 * release it before returning */
 	msgb_free(resp);
 
 	return 0;
 }
-
 
 int l1if_check_app_version(struct gsm_bts_trx *trx)
 {
