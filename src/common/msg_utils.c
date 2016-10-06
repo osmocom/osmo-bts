@@ -234,10 +234,10 @@ static inline bool dtx_amr_sid_optional(const struct gsm_lchan *lchan,
 	return false;
 }
 
-static inline bool fn_chk(const uint8_t *t, uint32_t fn)
+static inline bool fn_chk(const uint8_t *t, uint32_t fn, uint8_t len)
 {
 	uint8_t i;
-	for (i = 0; i < ARRAY_SIZE(t); i++)
+	for (i = 0; i < len; i++)
 		if (fn % 104 == t[i])
 			return false;
 	return true;
@@ -256,9 +256,10 @@ static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 				h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
 		if (lchan->type == GSM_LCHAN_TCH_F)
-			return fn_chk(f, fn);
+			return fn_chk(f, fn, ARRAY_SIZE(f));
 		else
-			return fn_chk(lchan->nr ? h1 : h0, fn);
+			return fn_chk(lchan->nr ? h1 : h0, fn,
+				      ARRAY_SIZE(lchan->nr ? h1 : h0));
 	}
 	return false;
 }
