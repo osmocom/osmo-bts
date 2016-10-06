@@ -2,33 +2,29 @@
 
 set -ex
 
-rm -rf deps/install
-mkdir deps || true
-cd deps
+base="$PWD"
+deps="$base/deps"
+inst="$deps/install"
+export deps inst
+
+mkdir "$deps" || true
+rm -rf "$inst"
 
 # Get the headers..
+cd "$deps"
 git clone git://git.osmocom.org/openbsc || true
 cd openbsc
 git pull --rebase
+cd "$base"
 
+osmo-build-dep.sh libosmocore
 
-# Build the dependency
-cd ../
+export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
+export LD_LIBRARY_PATH="$inst/lib"
 
-osmo-deps.sh libosmocore
-cd libosmocore
-autoreconf --install --force
-./configure --prefix=$PWD/../install
-$MAKE $PARALLEL_MAKE install
+osmo-build-dep.sh libosmo-abis
 
-cd ../
-osmo-deps.sh libosmo-abis
-cd libosmo-abis
-autoreconf --install --force
-PKG_CONFIG_PATH=$PWD/../install/lib/pkgconfig ./configure --prefix=$PWD/../install
-PKG_CONFIG_PATH=$PWD/../install/lib/pkgconfig $MAKE $PARALLEL_MAKE install
-
-cd ../
+cd "$deps"
 if ! test -d layer1-api;
 then
   git clone git://git.sysmocom.de/sysmo-bts/layer1-api.git layer1-api
@@ -42,20 +38,29 @@ git reset --hard origin/master
 else
 git reset --hard $FIRMWARE_VERSION
 fi
-mkdir -p $PWD/../install/include/sysmocom/femtobts/
-cp include/*.h ../install/include/sysmocom/femtobts/
+mkdir -p "$inst/include/sysmocom/femtobts"
+cp include/*.h "$inst/include/sysmocom/femtobts/"
 
+cd "$base"
 
-# Build osmo-bts
-cd ../../
+set +x
+echo
+echo
+echo
+echo " =============================== osmo-bts-sysmo ==============================="
+echo
+set -x
+
 autoreconf --install --force
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig ./configure --enable-sysmocom-bts --with-openbsc=$PWD/deps/openbsc/openbsc/include
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE $PARALLEL_MAKE
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE check
-DISTCHECK_CONFIGURE_FLAGS="--enable-sysmocom-bts --with-openbsc=$PWD/deps/openbsc/openbsc/include" PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE distcheck
-
+./configure --enable-sysmocom-bts --with-openbsc="$deps/openbsc/openbsc/include"
+$MAKE $PARALLEL_MAKE
+$MAKE check \
+  || cat-testlogs.sh
+DISTCHECK_CONFIGURE_FLAGS="--enable-sysmocom-bts --with-openbsc=$deps/openbsc/openbsc/include" \
+  $MAKE distcheck \
+  || cat-testlogs.sh
 
 # This will not work for the femtobts
 if [ $FIRMWARE_VERSION != "femtobts_v2.7" ]; then
-  PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE -C contrib/sysmobts-calib
+  $MAKE -C contrib/sysmobts-calib
 fi
