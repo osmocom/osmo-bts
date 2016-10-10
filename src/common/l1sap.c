@@ -86,12 +86,6 @@ static uint32_t fn_ms_adj(uint32_t fn, uint32_t last_fn)
 	return GSM_RTP_DURATION;
 }
 
-static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
-        0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
-        0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
-        0x2B, 0x2B, 0x2B
-};
-
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data
  * in order to wrap femtobts header arround l2 data, there must be enough space
  * in front and behind data pointer */

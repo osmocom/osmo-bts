@@ -1,6 +1,8 @@
 #ifndef L1SAP_H
 #define L1SAP_H
 
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+
 /* timeslot and subslot from chan_nr */
 #define L1SAP_CHAN2TS(chan_nr) (chan_nr & 7)
 #define L1SAP_CHAN2SS_TCHH(chan_nr) ((chan_nr >> 3) & 1)
@@ -27,6 +29,12 @@
 #define L1SAP_FN2MACBLOCK(fn) ((fn % 52) / 4)
 #define L1SAP_FN2PTCCHBLOCK(fn) ((fn / 104) & 3)
 #define L1SAP_IS_PTCCH(fn) ((fn % 52) == 12)
+
+static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
+        0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
+        0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
+        0x2B, 0x2B, 0x2B
+};
 
 /* subslot from any chan_nr */
 static inline uint8_t l1sap_chan2ss(uint8_t chan_nr)
