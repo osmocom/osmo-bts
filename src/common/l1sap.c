@@ -73,8 +73,10 @@ static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 static uint32_t fn_ms_adj(uint32_t fn, uint32_t last_fn)
 {
 	if (last_fn != LCHAN_FN_DUMMY) {
-		uint32_t ms_passed = GSM_FN_TO_MS(fn - last_fn),
-			samples_passed = GSM_MS_TO_SAMPLES(ms_passed);
+		/* 12/13 frames usable for audio in TCH,
+		   160 samples per RTP packet,
+		   1 RTP packet per 4 frames */
+		uint32_t samples_passed = (fn - last_fn) * 12 * 160 / (13 * 4);
 		/* round number of samples to the nearest multiple of
 		   GSM_RTP_DURATION */
 		uint32_t r = samples_passed + GSM_RTP_DURATION / 2;
