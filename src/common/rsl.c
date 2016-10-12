@@ -295,6 +295,14 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 
+		if (SYSINFO_TYPE_3 == osmo_si && trx->nr == 0 &&
+		    num_agch(trx, "RSL") != 1) {
+			lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
+			/* will be reactivated by sapi_deactivate_cb() */
+			trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+				LCHAN_REL_ACT_REACT;
+		}
+
 		if (SYSINFO_TYPE_2quater == osmo_si) {
 			si2q = (struct gsm48_system_information_type_2quater *)
 				bts->si_buf[SYSINFO_TYPE_2quater];

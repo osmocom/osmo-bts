@@ -538,12 +538,6 @@ static int paging_signal_cbfn(unsigned int subsys, unsigned int signal, void *hd
 		struct paging_state *ps = btsb->paging_state;
 		struct gsm48_system_information_type_3 *si3 = (void *) bts->si_buf[SYSINFO_TYPE_3];
 
-#warning "TODO: Remove this when setting u8NbrOfAgch is implemented properly"
-		if (si3->control_channel_desc.bs_ag_blks_res != 1)
-			LOGP(DPAG, LOGL_ERROR,
-			     "Paging: BS_AG_BLKS_RES = %d != 1 not fully supported\n",
-			     si3->control_channel_desc.bs_ag_blks_res);
-
 		paging_si_update(ps, &si3->control_channel_desc);
 	}
 	return 0;

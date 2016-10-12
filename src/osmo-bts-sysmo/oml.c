@@ -1040,8 +1040,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		lch_par->rach.u8Bsic = lchan->ts->trx->bts->bsic;
 		break;
 	case GsmL1_Sapi_Agch:
-#warning Set BS_AG_BLKS_RES
-		lch_par->agch.u8NbrOfAgch = 1;
+		lch_par->agch.u8NbrOfAgch = num_agch(lchan->ts->trx, lchan->name);
 		break;
 	case GsmL1_Sapi_TchH:
 	case GsmL1_Sapi_TchF:
@@ -1586,6 +1585,12 @@ static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
 
 	lchan_set_state(lchan, LCHAN_S_NONE);
 	mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
+
+	/* Reactivate CCCH due to SI3 update in RSL */
+	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
+		lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+		lchan_activate(lchan);
+	}
 	return 0;
 }
 

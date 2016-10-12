@@ -22,6 +22,7 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/sysinfo.h>
 
+#include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
 #define BTS_HAS_SI(bts, sinum)	((bts)->si_valid & (1 << sinum))
@@ -130,6 +131,19 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 	}
 
 	return NULL;
+}
+
+uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
+{
+	struct gsm_bts *b = trx->bts;
+	struct gsm48_system_information_type_3 *si3;
+	if (BTS_HAS_SI(b, SYSINFO_TYPE_3)) {
+		si3 = GSM_BTS_SI(b, SYSINFO_TYPE_3);
+		return si3->control_channel_desc.bs_ag_blks_res;
+	}
+	LOGP(DL1P, LOGL_ERROR, "%s: Unable to determine actual BS_AG_BLKS_RES "
+	     "value as SI3 is not available yet, fallback to 1\n", arg);
+	return 1;
 }
 
 uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)

@@ -36,7 +36,7 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);
-
+uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg);
 void bts_update_status(enum bts_global_status which, int on);
 
 int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx);

@@ -1188,22 +1188,6 @@ int l1if_handle_sysprim(struct lc15l1_hdl *fl1h, struct msgb *msg)
 	return l1if_handle_ind(fl1h, msg);
 }
 
-#if 0
-/* called by RSL if the BCCH SI has been modified */
-int sysinfo_has_changed(struct gsm_bts *bts, int si)
-{
-	/* FIXME: Determine BS_AG_BLKS_RES and 
-	 *  	* set cfgParams.u.agch.u8NbrOfAgch
-	 *	* determine implications on paging
-	 */
-	/* FIXME: Check for Extended BCCH presence */
-	/* FIXME: Check for CCCH_CONF */
-	/* FIXME: Check for BS_PA_MFRMS: update paging */
-
-	return 0;
-}
-#endif
-
 static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 				void *data)
 {

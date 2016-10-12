@@ -205,7 +205,8 @@ const struct value_string gsmtap_sapi_names[] = {
 
 /* send primitive as gsmtap */
 static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-			  uint8_t *ss, uint32_t fn, uint8_t **data, int *len)
+			  uint8_t *ss, uint32_t fn, uint8_t **data, int *len,
+			  uint8_t num_agch)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr, link_id;
@@ -229,10 +230,9 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		*chan_type = GSMTAP_CHANNEL_BCCH;
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
-#warning Set BS_AG_BLKS_RES
 		/* The sapi depends on DSP configuration, not
 		 * on the actual SYSTEM INFORMATION 3. */
-		if (L1SAP_FN2CCCHBLOCK(fn) >= 1)
+		if (L1SAP_FN2CCCHBLOCK(fn) >= num_agch)
 			*chan_type = GSMTAP_CHANNEL_PCH;
 		else
 			*chan_type = GSMTAP_CHANNEL_AGCH;
@@ -312,7 +312,7 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					 &len);
 		else
 			rc = gsmtap_ph_data(l1sap, &chan_type, &ss, fn, &data,
-					    &len);
+					    &len, num_agch(trx, "GSMTAP"));
 		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
 		rc = gsmtap_ph_rach(l1sap, &chan_type, &tn, &ss, &fn, &data,
@@ -615,10 +615,9 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		}
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
-#warning "TODO: Yet another assumption that BS_AG_BLKS_RES=1"
-		/* if CCCH block is 0, it is AGCH */
 		rc = bts_ccch_copy_msg(trx->bts, p, &g_time,
-			(L1SAP_FN2CCCHBLOCK(fn) < 1));
+				       (L1SAP_FN2CCCHBLOCK(fn) <
+					num_agch(trx, "PH-RTS-IND")));
 		if (rc <= 0)
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
