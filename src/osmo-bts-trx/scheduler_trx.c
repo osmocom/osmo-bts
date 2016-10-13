@@ -1123,7 +1123,7 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
-				if (lchan->tch.ul_sid)
+				if (lchan->tch.dtx.ul_sid)
 					return 0; /* DTXu: pause in progress */
 				memset(tch_data, 0, GSM_FR_BYTES);
 				rc = GSM_FR_BYTES;
@@ -1297,7 +1297,7 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* HR */
-				if (lchan->tch.ul_sid)
+				if (lchan->tch.dtx.ul_sid)
 					return 0; /* DTXu: pause in progress */
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
