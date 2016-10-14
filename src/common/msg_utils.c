@@ -112,7 +112,8 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 		       size_t length, uint32_t fn, int update)
 {
 	size_t amr = (update < 0) ? 0 : 2,
-	    copy_len = OSMO_MIN(length + 1, ARRAY_SIZE(lchan->tch.dtx.cache));
+		copy_len = OSMO_MIN(length + 1,
+				ARRAY_SIZE(lchan->tch.dtx.cache) - amr);
 
 	lchan->tch.dtx.len = copy_len + amr;
 	lchan->tch.dtx.fn = fn;
