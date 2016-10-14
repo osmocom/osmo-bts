@@ -260,7 +260,8 @@ static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 			return fn_chk(f, fn, ARRAY_SIZE(f));
 		else
 			return fn_chk(lchan->nr ? h1 : h0, fn,
-				      ARRAY_SIZE(lchan->nr ? h1 : h0));
+				      lchan->nr ? ARRAY_SIZE(h1) :
+				      ARRAY_SIZE(h0));
 	}
 	return false;
 }
