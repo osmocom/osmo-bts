@@ -22,8 +22,9 @@ include $(TOPDIR)/build/Makefile.inc
 osmobts-usermanual.pdf: chapters/*.adoc
 
 clean:
-	rm -rf osmobts-usermanual__*.{svg,png}
 	rm -rf $(cleanfiles)
+	rm -rf osmobts-abis__*.{svg,png}
+	rm -rf osmobts-usermanual__*.{svg,png}
 
 gen-bts-vty-docbook: FORCE
 	$(call command,xsltproc -o generated/combined1.xml \
