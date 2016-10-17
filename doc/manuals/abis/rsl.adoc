@@ -350,12 +350,36 @@ non-acknowledged *RSL Delete Connection (DLCX) Indication* to the BSC.
 See <<rsl_dlcx_ind_msg>>
 
 
-[[ipa_style_pdch_mgmt]]
-=== IPA Style PDCH Management
+[[rsl-dynamic-channels]]
+=== Dynamic Channel Combinations
 
-When using an IPA style dynamic TCH/F+PDCH channel type on an
-on-air timeslot, there are a couple of non-standard RSL messages used
-in order to activate or deactivate this timeslot in PDCH mode.
+In the classic data model established by ETSI/3GPP for A-bis, each
+timeslot (channel) is configured using a static channel combination by
+means of A-bis OML.  Particularly in presence of GPRS services, this
+is very unflexible and leads to inefficient use of air interface
+resources.
+
+As such, several methods have been implemented to overcome this
+limitation.  The fundamental operation can be outlined like this:
+
+* Configuration of a particular _dynamic_ channel combination via OML
+* activation of TCH works like on a classic TCH channel combination
+* activation of PDCH requires some specific PDCH activation procedure
+
+There are two variants implemented in the OsmoBTS A-bis dialect:
+
+[[ipa_style_pdch_mgmt]]
+==== IPA Style Dynamic Channels
+
+This method is used when OML uses 'NM_CHANC_IPAC_TCHFull_PDCH' (0x80)
+as channel combination for the given time-slot.
+
+'IPA style' refers to 'ip.access' compatible PDCH activation and deactivation.
+
+When the IPA style dynamic channel combination _TCH/F or PDCH_
+is set, the non-standard 'PDCH ACTIVATE' (<<pdch_act>>) and 'PDCH
+DEACTIVATE' (<<pdch_deact>>) procedures are used for switching an idle
+channel into PDCH mode and back into idle mode.
 
 When the channel is used as TCH/F, regular circuit-switched activation
 is performed, like on any traditional TCH/F.   However, the BSC must
@@ -365,7 +389,7 @@ be deactivated using standard RSL signalling, before the specific PDCH
 related procedures are used to enable the PDCH.
 
 [[pdch_act]]
-==== PDCH Activate
+===== PDCH Activate
 
 This procedure is used by the BSC to request the BTS to activate an
 IPA style dynamic TCH/F+PDCH channel in PDCH mode.
@@ -375,7 +399,7 @@ The operation is not supported on any other physical channel type.
 See <<rsl_pdch_act>>, <<rsl_pdch_act_ack>>, <<rsl_pdch_act_nack>>
 
 [[pdch_deact]]
-==== PDCH Deactivate
+===== PDCH Deactivate
 
 This procedure is used by the BSC to request the BTS to deactivate an
 active PDCH on any an IPA style dynamic TCH/F+PDCH channel.
@@ -383,6 +407,53 @@ active PDCH on any an IPA style dynamic TCH/F+PDCH channel.
 The operation is not supported on any other physical channel type.
 
 See <<rsl_pdch_deact>>, <<rsl_pdch_deact_ack>>, <<rsl_pdch_deact_nack>>
+
+===== IPA Style Dynamic Switchover Example
+
+.Example for dynamic channel switchover, for IPA style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_ipa_style.msc[]
+----
+
+
+[[OSMOCOM_DYN_TS]]
+==== Osmocom Style Dynamic Channels
+
+This method is in use when OML uses
+'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' (0x90) for the given time-slot.
+
+The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
+procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:
+
+* The 'C-bits' part of the 'Channel Number' IE take the non-standard binary
+  value 11000 (C5 thru C1 as seen in 3GPP TS 08.58 § 9.3.1).
+* The 'A-bits' part of the 'Activation Type' IE take the non-standard binary
+  value 1111, with an additional fourth bit (add A4 to A3 thru A1 as seen in
+  3GPP TS 08.58 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
+  coded as zero).
+* The normally mandatory 'Channel Mode' IE is omitted; none of the optional IEs
+  are included.
+
+Hence the message consists of exactly these IEs:
+
+.PDCH type _Channel Activation_ message IEs
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.1 | Message discriminator | Dedicated Channel Management
+| 9.2 | Message type | CHANnel ACTIVation
+| 9.3.1 | Channel number | 'C-bits' 11000, plus TS bits as usual
+| 9.3.3 | Activation type | 'A-bits' 1111
+|===
+
+===== Osmocom Style Dynamic Switchover Example
+
+.Example for dynamic channel switchover, for Osmocom style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_osmocom_style.msc[]
+----
 
 
 === Message Formats and Contents
@@ -859,77 +930,4 @@ The initialization of the primary and secondary TRX slightly differ, as
 illustrated by the differences of <<rsl-msc-pri>> and <<rsl-msc-sec>>.
 Since the secondary TRX has no BCCH, it does not (need to) receive any 'RSL
 BCCH INFORMATION' messages from the BSC.
-
-[[rsl-dynamic-channels]]
-=== Dynamic Channel Combinations
-
-In the classic data model established by ETSI/3GPP for A-bis, each
-timeslot (channel) is configured using a static channel combination by
-means of A-bis OML.  Particularly in presence of GPRS services, this
-is very unflexible and leads to inefficient use of air interface
-resources.
-
-As such, several methods have been implemented to overcome this
-limitation.  The fundamental operation can be outlined like this:
-
-* Configuration of a particular _dynamic_ channel combination via OML
-* activation of TCH works like on a classic TCH channel combination
-* activation of PDCH requires some specific PDCH activation procedure
-
-There are two variants implemented in the OsmoBTS A-bis dialect:
-
-==== IPA Style Dynamic Channels
-
-This method is used when OML uses 'NM_CHANC_IPAC_TCHFull_PDCH' (0x80)
-as channel combination for the given time-slot.
-
-'IPA style' refers to 'ip.access' compatible PDCH activation and deactivation.
-
-When the IPA style dynamic channel combination _TCH/F or PDCH_
-is set, the non-standard 'PDCH ACTIVATE' (<<pdch_act>>) and 'PDCH
-DEACTIVATE' (<<pdch_deact>>) procedures are used for switching an idle
-channel into PDCH mode and back into idle mode.
-
-.Example for dynamic channel switchover, for IPA style dynamic timeslots
-["mscgen"]
-----
-include::dyn_ts_ipa_style.msc[]
-----
-
-[[OSMOCOM_DYN_TS]]
-==== Osmocom Style Dynamic Channels
-
-This method is in use when OML uses
-'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' (0x90) for the given time-slot.
-
-The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
-procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:
-
-* The 'C-bits' part of the 'Channel Number' IE take the non-standard binary
-  value 11000 (C5 thru C1 as seen in 3GPP TS 08.58 § 9.3.1).
-* The 'A-bits' part of the 'Activation Type' IE take the non-standard binary
-  value 1111, with an additional fourth bit (add A4 to A3 thru A1 as seen in
-  3GPP TS 08.58 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
-  coded as zero).
-* The normally mandatory 'Channel Mode' IE is omitted; none of the optional IEs
-  are included.
-
-Hence the message consists of exactly these IEs:
-
-.PDCH type _Channel Activation_ message IEs
-[options="header",cols="10%,30%,60%"]
-|===
-| TS 08.58 § | IE Name | Handling
-| 9.1 | Message discriminator | Dedicated Channel Management
-| 9.2 | Message type | CHANnel ACTIVation
-| 9.3.1 | Channel number | 'C-bits' 11000, plus TS bits as usual
-| 9.3.3 | Activation type | 'A-bits' 1111
-|===
-
-.Example for dynamic channel switchover, for Osmocom style dynamic timeslots
-["mscgen"]
-----
-include::dyn_ts_osmocom_style.msc[]
-----
-
 
