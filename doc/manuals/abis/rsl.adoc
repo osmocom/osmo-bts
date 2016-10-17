@@ -118,6 +118,7 @@ Specific additions and limitations apply, see the linked sections.
 === Message Limitation Details
 
 [[CHANNEL_ACTIVATION]]
+==== Channel Activation
 
 When used on a timeslot using the non-standard channel combination
 'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' as configured by OML, the regular
