@@ -15,7 +15,3 @@ timeslots:
 * _osmo-bts-trx_
 
 See also <<osmobts_hardware_support>>.
-
-include::../../common/snippets/dyn_pdch_ladder.adoc[]
-
-include::../../common/snippets/dyn_ts_ladder_TCH_H.adoc[]
