@@ -6,7 +6,7 @@ include::../common/chapters/preface.adoc[]
 
 include::chapters/overview.adoc[]
 
-include::chapters/abis.adoc[]
+include::../common/chapters/abis.adoc[]
 
 include::chapters/interfaces.adoc[]
 
