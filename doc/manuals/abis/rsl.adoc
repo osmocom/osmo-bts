@@ -410,10 +410,16 @@ See <<rsl_pdch_deact>>, <<rsl_pdch_deact_ack>>, <<rsl_pdch_deact_nack>>
 
 ===== IPA Style Dynamic Switchover Example
 
-.Example for dynamic channel switchover, for IPA style dynamic timeslots
+.Part 1: example for dynamic channel switchover, for IPA style dynamic timeslots
 ["mscgen"]
 ----
-include::dyn_ts_ipa_style.msc[]
+include::dyn_ts_ipa_style1.msc[]
+----
+
+.Part 2: example for dynamic channel switchover, for IPA style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_ipa_style2.msc[]
 ----
 
 
@@ -449,12 +455,17 @@ Hence the message consists of exactly these IEs:
 
 ===== Osmocom Style Dynamic Switchover Example
 
-.Example for dynamic channel switchover, for Osmocom style dynamic timeslots
+.Part 1: example for dynamic channel switchover, for Osmocom style dynamic timeslots
 ["mscgen"]
 ----
-include::dyn_ts_osmocom_style.msc[]
+include::dyn_ts_osmocom_style1.msc[]
 ----
 
+.Part 2: example for dynamic channel switchover, for Osmocom style dynamic timeslots
+["mscgen"]
+----
+include::dyn_ts_osmocom_style2.msc[]
+----
 
 === Message Formats and Contents
 
