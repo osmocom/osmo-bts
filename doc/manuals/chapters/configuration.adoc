@@ -99,7 +99,7 @@ bts 0 <3>
 <2> You must configure at least one PHY instance in the PHY link
 <3> There is always exactly one BTS (`bts 0`) configured in OsmoBTS
 <4> The `ipa unit-id` is what is used to identify this BTS to the BSC
-<6> The OML Remote IP is the IP address of the BSC, to which the BTS shall connect to.
+<5> The OML Remote IP is the IP address of the BSC, to which the BTS shall connect to.
 <6> There must be at least one trx (`trx 0`) in each BTS
 <7> Every TRX must be mapped to a specific PHY instance this way
 
