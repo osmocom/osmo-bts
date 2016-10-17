@@ -267,7 +267,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	}
 
 	if (trx == trx->bts->c0)
-		lchan_init_lapdm(&trx->ts[0].lchan[4]);
+		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
 
 	/* Set to Operational State: Enabled */
 	oml_mo_state_chg(&trx->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
@@ -288,7 +288,7 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 
 	/* deactivate lchan for CCCH */
 	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
-		lchan_set_state(&trx->ts[0].lchan[4], LCHAN_S_INACTIVE);
+		lchan_set_state(&trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_INACTIVE);
 	}
 
 	/* power off transceiver, if not already */
@@ -408,8 +408,8 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 
 	/* activate lchan for CCCH */
 	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
-		ts->lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
-		lchan_set_state(&ts->lchan[4], LCHAN_S_ACTIVE);
+		ts->lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
+		lchan_set_state(&ts->lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
 	}
 
 	slottype = transceiver_chan_types[pchan];

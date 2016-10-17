@@ -287,8 +287,9 @@ static int opstart_compl(struct gsm_abis_mo *mo, struct msgb *l1_msg)
 	    mo->obj_inst.ts_nr == 0) {
 		struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
 		DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
-		mo->bts->c0->ts[0].lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
-		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
+		mo->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+			LCHAN_REL_ACT_OML;
+		lchan_activate(&mo->bts->c0->ts[0].lchan[CCCH_LCHAN]);
 		if (cbch) {
 			cbch->rel_act_kind = LCHAN_REL_ACT_OML;
 			lchan_activate(cbch);

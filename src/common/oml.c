@@ -727,7 +727,7 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 		}
 		/* fallthrough */
 	case GSM_PCHAN_CCCH:
-		lchan = &ts->lchan[4];
+		lchan = &ts->lchan[CCCH_LCHAN];
 		lchan->type = GSM_LCHAN_CCCH;
 		break;
 	case GSM_PCHAN_TCH_F:

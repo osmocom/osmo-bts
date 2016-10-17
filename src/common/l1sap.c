@@ -947,7 +947,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	DEBUGP(DL1P, "Rx PH-RA.ind");
 
-	lc = &trx->ts[0].lchan[4].lapdm_ch;
+	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
 	/* check for under/overflow / sign */
 	if (!check_acc_delay(rach_ind, btsb, &acc_delay)) {

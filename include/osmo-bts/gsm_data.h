@@ -8,6 +8,9 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/tx_power.h>
 
+/* lchans 0..3 are SDCCH in combined channel configuration: */
+#define CCCH_LCHAN 4
+
 #define GSM_FR_BITS	260
 #define GSM_EFR_BITS	244
 

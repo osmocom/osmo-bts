@@ -183,8 +183,9 @@ static int opstart_compl(struct gsm_abis_mo *mo)
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
 	    mo->obj_inst.ts_nr == 0) {
 		struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
-		mo->bts->c0->ts[0].lchan[4].rel_act_kind = LCHAN_REL_ACT_OML;
-		lchan_activate(&mo->bts->c0->ts[0].lchan[4]);
+		mo->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+			LCHAN_REL_ACT_OML;
+		lchan_activate(&mo->bts->c0->ts[0].lchan[CCCH_LCHAN]);
 		if (cbch) {
 			cbch->rel_act_kind = LCHAN_REL_ACT_OML;
 			lchan_activate(cbch);
