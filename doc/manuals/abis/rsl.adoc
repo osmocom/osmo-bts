@@ -125,8 +125,10 @@ When used on a timeslot using the non-standard channel combination
 RSL channel activation procedures can not only be used for activation
 of circuit-switched channels, but also for activation of a PDCH.
 
-NOTE:: Do not confuse this with the ip.access style _PDCH ACT_ type
-dynamic PDCH protocol employed by nanoBTS devices.
+See <<OSMOCOM_DYN_TS>>.
+
+NOTE:: Do not confuse this with the IPA style _PDCH ACT_ type
+dynamic PDCH protocol employed by nanoBTS devices (<<ipa_style_pdch_mgmt>>).
 
 [[MEASUREMENT_RESULT]]
 ==== Measurement Result
@@ -894,14 +896,35 @@ channel into PDCH mode and back into idle mode.
 include::dyn_ts_ipa_style.msc[]
 ----
 
-==== Osmocom style Dynamic Channels
+[[OSMOCOM_DYN_TS]]
+==== Osmocom Style Dynamic Channels
 
 This method is in use when OML uses
 'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' (0x90) for the given time-slot.
 
-The activation of PDCH is performed by using the regular 'RSL CHANNEL
-ACTIVATE' procedure according to <<CHANNEL_ACTIVATION>>, with the
-exception that the 'cbits' part of the '
+The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
+procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:
+
+* The 'C-bits' part of the 'Channel Number' IE take the non-standard binary
+  value 11000 (C5 thru C1 as seen in 3GPP TS 08.58 § 9.3.1).
+* The 'A-bits' part of the 'Activation Type' IE take the non-standard binary
+  value 1111, with an additional fourth bit (add A4 to A3 thru A1 as seen in
+  3GPP TS 08.58 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
+  coded as zero).
+* The normally mandatory 'Channel Mode' IE is omitted; none of the optional IEs
+  are included.
+
+Hence the message consists of exactly these IEs:
+
+.PDCH type _Channel Activation_ message IEs
+[options="header",cols="10%,30%,60%"]
+|===
+| TS 08.58 § | IE Name | Handling
+| 9.1 | Message discriminator | Dedicated Channel Management
+| 9.2 | Message type | CHANnel ACTIVation
+| 9.3.1 | Channel number | 'C-bits' 11000, plus TS bits as usual
+| 9.3.3 | Activation type | 'A-bits' 1111
+|===
 
 .Example for dynamic channel switchover, for Osmocom style dynamic timeslots
 ["mscgen"]
