@@ -349,9 +349,9 @@ See <<rsl_dlcx_ind_msg>>
 
 
 [[ipa_style_pdch_mgmt]]
-=== IPA style PDCH Management
+=== IPA Style PDCH Management
 
-When using an IPA-style dynamic TCH/F+PDCH channel type on an
+When using an IPA style dynamic TCH/F+PDCH channel type on an
 on-air timeslot, there are a couple of non-standard RSL messages used
 in order to activate or deactivate this timeslot in PDCH mode.
 
@@ -366,7 +366,7 @@ related procedures are used to enable the PDCH.
 ==== PDCH Activate
 
 This procedure is used by the BSC to request the BTS to activate an
-IPA-style dynamic TCH/F+PDCH channel in PDCH mode.
+IPA style dynamic TCH/F+PDCH channel in PDCH mode.
 
 The operation is not supported on any other physical channel type.
 
@@ -376,7 +376,7 @@ See <<rsl_pdch_act>>, <<rsl_pdch_act_ack>>, <<rsl_pdch_act_nack>>
 ==== PDCH Deactivate
 
 This procedure is used by the BSC to request the BTS to deactivate an
-active PDCH on any an IPA-style dynamic TCH/F+PDCH channel.
+active PDCH on any an IPA style dynamic TCH/F+PDCH channel.
 
 The operation is not supported on any other physical channel type.
 
@@ -581,7 +581,7 @@ Channel number.  It is sent in response to the *Delete Connection
 ==== PDCH Activate
 
 This message is sent by the BSC to request the activation of a PDCH on
-a IPA-style dynamic TCH/F+PDCH channel.
+a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -598,7 +598,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 ==== PDCH Activate ACK
 
 This message is sent by the BTS to confirm the successful activation
-of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -616,7 +616,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 ==== PDCH Activate NACK
 
 This message is sent by the BTS to reject the successful activation
-of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -634,7 +634,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 ==== PDCH Deactivate
 
 This message is sent by the BSC to request the deactivation of a PDCH
-on a IPA-style dynamic TCH/F+PDCH channel.
+on a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -651,7 +651,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 ==== PDCH Deactivate ACK
 
 This message is sent by the BTS to confirm the successful deactivation
-of a PDCH on a IPA-style dynamic TCH/F+PDCH channel.
+of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -668,7 +668,7 @@ NOTE:: This message is *not* used by Osmocom style dynamic channels
 ==== PDCH Deactivate NACK
 
 This message is sent by the BTS to reject the deactivation of a PDCH
-on a IPA-style dynamic TCH/F+PDCH channel.
+on a IPA style dynamic TCH/F+PDCH channel.
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
@@ -876,17 +876,19 @@ limitation.  The fundamental operation can be outlined like this:
 
 There are two variants implemented in the OsmoBTS A-bis dialect:
 
-==== ip.access style Dynamic Channels
+==== IPA Style Dynamic Channels
 
 This method is used when OML uses 'NM_CHANC_IPAC_TCHFull_PDCH' (0x80)
 as channel combination for the given time-slot.
 
-When the ip.access style dynamic channel combination _TCH/F or PDCH_
+'IPA style' refers to 'ip.access' compatible PDCH activation and deactivation.
+
+When the IPA style dynamic channel combination _TCH/F or PDCH_
 is set, the non-standard 'PDCH ACTIVATE' (<<pdch_act>>) and 'PDCH
 DEACTIVATE' (<<pdch_deact>>) procedures are used for switching an idle
 channel into PDCH mode and back into idle mode.
 
-.Example for dynamic channel switchover, for ip.access style dynamic timeslots
+.Example for dynamic channel switchover, for IPA style dynamic timeslots
 ["mscgen"]
 ----
 include::dyn_ts_ipa_style.msc[]
