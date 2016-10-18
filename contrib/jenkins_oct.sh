@@ -50,7 +50,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-octsdr-2g="$deps/deps/layer1-api/" --enable-octphy
+./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-octsdr-2g="$deps/layer1-api/" --enable-octphy
 $MAKE $PARALLEL_MAKE
 $MAKE check \
   || cat-testlogs.sh
