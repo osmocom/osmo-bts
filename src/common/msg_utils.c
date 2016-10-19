@@ -116,8 +116,11 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 				ARRAY_SIZE(lchan->tch.dtx.cache) - amr);
 
 	lchan->tch.dtx.len = copy_len + amr;
-	lchan->tch.dtx.fn = fn;
-	lchan->tch.dtx.is_update = update;
+	/* SID FIRST is special because it's both sent and cached: */
+	if (update == 0) {
+		lchan->tch.dtx.fn = fn;
+		lchan->tch.dtx.is_update = false; /* Mark SID FIRST explicitly */
+	}
 
 	memcpy(lchan->tch.dtx.cache + amr, l1_payload, copy_len);
 }
@@ -128,6 +131,7 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
  *  \param[in] rtp_pl_len length of rtp_pl
  *  \param[in] fn Frame Number for which we check scheduling
  *  \param[in] l1_payload buffer where CMR and CMI prefix should be added
+ *  \param[in] marker RTP Marker bit
  *  \param[out] len Length of expected L1 payload
  *  \param[out] ft_out Frame Type to be populated after decoding
  *  \returns 0 in case of success; negative on error
@@ -219,18 +223,18 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 static inline bool dtx_amr_sid_optional(const struct gsm_lchan *lchan,
 					uint32_t fn)
 {
-	/* Compute approx. time delta based on Fn duration */
-	uint32_t delta = GSM_FN_TO_MS(fn - lchan->tch.dtx.fn);
+	/* Compute approx. time delta x26 based on Fn duration */
+	uint32_t dx26 = 120 * (fn - lchan->tch.dtx.fn);
 
-	/* according to 3GPP TS 26.093 A.5.1.1: */
-	if (lchan->tch.dtx.is_update) {
-		/* SID UPDATE should be repeated every 8th RTP frame */
-		if (delta < GSM_RTP_FRAME_DURATION_MS * 8)
+	/* according to 3GPP TS 26.093 A.5.1.1:
+	   (*26) to avoid float math, add 1 FN tolerance (-120) */
+	if (lchan->tch.dtx.is_update) { /* SID UPDATE: every 8th RTP frame */
+		if (dx26 < GSM_RTP_FRAME_DURATION_MS * 8 * 26 - 120)
 			return true;
 		return false;
 	}
 	/* 3rd frame after SID FIRST should be SID UPDATE */
-	if (delta < GSM_RTP_FRAME_DURATION_MS * 3)
+	if (dx26 < GSM_RTP_FRAME_DURATION_MS * 3 * 26 - 120)
 		return true;
 	return false;
 }
@@ -289,6 +293,7 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 	if (lchan->tch.dtx.len) {
 		memcpy(dst, lchan->tch.dtx.cache, lchan->tch.dtx.len);
 		lchan->tch.dtx.fn = fn;
+		lchan->tch.dtx.is_update = true; /* SID UPDATE sent */
 		return lchan->tch.dtx.len + 1;
 	}
 
