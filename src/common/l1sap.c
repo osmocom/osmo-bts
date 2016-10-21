@@ -1060,7 +1060,8 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 
 /*! \brief call-back function for incoming RTP */
 void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
-                     unsigned int rtp_pl_len, bool marker)
+                     unsigned int rtp_pl_len, uint16_t seq_number,
+		     uint32_t timestamp, bool marker)
 {
 	struct gsm_lchan *lchan = rs->priv;
 	struct msgb *msg, *tmp;
