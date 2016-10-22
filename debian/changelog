@@ -1,3 +1,9 @@
+osmo-bts (0.3.0-fw.7) precise; urgency=low
+
+  * rebuild with libosmocore 0.8.2-4
+
+ -- Kirill Zakharenko <earwin@gmail.com>  Thu, 20 Oct 2016 10:34:58 +0200
+
 osmo-bts (0.3.0~fw-6) precise; urgency=low
 
   * rebuild with libosmocore 0.8.2-3
