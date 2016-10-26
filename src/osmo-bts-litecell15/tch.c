@@ -285,10 +285,9 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 		/* DTX DL-specific logic below: */
 		switch (lchan->tch.dtx.dl_amr_fsm->state) {
 		case ST_ONSET_V:
-		case ST_ONSET_F:
 			*payload_type = GsmL1_TchPlType_Amr_Onset;
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
-			*len = 1;
+			*len = 3;
 			return 1;
 		case ST_VOICE:
 			*payload_type = GsmL1_TchPlType_Amr;
@@ -306,6 +305,9 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			*payload_type = GsmL1_TchPlType_Amr;
 			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
 					     ft);
+			/* force STI bit to 0 to make sure resume after FACCH
+			   works properly */
+			l1_payload[6 + 2] &= ~16;
 			return 0;
 		case ST_SID_F2:
 			*payload_type = GsmL1_TchPlType_Amr;

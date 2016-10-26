@@ -53,6 +53,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 
 #include <nrw/litecell15/litecell15.h>
 #include <nrw/litecell15/gsml1prim.h>
@@ -330,13 +331,15 @@ empty_req_from_l1sap(GsmL1_Prim_t *l1p, struct lc15l1_hdl *fl1,
 }
 
 static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
-		       struct osmo_phsap_prim *l1sap)
+		       struct osmo_phsap_prim *l1sap, bool use_cache)
 {
 	struct lc15l1_hdl *fl1 = trx_lc15l1_hdl(trx);
 	struct msgb *l1msg = l1p_msgb_alloc();
+	struct gsm_lchan *lchan;
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
 	uint8_t chan_nr, link_id;
+	bool rec = false;
 	int len;
 
 	if (!msg) {
@@ -401,14 +404,46 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (len) {
 		/* data request */
 		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
+
+		if (use_cache)
+			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer,
+			       lchan->tch.dtx.facch, msgb_l2len(msg));
+		else if (trx->bts->dtxd && lchan->tch.dtx.dl_amr_fsm &&
+			 lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
+			if (sapi == GsmL1_Sapi_FacchF) {
+				sapi = GsmL1_Sapi_TchF;
+			}
+			if (sapi == GsmL1_Sapi_FacchH) {
+				sapi = GsmL1_Sapi_TchH;
+			}
+			if (sapi == GsmL1_Sapi_TchH || sapi == GsmL1_Sapi_TchF) {
+				/* FACCH interruption of DTX silence */
+				/* cache FACCH data */
+				memcpy(lchan->tch.dtx.facch, msg->l2h,
+				       msgb_l2len(msg));
+				/* prepare ONSET message */
+				len = 3;
+				l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
+					GsmL1_TchPlType_Amr_Onset;
+				/* ignored CMR/CMI pair */
+				l1p->u.phDataReq.msgUnitParam.u8Buffer[1] = 0;
+				l1p->u.phDataReq.msgUnitParam.u8Buffer[2] = 0;
+				/* ONSET is ready, recursive call is necessary */
+				rec = true;
+			}
+		}
 
 		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
 
-		OSMO_ASSERT(msgb_l2len(msg) <= sizeof(l1p->u.phDataReq.msgUnitParam.u8Buffer));
-		memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h, msgb_l2len(msg));
+		if (!rec && !use_cache) {
+			OSMO_ASSERT(msgb_l2len(msg) <= sizeof(l1p->u.phDataReq.msgUnitParam.u8Buffer));
+			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h,
+			       msgb_l2len(msg));
+		}
 		LOGP(DL1P, LOGL_DEBUG, "PH-DATA.req(%s)\n",
-			osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer,
-				     l1p->u.phDataReq.msgUnitParam.u8Size));
+		     osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer,
+					  l1p->u.phDataReq.msgUnitParam.u8Size));
 	} else {
 		/* empty frame */
 		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
@@ -422,6 +457,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		msgb_free(l1msg);
 	}
 
+	if (rec)
+		ph_data_req(trx, msg, l1sap, true);
 	return 0;
 }
 
@@ -566,7 +603,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	 * free()d below */
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
-		rc = ph_data_req(trx, msg, l1sap);
+		rc = ph_data_req(trx, msg, l1sap, false);
 		break;
 	case OSMO_PRIM(PRIM_TCH, PRIM_OP_REQUEST):
 		rc = ph_tch_req(trx, msg, l1sap, false, l1sap->u.tch.marker);

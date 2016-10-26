@@ -220,11 +220,22 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
  *  \param[in] fn Frame Number for which we check scheduling
  *  \returns true if transmission can be omitted, false otherwise
  */
-static inline bool dtx_amr_sid_optional(const struct gsm_lchan *lchan,
-					uint32_t fn)
+static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 {
 	/* Compute approx. time delta x26 based on Fn duration */
 	uint32_t dx26 = 120 * (fn - lchan->tch.dtx.fn);
+
+	/* We're resuming after FACCH interruption */
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
+		/* force STI bit to 0 so cache is treated as SID FIRST */
+		lchan->tch.dtx.cache[6 + 2] &= ~16;
+		lchan->tch.dtx.is_update = false;
+		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_SID_F,
+				       (void *)lchan);
+		/* this FN was already used for ONSET message so we just prepare
+		   things for next one */
+		return true;
+	}
 
 	/* according to 3GPP TS 26.093 A.5.1.1:
 	   (*26) to avoid float math, add 1 FN tolerance (-120) */
@@ -293,7 +304,11 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 	if (lchan->tch.dtx.len) {
 		memcpy(dst, lchan->tch.dtx.cache, lchan->tch.dtx.len);
 		lchan->tch.dtx.fn = fn;
-		lchan->tch.dtx.is_update = true; /* SID UPDATE sent */
+		/* enforce SID UPDATE for next repetition - it might have
+		   been altered by FACCH handling */
+		lchan->tch.dtx.cache[6 + 2] |= 16;
+		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
+			lchan->tch.dtx.is_update = true;
 		return lchan->tch.dtx.len + 1;
 	}
 
