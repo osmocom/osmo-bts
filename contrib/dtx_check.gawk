@@ -27,9 +27,17 @@ BEGIN {
 				CHK = "FAIL: missing ONSET (" $2 ") after " TYPE "."
 				ERR++
 		}
-		if ("FORCED_FIRST" == $2 || "FORCED_NODATA" == $2) {
+		if ("SID_P1" == $2) {
+			CHK = "FAIL: regular AMR payload with FT SID and STI=0 (should be either pyaload Update or STI=1)."
+			ERR++
+		}
+		if ("FORCED_FIRST" == $2 || "FORCED_NODATA" == $2 || "FORCED_F_P2" == $2 || "FORCED_F_INH" == $2 || "FORCED_U_INH" == $2) {
 			CHK = "FAIL: event " $2 " inserted by DSP."
 			FORCE++
+			ERR++
+		}
+		if ("FIRST_P2" != $2 && "FIRST_P1" == TYPE) {
+			CHK = "FAIL: " TYPE " followed by " $2 " instead of P2."
 			ERR++
 		}
 		if ("OK" == CHK) { # check inter-SID distances:
@@ -65,7 +73,7 @@ BEGIN {
 	if ("UPDATE" == $2 || "FIRST" == $2) { # silence
 		SILENCE = 1
 	}
-	print $1, $2, CHK, TYPE, DELTA, SILENCE
+	print $1, $2, CHK
 	if ($2 != "EMPTY") { # skip over EMPTY records
 		TYPE = $2
 		FN = $1
