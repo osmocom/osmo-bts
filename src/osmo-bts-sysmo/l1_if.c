@@ -405,7 +405,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer,
 			       lchan->tch.dtx.facch, msgb_l2len(msg));
 		else if (trx->bts->dtxd && lchan->tch.dtx.dl_amr_fsm &&
-			 lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
+			 lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F) {
 			if (sapi == GsmL1_Sapi_FacchF) {
 				sapi = GsmL1_Sapi_TchF;
 			}

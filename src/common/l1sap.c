@@ -1145,10 +1145,12 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 	/* Init DTX DL FSM if necessary */
 	//FIXME: only do it for AMR TCH/*
-	osmo_fsm_register(&dtx_dl_amr_fsm);
-	lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
-							tall_bts_ctx, lchan,
-							LOGL_DEBUG, lchan->name);
+	if (trx->bts->dtxd)
+		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
+								tall_bts_ctx,
+								lchan,
+								LOGL_DEBUG,
+								lchan->name);
 	return 0;
 }
 

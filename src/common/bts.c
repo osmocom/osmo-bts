@@ -40,6 +40,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
@@ -176,6 +177,8 @@ int bts_init(struct gsm_bts *bts)
 	INIT_LLIST_HEAD(&btsb->smscb_state.queue);
 	INIT_LLIST_HEAD(&btsb->oml_queue);
 
+	/* register DTX DL FSM */
+	osmo_fsm_register(&dtx_dl_amr_fsm);
 	return rc;
 }
 

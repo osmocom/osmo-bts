@@ -33,6 +33,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
+#define STI_BIT_MASK 16
+
 static int check_fom(struct abis_om_hdr *omh, size_t len)
 {
 	if (omh->length != len) {
@@ -182,14 +184,15 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 		return 0;
 
 	if (osmo_amr_is_speech(ft)) {
-		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 ||
-		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U) /* AMR HR */
-			if (lchan->type == GSM_LCHAN_TCH_H && marker)
-				return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
-							      E_INHIB,
-							      (void *)lchan);
-		/* AMR FR */
-		if (marker && lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
+		/* AMR HR - Inhibition */
+		if (lchan->type == GSM_LCHAN_TCH_H && marker &&
+		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_INHIB, (void *)lchan);
+		/* AMR FR & HR - generic */
+		if (marker && (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 ||
+			       lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 ||
+			       lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U ))
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_ONSET, (void *)lchan);
 		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_VOICE,
@@ -198,6 +201,9 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 
 	if (ft == AMR_SID) {
 		dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
+		if (lchan->tch.dtx.dl_amr_fsm->state == ST_VOICE)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_SID_F, (void *)lchan);
 		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 					      sti ? E_SID_U : E_SID_F,
 					      (void *)lchan);
@@ -215,6 +221,16 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	return 0;
 }
 
+static inline void dtx_sti_set(struct gsm_lchan *lchan)
+{
+	lchan->tch.dtx.cache[6 + 2] |= STI_BIT_MASK;
+}
+/* STI is located in payload byte 6, cache contains 2 byte prefix (CMR/CMI) */
+static inline void dtx_sti_unset(struct gsm_lchan *lchan)
+{
+	lchan->tch.dtx.cache[6 + 2] &= ~STI_BIT_MASK;
+}
+
 /*! \brief Check if enough time has passed since last SID (if any) to repeat it
  *  \param[in] lchan Logical channel on which we check scheduling
  *  \param[in] fn Frame Number for which we check scheduling
@@ -226,9 +242,10 @@ static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 	uint32_t dx26 = 120 * (fn - lchan->tch.dtx.fn);
 
 	/* We're resuming after FACCH interruption */
-	if (lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F) {
 		/* force STI bit to 0 so cache is treated as SID FIRST */
-		lchan->tch.dtx.cache[6 + 2] &= ~16;
+		dtx_sti_unset(lchan);
 		lchan->tch.dtx.is_update = false;
 		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_SID_F,
 				       (void *)lchan);
@@ -306,7 +323,7 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 		lchan->tch.dtx.fn = fn;
 		/* enforce SID UPDATE for next repetition - it might have
 		   been altered by FACCH handling */
-		lchan->tch.dtx.cache[6 + 2] |= 16;
+		dtx_sti_set(lchan);
 		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
 			lchan->tch.dtx.is_update = true;
 		return lchan->tch.dtx.len + 1;

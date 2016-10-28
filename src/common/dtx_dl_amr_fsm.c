@@ -53,7 +53,7 @@ void dtx_fsm_sid_f1(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
 	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
 		break;
 	case E_COMPL:
 		osmo_fsm_inst_state_chg(fi, ST_SID_F2, 0, 0);
@@ -81,7 +81,10 @@ void dtx_fsm_sid_f2(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
 	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
+		break;
+	case E_ONSET:
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -97,7 +100,7 @@ void dtx_fsm_f1_inh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
 		break;
 	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -110,7 +113,7 @@ void dtx_fsm_u_inh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
 	case E_VOICE:
-		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
 	case E_FACCH:
 		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
@@ -126,7 +129,7 @@ void dtx_fsm_sid_upd(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
 	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
 		break;
 	case E_VOICE:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
@@ -152,6 +155,7 @@ void dtx_fsm_sid_upd(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_onset_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
+	case E_SID_F:
 	case E_SID_U:
 	case E_VOICE:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
@@ -169,6 +173,7 @@ void dtx_fsm_onset_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_onset_f(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
+	case E_SID_F:
 	case E_SID_U:
 		break;
 	case E_VOICE:
@@ -234,15 +239,15 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 	   start of silence period (might be interrupted in case of AMR HR) */
 	[ST_SID_F1]= {
 		.in_event_mask = X(E_SID_F) | X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_COMPL) | X(E_INHIB) | X(E_ONSET),
-		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_FACCH) | X(ST_SID_F2) | X(ST_F1_INH) | X(ST_ONSET_V),
+		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_SID_F2) | X(ST_F1_INH) | X(ST_ONSET_V),
 		.name = "SID-FIRST (P1)",
 		.action = dtx_fsm_sid_f1,
 	},
 	/* SID-FIRST P2 (only for AMR HR):
 	   actual start of silence period in case of AMR HR*/
 	[ST_SID_F2]= {
-		.in_event_mask = X(E_SID_U) | X(E_VOICE) | X(E_FACCH),
-		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_FACCH),
+		.in_event_mask = X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_ONSET),
+		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_ONSET_V),
 		.name = "SID-FIRST (P2)",
 		.action = dtx_fsm_sid_f2,
 	},
@@ -258,23 +263,30 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 	   incoming SPEECH or FACCH (only for AMR HR) */
 	[ST_U_INH]= {
 		.in_event_mask = X(E_VOICE) | X(E_FACCH),
-		.out_state_mask = X(ST_VOICE) | X(ST_FACCH_V),
+		.out_state_mask = X(ST_VOICE) | X(ST_FACCH),
 		.name = "SID-UPDATE (Inh)",
 		.action = dtx_fsm_u_inh,
 	},
 	/* Silence period with periodic comfort noise data updates */
 	[ST_SID_U]= {
 		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_INHIB) | X(E_SID_U) | X(E_SID_F) | X(E_ONSET),
-		.out_state_mask = X(ST_FACCH) | X(ST_VOICE) | X(ST_U_INH) | X(ST_SID_U) | X(ST_ONSET_V),
+		.out_state_mask = X(ST_ONSET_F) | X(ST_VOICE) | X(ST_U_INH) | X(ST_SID_U) | X(ST_ONSET_V),
 		.name = "SID-UPDATE",
 		.action = dtx_fsm_sid_upd,
 	},
 	/* ONSET - end of silent period due to incoming SPEECH frame */
 	[ST_ONSET_V]= {
-		.in_event_mask = X(E_VOICE) | X(E_FACCH),
+		.in_event_mask = X(E_SID_F) | X(E_SID_U) | X(E_VOICE) | X(E_FACCH),
 		.out_state_mask = X(ST_VOICE) | X(ST_FACCH_V),
 		.name = "ONSET (SPEECH)",
 		.action = dtx_fsm_onset_v,
+	},
+	/* ONSET - end of silent period due to incoming FACCH frame */
+	[ST_ONSET_F]= {
+		.in_event_mask = X(E_VOICE) | X(E_FACCH) | X(E_SID_U) | X(E_SID_F),
+		.out_state_mask = X(ST_VOICE) | X(ST_FACCH),
+		.name = "ONSET (FACCH)",
+		.action = dtx_fsm_onset_f,
 	},
 	/* FACCH sending state: SPEECH was observed before so once we're done
 	   FSM should get back to VOICE state */
@@ -296,6 +308,7 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 
 const struct value_string dtx_dl_amr_fsm_event_names[] = {
 	{ E_VOICE,	"Voice" },
+	{ E_ONSET,	"ONSET" },
 	{ E_FACCH,	"FACCH" },
 	{ E_COMPL,	"Complete P1 -> P2" },
 	{ E_INHIB,	"Inhibit" },

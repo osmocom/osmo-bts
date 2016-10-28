@@ -426,8 +426,7 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			return -EAGAIN;
 		case ST_FACCH_V:
 		case ST_FACCH:
-			/* FIXME: if this possible at all? */
-			return 0;
+			return -EBADMSG;
 		default:
 			LOGP(DRTP, LOGL_ERROR, "Unhandled DTX DL AMR FSM state "
 			     "%d\n", lchan->tch.dtx.dl_amr_fsm->state);
