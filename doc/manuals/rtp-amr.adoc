@@ -1311,3 +1311,21 @@ msc {
 	ms <= phy	[label="L1 burst (sub-block 4 of SID_FIRST_P1, sub-block 2 of SID_FIRST_P2)"];
 }
 ----
+
+== Implementation details
+
+There is FSM implementing all the necessary states and transitions for DTX DL.
+
+[[dtx_dl_fsm]]
+[graphviz]
+----
+include::dtx.dot[]
+----
+
+The idea is that each state corresponds to the particular message type which have to be send to L1 while state transition happens on incoming events like FACCH or Voice frames. There are 3 different classes of of events driving this FSM:
+
+* Voice frame types: E_VOICE, E_SID_U, E_SID_F
+* Incoming FACCH: E_FACCH
+* Internal: E_ONSET, E_INHIB, E_COMPL
+
+They represent different types of incoming RTP frames (Voice, SID UPDATE and SID FIRST correspondingly), incoming FACCH events or important events internal to DTX operations. The latter are Onset (interruption of silence period), Inhibition (of currently transmitted SID FIRST or UPDATE) and Completion (of silence initiation).

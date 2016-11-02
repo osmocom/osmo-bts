@@ -7,6 +7,14 @@
       Initial version
     </revremark>
   </revision>
+  <revision>
+    <revnumber>2</revnumber>
+    <date>November 2016</date>
+    <authorinitials>MS</authorinitials>
+    <revremark>
+      FSM added
+    </revremark>
+  </revision>
 </revhistory>
 
 <authorgroup>
@@ -19,6 +27,17 @@
       <shortaffil>sysmocom</shortaffil>
       <orgname>sysmocom - s.f.m.c. GmbH</orgname>
       <jobtitle>Managing Director</jobtitle>
+    </affiliation>
+  </author>
+    <author>
+    <firstname>Max</firstname>
+    <surname>Suraev</surname>
+    <email>msuraev@sysmocom.de</email>
+    <authorinitials>MS</authorinitials>
+    <affiliation>
+      <shortaffil>sysmocom</shortaffil>
+      <orgname>sysmocom - s.f.m.c. GmbH</orgname>
+      <jobtitle>Software Developer</jobtitle>
     </affiliation>
   </author>
 </authorgroup>
