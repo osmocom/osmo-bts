@@ -14,7 +14,7 @@ docbooktotypes = pdf
 # htmlcss =
 
 TOPDIR := ..
-ASCIIDOCS := osmobts-usermanual osmobts-abis
+ASCIIDOCS := osmobts-usermanual osmobts-abis rtp-amr
 
 include $(TOPDIR)/build/Makefile.asciidoc.inc
 include $(TOPDIR)/build/Makefile.inc
@@ -26,6 +26,8 @@ clean:
 	-rm -rf $(cleanfiles)
 	-rm osmobts-abis__*.png
 	-rm osmobts-abis__*.svg
+	-rm rtp-amr__*.png
+	-rm rtp-amr__*.svg
 	-rm osmobts-usermanual__*.png
 	-rm osmobts-usermanual__*.svg
 	-rm osmobts-abis*.check
