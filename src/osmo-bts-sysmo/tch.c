@@ -373,7 +373,7 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 					 l1_payload, marker, len, &ft);
 		if (rc < 0)
 			return rc;
-		if (!lchan->ts->trx->bts->dtxd) {
+		if (!dtx_dl_amr_enabled(lchan)) {
 			*payload_type = GsmL1_TchPlType_Amr;
 			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
 					     ft);
@@ -599,7 +599,7 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 	case GSM48_CMODE_SPEECH_AMR:
 		if (lchan->type == GSM_LCHAN_TCH_H &&
 		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 &&
-		    lchan->ts->trx->bts->dtxd) {
+		    dtx_dl_amr_enabled(lchan)) {
 			*payload_type = GsmL1_TchPlType_Amr_SidFirstP2;
 			rc = dtx_dl_amr_fsm_step(lchan, NULL, 0, fn, l1_payload,
 						 false, &(msu_param->u8Size),
@@ -626,7 +626,7 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 		return NULL;
 	}
 
-	if (lchan->ts->trx->bts->dtxd) {
+	if (dtx_dl_amr_enabled(lchan)) {
 		rc = repeat_last_sid(lchan, l1_payload, fn);
 		if (!rc) {
 			msgb_free(msg);

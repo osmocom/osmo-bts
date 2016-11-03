@@ -298,6 +298,15 @@ static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 	return false;
 }
 
+bool dtx_dl_amr_enabled(const struct gsm_lchan *lchan)
+{
+	if (lchan->ts->trx->bts->dtxd &&
+	    lchan->tch.dtx.dl_amr_fsm &&
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		return true;
+	return false;
+}
+
 /* repeat last SID if possible, returns SID length + 1 or 0 */
 /*! \brief Repeat last SID if possible in case of DTX
  *  \param[in] lchan Logical channel on which we check scheduling
