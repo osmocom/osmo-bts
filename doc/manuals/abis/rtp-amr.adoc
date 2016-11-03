@@ -167,28 +167,135 @@ msc {
 	...;
 	---		[label="Once voice is active again"];
 
-	ms -x phy	[label="Suppressed L1 burst"];
-	ms -x phy	[label="Suppressed L1 burst"];
-	ms -x phy	[label="Suppressed L1 burst"];
-	ms -x phy	[label="Suppressed L1 burst"];
-	ms => phy	[label="L1 burst (sub-block 5 of SID_ONSET + sub-block 1 of speech frame N)", id="ULSO2"];
-	ms => phy	[label="L1 burst (sub-block 6 of SID_ONSET + sub-block 2 of speech frame N)"];
-	ms => phy	[label="L1 burst (sub-block 7 of SID_ONSET + sub-block 3 of speech frame N)"];
-	ms => phy	[label="L1 burst (sub-block 8 of SID_ONSET + sub-block 4 of speech frame N)"];
-	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
-	bts => bts	[label="lchan_set_marker() and store CMI"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of speech frame N)", id="ULSO2"];
+	ms => phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of speech frame N)"];
+	ms => phy	[label="L1 burst (block 3 of SID_ONSET + sub-block 3 of speech frame N)"];
+	ms => phy	[label="L1 burst (block 4 of SID_ONSET + sub-block 4 of speech frame N)"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
 	ms => phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
 	ms => phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
 	ms => phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 3 of speech frame N+1)"];
 	ms => phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 4 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
+	bts => bts	[label="lchan_set_marker() and store CMI"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
-	bts => mgw	[label="RTP (AMR FT=0..7,Q=1), MARKER=1"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N+1 + sub-block 1 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N+1 + sub-block 2 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N+1 + sub-block 3 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N+1 + sub-block 4 of speech frame N+2)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N+1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
 	...;
 }
 ----
 
 ULSO2:: sub-blocks 1..4 of SID_ONSET are never transmitted as all
-infomration is contained in blocks 5..8.
+information is contained in blocks 5..8.
+
+==== TCH/AFS Uplink: Speech Frame Following a SID_FIRST frame
+
+The four last bursts of a SID_FIRST frame can be replaced by an ONSET frame in order to quickly resume speech.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Speech Frame Following a SID_FIRST"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N, sub-block 1 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N, sub-block 2 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N, sub-block 3 of SID_FIRST)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N, sub-block 4 of SID_FIRST)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+
+	ms => phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (block 3 of SID_ONSET + sub-block 3 of speech frame N+1)"];
+	ms => phy	[label="L1 burst (block 4 of SID_ONSET + sub-block 4 of speech frame N+1)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_FIRST)"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of speech frame N+1 + sub-block 1 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 6 of speech frame N+1 + sub-block 2 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 7 of speech frame N+1 + sub-block 3 of speech frame N+2)"];
+	ms => phy	[label="L1 burst (sub-block 8 of speech frame N+1 + sub-block 4 of speech frame N+2)"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
+	bts => bts	[label="lchan_set_marker() and store CMI"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N+1)"];
+	bts => mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	...;
+}
+----
+
+==== TCH/AFS Uplink: FACCH/F Frame During DTX Operation
+
+As mentioned in section A.5.1.2.1 of 3GPP TS 26.093 :
+
+* If the frame preceding the FACCH frame is not of TX_TYPE='SPEECH_GOOD', then an ONSET frame shall be signalled to the CHE, followed by the FACCH frame(s).
+* If the frame following the FACCH frame is not of TX_TYPE='SPEECH_GOOD', then a SID_FIRST shall be signalled to the CHE.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="FACCH/F Frame During DTX"];
+
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of FACCH frame)"];
+	ms => phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of FACCH frame)"];
+	ms => phy	[label="L1 burst (block 3 of SID_ONSET + sub-block 3 of FACCH frame)"];
+	ms => phy	[label="L1 burst (block 4 of SID_ONSET + sub-block 4 of FACCH frame)"];
+	phy -x bts	[label="No PH-DATA.ind sent[BFI]"];
+	bts -x mgw	[label="Suppressed RTP frame"];
+
+	ms => phy	[label="L1 burst (sub-block 5 of FACCH frame + sub-block 1 of SID First frame)"];
+	ms => phy	[label="L1 burst (sub-block 6 of FACCH frame + sub-block 2 of SID First frame)"];
+	ms => phy	[label="L1 burst (sub-block 7 of FACCH frame + sub-block 3 of SID First frame)"];
+	ms => phy	[label="L1 burst (sub-block 8 of FACCH frame + sub-block 4 of SID First frame)", id="Note"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_Onset"];
+	bts => bts	[label="lchan_set_marker() and store CMI"];
+	phy => bts	[label="PH-DATA.ind FACCH/F"];
+	bts => mgw	[label="FACCH/F"];
+
+	ms -x phy	[label="Supressed L1 burst", id="ULSF2"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Supressed L1 burst"];
+	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_FIRST)"];
+	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	...;
+}
+----
+
+ULSF2:: The sub-blocks 5-8 of SID_FIRST are not transmitted, as all
+information bits are contained in sub-blocks 1-4 only
+
+Note:: It has been observed with some phones that the SID_FIRST is not sent following the FACCH/F
+frame. If this case occures the No Data Frame and SID_UPDATE order resumes.
 
 === TCH/AFS Downlink (Network to MS)
 
