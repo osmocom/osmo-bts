@@ -19,6 +19,7 @@ ASCIIDOCS := osmobts-usermanual osmobts-abis
 include $(TOPDIR)/build/Makefile.asciidoc.inc
 include $(TOPDIR)/build/Makefile.inc
 
+osmobts-abis.pdf: abis/*.adoc abis/*.msc
 osmobts-usermanual.pdf: chapters/*.adoc
 
 clean:
