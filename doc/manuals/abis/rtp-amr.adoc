@@ -495,10 +495,91 @@ msc {
 }
 ----
 
-DLOS1:: The SID_ONSET and the first voice frame are sent in the same
-block of four radio busts.  Hence, the BTS must be able ot to send
-actual codec payload along with the GsmL1_TchPlType_Amr_Onset
-primitive.
+==== TCH/AFS Downlink: Inhibiting a SID_FIRST frame
+
+Here is the procedure to inhibit a SID_FIRST frame in order to quickly resume speech.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Inhibiting a SID_FIRST frame"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_FIRST)"];
+	bts => bts	[label="Store SID frame in case it contains comfort noise parameters"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N-1 + sub-block 1 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N-1 + sub-block 2 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N-1 + sub-block 3 of SID_FIRST)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N-1 + sub-block 4 of SID_FIRST)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_Onset"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of speech frame N)"];
+	ms <= phy	[label="L1 burst (block 3 of SID_ONSET + sub-block 3 of speech frame N)"];
+	ms <= phy	[label="L1 burst (block 4 of SID_ONSET + sub-block 4 of speech frame N)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 5 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 6 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 7 of speech frame N + sub-block 2 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of speech frame N + sub-block 2 of speech frame N+1)"];
+	}
+----
+
+==== TCH/AFS Downlink: FACCH/F During DTX Operation
+
+The following procedure must be observed if a FACCH/F frame must be transmitted during DTX operation.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="FACCH/F Frame During DTX"];
+
+	bts <= mgw	[label="FACCH/F"];
+	phy => bts	[label="PH-RTS.ind (FACCH/F)"];
+	phy => bts	[label="PH-RTS.ind (TCH/F)"];
+	phy <= bts	[label="PH-DATA.req (FACCH/F)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_Onset(TCH/F)", id="NOTE"];
+	ms <= phy	[label="L1 burst (block 1 of SID_ONSET + sub-block 1 of FACCH/F)"];
+	ms <= phy	[label="L1 burst (block 2 of SID_ONSET + sub-block 2 of FACCH/F)"];
+	ms <= phy	[label="L1 burst (block 3 of SID_ONSET + sub-block 3 of FACCH/F)"];
+	ms <= phy	[label="L1 burst (block 4 of SID_ONSET + sub-block 4 of FACCH/F)"];
+
+	phy => bts	[label="PH-RTS.ind (FACCH)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req (FACCH/F)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_FIRST)"];
+	ms x- phy	[label="L1 burst (sub-block 5 of FACCH/F + sub-block 1 of SID_FIRST)"];
+	ms x- phy	[label="L1 burst (sub-block 6 of FACCH/F + sub-block 2 of SID_FIRST)"];
+	ms x- phy	[label="L1 burst (sub-block 7 of FACCH/F + sub-block 3 of SID_FIRST)"];
+	ms x- phy	[label="L1 burst (sub-block 8 of FACCH/F + sub-block 4 of SID_FIRST)"];
+
+	phy => bts	[label="PH-RTS.ind (FACCH)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req (FACCH/F)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req (TCH/F)"];
+	ms x- phy	[label="Supressed burst"];
+	ms x- phy	[label="Supressed burst"];
+	ms x- phy	[label="Supressed burst"];
+	ms x- phy	[label="Supressed burst"];
+}
+----
+
+NOTE:: The ONSET and the FACCH/F PH-DATA requests must both be sent to the PHY.
 
 == Half-Rate (TCH/AHS)
 
