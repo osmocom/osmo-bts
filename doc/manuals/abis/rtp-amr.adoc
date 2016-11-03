@@ -1087,7 +1087,110 @@ msc {
 }
 ----
 
-DLOS2:: The SID_ONSET and the first voice frame are sent in the same
-block of four radio bursts. Hence, the BTS must be able ot to send
-actual codec payload along with the GsmL1_TchPlType_Amr_Onset
-primitive.
+==== TCH/AHS Downlink: Inhibited SID_FIRST_P1
+
+The following procedure must be observed in case of a SID_FIRST must be inhibited.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Inhibited SID_FIRST_P1"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstP1"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N-1 + sub-block 1 of SID_FIRST_P1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N-1 + sub-block 2 of SID_FIRST_P1)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstInh"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (block 1 of SID_FIRST_INH, sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (block 2 of SID_FIRST_INH, sub-block 2 of speech frame N)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+==== TCH/AHS Downlink: Inhibited SID_UPDATE
+
+The following procedure must be observed in case of a SID_UPDATE must be inhibited.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="Inhibited SID_UPDATE"];
+
+	bts <= mgw	[label="RTP (AMR FT=SID,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	bts => phy	[label="PH-DATA.req GsmL1_TchPlType_Amr (SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 1+2 of SID_UPDATE)"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of SID_UPDATE)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1) MARKER=1"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidUpdateInh"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N)"];
+	ms <= phy	[label="L1 burst (block 1 of SID_UPDATE_INH, sub-block 1 of speech frame N)"];
+	ms <= phy	[label="L1 burst (block 2 of SID_UPDATE_INH, sub-block 2 of speech frame N)"];
+
+	bts <= mgw	[label="RTP (AMR FT=0..7,Q=1)"];
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr (N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 3 of speech frame N + sub-block 1 of speech frame N+1)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of speech frame N + sub-block 2 of speech frame N+1)"];
+}
+----
+
+==== TCH/AHS Downlink: FACCH/H During DTX Operation
+
+The following procedure must be observed in case of a FACCH/H frame must be inserted during DTX operation.
+
+["mscgen"]
+----
+msc {
+	hscale = 2;
+	ms [label="MS"], phy [label="BTS-PHY"], bts [label="BTS"], mgw [label="MGW"];
+
+	...;
+	---		[label="FACCH/H During DTX Operation"];
+
+	bts <= mgw	[label="FACCH/H"];
+	phy => bts	[label="PH-RTS.ind (FACCH/H)"];
+	phy => bts	[label="PH-RTS.ind (TCH/H)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_Onset"];
+	phy <= bts	[label="PH-DATA.req FACCH/H"];
+	ms <= phy	[label="L1 burst (block 1 of SID_ONSET, sub-block 1 of FACCH/H frame)"];
+	ms <= phy	[label="L1 burst (block 2 of SID_ONSET, sub-block 2 of FACCH/H frame)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH/H)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req"];
+	ms <= phy	[label="L1 burst (sub-block 3+4 of FACCH/H frame)"];
+	ms <= phy	[label="L1 burst (sub-block 5+6 of FACCH/H frame)"];
+
+	phy => bts	[label="PH-RTS.ind (FACCH/H)"];
+	phy => bts	[label="PH-RTS.ind (TCH/H)"];
+	phy <= bts	[label="PH-EMPTY-FRAME.req (FACCH/H)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstP1"];
+	ms <= phy	[label="L1 burst (sub-block 7 of FACCH/H frame + sub-block 1 of SID_FIRST_P1)"];
+	ms <= phy	[label="L1 burst (sub-block 8 of FACCH/H frame + sub-block 2 of SID_FIRST_P1)"];
+
+	phy => bts	[label="PH-RTS.ind (TCH)"];
+	phy <= bts	[label="PH-DATA.req GsmL1_TchPlType_Amr_SidFirstP2"];
+	ms <= phy	[label="L1 burst (sub-block 3 of SID_FIRST_P1, sub-block 1 of SID_FIRST_P2)"];
+	ms <= phy	[label="L1 burst (sub-block 4 of SID_FIRST_P1, sub-block 2 of SID_FIRST_P2)"];
+}
+----
