@@ -610,10 +610,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				memcpy(p, pp.oph.msg->data, GSM_MACBLOCK_LEN);
 				/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
 				check_for_ciph_cmd(pp.oph.msg, lchan, chan_nr);
-				if (dtxd_facch && dtx_dl_amr_enabled(lchan))
-					osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
-							       E_FACCH,
-							       (void *)lchan);
+				if (dtxd_facch)
+					dtx_dispatch(lchan, E_FACCH);
 			}
 			msgb_free(pp.oph.msg);
 		}

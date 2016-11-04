@@ -151,8 +151,7 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	if (rtp_pl == NULL) { /* SID-FIRST P1 -> P2 */
 		*len = 3;
 		memcpy(l1_payload, lchan->tch.dtx.cache, 2);
-		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_COMPL,
-				       (void *)lchan);
+		dtx_dispatch(lchan, E_COMPL);
 		return 0;
 	}
 
@@ -305,6 +304,13 @@ bool dtx_dl_amr_enabled(const struct gsm_lchan *lchan)
 	    lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
 		return true;
 	return false;
+}
+
+void dtx_dispatch(struct gsm_lchan *lchan, enum dtx_dl_amr_fsm_events e)
+{
+	if (dtx_dl_amr_enabled(lchan))
+		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, e,
+				       (void *)lchan);
 }
 
 /* repeat last SID if possible, returns SID length + 1 or 0 */

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 
 #include <osmocom/codec/codec.h>
 
@@ -27,6 +28,7 @@ enum {
 
 void lchan_set_marker(bool t, struct gsm_lchan *lchan);
 bool dtx_dl_amr_enabled(const struct gsm_lchan *lchan);
+void dtx_dispatch(struct gsm_lchan *lchan, enum dtx_dl_amr_fsm_events e);
 void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 		       size_t length, uint32_t fn, int update);
 int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
