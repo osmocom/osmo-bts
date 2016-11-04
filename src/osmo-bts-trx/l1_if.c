@@ -197,6 +197,10 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
 			l1h->config.maxdly_sent = 1;
 		}
+		if (l1h->config.maxdlynb_valid && !l1h->config.maxdlynb_sent) {
+			trx_if_cmd_setmaxdlynb(l1h, l1h->config.maxdlynb);
+			l1h->config.maxdlynb_sent = 1;
+		}
 
 		for (tn = 0; tn < TRX_NR_TS; tn++) {
 			if (l1h->config.slottype_valid[tn]
@@ -217,6 +221,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			plink->u.osmotrx.power_sent = 0;
 		}
 		l1h->config.maxdly_sent = 0;
+		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 	}

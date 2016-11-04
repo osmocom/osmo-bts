@@ -105,6 +105,11 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 			VTY_NEWLINE);
 	else
 		vty_out(vty, " maxdly : undefined%s", VTY_NEWLINE);
+	if (l1h->config.maxdlynb_valid)
+		vty_out(vty, " maxdlynb : %d%s", l1h->config.maxdlynb,
+			VTY_NEWLINE);
+	else
+		vty_out(vty, " maxdlynb : undefined%s", VTY_NEWLINE);
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		if (!((1 << tn) & l1h->config.slotmask))
 			vty_out(vty, " slot #%d: unsupported%s", tn,
@@ -239,7 +244,13 @@ DEFUN(cfg_bts_no_setbsic, cfg_bts_no_setbsic_cmd,
 
 DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	"osmotrx maxdly <0-31>",
-	"Set the maximum delay of GSM symbols\n"
+	"Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
+	" Access Burst is the first burst a mobile transmits in order to establish"
+	" a connection and it is used to estimate Timing Advance (TA) which is"
+	" then applied to Normal Bursts to compensate for signal delay due to"
+	" distance. So changing this setting effectively changes maximum range of"
+	" the cell, because if we receive an Access Burst with a delay higher than"
+	" this value, it will be ignored and connection is dropped.\n"
 	"GSM symbols (approx. 1.1km per symbol)\n")
 {
 	struct phy_instance *pinst = vty->index;
@@ -248,6 +259,31 @@ DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	l1h->config.maxdly = atoi(argv[0]);
 	l1h->config.maxdly_valid = 1;
 	l1h->config.maxdly_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
+
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
+	"osmotrx maxdlynb <0-31>",
+	"Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
+	" USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
+	" During normal operation, Normal Bursts delay are controled by a Timing"
+	" Advance control loop and thus Normal Bursts arrive to a BTS with no more"
+	" than a couple GSM symbols, which is already taken into account in osmo-trx."
+	" So changing this setting will have no effect in production installations"
+	" except increasing osmo-trx CPU load. This setting is only useful when"
+	" testing with a transmitter which can't precisely synchronize to the BTS"
+	" downlink signal, like e.g. R&S CMD57.\n"
+	"GSM symbols (approx. 1.1km per symbol)\n")
+{
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	l1h->config.maxdlynb = atoi(argv[0]);
+	l1h->config.maxdlynb_valid = 1;
+	l1h->config.maxdlynb_sent = 0;
 	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
@@ -400,6 +436,18 @@ DEFUN(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phyinst_no_maxdlynb, cfg_phyinst_no_maxdlynb_cmd,
+	"no osmotrx maxdlynb",
+	NO_STR "Unset the maximum delay of GSM symbols\n")
+{
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	l1h->config.maxdlynb_valid = 0;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_phy_transc_ip, cfg_phy_transc_ip_cmd,
 	"osmotrx ip HOST",
 	OSMOTRX_STR
@@ -458,6 +506,8 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, "  maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
+	if (l1h->config.maxdlynb_valid)
+		vty_out(vty, "  maxdlynb %d%s", l1h->config.maxdlynb, VTY_NEWLINE);
 	if (l1h->config.slotmask != 0xff)
 		vty_out(vty, "  slotmask %d %d %d %d %d %d %d %d%s",
 			l1h->config.slotmask & 1,
@@ -520,6 +570,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_INST_NODE, &cfg_phy_power_on_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_maxdly_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_no_maxdly_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_maxdlynb_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_no_maxdlynb_cmd);
 
 	return 0;
 }

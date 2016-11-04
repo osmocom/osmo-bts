@@ -24,6 +24,10 @@ struct trx_config {
 	int			maxdly;
 	int			maxdly_sent;
 
+	int			maxdlynb_valid;
+	int			maxdlynb;
+	int			maxdlynb_sent;
+
 	uint8_t			slotmask;
 
 	int			slottype_valid[TRX_NR_TS];

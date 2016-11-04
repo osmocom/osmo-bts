@@ -22,6 +22,7 @@ int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic);
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db);
 int trx_if_cmd_setpower(struct trx_l1h *l1h, int db);
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly);
+int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly);
 int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type);
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn);
