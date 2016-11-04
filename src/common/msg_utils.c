@@ -22,6 +22,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/amr.h>
+#include <osmo-bts/rsl.h>
 
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -120,8 +121,15 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 	lchan->tch.dtx.len = copy_len + amr;
 	/* SID FIRST is special because it's both sent and cached: */
 	if (update == 0) {
-		lchan->tch.dtx.fn = fn;
 		lchan->tch.dtx.is_update = false; /* Mark SID FIRST explicitly */
+		/* for non-AMR case - always update FN for incoming SID FIRST */
+		if (!amr ||
+		    (dtx_dl_amr_enabled(lchan) &&
+		     lchan->tch.dtx.dl_amr_fsm->state != ST_SID_U))
+			lchan->tch.dtx.fn = fn;
+		/* for AMR case - do not update FN if SID FIRST arrives in a
+		   middle of silence: this should not be happening according to
+		   the spec */
 	}
 
 	memcpy(lchan->tch.dtx.cache + amr, l1_payload, copy_len);
@@ -148,12 +156,16 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	int8_t sti, cmi;
 	int rc;
 
-	if (rtp_pl == NULL) { /* SID-FIRST P1 -> P2 */
+	if (lchan->type == GSM_LCHAN_TCH_H && /* SID-FIRST P1 -> P2 completion */
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 && !rtp_pl) {
 		*len = 3;
 		memcpy(l1_payload, lchan->tch.dtx.cache, 2);
-		dtx_dispatch(lchan, E_COMPL);
+		dtx_dispatch(lchan, E_SID_U);
 		return 0;
 	}
+
+	if (!rtp_pl_len)
+		return -EBADMSG;
 
 	rc = osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
 	if (rc < 0) {
@@ -199,10 +211,15 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	}
 
 	if (ft == AMR_SID) {
-		dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
-		if (lchan->tch.dtx.dl_amr_fsm->state == ST_VOICE)
+		if (lchan->tch.dtx.dl_amr_fsm->state == ST_VOICE) {
+			/* SID FIRST/UPDATE scheduling logic relies on SID FIRST
+			   being sent first hence we have to force caching of SID
+			   as FIRST regardless of actually decoded type */
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, false);
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_SID_F, (void *)lchan);
+		} else
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
 		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 					      sti ? E_SID_U : E_SID_F,
 					      (void *)lchan);
@@ -220,11 +237,14 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	return 0;
 }
 
+/* STI is located in payload byte 6, cache contains 2 byte prefix (CMR/CMI)
+ * STI set = SID UPDATE, STI unset = SID FIRST
+ */
 static inline void dtx_sti_set(struct gsm_lchan *lchan)
 {
 	lchan->tch.dtx.cache[6 + 2] |= STI_BIT_MASK;
 }
-/* STI is located in payload byte 6, cache contains 2 byte prefix (CMR/CMI) */
+
 static inline void dtx_sti_unset(struct gsm_lchan *lchan)
 {
 	lchan->tch.dtx.cache[6 + 2] &= ~STI_BIT_MASK;
@@ -241,17 +261,27 @@ static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 	uint32_t dx26 = 120 * (fn - lchan->tch.dtx.fn);
 
 	/* We're resuming after FACCH interruption */
-	if (lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH ||
-	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F) {
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
 		/* force STI bit to 0 so cache is treated as SID FIRST */
 		dtx_sti_unset(lchan);
 		lchan->tch.dtx.is_update = false;
-		osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_SID_F,
-				       (void *)lchan);
-		/* this FN was already used for ONSET message so we just prepare
-		   things for next one */
+		/* check that this FN has not been used for FACCH message
+		   already: we rely here on the order of RTS arrival from L1 - we
+		   expect that PH-DATA.req ALWAYS comes before PH-TCH.req for the
+		   same FN */
+		if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY) {
+			/* FACCH interruption is over */
+			dtx_dispatch(lchan, E_COMPL);
+			return false;
+		} else
+			lchan->tch.dtx.fn = fn;
+		/* this FN was already used for FACCH or ONSET message so we just
+		   prepare things for next one */
 		return true;
 	}
+
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_VOICE)
+		return true;
 
 	/* according to 3GPP TS 26.093 A.5.1.1:
 	   (*26) to avoid float math, add 1 FN tolerance (-120) */
@@ -297,6 +327,11 @@ static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 	return false;
 }
 
+/*! \brief Check if DTX DL AMR is enabled for a given lchan (it have proper type,
+ *         FSM is allocated etc.)
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \returns true if DTX DL AMR is enabled, false otherwise
+ */
 bool dtx_dl_amr_enabled(const struct gsm_lchan *lchan)
 {
 	if (lchan->ts->trx->bts->dtxd &&
@@ -306,6 +341,31 @@ bool dtx_dl_amr_enabled(const struct gsm_lchan *lchan)
 	return false;
 }
 
+/*! \brief Check if DTX DL AMR FSM state is recursive: requires secondary
+ *         response to a single RTS request from L1.
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \returns true if DTX DL AMR FSM state is recursive, false otherwise
+ */
+bool dtx_recursion(const struct gsm_lchan *lchan)
+{
+	if (!dtx_dl_amr_enabled(lchan))
+		return false;
+
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_V ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F_REC ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_V_REC)
+		return true;
+
+	return false;
+}
+
+/*! \brief Send signal to FSM: with proper check if DIX is enabled for this lchan
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] e DTX DL AMR FSM Event
+ */
 void dtx_dispatch(struct gsm_lchan *lchan, enum dtx_dl_amr_fsm_events e)
 {
 	if (dtx_dl_amr_enabled(lchan))
@@ -313,7 +373,23 @@ void dtx_dispatch(struct gsm_lchan *lchan, enum dtx_dl_amr_fsm_events e)
 				       (void *)lchan);
 }
 
-/* repeat last SID if possible, returns SID length + 1 or 0 */
+/*! \brief Send internal signal to FSM: check that DTX is enabled for this chan,
+ *         check that current FSM and lchan states are permitting such signal.
+ *         Note: this should be the only way to dispatch E_COMPL to FSM from
+ *               BTS code.
+ *  \param[in] lchan Logical channel on which we check scheduling
+ */
+void dtx_int_signal(struct gsm_lchan *lchan)
+{
+	if (!dtx_dl_amr_enabled(lchan))
+		return;
+
+	if ((lchan->type == GSM_LCHAN_TCH_H &&
+	     lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1) ||
+	    dtx_recursion(lchan))
+		dtx_dispatch(lchan, E_COMPL);
+}
+
 /*! \brief Repeat last SID if possible in case of DTX
  *  \param[in] lchan Logical channel on which we check scheduling
  *  \param[in] dst Buffer to copy last SID into
@@ -334,13 +410,26 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 			return 0;
 
 	if (lchan->tch.dtx.len) {
+		if (dtx_dl_amr_enabled(lchan)) {
+			if ((lchan->type == GSM_LCHAN_TCH_H &&
+			     lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2) ||
+			    (lchan->type == GSM_LCHAN_TCH_F &&
+			     lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1)) {
+				/* advance FSM in case we've just sent SID FIRST
+				   to restore silence after FACCH interruption */
+				osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						       E_SID_U, (void *)lchan);
+				dtx_sti_unset(lchan);
+			} else if (lchan->tch.dtx.dl_amr_fsm->state ==
+				   ST_SID_U) {
+				/* enforce SID UPDATE for next repetition: it
+				   might have been altered by FACCH handling */
+				dtx_sti_set(lchan);
+			lchan->tch.dtx.is_update = true;
+			}
+		}
 		memcpy(dst, lchan->tch.dtx.cache, lchan->tch.dtx.len);
 		lchan->tch.dtx.fn = fn;
-		/* enforce SID UPDATE for next repetition - it might have
-		   been altered by FACCH handling */
-		dtx_sti_set(lchan);
-		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
-			lchan->tch.dtx.is_update = true;
 		return lchan->tch.dtx.len + 1;
 	}
 

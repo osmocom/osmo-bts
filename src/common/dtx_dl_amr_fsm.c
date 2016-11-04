@@ -96,11 +96,8 @@ void dtx_fsm_sid_f2(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_f1_inh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_VOICE:
-		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
-		break;
-	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_F1_INH_REC, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -112,11 +109,34 @@ void dtx_fsm_f1_inh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_u_inh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_VOICE:
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_U_INH_REC, 0, 0);
+		break;
+	default:
+		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
+		OSMO_ASSERT(0);
+		break;
+	}
+}
+
+void dtx_fsm_f1_inh_rec(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	switch (event) {
+	case E_COMPL:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
-	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+	default:
+		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
+		OSMO_ASSERT(0);
+		break;
+	}
+}
+
+void dtx_fsm_u_inh_rec(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	switch (event) {
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -155,13 +175,8 @@ void dtx_fsm_sid_upd(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_onset_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_SID_F:
-	case E_SID_U:
-	case E_VOICE:
-		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
-		break;
-	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH_V, 0, 0);
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_V_REC, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -173,14 +188,8 @@ void dtx_fsm_onset_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_onset_f(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_SID_F:
-	case E_SID_U:
-		break;
-	case E_VOICE:
-		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
-		break;
-	case E_FACCH:
-		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F_REC, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -189,17 +198,24 @@ void dtx_fsm_onset_f(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	}
 }
 
-void dtx_fsm_facch_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+void dtx_fsm_onset_v_rec(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_FACCH:
-		break;
-	case E_VOICE:
+	case E_COMPL:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
-	case E_SID_U:
+	default:
+		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
+		OSMO_ASSERT(0);
 		break;
-	case E_SID_F:
+	}
+}
+
+void dtx_fsm_onset_f_rec(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	switch (event) {
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_FACCH, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -211,13 +227,14 @@ void dtx_fsm_facch_v(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_facch(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
+	case E_SID_U:
+	case E_SID_F:
 	case E_FACCH:
 		break;
 	case E_VOICE:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
 		break;
-	case E_SID_U:
-	case E_SID_F:
+	case E_COMPL:
 		osmo_fsm_inst_state_chg(fi, ST_SID_F1, 0, 0);
 		break;
 	default:
@@ -244,28 +261,42 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 		.action = dtx_fsm_sid_f1,
 	},
 	/* SID-FIRST P2 (only for AMR HR):
-	   actual start of silence period in case of AMR HR*/
+	   actual start of silence period in case of AMR HR */
 	[ST_SID_F2]= {
 		.in_event_mask = X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_ONSET),
 		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_ONSET_V),
 		.name = "SID-FIRST (P2)",
 		.action = dtx_fsm_sid_f2,
 	},
-	/* SID-FIRST Inhibited:
-	   incoming SPEECH or FACCH (only for AMR HR) */
+	/* SID-FIRST Inhibited: incoming SPEECH (only for AMR HR) */
 	[ST_F1_INH]= {
-		.in_event_mask = X(E_VOICE) | X(E_FACCH),
-		.out_state_mask = X(ST_VOICE) | X(ST_FACCH_V),
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_F1_INH_REC),
 		.name = "SID-FIRST (Inh)",
 		.action = dtx_fsm_f1_inh,
 	},
-	/* SID-UPDATE Inhibited:
-	   incoming SPEECH or FACCH (only for AMR HR) */
+	/* SID-UPDATE Inhibited: incoming SPEECH (only for AMR HR) */
 	[ST_U_INH]= {
-		.in_event_mask = X(E_VOICE) | X(E_FACCH),
-		.out_state_mask = X(ST_VOICE) | X(ST_FACCH),
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_U_INH_REC),
 		.name = "SID-UPDATE (Inh)",
 		.action = dtx_fsm_u_inh,
+	},
+	/* SID-FIRST Inhibition recursion in progress:
+	   Inhibit itself was already sent, now have to send the voice that caused it */
+	[ST_F1_INH_REC]= {
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_VOICE),
+		.name = "SID-FIRST (Inh, Rec)",
+		.action = dtx_fsm_f1_inh_rec,
+	},
+	/* SID-UPDATE Inhibition recursion in progress:
+	   Inhibit itself was already sent, now have to send the voice that caused it */
+	[ST_U_INH_REC]= {
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_VOICE),
+		.name = "SID-UPDATE (Inh, Rec)",
+		.action = dtx_fsm_u_inh_rec,
 	},
 	/* Silence period with periodic comfort noise data updates */
 	[ST_SID_U]= {
@@ -276,31 +307,39 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 	},
 	/* ONSET - end of silent period due to incoming SPEECH frame */
 	[ST_ONSET_V]= {
-		.in_event_mask = X(E_SID_F) | X(E_SID_U) | X(E_VOICE) | X(E_FACCH),
-		.out_state_mask = X(ST_VOICE) | X(ST_FACCH_V),
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_ONSET_V_REC),
 		.name = "ONSET (SPEECH)",
 		.action = dtx_fsm_onset_v,
 	},
 	/* ONSET - end of silent period due to incoming FACCH frame */
 	[ST_ONSET_F]= {
-		.in_event_mask = X(E_VOICE) | X(E_FACCH) | X(E_SID_U) | X(E_SID_F),
-		.out_state_mask = X(ST_VOICE) | X(ST_FACCH),
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_ONSET_F_REC),
 		.name = "ONSET (FACCH)",
 		.action = dtx_fsm_onset_f,
 	},
-	/* FACCH sending state: SPEECH was observed before so once we're done
-	   FSM should get back to VOICE state */
-	[ST_FACCH_V]= {
-		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_SID_U) | X(E_SID_F),
-		.out_state_mask = X(ST_FACCH_V) | X(ST_VOICE) | X(ST_SID_F1),
-		.name = "FACCH (SPEECH)",
-		.action = dtx_fsm_facch_v,
+	/* ONSET recursion in progress:
+	   ONSET itself was already sent, now have to send the voice that caused it */
+	[ST_ONSET_V_REC]= {
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_VOICE),
+		.name = "ONSET (SPEECH, Rec)",
+		.action = dtx_fsm_onset_v_rec,
+	},
+	/* ONSET recursion in progress:
+	   ONSET itself was already sent, now have to send the data that caused it */
+	[ST_ONSET_F_REC]= {
+		.in_event_mask = X(E_COMPL),
+		.out_state_mask = X(ST_FACCH),
+		.name = "ONSET (FACCH, Rec)",
+		.action = dtx_fsm_onset_f_rec,
 	},
 	/* FACCH sending state: no SPEECH was observed before so once we're done
 	   FSM should get back to silent period via SID-FIRST */
 	[ST_FACCH]= {
-		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_SID_U) | X(E_SID_F),
-		.out_state_mask = X(ST_FACCH_V) | X(ST_VOICE) | X(ST_SID_F1),
+		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_COMPL) | X(E_SID_U) | X(E_SID_F),
+		.out_state_mask = X(ST_VOICE) | X(ST_SID_F1),
 		.name = "FACCH",
 		.action = dtx_fsm_facch,
 	},
@@ -310,7 +349,7 @@ const struct value_string dtx_dl_amr_fsm_event_names[] = {
 	{ E_VOICE,	"Voice" },
 	{ E_ONSET,	"ONSET" },
 	{ E_FACCH,	"FACCH" },
-	{ E_COMPL,	"Complete P1 -> P2" },
+	{ E_COMPL,	"Complete" },
 	{ E_INHIB,	"Inhibit" },
 	{ E_SID_F,	"SID-FIRST" },
 	{ E_SID_U,	"SID-UPDATE" },

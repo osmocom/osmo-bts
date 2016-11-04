@@ -53,6 +53,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/msg_utils.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
 
 #include <nrw/litecell15/litecell15.h>
@@ -339,7 +340,6 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, u8BlockNbr = 0, sapi = 0;
 	uint8_t chan_nr, link_id;
-	bool rec = false;
 	int len;
 
 	if (!msg) {
@@ -355,6 +355,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	u32Fn = l1sap->u.data.fn;
 	u8Tn = L1SAP_CHAN2TS(chan_nr);
 	subCh = 0x1f;
+	lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		sapi = GsmL1_Sapi_Sacch;
 		if (!L1SAP_IS_CHAN_TCHF(chan_nr))
@@ -404,8 +405,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (len) {
 		/* data request */
 		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
-		lchan = get_lchan_by_chan_nr(trx, chan_nr);
-
+		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
 		if (use_cache)
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer,
 			       lchan->tch.dtx.facch, msgb_l2len(msg));
@@ -423,20 +423,25 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 				memcpy(lchan->tch.dtx.facch, msg->l2h,
 				       msgb_l2len(msg));
 				/* prepare ONSET message */
-				len = 3;
 				l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
 					GsmL1_TchPlType_Amr_Onset;
 				/* ignored CMR/CMI pair */
 				l1p->u.phDataReq.msgUnitParam.u8Buffer[1] = 0;
 				l1p->u.phDataReq.msgUnitParam.u8Buffer[2] = 0;
-				/* ONSET is ready, recursive call is necessary */
-				rec = true;
+				/* update length */
+				data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi,
+						    subCh, u8BlockNbr, 3);
+				/* update FN so it can be checked by TCH silence
+				   resume handler */
+				lchan->tch.dtx.fn = LCHAN_FN_DUMMY;
 			}
+		} else if (dtx_dl_amr_enabled(lchan) &&
+			   lchan->tch.dtx.dl_amr_fsm->state == ST_FACCH) {
+			/* update FN so it can be checked by TCH silence
+			   resume handler */
+			lchan->tch.dtx.fn = LCHAN_FN_DUMMY;
 		}
-
-		data_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr, len);
-
-		if (!rec && !use_cache) {
+		else {
 			OSMO_ASSERT(msgb_l2len(msg) <= sizeof(l1p->u.phDataReq.msgUnitParam.u8Buffer));
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h,
 			       msgb_l2len(msg));
@@ -455,9 +460,10 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
 		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(l1msg);
-	}
+	} else
+		dtx_int_signal(lchan);
 
-	if (rec)
+	if (dtx_recursion(lchan))
 		ph_data_req(trx, msg, l1sap, true);
 	return 0;
 }
@@ -536,8 +542,9 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
+	dtx_int_signal(lchan);
 
-	if (rc > 0 && trx->bts->dtxd) /* DTX: send voice after ONSET was sent */
+	if (dtx_recursion(lchan)) /* DTX: send voice after ONSET was sent */
 		return ph_tch_req(trx, l1sap->oph.msg, l1sap, true, false);
 
 	return 0;

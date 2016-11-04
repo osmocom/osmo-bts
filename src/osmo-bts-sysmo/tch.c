@@ -403,9 +403,6 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			*payload_type = GsmL1_TchPlType_Amr;
 			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
 					     ft);
-			/* force STI bit to 0 to make sure resume after FACCH
-			   works properly */
-			l1_payload[6 + 2] &= ~16;
 			return 0;
 		case ST_SID_F2:
 			*payload_type = GsmL1_TchPlType_Amr;
@@ -424,7 +421,6 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			return 1;
 		case ST_SID_U:
 			return -EAGAIN;
-		case ST_FACCH_V:
 		case ST_FACCH:
 			return -EBADMSG;
 		default:
@@ -598,19 +594,17 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_AMR:
 		if (lchan->type == GSM_LCHAN_TCH_H &&
-		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 &&
 		    dtx_dl_amr_enabled(lchan)) {
+			/* we have to explicitly handle sending SID FIRST P2 for
+			   AMR HR in here */
 			*payload_type = GsmL1_TchPlType_Amr_SidFirstP2;
 			rc = dtx_dl_amr_fsm_step(lchan, NULL, 0, fn, l1_payload,
 						 false, &(msu_param->u8Size),
 						 NULL);
-			if (rc < 0) {
-				msgb_free(msg);
-				return NULL;
-			}
-			return msg;
-		} else
-			*payload_type = GsmL1_TchPlType_Amr;
+			if (rc == 0)
+				return msg;
+		}
+		*payload_type = GsmL1_TchPlType_Amr;
 		break;
 	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
@@ -626,13 +620,12 @@ struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 		return NULL;
 	}
 
-	if (dtx_dl_amr_enabled(lchan)) {
-		rc = repeat_last_sid(lchan, l1_payload, fn);
-		if (!rc) {
-			msgb_free(msg);
-			return NULL;
-		}
-		msu_param->u8Size = rc;
+	rc = repeat_last_sid(lchan, l1_payload, fn);
+	if (!rc) {
+		msgb_free(msg);
+		return NULL;
 	}
+	msu_param->u8Size = rc;
+
 	return msg;
 }

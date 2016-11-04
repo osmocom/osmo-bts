@@ -14,10 +14,13 @@ enum dtx_dl_amr_fsm_states {
 	ST_SID_F2,
 	ST_F1_INH,
 	ST_U_INH,
+	ST_F1_INH_REC,
+	ST_U_INH_REC,
 	ST_SID_U,
 	ST_ONSET_V,
 	ST_ONSET_F,
-	ST_FACCH_V,
+	ST_ONSET_V_REC,
+	ST_ONSET_F_REC,
 	ST_FACCH,
 };
 
