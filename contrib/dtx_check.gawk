@@ -40,7 +40,7 @@ BEGIN {
 			CHK = "FAIL: " TYPE " followed by " $2 " instead of P2."
 			ERR++
 		}
-		if ("OK" == CHK) { # check inter-SID distances:
+		if ("OK" == CHK && "ONSET" != $2) { # check inter-SID distances:
 			if ("UPDATE" == TYPE) {
 				if (DELTA > U_MAX) {
 					CHK = "FAIL: delta (" $1 - FN "fn) from previous SID UPDATE (@" FN ") too big " DELTA "ms > " U_MAX "ms."
@@ -62,8 +62,8 @@ BEGIN {
 				}
 			}
 		}
-		if ("FACCH" == TYPE && "FIRST" != $2 && 1 == SILENCE) { # check FACCH handling
-			CHK = "FAIL: incorrect silence resume after FACCH."
+		if ("FACCH" == TYPE && "FIRST" != $2 && "FACCH" != $2 && 1 == SILENCE) { # check FACCH handling
+			CHK = "FAIL: incorrect silence resume with " $2 " after FACCH."
 			ERR++
 		}
 	}
