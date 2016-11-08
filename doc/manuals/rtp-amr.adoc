@@ -1322,10 +1322,25 @@ There is FSM implementing all the necessary states and transitions for DTX DL.
 include::dtx.dot[]
 ----
 
-The idea is that each state corresponds to the particular message type which have to be send to L1 while state transition happens on incoming events like FACCH or Voice frames. There are 3 different classes of of events driving this FSM:
+The idea is that each state corresponds to the particular message type which have to be send to L1 next while state transition happens on incoming events like FACCH or Voice frames. There are 3 different classes of of events driving this FSM:
 
 * Voice frame types: E_VOICE, E_SID_U, E_SID_F
 * Incoming FACCH: E_FACCH
 * Internal: E_ONSET, E_INHIB, E_COMPL
 
 They represent different types of incoming RTP frames (Voice, SID UPDATE and SID FIRST correspondingly), incoming FACCH events or important events internal to DTX operations. The latter are Onset (interruption of silence period), Inhibition (of currently transmitted SID FIRST or UPDATE) and Completion (of silence initiation).
+
+The double-circled states are "stationary" meaning that FSM can stay for longer periods in them. Other states are "transient" - the FSM have to switch away during next step. In practice this is implemented using E_COMPL signal which is issued in corresponding RTS handler or internal function (in case of SID First P1 -> P2 transition).
+
+The FSM states are grouped as follows:
+
+* ST_VOICE: talkspurt, normal voice transmission
+* ST_FACCH: transmission of higher-priority FACCH frame, interrupting current DTX state
+* ST_ONSET*: handling of Onset event (interruption of silence period)
+* ST_SID_F*: silence initiation
+* ST_*_REC: sending of 2nd event for L1 during the same FN
+* ST_*_INH: handling of Inhibition event (interruption of transmission of previous event)
+
+The latter are specific to AMR HR where transmission of particular message by L1 takes longer so it can be aborted due to another incoming event. Note that for AMR FR only subset of this FSM is active (ST_SID_F2 and *INH states are never reached). This is implemented by signal emitting functions.
+
+Note that the FSM states describe only the situation when we got to send something to L1, the transmission of Empty frames suppressing the actual radio transmission is done by other code.

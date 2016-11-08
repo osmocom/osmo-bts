@@ -1,43 +1,68 @@
 digraph dtx_dl_amr_fsm {
-	node [shape = doublecircle] ST_VOICE ST_FACCH_V ST_FACCH ST_SID_U
+	node [shape = doublecircle] ST_VOICE ST_FACCH ST_U_NOINH
 	node [shape = circle]
 
 	// default state for non-DTX and DTX when SPEECH is in progress
 	ST_VOICE -> ST_SID_F1 [ label = "E_SID_F" ]
-	ST_VOICE -> ST_SID_F1 [ label = "E_SID_U" ]
+	ST_VOICE -> ST_F1_INH_V [ label = "E_INHIB" ]
+	ST_VOICE -> ST_U_NOINH [ label = "E_SID_U" ]
 	ST_VOICE -> ST_VOICE [ label = "E_VOICE" ]
 	ST_VOICE -> ST_VOICE [ label = "E_FACCH" ]
 
 	// SID-FIRST or SID-FIRST-P1 in case of AMR HR: start of silence period (might be interrupted in case of AMR HR)
 	ST_SID_F1 -> ST_SID_F1 [ label = "E_SID_F" ]
-	ST_SID_F1 -> ST_SID_U [ label = "E_SID_U" ]
-	ST_SID_F1 -> ST_VOICE [ label = "E_VOICE" ]
-        ST_SID_F1 -> ST_ONSET_F [ label = "E_FACCH" ]
-	ST_SID_F1 -> ST_SID_F2  [ label = "E_COMPL" ]
-	ST_SID_F1 -> ST_F1_INH  [ label = "E_INHIB" ]
+	ST_SID_F1 -> ST_U_NOINH [ label = "E_SID_U" ]
+        ST_SID_F1 -> ST_F1_INH_F [ label = "E_FACCH" ]
+	ST_SID_F1 -> ST_SID_F2  [ label = "E_FIRST" ]
 	ST_SID_F1 -> ST_ONSET_V [ label = "E_ONSET" ]
 
 	// SID-FIRST P2 (only for AMR HR): actual start of silence period in case of AMR HR
-	ST_SID_F2 -> ST_SID_U [ label = "E_SID_U" ]
-	ST_SID_F2 -> ST_VOICE [ label = "E_VOICE" ]
+	ST_SID_F2 -> ST_U_NOINH [ label = "E_COMPL" ]
 	ST_SID_F2 -> ST_ONSET_F [ label = "E_FACCH" ]
 	ST_SID_F2 -> ST_ONSET_V [ label = "E_ONSET" ]
 
-	// SID-FIRST Inhibited: incoming SPEECH or FACCH (only for AMR HR)
-	ST_F1_INH -> ST_VOICE [ label = "E_VOICE" ]
-	ST_F1_INH -> ST_FACCH_V [ label = "E_FACCH" ]
+	// SID-FIRST Inhibited: incoming SPEECH (only for AMR HR)
+	ST_F1_INH_V -> ST_F1_INH_V_REC [ label = "E_COMPL" ]
 
-	// SID-UPDATE Inhibited: incoming SPEECH or FACCH (only for AMR HR)
-	ST_U_INH -> ST_VOICE [ label = "E_VOICE" ]
-	ST_U_INH -> ST_FACCH [ label = "E_FACCH" ]
+	// SID-FIRST Inhibited: incoming FACCH frame (only for AMR HR)
+	ST_F1_INH_F -> ST_F1_INH_F_REC [ label = "E_COMPL" ]
 
-	// Silence period with periodic comfort noise data updates
-	ST_SID_U -> ST_ONSET_F [ label = "E_FACCH" ]
+	// SID-UPDATE Inhibited: incoming SPEECH (only for AMR HR)
+	ST_U_INH_V -> ST_U_INH_V_REC [ label = "E_COMPL" ]
+
+	// SID-UPDATE Inhibited: incoming FACCH frame (only for AMR HR)
+	ST_U_INH_F -> ST_U_INH_F_REC [ label = "E_COMPL" ]
+
+	// Silence period with periodic comfort noise data updates (no Inhibition)
+	ST_U_NOINH -> ST_ONSET_F [ label = "E_FACCH" ]
+	ST_U_NOINH -> ST_VOICE [ label = "E_VOICE" ]
+	ST_U_NOINH -> ST_U_NOINH [ label = "E_SID_U" ]
+	ST_U_NOINH -> ST_U_NOINH [ label = "E_SID_F" ]
+	ST_U_NOINH -> ST_ONSET_V [ label = "E_ONSET" ]
+	ST_U_NOINH -> ST_SID_U [ label = "E_COMPL" ]
+
+	// SID-FIRST Inhibition recursion in progress: Inhibit itself was already sent, now have to send the voice that caused it
+	ST_F1_INH_V_REC -> ST_VOICE [ label = "E_COMPL" ]
+	ST_F1_INH_V_REC -> ST_VOICE [ label = "E_VOICE" ]
+
+	// SID-FIRST Inhibition recursion in progress: Inhibit itself was already sent, now have to send the voice that caused it
+	ST_F1_INH_F_REC -> ST_FACCH [ label = "E_COMPL" ]
+	ST_F1_INH_F_REC -> ST_FACCH [ label = "E_VOICE" ]
+
+	// SID-UPDATE Inhibition recursion in progress: Inhibit itself was already sent, now have to send the voice that caused it
+	ST_U_INH_V_REC -> ST_VOICE [ label = "E_COMPL" ]
+	ST_U_INH_V_REC -> ST_VOICE [ label = "E_VOICE" ]
+
+	// SID-UPDATE Inhibition recursion in progress: Inhibit itself was already sent, now have to send the voice that caused it
+	ST_U_INH_F_REC -> ST_FACCH [ label = "E_COMPL" ]
+	ST_U_INH_F_REC -> ST_FACCH [ label = "E_VOICE" ]
+
+	// Silence period with periodic comfort noise data updates (can be inhibited)
+	ST_SID_U -> ST_U_INH_F [ label = "E_FACCH" ]
 	ST_SID_U -> ST_VOICE [ label = "E_VOICE" ]
-	ST_SID_U -> ST_U_INH [ label = "E_INHIB" ]
-	ST_SID_U -> ST_SID_U [ label = "E_SID_U" ]
-	ST_SID_U -> ST_SID_U [ label = "E_SID_F" ]
-	ST_SID_U -> ST_ONSET_V [ label = "E_ONSET" ]
+	ST_SID_U -> ST_U_INH_V [ label = "E_INHIB" ]
+	ST_SID_U -> ST_U_NOINH [ label = "E_SID_U" ]
+	ST_SID_U -> ST_U_NOINH [ label = "E_SID_F" ]
 
 	// ONSET - end of silent period due to incoming SPEECH frame
 	ST_ONSET_V -> ST_ONSET_V_REC [ label = "E_COMPL" ]
@@ -45,21 +70,16 @@ digraph dtx_dl_amr_fsm {
 	// ONSET - end of silent period due to incoming FACCH frame
 	ST_ONSET_F -> ST_ONSET_F_REC [ label = "E_COMPL" ]
 
-	// ONSET recursion in progress: ONSET itself was already sent, now have to send the voice that caused it
-	ST_ONSET_V_REC -> ST_VOICE [ label = "E_COMPL" ]
-
 	// ONSET recursion in progress: ONSET itself was already sent, now have to send the data that caused it
 	ST_ONSET_F_REC -> ST_FACCH [ label = "E_COMPL" ]
 
-	// FACCH sending state: SPEECH was observed before so once we're done FSM should get back to VOICE state
-	ST_FACCH_V -> ST_FACCH_V [ label = "E_FACCH" ]
-	ST_FACCH_V -> ST_VOICE [ label = "E_VOICE" ]
-	ST_FACCH_V -> ST_VOICE [ label = "E_SID_U" ]
-	ST_FACCH_V -> ST_SID_F1 [ label = "E_SID_F" ]
+	// ONSET recursion in progress: ONSET itself was already sent, now have to send the voice that caused it
+	ST_ONSET_V_REC -> ST_VOICE [ label = "E_COMPL" ]
 
-	// FACCH sending state: no SPEECH was observed before so once we're done FSM should get back to silent period via SID-FIRST
-	ST_FACCH -> ST_FACCH [ label = "E_FACCH" ]
+	// FACCH sending state
 	ST_FACCH -> ST_VOICE [ label = "E_VOICE" ]
-	ST_FACCH -> ST_SID_F1 [ label = "E_SID_U" ]
-	ST_FACCH -> ST_SID_F1 [ label = "E_SID_F" ]
+	ST_FACCH -> ST_FACCH [ label = "E_FACCH" ]
+	ST_FACCH -> ST_FACCH [ label = "E_SID_U" ]
+	ST_FACCH -> ST_FACCH [ label = "E_SID_F" ]
+	ST_FACCH -> ST_SID_F1 [ label = "E_COMPL" ]
 }
