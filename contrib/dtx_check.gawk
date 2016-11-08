@@ -40,6 +40,10 @@ BEGIN {
 			CHK = "FAIL: " TYPE " followed by " $2 " instead of P2."
 			ERR++
 		}
+		if ("FIRST" == $2 && "FIRST" == TYPE) {
+			CHK = "FAIL: multiple SID FIRST in a row."
+			ERR++
+		}
 		if ("OK" == CHK && "ONSET" != $2) { # check inter-SID distances:
 			if ("UPDATE" == TYPE) {
 				if (DELTA > U_MAX) {
