@@ -788,6 +788,10 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	l1sap.u.rach_ind.acc_delay = (toa >= 0) ? toa : 0;
 	l1sap.u.rach_ind.fn = fn;
 
+	/* 11bit RACH is not supported for osmo-trx */
+	l1sap.u.rach_ind.is_11bit = 0;
+	l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+
 	/* forward primitive */
 	l1sap_up(l1t->trx, &l1sap);
 
