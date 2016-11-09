@@ -179,13 +179,13 @@ struct gsm_network *gsmnet_from_vty(struct vty *v)
 
 static struct cmd_node bts_node = {
 	BTS_NODE,
-	"%s(bts)#",
+	"%s(bts)# ",
 	1,
 };
 
 static struct cmd_node trx_node = {
 	TRX_NODE,
-	"%s(trx)#",
+	"%s(trx)# ",
 	1,
 };
 
@@ -897,13 +897,13 @@ DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
 
 static struct cmd_node phy_node = {
 	PHY_NODE,
-	"%s(phy)#",
+	"%s(phy)# ",
 	1,
 };
 
 static struct cmd_node phy_inst_node = {
 	PHY_INST_NODE,
-	"%s(phy-inst)#",
+	"%s(phy-inst)# ",
 	1,
 };
 
