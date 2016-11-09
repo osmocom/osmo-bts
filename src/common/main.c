@@ -227,6 +227,7 @@ int bts_main(int argc, char **argv)
 	msgb_talloc_ctx_init(tall_bts_ctx, 100*1024);
 
 	bts_log_init(NULL);
+	vty_init(&bts_vty_info);
 
 	handle_options(argc, argv);
 
@@ -242,7 +243,6 @@ int bts_main(int argc, char **argv)
 			exit(1);
 		}
 	}
-	vty_init(&bts_vty_info);
 	e1inp_vty_init();
 	bts_vty_init(bts, &bts_log_info);
 
