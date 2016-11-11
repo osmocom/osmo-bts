@@ -783,9 +783,9 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	if (chan_nr) {
 		fn = rts_ind->u32Fn;
 		if (rts_ind->sapi == GsmL1_Sapi_Sacch)
-			link_id = 0x40;
+			link_id = LID_SACCH;
 		else
-			link_id = 0;
+			link_id = LID_DEDIC;
 		/* recycle the msgb and use it for the L1 primitive,
 		 * which means that we (or our caller) must not free it */
 		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
@@ -911,7 +911,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return ENOTSUP;
 	}
 	fn = data_ind->u32Fn;
-	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? 0x40 : 0x00;
+	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam);
 

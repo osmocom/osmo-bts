@@ -591,9 +591,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					break;
 				}
 				/* activate dedicated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, 0x00, 1);
+				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, 1);
 				/* activate associated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, 0x40, 1);
+				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, 1);
 				/* set mode */
 				trx_sched_set_mode(&l1h->l1s, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
@@ -641,12 +641,12 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			/* deactivate associated channel */
-			trx_sched_set_lchan(&l1h->l1s, chan_nr, 0x40, 0);
+			trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, 0);
 			if (!l1sap->u.info.u.act_req.sacch_only) {
 				/* set lchan inactive */
 				lchan_set_state(lchan, LCHAN_S_NONE);
 				/* deactivate dedicated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, 0x00, 0);
+				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, 0);
 				/* confirm only on dedicated channel */
 				mph_info_chan_confirm(l1h, chan_nr,
 					PRIM_INFO_DEACTIVATE, 0);

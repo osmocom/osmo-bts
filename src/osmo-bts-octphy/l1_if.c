@@ -862,9 +862,9 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 	chan_nr = chan_nr_by_sapi(trx->ts[ts_num].pchan, sapi, sc, ts_num, fn);
 	if (chan_nr) {
 		if (sapi == cOCTVC1_GSM_SAPI_ENUM_SACCH)
-			link_id = 0x40;
+			link_id = LID_SACCH;
 		else
-			link_id = 0;
+			link_id = LID_DEDIC;
 
 		rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 		if (rc < 0)
@@ -985,9 +985,9 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	}
 
 	if (sapi == cOCTVC1_GSM_SAPI_ENUM_SACCH)
-		link_id = 0x40;
+		link_id = LID_SACCH;
 	else
-		link_id = 0;
+		link_id = LID_DEDIC;
 
 	memset(&l1sap, 0, sizeof(l1sap));
 
