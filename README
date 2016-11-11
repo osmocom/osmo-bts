@@ -1,26 +1,29 @@
-Repository forw the Osmocom BTS implementation.
+= Repository for the Osmocom BTS implementation. =
 
-This code implementes the Layer 2 and higher of a more or less
-conventional GSM BTS (Base Transceiver Station) - however, using an
-Abis/IP interface, rather than the old-fashioned E1/T1.
+For most complete and accurate information, please refer to
+https://osmocom.org/projects/osmobts/wiki
+
+To submit patches, please refer to
+https://osmocom.org/projects/cellular-infrastructure/wiki/Gerrit
+(Note: github pull requests are rejected by a bot)
+
+== Summary ==
+
+This code implements Layer 2 and higher of a more or less conventional GSM BTS
+(Base Transceiver Station) - however, using an Abis/IP interface, rather than
+the old-fashioned E1/T1.
 
 Specifically, this includes
- * BTS-Side implementation of TS 08.58 (RSL) and TS 12.21 (OML)
- * BTS-Side implementation of LAPDm (using libosmocore/libosmogsm)
- * A somewhat separated interface between those higher layer parts
-   and the Layer1 interface.
+ * BTS-side implementation of TS 08.58 (RSL) and TS 12.21 (OML)
+ * BTS-side implementation of LAPDm (using libosmocore/libosmogsm)
+ * A somewhat separated interface between those higher layer parts and the
+   Layer1 interface.
 
-Right now, only one hardware and Layer1 are supported:  The sysmocom
-sysmoBTS.
-
-There is some experimental and way incomplete code to use a couple of
-OsmocomBB phones and run them in the BTS.  However, the required code
-for the Calypso DSP code have not been written yet.  This would still
-require a lot of work.
-
-Some additional work is being done in using some parts of the OpenBTS
-L1FEC and glue it against omso-bts.  This code is called osmo-trx and
-requires the jolly/trx branch of this repository.
+Several kinds of BTS hardware are supported:
+ * sysmocom sysmoBTS
+ * Octasic octphy
+ * Nutaq litecell 1.5
+ * software-defined radio based osmo-bts-trx (e.g. B210)
 
 == Known Limitations ==
 
@@ -52,5 +55,3 @@ implementation:
  * Doesn't yet include MAC address in Abis/IP Identity message
  * MphConfig.CNF can be returned to the wrong callback. E.g. with Tx Power
    and ciphering. The dispatch should take a look at the hLayer3.
-
-
