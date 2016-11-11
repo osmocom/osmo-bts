@@ -2448,6 +2448,12 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	return ret;
 }
 
+int lchan_deactivate(struct gsm_lchan *lchan)
+{
+	lchan->ciph_state = 0;
+	return bts_model_lchan_deactivate(lchan);
+}
+
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);

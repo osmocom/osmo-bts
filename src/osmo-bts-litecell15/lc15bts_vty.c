@@ -46,15 +46,14 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
+#include <osmo-bts/bts_model.h>
 #include <osmo-bts/vty.h>
 
 #include "lc15bts.h"
 #include "l1_if.h"
 #include "utils.h"
 
-
 extern int lchan_activate(struct gsm_lchan *lchan);
-extern int lchan_deactivate(struct gsm_lchan *lchan);
 
 #define TRX_STR "Transceiver related commands\n" "TRX number\n"
 

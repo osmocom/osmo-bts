@@ -144,6 +144,23 @@ int check_transceiver_availability(struct gsm_bts *bts, int avail)
 	return 0;
 }
 
+int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
+{
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	/* set lchan inactive */
+	lchan_set_state(lchan, LCHAN_S_NONE);
+
+	return trx_sched_set_lchan(&l1h->l1s, lchan->nr, LID_DEDIC, 0);
+}
+
+int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
+{
+	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	return trx_sched_set_lchan(&l1h->l1s, lchan->nr, LID_SACCH, 0);
+}
 
 /*
  * transceiver provisioning
@@ -646,16 +663,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			/* deactivate associated channel */
-			trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, 0);
+			bts_model_lchan_deactivate_sacch(lchan);
 			if (!l1sap->u.info.u.act_req.sacch_only) {
-				/* set lchan inactive */
-				lchan_set_state(lchan, LCHAN_S_NONE);
 				/* deactivate dedicated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, 0);
+				lchan_deactivate(lchan);
 				/* confirm only on dedicated channel */
 				mph_info_chan_confirm(l1h, chan_nr,
 					PRIM_INFO_DEACTIVATE, 0);
-				lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 			}
 			break;
 		default:

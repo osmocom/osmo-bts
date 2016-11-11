@@ -45,6 +45,9 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan);
 
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
+int bts_model_lchan_deactivate(struct gsm_lchan *lchan);
+int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan);
+
 void bts_model_abis_close(struct gsm_bts *bts);
 
 int bts_model_ctrl_cmds_install(struct gsm_bts *bts);

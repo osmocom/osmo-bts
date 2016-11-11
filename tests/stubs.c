@@ -40,6 +40,8 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
 { return 0; }
 
+int bts_model_lchan_deactivate(struct gsm_lchan *lchan) { return 0; }
+int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan) { return 0; }
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 { return 0; }

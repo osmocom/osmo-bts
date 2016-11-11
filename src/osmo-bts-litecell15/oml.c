@@ -1656,10 +1656,9 @@ static void enqueue_rel_marker(struct gsm_lchan *lchan)
 	queue_sapi_command(lchan, cmd);
 }
 
-int lchan_deactivate(struct gsm_lchan *lchan)
+int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
 	lchan_set_state(lchan, LCHAN_S_REL_REQ);
-	lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 	enqueue_rel_marker(lchan);
 	return 0;
 }
@@ -1674,7 +1673,7 @@ static void enqueue_sacch_rel_marker(struct gsm_lchan *lchan)
 	queue_sapi_command(lchan, cmd);
 }
 
-static int lchan_deactivate_sacch(struct gsm_lchan *lchan)
+int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
 	enqueue_sacch_rel_marker(lchan);
 	return 0;
@@ -1858,7 +1857,7 @@ int l1if_rsl_deact_sacch(struct gsm_lchan *lchan)
 	/* Only de-activate the SACCH if the lchan is active */
 	if (lchan->state != LCHAN_S_ACTIVE)
 		return 0;
-	return lchan_deactivate_sacch(lchan);
+	return bts_model_lchan_deactivate_sacch(lchan);
 }
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
