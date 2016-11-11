@@ -205,15 +205,13 @@ const struct value_string gsmtap_sapi_names[] = {
 
 /* send primitive as gsmtap */
 static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+			  uint8_t *ss, uint32_t fn, uint8_t **data, int *len)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr, link_id;
 
 	*data = msg->data + sizeof(struct osmo_phsap_prim);
 	*len = msg->len - sizeof(struct osmo_phsap_prim);
-	*fn = l1sap->u.data.fn;
-	*tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
 	chan_nr = l1sap->u.data.chan_nr;
 	link_id = l1sap->u.data.link_id;
 
@@ -234,7 +232,7 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 #warning Set BS_AG_BLKS_RES
 		/* The sapi depends on DSP configuration, not
 		 * on the actual SYSTEM INFORMATION 3. */
-		if (L1SAP_FN2CCCHBLOCK(*fn) >= 1)
+		if (L1SAP_FN2CCCHBLOCK(fn) >= 1)
 			*chan_type = GSMTAP_CHANNEL_PCH;
 		else
 			*chan_type = GSMTAP_CHANNEL_AGCH;
@@ -246,18 +244,16 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 }
 
 static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+		       uint8_t *ss, uint32_t fn, uint8_t **data, int *len)
 {
 	struct msgb *msg = l1sap->oph.msg;
 
 	*data = msg->data + sizeof(struct osmo_phsap_prim);
 	*len = msg->len - sizeof(struct osmo_phsap_prim);
-	*fn = l1sap->u.data.fn;
-	*tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
 
-	if (L1SAP_IS_PTCCH(*fn)) {
+	if (L1SAP_IS_PTCCH(fn)) {
 		*chan_type = GSMTAP_CHANNEL_PTCCH;
-		*ss = L1SAP_FN2PTCCHBLOCK(*fn);
+		*ss = L1SAP_FN2PTCCHBLOCK(fn);
 		if (l1sap->oph.primitive
 				== PRIM_OP_INDICATION) {
 			if ((*data[0]) == 7)
@@ -309,12 +305,14 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		uplink = 0;
 		/* fall through */
 	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
+		fn = l1sap->u.data.fn;
+		tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
 		if (ts_is_pdch(&trx->ts[tn]))
-			rc = gsmtap_pdch(l1sap, &chan_type, &tn, &ss, &fn, &data,
-				&len);
+			rc = gsmtap_pdch(l1sap, &chan_type, &ss, fn, &data,
+					 &len);
 		else
-			rc = gsmtap_ph_data(l1sap, &chan_type, &tn, &ss, &fn,
-				&data, &len);
+			rc = gsmtap_ph_data(l1sap, &chan_type, &ss, fn, &data,
+					    &len);
 		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
 		rc = gsmtap_ph_rach(l1sap, &chan_type, &tn, &ss, &fn, &data,
