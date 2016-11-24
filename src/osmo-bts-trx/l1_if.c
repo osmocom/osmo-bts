@@ -71,19 +71,22 @@ struct trx_l1h *l1if_open(struct phy_instance *pinst)
 		return NULL;
 	l1h->phy_inst = pinst;
 
-	trx_sched_init(&l1h->l1s, pinst->trx);
+	rc = trx_sched_init(&l1h->l1s, pinst->trx);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot initialize scheduler for phy "
+		     "instance %d\n", pinst->num);
+		return NULL;
+	}
 
 	rc = trx_if_open(l1h);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot initialize scheduler\n");
-		goto err;
+		LOGP(DL1C, LOGL_FATAL, "Cannot open TRX interface for phy "
+		     "instance %d\n", pinst->num);
+		l1if_close(l1h);
+		return NULL;
 	}
 
 	return l1h;
-
-err:
-	l1if_close(l1h);
-	return NULL;
 }
 
 void l1if_close(struct trx_l1h *l1h)

@@ -166,6 +166,9 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 	uint8_t tn;
 	unsigned int i;
 
+	if (!trx)
+		return -EINVAL;
+
 	l1t->trx = trx;
 
 	LOGP(DL1C, LOGL_NOTICE, "Init scheduler for trx=%u\n", l1t->trx->nr);
