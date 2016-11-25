@@ -869,6 +869,7 @@ DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
 	int sapi;
 
 	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
+	OSMO_ASSERT(sapi >= 0);
 
 	if (sapi == GSMTAP_CHANNEL_ACCH)
 		gsmtap_sapi_acch = 1;
@@ -884,6 +885,7 @@ DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
 	int sapi;
 
 	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
+	OSMO_ASSERT(sapi >= 0);
 
 	if (sapi == GSMTAP_CHANNEL_ACCH)
 		gsmtap_sapi_acch = 0;
