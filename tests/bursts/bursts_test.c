@@ -349,6 +349,8 @@ static void test_pdtch(uint8_t *l2, int len)
 	int n_errors, n_bits_total;
 	int rc;
 
+	memset(result, 0xff, len);
+
 	/* zero the not coded tail bits */
 	switch (len) {
 	case 34:
