@@ -13,8 +13,14 @@
 
 struct msgb;
 
-/* Access 1st byte of msgb control buffer */
+/* Access 1st part of msgb control buffer */
 #define rtpmsg_marker_bit(x) ((x)->cb[0])
+
+/* Access 2nd part of msgb control buffer */
+#define rtpmsg_seq(x) ((x)->cb[1])
+
+/* Access 3rd part of msgb control buffer */
+#define rtpmsg_ts(x) ((x)->cb[2])
 
 /**
  * Classification of OML message. ETSI for plain GSM 12.21

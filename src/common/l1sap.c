@@ -661,7 +661,8 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr, marker = 0;
-	uint32_t fn;
+	uint16_t seq;
+	uint32_t fn, timestamp;
 
 	chan_nr = rts_ind->chan_nr;
 	fn = rts_ind->fn;
@@ -694,6 +695,10 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	} else {
 		/* Obtain RTP header Marker bit from control buffer */
 		marker = rtpmsg_marker_bit(resp_msg);
+		/* Obtain RTP header Sequence Number from control buffer */
+		seq = rtpmsg_seq(resp_msg);
+		/* Obtain RTP header Timestamp from control buffer */
+		timestamp = rtpmsg_ts(resp_msg);
 
 		resp_msg->l2h = resp_msg->data;
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
@@ -1074,8 +1079,12 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 
 	/* Store RTP header Marker bit in control buffer */
 	rtpmsg_marker_bit(msg) = marker;
+	/* Store RTP header Sequence Number in control buffer */
+	rtpmsg_seq(msg) = seq_number;
+	/* Store RTP header Timestamp in control buffer */
+	rtpmsg_ts(msg) = timestamp;
 
-	 /* make sure the queue doesn't get too long */
+	/* make sure the queue doesn't get too long */
 	llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
 	count++;
 	while (count >= 2) {
