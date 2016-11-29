@@ -32,8 +32,6 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 
-#include <osmocom/netif/rtp.h>
-
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
