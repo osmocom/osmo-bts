@@ -7,11 +7,14 @@ channel configurations, initiated by the BSC via (non-standard) Abis messages
 The Abis message handling for dynamic timeslots is independent of the BTS
 model. However, dynamic switchover will only work for BTS models that implement
 the internal API to reconnect a timeslot (_bts_model_ts_disconnect()_ and
-_bts_model_ts_connect()_).  Currently, these BTS models support dynamic
-timeslots:
+_bts_model_ts_connect()_, see also <<osmobts_hardware_support>>).
+
+Currently, these OsmoBTS models support dynamic timeslots:
 
 * _osmo-bts-sysmo_
 * _osmo-bts-litecell15_
 * _osmo-bts-trx_
 
-See also <<osmobts_hardware_support>>.
+Dynamic timeslots are driven by the BSC and need to be configured there. When
+using OsmoBSC or OsmoNITB, see the BTS configuration chapter on dynamic
+timeslots in <<userman-osmobsc>> or <<userman-osmonitb>>, respectively.
