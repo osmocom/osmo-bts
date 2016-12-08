@@ -257,6 +257,9 @@ static inline void dtx_sti_unset(struct gsm_lchan *lchan)
  */
 static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 {
+	if (!dtx_dl_amr_enabled(lchan))
+		return true;
+
 	/* Compute approx. time delta x26 based on Fn duration */
 	uint32_t dx26 = 120 * (fn - lchan->tch.dtx.fn);
 
