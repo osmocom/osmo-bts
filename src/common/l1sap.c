@@ -71,16 +71,26 @@ get_active_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
 
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
-static uint32_t fn_ms_adj(uint32_t fn, uint32_t last_fn)
+static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 {
-	if (last_fn != LCHAN_FN_DUMMY) {
+	uint32_t samples_passed, r;
+
+	/* don't adjust duration:
+	   - when no DTX enabled at all
+	   - for ONSET RTP packet to avoid timestamp gap with subsequent SPEECH
+	   RTP packet*/
+	if (lchan->rtp_tx_marker ||
+	    lchan->ts->trx->bts->dtxu == GSM48_DTX_SHALL_NOT_BE_USED)
+		return GSM_RTP_DURATION;
+
+	if (lchan->tch.last_fn != LCHAN_FN_DUMMY) {
 		/* 12/13 frames usable for audio in TCH,
 		   160 samples per RTP packet,
 		   1 RTP packet per 4 frames */
-		uint32_t samples_passed = (fn - last_fn) * 12 * 160 / (13 * 4);
+		samples_passed = (fn - lchan->tch.last_fn) * 12 * 160 / (13 * 4);
 		/* round number of samples to the nearest multiple of
 		   GSM_RTP_DURATION */
-		uint32_t r = samples_passed + GSM_RTP_DURATION / 2;
+		r = samples_passed + GSM_RTP_DURATION / 2;
 		r -= r % GSM_RTP_DURATION;
 		return r;
 	}
@@ -912,7 +922,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	/* hand msg to RTP code for transmission */
 	if (lchan->abis_ip.rtp_socket)
 		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-			msg->data, msg->len, fn_ms_adj(fn, lchan->tch.last_fn), lchan->rtp_tx_marker);
+			msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
 
 	/* if loopback is enabled, also queue received RTP data */
 	if (lchan->loopback) {
