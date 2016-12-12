@@ -155,14 +155,16 @@ int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 	/* set lchan inactive */
 	lchan_set_state(lchan, LCHAN_S_NONE);
 
-	return trx_sched_set_lchan(&l1h->l1s, lchan->nr, LID_DEDIC, 0);
+	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan),
+				   LID_DEDIC, 0);
 }
 
 int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
 	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-	return trx_sched_set_lchan(&l1h->l1s, lchan->nr, LID_SACCH, 0);
+	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan),
+				   LID_SACCH, 0);
 }
 
 /*
