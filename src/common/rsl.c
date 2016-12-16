@@ -1652,9 +1652,19 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
-		osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-					  OSMO_RTP_P_JITBUF,
-					  btsb->rtp_jitter_buf_ms);
+		rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
+					       btsb->rtp_jitter_adaptive ?
+					       OSMO_RTP_P_JIT_ADAP :
+					       OSMO_RTP_P_JITBUF,
+					       btsb->rtp_jitter_buf_ms);
+		if (rc < 0)
+			LOGP(DRSL, LOGL_ERROR,
+			     "%s IPAC Failed to set RTP socket parameters: %s\n",
+			     gsm_lchan_name(lchan), strerror(-rc));
+		else
+			LOGP(DRSL, LOGL_INFO,
+			     "%s IPAC set RTP socket parameters: %d\n",
+			     gsm_lchan_name(lchan), rc);
 		lchan->abis_ip.rtp_socket->priv = lchan;
 		lchan->abis_ip.rtp_socket->rx_cb = &l1sap_rtp_rx_cb;
 

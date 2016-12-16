@@ -276,8 +276,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
-	vty_out(vty, " rtp jitter-buffer %u%s", btsb->rtp_jitter_buf_ms,
-		VTY_NEWLINE);
+	vty_out(vty, " rtp jitter-buffer %u", btsb->rtp_jitter_buf_ms);
+	if (btsb->rtp_jitter_adaptive)
+		vty_out(vty, " adaptive");
+	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(btsb->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
@@ -487,13 +489,15 @@ DEFUN_HIDDEN(cfg_bts_rtp_bind_ip,
 
 DEFUN(cfg_bts_rtp_jitbuf,
 	cfg_bts_rtp_jitbuf_cmd,
-	"rtp jitter-buffer <0-10000>",
+	"rtp jitter-buffer <0-10000> [adaptive]",
 	RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
 {
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	btsb->rtp_jitter_buf_ms = atoi(argv[0]);
+	if (argc > 1)
+		btsb->rtp_jitter_adaptive = true;
 
 	return CMD_SUCCESS;
 }
@@ -1003,7 +1007,8 @@ DEFUN(bts_t_t_l_jitter_buf,
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
-	int jitbuf_ms = atoi(argv[4]);
+	struct gsm_bts_role_bts *btsb;
+	int jitbuf_ms = atoi(argv[4]), rc;
 
 	lchan = resolve_lchan(net, argv, 0);
 	if (!lchan) {
@@ -1015,8 +1020,16 @@ DEFUN(bts_t_t_l_jitter_buf,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-				  OSMO_RTP_P_JITBUF, jitbuf_ms);
+	btsb = bts_role_bts(lchan->ts->trx->bts);
+	rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
+				  btsb->rtp_jitter_adaptive ?
+				  OSMO_RTP_P_JIT_ADAP : OSMO_RTP_P_JITBUF,
+				  jitbuf_ms);
+	if (rc < 0)
+		vty_out(vty, "%% error setting jitter parameters: %s%s",
+			strerror(-rc), VTY_NEWLINE);
+	else
+		vty_out(vty, "%% jitter parameters set: %d%s", rc, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }

@@ -86,6 +86,7 @@ struct gsm_bts_role_bts {
 	char *bsc_oml_host;
 	struct llist_head oml_queue;
 	unsigned int rtp_jitter_buf_ms;
+	bool rtp_jitter_adaptive;
 	struct {
 		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
 	} support;
