@@ -83,7 +83,7 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 	int i, j = 0;
 
 	if (mr_version != 1) {
-		LOGP(DRSL, LOGL_ERROR, "AMR Multirate Version %u unknonw\n",
+		LOGP(DRSL, LOGL_ERROR, "AMR Multirate Version %u unknown\n",
 			mr_version);
 		goto ret_einval;
 	}
