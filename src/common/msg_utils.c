@@ -156,12 +156,14 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	int8_t sti, cmi;
 	int rc;
 
-	if (lchan->type == GSM_LCHAN_TCH_H && /* SID-FIRST P1 -> P2 completion */
-	    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 && !rtp_pl) {
-		*len = 3;
-		memcpy(l1_payload, lchan->tch.dtx.cache, 2);
-		dtx_dispatch(lchan, E_SID_U);
-		return 0;
+	if (dtx_dl_amr_enabled(lchan)) {
+		if (lchan->type == GSM_LCHAN_TCH_H &&
+		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 && !rtp_pl) {
+			*len = 3; /* SID-FIRST P1 -> P2 completion */
+			memcpy(l1_payload, lchan->tch.dtx.cache, 2);
+			dtx_dispatch(lchan, E_SID_U);
+			return 0;
+		}
 	}
 
 	if (!rtp_pl_len)
