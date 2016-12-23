@@ -179,3 +179,32 @@ configuration file.
 
 De-activating power-ramping can be performed by setting the max-initial value
 to the nominal power. The default max-initial value is 23 dBm.
+
+
+==== Running multiple instances
+
+It is possible to run multiple instances of `osmo-bts` on one and the same
+machine, if the phy-interface is flexible enough to distinguish between
+different phy hardware interfaces.
+
+Since usually a BTS instance runs in conjunction with a dedicated PCU instance,
+the socket path between PCU and BTS has to be distinguished between the running
+instances. It is possible to change the default socket path via VTY config:
+
+.Example: Personalize PCU socket path
+----
+bts 0
+ pcu-socket /tmp/pcu_bts_2
+----
+
+It is also necessary to separate the VTY anc CTRL interfaces of the different
+instances. The VTY, as well as the CTRL interface can be bound to a free IP
+address from the loopback range:
+
+.Example: Binding VTY and CTRL interface to a specific IP address
+----
+line vty
+ bind 127.0.0.2
+ctrl
+ bind 127.0.0.2
+----
