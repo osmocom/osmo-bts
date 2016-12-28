@@ -411,6 +411,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			}
 			if (sapi == GsmL1_Sapi_FacchH) {
 				sapi = GsmL1_Sapi_TchH;
+				subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
 			}
 			if (sapi == GsmL1_Sapi_TchH || sapi == GsmL1_Sapi_TchF) {
 				/* FACCH interruption of DTX silence */
@@ -537,7 +538,10 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 	/* send message to DSP's queue */
 	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
-	dtx_int_signal(lchan);
+	if (dtx_is_first_p1(lchan))
+		dtx_dispatch(lchan, E_FIRST);
+	else
+		dtx_int_signal(lchan);
 
 	if (dtx_recursion(lchan)) /* DTX: send voice after ONSET was sent */
 		return ph_tch_req(trx, l1sap->oph.msg, l1sap, true, false);

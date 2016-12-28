@@ -47,7 +47,7 @@ void dtx_fsm_sid_f1(struct osmo_fsm_inst *fi, uint32_t event, void *data)
    Was observed during testing, let's just ignore it for now */
 		break;
 	case E_SID_U:
-		osmo_fsm_inst_state_chg(fi, ST_SID_U, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_U_NOINH, 0, 0);
 		break;
 	case E_VOICE:
 		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
@@ -55,7 +55,7 @@ void dtx_fsm_sid_f1(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	case E_FACCH:
 		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
 		break;
-	case E_COMPL:
+	case E_FIRST:
 		osmo_fsm_inst_state_chg(fi, ST_SID_F2, 0, 0);
 		break;
 	case E_INHIB:
@@ -74,7 +74,7 @@ void dtx_fsm_sid_f1(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 void dtx_fsm_sid_f2(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
-	case E_SID_U:
+	case E_COMPL:
 		osmo_fsm_inst_state_chg(fi, ST_SID_U, 0, 0);
 		break;
 	case E_VOICE:
@@ -145,6 +145,33 @@ void dtx_fsm_u_inh_rec(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	}
 }
 
+void dtx_fsm_u_noinh(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	switch (event) {
+	case E_FACCH:
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_F, 0, 0);
+		break;
+	case E_VOICE:
+		osmo_fsm_inst_state_chg(fi, ST_VOICE, 0, 0);
+		break;
+	case E_COMPL:
+		osmo_fsm_inst_state_chg(fi, ST_SID_U, 0, 0);
+		break;
+	case E_SID_U:
+	case E_SID_F:
+/* FIXME: what shall we do if we get SID-FIRST _after_ sending SID-UPDATE?
+   Was observed during testing, let's just ignore it for now */
+		break;
+	case E_ONSET:
+		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
+		break;
+	default:
+		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
+		OSMO_ASSERT(0);
+		break;
+	}
+}
+
 void dtx_fsm_sid_upd(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	switch (event) {
@@ -159,11 +186,7 @@ void dtx_fsm_sid_upd(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		break;
 	case E_SID_U:
 	case E_SID_F:
-/* FIXME: what shall we do if we get SID-FIRST _after_ sending SID-UPDATE?
-   Was observed during testing, let's just ignore it for now */
-		break;
-	case E_ONSET:
-		osmo_fsm_inst_state_chg(fi, ST_ONSET_V, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ST_U_NOINH, 0, 0);
 		break;
 	default:
 		LOGP(DL1P, LOGL_ERROR, "Unexpected event %d\n", event);
@@ -255,15 +278,15 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 	/* SID-FIRST or SID-FIRST-P1 in case of AMR HR:
 	   start of silence period (might be interrupted in case of AMR HR) */
 	[ST_SID_F1]= {
-		.in_event_mask = X(E_SID_F) | X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_COMPL) | X(E_INHIB) | X(E_ONSET),
-		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_SID_F2) | X(ST_F1_INH) | X(ST_ONSET_V),
+		.in_event_mask = X(E_SID_F) | X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_FIRST) | X(E_INHIB) | X(E_ONSET),
+		.out_state_mask = X(ST_U_NOINH) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_SID_F2) | X(ST_F1_INH) | X(ST_ONSET_V),
 		.name = "SID-FIRST (P1)",
 		.action = dtx_fsm_sid_f1,
 	},
 	/* SID-FIRST P2 (only for AMR HR):
 	   actual start of silence period in case of AMR HR */
 	[ST_SID_F2]= {
-		.in_event_mask = X(E_SID_U) | X(E_VOICE) | X(E_FACCH) | X(E_ONSET),
+		.in_event_mask = X(E_COMPL) | X(E_VOICE) | X(E_FACCH) | X(E_ONSET),
 		.out_state_mask = X(ST_SID_U) | X(ST_VOICE) | X(ST_ONSET_F) | X(ST_ONSET_V),
 		.name = "SID-FIRST (P2)",
 		.action = dtx_fsm_sid_f2,
@@ -281,6 +304,13 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 		.out_state_mask = X(ST_U_INH_REC),
 		.name = "SID-UPDATE (Inh)",
 		.action = dtx_fsm_u_inh,
+	},
+	/* SID-UPDATE: Inhibited not allowed (only for AMR HR) */
+	[ST_U_NOINH]= {
+		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_COMPL) | X(E_SID_U) | X(E_SID_F) | X(E_ONSET),
+		.out_state_mask = X(ST_ONSET_F) | X(ST_VOICE) | X(ST_SID_U) | X(ST_ONSET_V),
+		.name = "SID-UPDATE (NoInh)",
+		.action = dtx_fsm_u_noinh,
 	},
 	/* SID-FIRST Inhibition recursion in progress:
 	   Inhibit itself was already sent, now have to send the voice that caused it */
@@ -300,9 +330,9 @@ static struct osmo_fsm_state dtx_dl_amr_fsm_states[] = {
 	},
 	/* Silence period with periodic comfort noise data updates */
 	[ST_SID_U]= {
-		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_INHIB) | X(E_SID_U) | X(E_SID_F) | X(E_ONSET),
-		.out_state_mask = X(ST_ONSET_F) | X(ST_VOICE) | X(ST_U_INH) | X(ST_SID_U) | X(ST_ONSET_V),
-		.name = "SID-UPDATE",
+		.in_event_mask = X(E_FACCH) | X(E_VOICE) | X(E_INHIB) | X(E_SID_U) | X(E_SID_F),
+		.out_state_mask = X(ST_ONSET_F) | X(ST_VOICE) | X(ST_U_INH) | X(ST_U_NOINH),
+		.name = "SID-UPDATE (AMR/HR)",
 		.action = dtx_fsm_sid_upd,
 	},
 	/* ONSET - end of silent period due to incoming SPEECH frame */
@@ -350,6 +380,7 @@ const struct value_string dtx_dl_amr_fsm_event_names[] = {
 	{ E_ONSET,	"ONSET" },
 	{ E_FACCH,	"FACCH" },
 	{ E_COMPL,	"Complete" },
+	{ E_FIRST,	"FIRST P1->P2" },
 	{ E_INHIB,	"Inhibit" },
 	{ E_SID_F,	"SID-FIRST" },
 	{ E_SID_U,	"SID-UPDATE" },

@@ -322,6 +322,7 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
 			return 1;
 		case ST_SID_U:
+		case ST_U_NOINH:
 			return -EAGAIN;
 		case ST_FACCH:
 			return -EBADMSG;

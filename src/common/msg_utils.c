@@ -93,6 +93,28 @@ static int check_manuf(struct msgb *msg, struct abis_om_hdr *omh, size_t msg_siz
 	return type;
 }
 
+/* check that DTX is in the middle of silence */
+static inline bool dtx_is_update(const struct gsm_lchan *lchan)
+{
+	if (!dtx_dl_amr_enabled(lchan))
+		return false;
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_NOINH)
+		return true;
+	return false;
+}
+
+/* check that DTX is in the beginning of silence for AMR HR */
+bool dtx_is_first_p1(const struct gsm_lchan *lchan)
+{
+	if (!dtx_dl_amr_enabled(lchan))
+		return false;
+	if ((lchan->type == GSM_LCHAN_TCH_H &&
+	     lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1))
+		return true;
+	return false;
+}
+
 /* update lchan SID status */
 void lchan_set_marker(bool t, struct gsm_lchan *lchan)
 {
@@ -123,9 +145,7 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 	if (update == 0) {
 		lchan->tch.dtx.is_update = false; /* Mark SID FIRST explicitly */
 		/* for non-AMR case - always update FN for incoming SID FIRST */
-		if (!amr ||
-		    (dtx_dl_amr_enabled(lchan) &&
-		     lchan->tch.dtx.dl_amr_fsm->state != ST_SID_U))
+		if (!amr || !dtx_is_update(lchan))
 			lchan->tch.dtx.fn = fn;
 		/* for AMR case - do not update FN if SID FIRST arrives in a
 		   middle of silence: this should not be happening according to
@@ -157,12 +177,24 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	int rc;
 
 	if (dtx_dl_amr_enabled(lchan)) {
-		if (lchan->type == GSM_LCHAN_TCH_H &&
-		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 && !rtp_pl) {
-			*len = 3; /* SID-FIRST P1 -> P2 completion */
-			memcpy(l1_payload, lchan->tch.dtx.cache, 2);
-			dtx_dispatch(lchan, E_SID_U);
-			return 0;
+		if (lchan->type == GSM_LCHAN_TCH_H && !rtp_pl) {
+			/* we're called by gen_empty_tch_msg() to handle states
+			   specific to AMR HR DTX */
+			switch (lchan->tch.dtx.dl_amr_fsm->state) {
+			case ST_SID_F2:
+				*len = 3; /* SID-FIRST P1 -> P2 completion */
+				memcpy(l1_payload, lchan->tch.dtx.cache, 2);
+				rc = 0;
+				dtx_dispatch(lchan, E_COMPL);
+				break;
+			case ST_SID_U:
+				rc = -EBADMSG;
+				dtx_dispatch(lchan, E_SID_U);
+				break;
+			default:
+				rc = -EBADMSG;
+			}
+			return rc;
 		}
 	}
 
@@ -171,8 +203,8 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 
 	rc = osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
 	if (rc < 0) {
-		LOGP(DRTP, LOGL_ERROR, "failed to decode AMR RTP (length %zu)\n",
-		     rtp_pl_len);
+		LOGP(DRTP, LOGL_ERROR, "failed to decode AMR RTP (length %zu, "
+		     "%p)\n", rtp_pl_len, rtp_pl);
 		return rc;
 	}
 
@@ -197,19 +229,29 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 		return 0;
 
 	if (osmo_amr_is_speech(ft)) {
-		/* AMR HR - Inhibition */
-		if (lchan->type == GSM_LCHAN_TCH_H && marker &&
-		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1)
+		/* AMR HR - SID-FIRST_P1 Inhibition */
+		if (marker && dtx_is_first_p1(lchan))
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_INHIB, (void *)lchan);
+
+		/* AMR HR - SID-UPDATE Inhibition */
+		if (marker && lchan->type == GSM_LCHAN_TCH_H &&
+		    lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_INHIB, (void *)lchan);
+
 		/* AMR FR & HR - generic */
 		if (marker && (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1 ||
 			       lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2 ||
-			       lchan->tch.dtx.dl_amr_fsm->state == ST_SID_U ))
+			       lchan->tch.dtx.dl_amr_fsm->state == ST_U_NOINH))
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_ONSET, (void *)lchan);
-		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm, E_VOICE,
-					      (void *)lchan);
+
+		if (lchan->tch.dtx.dl_amr_fsm->state != ST_VOICE)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_VOICE, (void *)lchan);
+
+		return 0;
 	}
 
 	if (ft == AMR_SID) {
@@ -220,8 +262,11 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, false);
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_SID_F, (void *)lchan);
-		} else
+		} else if (lchan->tch.dtx.dl_amr_fsm->state != ST_FACCH)
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
+		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2)
+			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+						      E_COMPL, (void *)lchan);
 		return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 					      sti ? E_SID_U : E_SID_F,
 					      (void *)lchan);
@@ -357,6 +402,7 @@ bool dtx_recursion(const struct gsm_lchan *lchan)
 		return false;
 
 	if (lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_REC ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_V ||
@@ -389,9 +435,7 @@ void dtx_int_signal(struct gsm_lchan *lchan)
 	if (!dtx_dl_amr_enabled(lchan))
 		return;
 
-	if ((lchan->type == GSM_LCHAN_TCH_H &&
-	     lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F1) ||
-	    dtx_recursion(lchan))
+	if (dtx_is_first_p1(lchan) || dtx_recursion(lchan))
 		dtx_dispatch(lchan, E_COMPL);
 }
 
@@ -425,12 +469,17 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 				osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						       E_SID_U, (void *)lchan);
 				dtx_sti_unset(lchan);
-			} else if (lchan->tch.dtx.dl_amr_fsm->state ==
-				   ST_SID_U) {
+			} else if (dtx_is_update(lchan)) {
 				/* enforce SID UPDATE for next repetition: it
 				   might have been altered by FACCH handling */
 				dtx_sti_set(lchan);
-			lchan->tch.dtx.is_update = true;
+				if (lchan->type == GSM_LCHAN_TCH_H &&
+				    lchan->tch.dtx.dl_amr_fsm->state ==
+				    ST_U_NOINH)
+					osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
+							       E_COMPL,
+							       (void *)lchan);
+				lchan->tch.dtx.is_update = true;
 			}
 		}
 		memcpy(dst, lchan->tch.dtx.cache, lchan->tch.dtx.len);

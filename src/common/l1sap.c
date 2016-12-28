@@ -1161,8 +1161,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		return -RSL_ERR_EQUIPMENT_FAIL;
 
 	/* Init DTX DL FSM if necessary */
-	//FIXME: only do it for AMR TCH/*
-	if (trx->bts->dtxd)
+	if (trx->bts->dtxd && lchan->type != GSM_LCHAN_SDCCH)
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
 								tall_bts_ctx,
 								lchan,

@@ -45,6 +45,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
+#include <osmo-bts/dtx_dl_amr_fsm.h>
 
 #define MIN_QUAL_RACH    5.0f   /* at least  5 dB C/I */
 #define MIN_QUAL_NORM   -0.5f   /* at least -1 dB C/I */
