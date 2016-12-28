@@ -144,7 +144,7 @@ static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	int i;
 
 	/* if measurement period is not complete, abort */
-	if (!is_meas_complete(lchan->ts->pchan, lchan->ts->nr,
+	if (!is_meas_complete(ts_pchan(lchan->ts), lchan->ts->nr,
 			      lchan->nr, fn))
 		return 0;
 
