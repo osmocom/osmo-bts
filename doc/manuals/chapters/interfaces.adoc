@@ -113,6 +113,32 @@ Contrary to that, many classic E1-based implementations of the GSM RAN
 co-locate the PCU with the BSC.  However, the GSM specifications keep
 the location up to the implementor.
 
+The GPRS network architecture is shown in <<fig-gprs-pcubts>>.
+
+[[fig-gprs-pcubts]]
+.GPRS network architecture
+[graphviz]
+----
+digraph G {
+        rankdir=LR;
+        MS0 [label="MS"];
+        MS1 [label="MS"];
+        BTS;
+        BSC;
+        MSC;
+        PCU;
+        SGSN;
+        GGSN;
+        MS0->BTS [label="Um"];
+        MS1->BTS [label="Um"];
+        BTS->BSC [label="Abis"];
+        BSC->MSC [label="A"];
+        BTS->PCU [label="pcu_sock"];
+        PCU->SGSN [label="Gb"];
+        SGSN->GGSN [label="GTP"];
+}
+----
+
 The PCU socket interface serves the following purposes:
 
 * to pass PCU relevant configuration from BTS to PCU
