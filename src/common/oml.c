@@ -42,110 +42,11 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/signal.h>
 
-/* FIXME: move this to libosmocore */
-static struct tlv_definition abis_nm_att_tlvdef_ipa = {
-	.def = {
-		/* ip.access specifics */
-		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
-		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
-		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-		[NM_ATT_IPACC_IN_SERV_TIME] =	{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIMING_BUS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CGI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_GPRS_PAGING_CFG]= { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_MONIT_VAL_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIB_CONTROL] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_HEARTB_TOUT] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UPTIME] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SSL_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
-	},
-};
-
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
 /*
  * support
  */
-
-struct tlv_parsed *tlvp_copy(const struct tlv_parsed *tp_orig, void *ctx)
-{
-	struct tlv_parsed *tp_out;
-	unsigned int i;
-
-	tp_out = talloc_zero(ctx, struct tlv_parsed);
-	if (!tp_out)
-		return NULL;
-
-	/* if the original is NULL, return empty tlvp */
-	if (!tp_orig)
-		return tp_out;
-
-	for (i = 0; i < ARRAY_SIZE(tp_orig->lv); i++) {
-		unsigned int len = tp_orig->lv[i].len;
-		tp_out->lv[i].len = len;
-		if (len && tp_out->lv[i].val) {
-			tp_out->lv[i].val = talloc_zero_size(tp_out, len);
-			if (!tp_out->lv[i].val) {
-				talloc_free(tp_out);
-				return NULL;
-			}
-			memcpy((uint8_t *)tp_out->lv[i].val, tp_orig->lv[i].val, len);
-		}
-	}
-
-	return tp_out;
-}
-
-/* merge all attributes of 'new' into 'out' */
-int tlvp_merge(struct tlv_parsed *out, const struct tlv_parsed *new)
-{
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(out->lv); i++) {
-		unsigned int len = new->lv[i].len;
-		if (len == 0 || new->lv[i].val == NULL)
-			continue;
-		if (out->lv[i].val) {
-			talloc_free((uint8_t *) out->lv[i].val);
-			out->lv[i].len = 0;
-		}
-		out->lv[i].val = talloc_zero_size(out, len);
-		if (!out->lv[i].val)
-			return -ENOMEM;
-		memcpy((uint8_t *) out->lv[i].val, new->lv[i].val, len);
-	}
-	return 0;
-}
 
 static int oml_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int len)
 {
@@ -369,28 +270,6 @@ int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
-/* TS 12.21 9.4.53 */
-enum abis_nm_t200_idx {
-	T200_SDCCH		= 0,
-	T200_FACCH_F		= 1,
-	T200_FACCH_H		= 2,
-	T200_SACCH_TCH_SAPI0	= 3,
-	T200_SACCH_SDCCH	= 4,
-	T200_SDCCH_SAPI3	= 5,
-	T200_SACCH_TCH_SAPI3	= 6
-};
-
-/* TS 12.21 9.4.53 */
-static const uint8_t abis_nm_t200_mult[] = {
-	[T200_SDCCH]		= 5,
-	[T200_FACCH_F]		= 5,
-	[T200_FACCH_H]		= 5,
-	[T200_SACCH_TCH_SAPI0]	= 10,
-	[T200_SACCH_SDCCH]	= 10,
-	[T200_SDCCH_SAPI3]	= 5,
-	[T200_SACCH_TCH_SAPI3]	= 10
-};
-
 /* the below defaults correpsond to the libocmocore default of 1s for
  * DCCH and 2s for ACCH. The BSC should overried this via OML anyway. */
 const unsigned int oml_default_t200_ms[7] = {
@@ -483,8 +362,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = tlvp_copy(bts->mo.nm_attr, bts);
-	tlvp_merge(tp_merged, &tp);
+	tp_merged = osmo_tlvp_copy(bts->mo.nm_attr, bts);
+	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Ask BTS driver to validate new merged attributes */
 	rc = bts_model_check_oml(bts, foh->msg_type, bts->mo.nm_attr, tp_merged, bts);
@@ -531,7 +410,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRESENT(&tp, NM_ATT_T200)) {
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
 		for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++) {
-			uint32_t t200_ms = payload[i] * abis_nm_t200_mult[i];
+			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
 #if 0
 			btsb->t200_ms[i] = t200_ms;
 			DEBUGP(DOML, "T200[%u]: OML=%u, mult=%u => %u ms\n",
@@ -619,8 +498,8 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = tlvp_copy(trx->mo.nm_attr, trx->bts);
-	tlvp_merge(tp_merged, &tp);
+	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx->bts);
+	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Ask BTS driver to validate new merged attributes */
 	rc = bts_model_check_oml(trx->bts, foh->msg_type, trx->mo.nm_attr, tp_merged, trx);
@@ -794,8 +673,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	}
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = tlvp_copy(ts->mo.nm_attr, bts);
-	tlvp_merge(tp_merged, &tp);
+	tp_merged = osmo_tlvp_copy(ts->mo.nm_attr, bts);
+	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Call into BTS driver to check attribute values */
 	rc = bts_model_check_oml(bts, foh->msg_type, ts->mo.nm_attr, tp_merged, ts);
