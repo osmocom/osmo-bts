@@ -50,6 +50,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/oml.h>
 
 int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
@@ -181,13 +182,21 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
-		if (!quit)
+		if (!quit) {
+			oml_tx_failure_event_rep(&bts->mo,
+						 OSMO_EVT_CRIT_PROC_STOP,
+						 "BTS: SIGINT received -> "
+						 "shutdown\n");
 			bts_shutdown(bts, "SIGINT");
+		}
 		quit++;
 		break;
 	case SIGABRT:
 	case SIGUSR1:
 	case SIGUSR2:
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_CRIT_PROC_STOP,
+					 "BTS: signal %s received\n",
+					 strsignal(signal));
 		talloc_report_full(tall_bts_ctx, stderr);
 		break;
 	default:

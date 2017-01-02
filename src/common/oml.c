@@ -1140,6 +1140,25 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	return ret;
 }
 
+/* 3GPP TS 12.21 § 8.8.2 */
+int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value,
+			     const char *fmt, ...)
+{
+	struct msgb *nmsg;
+	va_list ap;
+
+	va_start(ap, fmt);
+	nmsg = abis_nm_fail_evt_rep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
+				    NM_PCAUSE_T_MANUF, cause_value, fmt, ap);
+	LOGP(DOML, LOGL_INFO, fmt, ap);
+	va_end(ap);
+
+	if (!nmsg)
+		return -ENOMEM;
+
+	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
+}
+
 int oml_init(void)
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
