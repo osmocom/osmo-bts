@@ -345,19 +345,28 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	DEBUGPC(DOML, "Rx SET BTS ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
-	if (rc < 0)
+	if (rc < 0) {
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for Attribute not supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
 
 	/* Test for globally unsupported stuff here */
 	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN)) {
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 		if (arfcn > 1024) {
+			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
+						 "Given ARFCN %d is not supported.\n",
+						 arfcn);
 			LOGP(DOML, LOGL_NOTICE, "Given ARFCN %d is not supported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 	}
 	/* 9.4.52 Starting Time */
 	if (TLVP_PRESENT(&tp, NM_ATT_START_TIME)) {
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "NM_ATT_START_TIME Attribute not "
+					 "supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
@@ -494,8 +503,12 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	DEBUGPC(DOML, "Rx SET RADIO CARRIER ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
-	if (rc < 0)
+	if (rc < 0) {
+		oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for Set Radio Attribute not"
+					 " supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
 
 	/* merge existing BTS attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx->bts);
@@ -656,8 +669,12 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	DEBUGPC(DOML, "Rx SET CHAN ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
-	if (rc < 0)
+	if (rc < 0) {
+		oml_tx_failure_event_rep(&ts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for Set Channel Attribute "
+					 "not supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
 
 	/* 9.4.21 HSN... */
 	/* 9.4.27 MAIO */
@@ -791,11 +808,29 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
 		LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
+		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+		if (trx) {
+			trx->mo.obj_inst.bts_nr = 0;
+			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
+			trx->mo.obj_inst.ts_nr = 0xff;
+			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "Formatted O&M message too short\n");
+		}
 		return -EIO;
 	}
 
 	if (foh->obj_inst.bts_nr != 0 && foh->obj_inst.bts_nr != 0xff) {
 		LOGP(DOML, LOGL_INFO, "Formatted O&M with BTS %d out of range.\n", foh->obj_inst.bts_nr);
+		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+		if (trx) {
+			trx->mo.obj_inst.bts_nr = 0;
+			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
+			trx->mo.obj_inst.ts_nr = 0xff;
+			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "Formatted O&M with BTS %d out"
+						 " of range (0:0xFF).\n",
+						 foh->obj_inst.bts_nr);
+		}
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
 	}
 
@@ -829,6 +864,20 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 	default:
 		LOGP(DOML, LOGL_INFO, "unknown Formatted O&M msg_type 0x%02x\n",
 			foh->msg_type);
+		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+		if (trx) {
+			trx->mo.obj_inst.bts_nr = 0;
+			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
+			trx->mo.obj_inst.ts_nr = 0xff;
+			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "unknown Formatted O&M "
+						 "msg_type 0x%02x\n",
+						 foh->msg_type);
+		} else
+			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "unknown Formatted O&M "
+						 "msg_type 0x%02x\n",
+						 foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
@@ -997,8 +1046,13 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	DEBUGPC(DOML, "Rx IPA SET ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
-	if (rc < 0)
+	if (rc < 0) {
+		mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for IPAC Set Attribute not "
+					 "supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+	}
 
 	/* Resolve MO by obj_class/obj_inst */
 	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);

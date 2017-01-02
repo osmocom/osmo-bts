@@ -44,6 +44,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
@@ -1024,6 +1025,10 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown prim %d op %d\n",
 			l1sap->oph.primitive, l1sap->oph.operation);
+		oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "unknown prim %d op %d\n",
+					 l1sap->oph.primitive,
+					 l1sap->oph.operation);
 		break;
 	}
 
