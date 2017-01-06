@@ -861,8 +861,8 @@ int pcu_sock_init(const char *path)
 	bfd->fd = osmo_sock_unix_init(SOCK_SEQPACKET, 0, path,
 		OSMO_SOCK_F_BIND);
 	if (bfd->fd < 0) {
-		LOGP(DPCU, LOGL_ERROR, "Could not create unix socket: %s\n",
-			strerror(errno));
+		LOGP(DPCU, LOGL_ERROR, "Could not create %s unix socket: %s\n",
+		     path, strerror(errno));
 		talloc_free(state);
 		return -1;
 	}
