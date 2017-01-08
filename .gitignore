@@ -39,6 +39,8 @@ src/osmo-bts-trx/osmo-bts-trx
 
 src/osmo-bts-octphy/osmo-bts-octphy
 
+src/osmo-bts-virtual/osmo-bts-virtual
+
 tests/atconfig
 tests/package.m4
 tests/agch/agch_test
@@ -50,6 +52,14 @@ tests/bursts/bursts_test
 tests/handover/handover_test
 tests/testsuite
 tests/testsuite.log
+tests/virtsock/client_bidir
+tests/virtsock/server_bidir
+tests/virtsock/client_mcast
+tests/virtsock/server_mcast
+tests/virtsock/client_unix
+tests/virtsock/server_unix
+tests/virtsock/virt_um_bts
+tests/virtsock/virt_um_ms
 
 # Possible generated file
 doc/vty_reference.xml
@@ -70,3 +80,9 @@ debian/*.substvars
 debian/osmo-bts-trx-dbg/
 debian/osmo-bts-trx/
 debian/tmp/
+
+# development environment
+/.autotools
+/.cproject
+/.project
+/.settings/

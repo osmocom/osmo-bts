@@ -6,9 +6,9 @@
 #include "virtual_um.h"
 
 struct vbts_l1h {
-	struct gsm_bts_trx	*trx;
-	struct l1sched_trx	l1s;
-	struct virt_um_inst 	*virt_um;
+	struct gsm_bts_trx *trx;
+	struct l1sched_trx l1s;
+	struct virt_um_inst *virt_um;
 };
 
 struct vbts_l1h *l1if_open(struct gsm_bts_trx *trx);

@@ -1,4 +1,4 @@
-SUBDIRS = paging cipher agch misc bursts handover
+SUBDIRS = paging cipher agch misc bursts handover virtsock
 
 if ENABLE_SYSMOBTS
 SUBDIRS += sysmobts

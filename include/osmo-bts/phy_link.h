@@ -57,9 +57,11 @@ struct phy_link {
 			int	power_sent;
 		} osmotrx;
 		struct {
-			char *mcast_group;
-			char *mcast_dev;
-			uint16_t mcast_port;
+			char* mcast_dev; // mcast device
+			char *bts_mcast_group; // bts will listen to this mcast grp
+			uint16_t bts_mcast_port;
+			char *ms_mcast_group; // ms will listen to this mcast grp
+			uint16_t ms_mcast_port;
 			struct virt_um_inst *virt_um;
 		} virt;
 		struct {
