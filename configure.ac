@@ -145,4 +145,5 @@ AC_OUTPUT(
     tests/misc/Makefile
     tests/bursts/Makefile
     tests/handover/Makefile
+    tests/virtsock/Makefile
     Makefile)

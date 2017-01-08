@@ -63,63 +63,105 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 {
 	if (plink->u.virt.mcast_dev)
 		vty_out(vty, " virtual-um net-device %s%s",
-			plink->u.virt.mcast_dev, VTY_NEWLINE);
-	if (plink->u.virt.mcast_group)
-		vty_out(vty, " virtual-um multicast-group %s%s",
-			plink->u.virt.mcast_group, VTY_NEWLINE);
-	if (plink->u.virt.mcast_port)
-		vty_out(vty, " virtual-um udp-port %u%s",
-			plink->u.virt.mcast_port, VTY_NEWLINE);
+		                plink->u.virt.mcast_dev, VTY_NEWLINE);
+	if (plink->u.virt.ms_mcast_group)
+		vty_out(vty, " virtual-um ms-multicast-group %s%s",
+		                plink->u.virt.ms_mcast_group, VTY_NEWLINE);
+	if (plink->u.virt.ms_mcast_port)
+		vty_out(vty, " virtual-um ms-udp-port %u%s",
+		                plink->u.virt.ms_mcast_port, VTY_NEWLINE);
+	if (plink->u.virt.bts_mcast_group)
+		vty_out(vty, " virtual-um bts-multicast-group %s%s",
+		                plink->u.virt.bts_mcast_group, VTY_NEWLINE);
+	if (plink->u.virt.bts_mcast_port)
+		vty_out(vty, " virtual-um bts-udp-port %u%s",
+		                plink->u.virt.bts_mcast_port, VTY_NEWLINE);
+
 }
 
 #define VUM_STR	"Virtual Um layer\n"
 
-DEFUN(cfg_phy_mcast_group, cfg_phy_mcast_group_cmd,
-	"virtual-um multicast-group GROUP",
-	VUM_STR "Configure the multicast group\n")
+DEFUN(cfg_phy_ms_mcast_group, cfg_phy_ms_mcast_group_cmd,
+		"virtual-um ms-multicast-group GROUP",
+		VUM_STR "Configure the MS multicast group\n")
 {
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
 		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
-			VTY_NEWLINE);
+		VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	if (plink->u.virt.mcast_group)
-		talloc_free(plink->u.virt.mcast_group);
-	plink->u.virt.mcast_group = talloc_strdup(plink, argv[0]);
+	if (plink->u.virt.ms_mcast_group)
+		talloc_free(plink->u.virt.ms_mcast_group);
+	plink->u.virt.ms_mcast_group = talloc_strdup(plink, argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-
-DEFUN(cfg_phy_mcast_port, cfg_phy_mcast_port_cmd,
-	"virtual-um udp-port <0-65535>",
-	VUM_STR "Configure the UDP port\n")
+DEFUN(cfg_phy_ms_mcast_port, cfg_phy_ms_mcast_port_cmd,
+		"virtual-um ms-udp-port <0-65535>",
+		VUM_STR "Configure the MS UDP port\n")
 {
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
 		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
-			VTY_NEWLINE);
+		VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	plink->u.virt.mcast_port = atoi(argv[0]);
+	plink->u.virt.ms_mcast_port = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_bts_mcast_group, cfg_phy_bts_mcast_group_cmd,
+		"virtual-um bts-multicast-group GROUP",
+		VUM_STR "Configure the BTS multicast group\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+		VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (plink->u.virt.bts_mcast_group)
+		talloc_free(plink->u.virt.bts_mcast_group);
+	plink->u.virt.bts_mcast_group = talloc_strdup(plink, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_bts_mcast_port, cfg_phy_bts_mcast_port_cmd,
+		"virtual-um bts-udp-port <0-65535>",
+		VUM_STR "Configure the BTS UDP port\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+		VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.virt.bts_mcast_port = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_phy_mcast_dev, cfg_phy_mcast_dev_cmd,
-	"virtual-um net-device NETDEV",
-	VUM_STR "Configure the network device\n")
+		"virtual-um net-device NETDEV",
+		VUM_STR "Configure the network device\n")
 {
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
 		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
-			VTY_NEWLINE);
+		VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -134,8 +176,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
 
-	install_element(PHY_NODE, &cfg_phy_mcast_group_cmd);
-	install_element(PHY_NODE, &cfg_phy_mcast_port_cmd);
+	install_element(PHY_NODE, &cfg_phy_ms_mcast_group_cmd);
+	install_element(PHY_NODE, &cfg_phy_ms_mcast_port_cmd);
+	install_element(PHY_NODE, &cfg_phy_bts_mcast_group_cmd);
+	install_element(PHY_NODE, &cfg_phy_bts_mcast_port_cmd);
 	install_element(PHY_NODE, &cfg_phy_mcast_dev_cmd);
 
 	return 0;

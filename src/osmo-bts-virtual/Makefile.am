@@ -6,5 +6,5 @@ EXTRA_DIST = virtual_um.h
 
 bin_PROGRAMS = osmo-bts-virtual
 
-osmo_bts_virtual_SOURCES = main.c bts_model.c virtualbts_vty.c scheduler_virtbts.c l1_if.c virtual_um.c
+osmo_bts_virtual_SOURCES = main.c bts_model.c virtualbts_vty.c scheduler_virtbts.c l1_if.c virtual_um.c osmo_mcast_sock.c
 osmo_bts_virtual_LDADD = $(top_builddir)/src/common/libbts.a $(top_builddir)/src/common/libl1sched.a $(COMMON_LDADD)

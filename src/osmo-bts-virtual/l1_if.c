@@ -26,6 +26,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/gsmtap.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -40,11 +41,73 @@
 
 #include "virtual_um.h"
 
+/**
+ * Callback to handle incoming messages from the MS.
+ * The incoming message should be GSM_TAP encapsulated.
+ * TODO: implement all channels
+ */
 static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 {
-	/* FIXME: Handle msg from MS */
-}
+	struct osmo_phsap_prim l1sap;
+	struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msg->l1h;
+	struct phy_link *plink = (struct phy_link *)vui->priv;
+	// TODO: is there more than one physical instance? Where do i get the corresponding pinst number? Maybe gsmtap_hdr->antenna?
+	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
 
+	memset(&l1sap, 0, sizeof(l1sap));
+
+	switch (gh->sub_type) {
+	case GSMTAP_CHANNEL_RACH:
+		// generate primitive for upper layer
+		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH,
+		                PRIM_OP_INDICATION,
+		                NULL);
+		l1sap.u.rach_ind.chan_nr = 0; // TODO: fill with proper value
+		l1sap.u.rach_ind.ra = 0; // TODO: fill with proper value
+		l1sap.u.rach_ind.fn = gh->frame_number;
+		// todo: schedule the uplink burst
+		//trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, rssi, toa);
+		break;
+	case GSMTAP_CHANNEL_SDCCH:
+	case GSMTAP_CHANNEL_SDCCH4:
+	case GSMTAP_CHANNEL_SDCCH8:
+		// TODO: implement channel handling
+		break;
+	case GSMTAP_CHANNEL_TCH_F:
+		// TODO: implement channel handling
+		break;
+	case GSMTAP_CHANNEL_TCH_H:
+		// TODO: implement channel handling
+		break;
+	case GSMTAP_CHANNEL_AGCH:
+	case GSMTAP_CHANNEL_PCH:
+	case GSMTAP_CHANNEL_BCCH:
+		LOGP(LOGL_NOTICE, DL1P,
+		                "Ignore incoming msg - channel type downlink only!");
+		goto nomessage;
+	case GSMTAP_CHANNEL_CCCH:
+	case GSMTAP_CHANNEL_PACCH:
+	case GSMTAP_CHANNEL_PDCH:
+	case GSMTAP_CHANNEL_PTCCH:
+	case GSMTAP_CHANNEL_CBCH51:
+	case GSMTAP_CHANNEL_CBCH52:
+		LOGP(LOGL_NOTICE, DL1P,
+		                "Ignore incoming msg - channel type not supported!");
+		goto nomessage;
+	default:
+		LOGP(LOGL_NOTICE, DL1P,
+		                "Ignore incoming msg - channel type unknown.");
+		goto nomessage;
+	}
+
+	/* forward primitive */
+	l1sap_up(pinst->trx, &l1sap);
+	DEBUGP(DL1P, "Message forwarded to layer 2.");
+	return;
+
+	// handle memory deallocation
+	nomessage: free(msg);
+}
 
 /* called by common part once OML link is established */
 int bts_model_oml_estab(struct gsm_bts *bts)
@@ -52,6 +115,7 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 	return 0;
 }
 
+/* called by bts_main to initialize physical link */
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst;
@@ -63,10 +127,24 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTING);
 
-	plink->u.virt.virt_um = virt_um_init(plink, plink->u.virt.mcast_group,
-				      plink->u.virt.mcast_port,
-				      plink->u.virt.mcast_dev, plink,
-				      virt_um_rcv_cb);
+	if (!plink->u.virt.bts_mcast_group) {
+		plink->u.virt.bts_mcast_group = DEFAULT_BTS_MCAST_GROUP;
+	}
+	if (!plink->u.virt.bts_mcast_port) {
+		plink->u.virt.bts_mcast_port = DEFAULT_BTS_MCAST_PORT;
+	}
+	if (!plink->u.virt.ms_mcast_group) {
+		plink->u.virt.ms_mcast_group = DEFAULT_MS_MCAST_GROUP;
+	}
+	if (!plink->u.virt.ms_mcast_port) {
+		plink->u.virt.ms_mcast_port = DEFAULT_MS_MCAST_PORT;
+	}
+
+	plink->u.virt.virt_um = virt_um_init(plink,
+	                plink->u.virt.ms_mcast_group,
+	                plink->u.virt.ms_mcast_port,
+	                plink->u.virt.bts_mcast_group,
+	                plink->u.virt.bts_mcast_port, virt_um_rcv_cb);
 	if (!plink->u.virt.virt_um) {
 		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
 		return -1;
@@ -74,8 +152,11 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	/* iterate over list of PHY instances and initialize the
 	 * scheduler */
-	llist_for_each_entry(pinst, &plink->instances, list) {
+	llist_for_each_entry(pinst, &plink->instances, list)
+	{
 		trx_sched_init(&pinst->u.virt.sched, pinst->trx);
+		/* TODO: why only start scheduler for CCCH */
+		/* Only start the scheduler for the transceiver on c0. CCCH is on C0 */
 		if (pinst->trx == pinst->trx->bts->c0)
 			vbts_sched_start(pinst->trx->bts);
 	}
@@ -87,13 +168,13 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	return 0;
 }
 
-
 /*
  * primitive handling
  */
 
 /* enable ciphering */
-static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr, int downlink)
+static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr,
+                              int downlink)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -106,17 +187,17 @@ static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr, int down
 	if (!downlink) {
 		/* set uplink */
 		trx_sched_set_cipher(sched, chan_nr, 0, lchan->encr.alg_id - 1,
-			lchan->encr.key, lchan->encr.key_len);
+		                lchan->encr.key, lchan->encr.key_len);
 		lchan->ciph_state = LCHAN_CIPH_RX_CONF;
 	} else {
 		/* set downlink and also set uplink, if not already */
 		if (lchan->ciph_state != LCHAN_CIPH_RX_CONF) {
 			trx_sched_set_cipher(sched, chan_nr, 0,
-				lchan->encr.alg_id - 1, lchan->encr.key,
-				lchan->encr.key_len);
+			                lchan->encr.alg_id - 1, lchan->encr.key,
+			                lchan->encr.key_len);
 		}
 		trx_sched_set_cipher(sched, chan_nr, 1, lchan->encr.alg_id - 1,
-			lchan->encr.key, lchan->encr.key_len);
+		                lchan->encr.key, lchan->encr.key_len);
 		lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
 	}
 
@@ -124,13 +205,13 @@ static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr, int down
 }
 
 static int mph_info_chan_confirm(struct gsm_bts_trx *trx, uint8_t chan_nr,
-	enum osmo_mph_info_type type, uint8_t cause)
+                                 enum osmo_mph_info_type type, uint8_t cause)
 {
 	struct osmo_phsap_prim l1sap;
 
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_CONFIRM,
-		NULL);
+	NULL);
 	l1sap.u.info.type = type;
 	l1sap.u.info.u.act_cnf.chan_nr = chan_nr;
 	l1sap.u.info.u.act_cnf.cause = cause;
@@ -144,7 +225,7 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO,
-		PRIM_OP_INDICATION, NULL);
+	                PRIM_OP_INDICATION, NULL);
 	l1sap.u.info.type = PRIM_INFO_TIME;
 	l1sap.u.info.u.time_ind.fn = fn;
 
@@ -154,39 +235,41 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 	return l1sap_up(bts->c0, &l1sap);
 }
 
-
-static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, float ta,
-				float ber, float rssi)
+static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr,
+                               float ta, float ber, float rssi)
 {
 	memset(l1sap, 0, sizeof(*l1sap));
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_MPH_INFO,
-		PRIM_OP_INDICATION, NULL);
+	                PRIM_OP_INDICATION, NULL);
 	l1sap->u.info.type = PRIM_INFO_MEAS;
 	l1sap->u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap->u.info.u.meas_ind.ta_offs_qbits = (int16_t)(ta*4);
-	l1sap->u.info.u.meas_ind.ber10k = (unsigned int) (ber * 10000);
-	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
+	l1sap->u.info.u.meas_ind.ta_offs_qbits = (int16_t)(ta * 4);
+	l1sap->u.info.u.meas_ind.ber10k = (unsigned int)(ber * 10000);
+	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t)(rssi * -1);
 }
 
-int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
-	int n_errors, int n_bits_total, float rssi, float toa)
+int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn,
+                          uint8_t chan_nr, int n_errors, int n_bits_total,
+                          float rssi, float toa)
 {
 	struct gsm_lchan *lchan = &trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)];
 	struct osmo_phsap_prim l1sap;
 	/* 100% BER is n_bits_total is 0 */
-	float ber = n_bits_total==0 ? 1.0 : (float)n_errors / (float)n_bits_total;
+	float ber = n_bits_total == 0 ?
+	                1.0 : (float)n_errors / (float)n_bits_total;
 
-	LOGP(DMEAS, LOGL_DEBUG, "RX L1 frame %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
-		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
-		gsm_lchan_name(lchan), fn, chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
-		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info[1], lchan->rqd_ta, toa);
+	LOGP(DMEAS, LOGL_DEBUG,
+	                "RX L1 frame %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
+			                "ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
+	                gsm_lchan_name(lchan), fn, chan_nr,
+	                ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+	                rssi, ber * 100, n_errors, n_bits_total,
+	                lchan->meas.l1_info[1], lchan->rqd_ta, toa);
 
 	l1if_fill_meas_res(&l1sap, chan_nr, lchan->rqd_ta + toa, ber, rssi);
 
 	return l1sap_up(trx, &l1sap);
 }
-
-
 
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
@@ -232,7 +315,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
 				if ((chan_nr & 0x80)) {
 					LOGP(DL1C, LOGL_ERROR, "Cannot activate"
-						" chan_nr 0x%02x\n", chan_nr);
+							" chan_nr 0x%02x\n",
+					                chan_nr);
 					break;
 				}
 				/* activate dedicated channel */
@@ -241,14 +325,15 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				trx_sched_set_lchan(sched, chan_nr, 0x40, 1);
 				/* set mode */
 				trx_sched_set_mode(sched, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode,
-					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.bts_mode[0].mode,
-					lchan->tch.amr_mr.bts_mode[1].mode,
-					lchan->tch.amr_mr.bts_mode[2].mode,
-					lchan->tch.amr_mr.bts_mode[3].mode,
-					amr_get_initial_mode(lchan),
-					(lchan->ho.active == 1));
+				                lchan->rsl_cmode,
+				                lchan->tch_mode,
+				                lchan->tch.amr_mr.num_modes,
+				                lchan->tch.amr_mr.bts_mode[0].mode,
+				                lchan->tch.amr_mr.bts_mode[1].mode,
+				                lchan->tch.amr_mr.bts_mode[2].mode,
+				                lchan->tch.amr_mr.bts_mode[3].mode,
+				                amr_get_initial_mode(lchan),
+				                (lchan->ho.active == 1));
 				/* init lapdm */
 				lchan_init_lapdm(lchan);
 				/* set lchan active */
@@ -257,31 +342,32 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				l1if_set_ciphering(lchan, chan_nr, 0);
 				l1if_set_ciphering(lchan, chan_nr, 1);
 				if (lchan->encr.alg_id)
-					lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
+					lchan->ciph_state =
+					                LCHAN_CIPH_RXTX_CONF;
 				else
 					lchan->ciph_state = LCHAN_CIPH_NONE;
 
 				/* confirm */
 				mph_info_chan_confirm(trx, chan_nr,
-					PRIM_INFO_ACTIVATE, 0);
+				                PRIM_INFO_ACTIVATE, 0);
 				break;
 			}
 			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
 				/* change mode */
 				trx_sched_set_mode(sched, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode,
-					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.bts_mode[0].mode,
-					lchan->tch.amr_mr.bts_mode[1].mode,
-					lchan->tch.amr_mr.bts_mode[2].mode,
-					lchan->tch.amr_mr.bts_mode[3].mode,
-					amr_get_initial_mode(lchan),
-					0);
+				                lchan->rsl_cmode,
+				                lchan->tch_mode,
+				                lchan->tch.amr_mr.num_modes,
+				                lchan->tch.amr_mr.bts_mode[0].mode,
+				                lchan->tch.amr_mr.bts_mode[1].mode,
+				                lchan->tch.amr_mr.bts_mode[2].mode,
+				                lchan->tch.amr_mr.bts_mode[3].mode,
+				                amr_get_initial_mode(lchan), 0);
 				break;
 			}
 			if ((chan_nr & 0x80)) {
 				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
-					"chan_nr 0x%02x\n", chan_nr);
+						"chan_nr 0x%02x\n", chan_nr);
 				break;
 			}
 			/* deactivate associated channel */
@@ -293,26 +379,25 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				trx_sched_set_lchan(sched, chan_nr, 0x00, 0);
 				/* confirm only on dedicated channel */
 				mph_info_chan_confirm(trx, chan_nr,
-					PRIM_INFO_DEACTIVATE, 0);
+				                PRIM_INFO_DEACTIVATE, 0);
 				lchan->ciph_state = 0; /* FIXME: do this in common/\*.c */
 			}
 			break;
 		default:
 			LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
-				l1sap->u.info.type);
+			                l1sap->u.info.type);
 			rc = -EINVAL;
 			goto done;
 		}
 		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d\n",
-			l1sap->oph.primitive, l1sap->oph.operation);
+		                l1sap->oph.primitive, l1sap->oph.operation);
 		rc = -EINVAL;
 		goto done;
 	}
 
-done:
-	if (msg)
+	done: if (msg)
 		msgb_free(msg);
 	return rc;
 }
