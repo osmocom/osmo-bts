@@ -402,7 +402,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 				 identity_lv, chan_needed);
 	if (rc < 0) {
 		/* FIXME: notfiy the BSC on other errors? */
-		if (rc == -ENOSPC && trx)
+		if (rc == -ENOSPC)
 			oml_tx_failure_event_rep(&trx->mo,
 						 OSMO_EVT_MIN_PAG_TAB_FULL,
 						 "BTS paging table is full\n");
