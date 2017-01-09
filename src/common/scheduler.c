@@ -156,6 +156,48 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	1,	TRXC_PTCCH,	0x08,	LID_DEDIC,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
 };
 
+const struct value_string trx_chan_type_names[] = {
+	OSMO_VALUE_STRING(TRXC_IDLE),
+	OSMO_VALUE_STRING(TRXC_FCCH),
+	OSMO_VALUE_STRING(TRXC_SCH),
+	OSMO_VALUE_STRING(TRXC_BCCH),
+	OSMO_VALUE_STRING(TRXC_RACH),
+	OSMO_VALUE_STRING(TRXC_CCCH),
+	OSMO_VALUE_STRING(TRXC_TCHF),
+	OSMO_VALUE_STRING(TRXC_TCHH_0),
+	OSMO_VALUE_STRING(TRXC_TCHH_1),
+	OSMO_VALUE_STRING(TRXC_SDCCH4_0),
+	OSMO_VALUE_STRING(TRXC_SDCCH4_1),
+	OSMO_VALUE_STRING(TRXC_SDCCH4_2),
+	OSMO_VALUE_STRING(TRXC_SDCCH4_3),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_0),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_1),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_2),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_3),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_4),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_5),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_6),
+	OSMO_VALUE_STRING(TRXC_SDCCH8_7),
+	OSMO_VALUE_STRING(TRXC_SACCHTF),
+	OSMO_VALUE_STRING(TRXC_SACCHTH_0),
+	OSMO_VALUE_STRING(TRXC_SACCHTH_1),
+	OSMO_VALUE_STRING(TRXC_SACCH4_0),
+	OSMO_VALUE_STRING(TRXC_SACCH4_1),
+	OSMO_VALUE_STRING(TRXC_SACCH4_2),
+	OSMO_VALUE_STRING(TRXC_SACCH4_3),
+	OSMO_VALUE_STRING(TRXC_SACCH8_0),
+	OSMO_VALUE_STRING(TRXC_SACCH8_1),
+	OSMO_VALUE_STRING(TRXC_SACCH8_2),
+	OSMO_VALUE_STRING(TRXC_SACCH8_3),
+	OSMO_VALUE_STRING(TRXC_SACCH8_4),
+	OSMO_VALUE_STRING(TRXC_SACCH8_5),
+	OSMO_VALUE_STRING(TRXC_SACCH8_6),
+	OSMO_VALUE_STRING(TRXC_SACCH8_7),
+	OSMO_VALUE_STRING(TRXC_PDTCH),
+	OSMO_VALUE_STRING(TRXC_PTCCH),
+	OSMO_VALUE_STRING(_TRX_CHAN_MAX),
+ 	{ 0, NULL }
+};
 
 /*
  * init / exit
@@ -264,10 +306,13 @@ free_msg:
 		}
 		if (prim_fn > 100) {
 			LOGP(DL1C, LOGL_NOTICE, "Prim for trx=%u ts=%u at fn=%u "
-				"is out of range, or channel already disabled. "
-				"If this happens in conjunction with PCU, "
-				"increase 'rts-advance' by 5. (current fn=%u)\n",
-				l1t->trx->nr, tn, l1sap->u.data.fn, fn);
+			     "is out of range, or channel %s with type %s is "
+			     "already disabled. If this happens in conjunction "
+			     "with PCU, increase 'rts-advance' by 5. "
+			     "(current fn=%u)\n", l1t->trx->nr, tn,
+			     l1sap->u.data.fn,
+			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
+			     get_value_string(trx_chan_type_names, chan), fn);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);

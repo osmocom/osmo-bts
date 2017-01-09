@@ -1,6 +1,8 @@
 #ifndef TRX_SCHEDULER_H
 #define TRX_SCHEDULER_H
 
+#include <osmocom/core/utils.h>
+
 #include <osmo-bts/gsm_data.h>
 
 /* These types define the different channels on a multiframe.
@@ -47,6 +49,8 @@ enum trx_chan_type {
 	TRXC_PTCCH,
 	_TRX_CHAN_MAX
 };
+
+extern const struct value_string trx_chan_type_names[];
 
 #define GSM_BURST_LEN		148
 #define GPRS_BURST_LEN		GSM_BURST_LEN
