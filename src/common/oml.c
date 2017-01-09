@@ -1048,6 +1048,8 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
 		mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+		if (!mo)
+			return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for IPAC Set Attribute not "
 					 "supported\n");
