@@ -2008,6 +2008,8 @@ static void osmo_dyn_ts_disconnected(struct gsm_bts_trx_ts *ts)
 
 void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
 {
+	OSMO_ASSERT(ts);
+
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
 		return ipacc_dyn_pdch_ts_disconnected(ts);
@@ -2093,6 +2095,8 @@ static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts)
 
 void cb_ts_connected(struct gsm_bts_trx_ts *ts)
 {
+	OSMO_ASSERT(ts);
+
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
 		return ipacc_dyn_pdch_ts_connected(ts);
@@ -2105,7 +2109,10 @@ void cb_ts_connected(struct gsm_bts_trx_ts *ts)
 
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 {
-	bool pdch_act = ts->flags & TS_F_PDCH_ACT_PENDING;
+	bool pdch_act;
+	OSMO_ASSERT(ts);
+
+	pdch_act = ts->flags & TS_F_PDCH_ACT_PENDING;
 
 	if ((ts->flags & TS_F_PDCH_PENDING_MASK) == TS_F_PDCH_PENDING_MASK)
 		LOGP(DRSL, LOGL_ERROR,
@@ -2256,7 +2263,12 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len)
 int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 {
 	struct gsm_lchan *lchan = ctx;
-	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
+	struct abis_rsl_common_hdr *rh;
+
+	/* NOTE: Parameter lapdm_entity *le is ignored */
+
+	OSMO_ASSERT(msg);
+	rh = msgb_l2(msg);
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
 		LOGP(DRSL, LOGL_INFO, "%s(%s) is not active . Dropping message.\n",
@@ -2482,14 +2494,21 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 
 int lchan_deactivate(struct gsm_lchan *lchan)
 {
+	OSMO_ASSERT(lchan);
+
 	lchan->ciph_state = 0;
 	return bts_model_lchan_deactivate(lchan);
 }
 
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 {
-	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
+	struct abis_rsl_common_hdr *rslh;
 	int ret = 0;
+
+	OSMO_ASSERT(trx);
+	OSMO_ASSERT(msg);
+
+	rslh = msgb_l2(msg);
 
 	if (msgb_l2len(msg) < sizeof(*rslh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL message too short\n");
