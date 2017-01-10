@@ -50,6 +50,10 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/control_if.h>
+#include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
+#include <osmocom/ctrl/control_vty.h>
+#include <openbsc/ctrl.h>
 #include <osmo-bts/oml.h>
 
 int quit = 0;
@@ -237,6 +241,7 @@ int bts_main(int argc, char **argv)
 
 	bts_log_init(NULL);
 	vty_init(&bts_vty_info);
+	ctrl_vty_init(tall_bts_ctx);
 
 	handle_options(argc, argv);
 
@@ -308,7 +313,7 @@ int bts_main(int argc, char **argv)
 
 	write_pid_file("osmo-bts");
 
-	bts_controlif_setup(bts);
+	bts_controlif_setup(bts, ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BTS);
 
 	rc = telnet_init_dynif(tall_bts_ctx, NULL, vty_get_bind_addr(),
 			       g_vty_port_num);
