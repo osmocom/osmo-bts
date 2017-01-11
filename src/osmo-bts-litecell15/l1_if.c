@@ -647,6 +647,7 @@ static int handle_mph_time_ind(struct lc15l1_hdl *fl1,
 
 	/* ignore every time indication, except for c0 */
 	if (trx != bts->c0) {
+		msgb_free(msg);
 		return 0;
 	}
 
