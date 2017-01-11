@@ -352,17 +352,66 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	return 0;
 }
 
+/* Calculate the number of RACH slots that expire in a certain GSM frame
+ * See also 3GPP TS 05.02 Clause 7 Table 5 of 9 */
+static unsigned int calc_exprd_rach_frames(struct gsm_bts *bts, uint32_t fn)
+{
+	int rach_frames_expired = 0;
+	uint8_t ccch_conf;
+	struct gsm48_system_information_type_3 *si3;
+	unsigned int blockno;
+
+	si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
+	ccch_conf = si3->control_channel_desc.ccch_conf;
+
+	if (ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
+		/* It is possible to combine a CCCH with an SDCCH4, in this
+		 * case the CCCH will have to share the available frames with
+		 * the other channel, this results in a limited number of
+		 * available rach slots */
+		blockno = fn % 51;
+		if (blockno == 4 || blockno == 5
+		    || (blockno >= 15 && blockno <= 36) || blockno == 45
+		    || blockno == 46)
+			rach_frames_expired = 1;
+	} else {
+		/* It is possible to have multiple CCCH channels on
+		 * different physical channels (large cells), this
+		 * also multiplies the available/expired RACH channels.
+		 * See also TS 04.08, Chapter 10.5.2.11, table 10.29 */
+		if (ccch_conf == RSL_BCCH_CCCH_CONF_2_NC)
+			rach_frames_expired = 2;
+		if (ccch_conf == RSL_BCCH_CCCH_CONF_3_NC)
+			rach_frames_expired = 3;
+		if (ccch_conf == RSL_BCCH_CCCH_CONF_4_NC)
+			rach_frames_expired = 4;
+		else
+			rach_frames_expired = 1;
+	}
+
+	/* Each Frame has room for 4 RACH slots, since RACH
+	 * slots are short enough to fit into a single radio
+	 * burst, so we need to multiply the final result by 4 */
+	return rach_frames_expired * 4;
+}
+
 /* time information received from bts model */
 static int l1sap_info_time_ind(struct gsm_bts *bts,
-	struct osmo_phsap_prim *l1sap,
-	struct info_time_ind_param *info_time_ind)
+			       struct osmo_phsap_prim *l1sap,
+			       struct info_time_ind_param *info_time_ind)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_role_bts *btsb = bts->role;
-
-	int frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
+	int frames_expired;
 
 	DEBUGP(DL1P, "MPH_INFO time ind %u\n", info_time_ind->fn);
+
+	/* Calculate and check frame difference */
+	frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
+	if (frames_expired > 1) {
+		LOGP(DL1P, LOGL_ERROR,
+		     "Invalid condition detected: Frame difference is > 1!\n");
+	}
 
 	/* Update our data structures with the current GSM time */
 	gsm_fn2gsmtime(&btsb->gsm_time, info_time_ind->fn);
@@ -373,24 +422,15 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	/* check if the measurement period of some lchan has ended
 	 * and pre-compute the respective measurement */
 	llist_for_each_entry(trx, &bts->trx_list, list)
-		trx_meas_check_compute(trx, info_time_ind->fn - 1);
+	    trx_meas_check_compute(trx, info_time_ind->fn - 1);
 
 	/* increment number of RACH slots that have passed by since the
 	 * last time indication */
-	if (trx == bts->c0) {
-		unsigned int num_rach_per_frame;
-		/* 27 / 51 taken from TS 05.01 Figure 3 */
-		if (bts->c0->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4)
-			num_rach_per_frame = 27;
-		else
-			num_rach_per_frame = 51;
-
-		btsb->load.rach.total += frames_expired * num_rach_per_frame;
-	}
+	btsb->load.rach.total +=
+	    calc_exprd_rach_frames(bts, info_time_ind->fn) * frames_expired;
 
 	return 0;
 }
-
 /* measurement information received from bts model */
 static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
