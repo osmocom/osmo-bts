@@ -412,6 +412,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			if (sapi == GsmL1_Sapi_FacchH) {
 				sapi = GsmL1_Sapi_TchH;
 				subCh = L1SAP_CHAN2SS_TCHH(chan_nr);
+				u8BlockNbr = (u32Fn % 13) >> 2;
 			}
 			if (sapi == GsmL1_Sapi_TchH || sapi == GsmL1_Sapi_TchF) {
 				/* FACCH interruption of DTX silence */
