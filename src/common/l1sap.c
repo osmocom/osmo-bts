@@ -381,9 +381,9 @@ static unsigned int calc_exprd_rach_frames(struct gsm_bts *bts, uint32_t fn)
 		 * See also TS 04.08, Chapter 10.5.2.11, table 10.29 */
 		if (ccch_conf == RSL_BCCH_CCCH_CONF_2_NC)
 			rach_frames_expired = 2;
-		if (ccch_conf == RSL_BCCH_CCCH_CONF_3_NC)
+		else if (ccch_conf == RSL_BCCH_CCCH_CONF_3_NC)
 			rach_frames_expired = 3;
-		if (ccch_conf == RSL_BCCH_CCCH_CONF_4_NC)
+		else if (ccch_conf == RSL_BCCH_CCCH_CONF_4_NC)
 			rach_frames_expired = 4;
 		else
 			rach_frames_expired = 1;
