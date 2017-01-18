@@ -714,6 +714,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	uint8_t chan_nr, marker = 0;
 	uint16_t seq;
 	uint32_t fn, timestamp;
+	int rc;
 
 	chan_nr = rts_ind->chan_nr;
 	fn = rts_ind->fn;
@@ -755,6 +756,16 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
 		resp_msg->l1h = resp_msg->data;
 		resp_l1sap = msgb_l1sap_prim(resp_msg);
+	}
+
+	/* check for pending REL_IND */
+	if (lchan->pending_rel_ind_msg) {
+		LOGP(DRSL, LOGL_INFO, "%s Forward REL_IND to L3\n", gsm_lchan_name(lchan));
+		/* Forward it to L3 */
+		rc = abis_bts_rsl_sendmsg(lchan->pending_rel_ind_msg);
+		lchan->pending_rel_ind_msg = NULL;
+		if (rc < 0)
+			return rc;
 	}
 
 	memset(resp_l1sap, 0, sizeof(*resp_l1sap));

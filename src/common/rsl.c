@@ -2273,6 +2273,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 	}
 
 	msg->trx = lchan->ts->trx;
+	msg->lchan = lchan;
 
 	/* check if this is a measurement report from SACCH which needs special
 	 * processing before forwarding */
@@ -2281,6 +2282,22 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 
 		LOGP(DRSL, LOGL_INFO, "%s Handing RLL msg %s from LAPDm to MEAS REP\n",
 			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));
+
+		/* REL_IND handling */
+		if (rh->msg_type == RSL_MT_REL_IND) {
+			LOGP(DRSL, LOGL_INFO, "%s Scheduling %s to L3 in next associated TCH-RTS.ind\n",
+				gsm_lchan_name(lchan),
+				rsl_msg_name(rh->msg_type));
+
+			if(lchan->pending_rel_ind_msg) {
+				LOGP(DRSL, LOGL_INFO, "Dropping pending release indication message\n");
+					msgb_free(lchan->pending_rel_ind_msg);
+			}
+
+			lchan->pending_rel_ind_msg = msg;
+			return 0;
+		}
+
 		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg));
 		msgb_free(msg);
 		return rc;
