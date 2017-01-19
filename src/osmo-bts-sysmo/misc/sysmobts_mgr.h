@@ -3,7 +3,7 @@
 
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
-
+#include <osmocom/ctrl/control_if.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 
@@ -108,7 +108,8 @@ struct sysmobts_mgr_instance {
 int sysmobts_mgr_vty_init(void);
 int sysmobts_mgr_parse_config(struct sysmobts_mgr_instance *mgr);
 int sysmobts_mgr_nl_init(void);
-int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr);
+int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr,
+			   struct ctrl_connection *ctrl);
 const char *sysmobts_mgr_temp_get_state(enum sysmobts_temp_state state);
 
 

@@ -21,6 +21,8 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -28,14 +30,19 @@
 #include <limits.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/socket.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/ports.h>
+#include <osmocom/ctrl/control_if.h>
+#include <osmocom/ctrl/ports.h>
 
 #include "misc/sysmobts_misc.h"
 #include "misc/sysmobts_mgr.h"
@@ -246,10 +253,12 @@ static int mgr_log_init(void)
 int main(int argc, char **argv)
 {
 	int rc;
-
+	struct ctrl_connection *ccon;
 
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
 	msgb_talloc_ctx_init(tall_mgr_ctx, 0);
+
+	srand(time(NULL));
 
 	mgr_log_init();
 	if (classify_bts() != 0)
@@ -294,7 +303,23 @@ int main(int argc, char **argv)
 		exit(3);
 
 	/* Initialize the temperature control */
-	sysmobts_mgr_temp_init(&manager);
+	ccon = osmo_ctrl_conn_alloc(tall_mgr_ctx, NULL);
+	rc = -1;
+	if (ccon) {
+		ccon->write_queue.bfd.data = ccon;
+		rc = osmo_sock_init_ofd(&ccon->write_queue.bfd, AF_INET,
+					SOCK_STREAM, IPPROTO_TCP,
+					"localhost", OSMO_CTRL_PORT_BTS,
+					OSMO_SOCK_F_CONNECT);
+	}
+	if (rc < 0)
+		LOGP(DLCTRL, LOGL_ERROR, "Can't connect to CTRL @ localhost:%u\n",
+		     OSMO_CTRL_PORT_BTS);
+	else
+		LOGP(DLCTRL, LOGL_NOTICE, "CTRL connected to locahost:%u\n",
+		     OSMO_CTRL_PORT_BTS);
+
+        sysmobts_mgr_temp_init(&manager, ccon);
 
 	if (sysmobts_mgr_calib_init(&manager) != 0)
 		exit(3);

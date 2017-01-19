@@ -28,6 +28,8 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/utils.h>
 
+#include <stdlib.h>
+
 static struct sysmobts_mgr_instance *s_mgr;
 static struct osmo_timer_list temp_ctrl_timer;
 
@@ -185,13 +187,24 @@ static void execute_critical_act(struct sysmobts_mgr_instance *manager)
 }
 
 static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
-			int critical, int warning)
+				     struct ctrl_connection *ctrl, int critical,
+				     int warning)
 {
-	int new_state = next_state(manager->state, critical, warning);
+	int new_state = next_state(manager->state, critical, warning), rc;
+	struct ctrl_cmd *rep;
+	bool send = false;
 
 	/* Nothing changed */
 	if (new_state < 0)
 		return;
+
+	rep = ctrl_cmd_create(tall_mgr_ctx, CTRL_TYPE_SET);
+	if (!rep) {
+		LOGP(DTEMP, LOGL_ERROR, "OML alert creation failed.\n");
+	} else {
+		rep->id = talloc_asprintf(rep, "%d", rand());
+		rep->variable = "oml-alert";
+	}
 
 	LOGP(DTEMP, LOGL_NOTICE, "Moving from state %s to %s.\n",
 		get_value_string(state_names, manager->state),
@@ -206,14 +219,24 @@ static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
 		break;
 	case STATE_WARNING:
 		execute_warning_act(manager);
+		rep->value = "Temperature Warning";
+		send = true;
 		break;
 	case STATE_CRITICAL:
 		execute_critical_act(manager);
+		rep->value = "Temperature Critical";
+		send = true;
 		break;
 	};
+
+	if (send) {
+		rc = ctrl_cmd_send(&ctrl->write_queue, rep);
+		LOGP(DTEMP, LOGL_ERROR, "OML alert sent: %d\n", rc);
+	}
+	talloc_free(rep);
 } 
 
-static void temp_ctrl_check()
+static void temp_ctrl_check(struct ctrl_connection *ctrl)
 {
 	int rc;
 	int warn_thresh_passed = 0;
@@ -275,20 +298,23 @@ static void temp_ctrl_check()
 		}
 	}
 
-	sysmobts_mgr_temp_handle(s_mgr, crit_thresh_passed, warn_thresh_passed);	
+	sysmobts_mgr_temp_handle(s_mgr, ctrl, crit_thresh_passed,
+				 warn_thresh_passed);
 }
 
-static void temp_ctrl_check_cb(void *unused)
+static void temp_ctrl_check_cb(void *ctrl)
 {
-	temp_ctrl_check();
+	temp_ctrl_check(ctrl);
 	/* Check every two minutes? XXX make it configurable! */
 	osmo_timer_schedule(&temp_ctrl_timer, 2 * 60, 0);
 }
 
-int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr)
+int sysmobts_mgr_temp_init(struct sysmobts_mgr_instance *mgr,
+			   struct ctrl_connection *ctrl)
 {
 	s_mgr = mgr;
 	temp_ctrl_timer.cb = temp_ctrl_check_cb;
-	temp_ctrl_check_cb(NULL);
+	temp_ctrl_timer.data = ctrl;
+	temp_ctrl_check_cb(ctrl);
 	return 0;
 }
