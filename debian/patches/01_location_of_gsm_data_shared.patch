@@ -1,0 +1,18 @@
+From: Ruben Undheim <ruben.undheim@gmail.com>
+Date: Sat, 28 May 2016 09:38:56 +0200
+Subject: In order to build osmo-bts,
+ some files shared with openbsc needs to be available. This replaces
+ the search path for these files so that they are picked from the openbsc-dev
+ package.
+
+---
+ src/common/gsm_data_shared.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/common/gsm_data_shared.c b/src/common/gsm_data_shared.c
+index 706892d..932d71f 100644
+--- a/src/common/gsm_data_shared.c
++++ b/src/common/gsm_data_shared.c
+@@ -1 +1 @@
+-#include "../../../openbsc/openbsc/src/libcommon/gsm_data_shared.c"
++#include "/usr/src/osmocom/openbsc/libcommon/gsm_data_shared.c"
