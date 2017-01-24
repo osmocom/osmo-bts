@@ -13,6 +13,7 @@ enum {
 };
 
 #define LCHAN_FN_DUMMY 0xFFFFFFFF
+#define LCHAN_FN_WAIT 0xFFFFFFFE
 
 int msgb_queue_flush(struct llist_head *list);
 

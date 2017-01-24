@@ -311,12 +311,12 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 			rtppayload_to_l1_amr(l1_payload + 2, rtp_pl, rtp_pl_len,
 					     ft);
 			return 0;
-		case ST_F1_INH:
+		case ST_F1_INH_V:
 			*payload_type = GsmL1_TchPlType_Amr_SidFirstInH;
 			*len = 3;
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);
 			return 1;
-		case ST_U_INH:
+		case ST_U_INH_V:
 			*payload_type = GsmL1_TchPlType_Amr_SidUpdateInH;
 			*len = 3;
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, 0);

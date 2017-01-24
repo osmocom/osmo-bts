@@ -405,7 +405,9 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer,
 			       lchan->tch.dtx.facch, msgb_l2len(msg));
 		else if (dtx_dl_amr_enabled(lchan) &&
-			 lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F) {
+			 ((lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F) ||
+			 (lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_F) ||
+			 (lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_F))) {
 			if (sapi == GsmL1_Sapi_FacchF) {
 				sapi = GsmL1_Sapi_TchF;
 			}
@@ -419,9 +421,16 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 				/* cache FACCH data */
 				memcpy(lchan->tch.dtx.facch, msg->l2h,
 				       msgb_l2len(msg));
-				/* prepare ONSET message */
-				l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
-					GsmL1_TchPlType_Amr_Onset;
+				/* prepare ONSET or INH message */
+				if(lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F)
+					l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
+								GsmL1_TchPlType_Amr_Onset;
+				else if(lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_F)
+					l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
+								GsmL1_TchPlType_Amr_SidUpdateInH;
+				else if(lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_F)
+					l1p->u.phDataReq.msgUnitParam.u8Buffer[0] =
+								GsmL1_TchPlType_Amr_SidFirstInH;
 				/* ignored CMR/CMI pair */
 				l1p->u.phDataReq.msgUnitParam.u8Buffer[1] = 0;
 				l1p->u.phDataReq.msgUnitParam.u8Buffer[2] = 0;

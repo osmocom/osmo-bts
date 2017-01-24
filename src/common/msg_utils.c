@@ -137,7 +137,7 @@ void dtx_cache_payload(struct gsm_lchan *lchan, const uint8_t *l1_payload,
 		       size_t length, uint32_t fn, int update)
 {
 	size_t amr = (update < 0) ? 0 : 2,
-		copy_len = OSMO_MIN(length + 1,
+		copy_len = OSMO_MIN(length,
 				ARRAY_SIZE(lchan->tch.dtx.cache) - amr);
 
 	lchan->tch.dtx.len = copy_len + amr;
@@ -230,7 +230,7 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 
 	if (osmo_amr_is_speech(ft)) {
 		/* AMR HR - SID-FIRST_P1 Inhibition */
-		if (marker && dtx_is_first_p1(lchan))
+		if (marker && lchan->tch.dtx.dl_amr_fsm->state == ST_VOICE)
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
 						      E_INHIB, (void *)lchan);
 
@@ -261,7 +261,8 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 			   as FIRST regardless of actually decoded type */
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, false);
 			return osmo_fsm_inst_dispatch(lchan->tch.dtx.dl_amr_fsm,
-						      E_SID_F, (void *)lchan);
+						      sti ? E_SID_U : E_SID_F,
+						      (void *)lchan);
 		} else if (lchan->tch.dtx.dl_amr_fsm->state != ST_FACCH)
 			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, sti);
 		if (lchan->tch.dtx.dl_amr_fsm->state == ST_SID_F2)
@@ -319,12 +320,24 @@ static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 		   already: we rely here on the order of RTS arrival from L1 - we
 		   expect that PH-DATA.req ALWAYS comes before PH-TCH.req for the
 		   same FN */
-		if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY) {
-			/* FACCH interruption is over */
-			dtx_dispatch(lchan, E_COMPL);
-			return false;
-		} else
-			lchan->tch.dtx.fn = fn;
+		if(lchan->type == GSM_LCHAN_TCH_H) {
+			if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY &&
+			    lchan->tch.dtx.fn != LCHAN_FN_WAIT) {
+				/* FACCH interruption is over */
+				dtx_dispatch(lchan, E_COMPL);
+				return false;
+			} else if(lchan->tch.dtx.fn == LCHAN_FN_DUMMY) {
+				lchan->tch.dtx.fn = LCHAN_FN_WAIT;
+			} else
+				lchan->tch.dtx.fn = fn;
+		} else if(lchan->type == GSM_LCHAN_TCH_F) {
+			if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY) {
+				/* FACCH interruption is over */
+				dtx_dispatch(lchan, E_COMPL);
+				return false;
+			} else
+				lchan->tch.dtx.fn = fn;
+		}
 		/* this FN was already used for FACCH or ONSET message so we just
 		   prepare things for next one */
 		return true;
@@ -401,9 +414,14 @@ bool dtx_recursion(const struct gsm_lchan *lchan)
 	if (!dtx_dl_amr_enabled(lchan))
 		return false;
 
-	if (lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH ||
-	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_REC ||
-	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH ||
+	if (lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_V ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_F ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_V_REC ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_U_INH_F_REC ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_V ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_F ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_V_REC ||
+	    lchan->tch.dtx.dl_amr_fsm->state == ST_F1_INH_F_REC ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_V ||
 	    lchan->tch.dtx.dl_amr_fsm->state == ST_ONSET_F_REC ||
