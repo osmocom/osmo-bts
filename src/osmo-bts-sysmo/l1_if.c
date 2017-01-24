@@ -1081,8 +1081,10 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		rc = handle_mph_time_ind(fl1, &l1p->u.mphTimeInd, msg);
 		break;
 	case GsmL1_PrimId_MphSyncInd:
+		msgb_free(msg);
 		break;
 	case GsmL1_PrimId_PhConnectInd:
+		msgb_free(msg);
 		break;
 	case GsmL1_PrimId_PhReadyToSendInd:
 		rc = handle_ph_readytosend_ind(fl1, &l1p->u.phReadyToSendInd,
@@ -1095,7 +1097,7 @@ static int l1if_handle_ind(struct femtol1_hdl *fl1, struct msgb *msg)
 		rc = handle_ph_ra_ind(fl1, &l1p->u.phRaInd, msg);
 		break;
 	default:
-		break;
+		msgb_free(msg);
 	}
 
 	return rc;
