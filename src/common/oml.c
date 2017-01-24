@@ -25,6 +25,8 @@
  */
 
 #include <errno.h>
+#include <stdarg.h>
+#include <string.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 
@@ -56,6 +58,42 @@ static int oml_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int len)
 struct msgb *oml_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(1024, 128, "OML");
+}
+
+/* 3GPP TS 12.21 § 8.8.2 */
+static int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value,
+				    const char *fmt, ...)
+{
+	struct msgb *nmsg;
+	va_list ap;
+
+	LOGP(DOML, LOGL_NOTICE, "Reporting FAILURE to BSC: ");
+	va_start(ap, fmt);
+	osmo_vlogp(DOML, LOGL_NOTICE, __FILE__, __LINE__, 1, fmt, ap);
+	nmsg = abis_nm_fail_evt_vrep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
+				     NM_PCAUSE_T_MANUF, cause_value, fmt, ap);
+	va_end(ap);
+	LOGPC(DOML, LOGL_NOTICE, "\n");
+
+	if (!nmsg)
+		return -ENOMEM;
+
+	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
+}
+
+void oml_fail_rep(uint16_t cause_value, const char *fmt, ...)
+{
+	va_list ap;
+	char *rep;
+
+	va_start(ap, fmt);
+	rep = talloc_asprintf(tall_bts_ctx, fmt, ap);
+	va_end(ap);
+
+	osmo_signal_dispatch(SS_FAIL, cause_value, rep);
+	/* signal dispatch is synchronous so all the signal handlers are
+	   finished already: we're free to free */
+	talloc_free(rep);
 }
 
 int oml_send_msg(struct msgb *msg, int is_manuf)
@@ -347,7 +385,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
-					 "New value for Attribute not supported\n");
+					 "New value for Attribute not supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -356,7 +394,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 		if (arfcn > 1024) {
 			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
-						 "Given ARFCN %d is not supported.\n",
+						 "Given ARFCN %u is not supported",
 						 arfcn);
 			LOGP(DOML, LOGL_NOTICE, "Given ARFCN %d is not supported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
@@ -366,7 +404,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRESENT(&tp, NM_ATT_START_TIME)) {
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "NM_ATT_START_TIME Attribute not "
-					 "supported\n");
+					 "supported");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
@@ -506,7 +544,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (rc < 0) {
 		oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for Set Radio Attribute not"
-					 " supported\n");
+					 " supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -568,8 +606,15 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		memcpy(&_value, value, 2);
 		arfcn = ntohs(_value);
 		value += 2;
-		if (arfcn > 1024)
+		if (arfcn > 1024) {
+			oml_tx_failure_event_rep(&trx->bts->mo,
+						 OSMO_EVT_WARN_SW_WARN,
+						 "Given ARFCN %u is unsupported",
+						 arfcn);
+			LOGP(DOML, LOGL_NOTICE,
+			     "Given ARFCN %u is unsupported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
+		}
 		trx->arfcn = arfcn;
 	}
 #endif
@@ -672,7 +717,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	if (rc < 0) {
 		oml_tx_failure_event_rep(&ts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for Set Channel Attribute "
-					 "not supported\n");
+					 "not supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -814,7 +859,7 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
 			trx->mo.obj_inst.ts_nr = 0xff;
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "Formatted O&M message too short\n");
+						 "Formatted O&M message too short");
 		}
 		return -EIO;
 	}
@@ -828,7 +873,7 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 			trx->mo.obj_inst.ts_nr = 0xff;
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
 						 "Formatted O&M with BTS %d out"
-						 " of range (0:0xFF).\n",
+						 " of range (0:0xFF)",
 						 foh->obj_inst.bts_nr);
 		}
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
@@ -871,12 +916,12 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 			trx->mo.obj_inst.ts_nr = 0xff;
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
 						 "unknown Formatted O&M "
-						 "msg_type 0x%02x\n",
+						 "msg_type 0x%02x",
 						 foh->msg_type);
 		} else
 			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
 						 "unknown Formatted O&M "
-						 "msg_type 0x%02x\n",
+						 "msg_type 0x%02x",
 						 foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
@@ -1191,29 +1236,19 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	return ret;
 }
 
-/* 3GPP TS 12.21 § 8.8.2 */
-int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value,
-			     const char *fmt, ...)
+static int handle_fail_sig(unsigned int subsys, unsigned int signal, void *handle,
+			   void *signal_data)
 {
-	struct msgb *nmsg;
-	va_list ap;
+	oml_tx_failure_event_rep(handle, signal, "%s", signal_data);
 
-	va_start(ap, fmt);
-	nmsg = abis_nm_fail_evt_rep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
-				    NM_PCAUSE_T_MANUF, cause_value, fmt, ap);
-	LOGP(DOML, LOGL_INFO, fmt, ap);
-	va_end(ap);
-
-	if (!nmsg)
-		return -ENOMEM;
-
-	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
+	return 0;
 }
 
-int oml_init(void)
+int oml_init(struct gsm_abis_mo *mo)
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa, &abis_nm_att_tlvdef);
+	osmo_signal_register_handler(SS_FAIL, handle_fail_sig, mo);
 
 	return 0;
 }

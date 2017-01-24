@@ -184,12 +184,9 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		//osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		if (!quit) {
-			oml_tx_failure_event_rep(&bts->mo,
-						 OSMO_EVT_CRIT_PROC_STOP,
-						 "BTS: SIGINT received -> "
-						 "shutdown\n");
+			oml_fail_rep(OSMO_EVT_CRIT_PROC_STOP,
+				     "BTS: SIGINT received -> shutdown");
 			bts_shutdown(bts, "SIGINT");
 		}
 		quit++;
@@ -197,9 +194,9 @@ static void signal_handler(int signal)
 	case SIGABRT:
 	case SIGUSR1:
 	case SIGUSR2:
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_CRIT_PROC_STOP,
-					 "BTS: signal %s received\n",
-					 strsignal(signal));
+		oml_fail_rep(OSMO_EVT_CRIT_PROC_STOP,
+			     "BTS: signal %d (%s) received", signal,
+			     strsignal(signal));
 		talloc_report_full(tall_bts_ctx, stderr);
 		break;
 	default:

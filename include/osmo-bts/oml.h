@@ -9,7 +9,7 @@ struct msgb;
 struct gsm_lchan;
 
 
-int oml_init(void);
+int oml_init(struct gsm_abis_mo *mo);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
 
 struct msgb *oml_msgb_alloc(void);
@@ -45,7 +45,6 @@ int oml_set_lchan_t200(struct gsm_lchan *lchan);
 extern const unsigned int oml_default_t200_ms[7];
 
 /* Transmit failure event report */
-int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value,
-			     const char *fmt, ...);
+void oml_fail_rep(uint16_t cause_value, const char *fmt, ...);
 
 #endif // _OML_H */

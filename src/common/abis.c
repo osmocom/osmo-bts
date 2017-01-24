@@ -235,7 +235,7 @@ void abis_init(struct gsm_bts *bts)
 {
 	g_bts = bts;
 
-	oml_init();
+	oml_init(&bts->mo);
 	libosmo_abis_init(NULL);
 
 	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
