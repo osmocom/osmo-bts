@@ -53,7 +53,6 @@
 #include <osmocom/ctrl/control_if.h>
 #include <osmocom/ctrl/ports.h>
 #include <osmocom/ctrl/control_vty.h>
-#include <openbsc/ctrl.h>
 #include <osmo-bts/oml.h>
 
 int quit = 0;
