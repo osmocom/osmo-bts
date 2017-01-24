@@ -19,7 +19,7 @@ override_dh_autoreconf:
 	dh_autoreconf
 
 override_dh_auto_configure:
-	dh_auto_configure --  --enable-trx
+	dh_auto_configure --  --enable-trx --with-openbsc=/usr/src/osmocom/openbsc/openbsc/include/
 
 override_dh_clean:
 	dh_clean
