@@ -124,10 +124,6 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[tn];
 	struct msgb *msg;
 
-	if (fn == 57) {
-		DEBUGP(DL1P, "lol");
-	}
-
 	if (bid > 0)
 		return NULL;
 

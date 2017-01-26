@@ -27,6 +27,7 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/gsmtap.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -48,25 +49,28 @@
  */
 static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 {
+	struct gsmtap_hdr *gh;
 	struct osmo_phsap_prim l1sap;
-	struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msg->l1h;
 	struct phy_link *plink = (struct phy_link *)vui->priv;
 	// TODO: is there more than one physical instance? Where do i get the corresponding pinst number? Maybe gsmtap_hdr->antenna?
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
 
 	memset(&l1sap, 0, sizeof(l1sap));
+	msg->l1h = msgb_data(msg);
+	msg->l2h = msgb_pull(msg, sizeof(*gh));
+	gh = msgb_l1(msg);
 
 	switch (gh->sub_type) {
 	case GSMTAP_CHANNEL_RACH:
+
 		// generate primitive for upper layer
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH,
 		                PRIM_OP_INDICATION,
-		                NULL);
-		l1sap.u.rach_ind.chan_nr = 0; // TODO: fill with proper value
-		l1sap.u.rach_ind.ra = 0; // TODO: fill with proper value
-		l1sap.u.rach_ind.fn = gh->frame_number;
-		// todo: schedule the uplink burst
-		//trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, rssi, toa);
+		                msg);
+		l1sap.u.rach_ind.chan_nr = RSL_CHAN_RACH;
+		// get the random access content
+		l1sap.u.rach_ind.ra = msgb_pull_u8(msg);
+		l1sap.u.rach_ind.fn = ntohl(gh->frame_number);
 		break;
 	case GSMTAP_CHANNEL_SDCCH:
 	case GSMTAP_CHANNEL_SDCCH4:
@@ -145,6 +149,8 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	                plink->u.virt.ms_mcast_port,
 	                plink->u.virt.bts_mcast_group,
 	                plink->u.virt.bts_mcast_port, virt_um_rcv_cb);
+	// set back reference to plink
+	plink->u.virt.virt_um->priv = plink;
 	if (!plink->u.virt.virt_um) {
 		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
 		return -1;
@@ -155,10 +161,16 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	llist_for_each_entry(pinst, &plink->instances, list)
 	{
 		trx_sched_init(&pinst->u.virt.sched, pinst->trx);
-		/* TODO: why only start scheduler for CCCH */
-		/* Only start the scheduler for the transceiver on c0. CCCH is on C0 */
-		if (pinst->trx == pinst->trx->bts->c0)
+		/* Only start the scheduler for the transceiver on c0. If we have multiple tranceivers, CCCH is always on C0 and has to be auto active */
+		/* Other trx are activated via oml by a PRIM_INFO_MODIFY / PRIM_INFO_ACTIVATE */
+		if (pinst->trx == pinst->trx->bts->c0) {
 			vbts_sched_start(pinst->trx->bts);
+			// init lapdm layer 3 callback for the trx on timeslot 0 == BCCH
+			lchan_init_lapdm(&pinst->trx->ts[0].lchan[CCCH_LCHAN]);
+			/* This is probably the wrong location to set the ccch to active... the oml link def. needs to be reworked and fixed. */
+			pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
+			lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
+		}
 	}
 
 	/* this will automatically update the MO state of all associated
@@ -312,6 +324,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			tn = L1SAP_CHAN2TS(chan_nr);
 			ss = l1sap_chan2ss(chan_nr);
 			lchan = &trx->ts[tn].lchan[ss];
+			// we receive a channel activation request from the bsc e.g. as a response to a channel req on rach
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
 				if ((chan_nr & 0x80)) {
 					LOGP(DL1C, LOGL_ERROR, "Cannot activate"
