@@ -121,6 +121,10 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 {
+	struct trx_l1h *l1h;
+	l1h = talloc_zero(tall_bts_ctx, struct trx_l1h);
+	l1h->phy_inst = pinst;
+	pinst->u.osmotrx.hdl = l1h;
 }
 
 int main(int argc, char **argv)

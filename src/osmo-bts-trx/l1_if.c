@@ -66,10 +66,9 @@ struct trx_l1h *l1if_open(struct phy_instance *pinst)
 	struct trx_l1h *l1h;
 	int rc;
 
-	l1h = talloc_zero(tall_bts_ctx, struct trx_l1h);
+	l1h = pinst->u.osmotrx.hdl;
 	if (!l1h)
 		return NULL;
-	l1h->phy_inst = pinst;
 
 	rc = trx_sched_init(&l1h->l1s, pinst->trx);
 	if (rc < 0) {
