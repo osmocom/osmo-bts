@@ -117,7 +117,6 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.osmotrx.base_port_remote = 5700;
 	plink->u.osmotrx.clock_advance = 20;
 	plink->u.osmotrx.rts_advance = 5;
-	plink->u.osmotrx.power_oml = 1;
 }
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)

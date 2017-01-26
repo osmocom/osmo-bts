@@ -203,17 +203,13 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		}
 
 		/* after power on */
-		if (l1h->phy_inst->num == 0) {
-			if (plink->u.osmotrx.rxgain_valid &&
-			    !plink->u.osmotrx.rxgain_sent) {
-				trx_if_cmd_setrxgain(l1h, plink->u.osmotrx.rxgain);
-				plink->u.osmotrx.rxgain_sent = 1;
-			}
-			if (plink->u.osmotrx.power_valid &&
-			    !plink->u.osmotrx.power_sent) {
-				trx_if_cmd_setpower(l1h, plink->u.osmotrx.power);
-				plink->u.osmotrx.power_sent = 1;
-			}
+		if (l1h->config.rxgain_valid && !l1h->config.rxgain_sent) {
+			trx_if_cmd_setrxgain(l1h, l1h->config.rxgain);
+			l1h->config.rxgain_sent = 1;
+		}
+		if (l1h->config.power_valid && !l1h->config.power_sent) {
+			trx_if_cmd_setpower(l1h, l1h->config.power);
+			l1h->config.power_sent = 1;
 		}
 		if (l1h->config.maxdly_valid && !l1h->config.maxdly_sent) {
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
@@ -238,10 +234,8 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	if (!l1h->config.poweron && !l1h->config.poweron_sent) {
 		trx_if_cmd_poweroff(l1h);
 		l1h->config.poweron_sent = 1;
-		if (l1h->phy_inst->num == 0) {
-			plink->u.osmotrx.rxgain_sent = 0;
-			plink->u.osmotrx.power_sent = 0;
-		}
+		l1h->config.rxgain_sent = 0;
+		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
 		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
@@ -264,11 +258,10 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 		l1h->config.tsc_sent = 0;
 		l1h->config.bsic_sent = 0;
 		l1h->config.poweron_sent = 0;
-		if (l1h->phy_inst->num == 0) {
-			plink->u.osmotrx.rxgain_sent = 0;
-			plink->u.osmotrx.power_sent = 0;
-		}
+		l1h->config.rxgain_sent = 0;
+		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
+		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			l1h->config.slottype_sent[tn] = 0;
 		l1if_provision_transceiver_trx(l1h);
@@ -390,10 +383,10 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1if_provision_transceiver_trx(l1h);
 	}
 
-	if (plink->u.osmotrx.power_oml && pinst->num == 0) {
-		plink->u.osmotrx.power = trx->max_power_red;
-		plink->u.osmotrx.power_valid = 1;
-		plink->u.osmotrx.power_sent = 0;
+	if (l1h->config.power_oml) {
+		l1h->config.power = trx->max_power_red;
+		l1h->config.power_valid = 1;
+		l1h->config.power_sent = 0;
 		l1if_provision_transceiver_trx(l1h);
 	}
 

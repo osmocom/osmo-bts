@@ -100,6 +100,17 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 
 	vty_out(vty, "PHY Instance %s%s",
 		phy_instance_name(pinst), VTY_NEWLINE);
+
+	if (l1h->config.rxgain_valid)
+		vty_out(vty, " rx-gain        : %d dB%s",
+			l1h->config.rxgain, VTY_NEWLINE);
+	else
+		vty_out(vty, " rx-gain        : undefined%s", VTY_NEWLINE);
+	if (l1h->config.power_valid)
+		vty_out(vty, " tx-attenuation : %d dB%s",
+			l1h->config.power, VTY_NEWLINE);
+	else
+		vty_out(vty, " tx-attenuation : undefined%s", VTY_NEWLINE);
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, " maxdly : %d%s", l1h->config.maxdly,
 			VTY_NEWLINE);
@@ -129,17 +140,6 @@ static void show_phy_single(struct vty *vty, struct phy_link *plink)
 	struct phy_instance *pinst;
 
 	vty_out(vty, "PHY %u%s", plink->num, VTY_NEWLINE);
-
-	if (plink->u.osmotrx.rxgain_valid)
-		vty_out(vty, " rx-gain        : %d dB%s",
-			plink->u.osmotrx.rxgain, VTY_NEWLINE);
-	else
-		vty_out(vty, " rx-gain        : undefined%s", VTY_NEWLINE);
-	if (plink->u.osmotrx.power_valid)
-		vty_out(vty, " tx-attenuation : %d dB%s",
-			plink->u.osmotrx.power, VTY_NEWLINE);
-	else
-		vty_out(vty, " tx-attenuation : undefined%s", VTY_NEWLINE);
 
 	llist_for_each_entry(pinst, &plink->instances, list)
 		show_phy_inst_single(vty, pinst);
@@ -309,7 +309,7 @@ DEFUN(cfg_phyinst_slotmask, cfg_phyinst_slotmask_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_power_on, cfg_phy_power_on_cmd,
+DEFUN(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 	"osmotrx power (on|off)",
 	OSMOTRX_STR
 	"Change TRX state\n"
@@ -356,70 +356,78 @@ DEFUN(cfg_phy_rts_advance, cfg_phy_rts_advance_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_rxgain, cfg_phy_rxgain_cmd,
+DEFUN(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
 	"osmotrx rx-gain <0-50>",
 	OSMOTRX_STR
 	"Set the receiver gain in dB\n"
 	"Gain in dB\n")
 {
-	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	plink->u.osmotrx.rxgain = atoi(argv[0]);
-	plink->u.osmotrx.rxgain_valid = 1;
-	plink->u.osmotrx.rxgain_sent = 0;
+	l1h->config.rxgain = atoi(argv[0]);
+	l1h->config.rxgain_valid = 1;
+	l1h->config.rxgain_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_tx_atten, cfg_phy_tx_atten_cmd,
+DEFUN(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
 	"osmotrx tx-attenuation <0-50>",
 	OSMOTRX_STR
 	"Set the transmitter attenuation\n"
 	"Fixed attenuation in dB, overriding OML\n")
 {
-	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	plink->u.osmotrx.power = atoi(argv[0]);
-	plink->u.osmotrx.power_oml = 0;
-	plink->u.osmotrx.power_valid = 1;
-	plink->u.osmotrx.power_sent = 0;
+	l1h->config.power = atoi(argv[0]);
+	l1h->config.power_oml = 0;
+	l1h->config.power_valid = 1;
+	l1h->config.power_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_tx_atten_oml, cfg_phy_tx_atten_oml_cmd,
+DEFUN(cfg_phyinst_tx_atten_oml, cfg_phyinst_tx_atten_oml_cmd,
 	"osmotrx tx-attenuation oml",
 	OSMOTRX_STR
 	"Set the transmitter attenuation\n"
 	"Use NM_ATT_RF_MAXPOWR_R (max power reduction) from BSC via OML\n")
 {
-	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	plink->u.osmotrx.power_oml = 1;
-	plink->u.osmotrx.power_valid = 1;
-	plink->u.osmotrx.power_sent = 0;
+	l1h->config.power_oml = 1;
+	l1h->config.power_valid = 1;
+	l1h->config.power_sent = 0;
+	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_no_rxgain, cfg_phy_no_rxgain_cmd,
+DEFUN(cfg_phyinst_no_rxgain, cfg_phyinst_no_rxgain_cmd,
 	"no osmotrx rx-gain",
 	NO_STR OSMOTRX_STR "Unset the receiver gain in dB\n")
 {
-	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	plink->u.osmotrx.rxgain_valid = 0;
+	l1h->config.rxgain_valid = 0;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_no_tx_atten, cfg_phy_no_tx_atten_cmd,
+DEFUN(cfg_phyinst_no_tx_atten, cfg_phyinst_no_tx_atten_cmd,
 	"no osmotrx tx-attenuation",
 	NO_STR OSMOTRX_STR "Unset the transmitter attenuation\n")
 {
-	struct phy_link *plink = vty->index;
+	struct phy_instance *pinst = vty->index;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	plink->u.osmotrx.power_valid = 0;
+	l1h->config.power_valid = 0;
 
 	return CMD_SUCCESS;
 }
@@ -488,22 +496,22 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		plink->u.osmotrx.clock_advance, VTY_NEWLINE);
 	vty_out(vty, " osmotrx rts-advance %d%s",
 		plink->u.osmotrx.rts_advance, VTY_NEWLINE);
-	if (plink->u.osmotrx.rxgain_valid)
-		vty_out(vty, " osmotrx rx-gain %d%s",
-			plink->u.osmotrx.rxgain, VTY_NEWLINE);
-	if (plink->u.osmotrx.power_valid) {
-		if (plink->u.osmotrx.power_oml)
-			vty_out(vty, " osmotrx tx-attenuation oml%s", VTY_NEWLINE);
-		else
-			vty_out(vty, " osmotrx tx-attenuation %d%s",
-				plink->u.osmotrx.power, VTY_NEWLINE);
-	}
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
+	if (l1h->config.rxgain_valid)
+		vty_out(vty, "  osmotrx rx-gain %d%s",
+			l1h->config.rxgain, VTY_NEWLINE);
+	if (l1h->config.power_valid) {
+		if (l1h->config.power_oml)
+			vty_out(vty, "  osmotrx tx-attenuation oml%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "  osmotrx tx-attenuation %d%s",
+				l1h->config.power, VTY_NEWLINE);
+	}
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, "  maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
 	if (l1h->config.maxdlynb_valid)
@@ -560,14 +568,14 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_fn_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_rts_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_transc_ip_cmd);
-	install_element(PHY_NODE, &cfg_phy_rxgain_cmd);
-	install_element(PHY_NODE, &cfg_phy_tx_atten_cmd);
-	install_element(PHY_NODE, &cfg_phy_tx_atten_oml_cmd);
-	install_element(PHY_NODE, &cfg_phy_no_rxgain_cmd);
-	install_element(PHY_NODE, &cfg_phy_no_tx_atten_cmd);
 
+	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_oml_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_no_rxgain_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_no_tx_atten_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_slotmask_cmd);
-	install_element(PHY_INST_NODE, &cfg_phy_power_on_cmd);
+	install_element(PHY_INST_NODE, &cfg_phyinst_power_on_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_maxdly_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_no_maxdly_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_maxdlynb_cmd);

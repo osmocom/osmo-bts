@@ -44,15 +44,6 @@ struct phy_link {
 
 			uint32_t clock_advance;
 			uint32_t rts_advance;
-
-			int	rxgain_valid;
-			int	rxgain;
-			int	rxgain_sent;
-
-			int	power_valid;
-			int	power;
-			int	power_oml;
-			int	power_sent;
 		} osmotrx;
 		struct {
 			/* MAC address of the PHY */

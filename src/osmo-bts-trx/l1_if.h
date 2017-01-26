@@ -20,6 +20,15 @@ struct trx_config {
 	uint8_t			bsic;
 	int			bsic_sent;
 
+	int			rxgain_valid;
+	uint8_t			rxgain;
+	int			rxgain_sent;
+
+	int			power_valid;
+	uint8_t			power;
+	int			power_oml;
+	int			power_sent;
+
 	int			maxdly_valid;
 	int			maxdly;
 	int			maxdly_sent;
