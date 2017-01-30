@@ -29,6 +29,7 @@
 #include "l1_if.h"
 #include "l1_oml.h"
 #include "l1_utils.h"
+#include "octphy_hw_api.h"
 
 #include <octphy/octvc1/octvc1_rc2string.h>
 #include <octphy/octvc1/hw/octvc1_hw_api.h>
@@ -105,18 +106,12 @@ int octphy_hw_get_rf_port_info(struct octphy_hdl *fl1h, uint32_t index)
 	return l1if_req_compl(fl1h, msg, rf_port_info_compl_cb, NULL);
 }
 
-static const struct value_string radio_std_vals[] = {
-	{ cOCTVC1_RADIO_STANDARD_ENUM_GSM,	"GSM" },
-	{ cOCTVC1_RADIO_STANDARD_ENUM_UMTS,	"UMTS" },
-	{ cOCTVC1_RADIO_STANDARD_ENUM_LTE,	"LTE" },
-	{ cOCTVC1_RADIO_STANDARD_ENUM_INVALID,	"INVALID" },
-	{ 0, NULL }
-};
-
 /* Chapter 12.10 */
 static int rf_port_stats_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				  void *data)
 {
+	struct octphy_hw_get_cb_data *get_cb_data;
+
 	tOCTVC1_HW_MSG_RF_PORT_STATS_RSP *psr =
 		(tOCTVC1_HW_MSG_RF_PORT_STATS_RSP *) resp->l2h;
 
@@ -136,12 +131,16 @@ static int rf_port_stats_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 		psr->TxStats.ulTxAveragePeriodUs,
 		psr->TxStats.ulFrequencyKhz);
 
+	get_cb_data = (struct octphy_hw_get_cb_data*) data;
+	get_cb_data->cb(resp,get_cb_data->data);
+
 	msgb_free(resp);
 	return 0;
 }
 
 /* Chapter 12.10 */
-int octphy_hw_get_rf_port_stats(struct octphy_hdl *fl1h, uint32_t index)
+int octphy_hw_get_rf_port_stats(struct octphy_hdl *fl1h, uint32_t index,
+				struct octphy_hw_get_cb_data *cb_data)
 {
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_HW_MSG_RF_PORT_STATS_CMD *psc;
@@ -156,7 +155,7 @@ int octphy_hw_get_rf_port_stats(struct octphy_hdl *fl1h, uint32_t index)
 
 	mOCTVC1_HW_MSG_RF_PORT_STATS_CMD_SWAP(psc);
 
-	return l1if_req_compl(fl1h, msg, rf_port_stats_compl_cb, NULL);
+	return l1if_req_compl(fl1h, msg, rf_port_stats_compl_cb, cb_data);
 }
 
 static const struct value_string rx_gain_mode_vals[] = {
@@ -276,28 +275,6 @@ static const struct value_string clocksync_source_state_vals[] = {
 	{ 0, NULL }
 };
 
-static const struct value_string clocksync_state_vals[] = {
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNINITIALIZE,
-							"Uninitialized" },
-/* Note: Octasic renamed cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED to
- * cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE. The following ifdef
- * statement ensures that older headers still work. */
-#ifdef cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNUSED,	"Unused" },
-#else
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_IDLE,	"Idle" },
-#endif
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_NO_EXT_CLOCK,
-							"No External Clock" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_LOCKED,	"Locked" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_UNLOCKED,"Unlocked" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_ERROR,	"Error" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_DISABLE,	"Disabled" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_STATE_ENUM_LOSS_EXT_CLOCK,
-							"Loss of Ext Clock" },
-	{ 0, NULL }
-};
-
 /* Chapter 12.15 */
 static int get_clock_sync_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				   void *data)
@@ -336,6 +313,8 @@ int octphy_hw_get_clock_sync_info(struct octphy_hdl *fl1h)
 static int get_clock_sync_stats_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				   void *data)
 {
+	struct octphy_hw_get_cb_data *get_cb_data;
+
 	tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP *csr =
 		(tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP *) resp->l2h;
 
@@ -349,12 +328,16 @@ static int get_clock_sync_stats_cb(struct octphy_hdl *fl1, struct msgb *resp,
 		csr->ulPllFractionalFreqHz, csr->ulSlipCnt,
 		csr->ulSyncLosseCnt, csr->ulSourceState, csr->ulDacValue);
 
+	get_cb_data = (struct octphy_hw_get_cb_data*) data;
+	get_cb_data->cb(resp,get_cb_data->data);
+
 	msgb_free(resp);
 	return 0;
 }
 
 /* Chapter 12.16 */
-int octphy_hw_get_clock_sync_stats(struct octphy_hdl *fl1h)
+int octphy_hw_get_clock_sync_stats(struct octphy_hdl *fl1h,
+				   struct octphy_hw_get_cb_data *cb_data)
 {
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_CMD *csc;
@@ -366,6 +349,6 @@ int octphy_hw_get_clock_sync_stats(struct octphy_hdl *fl1h)
 
 	mOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_CMD_SWAP(csc);
 
-	return l1if_req_compl(fl1h, msg, get_clock_sync_stats_cb, NULL);
+	return l1if_req_compl(fl1h, msg, get_clock_sync_stats_cb, cb_data);
 }
 

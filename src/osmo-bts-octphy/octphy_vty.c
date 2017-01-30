@@ -159,6 +159,45 @@ DEFUN(cfg_phy_tx_atten_db, cfg_phy_tx_atten_db_cmd,
 	return CMD_SUCCESS;
 }
 
+void show_rf_port_stats_cb(struct msgb *resp, void *data)
+{
+	struct vty *vty = (struct vty*) data;
+	tOCTVC1_HW_MSG_RF_PORT_STATS_RSP *psr;
+
+	if (sizeof(tOCTVC1_HW_MSG_RF_PORT_STATS_RSP) != msgb_l2len(resp)) {
+		vty_out(vty,
+			"invalid msgb size (%d bytes, expected %zu bytes)%s",
+			msgb_l2len(resp),
+			sizeof(tOCTVC1_HW_MSG_RF_PORT_STATS_RSP), VTY_NEWLINE);
+		return;
+	}
+
+	psr = (tOCTVC1_HW_MSG_RF_PORT_STATS_RSP *) msgb_l2(resp);
+
+	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "RF-PORT-STATS:%s", VTY_NEWLINE);
+	vty_out(vty, "Idx=%d%s", psr->ulPortIndex, VTY_NEWLINE);
+	vty_out(vty, "RadioStandard=%s%s",
+		get_value_string(radio_std_vals, psr->ulRadioStandard),
+		VTY_NEWLINE);
+	vty_out(vty, "Rx Bytes=%u%s", psr->RxStats.ulRxByteCnt, VTY_NEWLINE);
+	vty_out(vty, "Rx Overflow=%u%s", psr->RxStats.ulRxOverflowCnt,
+		VTY_NEWLINE);
+	vty_out(vty, "Rx AvgBps=%u%s", psr->RxStats.ulRxAverageBytePerSecond,
+		VTY_NEWLINE);
+	vty_out(vty, "Rx Period=%u%s", psr->RxStats.ulRxAveragePeriodUs,
+		VTY_NEWLINE);
+	vty_out(vty, "Rx Freq=%u%s", psr->RxStats.ulFrequencyKhz, VTY_NEWLINE);
+	vty_out(vty, "Tx Bytes=%u%s", psr->TxStats.ulTxByteCnt, VTY_NEWLINE);
+	vty_out(vty, "Tx Underflow=%u%s", psr->TxStats.ulTxUnderflowCnt,
+		VTY_NEWLINE);
+	vty_out(vty, "Tx AvgBps=%u%s", psr->TxStats.ulTxAverageBytePerSecond,
+		VTY_NEWLINE);
+	vty_out(vty, "Tx Period=%u%s", psr->TxStats.ulTxAveragePeriodUs,
+		VTY_NEWLINE);
+	vty_out(vty, "Tx Freq=%u%s", psr->TxStats.ulFrequencyKhz, VTY_NEWLINE);
+}
+
 DEFUN(show_rf_port_stats, show_rf_port_stats_cmd,
 	"show phy <0-255> rf-port-stats <0-1>",
 	"Show statistics for the RF Port\n"
@@ -166,14 +205,47 @@ DEFUN(show_rf_port_stats, show_rf_port_stats_cmd,
 {
 	int phy_nr = atoi(argv[0]);
 	struct phy_link *plink = phy_link_by_num(phy_nr);
+	static struct octphy_hw_get_cb_data cb_data;
 
-	octphy_hw_get_rf_port_stats(plink->u.octphy.hdl, atoi(argv[1]));
+	cb_data.cb = show_rf_port_stats_cb;
+	cb_data.data = vty;
 
-	/* FIXME: Actually print to VTY, not just log */
-	vty_out(vty, "Please check the log file for the response%s",
-		VTY_NEWLINE);
+	octphy_hw_get_rf_port_stats(plink->u.octphy.hdl, atoi(argv[1]),
+				    &cb_data);
 
 	return CMD_SUCCESS;
+}
+
+void show_clk_sync_stats_cb(struct msgb *resp, void *data)
+{
+	struct vty *vty = (struct vty*) data;
+	tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP *csr;
+
+	if (sizeof(tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP) !=
+	    msgb_l2len(resp)) {
+		vty_out(vty,
+			"invalid msgb size (%d bytes, expected %zu bytes)%s",
+			msgb_l2len(resp),
+			sizeof(tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP),
+			VTY_NEWLINE);
+		return;
+	}
+
+	csr = (tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP *) msgb_l2(resp);
+
+	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "CLOCK-SYNC-MGR-STATS:%s", VTY_NEWLINE);
+	vty_out(vty, "State=%s%s",
+		get_value_string(clocksync_state_vals, csr->ulState),
+		VTY_NEWLINE);
+	vty_out(vty, "ClockError=%d%s", csr->lClockError, VTY_NEWLINE);
+	vty_out(vty, "DroppedCycles=%d%s", csr->lDroppedCycles, VTY_NEWLINE);
+	vty_out(vty, "PllFreqHz=%u%s", csr->ulPllFreqHz, VTY_NEWLINE);
+	vty_out(vty, "PllFract=%u%s", csr->ulPllFractionalFreqHz, VTY_NEWLINE);
+	vty_out(vty, "SlipCnt=%u%s", csr->ulSlipCnt, VTY_NEWLINE);
+	vty_out(vty, "SyncLosses=%u%s", csr->ulSyncLosseCnt, VTY_NEWLINE);
+	vty_out(vty, "SourceState=%u%s", csr->ulSourceState, VTY_NEWLINE);
+	vty_out(vty, "DacValue=%u%s", csr->ulDacValue, VTY_NEWLINE);
 }
 
 DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,
@@ -182,13 +254,12 @@ DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,
 {
 	int phy_nr = atoi(argv[0]);
 	struct phy_link *plink = phy_link_by_num(phy_nr);
+	static struct octphy_hw_get_cb_data cb_data;
 
-	octphy_hw_get_clock_sync_stats(plink->u.octphy.hdl);
+	cb_data.cb = show_clk_sync_stats_cb;
+	cb_data.data = vty;
 
-	/* FIXME: Actually print to VTY, not just log */
-	vty_out(vty, "Please check the log file for the response%s",
-		VTY_NEWLINE);
-
+	octphy_hw_get_clock_sync_stats(plink->u.octphy.hdl, &cb_data);
 	return CMD_SUCCESS;
 }
 
