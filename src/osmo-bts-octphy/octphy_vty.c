@@ -200,10 +200,10 @@ DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 {
 	if (plink->u.octphy.netdev_name)
-		vty_out(vty, " netdev %s%s", plink->u.octphy.netdev_name,
-			VTY_NEWLINE);
+		vty_out(vty, " octphy net-device %s%s",
+			plink->u.octphy.netdev_name, VTY_NEWLINE);
 
-	vty_out(vty, " hw-addr %02x:%02x:%02x:%02x:%02x:%02x%s",
+	vty_out(vty, " octphy hw-addr %02x:%02x:%02x:%02x:%02x:%02x%s",
 		plink->u.octphy.phy_addr.sll_addr[0],
 		plink->u.octphy.phy_addr.sll_addr[1],
 		plink->u.octphy.phy_addr.sll_addr[2],
@@ -211,16 +211,16 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		plink->u.octphy.phy_addr.sll_addr[4],
 		plink->u.octphy.phy_addr.sll_addr[5],
 		VTY_NEWLINE);
-	vty_out(vty, "  rx-gain %u%s", plink->u.octphy.rx_gain_db,
+	vty_out(vty, " octphy rx-gain %u%s", plink->u.octphy.rx_gain_db,
 		VTY_NEWLINE);
 
 	if (plink->u.octphy.tx_atten_flag) {
-		vty_out(vty, "  tx-attenuation %u%s",
+		vty_out(vty, " octphy tx-attenuation %u%s",
 			plink->u.octphy.tx_atten_db, VTY_NEWLINE);
 	} else
-		vty_out(vty, "  tx-attenuation oml%s", VTY_NEWLINE);
+		vty_out(vty, " octphy tx-attenuation oml%s", VTY_NEWLINE);
 
-	vty_out(vty, "  rf-port-index %u%s", plink->u.octphy.rf_port_index,
+	vty_out(vty, " octphy rf-port-index %u%s", plink->u.octphy.rf_port_index,
 		VTY_NEWLINE);
 }
 
