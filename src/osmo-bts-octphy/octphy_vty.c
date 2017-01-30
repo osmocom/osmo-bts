@@ -141,11 +141,6 @@ DEFUN(cfg_phy_tx_atten_db, cfg_phy_tx_atten_db_cmd,
 	"Use tx-attenuation according to OML instructions from BSC\n"
 	"Fixed tx-attenuation in quarter-dB\n")
 {
-
-
-
-
-
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
