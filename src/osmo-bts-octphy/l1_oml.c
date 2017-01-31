@@ -563,8 +563,7 @@ static int queue_sapi_command(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 }
 
 static int mph_info_chan_confirm(struct gsm_lchan *lchan,
-
-			  enum osmo_mph_info_type type, uint8_t cause)
+				 enum osmo_mph_info_type type, uint8_t cause)
 {
 	struct osmo_phsap_prim l1sap;
 
