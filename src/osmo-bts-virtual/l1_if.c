@@ -28,6 +28,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
+#include <osmocom/gsm/rsl.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -42,6 +43,82 @@
 
 #include "virtual_um.h"
 
+extern int vbts_sched_start(struct gsm_bts *bts);
+
+/*! \brief convert GSMTAP channel type to RSL channel number
+ *  \param[in] gsmtap_chantype GSMTAP channel type
+ *  \param[out] rsl_chantype rsl channel type
+ *  \param[out] rsl_chantype rsl link id
+ *
+ *  Mapping from gsmtap channel:
+ *  GSMTAP_CHANNEL_UNKNOWN *  0x00
+ *  GSMTAP_CHANNEL_BCCH *  0x01
+ *  GSMTAP_CHANNEL_CCCH *  0x02
+ *  GSMTAP_CHANNEL_RACH *  0x03
+ *  GSMTAP_CHANNEL_AGCH *  0x04
+ *  GSMTAP_CHANNEL_PCH *  0x05
+ *  GSMTAP_CHANNEL_SDCCH *  0x06
+ *  GSMTAP_CHANNEL_SDCCH4 *  0x07
+ *  GSMTAP_CHANNEL_SDCCH8 *  0x08
+ *  GSMTAP_CHANNEL_TCH_F *  0x09
+ *  GSMTAP_CHANNEL_TCH_H *  0x0a
+ *  GSMTAP_CHANNEL_PACCH *  0x0b
+ *  GSMTAP_CHANNEL_CBCH52 *  0x0c
+ *  GSMTAP_CHANNEL_PDCH *  0x0d
+ *  GSMTAP_CHANNEL_PTCCH *  0x0e
+ *  GSMTAP_CHANNEL_CBCH51 *  0x0f
+ *  to rsl channel type:
+ *  RSL_CHAN_NR_MASK *  0xf8
+ *  RSL_CHAN_NR_1 *   *  0x08
+ *  RSL_CHAN_Bm_ACCHs *  0x08
+ *  RSL_CHAN_Lm_ACCHs *  0x10
+ *  RSL_CHAN_SDCCH4_ACCH *  0x20
+ *  RSL_CHAN_SDCCH8_ACCH *  0x40
+ *  RSL_CHAN_BCCH *   *  0x80
+ *  RSL_CHAN_RACH *   *  0x88
+ *  RSL_CHAN_PCH_AGCH *  0x90
+ *  RSL_CHAN_OSMO_PDCH *  0xc0
+ *  and logical channel link id:
+ *  LID_SACCH  *   *  0x40
+ *  LID_DEDIC  *   *  0x00
+ *
+ *  TODO: move this to a library used by both ms and bts virt um
+ */
+void chantype_gsmtap2rsl(uint8_t gsmtap_chantype, uint8_t *rsl_chantype, uint8_t *link_id)
+{
+	// switch case with removed acch flag
+	switch (gsmtap_chantype & ~GSMTAP_CHANNEL_ACCH & 0xff) {
+	case GSMTAP_CHANNEL_TCH_F: // TCH/F, FACCH/F
+		*rsl_chantype = RSL_CHAN_Bm_ACCHs;
+		break;
+	case GSMTAP_CHANNEL_TCH_H: // TCH/H, FACCH/H
+		*rsl_chantype = RSL_CHAN_Lm_ACCHs;
+		break;
+	case GSMTAP_CHANNEL_SDCCH4: // SDCCH/4
+		*rsl_chantype = RSL_CHAN_SDCCH4_ACCH;
+		break;
+	case GSMTAP_CHANNEL_SDCCH8: // SDCCH/8
+		*rsl_chantype = RSL_CHAN_SDCCH8_ACCH;
+		break;
+	case GSMTAP_CHANNEL_BCCH: // BCCH
+		*rsl_chantype = RSL_CHAN_BCCH;
+		break;
+	case GSMTAP_CHANNEL_RACH: // RACH
+		*rsl_chantype = RSL_CHAN_RACH;
+		break;
+	case GSMTAP_CHANNEL_PCH: // PCH
+	case GSMTAP_CHANNEL_AGCH: // AGCH
+		*rsl_chantype = RSL_CHAN_PCH_AGCH;
+		break;
+	case GSMTAP_CHANNEL_PDCH:
+		*rsl_chantype = GSMTAP_CHANNEL_PDCH;
+		break;
+	}
+
+	*link_id = gsmtap_chantype & GSMTAP_CHANNEL_ACCH ? LID_SACCH : LID_DEDIC;
+
+}
+
 /**
  * Callback to handle incoming messages from the MS.
  * The incoming message should be GSM_TAP encapsulated.
@@ -49,46 +126,81 @@
  */
 static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 {
-	struct gsmtap_hdr *gh;
-	struct osmo_phsap_prim l1sap;
+	struct gsmtap_hdr *gh = msgb_l1(msg);
+	uint32_t fn = ntohl(gh->frame_number); // frame number of the rcv msg
+	uint16_t arfcn = ntohs(gh->arfcn); // arfcn of the cell we currently camp on
+	uint8_t gsmtap_chantype = gh->sub_type; // gsmtap channel type
+	uint8_t signal_dbm = gh->signal_dbm; // signal strength, 63 is best
+	uint8_t snr = gh->snr_db; // signal noise ratio, 63 is best
+	uint8_t subslot = gh->sub_slot; // multiframe subslot to send msg in (tch -> 0-26, bcch/ccch -> 0-51)
+	uint8_t timeslot = gh->timeslot; // tdma timeslot to send in (0-7)
+	uint8_t rsl_chantype; // rsl chan type (8.58, 9.3.1)
+	uint8_t link_id; // rsl link id tells if this is an ssociated or dedicated link
+	uint8_t chan_nr; // encoded rsl channel type, timeslot and mf subslot
 	struct phy_link *plink = (struct phy_link *)vui->priv;
 	// TODO: is there more than one physical instance? Where do i get the corresponding pinst number? Maybe gsmtap_hdr->antenna?
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
+	struct l1sched_trx *l1t = &pinst->u.virt.sched;
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, timeslot);
 
+	struct osmo_phsap_prim l1sap;
 	memset(&l1sap, 0, sizeof(l1sap));
-	msg->l1h = msgb_data(msg);
+	// get rid of l1 gsmtap hdr
 	msg->l2h = msgb_pull(msg, sizeof(*gh));
-	gh = msgb_l1(msg);
 
-	switch (gh->sub_type) {
+	// convert gsmtap chan to rsl chan and link id
+	chantype_gsmtap2rsl(gsmtap_chantype, &rsl_chantype, &link_id);
+	chan_nr = rsl_enc_chan_nr(rsl_chantype, subslot, timeslot);
+
+	// switch case with removed acch flag
+	switch (gsmtap_chantype & ~GSMTAP_CHANNEL_ACCH & 0xff) {
 	case GSMTAP_CHANNEL_RACH:
-
 		// generate primitive for upper layer
+		// see 04.08 - 3.3.1.3.1: the IMMEDIATE_ASSIGNMENT coming back from the network has to be
+		// sent with the same ra reference as in the CHANNEL_REQUEST that was received
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH,
 		                PRIM_OP_INDICATION,
 		                msg);
-		l1sap.u.rach_ind.chan_nr = RSL_CHAN_RACH;
-		// get the random access content
-		l1sap.u.rach_ind.ra = msgb_pull_u8(msg);
-		l1sap.u.rach_ind.fn = ntohl(gh->frame_number);
+
+		l1sap.u.rach_ind.chan_nr = chan_nr;
+		// TODO: why is ra her 16bits long instead of 8 like in the reference 04.08 - 9.1.8 - Channel request?
+		l1sap.u.rach_ind.ra = msgb_pull_u8(msg); // directly after gh hdr comes ra
+		l1sap.u.rach_ind.acc_delay = 0; // probably not used in virt um
+		l1sap.u.rach_ind.is_11bit = 0; // We dont use that
+		l1sap.u.rach_ind.fn = fn;
+		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_NONE; // FIXME: what comes here
 		break;
-	case GSMTAP_CHANNEL_SDCCH:
 	case GSMTAP_CHANNEL_SDCCH4:
+		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_SDCCH8:
-		// TODO: implement channel handling
-		break;
+		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_TCH_F:
-		// TODO: implement channel handling
-		break;
+		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_TCH_H:
-		// TODO: implement channel handling
+		// check if associated control flag is set
+		if(gsmtap_chantype & GSMTAP_CHANNEL_ACCH) {
+			// TODO: check if handling is different for ACCH
+			// TODO: does FACCH need special handling?
+		}
+		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_DATA,
+			PRIM_OP_INDICATION, msg);
+
+		l1sap.u.data.chan_nr = chan_nr;
+		l1sap.u.data.link_id = link_id;
+		l1sap.u.data.fn = fn;
+		l1sap.u.data.rssi = 0; // Radio Signal Strength Indicator. Best -> 0.
+		l1sap.u.data.ber10k = 0; // Bit Error Rate in 0.01%. Best -> 0.
+		l1sap.u.data.ta_offs_qbits = 0; // Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0.
+		l1sap.u.data.lqual_cb = 10 * signal_dbm; // Link quality in centiBel = 10 * db.
+		l1sap.u.data.pdch_presence_info = PRES_INFO_UNKNOWN;
 		break;
 	case GSMTAP_CHANNEL_AGCH:
 	case GSMTAP_CHANNEL_PCH:
 	case GSMTAP_CHANNEL_BCCH:
 		LOGP(LOGL_NOTICE, DL1P,
-		                "Ignore incoming msg - channel type downlink only!");
+		                "Ignore incoming msg - channel type downlink only!\n");
 		goto nomessage;
+	case GSMTAP_CHANNEL_SDCCH:
 	case GSMTAP_CHANNEL_CCCH:
 	case GSMTAP_CHANNEL_PACCH:
 	case GSMTAP_CHANNEL_PDCH:
@@ -96,21 +208,21 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	case GSMTAP_CHANNEL_CBCH51:
 	case GSMTAP_CHANNEL_CBCH52:
 		LOGP(LOGL_NOTICE, DL1P,
-		                "Ignore incoming msg - channel type not supported!");
+		                "Ignore incoming msg - channel type not supported!\n");
 		goto nomessage;
 	default:
 		LOGP(LOGL_NOTICE, DL1P,
-		                "Ignore incoming msg - channel type unknown.");
+		                "Ignore incoming msg - channel type unknown.\n");
 		goto nomessage;
 	}
 
-	/* forward primitive */
+	/* forward primitive, forwarded msg will not be freed */
 	l1sap_up(pinst->trx, &l1sap);
-	DEBUGP(DL1P, "Message forwarded to layer 2.");
+	DEBUGP(DL1P, "Message forwarded to layer 2.\n");
 	return;
 
 	// handle memory deallocation
-	nomessage: free(msg);
+	nomessage: talloc_free(msg);
 }
 
 /* called by common part once OML link is established */
@@ -333,9 +445,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					break;
 				}
 				/* activate dedicated channel */
-				trx_sched_set_lchan(sched, chan_nr, 0x00, 1);
+				trx_sched_set_lchan(sched, chan_nr, LID_DEDIC, 1);
 				/* activate associated channel */
-				trx_sched_set_lchan(sched, chan_nr, 0x40, 1);
+				trx_sched_set_lchan(sched, chan_nr, LID_SACCH, 1);
 				/* set mode */
 				trx_sched_set_mode(sched, chan_nr,
 				                lchan->rsl_cmode,

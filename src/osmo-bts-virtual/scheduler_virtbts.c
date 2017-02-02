@@ -44,50 +44,57 @@
 
 #include "virtual_um.h"
 
-extern void *tall_bts_ctx;
-
 /**
  * Send a message over the virtual um interface.
  * This will at first wrap the msg with a gsmtap header and then write it to the declared multicast socket.
+ * TODO: we might want to remove unused argument uint8_t tn
  */
 static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
                           enum trx_chan_type chan, struct msgb *msg)
 {
 	const struct trx_chan_desc *chdesc = &trx_chan_desc[chan];
-	uint8_t chan_type, timeslot, subslot, signal_dbm, signal_snr;
-	rsl_dec_chan_nr(chdesc->chan_nr, &chan_type, &subslot, &timeslot);
-	if (chan_type == RSL_CHAN_PCH_AGCH) {
-		if (L1SAP_FN2CCCHBLOCK(fn) >= 1) {
-			chan_type = GSMTAP_CHANNEL_PCH;
-		} else {
-			chan_type = GSMTAP_CHANNEL_AGCH;
-		}
+	struct msgb *outmsg; // msg to send with gsmtap header prepended
+	uint16_t arfcn = l1t->trx->arfcn; // arfcn of the tranceiver the message is send with
+	uint8_t signal_dbm = 63; // signal strength, 63 is best
+	uint8_t snr = 63; // signal noise ratio, 63 is best
+	uint8_t *data = msgb_l2(msg); // data to transmit (whole message without l1 header)
+	uint8_t data_len = msgb_l2len(msg); // length of data
+	uint8_t rsl_chantype; // rsl chan type (8.58, 9.3.1)
+	uint8_t subslot; // multiframe subslot to send msg in (tch -> 0-26, bcch/ccch -> 0-51)
+	uint8_t timeslot; // tdma timeslot to send in (0-7)
+	uint8_t gsmtap_chantype; // the gsmtap channel
+
+	rsl_dec_chan_nr(chdesc->chan_nr, &rsl_chantype, &subslot, &timeslot);
+	// in osmocom, agch is only sent on ccch block 0. no idea why. this seems to cause false gsmtap channel types for agch and pch.
+	if (rsl_chantype == RSL_CHAN_PCH_AGCH && L1SAP_FN2CCCHBLOCK(fn) == 0) {
+		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
 	} else {
-		chan_type = chantype_rsl2gsmtap(chan_type, chdesc->link_id); // the logical channel type
+		gsmtap_chantype = chantype_rsl2gsmtap(rsl_chantype,
+		                chdesc->link_id); // the logical channel type
 	}
-	//uint8_t timeslot = tn; // indicates the physical channel
-	//uint8_t subslot = 0; // indicates the logical channel subslot on the physical channel FIXME: calculate
-	signal_dbm = 63; // the signal strength is not needed in virt phy
-	signal_snr = 40; // the signal to noice ratio is not needed in virt phy
-	uint8_t *data = msgb_l2(msg); // data bits to transmit (whole message without l1 header)
-	uint8_t data_len = msgb_l2len(msg);
-	struct msgb *outmsg;
+
+	outmsg = gsmtap_makemsg(l1t->trx->arfcn, timeslot, gsmtap_chantype,
+	                subslot, fn, signal_dbm, snr, data, data_len);
 
 	// TODO: encrypt and encode message data
 
-	outmsg = gsmtap_makemsg(l1t->trx->arfcn, timeslot, chan_type, subslot,
-	                fn, signal_dbm, signal_snr, data, data_len);
 	if (outmsg) {
 		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-		struct virt_um_inst *virt_um = pinst->phy_link->u.virt.virt_um;
-		if (virt_um_write_msg(virt_um, outmsg) == -1) {
-			struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msgb_data(
-			                outmsg);
+		struct gsmtap_hdr *gh = msgb_data(outmsg);
+		if (virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg)
+		                == -1) {
 			LOGP(DL1C, LOGL_ERROR,
-			                "Message could not be written to virtual UM! arfcn = %u gsmtap_chan=%u fn=%u ts=%u\n",
-			                gh->arfcn, gh->type, gh->frame_number,
-			                gh->timeslot);
+			                "Gsmtap msg could not send to virt um - (arfcn=%u, type=%u, subtype=%u, timeslot=%u, subslot=%u)\n",
+			                gh->arfcn, gh->type, gh->sub_type,
+			                gh->timeslot, gh->sub_slot);
+		} else {
+			DEBUGP(DL1C,
+			                "Sending gsmtap msg to virt um - (arfcn=%u, type=%u, subtype=%u, timeslot=%u, subslot=%u)\n",
+			                gh->arfcn, gh->type, gh->sub_type,
+			                gh->timeslot, gh->sub_slot);
 		}
+	} else {
+		LOGP(DL1C, LOGL_ERROR, "Gsmtap msg could not be created!\n");
 	}
 
 	/* free message */
@@ -128,7 +135,6 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return NULL;
 
 	/* get mac block from queue */
-	// what queue is that and who does fill it?
 	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
 	if (msg)
 		goto got_msg;
