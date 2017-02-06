@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #define BUF 1024
 #define UDS_FILE "/tmp/osmocom_l2"
 int main(int argc, char **argv) {
 	int create_socket;
 	char *buffer = malloc(BUF);
 	struct sockaddr_un address;
-	int size;
 	if ((create_socket = socket(PF_LOCAL, SOCK_STREAM, 0)) > 0)
 		printf("Socket wurde angelegt\n");
 	address.sun_family = AF_LOCAL;

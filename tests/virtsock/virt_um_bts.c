@@ -5,8 +5,7 @@
 #include <string.h>
 #include <talloc.h>
 #include <unistd.h>
-
-#include "../../src/osmo-bts-virtual/virtual_um.h"
+#include <virtphy/virtual_um.h>
 
 static char *rx_mcast_group = "224.0.0.1";
 static int rx_mcast_port = 6666;

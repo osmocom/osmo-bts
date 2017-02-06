@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <strings.h>
+#include <limits.h>
 
 #include "mcast_sock.h"
 
@@ -29,7 +30,7 @@ int main(void)
 		perror("Error initializing bidirectional sock");
 	}
 
-	while (++i) {
+	while (++i <= INT_MAX) {
 		char *ibuf;
 		strcpy(tx_buf, "MSG NR.");
 		asprintf(&ibuf, "%d", i);
@@ -51,4 +52,5 @@ int main(void)
 		perror("Error closing sockets.");
 	}
 
+	return 0;
 }

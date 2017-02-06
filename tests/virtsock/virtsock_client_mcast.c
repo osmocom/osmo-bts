@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 /* Adresse für multicast IP */
 static char *host_name = "224.0.0.1";
 static int port = 6666;
@@ -79,7 +80,7 @@ static int setup_multicast_socket(void)
 int main(void)
 {
 	int iter = 0;
-	int sin_len;
+	socklen_t sin_len;
 	char message[256];
 	int socket;
 	struct sockaddr_in sin;
@@ -91,7 +92,7 @@ int main(void)
 	socket = setup_multicast_socket();
 	/* Broadcast-Nachrichten empfangen */
 	// while (iter++ <= 10) {
-	while (++iter) {
+	while (++iter <= INT_MAX) {
 		sin_len = sizeof(sin);
 		char addr[32];
 		int port;

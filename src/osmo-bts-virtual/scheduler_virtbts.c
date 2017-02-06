@@ -41,8 +41,7 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
-
-#include "virtual_um.h"
+#include <virtphy/virtual_um.h>
 
 /**
  * Send a message over the virtual um interface.
@@ -80,7 +79,7 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	if (outmsg) {
 		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-		struct gsmtap_hdr *gh = msgb_data(outmsg);
+		struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msgb_data(outmsg);
 		if (virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg)
 		                == -1) {
 			LOGP(DL1C, LOGL_ERROR,

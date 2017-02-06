@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
 #define BUF 1024
 #define UDS_FILE "/tmp/osmocom_l2"
 int main(void) {
@@ -15,7 +17,6 @@ int main(void) {
 	char *buffer = malloc(BUF);
 	ssize_t size;
 	struct sockaddr_un address;
-	const int y = 1;
 	printf("\e[2J");
 	if ((create_socket = socket(AF_LOCAL, SOCK_STREAM, 0)) > 0)
 		printf("Socket wurde angelegt\n");

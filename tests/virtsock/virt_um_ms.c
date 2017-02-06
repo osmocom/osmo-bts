@@ -1,10 +1,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "../../src/osmo-bts-virtual/virtual_um.h"
+#include <virtphy/virtual_um.h>
 
 static char *tx_mcast_group = "224.0.0.1";
 static int tx_mcast_port = 6666;

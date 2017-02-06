@@ -40,8 +40,7 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/scheduler.h>
-
-#include "virtual_um.h"
+#include <virtphy/virtual_um.h>
 
 extern int vbts_sched_start(struct gsm_bts *bts);
 
@@ -84,7 +83,8 @@ extern int vbts_sched_start(struct gsm_bts *bts);
  *
  *  TODO: move this to a library used by both ms and bts virt um
  */
-void chantype_gsmtap2rsl(uint8_t gsmtap_chantype, uint8_t *rsl_chantype, uint8_t *link_id)
+void chantype_gsmtap2rsl(uint8_t gsmtap_chantype, uint8_t *rsl_chantype,
+                         uint8_t *link_id)
 {
 	// switch case with removed acch flag
 	switch (gsmtap_chantype & ~GSMTAP_CHANNEL_ACCH & 0xff) {
@@ -115,7 +115,8 @@ void chantype_gsmtap2rsl(uint8_t gsmtap_chantype, uint8_t *rsl_chantype, uint8_t
 		break;
 	}
 
-	*link_id = gsmtap_chantype & GSMTAP_CHANNEL_ACCH ? LID_SACCH : LID_DEDIC;
+	*link_id = gsmtap_chantype & GSMTAP_CHANNEL_ACCH ?
+	                LID_SACCH : LID_DEDIC;
 
 }
 
@@ -159,8 +160,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		// see 04.08 - 3.3.1.3.1: the IMMEDIATE_ASSIGNMENT coming back from the network has to be
 		// sent with the same ra reference as in the CHANNEL_REQUEST that was received
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH,
-		                PRIM_OP_INDICATION,
-		                msg);
+		                PRIM_OP_INDICATION, msg);
 
 		l1sap.u.rach_ind.chan_nr = chan_nr;
 		// TODO: why is ra her 16bits long instead of 8 like in the reference 04.08 - 9.1.8 - Channel request?
@@ -178,12 +178,12 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_TCH_H:
 		// check if associated control flag is set
-		if(gsmtap_chantype & GSMTAP_CHANNEL_ACCH) {
+		if (gsmtap_chantype & GSMTAP_CHANNEL_ACCH) {
 			// TODO: check if handling is different for ACCH
 			// TODO: does FACCH need special handling?
 		}
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_DATA,
-			PRIM_OP_INDICATION, msg);
+		                PRIM_OP_INDICATION, msg);
 
 		l1sap.u.data.chan_nr = chan_nr;
 		l1sap.u.data.link_id = link_id;
@@ -280,8 +280,10 @@ int bts_model_phy_link_open(struct phy_link *plink)
 			// init lapdm layer 3 callback for the trx on timeslot 0 == BCCH
 			lchan_init_lapdm(&pinst->trx->ts[0].lchan[CCCH_LCHAN]);
 			/* This is probably the wrong location to set the ccch to active... the oml link def. needs to be reworked and fixed. */
-			pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
-			lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
+			pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+			                LCHAN_REL_ACT_OML;
+			lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN],
+			                LCHAN_S_ACTIVE);
 		}
 	}
 
@@ -445,9 +447,11 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					break;
 				}
 				/* activate dedicated channel */
-				trx_sched_set_lchan(sched, chan_nr, LID_DEDIC, 1);
+				trx_sched_set_lchan(sched, chan_nr, LID_DEDIC,
+				                1);
 				/* activate associated channel */
-				trx_sched_set_lchan(sched, chan_nr, LID_SACCH, 1);
+				trx_sched_set_lchan(sched, chan_nr, LID_SACCH,
+				                1);
 				/* set mode */
 				trx_sched_set_mode(sched, chan_nr,
 				                lchan->rsl_cmode,
