@@ -33,12 +33,12 @@
 static int get_pa_drive_level_mdBm(const struct power_amp *pa,
 		       int desired_p_out_mdBm, unsigned int arfcn)
 {
-	if (arfcn >= ARRAY_SIZE(pa->calib.gain_mdB))
+	if (arfcn >= ARRAY_SIZE(pa->calib.delta_mdB))
 		return INT_MIN;
 
 	/* FIXME: temperature compensation */
 
-	return desired_p_out_mdBm - pa->calib.gain_mdB[arfcn];
+	return desired_p_out_mdBm - pa->nominal_gain_mdB - pa->calib.delta_mdB[arfcn];
 }
 
 /* maximum output power of the system */
