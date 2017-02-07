@@ -358,6 +358,7 @@ static void config_write_phy_single(struct vty *vty, struct phy_link *plink)
 		if (!pinst)
 			break;
 		vty_out(vty, " instance %u%s", pinst->num, VTY_NEWLINE);
+		bts_model_config_write_phy_inst(vty, pinst);
 	}
 }
 

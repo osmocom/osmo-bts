@@ -329,7 +329,11 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,VTY_NEWLINE);
 }
 
-static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+{
+}
+
+void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
 	int i;
 
@@ -344,14 +348,6 @@ static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 	if (pinst->u.lc15.calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
 			pinst->u.lc15.calib_path, VTY_NEWLINE);
-}
-
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
-{
-	struct phy_instance *pinst;
-
-	llist_for_each_entry(pinst, &plink->instances, list)
-		write_phy_inst(vty, pinst);
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)

@@ -443,7 +443,11 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 			VTY_NEWLINE);
 }
 
-static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+{
+}
+
+void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 {
 	int i;
 
@@ -464,17 +468,10 @@ static void write_phy_inst(struct vty *vty, struct phy_instance *pinst)
 	if (pinst->u.sysmobts.calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
 			pinst->u.sysmobts.calib_path, VTY_NEWLINE);
-	vty_out(vty, "  clock-source %s%s",
-		get_value_string(femtobts_clksrc_names,
-				 pinst->u.sysmobts.clk_src), VTY_NEWLINE);
-}
-
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
-{
-	struct phy_instance *pinst;
-
-	llist_for_each_entry(pinst, &plink->instances, list)
-		write_phy_inst(vty, pinst);
+	if (pinst->u.sysmobts.clk_src)
+		vty_out(vty, "  clock-source %s%s",
+			get_value_string(femtobts_clksrc_names,
+					 pinst->u.sysmobts.clk_src), VTY_NEWLINE);
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)

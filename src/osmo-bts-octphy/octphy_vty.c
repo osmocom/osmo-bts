@@ -219,6 +219,10 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		VTY_NEWLINE);
 }
 
+void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+{
+}
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 }
