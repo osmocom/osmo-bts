@@ -546,7 +546,7 @@ void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 		VTY_NEWLINE);
 	vty_out(vty, "  min-qual-norm %.0f%s", fl1h->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
-	if (trx->nominal_power != sysmobts_get_nominal_power(trx))
+	if (trx->nominal_power != get_p_max_out_mdBm(trx))
 		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
 			VTY_NEWLINE);
 

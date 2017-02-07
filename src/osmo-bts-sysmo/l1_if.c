@@ -51,6 +51,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/tx_power.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -1200,7 +1201,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 			LOGP(DL1C, LOGL_INFO, "Using external attenuator.\n");
 			sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
 			sysp->u.activateRfReq.rfTrx.fMaxTxPower =
-					sysmobts_get_nominal_power(trx);
+				(float) get_p_trxout_target_mdBm(trx, 0) / 1000;
 		}
 #endif /* 2.2.0 */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,8,1)

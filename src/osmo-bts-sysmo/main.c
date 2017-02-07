@@ -47,6 +47,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/tx_power.h>
 
 #define SYSMOBTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
@@ -63,10 +64,46 @@ static int daemonize = 0;
 static unsigned int dsp_trace = 0x71c00020;
 static int rt_prio = -1;
 
+
+static void set_power_param(struct trx_power_params *out,
+			    int trx_p_max_out_dBm,
+			    int int_pa_nominal_gain_dB)
+{
+	out->trx_p_max_out_mdBm = to_mdB(trx_p_max_out_dBm);
+	out->pa.nominal_gain_mdB = to_mdB(int_pa_nominal_gain_dB);
+}
+
+static void fill_trx_power_params(struct gsm_bts_trx *trx,
+				 struct femtol1_hdl *fl1h)
+{
+	switch (fl1h->hw_info.model_nr) {
+	case 1020:
+		set_power_param(&trx->power_params, 23, 10);
+		break;
+	case 1100:
+		set_power_param(&trx->power_params, 23, 17);
+		break;
+	case 2050:
+		set_power_param(&trx->power_params, 37, 0);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "Unknown/Unsupported "
+		     "sysmoBTS Model Number %u\n",
+		     fl1h->hw_info.model_nr);
+		/* fall-through */
+	case 0xffff:
+		/* sysmoBTS 1002 without any setting in EEPROM */
+		LOGP(DL1C, LOGL_NOTICE, "Assuming 1002 for sysmoBTS "
+			"Model number %u\n", fl1h->hw_info.model_nr);
+	case 1002:
+		set_power_param(&trx->power_params, 23, 0);
+	}
+}
+
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct femtol1_hdl *fl1h;
-	int rc;
+	int rc, i;
 
 	fl1h = l1if_open(bts->c0);
 	if (!fl1h) {
@@ -77,7 +114,14 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts->c0->role_bts.l1h = fl1h;
 
-	rc = sysmobts_get_nominal_power(bts->c0);
+
+	/* Set power params for each trx */
+	for (i = 0; i < bts->num_trx; i++) {
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
+		fill_trx_power_params(trx, fl1h);
+	}
+
+	rc = get_p_max_out_mdBm(bts->c0);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
 		     "transmit power. Assuming 23dBm.\n");
