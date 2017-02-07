@@ -58,7 +58,7 @@ int get_p_nominal_mdBm(struct gsm_bts_trx *trx)
 }
 
 /* calculate the target total output power required, reduced by both
- * OML and RSL, but ignoring the attenutation required for power ramping and
+ * OML and RSL, but ignoring the attenuation required for power ramping and
  * thermal management */
 int get_p_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie)
 {
@@ -71,7 +71,7 @@ int get_p_target_mdBm_lchan(struct gsm_lchan *lchan)
 }
 
 /* calculate the actual total output power required, taking into account the
- * attenutation required for power ramping but not thermal management */
+ * attenuation required for power ramping but not thermal management */
 int get_p_actual_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 {
 	struct trx_power_params *tpp = &trx->power_params;
@@ -81,7 +81,7 @@ int get_p_actual_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 }
 
 /* calculate the effective total output power required, taking into account the
- * attenutation required for power ramping and thermal management */
+ * attenuation required for power ramping and thermal management */
 int get_p_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 {
 	struct trx_power_params *tpp = &trx->power_params;
@@ -144,7 +144,7 @@ int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan)
  * one hand side to avoid very fast dynamic load changes towards the PA power
  * supply, but is also needed in order to avoid a DoS by too many subscriber
  * attempting to register at the same time.  Rather, grow the cell slowly in
- * radius than start with the full raduis at once.  */
+ * radius than start with the full radius at once.  */
 
 static int we_are_ramping_up(struct gsm_bts_trx *trx)
 {
@@ -158,7 +158,7 @@ static int we_are_ramping_up(struct gsm_bts_trx *trx)
 
 static void power_ramp_do_step(struct gsm_bts_trx *trx, int first);
 
-/* timer call-back for the ramp tumer */
+/* timer call-back for the ramp timer */
 static void power_ramp_timer_cb(void *_trx)
 {
 	struct gsm_bts_trx *trx = _trx;
