@@ -1408,19 +1408,7 @@ static void trx_ctrl_timer_cb(void *data)
 no_clock:
 		transceiver_available = 0;
 
-		/* flush pending messages of transceiver */
-		/* close all logical channels and reset timeslots */
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			struct phy_instance *pinst = trx_phy_instance(trx);
-			struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-			trx_if_flush(l1h);
-			trx_sched_reset(&l1h->l1s);
-			if (trx->nr == 0)
-				trx_if_cmd_poweroff(l1h);
-		}
-
-		/* tell BSC */
-		check_transceiver_availability(bts, 0);
+		bts_shutdown(bts, "No clock from osmo-trx");
 
 		return;
 	}
