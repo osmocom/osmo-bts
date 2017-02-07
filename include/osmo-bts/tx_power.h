@@ -8,7 +8,7 @@
 
 /* PA calibration table */
 struct pa_calibration {
-	int gain_mdB[1024];		/* gain provided at given ARFCN */
+	int delta_mdB[1024];		/* gain delta at given ARFCN */
 	/* FIXME: thermal calibration */
 };
 
