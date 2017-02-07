@@ -51,6 +51,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
+#include <osmo-bts/tx_power.h>
 
 #include <sysmocom/femtobts/superfemto.h>
 #include <sysmocom/femtobts/gsml1prim.h>
@@ -1309,7 +1310,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 			LOGP(DL1C, LOGL_INFO, "Using external attenuator.\n");
 			sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
 			sysp->u.activateRfReq.rfTrx.fMaxTxPower =
-					sysmobts_get_nominal_power(trx);
+				(float) get_p_trxout_target_mdBm(trx, 0) / 1000;
 		}
 #endif /* 2.2.0 */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,8,1)
@@ -1797,6 +1798,44 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h)
 
 #endif
 
+static void set_power_param(struct trx_power_params *out,
+			    int trx_p_max_out_dBm,
+			    int int_pa_nominal_gain_dB)
+{
+	out->trx_p_max_out_mdBm = to_mdB(trx_p_max_out_dBm);
+	out->pa.nominal_gain_mdB = to_mdB(int_pa_nominal_gain_dB);
+}
+
+static void fill_trx_power_params(struct gsm_bts_trx *trx,
+				 struct phy_instance *pinst)
+{
+	struct femtol1_hdl *fl1h = pinst->u.sysmobts.hdl;
+
+	switch (fl1h->hw_info.model_nr) {
+	case 1020:
+		set_power_param(&trx->power_params, 23, 10);
+		break;
+	case 1100:
+		set_power_param(&trx->power_params, 23, 17);
+		break;
+	case 2050:
+		set_power_param(&trx->power_params, 37, 0);
+		break;
+	default:
+		LOGP(DL1C, LOGL_NOTICE, "Unknown/Unsupported "
+		     "sysmoBTS Model Number %u\n",
+		     fl1h->hw_info.model_nr);
+		/* fall-through */
+	case 0xffff:
+		/* sysmoBTS 1002 without any setting in EEPROM */
+		LOGP(DL1C, LOGL_NOTICE, "Assuming 1002 for sysmoBTS "
+			"Model number %u\n", fl1h->hw_info.model_nr);
+	case 1002:
+		set_power_param(&trx->power_params, 23, 0);
+	}
+}
+
+
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
@@ -1812,16 +1851,17 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		return -EIO;
 	}
 
+	fill_trx_power_params(pinst->trx, pinst);
+
 	bts = pinst->trx->bts;
 	if (pinst->trx == bts->c0) {
 		int rc;
-		rc = sysmobts_get_nominal_power(bts->c0);
+		rc = get_p_max_out_mdBm(bts->c0);
 		if (rc < 0) {
 			LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
 			     "transmit power. Assuming 23dBm.\n");
 		}
 		bts->c0->nominal_power = rc;
-		bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
 	}
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);

@@ -438,7 +438,7 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
-	if (trx->nominal_power != sysmobts_get_nominal_power(trx))
+	if (trx->nominal_power != get_p_max_out_mdBm(trx))
 		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
 			VTY_NEWLINE);
 }
