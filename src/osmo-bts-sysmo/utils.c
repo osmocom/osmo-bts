@@ -125,8 +125,6 @@ int sysmobts_get_nominal_power(struct gsm_bts_trx *trx)
 	case 1002:
 		/* 200mW (23 dBm) nominal power */
 		return 23;
-	case 1020:
-		return 33;
 	case 2050:
 		/* 5W(37dBm) per TRX. This could be raiesd to 10W(40dBm)
 		 * if the second TRX is not used. */
