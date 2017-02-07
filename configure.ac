@@ -144,4 +144,5 @@ AC_OUTPUT(
     tests/misc/Makefile
     tests/bursts/Makefile
     tests/handover/Makefile
+    tests/tx_power/Makefile
     Makefile)

@@ -1,4 +1,4 @@
-SUBDIRS = paging cipher agch misc bursts handover
+SUBDIRS = paging cipher agch misc bursts handover tx_power
 
 if ENABLE_SYSMOBTS
 SUBDIRS += sysmobts
