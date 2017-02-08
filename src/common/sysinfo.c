@@ -151,10 +151,10 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 	uint32_t tmp;
 
 	for (tmp = lchan->si.last + 1; tmp != lchan->si.last; tmp = (tmp + 1) % _MAX_SYSINFO_TYPE) {
-		if (lchan->si.valid & (1 << tmp)) {
-			lchan->si.last = tmp;
-			return lchan->si.buf[tmp];
-		}
+		if (!(lchan->si.valid & (1 << tmp)))
+			continue;
+		lchan->si.last = tmp;
+		return lchan->si.buf[tmp];
 	}
 	return NULL;
 }
