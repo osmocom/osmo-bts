@@ -1345,7 +1345,7 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 			gsm_lchan_name(lchan),
 			get_value_string(osmo_sitype_strs, osmo_si));
 	} else {
-		lchan->si.valid &= (1 << osmo_si);
+		lchan->si.valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, "%s Rx RSL Disabling SACCH FILLING (SI%s)\n",
 			gsm_lchan_name(lchan),
 			get_value_string(osmo_sitype_strs, osmo_si));
