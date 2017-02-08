@@ -689,6 +689,9 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 		uint8_t rsl_si = rsl_sacch_sitypes[i];
 		int osmo_si = osmo_rsl2sitype(rsl_si);
 		uint32_t osmo_si_shifted = (1 << osmo_si);
+		osmo_static_assert(_MAX_SYSINFO_TYPE <= sizeof(osmo_si_shifted) * 8,
+				   si_enum_vals_fit_in_bit_mask);
+
 		if (osmo_si == SYSINFO_TYPE_NONE)
 			continue;
 		if (!(bts->si_valid & osmo_si_shifted)) {
