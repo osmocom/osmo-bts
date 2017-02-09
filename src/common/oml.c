@@ -46,13 +46,18 @@
 
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
+static struct tlv_definition abis_nm_att_tlvdef_ipa_local = {
+    .def = {
+    },
+};
+
 /*
  * support
  */
 
 static int oml_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int len)
 {
-	return tlv_parse(tp, &abis_nm_att_tlvdef_ipa, buf, len, 0, 0);
+	return tlv_parse(tp, &abis_nm_att_tlvdef_ipa_local, buf, len, 0, 0);
 }
 
 struct msgb *oml_msgb_alloc(void)
@@ -1247,7 +1252,8 @@ static int handle_fail_sig(unsigned int subsys, unsigned int signal, void *handl
 int oml_init(struct gsm_abis_mo *mo)
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
-	tlv_def_patch(&abis_nm_att_tlvdef_ipa, &abis_nm_att_tlvdef);
+	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef_ipa);
+	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef);
 	osmo_signal_register_handler(SS_FAIL, handle_fail_sig, mo);
 
 	return 0;
