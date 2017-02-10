@@ -6,7 +6,7 @@ tch_fr_decode: n_errors=8 n_bits_total=378 ber=0.02
 tch_fr_decode: n_errors=10 n_bits_total=456 ber=0.02
 tch_fr_decode: n_errors=10 n_bits_total=456 ber=0.02
 tch_fr_decode: n_errors=10 n_bits_total=456 ber=0.02
-tch_hr_decode: n_errors=11 n_bits_total=211 ber=0.05
+tch_hr_decode: n_errors=10 n_bits_total=211 ber=0.05
 tch_hr_decode: n_errors=10 n_bits_total=456 ber=0.02
 tch_hr_decode: n_errors=10 n_bits_total=456 ber=0.02
 tch_hr_decode: n_errors=10 n_bits_total=456 ber=0.02
