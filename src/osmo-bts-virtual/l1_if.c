@@ -153,6 +153,19 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	chantype_gsmtap2rsl(gsmtap_chantype, &rsl_chantype, &link_id);
 	chan_nr = rsl_enc_chan_nr(rsl_chantype, subslot, timeslot);
 
+	// Generally ignore all msgs that are either not received with the right arfcn...
+	if((arfcn & GSMTAP_ARFCN_MASK) != l1t->trx->arfcn) {
+		LOGP(LOGL_NOTICE, DL1P,
+		                "Ignore incoming msg - msg arfcn=%d not equal trx arfcn=%d!\n", arfcn & GSMTAP_ARFCN_MASK, l1t->trx->arfcn);
+		goto nomessage;
+	}
+	// ... or not uplink
+	if(!(arfcn & GSMTAP_ARFCN_F_UPLINK)) {
+		LOGP(LOGL_NOTICE, DL1P,
+		                "Ignore incoming msg - no uplink flag.");
+		goto nomessage;
+	}
+
 	// switch case with removed acch flag
 	switch (gsmtap_chantype & ~GSMTAP_CHANNEL_ACCH & 0xff) {
 	case GSMTAP_CHANNEL_RACH:
