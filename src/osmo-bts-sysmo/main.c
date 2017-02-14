@@ -121,14 +121,9 @@ int bts_model_init(struct gsm_bts *bts)
 		fill_trx_power_params(trx, fl1h);
 	}
 
+	/* nominal_power is not used anywhere except read/write in VTY */
 	rc = get_p_max_out_mdBm(bts->c0);
-	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
-		     "transmit power. Assuming 23dBm.\n");
-		rc = 23;
-	}
-	bts->c0->nominal_power = rc;
-	bts->c0->power_params.trx_p_max_out_mdBm = to_mdB(rc);
+	bts->c0->nominal_power = rc/1000;
 
 	bts_model_vty_init(bts);
 
