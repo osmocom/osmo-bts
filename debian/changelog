@@ -1,3 +1,9 @@
+osmo-bts (0.5.0-fw.1) UNRELEASED; urgency=medium
+
+  * New release of osmo-bts for fairwaves build.
+
+ -- Ivan Klyuchnikov <kluchnikovi@gmail.com>  Wed, 15 Feb 2017 22:22:54 +0200
+
 osmo-bts (0.5.0) UNRELEASED; urgency=medium
 
   * Initial release.
