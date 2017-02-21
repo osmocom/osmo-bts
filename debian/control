@@ -23,6 +23,9 @@ Homepage: https://projects.osmocom.org/projects/osmobts
 Package: osmo-bts-trx
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: osmo-bts
+Replaces: osmo-bts
+Provides: osmo-bts
 Description: osmo-bts-trx GSM BTS with osmo-trx
  osmo-bts-trx to be used with the osmo-trx application
 
@@ -31,6 +34,9 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: osmo-bts-trx (= ${binary:Version}), ${misc:Depends}
+Breaks: osmo-bts-dbg
+Replaces: osmo-bts-dbg
+Provides: osmo-bts-dbg
 Description: Debug symbols for the osmo-bts-trx
  Make debugging possible
 
