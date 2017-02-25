@@ -64,6 +64,8 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t gsmtap_chantype; // the gsmtap channel
 
 	rsl_dec_chan_nr(chdesc->chan_nr, &rsl_chantype, &subslot, &timeslot);
+	// the timeslot is not encoded in the chan_nr of the chdesc, and so has to be overwritten
+	timeslot = tn;
 	// in osmocom, agch is only sent on ccch block 0. no idea why. this seems to cause false gsmtap channel types for agch and pch.
 	if (rsl_chantype == RSL_CHAN_PCH_AGCH && L1SAP_FN2CCCHBLOCK(fn) == 0) {
 		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
