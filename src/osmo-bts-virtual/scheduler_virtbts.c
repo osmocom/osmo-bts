@@ -43,10 +43,11 @@
 #include <osmo-bts/scheduler_backend.h>
 #include <virtphy/virtual_um.h>
 
+#define MODULO_HYPERFRAME 0
+
 /**
  * Send a message over the virtual um interface.
  * This will at first wrap the msg with a gsmtap header and then write it to the declared multicast socket.
- * TODO: we might want to remove unused argument uint8_t tn
  */
 static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
                           enum trx_chan_type chan, struct msgb *msg)
@@ -73,6 +74,11 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		gsmtap_chantype = chantype_rsl2gsmtap(rsl_chantype,
 		                chdesc->link_id); // the logical channel type
 	}
+
+	#if MODULO_HYPERFRAME
+	// Restart fn after every superframe (26 * 51 frames) to simulate hyperframe overflow each 6 seconds.
+	fn %= 26 * 51;
+	#endif
 
 	outmsg = gsmtap_makemsg(l1t->trx->arfcn, timeslot, gsmtap_chantype,
 	                subslot, fn, signal_dbm, snr, data, data_len);

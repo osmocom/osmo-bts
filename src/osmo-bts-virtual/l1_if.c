@@ -162,7 +162,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	// ... or not uplink
 	if(!(arfcn & GSMTAP_ARFCN_F_UPLINK)) {
 		LOGP(LOGL_NOTICE, DL1P,
-		                "Ignore incoming msg - no uplink flag.");
+		                "Ignore incoming msg - no uplink flag.\n");
 		goto nomessage;
 	}
 
@@ -176,7 +176,6 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		                PRIM_OP_INDICATION, msg);
 
 		l1sap.u.rach_ind.chan_nr = chan_nr;
-		// TODO: why is ra her 16bits long instead of 8 like in the reference 04.08 - 9.1.8 - Channel request?
 		l1sap.u.rach_ind.ra = msgb_pull_u8(msg); // directly after gh hdr comes ra
 		l1sap.u.rach_ind.acc_delay = 0; // probably not used in virt um
 		l1sap.u.rach_ind.is_11bit = 0; // We dont use that
