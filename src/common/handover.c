@@ -106,9 +106,17 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 		return;
 	}
 
+	/* Ignore handover on channels other than DCCH and SACCH */
+	if (lchan->type != GSM_LCHAN_SDCCH && lchan->type != GSM_LCHAN_TCH_H &&
+		lchan->type != GSM_LCHAN_TCH_F) {
+		LOGP(DHO, LOGL_ERROR, "%s handover RACH received on %s?!\n",
+		     gsm_lchan_name(lchan), gsm_lchant_name(lchan->type));
+		return;
+	}
+
 	LOGP(DHO, LOGL_NOTICE,
-		"%s RACH on dedicated channel received with TA=%u\n",
-		gsm_lchan_name(lchan), acc_delay);
+	     "%s RACH on dedicated channel type %s received with TA=%u, ref=%u\n",
+	     gsm_lchan_name(lchan), gsm_lchant_name(lchan->type), acc_delay, ra);
 
 	/* Set timing advance */
 	lchan->rqd_ta = acc_delay;
