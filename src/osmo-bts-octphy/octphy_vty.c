@@ -187,7 +187,11 @@ void show_rf_port_stats_cb(struct msgb *resp, void *data)
 		VTY_NEWLINE);
 	vty_out(vty, "Rx Period=%u%s", psr->RxStats.ulRxAveragePeriodUs,
 		VTY_NEWLINE);
+#if OCTPHY_USE_FREQUENCY == 1
+	vty_out(vty, "Rx Freq=%u%s", psr->RxStats.Frequency.ulValue, VTY_NEWLINE);
+#else
 	vty_out(vty, "Rx Freq=%u%s", psr->RxStats.ulFrequencyKhz, VTY_NEWLINE);
+#endif
 	vty_out(vty, "Tx Bytes=%u%s", psr->TxStats.ulTxByteCnt, VTY_NEWLINE);
 	vty_out(vty, "Tx Underflow=%u%s", psr->TxStats.ulTxUnderflowCnt,
 		VTY_NEWLINE);
@@ -195,7 +199,11 @@ void show_rf_port_stats_cb(struct msgb *resp, void *data)
 		VTY_NEWLINE);
 	vty_out(vty, "Tx Period=%u%s", psr->TxStats.ulTxAveragePeriodUs,
 		VTY_NEWLINE);
+#if OCTPHY_USE_FREQUENCY == 1
+	vty_out(vty, "Tx Freq=%u%s", psr->TxStats.Frequency.ulValue, VTY_NEWLINE);
+#else
 	vty_out(vty, "Tx Freq=%u%s", psr->TxStats.ulFrequencyKhz, VTY_NEWLINE);
+#endif
 }
 
 DEFUN(show_rf_port_stats, show_rf_port_stats_cmd,
@@ -243,7 +251,11 @@ void show_clk_sync_stats_cb(struct msgb *resp, void *data)
 	vty_out(vty, "PllFreqHz=%u%s", csr->ulPllFreqHz, VTY_NEWLINE);
 	vty_out(vty, "PllFract=%u%s", csr->ulPllFractionalFreqHz, VTY_NEWLINE);
 	vty_out(vty, "SlipCnt=%u%s", csr->ulSlipCnt, VTY_NEWLINE);
+#if OCTPHY_USE_SYNC_LOSS_CNT == 1
+	vty_out(vty, "SyncLosses=%u%s", csr->ulSyncLossCnt, VTY_NEWLINE);
+#else
 	vty_out(vty, "SyncLosses=%u%s", csr->ulSyncLosseCnt, VTY_NEWLINE);
+#endif
 	vty_out(vty, "SourceState=%u%s", csr->ulSourceState, VTY_NEWLINE);
 	vty_out(vty, "DacValue=%u%s", csr->ulDacValue, VTY_NEWLINE);
 }

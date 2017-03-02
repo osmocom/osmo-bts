@@ -125,11 +125,19 @@ static int rf_port_stats_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 		psr->RxStats.ulRxByteCnt, psr->RxStats.ulRxOverflowCnt,
 		psr->RxStats.ulRxAverageBytePerSecond,
 		psr->RxStats.ulRxAveragePeriodUs,
+#if OCTPHY_USE_FREQUENCY == 1
+		psr->RxStats.Frequency.ulValue,
+#else
 		psr->RxStats.ulFrequencyKhz,
+#endif
 		psr->TxStats.ulTxByteCnt, psr->TxStats.ulTxUnderflowCnt,
 		psr->TxStats.ulTxAverageBytePerSecond,
 		psr->TxStats.ulTxAveragePeriodUs,
+#if OCTPHY_USE_FREQUENCY == 1
+		psr->TxStats.Frequency.ulValue);
+#else
 		psr->TxStats.ulFrequencyKhz);
+#endif
 
 	get_cb_data = (struct octphy_hw_get_cb_data*) data;
 	get_cb_data->cb(resp,get_cb_data->data);
@@ -177,10 +185,15 @@ static int rf_ant_rx_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 	LOGP(DL1C, LOGL_INFO, "ANT-RX-CONFIG.resp(Port=%u, Ant=%u): %s, "
 		"Gain %d dB, GainCtrlMode=%s\n",
 		arc->ulPortIndex,  arc->ulAntennaIndex,
+#ifdef OCTPHY_USE_RX_CONFIG
+		arc->RxConfig.ulEnableFlag ? "Enabled" : "Disabled",
+		arc->RxConfig.lRxGaindB/512,
+		get_value_string(rx_gain_mode_vals, arc->RxConfig.ulRxGainMode));
+#else
 		arc->ulEnableFlag ? "Enabled" : "Disabled",
 		arc->lRxGaindB/512,
 		get_value_string(rx_gain_mode_vals, arc->ulRxGainMode));
-
+#endif
 	msgb_free(resp);
 	return 0;
 }
@@ -219,9 +232,14 @@ static int rf_ant_tx_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 	LOGP(DL1C, LOGL_INFO, "ANT-TX-CONFIG.resp(Port=%u, Ant=%u): %s, "
 		"Gain %d dB\n",
 		atc->ulPortIndex, atc->ulAntennaIndex,
+#ifdef OCTPHY_USE_TX_CONFIG
+		atc->TxConfig.ulEnableFlag? "Enabled" : "Disabled",
+		atc->TxConfig.lTxGaindB/512);
+#else
 		atc->ulEnableFlag ? "Enabled" : "Disabled",
 		atc->lTxGaindB/512);
 
+#endif
 	msgb_free(resp);
 	return 0;
 }
@@ -326,7 +344,12 @@ static int get_clock_sync_stats_cb(struct octphy_hdl *fl1, struct msgb *resp,
 		get_value_string(clocksync_state_vals, csr->ulState),
 	       	csr->lClockError, csr->lDroppedCycles, csr->ulPllFreqHz,
 		csr->ulPllFractionalFreqHz, csr->ulSlipCnt,
-		csr->ulSyncLosseCnt, csr->ulSourceState, csr->ulDacValue);
+#if OCTPHY_USE_SYNC_LOSS_CNT == 1
+		csr->ulSyncLossCnt,
+#else
+		csr->ulSyncLosseCnt,
+#endif
+		csr->ulSourceState, csr->ulDacValue);
 
 	get_cb_data = (struct octphy_hw_get_cb_data*) data;
 	get_cb_data->cb(resp,get_cb_data->data);

@@ -72,10 +72,46 @@ AM_CONDITIONAL(ENABLE_OCTPHY, test "x$enable_octphy" = "xyes")
 if test "$enable_octphy" = "yes" ; then
 	oldCPPFLAGS=$CPPFLAGS
 	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
+
 	AC_CHECK_HEADER([octphy/octvc1/gsm/octvc1_gsm_default.h],[],
 			[AC_MSG_ERROR([octphy/octvc1/gsm/octvc1_gsm_default.h can not be found in $octsdr2g_incdir])],
 			[#include <octphy/octvc1/gsm/octvc1_gsm_default.h>])
-	AC_CHECK_MEMBER([tOCTVC1_GSM_TRX_CONFIG.usCentreArfcn], AC_DEFINE([OCTPHY_MULTI_TRX], [1], [Define to 1 if your octphy header files support multi-trx]), [], [#include <octphy/octvc1/gsm/octvc1_gsm_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_GSM_TRX_CONFIG.usCentreArfcn],
+			AC_DEFINE([OCTPHY_MULTI_TRX],
+			[1],
+			[Define to 1 if your octphy header files support multi-trx]),
+			[],
+			[#include <octphy/octvc1/gsm/octvc1_gsm_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_RF_PORT_RX_STATS.Frequency],
+			AC_DEFINE([OCTPHY_USE_FREQUENCY],
+			[1],
+			[Define to 1 if your octphy header files support tOCTVC1_RADIO_FREQUENCY_VALUE type]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSyncLossCnt],
+			AC_DEFINE([OCTPHY_USE_SYNC_LOSS_CNT],
+			[1],
+			[Define to 1 if your octphy header files renamed ulSyncLosseCnt to ulSyncLossCnt]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_TX_CONFIG_RSP.TxConfig],
+			AC_DEFINE([OCTPHY_USE_TX_CONFIG],
+			[1],
+			[Define to 1 if your octphy header files support tOCTVC1_HW_RF_PORT_ANTENNA_TX_CONFIG type]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_RX_CONFIG_RSP.RxConfig],
+			AC_DEFINE([OCTPHY_USE_RX_CONFIG],
+			[1],
+			[Define to 1 if your octphy header files support tOCTVC1_HW_RF_PORT_ANTENNA_RX_CONFIG type]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
