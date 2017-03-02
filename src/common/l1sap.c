@@ -1029,7 +1029,9 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||
 		(trx == bts->c0 && rach_ind->is_11bit)) {
 
-		LOGP(DL1P, LOGL_INFO, "RACH for packet access\n");
+		LOGP(DL1P, LOGL_INFO, "RACH for packet access (toa=%d, ra=%d)\n",
+			rach_ind->acc_delay, rach_ind->ra);
+
 		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
 			rach_ind->ra, rach_ind->fn,
 			rach_ind->is_11bit, rach_ind->burst_type);
