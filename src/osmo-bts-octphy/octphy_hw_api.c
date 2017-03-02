@@ -237,7 +237,7 @@ int octphy_hw_get_rf_ant_tx_config(struct octphy_hdl *fl1h, uint32_t port_idx,
 			msgb_put(msg, sizeof(*psc));
 
 	l1if_fill_msg_hdr(&psc->Header, msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
-			  cOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_RX_CONFIG_CID);
+			  cOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_TX_CONFIG_CID);
 
 	psc->ulPortIndex = port_idx;
 	psc->ulAntennaIndex = ant_idx;
