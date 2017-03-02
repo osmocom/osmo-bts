@@ -50,6 +50,12 @@
 #include "l1_utils.h"
 
 #include "octpkt.h"
+#include <octphy/octvc1/main/octvc1_main_version.h>
+
+/* NOTE: The octphy GPRS frame number handling changed with
+ * OCTSDR-2G-02.07.00-B1314-BETA. From that version on, each ph_data_ind must
+ * subtract 3 from the frame number before passing the frame to the PCU */
+#define cOCTVC1_MAIN_VERSION_ID_FN_PARADIGM_CHG 0x41c0522
 
 #include <octphy/octpkt/octpkt_hdr.h>
 #define OCTVC1_RC2STRING_DECLARE
@@ -1040,7 +1046,16 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 		       PRIM_OP_INDICATION, l1p_msg);
 	l1sap->u.data.link_id = link_id;
 	l1sap->u.data.chan_nr = chan_nr;
+
+#if (cOCTVC1_MAIN_VERSION_ID >= cOCTVC1_MAIN_VERSION_ID_FN_PARADIGM_CHG)
+	if (sapi == cOCTVC1_GSM_SAPI_ENUM_PDTCH) {
+		l1sap->u.data.fn = fn - 3;
+	} else
+		l1sap->u.data.fn = fn;
+#else
 	l1sap->u.data.fn = fn;
+#endif
+
 	l1sap->u.data.rssi = rssi;
 	b_total = data_ind->MeasurementInfo.usBERTotalBitCnt;
 	b_error =data_ind->MeasurementInfo.usBERCnt;
