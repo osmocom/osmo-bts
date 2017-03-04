@@ -182,21 +182,19 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.rach_ind.fn = fn;
 		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_NONE; // FIXME: what comes here
 		break;
-	case GSMTAP_CHANNEL_SDCCH4:
-		// TODO: check if separate handling is needed
-	case GSMTAP_CHANNEL_SDCCH8:
-		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_TCH_F:
-		// TODO: check if separate handling is needed
 	case GSMTAP_CHANNEL_TCH_H:
-		// check if associated control flag is set
-		if (gsmtap_chantype & GSMTAP_CHANNEL_ACCH) {
-			// TODO: check if handling is different for ACCH
-			// TODO: does FACCH need special handling?
+#if(0)
+		// TODO: handle msgs on TCH that neither FACCH nor TCH/ACCH
+		if(!facch && ! tch_acch) {
+			osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_TCH,
+					PRIM_OP_INDICATION, msg);
 		}
+#endif
+	case GSMTAP_CHANNEL_SDCCH4:
+	case GSMTAP_CHANNEL_SDCCH8:
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_DATA,
-		                PRIM_OP_INDICATION, msg);
-
+		               PRIM_OP_INDICATION, msg);
 		l1sap.u.data.chan_nr = chan_nr;
 		l1sap.u.data.link_id = link_id;
 		l1sap.u.data.fn = fn;
