@@ -1236,7 +1236,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		rc = tch_hr_decode(tch_data, *bursts_p,
 			(((fn + 26 - 10) % 26) >> 2) & 1,
 			&n_errors, &n_bits_total);
-		lchan_set_marker(osmo_hr_check_sid(tch_data, rc), lchan); /* DTXu */
+		if (rc) /* DTXu */
+			lchan_set_marker(osmo_hr_check_sid(tch_data, rc), lchan);
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 or 1,9,18 defines that CMI is included
@@ -1375,7 +1376,8 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 				continue;
 			} else
 				gain = 0;
-			trx_if_data(l1h, tn, fn, gain, bits, nbits);
+			if (nbits)
+				trx_if_data(l1h, tn, fn, gain, bits, nbits);
 		}
 	}
 
