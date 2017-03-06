@@ -43,6 +43,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/cbch.h>
 
 #include "l1_if.h"
 #include "l1_oml.h"
@@ -340,9 +341,11 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 			cbits = 0x02 + subCh;
 			break;
 		case GSM_PCHAN_CCCH_SDCCH4:
+		case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 			cbits = 0x04 + subCh;
 			break;
 		case GSM_PCHAN_SDCCH8_SACCH8C:
+		case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 			cbits = 0x08 + subCh;
 			break;
 		default:
@@ -353,9 +356,11 @@ static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
 	case cOCTVC1_GSM_SAPI_ENUM_SDCCH:
 		switch (pchan) {
 		case GSM_PCHAN_CCCH_SDCCH4:
+		case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 			cbits = 0x04 + subCh;
 			break;
 		case GSM_PCHAN_SDCCH8_SACCH8C:
+		case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 			cbits = 0x08 + subCh;
 			break;
 		default:
@@ -918,6 +923,10 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 		    	(g_time.t1 << 7) | (g_time.t2 << 2) | (t3p >> 1);
 		data_req->Data.abyDataContent[3] = (t3p & 1);
 		break;
+	case cOCTVC1_GSM_SAPI_ENUM_CBCH:
+		rc = bts_cbch_get(bts, data_req->Data.abyDataContent, &g_time);
+		data_req->Data.ulDataLength = 23;   /* GSM MAX BLK SIZE */
+		break;
 	case cOCTVC1_GSM_SAPI_ENUM_PRACH:
 #if 0
 		/* in case we decide to send an empty frame... */
@@ -1101,7 +1110,8 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	l1sap->u.rach_ind.acc_delay = acc_delay;
 	l1sap->u.rach_ind.fn = fn;
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
-	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4)
+	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
 		l1sap->u.rach_ind.chan_nr = 0x88;
 	else
 		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
