@@ -32,7 +32,10 @@
 /* PTCH layout from frame number */
 #define L1SAP_FN2MACBLOCK(fn) ((fn % 52) / 4)
 #define L1SAP_FN2PTCCHBLOCK(fn) ((fn / 104) & 3)
-#define L1SAP_IS_PTCCH(fn) ((fn % 52) == 12)
+
+/* Calculate PTCCH occurrence, See also 3GPP TS 05.02, Clause 7, Table 6 of 9 */
+#define L1SAP_IS_PTCCH(fn) (((fn % 52) == 12) || ((fn % 52) == 38))
+
 
 static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
         0x03, 0x03, 0x01, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B,
