@@ -53,6 +53,10 @@ struct phy_link {
 
 			/* configuration */
 			uint32_t rf_port_index;
+#if OCTPHY_USE_ANTENNA_ID == 1
+			uint32_t rx_ant_id;
+			uint32_t tx_ant_id;
+#endif
 			uint32_t rx_gain_db;
 			bool tx_atten_flag;
 			uint32_t tx_atten_db;

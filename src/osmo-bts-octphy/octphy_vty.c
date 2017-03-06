@@ -117,6 +117,42 @@ DEFUN(cfg_phy_rf_port_idx, cfg_phy_rf_port_idx_cmd,
 	return CMD_SUCCESS;
 }
 
+#if OCTPHY_USE_ANTENNA_ID == 1
+DEFUN(cfg_phy_rx_ant_id, cfg_phy_rx_ant_id_cmd,
+      "octphy rx-ant-id <0-1>",
+      OCT_STR "Configure the RX Antenna for this TRX\n" "RX Antenna Id\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.octphy.rx_ant_id = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_tx_ant_id, cfg_phy_tx_ant_id_cmd,
+      "octphy tx-ant-id <0-1>",
+      OCT_STR "Configure the TX Antenna for this TRX\n" "TX Antenna Id\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.octphy.tx_ant_id = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+#endif
+
 DEFUN(cfg_phy_rx_gain_db, cfg_phy_rx_gain_db_cmd,
 	"octphy rx-gain <0-73>",
 	OCT_STR "Configure the Rx Gain in dB\n"
@@ -300,6 +336,14 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 
 	vty_out(vty, " octphy rf-port-index %u%s", plink->u.octphy.rf_port_index,
 		VTY_NEWLINE);
+
+#if OCTPHY_USE_ANTENNA_ID == 1
+	vty_out(vty, " octphy tx-ant-id %u%s", plink->u.octphy.tx_ant_id,
+		VTY_NEWLINE);
+
+	vty_out(vty, " octphy rx-ant-id %u%s", plink->u.octphy.rx_ant_id,
+		VTY_NEWLINE);
+#endif
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
@@ -347,6 +391,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_hwaddr_cmd);
 	install_element(PHY_NODE, &cfg_phy_netdev_cmd);
 	install_element(PHY_NODE, &cfg_phy_rf_port_idx_cmd);
+#if OCTPHY_USE_ANTENNA_ID == 1
+	install_element(PHY_NODE, &cfg_phy_rx_ant_id_cmd);
+	install_element(PHY_NODE, &cfg_phy_tx_ant_id_cmd);
+#endif
 	install_element(PHY_NODE, &cfg_phy_rx_gain_db_cmd);
 	install_element(PHY_NODE, &cfg_phy_tx_atten_db_cmd);
 

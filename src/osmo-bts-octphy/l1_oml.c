@@ -1394,6 +1394,11 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 		oc->RfConfig.ulTxAttndB = (trx->max_power_red) << 2;
 	}
 
+#if OCTPHY_USE_ANTENNA_ID == 1
+	oc->RfConfig.ulTxAntennaId = plink->u.octphy.tx_ant_id;
+	oc->RfConfig.ulRxAntennaId = plink->u.octphy.rx_ant_id;
+#endif
+
 #if OCTPHY_MULTI_TRX == 1
 	LOGP(DL1C, LOGL_INFO, "Tx TRX-OPEN.req(trx=%u, rf_port=%u, arfcn=%u, "
 		"center=%u, tsc=%u, rx_gain=%u, tx_atten=%u)\n",

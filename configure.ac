@@ -112,6 +112,13 @@ if test "$enable_octphy" = "yes" ; then
 			[],
 			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
 
+	AC_CHECK_MEMBER([tOCTVC1_GSM_RF_CONFIG.ulTxAntennaId],
+			AC_DEFINE([OCTPHY_USE_ANTENNA_ID],
+			[1],
+			[Define to 1 if your octphy header files support antenna ids in tOCTVC1_GSM_RF_CONFIG]),
+			[],
+			[#include <octphy/octvc1/gsm/octvc1_gsm_api.h>])
+
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
