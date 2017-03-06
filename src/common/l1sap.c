@@ -76,12 +76,8 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 {
 	uint32_t samples_passed, r;
 
-	/* don't adjust duration:
-	   - when no DTX enabled at all
-	   - for ONSET RTP packet to avoid timestamp gap with subsequent SPEECH
-	   RTP packet*/
-	if (lchan->rtp_tx_marker ||
-	    lchan->ts->trx->bts->dtxu == GSM48_DTX_SHALL_NOT_BE_USED)
+	/* don't adjust duration when DTX is not enabled */
+	if (lchan->ts->trx->bts->dtxu == GSM48_DTX_SHALL_NOT_BE_USED)
 		return GSM_RTP_DURATION;
 
 	if (lchan->tch.last_fn != LCHAN_FN_DUMMY) {
