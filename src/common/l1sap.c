@@ -431,6 +431,27 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 
 	return 0;
 }
+
+static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool set_ms_to)
+{
+	if (!lchan)
+		return;
+
+	if (data + 63 > 255) { /* According to 3GPP TS 48.058 §9.3.37 Timing Offset field cannot exceed 255 */
+		LOGP(DL1P, LOGL_ERROR, "Attempting to set invalid Timing Offset value %d (MS TO = %u)!\n",
+		     data, set_ms_to);
+		return;
+	}
+
+	if (set_ms_to) {
+		lchan->ms_t_offs = data + 63;
+		lchan->p_offs = -1;
+	} else {
+		lchan->p_offs = data + 63;
+		lchan->ms_t_offs = -1;
+	}
+}
+
 /* measurement information received from bts model */
 static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
@@ -455,6 +476,9 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	ulm.ta_offs_qbits = info_meas_ind->ta_offs_qbits;
 	ulm.ber10k = info_meas_ind->ber10k;
 	ulm.inv_rssi = info_meas_ind->inv_rssi;
+
+	/* we assume that symbol period is 1 bit: */
+	set_ms_to_data(lchan, info_meas_ind->ta_offs_qbits / 4, true);
 
 	lchan_new_ul_meas(lchan, &ulm);
 
@@ -1020,6 +1044,9 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		     acc_delay, btsb->max_ta);
 		return 0;
 	}
+
+	/* According to 3GPP TS 48.058 § 9.3.17 Access Delay is expressed same way as TA (number of symbols) */
+	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr), acc_delay, false);
 
 	/* check for handover rach */
 	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr))
