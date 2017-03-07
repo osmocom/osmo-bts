@@ -190,21 +190,13 @@ static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
 				     struct ctrl_connection *ctrl, int critical,
 				     int warning)
 {
-	int new_state = next_state(manager->state, critical, warning), rc;
+	int new_state = next_state(manager->state, critical, warning);
 	struct ctrl_cmd *rep;
-	bool send = false;
+	char *oml_alert = NULL;
 
 	/* Nothing changed */
 	if (new_state < 0)
 		return;
-
-	rep = ctrl_cmd_create(tall_mgr_ctx, CTRL_TYPE_SET);
-	if (!rep) {
-		LOGP(DTEMP, LOGL_ERROR, "OML alert creation failed.\n");
-	} else {
-		rep->id = talloc_asprintf(rep, "%d", rand());
-		rep->variable = "oml-alert";
-	}
 
 	LOGP(DTEMP, LOGL_NOTICE, "Moving from state %s to %s.\n",
 		get_value_string(state_names, manager->state),
@@ -219,22 +211,31 @@ static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
 		break;
 	case STATE_WARNING:
 		execute_warning_act(manager);
-		rep->value = "Temperature Warning";
-		send = true;
+		oml_alert = "Temperature Warning";
 		break;
 	case STATE_CRITICAL:
 		execute_critical_act(manager);
-		rep->value = "Temperature Critical";
-		send = true;
+		oml_alert = "Temperature Critical";
 		break;
 	};
 
-	if (send) {
-		rc = ctrl_cmd_send(&ctrl->write_queue, rep);
-		LOGP(DTEMP, LOGL_ERROR, "OML alert sent: %d\n", rc);
+	if (!oml_alert)
+		return;
+
+	rep = ctrl_cmd_create(tall_mgr_ctx, CTRL_TYPE_SET);
+	if (!rep) {
+		LOGP(DTEMP, LOGL_ERROR, "OML alert creation failed for %s.\n",
+		     oml_alert);
+		return;
 	}
+
+	rep->id = talloc_asprintf(rep, "%d", rand());
+	rep->variable = "oml-alert";
+	rep->value = oml_alert;
+	LOGP(DTEMP, LOGL_ERROR, "OML alert sent: %d\n",
+	     ctrl_cmd_send(&ctrl->write_queue, rep));
 	talloc_free(rep);
-} 
+}
 
 static void temp_ctrl_check(struct ctrl_connection *ctrl)
 {
