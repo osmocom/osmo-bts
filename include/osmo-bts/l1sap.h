@@ -24,7 +24,7 @@
 #define L1SAP_IS_CHAN_AGCH_PCH(chan_nr) ((chan_nr & 0xf8) == 0x90)
 
 /* rach type from ra */
-#define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70)
+#define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)
 
 /* CCCH block from frame number */
 #define L1SAP_FN2CCCHBLOCK(fn) ((fn % 51) / 5 - 1)
