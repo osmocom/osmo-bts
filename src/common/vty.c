@@ -744,6 +744,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
+	if (strnlen(bts->pcu_version, MAX_VERSION_LENGTH))
+		vty_out(vty, "  PCU version %s connected%s",
+			bts->pcu_version, VTY_NEWLINE);
 	vty_out(vty, "  Paging: Queue size %u, occupied %u, lifetime %us%s",
 		paging_get_queue_max(btsb->paging_state), paging_queue_length(btsb->paging_state),
 		paging_get_lifetime(btsb->paging_state), VTY_NEWLINE);

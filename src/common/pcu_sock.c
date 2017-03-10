@@ -538,6 +538,28 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	return rc;
 }
 
+static int pcu_rx_txt_ind(struct gsm_bts *bts,
+			  struct gsm_pcu_if_txt_ind *txt)
+{
+	switch (txt->type) {
+	case PCU_VERSION:
+		LOGP(DPCU, LOGL_INFO, "OsmoPCU version %s connected\n",
+		     txt->text);
+		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_PCU_VERS, txt->text);
+		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
+		break;
+	case PCU_OML_ALERT:
+		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_EXT_ALARM, txt->text);
+		break;
+	default:
+		LOGP(DPCU, LOGL_ERROR, "Unknown TXT_IND type %u received\n",
+		     txt->type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int pcu_rx_act_req(struct gsm_bts *bts,
 	struct gsm_pcu_if_act_req *act_req)
 {
@@ -585,6 +607,9 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 		break;
 	case PCU_IF_MSG_ACT_REQ:
 		rc = pcu_rx_act_req(bts, &pcu_prim->u.act_req);
+		break;
+	case PCU_IF_MSG_TXT_IND:
+		rc = pcu_rx_txt_ind(bts, &pcu_prim->u.txt_ind);
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Received unknwon PCU msg type %d\n",
