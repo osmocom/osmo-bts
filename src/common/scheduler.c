@@ -305,11 +305,11 @@ free_msg:
 			goto wrong_type;
 		}
 		if (prim_fn > 100) {
-			LOGP(DL1C, LOGL_NOTICE, "Prim for trx=%u ts=%u at fn=%u "
-			     "is out of range, or channel %s with type %s is "
-			     "already disabled. If this happens in conjunction "
-			     "with PCU, increase 'rts-advance' by 5. "
-			     "(current fn=%u)\n", l1t->trx->nr, tn,
+			LOGP(DL1C, LOGL_NOTICE, "Prim %u for trx=%u ts=%u at "
+			     "fn=%u is out of range (100), or channel %s with "
+			     "type %s is already disabled. If this happens in "
+			     "conjunction with PCU, increase 'rts-advance' by 5."
+			     " (current fn=%u)\n", prim_fn, l1t->trx->nr, tn,
 			     l1sap->u.data.fn,
 			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
 			     get_value_string(trx_chan_type_names, chan), fn);
@@ -1609,10 +1609,12 @@ const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
 no_data:
 	/* in case of C0, we need a dummy burst to maintain RF power */
 	if (bits == NULL && l1t->trx == l1t->trx->bts->c0) {
-if (0)		if (chan != TRXC_IDLE) // hack
-		LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
-			"burst=%d on C0, so filling with dummy burst\n",
-			trx_chan_desc[chan].name, fn, tn, bid);
+#if 0
+		if (chan != TRXC_IDLE) // hack
+			LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
+			     "burst=%d on C0, so filling with dummy burst\n",
+			     trx_chan_desc[chan].name, fn, tn, bid);
+#endif
 		bits = (ubit_t *) dummy_burst;
 	}
 
