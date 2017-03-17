@@ -77,7 +77,7 @@ https://gerrit.osmocom.org/#/q/project:osmo-bts+status:open
 Known Limitations
 =================
 
-As of August 20, 2015, the following known limitations exist in this
+As of March 17, 2017, the following known limitations exist in this
 implementation:
 
 Common Core
@@ -86,8 +86,6 @@ Common Core
  * No Extended BCCH support
  * System Information limited to 1,2,2bis,2ter,2quater,3,4,5,6,9,13
  * No RATSCCH in AMR
- * No OML (TS 12.21) alarms yet (temperature, ...)
- * Only single-TRX BTS at this point
  * Will reject TS 12.21 STARTING TIME in SET BTS ATTR / SET CHAN ATTR
  * No support for frequency hopping
  * No reporting of interference levels as part of TS 08.58 RF RES IND
@@ -106,6 +104,24 @@ osmo-bts-sysmo
  * No multi-TRX support yet, though hardware+L1 support stacking
  * Makes no use of 12.21 Intave Parameters and Interference
    Level Boundaries
- * Doesn't yet include MAC address in Abis/IP Identity message
  * MphConfig.CNF can be returned to the wrong callback. E.g. with Tx Power
    and ciphering. The dispatch should take a look at the hLayer3.
+
+osmo-bts-octphy
+---------------
+
+ * No support of EFR, HR voice codec (lack of PHY support?)
+ * No re-transmission of PHY primitives in case of time-out
+ * Link Quality / Measurement processing incomplete
+ * impossible to modify encryption parameters using RSL MODE MODIFY
+ * no clear indication of nominal transmit power, various power related
+   computations are likely off
+ * no OML attribute validation during bts_model_check_oml()
+
+osmo-bts-trx
+------------
+
+ * TCH/F_PDCH cannel not working as voice (https://osmocom.org/issues/1865)
+ * No BER value delivered to OsmoPCU (https://osmocom.org/issues/1855)
+ * No 11bit RACH support (https://osmocom.org/issues/1854)
+ * No CBCH support (https://osmocom.org/issues/1617)
