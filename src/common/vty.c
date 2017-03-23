@@ -35,7 +35,7 @@
 #include <osmocom/vty/misc.h>
 #include <osmocom/vty/ports.h>
 #include <osmocom/core/gsmtap.h>
-
+#include <osmocom/core/utils.h>
 #include <osmocom/trau/osmo_ortp.h>
 
 
@@ -234,37 +234,11 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	return CMD_SUCCESS;
 }
 
-/* FIXME: move to libosmocore ? */
-static char buf_casecnvt[256];
-char *osmo_str_tolower(const char *in)
-{
-	int len, i;
-
-	if (!in)
-		return NULL;
-
-	len = strlen(in);
-	if (len > sizeof(buf_casecnvt))
-		len = sizeof(buf_casecnvt);
-
-	for (i = 0; i < len; i++) {
-		buf_casecnvt[i] = tolower(in[i]);
-		if (in[i] == '\0')
-			break;
-	}
-	if (i < sizeof(buf_casecnvt))
-		buf_casecnvt[i] = '\0';
-
-	/* just to make sure we're always zero-terminated */
-	buf_casecnvt[sizeof(buf_casecnvt)-1] = '\0';
-
-	return buf_casecnvt;
-}
-
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm_bts_trx *trx;
+	char buf_casecnvt[256];
 	int i;
 
 	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
@@ -294,13 +268,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 	for (i = 0; i < 32; i++) {
 		if (gsmtap_sapi_mask & (1 << i)) {
-			const char *name = get_value_string(gsmtap_sapi_names, i);
-			vty_out(vty, " gsmtap-sapi %s%s", osmo_str_tolower(name), VTY_NEWLINE);
+			osmo_str2lower(buf_casecnvt, get_value_string(gsmtap_sapi_names, i));
+			vty_out(vty, " gsmtap-sapi %s%s", buf_casecnvt, VTY_NEWLINE);
 		}
 	}
 	if (gsmtap_sapi_acch) {
-		const char *name = get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH);
-		vty_out(vty, " gsmtap-sapi %s%s", osmo_str_tolower(name), VTY_NEWLINE);
+		osmo_str2lower(buf_casecnvt, get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
+		vty_out(vty, " gsmtap-sapi %s%s", buf_casecnvt, VTY_NEWLINE);
 	}
 	vty_out(vty, " min-qual-rach %.0f%s", btsb->min_qual_rach * 10.0f,
 		VTY_NEWLINE);
