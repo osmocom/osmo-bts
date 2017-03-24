@@ -389,6 +389,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
 	int femto_band;
+	int initial_mdBm = power_ramp_initial_power_mdBm(trx);
 
 	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
 				    ARRAY_SIZE(trx_rqd_attr))) {
@@ -416,11 +417,12 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
 					? 0.0 : btsb->ul_power_target;
 
-	dev_par->fTxPowerLevel = 0.0;
+	dev_par->fTxPowerLevel = ((float) initial_mdBm) / 1000;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "
 		"TxPower % 2.2f dBm\n", dev_par->u16Arfcn, dev_par->u8NbTsc,
 		dev_par->fRxPowerLevel, dev_par->fTxPowerLevel);
-	
+	trx->power_params.p_total_cur_mdBm = trx->power_params.ramp.max_initial_pout_mdBm;
+
 	/* send MPH-INIT-REQ, wait for MPH-INIT-CNF */
 	return l1if_gsm_req_compl(fl1h, msg, trx_init_compl_cb, NULL);
 }

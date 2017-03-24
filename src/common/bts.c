@@ -153,7 +153,7 @@ int bts_init(struct gsm_bts *bts)
 			}
 		}
 		/* Default values for the power adjustments */
-		tpp->ramp.max_initial_pout_mdBm = to_mdB(23);
+		tpp->ramp.max_initial_pout_mdBm = to_mdB(0);
 		tpp->ramp.step_size_mdB = to_mdB(2);
 		tpp->ramp.step_interval_sec = 1;
 	}

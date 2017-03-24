@@ -44,6 +44,7 @@ static const struct trx_power_params tpp_1002 = {
 		.nominal_gain_mdB = 0,
 	},
 	.ramp = {
+		.max_initial_pout_mdBm = to_mdB(23),
 		.step_size_mdB = to_mdB(2),
 		.step_interval_sec = 1,
 	},
@@ -62,6 +63,7 @@ static const struct trx_power_params tpp_1020 = {
 		.nominal_gain_mdB = 0,
 	},
 	.ramp = {
+		.max_initial_pout_mdBm = to_mdB(0),
 		.step_size_mdB = to_mdB(2),
 		.step_interval_sec = 1,
 	},
@@ -80,6 +82,7 @@ static const struct trx_power_params tpp_1100 = {
 		.nominal_gain_mdB = 0,
 	},
 	.ramp = {
+		.max_initial_pout_mdBm = to_mdB(0),
 		.step_size_mdB = to_mdB(2),
 		.step_interval_sec = 1,
 	},
@@ -98,6 +101,7 @@ static const struct trx_power_params tpp_2050 = {
 		.nominal_gain_mdB = 0,
 	},
 	.ramp = {
+		.max_initial_pout_mdBm = to_mdB(0),
 		.step_size_mdB = to_mdB(2),
 		.step_interval_sec = 1,
 	},
@@ -108,6 +112,7 @@ static void test_sbts1002(struct gsm_bts_trx *trx)
 	printf("Testing tx_power calculation for sysmoBTS 1002\n");
 	trx->power_params = tpp_1002;
 	trx->max_power_red = 0;
+	OSMO_ASSERT(power_ramp_initial_power_mdBm(trx) == to_mdB(23));
 	OSMO_ASSERT(get_p_max_out_mdBm(trx) == to_mdB(23));
 	/* at max_power_red = 0, we expect full 23dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(23));
@@ -125,6 +130,7 @@ static void test_sbts1020(struct gsm_bts_trx *trx)
 	printf("Testing tx_power calculation for sysmoBTS 1020\n");
 	trx->power_params = tpp_1020;
 	trx->max_power_red = 0;
+	OSMO_ASSERT(power_ramp_initial_power_mdBm(trx) == to_mdB(-10));
 	OSMO_ASSERT(get_p_max_out_mdBm(trx) == to_mdB(33));
 	/* at max_power_red = 0, we expect full 33dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(33));
@@ -143,6 +149,7 @@ static void test_sbts1100(struct gsm_bts_trx *trx)
 	printf("Testing tx_power calculation for sysmoBTS 1100\n");
 	trx->power_params = tpp_1100;
 	trx->max_power_red = 0;
+	OSMO_ASSERT(power_ramp_initial_power_mdBm(trx) == to_mdB(-17));
 	OSMO_ASSERT(get_p_max_out_mdBm(trx) == to_mdB(40));
 	/* at max_power_red = 0, we expect full 33dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(40));
@@ -160,6 +167,7 @@ static void test_sbts2050(struct gsm_bts_trx *trx)
 	printf("Testing tx_power calculation for sysmoBTS 2050\n");
 	trx->power_params = tpp_2050;
 	trx->max_power_red = 0;
+	OSMO_ASSERT(power_ramp_initial_power_mdBm(trx) == to_mdB(0));
 	OSMO_ASSERT(get_p_max_out_mdBm(trx) == to_mdB(37));
 	/* at max_power_red = 0, we expect full 37dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(37));

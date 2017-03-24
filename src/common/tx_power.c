@@ -289,3 +289,18 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 
 	return 0;
 }
+
+/* determine the initial transceiver output power at start-up time */
+int power_ramp_initial_power_mdBm(struct gsm_bts_trx *trx)
+{
+	struct trx_power_params *tpp = &trx->power_params;
+	int pout_mdBm;
+
+	/* this is the maximum initial output on the antenna connector
+	 * towards the antenna */
+	pout_mdBm = tpp->ramp.max_initial_pout_mdBm;
+
+	/* use this as input to compute transceiver board power
+	 * (reflecting gains in internal/external amplifiers */
+	return get_p_trxout_eff_mdBm(trx, pout_mdBm);
+}
