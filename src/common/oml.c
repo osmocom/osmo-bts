@@ -1241,7 +1241,10 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 static int handle_fail_sig(unsigned int subsys, unsigned int signal, void *handle,
 			   void *signal_data)
 {
-	oml_tx_failure_event_rep(handle, signal, "%s", signal_data);
+	if (signal_data)
+		oml_tx_failure_event_rep(handle, signal, "%s", signal_data);
+	else
+		oml_tx_failure_event_rep(handle, signal, "");
 
 	return 0;
 }

@@ -670,6 +670,8 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	bts = llist_entry(state->net->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket has LOST connection\n");
+	osmo_signal_dispatch(SS_FAIL, OSMO_EVT_PCU_VERS, NULL);
+	bts->pcu_version[0] = '\0';
 
 	close(bfd->fd);
 	bfd->fd = -1;
