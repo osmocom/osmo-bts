@@ -187,7 +187,7 @@ static int opstart_compl(struct gsm_abis_mo *mo)
 
 	/* hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
-	    mo->obj_inst.ts_nr == 0) {
+	    mo->obj_inst.ts_nr == 7) {
 		struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
 		mo->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
 			LCHAN_REL_ACT_OML;
