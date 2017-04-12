@@ -154,7 +154,7 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 		if (!(lchan->si.valid & (1 << tmp)))
 			continue;
 		lchan->si.last = tmp;
-		return lchan->si.buf[tmp];
+		return GSM_LCHAN_SI(lchan, tmp);
 	}
 	return NULL;
 }

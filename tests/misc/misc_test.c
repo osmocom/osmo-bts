@@ -142,7 +142,7 @@ static void test_sacch_get(void)
 	/* initialize the input. */
 	for (i = 1; i < _MAX_SYSINFO_TYPE; ++i) {
 		lchan.si.valid |= (1 << i);
-		memset(&lchan.si.buf[i], i, sizeof(lchan.si.buf[i]));
+		memset(GSM_LCHAN_SI(&lchan, i), i, GSM_MACBLOCK_LEN);
 	}
 
 	/* It will start with '1' */

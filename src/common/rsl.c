@@ -286,14 +286,17 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* 9.3.39 Full BCCH Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_FULL_BCCH_INFO)) {
 		uint8_t len = TLVP_LEN(&tp, RSL_IE_FULL_BCCH_INFO);
-		if (len > sizeof(sysinfo_buf_t))
+		if (len > sizeof(sysinfo_buf_t)) {
+			LOGP(DRSL, LOGL_ERROR, "Truncating received Full BCCH Info (%u -> %zu) for SI%s\n",
+			     len, sizeof(sysinfo_buf_t), get_value_string(osmo_sitype_strs, osmo_si));
 			len = sizeof(sysinfo_buf_t);
+		}
 		bts->si_valid |= (1 << osmo_si);
 		memset(bts->si_buf[osmo_si], 0x2b, sizeof(sysinfo_buf_t));
 		memcpy(bts->si_buf[osmo_si],
 			TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
-		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s)\n",
-			get_value_string(osmo_sitype_strs, osmo_si));
+		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s, %u bytes)\n",
+		     get_value_string(osmo_sitype_strs, osmo_si), len);
 
 		if (SYSINFO_TYPE_3 == osmo_si && trx->nr == 0 &&
 		    num_agch(trx, "RSL") != 1) {
@@ -432,6 +435,34 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 				     TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
 }
 
+/* 'buf' must be caller-allocated and hold at least len + 2 or sizeof(sysinfo_buf_t) bytes */
+static inline void lapdm_ui_prefix(uint8_t *buf, uint32_t *valid, const uint8_t *current, uint8_t osmo_si, uint16_t len)
+{
+	/* We have to pre-fix with the two-byte LAPDM UI header */
+	if (len > sizeof(sysinfo_buf_t) - 2) {
+		LOGP(DRSL, LOGL_ERROR, "Truncating received SI%s (%u -> %zu) to prepend LAPDM UI header (2 bytes)\n",
+		     get_value_string(osmo_sitype_strs, osmo_si), len, sizeof(sysinfo_buf_t) - 2);
+		len = sizeof(sysinfo_buf_t) - 2;
+	}
+
+	(*valid) |= (1 << osmo_si);
+	buf[0] = 0x03;	/* C/R + EA */
+	buf[1] = 0x03;	/* UI frame */
+
+	memset(buf + 2, GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t) - 2);
+	memcpy(buf + 2, current, len);
+}
+
+static inline void lapdm_ui_prefix_bts(struct gsm_bts *bts, const uint8_t *current, uint8_t osmo_si, uint16_t len)
+{
+	lapdm_ui_prefix(GSM_BTS_SI(bts, osmo_si), &bts->si_valid, current, osmo_si, len);
+}
+
+static inline void lapdm_ui_prefix_lchan(struct gsm_lchan *lchan, const uint8_t *current, uint8_t osmo_si, uint16_t len)
+{
+	lapdm_ui_prefix(GSM_LCHAN_SI(lchan, osmo_si), &lchan->si.valid, current, osmo_si, len);
+}
+
 /* 8.6.2 SACCH FILLING */
 static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 {
@@ -457,17 +488,10 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
-		/* We have to pre-fix with the two-byte LAPDM UI header */
-		if (len > sizeof(sysinfo_buf_t)-2)
-			len = sizeof(sysinfo_buf_t)-2;
-		bts->si_valid |= (1 << osmo_si);
-		bts->si_buf[osmo_si][0] = 0x03;	/* C/R + EA */
-		bts->si_buf[osmo_si][1] = 0x03;	/* UI frame */
-		memset(bts->si_buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
-		memcpy(bts->si_buf[osmo_si]+2,
-			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
-		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s)\n",
-			get_value_string(osmo_sitype_strs, osmo_si));
+		lapdm_ui_prefix_bts(bts, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
+
+		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s, %u bytes)\n",
+		     get_value_string(osmo_sitype_strs, osmo_si), len);
 	} else {
 		bts->si_valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, " Rx RSL Disabling SACCH FILLING (SI%s)\n",
@@ -699,8 +723,7 @@ static void copy_sacch_si_to_lchan(struct gsm_lchan *lchan)
 			continue;
 		}
 		lchan->si.valid |= osmo_si_shifted;
-		memcpy(lchan->si.buf[osmo_si], bts->si_buf[osmo_si],
-			sizeof(sysinfo_buf_t));
+		memcpy(GSM_LCHAN_SI(lchan, osmo_si), GSM_BTS_SI(bts, osmo_si), sizeof(sysinfo_buf_t));
 	}
 }
 
@@ -885,7 +908,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			uint8_t rsl_si = *cur++;
 			uint8_t si_len = *cur++;
 			uint8_t osmo_si;
-			uint8_t copy_len;
 
 			if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
 				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
@@ -896,15 +918,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
 			}
 
-			copy_len = si_len;
-			/* We have to pre-fix with the two-byte LAPDM UI header */
-			if (copy_len > sizeof(sysinfo_buf_t)-2)
-				copy_len = sizeof(sysinfo_buf_t)-2;
-			lchan->si.valid |= (1 << osmo_si);
-			lchan->si.buf[osmo_si][0] = 0x03;
-			lchan->si.buf[osmo_si][1] = 0x03;
-			memset(lchan->si.buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
-			memcpy(lchan->si.buf[osmo_si]+2, cur, copy_len);
+			lapdm_ui_prefix_lchan(lchan, cur, osmo_si, si_len);
 
 			cur += si_len;
 			if (cur >= val + tot_len) {
@@ -1337,15 +1351,8 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
-		/* We have to pre-fix with the two-byte LAPDM UI header */
-		if (len > sizeof(sysinfo_buf_t)-2)
-			len = sizeof(sysinfo_buf_t)-2;
-		lchan->si.valid |= (1 << osmo_si);
-		lchan->si.buf[osmo_si][0] = 0x03;
-		lchan->si.buf[osmo_si][1] = 0x03;
-		memset(lchan->si.buf[osmo_si]+2, 0x2b, sizeof(sysinfo_buf_t)-2);
-		memcpy(lchan->si.buf[osmo_si]+2,
-			TLVP_VAL(&tp, RSL_IE_L3_INFO), len);
+		lapdm_ui_prefix_lchan(lchan, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
+
 		LOGP(DRSL, LOGL_INFO, "%s Rx RSL SACCH FILLING (SI%s)\n",
 			gsm_lchan_name(lchan),
 			get_value_string(osmo_sitype_strs, osmo_si));
