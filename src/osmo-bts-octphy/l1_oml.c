@@ -1187,6 +1187,12 @@ static int app_info_sys_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, voi
 	LOGP(DL1C, LOGL_INFO, "Rx APP-INFO-SYSTEM.resp (platform='%s', version='%s')\n",
 		aisr->szPlatform, aisr->szVersion);
 
+#if OCTPHY_MULTI_TRX == 1
+	LOGP(DL1C, LOGL_INFO, "Note: compiled with multi-trx support.\n");
+#else
+	LOGP(DL1C, LOGL_INFO, "Note: compiled without multi-trx support.\n");
+#endif
+
 	talloc_replace(fl1h->info.system.platform, fl1h, aisr->szPlatform);
 	talloc_replace(fl1h->info.system.version, fl1h, aisr->szVersion);
 
