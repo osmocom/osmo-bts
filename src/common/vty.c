@@ -224,6 +224,8 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	if (!trx) {
 		vty_out(vty, "Unknown TRX %u. Available TRX are: 0..%u%s",
 			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
+		vty_out(vty, "Hint: Check if commandline option -t matches the"
+			"number of available transceivers!%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
