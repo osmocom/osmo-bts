@@ -55,11 +55,43 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
 	[7] =	90,
 };
 
+/* Measurment reporting period for SDCCH8 and SDCCH4 chan
+ * As per in 3GPP TS 45.008, section 8.4.2.
+ *
+ * Logical Chan		TDMA frame number
+ *			(FN) modulo 102
+ *
+ * SDCCH/8		12 to 11
+ * SDCCH/4		37 to 36
+ */
+
+/* Added interleve offset to Meas period end Fn which
+ * would reduce the Meas Res msg load at Abis */
+
+static const uint8_t sdcch8_meas_rep_fn102[] = {
+	[0] = 11 + 7,
+	[1] = 11 + 11,
+	[2] = 11 + 15,
+	[3] = 11 + 19,
+	[4] = 11 + 23,
+	[5] = 11 + 27,
+	[6] = 11 + 31,
+	[7] = 11 + 35
+};
+
+static const uint8_t sdcch4_meas_rep_fn102[] = {
+	[0] = 36 + 4,
+	[1] = 36 + 8,
+	[2] = 36 + 14,
+	[3] = 36 + 18
+};
+
+
 /* determine if a measurement period ends at the given frame number */
 static int is_meas_complete(enum gsm_phys_chan_config pchan, unsigned int ts,
 			    unsigned int subch, uint32_t fn)
 {
-	unsigned int fn_mod;
+	unsigned int fn_mod = -1;
 	const uint8_t *tbl;
 	int rc = 0;
 
@@ -86,13 +118,13 @@ static int is_meas_complete(enum gsm_phys_chan_config pchan, unsigned int ts,
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		fn_mod = fn % 102;
-		if (fn_mod == 11)
+		if (sdcch8_meas_rep_fn102[subch] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		fn_mod = fn % 102;
-		if (fn_mod == 36)
+		if (sdcch4_meas_rep_fn102[subch] == fn_mod)
 			rc = 1;
 		break;
 	default:
