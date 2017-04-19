@@ -196,6 +196,50 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 	return 7;
 }
 
+/* Update order  TA at end of meas period */
+static void lchan_meas_update_ordered_TA(struct gsm_lchan *lchan,
+					 int32_t taqb_sum)
+{
+	int32_t ms_timing_offset = 0;
+	uint8_t l1_info_valid;
+
+	l1_info_valid = lchan->meas.flags & LC_UL_M_F_L1_VALID;
+
+	if (l1_info_valid) {
+		DEBUGP(DMEAS,
+		       "%s Update TA TimingOffset_Mean:%d, UL RX TA:%d, DL ordered TA:%d, flags:%d \n",
+		       gsm_lchan_name(lchan), taqb_sum, lchan->meas.l1_info[1],
+		       lchan->rqd_ta, lchan->meas.flags);
+
+		ms_timing_offset =
+		    taqb_sum + (lchan->meas.l1_info[1] - lchan->rqd_ta);
+
+		if (ms_timing_offset > 0) {
+			if (lchan->rqd_ta < MEAS_MAX_TIMING_ADVANCE) {
+				/* MS is moving away from BTS.
+				 * So increment Ordered TA by 1 */
+				lchan->rqd_ta++;
+			}
+		} else if (ms_timing_offset < 0) {
+			if (lchan->rqd_ta > MEAS_MIN_TIMING_ADVANCE) {
+				/* MS is moving toward BTS. So decrement
+				 * Ordered TA by 1 */
+				lchan->rqd_ta--;
+			}
+		}
+
+		DEBUGP(DMEAS,
+		       "%s New Update TA--> TimingOff_diff:%d, UL RX TA:%d, DL ordered TA:%d \n",
+		       gsm_lchan_name(lchan), ms_timing_offset,
+		       lchan->meas.l1_info[1], lchan->rqd_ta);
+	}
+
+	/* Clear L1 INFO valid flag at Meas period end */
+	lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
+
+	return;
+}
+
 int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct gsm_meas_rep_unidir *mru;
@@ -206,6 +250,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	int32_t taqb_sum = 0;
 	unsigned int num_meas_sub = 0;
 	int i;
+	int32_t ms_timing_offset = 0;
 
 	/* if measurement period is not complete, abort */
 	if (!is_meas_complete(ts_pchan(lchan->ts), lchan->ts->nr,
@@ -241,6 +286,9 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	if (num_meas_sub) {
 		ber_sub_sum = ber_sub_sum / num_meas_sub;
 		irssi_sub_sum = irssi_sub_sum / num_meas_sub;
+	} else {
+		ber_sub_sum = ber_full_sum;
+		irssi_sub_sum = irssi_full_sum;
 	}
 
 	DEBUGP(DMEAS, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
@@ -248,6 +296,9 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		taqb_sum, ber_full_sum/100,
 		ber_full_sum%100, irssi_full_sum, ber_sub_sum/100, ber_sub_sum%100,
 		irssi_sub_sum);
+
+	/* Update ordered TA for DL SACCH L1 Header */
+	lchan_meas_update_ordered_TA(lchan, taqb_sum);
 
 	/* store results */
 	mru = &lchan->meas.ul_res;
