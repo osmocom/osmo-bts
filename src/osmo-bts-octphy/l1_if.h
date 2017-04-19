@@ -17,6 +17,8 @@
 
 #include <octphy/octvc1/gsm/octvc1_gsm_api.h>
 
+#define BER_10K	10000
+
 struct octphy_hdl {
 	/* MAC address of the PHY */
 	struct sockaddr_ll phy_addr;

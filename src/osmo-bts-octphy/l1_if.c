@@ -792,7 +792,8 @@ int bts_model_init(struct gsm_bts *bts)
  ***********************************************************************/
 
 static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
-		     tOCTVC1_GSM_MEASUREMENT_INFO * m)
+			     uint32_t fn, uint32_t data_len,
+			     tOCTVC1_GSM_MEASUREMENT_INFO * m)
 {
 	struct osmo_phsap_prim l1sap;
 
@@ -801,10 +802,34 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		       PRIM_OP_INDICATION, NULL);
 	l1sap.u.info.type = PRIM_INFO_MEAS;
 	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap.u.info.u.meas_ind.ta_offs_qbits = m->sBurstTiming;
 
-	l1sap.u.info.u.meas_ind.ber10k = (unsigned int)(m->usBERCnt * 100);
-	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->sRSSIDbm * -1);
+	/* Update Timing offset for valid radio block */
+	if (data_len != 0) {
+		/* burst timing in 1x */
+		l1sap.u.info.u.meas_ind.ta_offs_qbits = m->sBurstTiming;
+	} else {
+		/* FIXME, In current implementation, OCTPHY would send DATA_IND
+		 * for all radio blocks (valid or invalid) But timing offset
+		 * is only correct for valid block.  so we need different
+		 * counter to accumulate Timing offset.. even we add zero for
+		 * invalid block.. timing offset average calucation would not
+		 * correct. */
+		l1sap.u.info.u.meas_ind.ta_offs_qbits = 0;
+	}
+
+	if (m->usBERTotalBitCnt != 0) {
+		l1sap.u.info.u.meas_ind.ber10k =
+		    (unsigned int)((m->usBERCnt * BER_10K) /
+				   m->usBERTotalBitCnt);
+	} else {
+		l1sap.u.info.u.meas_ind.ber10k = 0;
+	}
+
+	/* rssi is in q8 format */
+	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) ((m->sRSSIDbm >> 8) * -1);
+
+	/* copy logical frame number to MEAS IND data structure */
+	l1sap.u.info.u.meas_ind.fn = fn;
 
 	/* l1sap wants to take msgb ownership.  However, as there is no
 	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
@@ -813,9 +838,11 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 static void dump_meas_res(int ll, tOCTVC1_GSM_MEASUREMENT_INFO * m)
 {
-	LOGPC(DL1C, ll, ", Meas: RSSI %d dBm, Burst Timing %d Quarter of bits, "
-	      "BER Error Count %d in last decoded frame, BER Toatal Bit count %d in last decoded frame\n",
-	      m->sRSSIDbm, m->sBurstTiming, m->usBERCnt, m->usBERTotalBitCnt);
+	LOGP(DMEAS, ll,
+	     "Meas: RSSI %d dBm, Burst Timing %d Quarter of bits :%d, "
+	     "BER Error Count %d , BER Toatal Bit count %d in last decoded frame\n",
+	     m->sRSSIDbm, m->sBurstTiming, m->sBurstTiming4x, m->usBERCnt,
+	     m->usBERTotalBitCnt);
 }
 
 static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t fn)
@@ -1008,14 +1035,17 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	memset(&l1sap, 0, sizeof(l1sap));
 
 	/* uplink measurement */
-	process_meas_res(trx, chan_nr, &data_ind->MeasurementInfo);
+	process_meas_res(trx, chan_nr, fn, data_ind->Data.ulDataLength,
+			 &data_ind->MeasurementInfo);
 
 	/* FIXME: check min_qual_norm! */
 
-	DEBUGP(DL1C, "Rx PH-DATA.ind %s: %s",
+	DEBUGP(DL1C, "Rx PH-DATA.ind %s: %s data_len:%d \n",
 	       get_value_string(octphy_l1sapi_names, sapi),
 	       osmo_hexdump(data_ind->Data.abyDataContent,
-			    data_ind->Data.ulDataLength));
+			    data_ind->Data.ulDataLength),
+	       data_ind->Data.ulDataLength);
+
 	dump_meas_res(LOGL_DEBUG, &data_ind->MeasurementInfo);
 
 	/* check for TCH */
@@ -1026,8 +1056,8 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 		return rc;
 	}
 
-	/* get rssi */
-	rssi = (int8_t) data_ind->MeasurementInfo.sRSSIDbm;
+	/* get rssi, rssi is in q8 format */
+	rssi = (int8_t) (data_ind->MeasurementInfo.sRSSIDbm >> 8);
 	/* get data pointer and length */
 	data = data_ind->Data.abyDataContent;
 	len = data_ind->Data.ulDataLength;
@@ -1049,6 +1079,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 
 #if (cOCTVC1_MAIN_VERSION_ID >= cOCTVC1_MAIN_VERSION_ID_FN_PARADIGM_CHG)
 	if (sapi == cOCTVC1_GSM_SAPI_ENUM_PDTCH) {
+		/* FIXME::PCU is expecting encode frame number*/
 		l1sap->u.data.fn = fn - 3;
 	} else
 		l1sap->u.data.fn = fn;
@@ -1059,8 +1090,10 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.rssi = rssi;
 	b_total = data_ind->MeasurementInfo.usBERTotalBitCnt;
 	b_error =data_ind->MeasurementInfo.usBERCnt;
-	l1sap->u.data.ber10k = b_total ? 10000 * b_error / b_total : 0;
-	l1sap->u.data.ta_offs_qbits = data_ind->MeasurementInfo.sBurstTiming4x;
+	l1sap->u.data.ber10k = b_total ? BER_10K * b_error / b_total : 0;
+
+	/* FIXME::burst timing  in 1x but PCU is expecting 4X */
+	l1sap->u.data.ta_offs_qbits = (data_ind->MeasurementInfo.sBurstTiming * 4); 
 	snr = data_ind->MeasurementInfo.sSNRDb;
 	/* FIXME: better converion formulae for SnR -> C / I?
 	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;
@@ -1114,7 +1147,7 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	if (ra_ind->MeasurementInfo.sBurstTiming < 0)
 		acc_delay = 0;
 	else
-		acc_delay = ra_ind->MeasurementInfo.sBurstTiming >> 2;
+		acc_delay = ra_ind->MeasurementInfo.sBurstTiming;
 
 	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 	if (rc < 0)
