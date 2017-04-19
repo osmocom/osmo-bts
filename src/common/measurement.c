@@ -24,35 +24,40 @@
  * 7                         6 and 7        91 to 90     103, 25,  51,  77 */
 
 /* measurement period ends at fn % 104 == ? */
+/* Added (-1) offset in DATA-IND frame number to align with Meas period ends */
 static const uint8_t tchf_meas_rep_fn104[] = {
-	[0] =	103,
-	[1] =	12,
-	[2] =	25,
-	[3] =	38,
-	[4] =	51,
-	[5] =	64,
-	[6] =	77,
-	[7] =	90,
+	[0] =	103 - 1,
+	[1] =	12 - 1,
+	[2] =	25 - 1,
+	[3] =	38 - 1,
+	[4] =	51 - 1,
+	[5] =	64 - 1,
+	[6] =	77 - 1,
+	[7] =	90 - 1,
 };
+
+/* Added (-2) offset in DATA-IND frame number to align with Meas period ends */
 static const uint8_t tchh0_meas_rep_fn104[] = {
-	[0] =	103,
-	[1] =	103,
-	[2] =	25,
-	[3] =	25,
-	[4] =	51,
-	[5] =	51,
-	[6] =	77,
-	[7] =	77,
+	[0] =	103 - 2,
+	[1] =	103 - 2,
+	[2] =	25 - 2,
+	[3] =	25 - 2,
+	[4] =	51 - 2,
+	[5] =	51 - 2,
+	[6] =	77 - 2,
+	[7] =	77 - 2,
 };
+
+/* Added (-1) offset in DATA-IND frame number to align with Meas period ends */
 static const uint8_t tchh1_meas_rep_fn104[] = {
-	[0] =	12,
-	[1] =	12,
-	[2] =	38,
-	[3] =	38,
-	[4] =	64,
-	[5] =	64,
-	[6] =	90,
-	[7] =	90,
+	[0] =	12 - 1,
+	[1] =	12 - 1,
+	[2] =	38 - 1,
+	[3] =	38 - 1,
+	[4] =	64 - 1,
+	[5] =	64 - 1,
+	[6] =	90 - 1,
+	[7] =	90 - 1,
 };
 
 /* Measurment reporting period for SDCCH8 and SDCCH4 chan
