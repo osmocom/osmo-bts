@@ -191,7 +191,7 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 	return 7;
 }
 
-static int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
+int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct gsm_meas_rep_unidir *mru;
 	uint32_t ber_full_sum = 0;
