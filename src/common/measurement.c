@@ -114,7 +114,20 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm)
 /* input: BER in steps of .01%, i.e. percent/100 */
 static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 {
-	/* 05.08 / 8.2.4 */
+	/* Eight levels of Rx quality are defined and are mapped to the
+	 * equivalent BER before channel decoding, as per in 3GPP TS 45.008,
+	 * secton 8.2.4.
+	 *
+	 * RxQual:				BER Range:
+	 * RXQUAL_0	     BER <  0,2 %       Assumed value = 0,14 %
+	 * RXQUAL_1  0,2 % < BER <  0,4 %	Assumed value = 0,28 %
+	 * RXQUAL_2  0,4 % < BER <  0,8 %	Assumed value = 0,57 %
+	 * RXQUAL_3  0,8 % < BER <  1,6 %	Assumed value = 1,13 %
+	 * RXQUAL_4  1,6 % < BER <  3,2 %	Assumed value = 2,26 %
+	 * RXQUAL_5  3,2 % < BER <  6,4 %	Assumed value = 4,53 %
+	 * RXQUAL_6  6,4 % < BER < 12,8 %	Assumed value = 9,05 %
+	 * RXQUAL_7 12,8 % < BER		Assumed value = 18,10 % */
+
 	if (ber10k < 20)
 		return 0;
 	if (ber10k < 40)
