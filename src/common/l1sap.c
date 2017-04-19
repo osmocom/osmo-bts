@@ -415,11 +415,6 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	/* Update time on PCU interface */
 	pcu_tx_time_ind(info_time_ind->fn);
 
-	/* check if the measurement period of some lchan has ended
-	 * and pre-compute the respective measurement */
-	llist_for_each_entry(trx, &bts->trx_list, list)
-	    trx_meas_check_compute(trx, info_time_ind->fn - 1);
-
 	/* increment number of RACH slots that have passed by since the
 	 * last time indication */
 	btsb->load.rach.total +=
@@ -477,6 +472,10 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	set_ms_to_data(lchan, info_meas_ind->ta_offs_qbits / 4, true);
 
 	lchan_new_ul_meas(lchan, &ulm);
+
+	/* Check measurement period end and prepare the UL measurment
+	 * report at Meas period End*/
+	lchan_meas_check_compute(lchan, info_meas_ind->fn);
 
 	return 0;
 }
