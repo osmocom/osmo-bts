@@ -8,7 +8,21 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/measurement.h>
 
-/* TS 05.08, Chapter 8.4.1 */
+/* Measurment reporting period and mapping of SACCH message block for TCHF
+ * and TCHH chan As per in 3GPP TS 45.008, secton 8.4.1.
+ *
+ *             Timeslot number (TN)        TDMA frame number (FN) modulo 104
+ *             Half rate,    Half rate,     Reporting    SACCH
+ * Full Rate   subch.0       subch.1        period       Message block
+ * 0           0 and 1                      0 to 103     12,  38,  64,  90
+ * 1                         0 and 1        13 to 12     25,  51,  77,  103
+ * 2           2 and 3                      26 to 25     38,  64,  90,  12
+ * 3                         2 and 3        39 to 38     51,  77,  103, 25
+ * 4           4 and 5                      52 to 51     64,  90,  12,  38
+ * 5                         4 and 5        65 to 64     77,  103, 25,  51
+ * 6           6 and 7                      78 to 77     90,  12,  38,  64
+ * 7                         6 and 7        91 to 90     103, 25,  51,  77 */
+
 /* measurement period ends at fn % 104 == ? */
 static const uint8_t tchf_meas_rep_fn104[] = {
 	[0] =	103,
