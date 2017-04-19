@@ -2245,8 +2245,9 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	int res_valid = lchan->meas.flags & LC_UL_M_F_RES_VALID;
 
-	LOGP(DRSL, LOGL_DEBUG, "%s Tx MEAS RES valid(%d)\n",
-		gsm_lchan_name(lchan), res_valid);
+	LOGP(DRSL, LOGL_DEBUG,
+	     "%s chan_num:%u Tx MEAS RES valid(%d), flags(%02x)\n",
+	     gsm_lchan_name(lchan), chan_nr, res_valid, lchan->meas.flags);
 
 	if (!res_valid)
 		return -EINPROGRESS;
@@ -2254,6 +2255,17 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
 		return -ENOMEM;
+
+	LOGP(DRSL, LOGL_DEBUG,
+	     "%s Send Meas RES: NUM:%u, RXLEV_FULL:%u, RXLEV_SUB:%u, RXQUAL_FULL:%u, RXQUAL_SUB:%u, MS_PWR:%u, UL_TA:%u, L3_LEN:%d, TimingOff:%u\n",
+	     gsm_lchan_name(lchan),
+	     lchan->meas.res_nr,
+	     lchan->meas.ul_res.full.rx_lev,
+	     lchan->meas.ul_res.sub.rx_lev,
+	     lchan->meas.ul_res.full.rx_qual,
+	     lchan->meas.ul_res.sub.rx_qual,
+	     lchan->meas.l1_info[0],
+	     lchan->meas.l1_info[1], l3_len, ms_to2rsl(lchan, le) - MEAS_MAX_TIMING_ADVANCE);
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
 	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res,

@@ -88,14 +88,14 @@ static const uint8_t sdcch4_meas_rep_fn102[] = {
 
 
 /* determine if a measurement period ends at the given frame number */
-static int is_meas_complete(enum gsm_phys_chan_config pchan, unsigned int ts,
-			    unsigned int subch, uint32_t fn)
+static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 {
 	unsigned int fn_mod = -1;
 	const uint8_t *tbl;
 	int rc = 0;
+	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
 
-	if (ts >= 8)
+	if (lchan->ts->nr >= 8)
 		return -EINVAL;
 	if (pchan >= _GSM_PCHAN_MAX)
 		return -EINVAL;
@@ -103,34 +103,39 @@ static int is_meas_complete(enum gsm_phys_chan_config pchan, unsigned int ts,
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 		fn_mod = fn % 104;
-		if (tchf_meas_rep_fn104[ts] == fn_mod)
+		if (tchf_meas_rep_fn104[lchan->ts->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_TCH_H:
 		fn_mod = fn % 104;
-		if (subch == 0)	
+		if (lchan->nr == 0)
 			tbl = tchh0_meas_rep_fn104;
 		else
 			tbl = tchh1_meas_rep_fn104;
-		if (tbl[ts] == fn_mod)
+		if (tbl[lchan->ts->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		fn_mod = fn % 102;
-		if (sdcch8_meas_rep_fn102[subch] == fn_mod)
+		if (sdcch8_meas_rep_fn102[lchan->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		fn_mod = fn % 102;
-		if (sdcch4_meas_rep_fn102[subch] == fn_mod)
+		if (sdcch4_meas_rep_fn102[lchan->nr] == fn_mod)
 			rc = 1;
 		break;
 	default:
 		rc = 0;
 		break;
 	}
+
+	DEBUGP(DMEAS,
+	       "%s meas period end fn:%u, fn_mod:%i, status:%d, pchan:%s\n",
+	       gsm_lchan_name(lchan), fn, fn_mod, rc, gsm_pchan_name(pchan));
+
 	return rc;
 }
 
@@ -247,8 +252,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	int i;
 
 	/* if measurement period is not complete, abort */
-	if (!is_meas_complete(ts_pchan(lchan->ts), lchan->ts->nr,
-			      lchan->nr, fn))
+	if (!is_meas_complete(lchan, fn))
 		return 0;
 
 	/* if there are no measurements, skip computation */
@@ -300,6 +304,14 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	mru->sub.rx_lev = dbm2rxlev((int)irssi_sub_sum * -1);
 	mru->full.rx_qual = ber10k_to_rxqual(ber_full_sum);
 	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
+
+	DEBUGP(DMEAS, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
+	       "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",
+	       gsm_lchan_name(lchan),
+	       mru->full.rx_lev,
+	       mru->sub.rx_lev,
+	       mru->full.rx_qual,
+	       mru->sub.rx_qual, num_meas_sub, lchan->meas.num_ul_meas);
 
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
 	lchan->meas.num_ul_meas = 0;
