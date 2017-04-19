@@ -1125,6 +1125,8 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	l1sap->u.rach_ind.ra = ra;
 	l1sap->u.rach_ind.acc_delay = acc_delay;
 	l1sap->u.rach_ind.fn = fn;
+	l1sap->u.rach_ind.is_11bit = 0;
+
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
