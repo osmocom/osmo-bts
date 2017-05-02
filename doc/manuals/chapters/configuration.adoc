@@ -136,7 +136,7 @@ node of the OsmoBTS VTY.
 ----
 OsmoBTS> enable
 OsmoBTS# configure terminal
-OsmoBTS(config)# bts
+OsmoBTS(config)# bts 0
 OsmoBTS(bts)# trx 0
 OsmoBTS(trx)# gsmtap-sapi sdcch
 OsmoBTS(trx)# write <1>
@@ -167,7 +167,7 @@ OsmoBTS VTY.
 ----
 OsmoBTS> enable
 OsmoBTS# configure terminal
-OsmoBTS(config)# bts
+OsmoBTS(config)# bts 0
 OsmoBTS(bts)# trx 0
 OsmoBTS(trx)# power-ramp max-initial 5 dBm
 OsmoBTS(trx)# power-ramp step-size 1 dB
