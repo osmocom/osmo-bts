@@ -182,16 +182,16 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	 && l1h->config.bsic_valid
 	 && l1h->config.arfcn_valid) {
 	 	/* before power on */
-		if (l1h->config.arfcn_valid && !l1h->config.arfcn_sent) {
+		if (!l1h->config.arfcn_sent) {
 			trx_if_cmd_rxtune(l1h, l1h->config.arfcn);
 			trx_if_cmd_txtune(l1h, l1h->config.arfcn);
 			l1h->config.arfcn_sent = 1;
 		}
-		if (l1h->config.tsc_valid && !l1h->config.tsc_sent) {
+		if (!l1h->config.tsc_sent) {
 			trx_if_cmd_settsc(l1h, l1h->config.tsc);
 			l1h->config.tsc_sent = 1;
 		}
-		if (l1h->config.bsic_valid && !l1h->config.bsic_sent) {
+		if (!l1h->config.bsic_sent) {
 			trx_if_cmd_setbsic(l1h, l1h->config.bsic);
 			l1h->config.bsic_sent = 1;
 		}
