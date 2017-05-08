@@ -70,6 +70,7 @@ int bts_model_init(struct gsm_bts *bts)
 	static struct osmo_fd accept_fd, read_fd;
 	int rc;
 
+	bts->variant = BTS_OSMO_LITECELL15;
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 

@@ -769,6 +769,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	LOGP(DL1C, LOGL_NOTICE, "model_init()\n");
 
+	bts->variant = BTS_OSMO_OCTPHY;
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
