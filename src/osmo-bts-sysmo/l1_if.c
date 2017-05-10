@@ -1839,6 +1839,7 @@ static void fill_trx_power_params(struct gsm_bts_trx *trx,
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
+	struct femtol1_hdl *hdl;
 	struct gsm_bts *bts;
 
 	OSMO_ASSERT(pinst);
@@ -1863,6 +1864,9 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		}
 		bts->c0->nominal_power = rc;
 	}
+
+	hdl = pinst->u.sysmobts.hdl;
+	osmo_strlcpy(bts->sub_model, sysmobts_model(hdl->hw_info.model_nr, hdl->hw_info.trx_nr), sizeof(bts->sub_model));
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 
