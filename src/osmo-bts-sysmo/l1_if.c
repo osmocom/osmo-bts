@@ -1553,7 +1553,7 @@ static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 	eeprom_SysInfo_t sysinfo;
 	int val, rc;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &val);
+	rc = sysmobts_get_type(&val);
 	if (rc < 0)
 		return rc;
 	fl1h->hw_info.model_nr = val;
@@ -1563,7 +1563,7 @@ static int get_hwinfo_eeprom(struct femtol1_hdl *fl1h)
 		return rc;
 	fl1h->hw_info.model_flags = val;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &val);
+	rc = sysmobts_get_trx(&val);
 	if (rc < 0)
 		return rc;
 	fl1h->hw_info.trx_nr = val;

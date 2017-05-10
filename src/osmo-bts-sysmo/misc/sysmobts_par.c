@@ -324,6 +324,37 @@ int sysmobts_par_get_net(struct sysmobts_net_cfg *cfg)
 	return 0;
 }
 
+int sysmobts_get_type(int *bts_type)
+{
+	return sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, bts_type);
+}
+
+int sysmobts_get_trx(int *trx_number)
+{
+	return sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, trx_number);
+}
+
+char *sysmobts_model(int bts_type, int trx_num)
+{
+		switch(bts_type) {
+		case 0:
+		case 0xffff:
+		case 1002:
+			return "sysmoBTS 1002";
+		case 2050:
+			switch(trx_num) {
+			case 0:
+				return "sysmoBTS 2050 (master)";
+			case 1:
+				return "sysmoBTS 2050 (slave)";
+			default:
+				return "sysmoBTS 2050 (unknown)";
+			}
+		default:
+			return "Unknown";
+		}
+}
+
 int sysmobts_par_set_net(struct sysmobts_net_cfg *cfg)
 {
 	struct sysmobts_eeprom *ee = get_eeprom(1);

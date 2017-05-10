@@ -108,26 +108,7 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 		snprintf(ser_str, sizeof(ser_str), "%d", serno);
 
 		/* fetch the model and trx number */
-		switch(sysmobts_bts_type()) {
-		case 0:
-		case 0xffff:
-		case 1002:
-			model_name = "sysmoBTS 1002";
-			break;
-		case 2050:
-			if (sysmobts_trx_number() == 0)
-				model_name = "sysmoBTS 2050 (master)";
-			else if (sysmobts_trx_number() == 1)
-				model_name = "sysmoBTS 2050 (slave)";
-			else
-				model_name = "sysmoBTS 2050 (unknown)";
-			break;
-		default:
-			model_name = "Unknown";
-			break;
-		}
-
-
+		model_name = sysmobts_model(sysmobts_bts_type(), sysmobts_trx_number());
 		fetched_info = 1;
 	}
 

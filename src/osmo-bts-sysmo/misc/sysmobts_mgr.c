@@ -90,13 +90,13 @@ static int classify_bts(void)
 {
 	int rc;
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_MODEL_NR, &bts_type);
+	rc = sysmobts_get_type(&bts_type);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to get model number.\n");
 		return -1;
 	}
 
-	rc = sysmobts_par_get_int(SYSMOBTS_PAR_TRX_NR, &trx_number);
+	rc = sysmobts_get_trx(&trx_number);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to get the trx number.\n");
 		return -1;
