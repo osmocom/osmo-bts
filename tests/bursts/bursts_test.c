@@ -26,10 +26,9 @@
 
 #include <osmocom/core/bits.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/coding/gsm0503_coding.h>
+
 #include <osmo-bts/gsm_data.h>
-
-#include "../../src/osmo-bts-trx/gsm0503_coding.h"
-
 #include <osmo-bts/logging.h>
 
 #define ASSERT_TRUE(rc) \
@@ -71,7 +70,7 @@ static void test_xcch(uint8_t *l2)
 	printd("Encoding: %s\n", osmo_hexdump(l2, 23));
 
 	/* encode */
-	xcch_encode(bursts_u, l2);
+	gsm0503_xcch_encode(bursts_u, l2);
 
 	printd("U-Bits:\n");
 	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
@@ -106,7 +105,7 @@ static void test_xcch(uint8_t *l2)
 	memset(bursts_s + 116, 0, 30);
 
 	/* decode */
-	xcch_decode(result, bursts_s, &n_errors, &n_bits_total);
+	gsm0503_xcch_decode(result, bursts_s, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(n_bits_total == 456);
 
@@ -128,7 +127,7 @@ static void test_rach(uint8_t bsic, uint8_t ra)
 	printd("Encoding: %02x\n", ra);
 
 	/* encode */
-	rach_encode(bursts_u, &ra, bsic);
+	gsm0503_rach_encode(bursts_u, &ra, bsic);
 
 	printd("U-Bits:\n");
 	printd("%s\n", osmo_hexdump(bursts_u, 36));
@@ -140,7 +139,7 @@ static void test_rach(uint8_t bsic, uint8_t ra)
 	memset(bursts_s + 6, 0, 8);
 
 	/* decode */
-	rach_decode(&result, bursts_s, bsic);
+	gsm0503_rach_decode(&result, bursts_s, bsic);
 
 	printd("Decoded: %02x\n", result);
 
@@ -162,7 +161,7 @@ static void test_sch(uint8_t *info)
 	printd("Encoding: %s\n", osmo_hexdump(info, 4));
 
 	/* encode */
-	sch_encode(bursts_u, info);
+	gsm0503_sch_encode(bursts_u, info);
 
 	printd("U-Bits:\n");
 	printd("%s\n", osmo_hexdump(bursts_u, 78));
@@ -174,7 +173,7 @@ static void test_sch(uint8_t *info)
 	memset(bursts_s + 6, 0, 10);
 
 	/* decode */
-	sch_decode(result, bursts_s);
+	gsm0503_sch_decode(result, bursts_s);
 
 	printd("Decoded: %s\n", osmo_hexdump(result, 4));
 
@@ -197,7 +196,7 @@ static void test_fr(uint8_t *speech, int len)
 	printd("Encoding: %s\n", osmo_hexdump(speech, len));
 
 	/* encode */
-	tch_fr_encode(bursts_u, speech, len, 1);
+	gsm0503_tch_fr_encode(bursts_u, speech, len, 1);
 
 	printd("U-Bits:\n");
 	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
@@ -255,7 +254,7 @@ static void test_fr(uint8_t *speech, int len)
 	memset(bursts_s + 6, 0, 20);
 
 	/* decode */
-	rc = tch_fr_decode(result, bursts_s, 1, len == 31, &n_errors, &n_bits_total);
+	rc = gsm0503_tch_fr_decode(result, bursts_s, 1, len == 31, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 
@@ -282,7 +281,7 @@ static void test_hr(uint8_t *speech, int len)
 	printd("Encoding: %s\n", osmo_hexdump(speech, len));
 
 	/* encode */
-	tch_hr_encode(bursts_u, speech, len);
+	gsm0503_tch_hr_encode(bursts_u, speech, len);
 
 	printd("U-Bits:\n");
 	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
@@ -328,7 +327,7 @@ static void test_hr(uint8_t *speech, int len)
 	memset(bursts_s + 6, 0, 20);
 
 	/* decode */
-	rc = tch_hr_decode(result, bursts_s, 0, &n_errors, &n_bits_total);
+	rc = gsm0503_tch_hr_decode(result, bursts_s, 0, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 
@@ -367,7 +366,7 @@ static void test_pdtch(uint8_t *l2, int len)
 	printd("Encoding: %s\n", osmo_hexdump(l2, len));
 
 	/* encode */
-	pdtch_encode(bursts_u, l2, len);
+	gsm0503_pdtch_encode(bursts_u, l2, len);
 
 	printd("U-Bits:\n");
 	printd("%s %02x  %02x  ", osmo_hexdump(bursts_u, 57),
@@ -398,7 +397,7 @@ static void test_pdtch(uint8_t *l2, int len)
 	printd("%s\n", osmo_hexdump((uint8_t *)bursts_s + 59 + 348, 57));
 
 	/* decode */
-	rc = pdtch_decode(result, bursts_s, NULL, &n_errors, &n_bits_total);
+	rc = gsm0503_pdtch_decode(result, bursts_s, NULL, &n_errors, &n_bits_total);
 
 	ASSERT_TRUE(rc == len);
 

@@ -31,6 +31,7 @@
 #include <osmocom/codec/codec.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
+#include <osmocom/coding/gsm0503_coding.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -41,7 +42,6 @@
 #include <osmo-bts/scheduler_backend.h>
 
 #include "l1_if.h"
-#include "gsm0503_coding.h"
 #include "trx_if.h"
 #include "loops.h"
 
@@ -122,7 +122,7 @@ ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 (t3p  &   0x1);
 
 	/* encode bursts */
-	sch_encode(burst, sb_info);
+	gsm0503_sch_encode(burst, sb_info);
 
 	/* compose burst */
 	memset(bits, 0, 3);
@@ -213,7 +213,7 @@ got_msg:
 	}
 
 	/* encode bursts */
-	xcch_encode(*bursts_p, msg->l2h);
+	gsm0503_xcch_encode(*bursts_p, msg->l2h);
 
 	/* free message */
 	msgb_free(msg);
@@ -283,9 +283,9 @@ got_msg:
 	}
 
 	/* encode bursts */
-	rc = pdtch_egprs_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
+	rc = gsm0503_pdtch_egprs_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
 	if (rc < 0)
-		rc = pdtch_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
+		rc = gsm0503_pdtch_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
 
 	/* check validity of message */
 	if (rc < 0) {
@@ -608,19 +608,19 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* encode bursts (priorize FACCH) */
 	if (msg_facch)
-		tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
+		gsm0503_tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
 			1);
 	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
-		tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
+		gsm0503_tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
 			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
 	else
-		tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
+		gsm0503_tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
 
 	/* free message */
 	if (msg_tch)
@@ -705,7 +705,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* encode bursts (priorize FACCH) */
 	if (msg_facch) {
-		tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
+		gsm0503_tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
 		chan_state->dl_ongoing_facch = 1; /* first of two tch frames */
 	} else if (chan_state->dl_ongoing_facch) /* second of two tch frames */
 		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
@@ -713,13 +713,13 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
-		tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
+		gsm0503_tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
 			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
 	else
-		tch_hr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
+		gsm0503_tch_hr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
 
 	/* free message */
 	if (msg_tch)
@@ -765,7 +765,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		trx_chan_desc[chan].name, fn, toa);
 
 	/* decode */
-	rc = rach_decode(&ra, bits + 8 + 41, l1t->trx->bts->bsic);
+	rc = gsm0503_rach_decode(&ra, bits + 8 + 41, l1t->trx->bts->bsic);
 	if (rc) {
 		LOGP(DL1C, LOGL_DEBUG, "Received bad AB frame at fn=%u "
 			"(%u/51)\n", fn, fn % 51);
@@ -877,7 +877,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	*mask = 0x0;
 
 	/* decode */
-	rc = xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
+	rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
 		LOGP(DL1C, LOGL_DEBUG, "Received bad data frame at fn=%u "
 			"(%u/%u) for %s\n", *first_fn,
@@ -974,11 +974,11 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	 * then we incur decoding overhead of 31 bits on the Type 3 EGPRS
 	 * header, which is tolerable.
 	 */
-	rc = pdtch_egprs_decode(l2, *bursts_p, n_bursts_bits,
+	rc = gsm0503_pdtch_egprs_decode(l2, *bursts_p, n_bursts_bits,
 				NULL, &n_errors, &n_bits_total);
 
 	if ((nbits == GSM_BURST_LEN) && (rc < 0)) {
-		rc = pdtch_decode(l2, *bursts_p, NULL,
+		rc = gsm0503_pdtch_decode(l2, *bursts_p, NULL,
 				  &n_errors, &n_bits_total);
 	}
 
@@ -1062,18 +1062,18 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
 								: tch_mode) {
 	case GSM48_CMODE_SPEECH_V1: /* FR */
-		rc = tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
+		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
 		lchan_set_marker(osmo_fr_check_sid(tch_data, rc), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
-		rc = tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
+		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 defines that CMI is included in frame,
 		 * the first FN 4,13,21 defines that CMR is included in frame.
 		 * NOTE: A frame ends 7 FN after start.
 		 */
-		rc = tch_afs_decode(tch_data + 2, *bursts_p,
+		rc = gsm0503_tch_afs_decode(tch_data + 2, *bursts_p,
 			(((fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total);
@@ -1233,7 +1233,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
 		 * Even FN ending at: 10,11,19,20,2,3
 		 */
-		rc = tch_hr_decode(tch_data, *bursts_p,
+		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
 			(((fn + 26 - 10) % 26) >> 2) & 1,
 			&n_errors, &n_bits_total);
 		if (rc) /* DTXu */
@@ -1244,7 +1244,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * in frame, the first FN 4,13,21 or 5,14,22 defines that CMR
 		 * is included in frame.
 		 */
-		rc = tch_ahs_decode(tch_data + 2, *bursts_p,
+		rc = gsm0503_tch_ahs_decode(tch_data + 2, *bursts_p,
 			(((fn + 26 - 10) % 26) >> 2) & 1,
 			(((fn + 26 - 10) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
