@@ -44,7 +44,7 @@ struct phy_link *phy_link_create(void *ctx, int num)
 
 const struct value_string phy_link_state_vals[] = {
 	{ PHY_LINK_SHUTDOWN, 	"shutdown" },
-	{ PHY_LINK_CONNECTING,	"connectiong" },
+	{ PHY_LINK_CONNECTING,	"connecting" },
 	{ PHY_LINK_CONNECTED,	"connected" },
 	{ 0, NULL }
 };
