@@ -61,6 +61,16 @@ static struct osmo_timer_list transceiver_clock_timer;
 /* Maximum size of a EGPRS message in bytes */
 #define EGPRS_0503_MAX_BYTES		155
 
+
+/* Compute the bit error rate in 1/10000 units */
+static inline uint16_t compute_ber10k(int n_bits_total, int n_errors)
+{
+	if (n_bits_total == 0)
+		return 10000;
+	else
+		return 10000 * n_errors / n_bits_total;
+}
+
 /*
  * TX on downlink
  */
@@ -819,6 +829,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
 	int n_errors, n_bits_total;
+	uint16_t ber10k;
 	int rc;
 
 	/* handle RACH, if handover RACH detection is turned on */
@@ -897,8 +908,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* Send uplink measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
-	uint16_t ber10k =
-		(n_bits_total == 0) ? 10000 : 10000 * n_errors / n_bits_total;
+	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len,
 					  *rssi_sum / *rssi_num,
 					  4 * (*toa_sum) / *toa_num, 0, ber10k,
@@ -920,6 +930,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t *toa_num = &chan_state->toa_num;
 	uint8_t l2[EGPRS_0503_MAX_BYTES];
 	int n_errors, n_bursts_bits, n_bits_total;
+	uint16_t ber10k;
 	int rc;
 
 	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n", 
@@ -1001,8 +1012,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			l1ts->mf_period, trx_chan_desc[chan].name);
 		return 0;
 	}
-	uint16_t ber10k =
-		(n_bits_total == 0) ? 10000 : 10000 * n_errors / n_bits_total;
+	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
 		l2, rc, *rssi_sum / *rssi_num, 4 * (*toa_sum) / *toa_num, 0,
 					  ber10k, PRES_INFO_BOTH);
@@ -1124,8 +1134,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
-		uint16_t ber10k = (n_bits_total == 0) ? 10000 :
-			10000 * n_errors / n_bits_total;
+		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		_sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN, rssi, 4 * toa, 0,
 					   ber10k, PRES_INFO_UNKNOWN);
@@ -1299,8 +1308,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
-		uint16_t ber10k =
-		(n_bits_total == 0) ? 10000 : 10000 * n_errors / n_bits_total;
+		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		_sched_compose_ph_data_ind(l1t, tn,
 			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN, rssi, 4 * toa, 0,
