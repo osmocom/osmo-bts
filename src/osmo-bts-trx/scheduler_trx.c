@@ -1,4 +1,4 @@
-/* Scheduler worker functiosn for OsmoBTS-TRX */
+/* Scheduler worker functions for OsmoBTS-TRX */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
@@ -54,7 +54,7 @@ static struct timeval transceiver_clock_tv;
 static struct osmo_timer_list transceiver_clock_timer;
 
 /* Enable this to multiply TOA of RACH by 10.
- * This is usefull to check tenth of timing advances with RSSI test tool.
+ * This is useful to check tenth of timing advances with RSSI test tool.
  * Note that regular phones will not work when using this test! */
 //#define TA_TEST
 
@@ -78,6 +78,7 @@ ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	return NULL;
 }
 
+/* obtain a to-be-transmitted FCCH (frequency correction channel) burst */
 ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -92,6 +93,7 @@ ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	return (ubit_t *) _sched_fcch_burst;
 }
 
+/* obtain a to-be-transmitted SCH (synchronization channel) burst */
 ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -137,6 +139,7 @@ ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	return bits;
 }
 
+/* obtain a to-be-transmitted data (SACCH/SDCCH) burst */
 ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -188,14 +191,14 @@ got_msg:
 
 	/* BURST BYPASS */
 
-	/* handle loss detection of sacch */
+	/* handle loss detection of SACCH */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
 		if (++(l1ts->chan_state[chan].lost) > 1) {
 			/* TODO: Should we pass old TOA here? Otherwise we risk
 			 * unnecessary decreasing TA */
 
-			/* Send uplnk measurement information to L2 */
+			/* Send uplink measurement information to L2 */
 			l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 				456, 456, -110, 0);
 			/* FIXME: use actual values for BER etc */
@@ -205,7 +208,7 @@ got_msg:
 		}
 	}
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 464);
 		if (!*bursts_p)
@@ -236,6 +239,7 @@ send_burst:
 	return bits;
 }
 
+/* obtain a to-be-transmitted PDTCH (packet data) burst */
 ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -274,7 +278,7 @@ no_msg:
 got_msg:
 	/* BURST BYPASS */
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx,
 					     GSM0503_EGPRS_BURSTS_NBITS);
@@ -333,6 +337,7 @@ send_burst:
 	return bits;
 }
 
+/* common section for generation of TCH bursts (TCH/H and TCH/F) */
 static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, struct msgb **_msg_tch,
 	struct msgb **_msg_facch, int codec_mode_request)
@@ -346,7 +351,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
-	 && ++(chan_state->lost) > 5) {
+	    && ++(chan_state->lost) > 5) {
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
@@ -564,6 +569,7 @@ send_frame:
 	*_msg_facch = msg_facch;
 }
 
+/* obtain a to-be-transmitted TCH/F (Full Traffic Channel) burst */
 ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -587,7 +593,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* BURST BYPASS */
 
-	/* alloc burst memory, if not already,
+	/* allocate burst memory, if not already,
 	 * otherwise shift buffer by 4 bursts for interleaving */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 928);
@@ -606,7 +612,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* encode bursts (priorize FACCH) */
+	/* encode bursts (prioritize FACCH) */
 	if (msg_facch)
 		gsm0503_tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
 			1);
@@ -646,6 +652,7 @@ send_burst:
 	return bits;
 }
 
+/* obtain a to-be-transmitted TCH/H (Half Traffic Channel) burst */
 ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
@@ -679,7 +686,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* BURST BYPASS */
 
-	/* alloc burst memory, if not already,
+	/* allocate burst memory, if not already,
 	 * otherwise shift buffer by 2 bursts for interleaving */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 696);
@@ -703,11 +710,11 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	/* encode bursts (priorize FACCH) */
+	/* encode bursts (prioritize FACCH) */
 	if (msg_facch) {
 		gsm0503_tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
-		chan_state->dl_ongoing_facch = 1; /* first of two tch frames */
-	} else if (chan_state->dl_ongoing_facch) /* second of two tch frames */
+		chan_state->dl_ongoing_facch = 1; /* first of two TCH frames */
+	} else if (chan_state->dl_ongoing_facch) /* second of two TCH frames */
 		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
 	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
@@ -796,7 +803,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	return 0;
 }
 
-/*! \brief a single burst was received by the PHY, process it */
+/*! \brief a single (SDCCH/SACCH) burst was received by the PHY, process it */
 int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
 	int8_t rssi, float toa)
@@ -814,14 +821,14 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	int n_errors, n_bits_total;
 	int rc;
 
-	/* handle rach, if handover rach detection is turned on */
+	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
 	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 464);
 		if (!*bursts_p)
@@ -839,7 +846,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		*toa_num = 0;
 	}
 
-	/* update mask + rssi */
+	/* update mask + RSSI */
 	*mask |= (1 << bid);
 	*rssi_sum += rssi;
 	(*rssi_num)++;
@@ -887,7 +894,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
 
-	/* Send uplnk measurement information to L2 */
+	/* Send uplink measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 	uint16_t ber10k =
@@ -898,6 +905,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 					  PRES_INFO_UNKNOWN);
 }
 
+/*! \brief a single PDTCH burst was received by the PHY, process it */
 int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
 	int8_t rssi, float toa)
@@ -917,7 +925,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx,
 					     GSM0503_EGPRS_BURSTS_NBITS);
@@ -983,7 +991,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	}
 
 
-	/* Send uplnk measurement information to L2 */
+	/* Send uplink measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 
@@ -1000,6 +1008,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 					  ber10k, PRES_INFO_BOTH);
 }
 
+/*! \brief a single TCH/F burst was received by the PHY, process it */
 int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
 	int8_t rssi, float toa)
@@ -1023,7 +1032,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 928);
 		if (!*bursts_p)
@@ -1096,7 +1105,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 
-	/* Send uplnk measurement information to L2 */
+	/* Send uplink measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
 		n_errors, n_bits_total, rssi, toa);
 
@@ -1159,6 +1168,7 @@ bfi:
 		tch_data, rc);
 }
 
+/*! \brief a single TCH/H burst was received by the PHY, process it */
 int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
 	int8_t rssi, float toa)
@@ -1175,14 +1185,14 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
 
-	/* handle rach, if handover rach detection is turned on */
+	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
 	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
-	/* alloc burst memory, if not already */
+	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 696);
 		if (!*bursts_p)
@@ -1269,7 +1279,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	memcpy(*bursts_p, *bursts_p + 232, 232);
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 
-	/* Send uplnk measurement information to L2 */
+	/* Send uplink measurement information to L2 */
 	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
 		n_errors, n_bits_total, rssi, toa);
 
