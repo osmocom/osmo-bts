@@ -226,8 +226,14 @@ human-readable format to current VTY session.
 
 ===== `osmotrx ip HOST`
 
-Set the IP address of the OsmoTRX transceiver to which we should connect
-to.
+Set the IP address for the OsmoTRX interface for both the local (OsmoBTS) and
+remote (OsmoTRX) side of the UDP flows. This option has been deprecated by the
+more detailed option `osmotrx ip (local|remote) A.B.C.D`.
+
+===== `osmotrx ip (local|remote) A.B.C.D`
+
+Set the IP address for the OsmoTRX interface for either the local (OsmoBTS) or
+remote (OsmoTRX) side of the UDP flows.
 
 ===== `osmotrx base-port (local|remote) <0-65535>`
 
