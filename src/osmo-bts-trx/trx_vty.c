@@ -513,6 +513,13 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		vty_out(vty, " osmotrx ip remote %s%s",
 			plink->u.osmotrx.remote_ip, VTY_NEWLINE);
 
+	if (plink->u.osmotrx.base_port_local)
+		vty_out(vty, " osmotrx base-port local %"PRIu16"%s",
+			plink->u.osmotrx.base_port_local, VTY_NEWLINE);
+	if (plink->u.osmotrx.base_port_remote)
+		vty_out(vty, " osmotrx base-port remote %"PRIu16"%s",
+			plink->u.osmotrx.base_port_remote, VTY_NEWLINE);
+
 	vty_out(vty, " osmotrx fn-advance %d%s",
 		plink->u.osmotrx.clock_advance, VTY_NEWLINE);
 	vty_out(vty, " osmotrx rts-advance %d%s",
