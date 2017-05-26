@@ -1197,6 +1197,11 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	int n_errors, n_bits_total;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
+	/* Note on FN-10: If we are at FN 10, we decoded an even aligned
+	 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
+	 * Even FN ending at: 10,11,19,20,2,3
+	 */
+	int fn_is_odd = (((fn + 26 - 10) % 26) >> 2) & 1;
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1257,8 +1262,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * Even FN ending at: 10,11,19,20,2,3
 		 */
 		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
-			(((fn + 26 - 10) % 26) >> 2) & 1,
-			&n_errors, &n_bits_total);
+			fn_is_odd, &n_errors, &n_bits_total);
 		if (rc) /* DTXu */
 			lchan_set_marker(osmo_hr_check_sid(tch_data, rc), lchan);
 		break;
@@ -1268,8 +1272,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * is included in frame.
 		 */
 		rc = gsm0503_tch_ahs_decode(tch_data + 2, *bursts_p,
-			(((fn + 26 - 10) % 26) >> 2) & 1,
-			(((fn + 26 - 10) % 26) >> 2) & 1, chan_state->codec,
+			fn_is_odd, fn_is_odd, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total);
 		if (rc)
