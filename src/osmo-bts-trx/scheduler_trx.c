@@ -347,10 +347,16 @@ send_burst:
 	return bits;
 }
 
+/* determine if the FN is transmitting a CMR (1) or not (0) */
+static inline int fn_is_codec_mode_request(uint32_t fn)
+{
+	return (((fn + 4) % 26) >> 2) & 1;
+}
+
 /* common section for generation of TCH bursts (TCH/H and TCH/F) */
 static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, struct msgb **_msg_tch,
-	struct msgb **_msg_facch, int codec_mode_request)
+	struct msgb **_msg_facch)
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
@@ -534,7 +540,7 @@ inval_mode1:
 					l1t->trx->nr, tn);
 				goto free_bad_msg;
 			}
-			if (codec_mode_request && chan_state->dl_ft != ft) {
+			if (fn_is_codec_mode_request(fn) && chan_state->dl_ft != ft) {
 				LOGP(DL1C, LOGL_NOTICE, "%s Codec (FT = %d) "
 					" of RTP cannot be changed now, but in "
 					"next frame. trx=%u ts=%u\n",
@@ -598,8 +604,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch,
-		(((fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch);
 
 	/* BURST BYPASS */
 
@@ -631,7 +636,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
 		gsm0503_tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
+			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
@@ -682,8 +687,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	}
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch,
-		(((fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch);
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
@@ -731,7 +735,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
 		gsm0503_tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, (((fn + 4) % 26) >> 2) & 1,
+			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
