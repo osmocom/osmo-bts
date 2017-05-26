@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 #include <arpa/inet.h>
 
@@ -459,14 +460,31 @@ DEFUN(cfg_phyinst_no_maxdlynb, cfg_phyinst_no_maxdlynb_cmd,
 DEFUN(cfg_phy_transc_ip, cfg_phy_transc_ip_cmd,
 	"osmotrx ip HOST",
 	OSMOTRX_STR
-	"Set remote IP address\n"
-	"IP address of OsmoTRX\n")
+	"Set local and remote IP address\n"
+	"IP address (for both OsmoBtsTrx and OsmoTRX)\n")
 {
 	struct phy_link *plink = vty->index;
 
-	if (plink->u.osmotrx.transceiver_ip)
-		talloc_free(plink->u.osmotrx.transceiver_ip);
-	plink->u.osmotrx.transceiver_ip = talloc_strdup(plink, argv[0]);
+	osmo_talloc_replace_string(plink, &plink->u.osmotrx.local_ip, argv[0]);
+	osmo_talloc_replace_string(plink, &plink->u.osmotrx.remote_ip, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_osmotrx_ip, cfg_phy_osmotrx_ip_cmd,
+	"osmotrx ip (local|remote) A.B.C.D",
+	OSMOTRX_STR
+	"Set IP address\n" "Local IP address (BTS)\n"
+	"Remote IP address (OsmoTRX)\n" "IP address\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (!strcmp(argv[0], "local"))
+		osmo_talloc_replace_string(plink, &plink->u.osmotrx.local_ip, argv[1]);
+	else if (!strcmp(argv[0], "remote"))
+		osmo_talloc_replace_string(plink, &plink->u.osmotrx.remote_ip, argv[1]);
+	else
+		return CMD_WARNING;
 
 	return CMD_SUCCESS;
 }
@@ -488,9 +506,12 @@ DEFUN(cfg_phy_base_port, cfg_phy_base_port_cmd,
 
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 {
-	if (plink->u.osmotrx.transceiver_ip)
-		vty_out(vty, " osmotrx ip %s%s",
-			plink->u.osmotrx.transceiver_ip, VTY_NEWLINE);
+	if (plink->u.osmotrx.local_ip)
+		vty_out(vty, " osmotrx ip local %s%s",
+			plink->u.osmotrx.local_ip, VTY_NEWLINE);
+	if (plink->u.osmotrx.remote_ip)
+		vty_out(vty, " osmotrx ip remote %s%s",
+			plink->u.osmotrx.remote_ip, VTY_NEWLINE);
 
 	vty_out(vty, " osmotrx fn-advance %d%s",
 		plink->u.osmotrx.clock_advance, VTY_NEWLINE);
@@ -568,6 +589,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_fn_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_rts_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_transc_ip_cmd);
+	install_element(PHY_NODE, &cfg_phy_osmotrx_ip_cmd);
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);

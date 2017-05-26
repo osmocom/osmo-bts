@@ -57,14 +57,10 @@ int setbsic_enabled = 0;
  */
 
 /* open socket */
-static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host,
-			uint16_t port_local, uint16_t port_remote,
+static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host_local,
+			uint16_t port_local, const char *host_remote, uint16_t port_remote,
 			int (*cb)(struct osmo_fd *fd, unsigned int what))
 {
-	struct sockaddr_storage sas;
-	struct sockaddr *sa = (struct sockaddr *)&sas;
-	socklen_t sa_len;
-
 	int rc;
 
 	/* Init */
@@ -72,30 +68,10 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host,
 	ofd->cb = cb;
 	ofd->data = priv;
 
-	/* Listen / Binds */
-	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, 0, host,
-		port_local, OSMO_SOCK_F_BIND);
+	/* Listen / Binds + Connect */
+	rc = osmo_sock_init2_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP, host_local, port_local,
+				host_remote, port_remote, OSMO_SOCK_F_BIND | OSMO_SOCK_F_CONNECT);
 	if (rc < 0)
-		return rc;
-
-	/* Connect */
-	sa_len = sizeof(sas);
-	rc = getsockname(ofd->fd, sa, &sa_len);
-	if (rc)
-		return rc;
-
-	if (sa->sa_family == AF_INET) {
-		struct sockaddr_in *sin = (struct sockaddr_in *)sa;
-		sin->sin_port = htons(port_remote);
-	} else if (sa->sa_family == AF_INET6) {
-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
-		sin6->sin6_port = htons(port_remote);
-	} else {
-		return -EINVAL;
-	}
-
-	rc = connect(ofd->fd, sa, sa_len);
-	if (rc)
 		return rc;
 
 	return 0;
@@ -528,8 +504,9 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	/* open the shared/common clock socket */
 	rc = trx_udp_open(plink, &plink->u.osmotrx.trx_ofd_clk,
-			  plink->u.osmotrx.transceiver_ip,
+			  plink->u.osmotrx.local_ip,
 			  plink->u.osmotrx.base_port_local,
+			  plink->u.osmotrx.remote_ip,
 			  plink->u.osmotrx.base_port_remote,
 			  trx_clk_read_cb);
 	if (rc < 0) {
@@ -588,14 +565,16 @@ int trx_if_open(struct trx_l1h *l1h)
 
 	/* open sockets */
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
-			  plink->u.osmotrx.transceiver_ip,
+			  plink->u.osmotrx.local_ip,
 			  compute_port(pinst, 0, 0),
+			  plink->u.osmotrx.remote_ip,
 			  compute_port(pinst, 1, 0), trx_ctrl_read_cb);
 	if (rc < 0)
 		goto err;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
-			  plink->u.osmotrx.transceiver_ip,
+			  plink->u.osmotrx.local_ip,
 			  compute_port(pinst, 0, 1),
+			  plink->u.osmotrx.remote_ip,
 			  compute_port(pinst, 1, 1), trx_data_read_cb);
 	if (rc < 0)
 		goto err;

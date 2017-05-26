@@ -2,7 +2,8 @@
 #define TRX_IF_H
 
 extern int transceiver_available;
-extern const char *transceiver_ip;
+extern const char *local_ip;
+extern const char *remote_ip;
 extern int settsc_enabled;
 extern int setbsic_enabled;
 

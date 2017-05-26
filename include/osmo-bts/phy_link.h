@@ -37,7 +37,8 @@ struct phy_link {
 		struct {
 		} sysmobts;
 		struct {
-			char *transceiver_ip;
+			char *local_ip;
+			char *remote_ip;
 			uint16_t base_port_local;
 			uint16_t base_port_remote;
 			struct osmo_fd trx_ofd_clk;

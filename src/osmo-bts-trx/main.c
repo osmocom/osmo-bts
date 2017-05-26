@@ -113,7 +113,8 @@ int bts_model_init(struct gsm_bts *bts)
 
 void bts_model_phy_link_set_defaults(struct phy_link *plink)
 {
-	plink->u.osmotrx.transceiver_ip = talloc_strdup(plink, "127.0.0.1");
+	plink->u.osmotrx.local_ip = talloc_strdup(plink, "127.0.0.1");
+	plink->u.osmotrx.remote_ip = talloc_strdup(plink, "127.0.0.1");
 	plink->u.osmotrx.base_port_local = 5800;
 	plink->u.osmotrx.base_port_remote = 5700;
 	plink->u.osmotrx.clock_advance = 20;
