@@ -809,6 +809,10 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 {
 	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
 
+	/* Bypass radio link timeout if set to -1 */
+	if (btsb->radio_link_timeout < 0)
+		return;
+
 	/* if link loss criterion already reached */
 	if (lchan->s == 0) {
 		DEBUGP(DMEAS, "%s radio link counter S already 0.\n",

@@ -94,7 +94,9 @@ struct gsm_bts_role_bts {
 		uint8_t tc4_ctr;
 	} si;
 	struct gsm_time gsm_time;
-	uint8_t radio_link_timeout;
+	/* Radio Link Timeout counter. -1 disables timeout for
+	 * lab/measurement purpose */
+	int radio_link_timeout;
 
 	int ul_power_target;		/* Uplink Rx power target */
 

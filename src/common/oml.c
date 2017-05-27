@@ -627,17 +627,27 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, NM_ATT_CONN_FAIL_CRIT, 1)) {
 		const uint8_t *val = TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT);
 
-		if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) < 2
-		 || val[0] != 0x01 || val[1] < 4 || val[1] > 64) {
+		switch (val[0]) {
+		case 0xFF: /* Osmocom specific Extension of TS 12.21 */
+			LOGP(DOML, LOGL_NOTICE, "WARNING: Radio Link Timeout "
+			     "explicitly disabled, only use this for lab testing!\n");
+			btsb->radio_link_timeout = -1;
+			break;
+		case 0x01: /* Based on uplink SACCH (radio link timeout) */
+			if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) >= 2 &&
+			    val[1] >= 4 && val[1] <= 64) {
+				btsb->radio_link_timeout = val[1];
+				break;
+			}
+			/* fall-through */
+		case 0x02: /* Based on RXLEV/RXQUAL measurements */
+		default:
 			LOGP(DOML, LOGL_NOTICE, "Given Conn. Failure Criterion "
 				"not supported. Please use critetion 0x01 with "
 				"RADIO_LINK_TIMEOUT value of 4..64\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
-		btsb->radio_link_timeout = val[1];
 	}
-	/* if val[0] != 0x01: can be 'operator dependent' and needs to
-	 * be parsed by bts driver */
 
 	/* 9.4.53 T200 */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(btsb->t200_ms))) {
