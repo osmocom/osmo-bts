@@ -343,11 +343,6 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 	uint8_t bsic = bts->bsic;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (TLVP_PRES_LEN(new_attr, NM_ATT_CONN_FAIL_CRIT, 1)) {
-		const uint8_t *val = TLVP_VAL(new_attr, NM_ATT_CONN_FAIL_CRIT);
-		btsb->radio_link_timeout = val[1];
-	}
-
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
