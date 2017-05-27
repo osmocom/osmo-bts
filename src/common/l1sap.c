@@ -802,7 +802,9 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
-/* process radio link timeout counter S */
+/* process radio link timeout counter S. Follows TS 05.08 Section 5.2
+ * "MS Procedure" as the "BSS Procedure [...] shall be determined by the
+ * network operator." */
 static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 {
 	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
