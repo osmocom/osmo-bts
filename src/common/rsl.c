@@ -398,7 +398,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	paging_group = *TLVP_VAL(&tp, RSL_IE_PAGING_GROUP);
 	identity_lv = TLVP_VAL(&tp, RSL_IE_MS_IDENTITY)-1;
 
-	if (TLVP_PRESENT(&tp, RSL_IE_CHAN_NEEDED))
+	if (TLVP_PRES_LEN(&tp, RSL_IE_CHAN_NEEDED, 1))
 		chan_needed = *TLVP_VAL(&tp, RSL_IE_CHAN_NEEDED);
 
 	rc = paging_add_identity(btsb->paging_state, paging_group,
@@ -875,22 +875,22 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.9 Handover Reference */
 	if ((type == RSL_ACT_INTER_ASYNC ||
 	     type == RSL_ACT_INTER_SYNC) &&
-	    TLVP_PRESENT(&tp, RSL_IE_HANDO_REF)) {
+	    TLVP_PRES_LEN(&tp, RSL_IE_HANDO_REF, 1)) {
 		lchan->ho.active = HANDOVER_ENABLED;
 		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
 	}
 
 	/* 9.3.4 BS Power */
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+	if (TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 	/* 9.3.13 MS Power */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
+	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
 		lchan->ms_power_ctrl.current = lchan->ms_power;
 		lchan->ms_power_ctrl.fixed = 0;
 	}
 	/* 9.3.24 Timing Advance */
-	if (TLVP_PRESENT(&tp, RSL_IE_TIMING_ADVANCE))
+	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
 
 	/* 9.3.32 BS Power Parameters */
@@ -1308,7 +1308,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER)) {
+	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		uint8_t pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
 		lchan->ms_power_ctrl.fixed = 1;
 		lchan->ms_power_ctrl.current = pwr;
@@ -1607,14 +1607,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
 					 0, dch->c.msg_type);
 
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_IP)) {
+	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_IP, 4)) {
 		connect_ip = tlvp_val32_unal(&tp, RSL_IE_IPAC_REMOTE_IP);
 		LOGP(DRSL, LOGL_NOTICE, "connect_ip %d \n", connect_ip );
 	}
 	else
 		LOGP(DRSL, LOGL_NOTICE, "CRCX does not specify a remote IP\n");
 
-	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_REMOTE_PORT)) {
+	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_PORT, 2)) {
 		connect_port = tlvp_val16_unal(&tp, RSL_IE_IPAC_REMOTE_PORT);
 		LOGP(DRSL, LOGL_NOTICE, "connect_port %d \n", connect_port );
 	}

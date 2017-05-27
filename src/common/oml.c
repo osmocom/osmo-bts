@@ -521,7 +521,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* Test for globally unsupported stuff here */
-	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2)) {
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 		if (arfcn > 1024) {
 			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
@@ -557,7 +557,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* ... and actually still parse them */
 
 	/* 9.4.25 Interference Level Boundaries */
-	if (TLVP_PRESENT(&tp, NM_ATT_INTERF_BOUND)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_INTERF_BOUND, 6)) {
 		payload = TLVP_VAL(&tp, NM_ATT_INTERF_BOUND);
 		for (i = 0; i < 6; i++) {
 			int16_t boundary = *payload;
@@ -565,11 +565,11 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		}
 	}
 	/* 9.4.24 Intave Parameter */
-	if (TLVP_PRESENT(&tp, NM_ATT_INTAVE_PARAM))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_INTAVE_PARAM, 1))
 		btsb->interference.intave = *TLVP_VAL(&tp, NM_ATT_INTAVE_PARAM);
 
 	/* 9.4.14 Connection Failure Criterion */
-	if (TLVP_PRESENT(&tp, NM_ATT_CONN_FAIL_CRIT)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_CONN_FAIL_CRIT, 1)) {
 		const uint8_t *val = TLVP_VAL(&tp, NM_ATT_CONN_FAIL_CRIT);
 
 		if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) < 2
@@ -585,7 +585,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	 * be parsed by bts driver */
 
 	/* 9.4.53 T200 */
-	if (TLVP_PRESENT(&tp, NM_ATT_T200)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(btsb->t200_ms))) {
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
 		for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++) {
 			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
@@ -607,35 +607,35 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.31 Maximum Timing Advance */
-	if (TLVP_PRESENT(&tp, NM_ATT_MAX_TA))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_MAX_TA, 1))
 		btsb->max_ta = *TLVP_VAL(&tp, NM_ATT_MAX_TA);
 
 	/* 9.4.39 Overload Period */
-	if (TLVP_PRESENT(&tp, NM_ATT_OVERL_PERIOD))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_OVERL_PERIOD, 1))
 		btsb->load.overload_period = *TLVP_VAL(&tp, NM_ATT_OVERL_PERIOD);
 
 	/* 9.4.12 CCCH Load Threshold */
-	if (TLVP_PRESENT(&tp, NM_ATT_CCCH_L_T))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_T, 1))
 		btsb->load.ccch.load_ind_thresh = *TLVP_VAL(&tp, NM_ATT_CCCH_L_T);
 
 	/* 9.4.11 CCCH Load Indication Period */
-	if (TLVP_PRESENT(&tp, NM_ATT_CCCH_L_I_P))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_I_P, 1))
 		btsb->load.ccch.load_ind_period = *TLVP_VAL(&tp, NM_ATT_CCCH_L_I_P);
 
 	/* 9.4.44 RACH Busy Threshold */
-	if (TLVP_PRESENT(&tp, NM_ATT_RACH_B_THRESH)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_RACH_B_THRESH, 1)) {
 		int16_t thresh = *TLVP_VAL(&tp, NM_ATT_RACH_B_THRESH);
 		btsb->load.rach.busy_thresh = -1 * thresh;
 	}
 
 	/* 9.4.45 RACH Load Averaging Slots */
-	if (TLVP_PRESENT(&tp, NM_ATT_LDAVG_SLOTS)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_LDAVG_SLOTS, 2)) {
 		btsb->load.rach.averaging_slots =
 			ntohs(tlvp_val16_unal(&tp, NM_ATT_LDAVG_SLOTS));
 	}
 
 	/* 9.4.10 BTS Air Timer */
-	if (TLVP_PRESENT(&tp, NM_ATT_BTS_AIR_TIMER)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_BTS_AIR_TIMER, 1)) {
 		uint8_t t3105 = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER);
 		if (t3105 == 0) {
 			LOGP(DOML, LOGL_NOTICE,
@@ -646,15 +646,15 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.37 NY1 */
-	if (TLVP_PRESENT(&tp, NM_ATT_NY1))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_NY1, 1))
 		btsb->ny1 = *TLVP_VAL(&tp, NM_ATT_NY1);
 	
 	/* 9.4.8 BCCH ARFCN */
-	if (TLVP_PRESENT(&tp, NM_ATT_BCCH_ARFCN))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2))
 		bts->c0->arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 
 	/* 9.4.9 BSIC */
-	if (TLVP_PRESENT(&tp, NM_ATT_BSIC))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_BSIC, 1))
 		bts->bsic = *TLVP_VAL(&tp, NM_ATT_BSIC);
 
 	/* call into BTS driver to apply new attributes to hardware */
@@ -697,7 +697,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* ... and actually still parse them */
 
 	/* 9.4.47 RF Max Power Reduction */
-	if (TLVP_PRESENT(&tp, NM_ATT_RF_MAXPOWR_R)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_RF_MAXPOWR_R, 1)) {
 		trx->max_power_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R) * 2;
 		LOGP(DOML, LOGL_INFO, "Set RF Max Power Reduction = %d dBm\n",
 		     trx->max_power_red);
@@ -882,7 +882,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	ts->mo.nm_attr = tp_merged;
 
 	/* 9.4.13 Channel Combination */
-	if (TLVP_PRESENT(&tp, NM_ATT_CHAN_COMB)) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_CHAN_COMB, 1)) {
 		uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
 		ts->pchan = abis_nm_pchan4chcomb(comb);
 		rc = conf_lchans(ts);
@@ -896,7 +896,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* 9.4.5 ARFCN List */
 
 	/* 9.4.60 TSC */
-	if (TLVP_PRESENT(&tp, NM_ATT_TSC) && TLVP_LEN(&tp, NM_ATT_TSC) >= 1) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_TSC, 1)) {
 		ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
 	} else {
 		/* If there is no TSC specified, use the BCC */
@@ -1252,13 +1252,13 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	uint8_t stream_id = 0;
 
-	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP, 4)) {
 		ip = ntohl(tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP));
 	}
-	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP_PORT)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP_PORT, 2)) {
 		port = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_DST_IP_PORT));
 	}
-	if (TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_STREAM_ID, 1)) {
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
 	}
 

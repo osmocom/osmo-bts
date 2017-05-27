@@ -1696,8 +1696,7 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 		/* our L1 only supports one global TSC for all channels
 		 * one one TRX, so we need to make sure not to activate
 		 * channels with a different TSC!! */
-		if (TLVP_PRESENT(new_attr, NM_ATT_TSC) &&
-		    TLVP_LEN(new_attr, NM_ATT_TSC) >= 1 &&
+		if (TLVP_PRES_LEN(new_attr, NM_ATT_TSC, 1) &&
 		    *TLVP_VAL(new_attr, NM_ATT_TSC) != (bts->bsic & 7)) {
 			LOGP(DOML, LOGL_ERROR, "Channel TSC %u != BSIC-TSC %u\n",
 				*TLVP_VAL(new_attr, NM_ATT_TSC), bts->bsic & 7);
