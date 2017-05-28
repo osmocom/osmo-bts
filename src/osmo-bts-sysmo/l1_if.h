@@ -74,6 +74,7 @@ struct femtol1_hdl {
 	} hw_info;
 
 	int fixup_needed;
+	bool rtp_hr_jumble_needed;
 
 	struct calib_send_state st;
 

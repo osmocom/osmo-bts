@@ -1460,6 +1460,9 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
 		     gsm_band_name(trx->bts->band));
 
+	if (l1if_dsp_ver(fl1h) < L1_VER_SHIFT(5,3,3))
+		fl1h->rtp_hr_jumble_needed = true;
+
 	/* Request the activation */
 	l1if_activate_rf(fl1h, 1);
 
