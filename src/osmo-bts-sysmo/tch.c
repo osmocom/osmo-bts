@@ -189,7 +189,45 @@ static int rtppayload_to_l1_efr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 #warning No EFR support in L1
 #endif /* L1_HAS_EFR */
 
-static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len)
+#ifdef USE_L1_RTP_MODE
+/* change the bit-order of each unaligned field inside the HR codec
+ * payload from little-endian bit-ordering to bit-endian and vice-versa.
+ * This is required on all sysmoBTS DSP versions < 5.3.3 in order to
+ * be compliant with ETSI TS 101 318 Chapter 5.2 */
+static void hr_jumble(uint8_t *dst, const uint8_t *src)
+{
+	/* Table 2 / Section 5.2.1 of ETSI TS 101 381 */
+	const int p_unvoiced[] =
+		{ 5, 11,  9,  8,  1,  2,  7,  7,  5,  7,  7,  5,  7,  7,  5,  7,  7,  5 };
+	/* Table 3 / Section 5.2.1 of ETSI TS 101 381 */
+	const int p_voiced[] =
+		{ 5, 11,  9,  8,  1,  2,  8,  9,  5,  4,  9,  5,  4,  9,  5,  4,  9,  5 };
+
+	int base, i, j, l, si, di;
+	const int *p;
+
+	memset(dst, 0x00, GSM_HR_BYTES);
+
+	p = (src[4] & 0x30) ? p_voiced : p_unvoiced;
+
+	base = 0;
+	for (i = 0; i < 18; i++) {
+		l = p[i];
+		for (j = 0; j < l; j++) {
+			si = base + j;
+			di = base + l - j - 1;
+
+			if (src[si >> 3] & (1 << (7 - (si & 7))))
+				dst[di >> 3] |= (1 << (7 - (di & 7)));
+		}
+
+		base += l;
+	}
+}
+#endif /* USE_L1_RTP_MODE */
+
+static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len,
+					struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
 	uint8_t *cur;
@@ -205,9 +243,14 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 	}
 
 	cur = msgb_put(msg, GSM_HR_BYTES);
+#ifdef USE_L1_RTP_MODE
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	if (fl1h->rtp_hr_jumble_needed)
+		hr_jumble(cur, l1_payload);
+	else
+		memcpy(cur, l1_payload, GSM_HR_BYTES);
+#else /* USE_L1_RTP_MODE */
 	memcpy(cur, l1_payload, GSM_HR_BYTES);
-
-#ifndef USE_L1_RTP_MODE
 	/* reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(cur, GSM_HR_BYTES);
 #endif /* USE_L1_RTP_MODE */
@@ -222,7 +265,7 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
  *  \returns number of \a l1_payload bytes filled
  */
 static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
-				unsigned int payload_len)
+				unsigned int payload_len, struct gsm_lchan *lchan)
 {
 
 	if (payload_len != GSM_HR_BYTES) {
@@ -231,9 +274,14 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 		return 0;
 	}
 
+#ifdef USE_L1_RTP_MODE
+	struct femtol1_hdl *fl1h = trx_femtol1_hdl(lchan->ts->trx);
+	if (fl1h->rtp_hr_jumble_needed)
+		hr_jumble(l1_payload, rtp_payload);
+	else
+		memcpy(l1_payload, rtp_payload, GSM_HR_BYTES);
+#else /* USE_L1_RTP_MODE */
 	memcpy(l1_payload, rtp_payload, GSM_HR_BYTES);
-
-#ifndef USE_L1_RTP_MODE
 	/* reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, GSM_HR_BYTES);
 #endif /* USE_L1_RTP_MODE */
@@ -475,7 +523,7 @@ void bts_model_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		} else{
 			*payload_type = GsmL1_TchPlType_Hr;
 			rc = rtppayload_to_l1_hr(l1_payload,
-						 rtp_pl, rtp_pl_len);
+						 rtp_pl, rtp_pl_len, lchan);
 		}
 		break;
 #if defined(L1_HAS_EFR) && defined(USE_L1_RTP_MODE)
@@ -620,7 +668,7 @@ int l1if_tch_rx(struct gsm_lchan *lchan, struct msgb *l1p_msg)
 		rmsg = l1_to_rtppayload_fr(payload, payload_len);
 		break;
 	case GsmL1_TchPlType_Hr:
-		rmsg = l1_to_rtppayload_hr(payload, payload_len);
+		rmsg = l1_to_rtppayload_hr(payload, payload_len, lchan);
 		break;
 #if defined(L1_HAS_EFR) && defined(USE_L1_RTP_MODE)
 	case GsmL1_TchPlType_Efr:

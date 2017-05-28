@@ -78,11 +78,26 @@ struct femtol1_hdl {
 	} hw_info;
 
 	int fixup_needed;
+	bool rtp_hr_jumble_needed;
 
 	struct calib_send_state st;
 
 	uint8_t last_rf_mute[8];
 };
+
+#define L1_VER_SHIFT(x,y,z) ((x << 16) | (y << 8) | (z))
+
+static inline uint32_t l1if_dsp_ver(struct femtol1_hdl *fl1h)
+{
+        const uint8_t *v = fl1h->hw_info.dsp_version;
+        return L1_VER_SHIFT(v[0], v[1], v[2]);
+}
+
+static inline uint32_t l1if_fpga_ver(struct femtol1_hdl *fl1h)
+{
+        const uint8_t *v = fl1h->hw_info.fpga_version;
+        return L1_VER_SHIFT(v[0], v[1], v[2]);
+}
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
 #define msgb_sysprim(msg)	((SuperFemto_Prim_t *)(msg)->l1h)
