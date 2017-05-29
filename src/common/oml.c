@@ -163,7 +163,7 @@ static inline struct msgb *add_bts_attr(const struct gsm_bts *bts)
 	abis_nm_put_sw_file(a, btstype2str(GSM_BTS_TYPE_OSMOBTS), PACKAGE_VERSION, true);
 	abis_nm_put_sw_file(a, btsatttr2str(BTS_TYPE_VARIANT), btsvariant2str(bts->variant), true);
 
-	if (bts->sub_model)
+	if (strlen(bts->sub_model))
 		abis_nm_put_sw_file(a, btsatttr2str(BTS_SUB_MODEL), bts->sub_model, true);
 
 	return a;
@@ -467,9 +467,13 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct tlv_parsed tp;
-	struct gsm_abis_mo *mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+	struct gsm_abis_mo *mo;
 	int rc;
 
+	if (!foh)
+		return -EINVAL;
+
+	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
 	abis_nm_debugp_foh(DOML, foh);
 	DEBUGPC(DOML, "Rx GET ATTR\n");
 
