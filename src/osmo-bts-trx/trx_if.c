@@ -443,7 +443,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return len;
 	} else if (len == EGPRS_BURST_LEN + 10) {
 		burst_len = EGPRS_BURST_LEN;
-	} else if (len != GSM_BURST_LEN + 10) {
+	} else if (len != GSM_BURST_LEN + 10 && len != GSM_BURST_LEN + 8) {
 		LOGP(DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
 			"'%d'\n", len);
 		return -EINVAL;
