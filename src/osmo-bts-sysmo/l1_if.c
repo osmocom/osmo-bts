@@ -1875,6 +1875,10 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	hdl = pinst->u.sysmobts.hdl;
 	osmo_strlcpy(bts->sub_model, sysmobts_model(hdl->hw_info.model_nr, hdl->hw_info.trx_nr), sizeof(bts->sub_model));
+	snprintf(pinst->version, sizeof(pinst->version), "%u.%u dsp %u.%u.%u fpga %u.%u.%u",
+		 hdl->hw_info.ver_major, hdl->hw_info.ver_minor,
+		 hdl->hw_info.dsp_version[0], hdl->hw_info.dsp_version[1], hdl->hw_info.dsp_version[2],
+		 hdl->hw_info.fpga_version[0], hdl->hw_info.fpga_version[1], hdl->hw_info.fpga_version[2]);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 

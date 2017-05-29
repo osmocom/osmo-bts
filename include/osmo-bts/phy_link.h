@@ -76,7 +76,7 @@ struct phy_instance {
 	struct llist_head list;
 	int num;
 	char *description;
-
+	char version[MAX_VERSION_LENGTH];
 	/* pointer to the PHY link to which we belong */
 	struct phy_link *phy_link;
 
