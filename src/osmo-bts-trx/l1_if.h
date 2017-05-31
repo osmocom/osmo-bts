@@ -69,7 +69,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h);
 int l1if_provision_transceiver(struct gsm_bts *bts);
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
 void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, float ta,
-	float ber, float rssi);
+	float ber, float rssi, uint32_t fn);
 int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
 	int n_errors, int n_bits_total, float rssi, float toa);
 
