@@ -901,7 +901,7 @@ static void dump_meas_res(int ll, GsmL1_MeasParam_t *m)
 }
 
 static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
-				GsmL1_MeasParam_t *m)
+				GsmL1_MeasParam_t *m, uint32_t fn)
 {
 	struct osmo_phsap_prim l1sap;
 	memset(&l1sap, 0, sizeof(l1sap));
@@ -912,6 +912,7 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.u.meas_ind.ta_offs_qbits = m->i16BurstTiming;
 	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 100);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
+	l1sap.u.info.u.meas_ind.fn = fn;
 
 	/* l1sap wants to take msgb ownership.  However, as there is no
 	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
@@ -941,7 +942,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	fn = data_ind->u32Fn;
 	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
 
-	process_meas_res(trx, chan_nr, &data_ind->measParam);
+	process_meas_res(trx, chan_nr, &data_ind->measParam, fn);
 
 	if (data_ind->measParam.fLinkQuality < btsb->min_qual_norm
 	 && data_ind->msgUnitParam.u8Size != 0) {
