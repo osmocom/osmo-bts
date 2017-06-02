@@ -1140,14 +1140,14 @@ int l1if_check_app_sys_version(struct gsm_bts_trx *trx)
 
 	LOGP(DL1C, LOGL_INFO, "Tx APP-INFO-SYSTEM.req\n");
 
-	return l1if_req_compl(fl1h, msg, app_info_sys_compl_cb, pinst);
+	return l1if_req_compl(fl1h, msg, app_info_sys_compl_cb, 0);
 }
 
 static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 			     void *data)
 {
 	char ver_hdr[32];
-	struct phy_instance *pinst = data;
+
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
 
@@ -1171,7 +1171,6 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 	talloc_replace(fl1h->info.app.name, fl1h, air->szName);
 	talloc_replace(fl1h->info.app.description, fl1h, air->szDescription);
 	talloc_replace(fl1h->info.app.version, fl1h, air->szVersion);
-	osmo_strlcpy(pinst->version, ver_hdr, sizeof(pinst->version));
 
 	/* in a completion call-back, we take msgb ownership and must
 	 * release it before returning */
