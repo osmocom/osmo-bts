@@ -25,6 +25,16 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
+/* properly increment SI2q index and return SI2q data for scheduling */
+static inline uint8_t *get_si2q_inc_index(struct gsm_bts *bts)
+{
+	uint8_t i = bts->si2q_index;
+	/* si2q_count is the max si2q_index value, not the number of messages */
+	bts->si2q_index = (bts->si2q_index + 1) % (bts->si2q_count + 1);
+
+	return (uint8_t *)GSM_BTS_SI2Q(bts, i);
+}
+
 /* Apply the rules from 05.02 6.3.1.3 Mapping of BCCH Data */
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 {
@@ -99,6 +109,10 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 		else {
 			/* increment static counter by one, modulo count */
 			btsb->si.tc4_ctr = (btsb->si.tc4_ctr + 1) % tc4_cnt;
+
+			if (tc4_sub[btsb->si.tc4_ctr] == SYSINFO_TYPE_2quater)
+				return get_si2q_inc_index(bts);
+
 			return GSM_BTS_SI(bts, tc4_sub[btsb->si.tc4_ctr]);
 		}
 	case 5:
@@ -114,7 +128,7 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 
 		else if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
 			 !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) && !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
-			return GSM_BTS_SI(bts, SYSINFO_TYPE_2quater);
+			return get_si2q_inc_index(bts);
 		break;
 	case 6:
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_3);
