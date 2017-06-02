@@ -25,10 +25,8 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 
-#define BTS_HAS_SI(bts, sinum)	((bts)->si_valid & (1 << sinum))
-
 /* Apply the rules from 05.02 6.3.1.3 Mapping of BCCH Data */
-uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
+uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	unsigned int tc4_cnt = 0;
@@ -77,22 +75,20 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 		/* iterate over 2ter, 2quater, 9, 13 */
 		/* determine how many SI we need to send on TC=4,
 		 * and which of them we send when */
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2ter) &&
-		    BTS_HAS_SI(bts, SYSINFO_TYPE_2bis)) {
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter) && GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis)) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_2ter;
 			tc4_cnt += 1;
 		}
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
-		    (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) ||
-		     BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))) {
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
+		    (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) || GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_2quater;
 			tc4_cnt += 1;
 		}
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_13)) {
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13)) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_13;
 			tc4_cnt += 1;
 		}
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_9)) {
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_9)) {
 			/* FIXME: check SI3 scheduling info! */
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_9;
 			tc4_cnt += 1;
@@ -107,21 +103,17 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, struct gsm_time *g_time)
 		}
 	case 5:
 		/* 2bis, 2ter, 2quater */
-		if (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) &&
-		    !BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) && !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
 			return GSM_BTS_SI(bts, SYSINFO_TYPE_2bis);
 
-		else if (BTS_HAS_SI(bts, SYSINFO_TYPE_2ter) &&
-			 !BTS_HAS_SI(bts, SYSINFO_TYPE_2bis))
+		else if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter) && !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis))
 			return GSM_BTS_SI(bts, SYSINFO_TYPE_2ter);
 
-		else if (BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) &&
-			 BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
+		else if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) && GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
 			return GSM_BTS_SI(bts, SYSINFO_TYPE_2bis);
 
-		else if (BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
-			 !BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) &&
-			 !BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
+		else if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
+			 !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) && !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
 			return GSM_BTS_SI(bts, SYSINFO_TYPE_2quater);
 		break;
 	case 6:
@@ -137,7 +129,7 @@ uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
 {
 	struct gsm_bts *b = trx->bts;
 	struct gsm48_system_information_type_3 *si3;
-	if (BTS_HAS_SI(b, SYSINFO_TYPE_3)) {
+	if (GSM_BTS_HAS_SI(b, SYSINFO_TYPE_3)) {
 		si3 = GSM_BTS_SI(b, SYSINFO_TYPE_3);
 		return si3->control_channel_desc.bs_ag_blks_res;
 	}
