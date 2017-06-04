@@ -105,7 +105,7 @@ const ubit_t _sched_egprs_tsc[8][78] = {
 	  0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1, },
 };
 
-/*! \brief SCH trainign sequence (TS 05.02 Chapter 5.2.5) */
+/*! \brief SCH training sequence (TS 05.02 Chapter 5.2.5) */
 const ubit_t _sched_sch_train[64] = {
 	1,0,1,1,1,0,0,1,0,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,
 	0,0,1,0,1,1,0,1,0,1,0,0,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,1,1,0,1,1,
@@ -584,7 +584,7 @@ struct trx_sched_frame {
 	enum trx_chan_type		dl_chan;
 	/*! \brief downlink block ID */
 	uint8_t				dl_bid;
-	/*! \breff uplink TRX channel type */
+	/*! \brief uplink TRX channel type */
 	enum trx_chan_type		ul_chan;
 	/*! \brief uplink block ID */
 	uint8_t				ul_bid;
@@ -1307,7 +1307,7 @@ struct trx_sched_multiframe {
 	uint8_t				period;
 	/*! \brief pointer to scheduling structure */
 	const struct trx_sched_frame	*frames;
-	/*! \brife human-readable name */
+	/*! \brief human-readable name */
 	const char 			*name;
 };
 

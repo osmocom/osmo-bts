@@ -570,7 +570,7 @@ inval_mode2:
 		}
 		if (msgb_l2len(msg_tch) != len) {
 			LOGP(DL1C, LOGL_ERROR, "Cannot send payload with "
-				"invalid length! (expecing %d, received %d)\n",
+				"invalid length! (expecting %d, received %d)\n",
 				len, msgb_l2len(msg_tch));
 free_bad_msg:
 			/* free message */
@@ -1354,7 +1354,7 @@ bfi:
 	/* TCH or BFI */
 	/* Note on FN 19 or 20: If we received the last burst of a frame,
 	 * it actually starts at FN 8 or 9. A burst starting there, overlaps
-	 * with the slot 12, so an extra FN must be substracted to get correct
+	 * with the slot 12, so an extra FN must be subtracted to get correct
 	 * start of frame.
 	 */
 	return _sched_compose_tch_ind(l1t, tn,

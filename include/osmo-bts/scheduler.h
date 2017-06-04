@@ -127,7 +127,7 @@ struct l1sched_ts {
 	uint8_t			mf_period;	/* period of multiframe */
 	const struct trx_sched_frame *mf_frames; /* pointer to frame layout */
 
-	struct llist_head	dl_prims;	/* Queue primitves for TX */
+	struct llist_head	dl_prims;	/* Queue primitives for TX */
 
 	/* Channel states for all logical channels */
 	struct l1sched_chan_state chan_state[_TRX_CHAN_MAX];
@@ -160,7 +160,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 /*! \brief Handle a PH-TCH.req from L2 down to L1 */
 int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
 
-/*! \brief PHY informs us of new (current) GSM freme nunmber */
+/*! \brief PHY informs us of new (current) GSM frame number */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
 /*! \brief handle an UL burst received by PHY */

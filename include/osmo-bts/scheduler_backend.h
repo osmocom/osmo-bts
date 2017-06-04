@@ -29,7 +29,7 @@ struct trx_chan_desc {
 	trx_sched_dl_func	*dl_fn;
 	/*! \brief function to call when burst received from PHY */
 	trx_sched_ul_func	*ul_fn;
-	/*! \breif is this channel automatically active at start? */
+	/*! \brief is this channel automatically active at start? */
 	int			auto_active;
 };
 extern const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX];
