@@ -1428,8 +1428,6 @@ static void trx_ctrl_timer_cb(void *data)
 
 	/* check if transceiver is still alive */
 	if (transceiver_lost++ == TRX_LOSS_FRAMES) {
-		struct gsm_bts_trx *trx;
-
 		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
 
 no_clock:
