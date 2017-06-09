@@ -46,6 +46,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/signal.h>
+#include <osmo-bts/phy_link.h>
 
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
@@ -153,70 +154,101 @@ char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
 	return mo_buf;
 }
 
-static inline struct msgb *add_bts_attr(const struct gsm_bts *bts)
+static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 {
-	struct msgb *a = oml_msgb_alloc();
-
-	if (!a)
-		return NULL;
-
-	abis_nm_put_sw_file(a, btstype2str(GSM_BTS_TYPE_OSMOBTS), PACKAGE_VERSION, true);
-	abis_nm_put_sw_file(a, btsatttr2str(BTS_TYPE_VARIANT), btsvariant2str(bts->variant), true);
+	abis_nm_put_sw_file(msg, btstype2str(GSM_BTS_TYPE_OSMOBTS), PACKAGE_VERSION, true);
+	abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT), btsvariant2str(bts->variant), true);
 
 	if (strlen(bts->sub_model))
-		abis_nm_put_sw_file(a, btsatttr2str(BTS_SUB_MODEL), bts->sub_model, true);
-
-	return a;
+		abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL), bts->sub_model, true);
 }
 
-static inline int handle_attr(const struct gsm_abis_mo *mo, const uint8_t *attr, uint16_t attr_len, uint8_t *out)
+static inline void add_trx_attr(struct msgb *msg, struct gsm_bts_trx *trx)
+{
+	const struct phy_instance *pinst = trx_phy_instance(trx);
+
+	abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), strlen(pinst->version) ? pinst->version : "Unknown",
+			    true);
+}
+
+/* The number of attributes in §9.4.26 List of Required Attributes is 2 bytes,
+   but the Count of not-reported attributes from §9.4.64 is 1 byte */
+static inline uint8_t pack_num_unreported_attr(uint16_t attrs)
+{
+	if (attrs > 255) {
+		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes, Count of not-reported attributes is too big: %u\n",
+		     attrs);
+		return 255;
+	}
+	return attrs; /* Return number of unhandled attributes */
+}
+
+/* copy all the attributes accumulated in msg to out and return the total length of out buffer */
+static inline int cleanup_attr_msg(uint8_t *out, int out_offset, struct msgb *msg)
+{
+	int len = 0;
+
+	out[0] = pack_num_unreported_attr(out_offset - 1);
+
+	if (msg) {
+		memcpy(out + out_offset, msgb_data(msg), msg->len);
+		len = msg->len;
+		msgb_free(msg);
+	}
+
+	return len + out_offset + 1;
+}
+
+static inline int handle_attrs_trx(uint8_t *out, struct gsm_bts_trx *trx, const uint8_t *attr, uint16_t attr_len)
 {
 	uint16_t i, attr_out_index = 1; /* byte 0 is reserved for unsupported attributes counter */
-	struct msgb *ba = NULL;
-	int length;
+	struct msgb *attr_buf = oml_msgb_alloc();
+
+	if (!attr_buf)
+		return -ENOMEM;
 
 	for (i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
 		case NM_ATT_SW_CONFIG:
-			switch (mo->obj_class) {
-			case NM_OC_BTS:
-				ba = add_bts_attr(mo->bts);
-				break;
-			default:
-				LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
-				     get_value_string(abis_nm_obj_class_names, mo->obj_class));
-				return -EINVAL;
-			}
+			add_trx_attr(attr_buf, trx);
 			break;
 		default:
-			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported.\n", i,
+			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by TRX.\n", i,
 			     get_value_string(abis_nm_att_names, attr[i]));
-			out[attr_out_index] = attr[i];
+			out[attr_out_index] = attr[i]; /* assemble values of supported attributes and list of unsupported ones */
 			attr_out_index++;
 		}
 	}
 
-	if (attr_out_index - 1 > 255) { /* The number of attributes in §9.4.26 List of Required Attributes is 2 bytes,
-					   but the Count of not-reported attributes from §9.4.64 is 1 byte */
-		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes, Count of not-reported attributes is too big: %u\n",
-		     attr_out_index - 1);
-		out[0] = 255;
-	} else
-		out[0] = attr_out_index - 1; /* Count number of unhandled attributes */
+	return cleanup_attr_msg(out, attr_out_index, attr_buf);
+}
 
-	length = attr_out_index + 1;
+static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, const uint8_t *attr, uint16_t attr_len)
+{
+	uint16_t i, attr_out_index = 1; /* byte 0 is reserved for unsupported attributes counter */
+	struct msgb *attr_buf = oml_msgb_alloc();
 
-	if (ba) {
-		memcpy(out + attr_out_index, msgb_data(ba), ba->len);
-		length += ba->len;
-		msgb_free(ba);
+	if (!attr_buf)
+		return -ENOMEM;
+
+	for (i = 0; i < attr_len; i++) {
+		switch (attr[i]) {
+		case NM_ATT_SW_CONFIG:
+			add_bts_attrs(attr_buf, bts);
+			break;
+		default:
+			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS.\n", i,
+			     get_value_string(abis_nm_att_names, attr[i]));
+			out[attr_out_index] = attr[i]; /* assemble values of supported attributes and list of unsupported ones */
+			attr_out_index++;
+		}
 	}
 
-	return length;
+	return cleanup_attr_msg(out, attr_out_index, attr_buf);
 }
 
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
-static int oml_tx_attr_resp(struct gsm_abis_mo *mo, const uint8_t *attr, uint16_t attr_len)
+static int oml_tx_attr_resp(const struct gsm_bts *bts, struct gsm_abis_mo *mo, const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
 	uint8_t resp[MAX_VERSION_LENGTH * attr_len * 2]; /* heuristic for Attribute Response Info space requirements */
@@ -227,7 +259,19 @@ static int oml_tx_attr_resp(struct gsm_abis_mo *mo, const uint8_t *attr, uint16_
 	if (!nmsg)
 		return -ENOMEM;
 
-	len = handle_attr(mo, attr, attr_len, resp);
+	switch (mo->obj_class) {
+	case NM_OC_BTS:
+		len = handle_attrs_bts(resp, bts, attr, attr_len);
+		break;
+	case NM_OC_BASEB_TRANSC:
+		len = handle_attrs_trx(resp, gsm_bts_trx_num(bts, mo->obj_inst.trx_nr), attr, attr_len);
+		break;
+	default:
+		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
+		     get_value_string(abis_nm_obj_class_names, mo->obj_class));
+		len = -EINVAL;
+	}
+
 	if (len < 0) {
 		LOGP(DOML, LOGL_ERROR, "Tx Get Attribute Response FAILED with %d\n", len);
 		msgb_free(nmsg);
@@ -467,13 +511,11 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct tlv_parsed tp;
-	struct gsm_abis_mo *mo;
 	int rc;
 
-	if (!foh)
+	if (!foh || !bts)
 		return -EINVAL;
 
-	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
 	abis_nm_debugp_foh(DOML, foh);
 	DEBUGPC(DOML, "Rx GET ATTR\n");
 
@@ -483,13 +525,13 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	if (!TLVP_PRESENT(&tp, NM_ATT_LIST_REQ_ATTR)) {
+	if (!TLVP_PRES_LEN(&tp, NM_ATT_LIST_REQ_ATTR, 1)) {
 		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes message without Attribute List?!\n");
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	rc = oml_tx_attr_resp(mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
+	rc = oml_tx_attr_resp(bts, &bts->mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Failed to respond to O&M Get Attributes message: %s\n", strerror(-rc));
 		switch (-rc) {
