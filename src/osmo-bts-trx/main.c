@@ -106,6 +106,9 @@ int bts_model_init(struct gsm_bts *bts)
 	 * value */
 	bts->c0->nominal_power = 23;
 
+	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
+	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
+
 	bts_model_vty_init(bts);
 
 	return 0;

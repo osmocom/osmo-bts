@@ -782,6 +782,9 @@ int bts_model_init(struct gsm_bts *bts)
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;
 
+	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
+	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
+
 	bts_model_vty_init(bts);
 
 	return 0;

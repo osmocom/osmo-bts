@@ -163,6 +163,12 @@ static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 		abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL), bts->sub_model, true);
 }
 
+/* Add BTS features as 3GPP TS 52.021 §9.4.30 Manufacturer Id */
+static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
+{
+	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, _NUM_BTS_FEAT/8 + 1, bts->_features_data);
+}
+
 static inline void add_trx_attr(struct msgb *msg, struct gsm_bts_trx *trx)
 {
 	const struct phy_instance *pinst = trx_phy_instance(trx);
@@ -235,6 +241,9 @@ static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, cons
 		switch (attr[i]) {
 		case NM_ATT_SW_CONFIG:
 			add_bts_attrs(attr_buf, bts);
+			break;
+		case NM_ATT_MANUF_ID:
+			add_bts_feat(attr_buf, bts);
 			break;
 		default:
 			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS.\n", i,

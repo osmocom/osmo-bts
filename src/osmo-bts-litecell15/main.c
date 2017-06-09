@@ -91,6 +91,10 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(23);
 	}
 
+	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
+	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
+	gsm_bts_set_feature(bts, BTS_FEAT_AGCH_PCH_PROP);
+
 	bts_model_vty_init(bts);
 
 	return 0;
