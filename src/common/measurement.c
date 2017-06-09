@@ -245,7 +245,6 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	int32_t taqb_sum = 0;
 	unsigned int num_meas_sub = 0;
 	int i;
-	int32_t ms_timing_offset = 0;
 
 	/* if measurement period is not complete, abort */
 	if (!is_meas_complete(ts_pchan(lchan->ts), lchan->ts->nr,
