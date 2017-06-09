@@ -1151,9 +1151,9 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
 
-	sprintf(ver_hdr, "%02i.%02i.%02i-B%i", cOCTVC1_MAIN_VERSION_MAJOR,
-		cOCTVC1_MAIN_VERSION_MINOR, cOCTVC1_MAIN_VERSION_MAINTENANCE,
-		cOCTVC1_MAIN_VERSION_BUILD);
+	snprintf(ver_hdr, sizeof(ver_hdr), "%02i.%02i.%02i-B%i",
+		cOCTVC1_MAIN_VERSION_MAJOR, cOCTVC1_MAIN_VERSION_MINOR,
+		cOCTVC1_MAIN_VERSION_MAINTENANCE, cOCTVC1_MAIN_VERSION_BUILD);
 
 	mOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP_SWAP(air);
 
@@ -1171,7 +1171,8 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 	talloc_replace(fl1h->info.app.name, fl1h, air->szName);
 	talloc_replace(fl1h->info.app.description, fl1h, air->szDescription);
 	talloc_replace(fl1h->info.app.version, fl1h, air->szVersion);
-	osmo_strlcpy(pinst->version, ver_hdr, sizeof(pinst->version));
+	OSMO_ASSERT(strlen(ver_hdr) < sizeof(pinst->version));
+	osmo_strlcpy(pinst->version, ver_hdr, strlen(ver_hdr));
 
 	/* in a completion call-back, we take msgb ownership and must
 	 * release it before returning */
@@ -1196,7 +1197,7 @@ int l1if_check_app_version(struct gsm_bts_trx *trx)
 
 	LOGP(DL1C, LOGL_INFO, "Tx APP-INFO.req\n");
 
-	return l1if_req_compl(fl1h, msg, app_info_compl_cb, 0);
+	return l1if_req_compl(fl1h, msg, app_info_compl_cb, pinst);
 }
 
 static int trx_close_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
