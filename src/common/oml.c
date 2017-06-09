@@ -1041,6 +1041,38 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	return bts_model_chg_adm_state(bts, mo, obj, adm_state);
 }
 
+/* Check and report if the BTS number received via OML is incorrect:
+   according to 3GPP TS 52.021 §9.3 BTS number is used to distinguish between different BTS of the same Site Manager.
+   As we always have only single BTS per Site Manager (in case of Abis/IP with each BTS having dedicated OML connection
+   to BSC), the only valid values are 0 and 0xFF (means all BTS' of a given Site Manager). */
+static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct abis_om_fom_hdr *foh, bool is_formatted)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_abis_mo *mo = &bts->mo;
+	const char *form = is_formatted ?
+		"Unexpected BTS %d in formatted O&M %s (exp. 0 or 0xFF)" :
+		"Unexpected BTS %d in manufacturer O&M %s (exp. 0 or 0xFF)";
+
+	if (foh->obj_inst.bts_nr != 0 && foh->obj_inst.bts_nr != 0xff) {
+		LOGP(DOML, LOGL_ERROR, form, foh->obj_inst.bts_nr, get_value_string(abis_nm_msgtype_names,
+										    foh->msg_type));
+		LOGPC(DOML, LOGL_ERROR, "\n");
+		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+		if (trx) {
+			trx->mo.obj_inst.bts_nr = 0;
+			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
+			trx->mo.obj_inst.ts_nr = 0xff;
+			mo = &trx->mo;
+		}
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, form, foh->obj_inst.bts_nr,
+					 get_value_string(abis_nm_msgtype_names, foh->msg_type));
+
+		return true;
+	}
+
+	return false;
+}
+
 static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
@@ -1060,20 +1092,8 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		return -EIO;
 	}
 
-	if (foh->obj_inst.bts_nr != 0 && foh->obj_inst.bts_nr != 0xff) {
-		LOGP(DOML, LOGL_INFO, "Formatted O&M with BTS %d out of range.\n", foh->obj_inst.bts_nr);
-		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		if (trx) {
-			trx->mo.obj_inst.bts_nr = 0;
-			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
-			trx->mo.obj_inst.ts_nr = 0xff;
-			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "Formatted O&M with BTS %d out"
-						 " of range (0:0xFF)",
-						 foh->obj_inst.bts_nr);
-		}
+	if (report_bts_number_incorrect(bts, foh, true))
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
-	}
 
 	switch (foh->msg_type) {
 	case NM_MT_SET_BTS_ATTR:
@@ -1363,10 +1383,8 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	msg->l3h = oh->data + 1 + idstrlen;
 	foh = (struct abis_om_fom_hdr *) msg->l3h;
 
-	if (foh->obj_inst.bts_nr != 0 && foh->obj_inst.bts_nr != 0xff) {
-		LOGP(DOML, LOGL_INFO, "Manufacturer O&M with BTS %d out of range.\n", foh->obj_inst.bts_nr);
+	if (report_bts_number_incorrect(bts, foh, false))
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
-	}
 
 	ret = oml_tlv_parse(&tp, foh->data, oh->length - sizeof(*foh));
 	if (ret < 0) {
