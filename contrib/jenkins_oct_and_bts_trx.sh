@@ -1,21 +1,12 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-set -ex
-
-base="$PWD"
-deps="$base/deps"
-inst="$deps/install"
-export deps inst
-
-mkdir "$deps" || true
-rm -rf "$inst"
+# shellcheck source=contrib/jenkins_common.sh
+. $(dirname "$0")/jenkins_common.sh
 
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
 
 osmo-build-dep.sh libosmocore
-
-"$deps"/libosmocore/contrib/verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
 osmo-build-dep.sh libosmo-abis
 
@@ -24,10 +15,6 @@ cd "$deps"
 # Get osmo-pcu for pcuif_proto.h
 osmo-deps.sh osmo-pcu
 
-# Get openbsc for gsm_data_shared.*
-osmo-deps.sh openbsc
-
-cd "$deps"
 if ! test -d layer1-api;
 then
   git clone git://git.osmocom.org/octphy-2g-headers layer1-api

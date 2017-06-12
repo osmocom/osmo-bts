@@ -1,25 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-set -ex
-
-base="$PWD"
-deps="$base/deps"
-inst="$deps/install"
-export deps inst
-
-mkdir "$deps" || true
-rm -rf "$inst"
-
-# Get the headers..
-cd "$deps"
-git clone git://git.osmocom.org/openbsc || true
-cd openbsc
-git pull --rebase
-cd "$base"
+# shellcheck source=contrib/jenkins_common.sh
+. $(dirname "$0")/jenkins_common.sh
 
 osmo-build-dep.sh libosmocore
-
-"$deps"/libosmocore/contrib/verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
