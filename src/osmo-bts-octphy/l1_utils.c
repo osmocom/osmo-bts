@@ -22,6 +22,7 @@
 #include "l1_utils.h"
 #include <octphy/octvc1/gsm/octvc1_gsm_api.h>
 #include <octphy/octvc1/gsm/octvc1_gsm_id.h>
+#include <octphy/octvc1/main/octvc1_main_id.h>
 #include <octphy/octvc1/hw/octvc1_hw_api.h>
 
 const struct value_string octphy_l1sapi_names[23] = 
@@ -79,7 +80,7 @@ const struct value_string octphy_clkmgr_state_vals[8] = {
 	{ 0, NULL }
 };
 
-const struct value_string octphy_cid_vals[35] = {
+const struct value_string octphy_cid_vals[37] = {
 	{ cOCTVC1_GSM_MSG_TRX_OPEN_CID,			"TRX-OPEN" },
 	{ cOCTVC1_GSM_MSG_TRX_CLOSE_CID,		"TRX-CLOSE" },
 	{ cOCTVC1_GSM_MSG_TRX_STATUS_CID,		"TRX-STATUS" },
@@ -116,6 +117,8 @@ const struct value_string octphy_cid_vals[35] = {
 	{ cOCTVC1_GSM_MSG_TAP_FILTER_INFO_CID,		"TAP-FILTER-INFO" },
 	{ cOCTVC1_GSM_MSG_TAP_FILTER_STATS_CID,		"TAP-FILTER-STATS" },
 	{ cOCTVC1_GSM_MSG_TAP_FILTER_MODIFY_CID,	"TAP-FILTER-MODIFY" },
+	{ cOCTVC1_MAIN_MSG_APPLICATION_INFO_CID,	"MAIN_MSG_APP_INFO" },
+	{ cOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_CID,	"MAIN_MSG_APP_INFO_SYSTEM" },
 	{ cOCTVC1_GSM_MSG_TRX_START_LOGICAL_CHANNEL_RAW_DATA_INDICATIONS_CID,
 							"LCHAN-RAW-DATA-START" },
 	{ cOCTVC1_GSM_MSG_TRX_STOP_LOGICAL_CHANNEL_RAW_DATA_INDICATIONS_CID,
