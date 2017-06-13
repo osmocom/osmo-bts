@@ -194,7 +194,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	    &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
 	if (data_ind->Data.ulDataLength < 1) {
-		LOGP(DL1C, LOGL_ERROR, "chan_nr %d Rx Payload size 0\n",
+		LOGP(DL1C, LOGL_DEBUG, "chan_nr %d Rx Payload size 0\n",
 		     chan_nr);
 		return -EINVAL;
 	}
