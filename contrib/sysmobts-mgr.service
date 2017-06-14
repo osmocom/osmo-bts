@@ -1,9 +1,9 @@
 [Unit]
-Description=sysmocom sysmoBTS manager
+Description=sysmocom %p manager
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/sysmobts-mgr -ns -c /etc/osmocom/sysmobts-mgr.cfg
+ExecStart=/usr/bin/sysmobts-mgr -ns -c /etc/osmocom/%p.cfg
 Restart=always
 RestartSec=2
 
