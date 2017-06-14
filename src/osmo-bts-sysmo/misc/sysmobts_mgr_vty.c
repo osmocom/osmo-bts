@@ -284,7 +284,7 @@ DEFUN(cfg_no_action_pa_on, cfg_no_action_pa_on_cmd,
 
 DEFUN(cfg_action_bts_srv_on, cfg_action_bts_srv_on_cmd,
 	"bts-service-on",
-	"Start the systemd sysmobts.service\n")
+	"Start the systemd osmo-bts-sysmo.service\n")
 {
 	int *action = vty->index;
 	*action |= TEMP_ACT_NORM_BTS_SRV_ON;
@@ -293,7 +293,7 @@ DEFUN(cfg_action_bts_srv_on, cfg_action_bts_srv_on_cmd,
 
 DEFUN(cfg_no_action_bts_srv_on, cfg_no_action_bts_srv_on_cmd,
 	"no bts-service-on",
-	NO_STR "Start the systemd sysmobts.service\n")
+	NO_STR "Start the systemd osmo-bts-sysmo.service\n")
 {
 	int *action = vty->index;
 	*action &= ~TEMP_ACT_NORM_BTS_SRV_ON;
@@ -338,7 +338,7 @@ DEFUN(cfg_no_action_pa_off, cfg_no_action_pa_off_cmd,
 
 DEFUN(cfg_action_bts_srv_off, cfg_action_bts_srv_off_cmd,
 	"bts-service-off",
-	"Stop the systemd sysmobts.service\n")
+	"Stop the systemd osmo-bts-sysmo.service\n")
 {
 	int *action = vty->index;
 	*action |= TEMP_ACT_BTS_SRV_OFF;
@@ -347,7 +347,7 @@ DEFUN(cfg_action_bts_srv_off, cfg_action_bts_srv_off_cmd,
 
 DEFUN(cfg_no_action_bts_srv_off, cfg_no_action_bts_srv_off_cmd,
 	"no bts-service-off",
-	NO_STR "Stop the systemd sysmobts.service\n")
+	NO_STR "Stop the systemd osmo-bts-sysmo.service\n")
 {
 	int *action = vty->index;
 	*action &= ~TEMP_ACT_BTS_SRV_OFF;

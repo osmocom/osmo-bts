@@ -116,7 +116,7 @@ static void handle_normal_actions(int actions)
 		 * and used SIGCHLD/waitpid to pick up the dead processes
 		 * without invoking shell.
 		 */
-		system("/bin/systemctl start sysmobts.service");
+		system("/bin/systemctl start osmo-bts-sysmo");
 	}
 }
 
@@ -157,7 +157,7 @@ static void handle_actions(int actions)
 		 * and used SIGCHLD/waitpid to pick up the dead processes
 		 * without invoking shell.
 		 */
-		system("/bin/systemctl stop sysmobts.service");
+		system("/bin/systemctl stop osmo-bts-sysmo");
 	}
 }
 

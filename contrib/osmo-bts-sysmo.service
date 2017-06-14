@@ -17,4 +17,4 @@ CPUSchedulingPriority=1
 
 [Install]
 WantedBy=multi-user.target
-Alias=osmo-bts-sysmo.service
+Alias=sysmobts.service
