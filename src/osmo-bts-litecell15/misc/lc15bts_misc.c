@@ -114,12 +114,13 @@ void lc15bts_check_temp(int no_rom_write)
 
 	for (i = 0; i < ARRAY_SIZE(temp_data); i++) {
 		int ret;
-		rc = lc15bts_par_get_int(temp_data[i].ee_par, &ret);
+		rc = lc15bts_par_get_int(tall_mgr_ctx, temp_data[i].ee_par, &ret);
 		temp_old[i] = ret * 1000;
 
 		temp_cur[i] = lc15bts_temp_get(temp_data[i].sensor);
 		if (temp_cur[i] < 0 && temp_cur[i] > -1000) {
-			LOGP(DTEMP, LOGL_ERROR, "Error reading temperature (%d)\n", temp_data[i].sensor);
+			LOGP(DTEMP, LOGL_ERROR, "Error reading temperature (%d): unexpected value %d\n",
+			     temp_data[i].sensor, temp_cur[i]);
 			continue;
 		}
 	
@@ -132,8 +133,7 @@ void lc15bts_check_temp(int no_rom_write)
 			     temp_cur[i]/1000, temp_old[i]%1000);
 
 			if (!no_rom_write) {
-				rc = lc15bts_par_set_int(temp_data[i].ee_par,
-						  temp_cur[i]/1000);
+				rc = lc15bts_par_set_int(tall_mgr_ctx, temp_data[i].ee_par, temp_cur[i]/1000);
 				if (rc < 0)
 					LOGP(DTEMP, LOGL_ERROR, "error writing new %s "
 					     "max temp %d (%s)\n", temp_data[i].name,
@@ -157,7 +157,7 @@ int lc15bts_update_hours(int no_rom_write)
 	if (last_update == 0) {
 		last_update = now;
 
-		rc = lc15bts_par_get_int(LC15BTS_PAR_HOURS, &op_hrs);
+		rc = lc15bts_par_get_int(tall_mgr_ctx, LC15BTS_PAR_HOURS, &op_hrs);
 		if (rc < 0) {
 			LOGP(DTEMP, LOGL_ERROR, "Unable to read "
 			     "operational hours: %d (%s)\n", rc,
@@ -172,7 +172,7 @@ int lc15bts_update_hours(int no_rom_write)
 	}
 
 	if (now >= last_update + 3600) {
-		rc = lc15bts_par_get_int(LC15BTS_PAR_HOURS, &op_hrs);
+		rc = lc15bts_par_get_int(tall_mgr_ctx, LC15BTS_PAR_HOURS, &op_hrs);
 		if (rc < 0) {
 			LOGP(DTEMP, LOGL_ERROR, "Unable to read "
 			     "operational hours: %d (%s)\n", rc,
@@ -187,7 +187,7 @@ int lc15bts_update_hours(int no_rom_write)
 		     op_hrs);
 
 		if (!no_rom_write) {
-			rc = lc15bts_par_set_int(LC15BTS_PAR_HOURS, op_hrs);
+			rc = lc15bts_par_set_int(tall_mgr_ctx, LC15BTS_PAR_HOURS, op_hrs);
 			if (rc < 0)
 				return rc;
 		}

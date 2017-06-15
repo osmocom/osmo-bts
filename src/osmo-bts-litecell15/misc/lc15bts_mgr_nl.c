@@ -116,7 +116,7 @@ static void respond_to(struct sockaddr_in *src, struct osmo_fd *fd,
 		}
 
 		/* fetch the serial number */
-		lc15bts_par_get_int(LC15BTS_PAR_SERNR, &serno);
+		lc15bts_par_get_int(tall_mgr_ctx, LC15BTS_PAR_SERNR, &serno);
 		snprintf(ser_str, sizeof(ser_str), "%d", serno);
 
 		/* fetch the model and trx number */

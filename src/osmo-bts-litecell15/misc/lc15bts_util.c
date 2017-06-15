@@ -28,9 +28,12 @@
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
-
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/msgb.h>
 
 #include "lc15bts_par.h"
+
+void *tall_util_ctx;
 
 enum act {
 	ACT_GET,
@@ -101,6 +104,9 @@ int main(int argc, char **argv)
 	enum lc15bts_par par;
 	int rc, val;
 
+	tall_util_ctx = talloc_named_const(NULL, 1, "lc15 utils");
+	msgb_talloc_ctx_init(tall_util_ctx, 0);
+
 	rc = parse_options(argc, argv);
 	if (rc < 0)
 		exit(2);
@@ -120,7 +126,7 @@ int main(int argc, char **argv)
 
 	switch (action) {
 	case ACT_GET:
-		rc = lc15bts_par_get_int(par, &val);
+		rc = lc15bts_par_get_int(tall_util_ctx, par, &val);
 		if (rc < 0) {
 			fprintf(stderr, "Error %d\n", rc);
 			goto err;
@@ -128,7 +134,7 @@ int main(int argc, char **argv)
 		printf("%d\n", val);
 		break;
 	case ACT_SET:
-		rc = lc15bts_par_get_int(par, &val);
+		rc = lc15bts_par_get_int(tall_util_ctx, par, &val);
 		if (rc < 0) {
 			fprintf(stderr, "Error %d\n", rc);
 			goto err;
@@ -137,7 +143,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Parameter is already set!\r\n");
 			goto err;
 		}
-		rc = lc15bts_par_set_int(par, atoi(write_arg));
+		rc = lc15bts_par_set_int(tall_util_ctx, par, atoi(write_arg));
 		if (rc < 0) {
 			fprintf(stderr, "Error %d\n", rc);
 			goto err;

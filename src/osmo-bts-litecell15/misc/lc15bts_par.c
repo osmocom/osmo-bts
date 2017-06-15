@@ -35,12 +35,9 @@
 #include <sys/stat.h>
 
 #include <osmocom/core/utils.h>
+#include <osmocom/core/talloc.h>
 
 #include "lc15bts_par.h"
-
-
-#define FACTORY_ROM_PATH	"/mnt/rom/factory"
-#define USER_ROM_PATH		"/mnt/rom/user"
 
 const struct value_string lc15bts_par_names[_NUM_LC15BTS_PAR+1] = {
 	{ LC15BTS_PAR_TEMP_SUPPLY_MAX,	"temp-supply-max" },
@@ -80,19 +77,32 @@ int lc15bts_par_is_int(enum lc15bts_par par)
 	}
 }
 
-int lc15bts_par_get_int(enum lc15bts_par par, int *ret)
+FILE *lc15bts_par_get_path(void *ctx, enum lc15bts_par par, const char* mode)
 {
-	char fpath[PATH_MAX];
+	char *fpath;
 	FILE *fp;
-	int rc;
 
 	if (par >= _NUM_LC15BTS_PAR)
-		return -ENODEV;
+		return NULL;
 
-	snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, par));
-	fpath[sizeof(fpath)-1] = '\0';
+	fpath = talloc_asprintf(ctx, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, par));
+	if (!fpath)
+		return NULL;
 
-	fp = fopen(fpath, "r");
+	fp = fopen(fpath, mode);
+	if (!fp)
+		fprintf(stderr, "Failed to open %s due to '%s' error\n", fpath, strerror(errno));
+
+	talloc_free(fpath);
+
+	return fp;
+}
+
+int lc15bts_par_get_int(void *ctx, enum lc15bts_par par, int *ret)
+{
+	FILE *fp = lc15bts_par_get_path(ctx, par, "r");
+	int rc;
+
 	if (fp == NULL) {
 		return -errno;
 	}
@@ -106,19 +116,11 @@ int lc15bts_par_get_int(enum lc15bts_par par, int *ret)
 	return 0;
 }
 
-int lc15bts_par_set_int(enum lc15bts_par par, int val)
+int lc15bts_par_set_int(void *ctx, enum lc15bts_par par, int val)
 {
-	char fpath[PATH_MAX];
-	FILE *fp;
+	FILE *fp = lc15bts_par_get_path(ctx, par, "w");
 	int rc;
 
-	if (par >= _NUM_LC15BTS_PAR)
-		return -ENODEV;
-
-	snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, par));
-	fpath[sizeof(fpath)-1] = '\0';
-
-	fp = fopen(fpath, "w");
 	if (fp == NULL) {
 		return -errno;
 	}
@@ -132,20 +134,11 @@ int lc15bts_par_set_int(enum lc15bts_par par, int val)
 	return 0;
 }
 
-int lc15bts_par_get_buf(enum lc15bts_par par, uint8_t *buf,
-			 unsigned int size)
+int lc15bts_par_get_buf(void *ctx, enum lc15bts_par par, uint8_t *buf, unsigned int size)
 {	
-	char fpath[PATH_MAX];
-	FILE *fp;
+	FILE *fp = lc15bts_par_get_path(ctx, par, "rb");
 	int rc;
 
-	if (par >= _NUM_LC15BTS_PAR)
-		return -ENODEV;
-
-	snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, par));
-	fpath[sizeof(fpath)-1] = '\0';
-
-	fp = fopen(fpath, "rb");
 	if (fp == NULL) {
 		return -errno;
 	}
@@ -157,20 +150,11 @@ int lc15bts_par_get_buf(enum lc15bts_par par, uint8_t *buf,
 	return rc;
 }
 
-int lc15bts_par_set_buf(enum lc15bts_par par, const uint8_t *buf,
-			 unsigned int size)
+int lc15bts_par_set_buf(void *ctx, enum lc15bts_par par, const uint8_t *buf, unsigned int size)
 {
-        char fpath[PATH_MAX];
-        FILE *fp;
+        FILE *fp = lc15bts_par_get_path(ctx, par, "wb");
         int rc;
 
-        if (par >= _NUM_LC15BTS_PAR)
-                return -ENODEV;
-
-        snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, par));
-        fpath[sizeof(fpath)-1] = '\0';
-
-        fp = fopen(fpath, "wb");
         if (fp == NULL) {
                 return -errno;
 	}
