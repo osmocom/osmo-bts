@@ -315,6 +315,12 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 			}
 
+			if (bts->si2q_index > SI2Q_MAX_NUM || bts->si2q_count > SI2Q_MAX_NUM) {
+				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater witn impossible parameters: index %u, count %u"
+				     "should be <= %u\n", bts->si2q_index, bts->si2q_count, SI2Q_MAX_NUM);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+			}
+
 			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
 			memcpy(GSM_BTS_SI2Q(bts, bts->si2q_index), TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 			break;
