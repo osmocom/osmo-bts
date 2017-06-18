@@ -6,8 +6,6 @@
 
 int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm);
 
-int trx_meas_check_compute(struct gsm_bts_trx *trx, uint32_t fn);
-
 int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn);
 
 #endif
