@@ -18,6 +18,10 @@ case "$bts_model" in
     ./contrib/jenkins_oct.sh
   ;;
 
+  lc15)
+    ./contrib/jenkins_lc15.sh
+  ;;
+
   trx)
     ./contrib/jenkins_bts_trx.sh
   ;;
