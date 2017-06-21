@@ -15,18 +15,7 @@ cd "$deps"
 # Get osmo-pcu for pcuif_proto.h
 osmo-deps.sh osmo-pcu
 
-if ! test -d layer1-api;
-then
-  git clone git://git.osmocom.org/octphy-2g-headers layer1-api
-fi
-cd layer1-api
-git fetch origin
-if [ $FIRMWARE_VERSION = "master" ];
-then
-git reset --hard origin/master
-else
-git reset --hard $FIRMWARE_VERSION
-fi
+osmo-layer1-headers.sh oct "$FIRMWARE_VERSION"
 
 cd "$base"
 
@@ -42,7 +31,7 @@ autoreconf --install --force
 configure_flags="\
   --with-openbsc=$deps/openbsc/openbsc/include \
   --with-osmo-pcu=$deps/osmo-pcu/include \
-  --with-octsdr-2g=$deps/layer1-api/ \
+  --with-octsdr-2g=$deps/layer1-headers/ \
   --enable-octphy \
   --enable-trx \
   "

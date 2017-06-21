@@ -11,15 +11,7 @@ export LD_LIBRARY_PATH="$inst/lib"
 osmo-build-dep.sh libosmo-abis
 
 cd "$deps"
-if ! test -d litecell15-fw;
-then
-  git clone https://gitlab.com/nrw_litecell15/litecell15-fw.git
-fi
-
-cd litecell15-fw
-git fetch origin
-git reset --hard origin/$FIRMWARE_VERSION
-
+osmo-layer1-headers.sh lc15 "$FIRMWARE_VERSION"
 cd "$base"
 
 set +x
@@ -31,7 +23,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-litecell15="$deps/litecell15-fw/" --enable-litecell15
+./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-litecell15="$deps/layer1-headers/" --enable-litecell15
 $MAKE "$PARALLEL_MAKE"
 $MAKE check || cat-testlogs.sh
-DISTCHECK_CONFIGURE_FLAGS="--with-litecell15=$deps/litecell15-fw/ --with-openbsc=$deps/openbsc/openbsc/include --enable-litecell15" $MAKE distcheck || cat-testlogs.sh
+DISTCHECK_CONFIGURE_FLAGS="--with-litecell15=$deps/layer1-headers/ --with-openbsc=$deps/openbsc/openbsc/include --enable-litecell15" $MAKE distcheck || cat-testlogs.sh

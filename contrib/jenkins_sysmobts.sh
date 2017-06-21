@@ -11,22 +11,9 @@ export LD_LIBRARY_PATH="$inst/lib"
 osmo-build-dep.sh libosmo-abis
 
 cd "$deps"
-if ! test -d layer1-api;
-then
-  git clone git://git.sysmocom.de/sysmo-bts/layer1-api.git layer1-api
-fi
-
-cd layer1-api
-git fetch origin
-if [ $FIRMWARE_VERSION = "master" ];
-then
-git reset --hard origin/master
-else
-git reset --hard $FIRMWARE_VERSION
-fi
+osmo-layer1-headers.sh sysmo "$FIRMWARE_VERSION"
 mkdir -p "$inst/include/sysmocom/femtobts"
-cp include/*.h "$inst/include/sysmocom/femtobts/"
-
+ln -s $deps/layer1-headers/include/* "$inst/include/sysmocom/femtobts/"
 cd "$base"
 
 set +x
