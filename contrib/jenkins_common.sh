@@ -25,9 +25,30 @@ cd "$deps"
 # Get libosmocore for verify_value_string_arrays_are_terminated.py
 osmo-deps.sh libosmocore
 
-# Get OpenBSC for gsm_data_shared.*
-osmo-deps.sh openbsc
-
 cd "$base"
 
 "$deps"/libosmocore/contrib/verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
+
+# generic project build function, usage:
+# build "PROJECT-NAME" "CONFIGURE OPTIONS"
+build_bts() {
+    set +x
+    echo
+    echo
+    echo
+    echo " =============================== $1 ==============================="
+    echo
+    set -x
+
+    cd $deps
+    osmo-deps.sh openbsc
+    conf_flags="--with-openbsc=$deps/openbsc/openbsc/include"
+    cd $base
+    shift
+    conf_flags="$conf_flags $*"
+    autoreconf --install --force
+    ./configure $conf_flags
+    $MAKE $PARALLEL_MAKE
+    $MAKE check || cat-testlogs.sh
+    DISTCHECK_CONFIGURE_FLAGS=$conf_flags $MAKE distcheck || cat-testlogs.sh
+}

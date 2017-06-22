@@ -13,18 +13,7 @@ osmo-build-dep.sh libosmo-abis
 
 cd "$deps"
 osmo-layer1-headers.sh lc15 "$FIRMWARE_VERSION"
-cd "$base"
 
-set +x
-echo
-echo
-echo
-echo " =============================== osmo-bts-lc15 ==============================="
-echo
-set -x
+configure_flags="--with-litecell15=$deps/layer1-headers/inc/ --enable-litecell15"
 
-autoreconf --install --force
-./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-litecell15="$deps/layer1-headers/inc/" --enable-litecell15
-$MAKE $PARALLEL_MAKE
-$MAKE check || cat-testlogs.sh
-DISTCHECK_CONFIGURE_FLAGS="--with-litecell15=$deps/layer1-headers/inc/ --with-openbsc=$deps/openbsc/openbsc/include --enable-litecell15" $MAKE distcheck || cat-testlogs.sh
+build_bts "osmo-bts-lc15" "$configure_flags"

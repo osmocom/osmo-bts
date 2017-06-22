@@ -18,28 +18,11 @@ osmo-deps.sh osmo-pcu
 
 osmo-layer1-headers.sh oct "$FIRMWARE_VERSION"
 
-cd "$base"
-
-set +x
-echo
-echo
-echo
-echo " =============================== osmo-bts-octphy+trx ==============================="
-echo
-set -x
-
-autoreconf --install --force
 configure_flags="\
-  --with-openbsc=$deps/openbsc/openbsc/include \
   --with-osmo-pcu=$deps/osmo-pcu/include \
   --with-octsdr-2g=$deps/layer1-headers/ \
   --enable-octphy \
   --enable-trx \
   "
-./configure $configure_flags
-$MAKE $PARALLEL_MAKE
-$MAKE check \
-  || cat-testlogs.sh
-DISTCHECK_CONFIGURE_FLAGS="$configure_flags" \
-  $MAKE distcheck \
-  || cat-testlogs.sh
+
+build_bts "osmo-bts-octphy+trx" "$configure_flags"
