@@ -23,7 +23,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-litecell15="$deps/layer1-headers/" --enable-litecell15
-$MAKE "$PARALLEL_MAKE"
+./configure --with-openbsc="$deps/openbsc/openbsc/include" --with-litecell15="$deps/layer1-headers/inc/" --enable-litecell15
+$MAKE $PARALLEL_MAKE
 $MAKE check || cat-testlogs.sh
-DISTCHECK_CONFIGURE_FLAGS="--with-litecell15=$deps/layer1-headers/ --with-openbsc=$deps/openbsc/openbsc/include --enable-litecell15" $MAKE distcheck || cat-testlogs.sh
+DISTCHECK_CONFIGURE_FLAGS="--with-litecell15=$deps/layer1-headers/inc/ --with-openbsc=$deps/openbsc/openbsc/include --enable-litecell15" $MAKE distcheck || cat-testlogs.sh
