@@ -94,6 +94,20 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 	return GSM_RTP_DURATION;
 }
 
+/*! limit number of queue entries to %u; drops any surplus messages */
+static void queue_limit_to(const char *prefix, struct llist_head *queue, unsigned int limit)
+{
+	int count = llist_count(queue);
+
+	if (count > limit)
+		LOGP(DL1P, LOGL_NOTICE, "%s: freeing %d queued frames\n", prefix, count-limit);
+	while (count > limit) {
+		struct msgb *tmp = msgb_dequeue(queue);
+		msgb_free(tmp);
+		count--;
+	}
+}
+
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data
  * in order to wrap femtobts header arround l2 data, there must be enough space
  * in front and behind data pointer */
@@ -1003,20 +1017,10 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	/* if loopback is enabled, also queue received RTP data */
 	if (lchan->loopback) {
-		struct msgb *tmp;
-		int count = 0;
-
 		/* make sure the queue doesn't get too long */
-		llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-			count++;
-		while (count >= 1) {
-			tmp = msgb_dequeue(&lchan->dl_tch_queue);
-			msgb_free(tmp);
-			count--;
-		}
-
+		queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
+		/* add new frame to queue */
 		msgb_enqueue(&lchan->dl_tch_queue, msg);
-
 		/* Return 1 to signal that we're still using msg and it should not be freed */
 		return 1;
 	}
@@ -1161,9 +1165,8 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		     uint32_t timestamp, bool marker)
 {
 	struct gsm_lchan *lchan = rs->priv;
-	struct msgb *msg, *tmp;
+	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
-	int count = 0;
 
 	msg = l1sap_msgb_alloc(rtp_pl_len);
 	if (!msg)
@@ -1179,13 +1182,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	rtpmsg_ts(msg) = timestamp;
 
 	/* make sure the queue doesn't get too long */
-	llist_for_each_entry(tmp, &lchan->dl_tch_queue, list)
-	count++;
-	while (count >= 2) {
-		tmp = msgb_dequeue(&lchan->dl_tch_queue);
-		msgb_free(tmp);
-		count--;
-	}
+	queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
 
 	msgb_enqueue(&lchan->dl_tch_queue, msg);
 }
