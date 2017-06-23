@@ -51,6 +51,16 @@
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/msg_utils.h>
 
+static char *dump_gsmtime(const struct gsm_time *tm)
+{
+	static char buf[64];
+
+	snprintf(buf, sizeof(buf), "%06u/%02u/%02u/%02u/%02u",
+		 tm->fn, tm->t1, tm->t2, tm->t3, tm->fn%52);
+	buf[sizeof(buf)-1] = '\0';
+	return buf;
+}
+
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
 {
@@ -595,6 +605,39 @@ static int l1sap_mph_info_cnf(struct gsm_bts_trx *trx,
 	return rc;
 }
 
+/*! handling for PDTCH loopback mode, used for BER testing
+ *  \param[in] lchan logical channel on which we operate
+ *  \param[in] rts_ind PH-RTS.ind from PHY which we process
+ *  \param[out] msg Message buffer to which we write data
+ *
+ *  The function will fill \a msg, from which the caller can then
+ *  subsequently build a PH-DATA.req */
+static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
+					const struct ph_data_param *rts_ind,
+					struct msgb *msg, const struct gsm_time *tm)
+{
+	struct msgb *loop_msg;
+	uint8_t *p;
+
+	/* de-queue response message (loopback) */
+	loop_msg = msgb_dequeue(&lchan->dl_tch_queue);
+	if (!loop_msg) {
+		LOGP(DL1P, LOGL_NOTICE, "%s %s: no looped PDTCH message, sending empty\n",
+		     gsm_lchan_name(lchan), dump_gsmtime(tm));
+		/* empty downlink message */
+		p = msgb_put(msg, GSM_MACBLOCK_LEN);
+		memset(p, 0, GSM_MACBLOCK_LEN);
+	} else {
+		LOGP(DL1P, LOGL_NOTICE, "%s %s: looped PDTCH message of %u bytes\n",
+		     gsm_lchan_name(lchan), dump_gsmtime(tm), msgb_l2len(loop_msg));
+		/* copy over data from queued response message */
+		p = msgb_put(msg, msgb_l2len(loop_msg));
+		memcpy(p, msgb_l2(loop_msg), msgb_l2len(loop_msg));
+		msgb_free(loop_msg);
+	}
+	return 0;
+}
+
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -618,21 +661,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
-		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
-
-	if (ts_is_pdch(&trx->ts[tn])) {
-		if (L1SAP_IS_PTCCH(rts_ind->fn)) {
-			pcu_tx_rts_req(&trx->ts[tn], 1, fn, 1 /* ARFCN */,
-				L1SAP_FN2PTCCHBLOCK(fn));
-
-			return 0;
-		}
-		pcu_tx_rts_req(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
-			L1SAP_FN2MACBLOCK(fn));
-
-		return 0;
-	}
+	DEBUGP(DL1P, "Rx PH-RTS.ind %s chan_nr=%d link_id=%d\n",
+		dump_gsmtime(&g_time), chan_nr, link_id);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {
@@ -645,7 +675,25 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		msg);
 	msg->l2h = msg->l1h + sizeof(*l1sap);
 
-	if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
+	if (ts_is_pdch(&trx->ts[tn])) {
+		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+		if (lchan && lchan->loopback) {
+			if (!L1SAP_IS_PTCCH(rts_ind->fn))
+				lchan_pdtch_ph_rts_ind_loop(lchan, rts_ind, msg, &g_time);
+			/* continue below like for SACCH/FACCH/... */
+		} else {
+			/* forward RTS.ind to PCU */
+			if (L1SAP_IS_PTCCH(rts_ind->fn)) {
+				pcu_tx_rts_req(&trx->ts[tn], 1, fn, 1 /* ARFCN */,
+						L1SAP_FN2PTCCHBLOCK(fn));
+			} else {
+				pcu_tx_rts_req(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+						L1SAP_FN2MACBLOCK(fn));
+			}
+			/* return early, PCU takes care of rest */
+			return 0;
+		}
+	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
 		/* get them from bts->si_buf[] */
 		si = bts_sysinfo_get(trx->bts, &g_time);
@@ -916,25 +964,39 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
+		if (!lchan)
+			LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=%d\n", chan_nr);
+		if (lchan && lchan->loopback) {
+			/* we are in loopback mode (for BER testing)
+			 * mode and need to enqeue the frame to be
+			 * returned in downlink */
+			queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
+			msgb_enqueue(&lchan->dl_tch_queue, msg);
+
+			/* Return 1 to signal that we're still using msg
+			 * and it should not be freed */
+			return 1;
+		}
+
+		/* don't send bad frames to PCU */
 		if (len == 0)
 			return -EINVAL;
 		if (L1SAP_IS_PTCCH(fn)) {
 			pcu_tx_data_ind(&trx->ts[tn], 1, fn,
-				0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
+					0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
 					data, len, rssi, data_ind->ber10k,
 					data_ind->ta_offs_qbits,
 					data_ind->lqual_cb);
-
-			return 0;
+		} else {
+			/* drop incomplete UL block */
+			if (pr_info != PRES_INFO_BOTH)
+				return 0;
+			/* PDTCH / PACCH frame handling */
+			pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+					L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
+					data_ind->ta_offs_qbits, data_ind->lqual_cb);
 		}
-		/* drop incomplete UL block */
-		if (pr_info != PRES_INFO_BOTH)
-			return 0;
-		/* PDTCH / PACCH frame handling */
-		pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
-			L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
-				data_ind->ta_offs_qbits, data_ind->lqual_cb);
-
 		return 0;
 	}
 
