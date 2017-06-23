@@ -1168,6 +1168,11 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
 
+	/* if we're in loopback mode, we don't accept frames from the
+	 * RTP socket anymore */
+	if (lchan->loopback)
+		return;
+
 	msg = l1sap_msgb_alloc(rtp_pl_len);
 	if (!msg)
 		return;
