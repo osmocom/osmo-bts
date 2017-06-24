@@ -6,7 +6,7 @@
  * sockets and their respective protocol encoding/parsing.
  *
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
- * Copyright (C) 2016  Harald Welte <laforge@gnumonks.org>
+ * Copyright (C) 2016-2017  Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -84,7 +84,7 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host_local,
 /* close socket + unregister osmo_fd */
 static void trx_udp_close(struct osmo_fd *ofd)
 {
-	if (ofd->fd > 0) {
+	if (ofd->fd >= 0) {
 		osmo_fd_unregister(ofd);
 		close(ofd->fd);
 		ofd->fd = -1;
@@ -116,7 +116,11 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return 0;
 	}
 
-	sscanf(buf, "IND CLOCK %u", &fn);
+	if (sscanf(buf, "IND CLOCK %u", &fn) != 1) {
+		LOGP(DTRX, LOGL_ERROR, "Unable to parse '%s'\n", buf);
+		return 0;
+	}
+
 	LOGP(DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
 
 	if (fn >= GSM_HYPERFRAME) {
@@ -208,6 +212,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		va_end(ap);
 	} else
 		snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "CMD %s", cmd);
+	tcm->cmd[sizeof(tcm->cmd)-1] = '\0';
 	tcm->cmd_len = strlen(cmd);
 	tcm->critical = critical;
 	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
