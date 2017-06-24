@@ -471,42 +471,15 @@ inval_mode1:
 
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
-			if (chan != TRXC_TCHF) { /* HR */
+			if (chan != TRXC_TCHF) /* HR */
 				len = 15;
-				if (msgb_l2len(msg_tch) >= 1
-				 && (msg_tch->l2h[0] & 0xf0) != 0x00) {
-					LOGP(DL1C, LOGL_NOTICE, "%s "
-						"Transmitting 'bad "
-						"HR frame' trx=%u ts=%u at "
-						"fn=%u.\n",
-						trx_chan_desc[chan].name,
-						l1t->trx->nr, tn, fn);
-					goto free_bad_msg;
-				}
-				break;
-			}
-			len = GSM_FR_BYTES;
-			if (msgb_l2len(msg_tch) >= 1
-			 && (msg_tch->l2h[0] >> 4) != 0xd) {
-				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
-					"FR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
-				goto free_bad_msg;
-			}
+			else
+				len = GSM_FR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
 			if (chan != TRXC_TCHF)
 				goto inval_mode2;
 			len = GSM_EFR_BYTES;
-			if (msgb_l2len(msg_tch) >= 1
-			 && (msg_tch->l2h[0] >> 4) != 0xc) {
-				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
-					"EFR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
-				goto free_bad_msg;
-			}
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
 			len = osmo_amr_rtp_dec(msg_tch->l2h, msgb_l2len(msg_tch),
@@ -1146,10 +1119,12 @@ bfi:
 				if (lchan->tch.dtx.ul_sid)
 					return 0; /* DTXu: pause in progress */
 				memset(tch_data, 0, GSM_FR_BYTES);
+				tch_data[0] = 0xd0;
 				rc = GSM_FR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
 				memset(tch_data, 0, GSM_EFR_BYTES);
+				tch_data[0] = 0xc0;
 				rc = GSM_EFR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
