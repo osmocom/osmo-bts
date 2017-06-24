@@ -197,51 +197,6 @@ DEFUN(cfg_bts_no_timing_advance_loop, cfg_bts_no_timing_advance_loop_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_settsc, cfg_bts_settsc_cmd,
-	"settsc",
-	"Use SETTSC to configure transceiver\n")
-{
-	settsc_enabled = 1;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_bts_setbsic, cfg_bts_setbsic_cmd,
-	"setbsic",
-	"Use SETBSIC to configure transceiver\n")
-{
-	setbsic_enabled = 1;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_bts_no_settsc, cfg_bts_no_settsc_cmd,
-	"no settsc",
-	NO_STR "Disable SETTSC to configure transceiver\n")
-{
-	settsc_enabled = 0;
-	if (!setbsic_enabled) {
-		vty_out(vty, "%% Auto enabling SETBSIC.%s", VTY_NEWLINE);
-		setbsic_enabled = 1;
-	}
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_bts_no_setbsic, cfg_bts_no_setbsic_cmd,
-	"no setbsic",
-	NO_STR "Disable SETBSIC to configure transceiver\n")
-{
-	setbsic_enabled = 0;
-	if (!settsc_enabled) {
-		vty_out(vty, "%% Auto enabling SETTSC.%s", VTY_NEWLINE);
-		settsc_enabled = 1;
-	}
-
-	return CMD_SUCCESS;
-}
-
-
 DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	"osmotrx maxdly <0-31>",
 	"Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
@@ -322,7 +277,6 @@ DEFUN(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 		vty_out(vty, "OFF: %d%s", trx_if_cmd_poweroff(l1h), VTY_NEWLINE);
 	else {
 		vty_out(vty, "ON: %d%s", trx_if_cmd_poweron(l1h), VTY_NEWLINE);
-		settsc_enabled = 1;
 	}
 
 	return CMD_SUCCESS;
@@ -503,6 +457,30 @@ DEFUN(cfg_phy_base_port, cfg_phy_base_port_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
+	"osmotrx legacy-setbsic",
+	"Use SETBSIC to configure transceiver (use ONLY with OpenBTS Transceiver!)\n")
+{
+	struct phy_link *plink = vty->index;
+	plink->u.osmotrx.use_legacy_setbsic = true;
+
+	vty_out(vty, "%% You have enabled SETBSIC, which is not supported by OsmoTRX "
+		"but only useful if you want to interface with legacy OpenBTS Transceivers%s",
+		VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
+	"no osmotrx legacy-setbsic",
+	NO_STR "Disable Legacy SETBSIC to configure transceiver\n")
+{
+	struct phy_link *plink = vty->index;
+	plink->u.osmotrx.use_legacy_setbsic = false;
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 {
 	if (plink->u.osmotrx.local_ip)
@@ -523,6 +501,9 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		plink->u.osmotrx.clock_advance, VTY_NEWLINE);
 	vty_out(vty, " osmotrx rts-advance %d%s",
 		plink->u.osmotrx.rts_advance, VTY_NEWLINE);
+
+	if (plink->u.osmotrx.use_legacy_setbsic)
+		vty_out(vty, " osmotrx leyacy-setbsic%s", VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
@@ -565,10 +546,6 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, " no ms-power-loop%s", VTY_NEWLINE);
 	vty_out(vty, " %stiming-advance-loop%s", (trx_ta_loop) ? "":"no ",
 		VTY_NEWLINE);
-	if (settsc_enabled)
-		vty_out(vty, " settsc%s", VTY_NEWLINE);
-	if (setbsic_enabled)
-		vty_out(vty, " setbsic%s", VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
@@ -586,16 +563,14 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_no_ms_power_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_timing_advance_loop_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timing_advance_loop_cmd);
-	install_element(BTS_NODE, &cfg_bts_settsc_cmd);
-	install_element(BTS_NODE, &cfg_bts_setbsic_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_settsc_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_setbsic_cmd);
 
 	install_element(PHY_NODE, &cfg_phy_base_port_cmd);
 	install_element(PHY_NODE, &cfg_phy_fn_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_rts_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_transc_ip_cmd);
 	install_element(PHY_NODE, &cfg_phy_osmotrx_ip_cmd);
+	install_element(PHY_NODE, &cfg_phy_setbsic_cmd);
+	install_element(PHY_NODE, &cfg_phy_no_setbsic_cmd);
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);

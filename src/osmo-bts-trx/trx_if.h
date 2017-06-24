@@ -2,8 +2,6 @@
 #define TRX_IF_H
 
 extern int transceiver_available;
-extern int settsc_enabled;
-extern int setbsic_enabled;
 
 struct trx_l1h;
 

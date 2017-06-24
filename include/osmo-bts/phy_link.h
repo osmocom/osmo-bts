@@ -47,6 +47,7 @@ struct phy_link {
 
 			uint32_t clock_advance;
 			uint32_t rts_advance;
+			bool use_legacy_setbsic;
 		} osmotrx;
 		struct {
 			char *mcast_dev;		/* Network device for multicast */

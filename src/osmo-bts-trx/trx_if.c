@@ -51,8 +51,6 @@
 //#define TOA_RSSI_DEBUG
 
 int transceiver_available = 0;
-int settsc_enabled = 0;
-int setbsic_enabled = 0;
 
 #define TRX_MAX_BURST_LEN	512
 
@@ -248,21 +246,21 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h)
 /*! Send "SETTSC" command to TRX */
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 {
-	if (!settsc_enabled)
+	struct phy_instance *pinst = l1h->phy_inst;
+	if (pinst->phy_link->u.osmotrx.use_legacy_setbsic)
 		return 0;
-	/* if TSC is enabled only, the positive response is mandatory */
-	return trx_ctrl_cmd(l1h, (setbsic_enabled) ? 0 : 1, "SETTSC", "%d",
-		tsc);
+
+	return trx_ctrl_cmd(l1h, 1, "SETTSC", "%d", tsc);
 }
 
 /*! Send "SETBSIC" command to TRX */
 int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 {
-	if (!setbsic_enabled)
+	struct phy_instance *pinst = l1h->phy_inst;
+	if (!pinst->phy_link->u.osmotrx.use_legacy_setbsic)
 		return 0;
-	/* if BSIC is enabled only, the positive response is mandatory */
-	return trx_ctrl_cmd(l1h, (settsc_enabled) ? 0 : 1, "SETBSIC", "%d",
-		bsic);
+
+	return trx_ctrl_cmd(l1h, 1, "SETBSIC", "%d", bsic);
 }
 
 /*! Send "SETRXGAIN" command to TRX */
