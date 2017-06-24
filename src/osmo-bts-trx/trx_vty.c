@@ -60,8 +60,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 	if (!transceiver_available) {
 		vty_out(vty, "transceiver is not connected%s", VTY_NEWLINE);
 	} else {
-		vty_out(vty, "transceiver is connected, current fn=%u%s",
-			transceiver_last_fn, VTY_NEWLINE);
+		vty_out(vty, "transceiver is connected%s", VTY_NEWLINE);
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {

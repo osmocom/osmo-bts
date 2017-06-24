@@ -2,7 +2,7 @@
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
- * (C) 2015 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <inttypes.h>
+#include <sys/timerfd.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
@@ -46,12 +48,6 @@
 #include "loops.h"
 
 extern void *tall_bts_ctx;
-
-/* clock states */
-static uint32_t transceiver_lost;
-uint32_t transceiver_last_fn;
-static struct timeval transceiver_clock_tv;
-static struct osmo_timer_list transceiver_clock_timer;
 
 /* Enable this to multiply TOA of RACH by 10.
  * This is useful to check tenth of timing advances with RSSI test tool.
@@ -1409,82 +1405,232 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	return 0;
 }
 
-
 /*
- * frame clock
+ * TRX frame clock handling
+ *
+ * In a "normal" synchronous PHY layer, we would be polled every time
+ * the PHY needs data for a given frame number.  However, the
+ * OpenBTS-inherited TRX protocol works differently:  We (L1) must
+ * autonomously send burst data based on our own clock, and every so
+ * often (currently every ~ 216 frames), we get a clock indication from
+ * the TRX.
+ *
+ * We're using a MONOTONIC timerfd interval timer for the 4.615ms frame
+ * intervals, and then compute + send the 8 bursts for that frame.
+ *
+ * Upon receiving a clock indication from the TRX, we compensate
+ * accordingly: If we were transmitting too fast, we're delaying the
+ * next interval timer accordingly.  If we were too slow, we immediately
+ * send burst data for the missing frame numbers.
  */
 
-#define FRAME_DURATION_uS	4615
+/*! clock state of a given TRX */
+struct osmo_trx_clock_state {
+	/*! number of FN periods without TRX clock indication */
+	uint32_t fn_without_clock_ind;
+	struct {
+		/*! last FN we processed based on FN period timer */
+		uint32_t fn;
+		/*! time at which we last processed FN */
+		struct timespec tv;
+	} last_fn_timer;
+	struct {
+		/*! last FN we received a clock indication for */
+		uint32_t fn;
+		/*! time at which we received the last clock indication */
+		struct timespec tv;
+	} last_clk_ind;
+	/*! Osmocom FD wrapper for timerfd */
+	struct osmo_fd fn_timer_ofd;
+};
+
+/* TODO: This must go and become part of the phy_link */
+static struct osmo_trx_clock_state g_clk_s = { .fn_timer_ofd.fd = -1 };
+
+/*! duration of a GSM frame in nano-seconds. (120ms/26) */
+#define FRAME_DURATION_nS	4615384
+/*! duration of a GSM frame in micro-seconds (120s/26) */
+#define FRAME_DURATION_uS	(FRAME_DURATION_nS/1000)
+/*! maximum number of 'missed' frame periods we can tolerate of OS doesn't schedule us*/
 #define MAX_FN_SKEW		50
+/*! maximum number of frame periods we can tolerate without TRX Clock Indication*/
 #define TRX_LOSS_FRAMES		400
 
-extern int quit;
-/* this timer fires for every FN to be processed */
-static void trx_ctrl_timer_cb(void *data)
+/*! compute the number of micro-seconds difference elapsed between \a last and \a now */
+static inline int compute_elapsed_us(const struct timespec *last, const struct timespec *now)
 {
-	struct gsm_bts *bts = data;
-	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
-	int32_t elapsed;
+	int elapsed;
+
+	elapsed = (now->tv_sec - last->tv_sec) * 1000000
+		+ (now->tv_nsec - last->tv_nsec) / 1000;
+	return elapsed;
+}
+
+/*! compute the number of frame number intervals elapsed between \a last and \a now */
+static inline int compute_elapsed_fn(const uint32_t last, const uint32_t now)
+{
+	int elapsed_fn = (now + GSM_HYPERFRAME - last) % GSM_HYPERFRAME;
+	if (elapsed_fn >= 135774)
+		elapsed_fn -= GSM_HYPERFRAME;
+	return elapsed_fn;
+}
+
+/*! normalise given 'struct timespec', i.e. carry nanoseconds into seconds */
+static inline void normalize_timespec(struct timespec *ts)
+{
+	ts->tv_sec += ts->tv_nsec / 1000000000;
+	ts->tv_nsec = ts->tv_nsec % 1000000000;
+}
+
+/*! disable the osmocom-wrapped timerfd */
+static int timer_ofd_disable(struct osmo_fd *ofd)
+{
+	const struct itimerspec its_null = {
+		.it_value = { 0, 0 },
+		.it_interval = { 0, 0 },
+	};
+	return timerfd_settime(ofd->fd, 0, &its_null, NULL);
+}
+
+/*! schedule the osmcoom-wrapped timerfd to occur first at \a first, then periodically at \a interval
+ *  \param[in] ofd Osmocom wrapped timerfd
+ *  \param[in] first Relative time at which the timer should first execute (NULL = \a interval)
+ *  \param[in] interval Time interval at which subsequent timer shall fire
+ *  \returns 0 on success; negative on error */
+static int timer_ofd_schedule(struct osmo_fd *ofd, const struct timespec *first,
+			      const struct timespec *interval)
+{
+	struct itimerspec its;
+
+	if (ofd->fd < 0)
+		return -EINVAL;
+
+	/* first expiration */
+	if (first)
+		its.it_value = *first;
+	else
+		its.it_value = *interval;
+	/* repeating interval */
+	its.it_interval = *interval;
+
+	return timerfd_settime(ofd->fd, 0, &its, NULL);
+}
+
+/*! setup osmocom-wrapped timerfd
+ *  \param[inout] ofd Osmocom-wrapped timerfd on which to operate
+ *  \param[in] cb Call-back function called when timerfd becomes readable
+ *  \param[in] data Opaque data to be passed on to call-back
+ *  \returns 0 on success; negative on error
+ *
+ *  We simply initialize the data structures here, but do not yet
+ *  schedule the timer.
+ */
+static int timer_ofd_setup(struct osmo_fd *ofd, int (*cb)(struct osmo_fd *, unsigned int), void *data)
+{
+	ofd->cb = cb;
+	ofd->data = data;
+	ofd->when = BSC_FD_READ;
+
+	if (ofd->fd < 0) {
+		ofd->fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+		if (ofd->fd < 0)
+			return ofd->fd;
+
+		osmo_fd_register(ofd);
+	}
+	return 0;
+}
+
+/*! Increment a GSM frame number modulo GSM_HYPERFRAME */
+#define INCREMENT_FN(fn)	(fn) = (((fn) + 1) % GSM_HYPERFRAME)
+
+extern int quit;
+
+/*! this is the timerfd-callback firing for every FN to be processed */
+static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
+{
+	struct gsm_bts *bts = ofd->data;
+	struct osmo_trx_clock_state *tcs = &g_clk_s;
+	struct timespec tv_now;
+	uint64_t expire_count;
+	int elapsed_us;
+	int error_us;
+	int rc, i;
+
+	if (!(what & BSC_FD_READ))
+		return 0;
+
+	/* read from timerfd: number of expirations of periodic timer */
+	rc = read(ofd->fd, (void *) &expire_count, sizeof(expire_count));
+	if (rc < 0 && errno == EAGAIN)
+		return 0;
+	OSMO_ASSERT(rc == sizeof(expire_count));
+
+	if (expire_count > 1) {
+		LOGP(DL1C, LOGL_NOTICE, "FN timer expire_count=%"PRIu64": We missed %"PRIu64" timers\n",
+			expire_count, expire_count-1);
+	}
 
 	/* check if transceiver is still alive */
-	if (transceiver_lost++ == TRX_LOSS_FRAMES) {
+	if (tcs->fn_without_clock_ind++ == TRX_LOSS_FRAMES) {
 		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
 
 no_clock:
+		timer_ofd_disable(&tcs->fn_timer_ofd);
 		transceiver_available = 0;
 
 		bts_shutdown(bts, "No clock from osmo-trx");
 
-		return;
+		return -1;
 	}
 
-	gettimeofday(&tv_now, NULL);
-
-	elapsed = (tv_now.tv_sec - tv_clock->tv_sec) * 1000000
-		+ (tv_now.tv_usec - tv_clock->tv_usec);
+	/* compute actual elapsed time and resulting OS scheduling error */
+	clock_gettime(CLOCK_MONOTONIC, &tv_now);
+	elapsed_us = compute_elapsed_us(&tcs->last_fn_timer.tv, &tv_now);
+	error_us = elapsed_us - FRAME_DURATION_uS;
+#ifdef DEBUG_CLOCK
+	printf("%s(): %09ld, elapsed_us=%05d, error_us=%-d: fn=%d\n", __func__,
+		tv_now.tv_nsec, elapsed_us, error_us, tcs->last_fn_timer.fn+1);
+#endif
+	tcs->last_fn_timer.tv = tv_now;
 
 	/* if someone played with clock, or if the process stalled */
-	if (elapsed > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "PC clock skew: elapsed uS %d\n",
-			elapsed);
+	if (elapsed_us > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed_us < 0) {
+		LOGP(DL1C, LOGL_ERROR, "PC clock skew: elapsed_us=%d, error_us=%d\n",
+			elapsed_us, error_us);
 		goto no_clock;
 	}
 
-	/* schedule next FN clock */
-	while (elapsed > FRAME_DURATION_uS / 2) {
-		tv_clock->tv_usec += FRAME_DURATION_uS;
-		if (tv_clock->tv_usec >= 1000000) {
-			tv_clock->tv_sec++;
-			tv_clock->tv_usec -= 1000000;
-		}
-		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
-		trx_sched_fn(bts, transceiver_last_fn);
-		elapsed -= FRAME_DURATION_uS;
+	/* call trx_sched_fn() for all expired FN */
+	for (i = 0; i < expire_count; i++) {
+		INCREMENT_FN(tcs->last_fn_timer.fn);
+		trx_sched_fn(bts, tcs->last_fn_timer.fn);
 	}
-	osmo_timer_schedule(&transceiver_clock_timer, 0,
-		FRAME_DURATION_uS - elapsed);
+
+	return 0;
 }
 
-
-/* receive clock from transceiver */
+/*! called every time we receive a clock indication from TRX */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 {
-	struct timeval tv_now, *tv_clock = &transceiver_clock_tv;
-	int32_t elapsed;
-	int32_t elapsed_fn;
+	struct osmo_trx_clock_state *tcs = &g_clk_s;
+	struct timespec tv_now;
+	int elapsed_us, elapsed_fn;
+	int elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
+	unsigned int fn_caught_up = 0;
+	const struct timespec interval = { .tv_sec = 0, .tv_nsec = FRAME_DURATION_nS };
 
 	if (quit)
 		return 0;
 
 	/* reset lost counter */
-	transceiver_lost = 0;
+	tcs->fn_without_clock_ind = 0;
 
-	gettimeofday(&tv_now, NULL);
+	clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
 	/* clock becomes valid */
 	if (!transceiver_available) {
-		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n",
-			fn);
+		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n", fn);
 
 		transceiver_available = 1;
 
@@ -1495,69 +1641,83 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 		check_transceiver_availability(bts, 1);
 
 new_clock:
-		transceiver_last_fn = fn;
-		trx_sched_fn(bts, transceiver_last_fn);
+		tcs->last_fn_timer.fn = fn;
+		/* call trx cheduler function for new 'last' FN */
+		trx_sched_fn(bts, tcs->last_fn_timer.fn);
 
-		/* schedule first FN clock */
-		memcpy(tv_clock, &tv_now, sizeof(struct timeval));
-		memset(&transceiver_clock_timer, 0,
-			sizeof(transceiver_clock_timer));
-		transceiver_clock_timer.cb = trx_ctrl_timer_cb;
-	        transceiver_clock_timer.data = bts;
-		osmo_timer_schedule(&transceiver_clock_timer, 0,
-			FRAME_DURATION_uS);
+		/* schedule first FN clock timer */
+		timer_ofd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
+		timer_ofd_schedule(&tcs->fn_timer_ofd, NULL, &interval);
+
+		tcs->last_fn_timer.tv = tv_now;
+		tcs->last_clk_ind.tv = tv_now;
+		tcs->last_clk_ind.fn = fn;
 
 		return 0;
 	}
 
-	osmo_timer_del(&transceiver_clock_timer);
+	/* calculate elapsed time +fn since last timer */
+	elapsed_us = compute_elapsed_us(&tcs->last_fn_timer.tv, &tv_now);
+	elapsed_fn = compute_elapsed_fn(tcs->last_fn_timer.fn, fn);
+#ifdef DEBUG_CLOCK
+	printf("%s(): LAST_TIMER %9ld, elapsed_us=%7d, elapsed_fn=%+3d\n", __func__,
+		tv_now.tv_nsec, elapsed_us, elapsed_fn);
+#endif
+	/* negative elapsed_fn values mean that we've already processed
+	 * more FN based on the local interval timer than what the TRX
+	 * now reports in the clock indication.   Positive elapsed_fn
+	 * values mean we still have a backlog to process */
 
-	/* calculate elapsed time since last_fn */
-	elapsed = (tv_now.tv_sec - tv_clock->tv_sec) * 1000000
-		+ (tv_now.tv_usec - tv_clock->tv_usec);
+	/* calculate elapsed time +fn since last clk ind */
+	elapsed_us_since_clk = compute_elapsed_us(&tcs->last_clk_ind.tv, &tv_now);
+	elapsed_fn_since_clk = compute_elapsed_fn(tcs->last_clk_ind.fn, fn);
+	/* error (delta) between local clock since last CLK and CLK based on FN clock at TRX */
+	error_us_since_clk = elapsed_us_since_clk - (FRAME_DURATION_uS * elapsed_fn_since_clk);
+	LOGP(DL1C, LOGL_INFO, "TRX Clock Ind: elapsed_us=%7d, elapsed_fn=%3d, error_us=%+5d\n",
+		elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk);
 
-	/* how much frames have been elapsed since last fn processed */
-	elapsed_fn = (fn + GSM_HYPERFRAME - transceiver_last_fn) % GSM_HYPERFRAME;
-	if (elapsed_fn >= 135774)
-		elapsed_fn -= GSM_HYPERFRAME;
+	/* TODO: put this computed error_us_since_clk into some filter
+	 * function and use that to adjust our regular timer interval to
+	 * compensate for clock drift between the PC clock and the
+	 * TRX/SDR clock */
+
+	tcs->last_clk_ind.tv = tv_now;
+	tcs->last_clk_ind.fn = fn;
 
 	/* check for max clock skew */
 	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
 		LOGP(DL1C, LOGL_NOTICE, "GSM clock skew: old fn=%u, "
-			"new fn=%u\n", transceiver_last_fn, fn);
+			"new fn=%u\n", tcs->last_fn_timer.fn, fn);
 		goto new_clock;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d\n",
-		elapsed_fn * FRAME_DURATION_uS - elapsed);
+	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d us (elapsed_fn=%d)\n",
+		elapsed_fn * FRAME_DURATION_uS - elapsed_us, elapsed_fn);
 
 	/* too many frames have been processed already */
 	if (elapsed_fn < 0) {
+		struct timespec first = interval;
 		/* set clock to the time or last FN should have been
 		 * transmitted. */
-		tv_clock->tv_sec = tv_now.tv_sec;
-		tv_clock->tv_usec = tv_now.tv_usec +
-			(0 - elapsed_fn) * FRAME_DURATION_uS;
-		if (tv_clock->tv_usec >= 1000000) {
-			tv_clock->tv_sec++;
-			tv_clock->tv_usec -= 1000000;
-		}
+		first.tv_nsec += (0 - elapsed_fn) * FRAME_DURATION_nS;
+		normalize_timespec(&first);
+		LOGP(DL1C, LOGL_NOTICE, "We were %d FN faster than TRX, compensating\n", -elapsed_fn);
 		/* set time to the time our next FN has to be transmitted */
-		osmo_timer_schedule(&transceiver_clock_timer, 0,
-			FRAME_DURATION_uS * (1 - elapsed_fn));
-
+		timer_ofd_schedule(&tcs->fn_timer_ofd, &first, &interval);
 		return 0;
 	}
 
 	/* transmit what we still need to transmit */
-	while (fn != transceiver_last_fn) {
-		transceiver_last_fn = (transceiver_last_fn + 1) % GSM_HYPERFRAME;
-		trx_sched_fn(bts, transceiver_last_fn);
+	while (fn != tcs->last_fn_timer.fn) {
+		INCREMENT_FN(tcs->last_fn_timer.fn);
+		trx_sched_fn(bts, tcs->last_fn_timer.fn);
+		fn_caught_up++;
 	}
 
-	/* schedule next FN to be transmitted */
-	memcpy(tv_clock, &tv_now, sizeof(struct timeval));
-	osmo_timer_schedule(&transceiver_clock_timer, 0, FRAME_DURATION_uS);
+	if (fn_caught_up) {
+		LOGP(DL1C, LOGL_NOTICE, "We were %d FN slower than TRX, compensated\n", elapsed_fn);
+		tcs->last_fn_timer.tv = tv_now;
+	}
 
 	return 0;
 }
