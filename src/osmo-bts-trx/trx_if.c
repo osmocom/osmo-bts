@@ -1,5 +1,9 @@
 /*
- * OpenBTS TRX interface handling
+ * OpenBTS-style TRX interface/protocol handling
+ *
+ * This file contains the BTS-side implementation of the OpenBTS-style
+ * UDP TRX protocol.  It manages the clock, control + burst-data UDP
+ * sockets and their respective protocol encoding/parsing.
  *
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
  * Copyright (C) 2016  Harald Welte <laforge@gnumonks.org>
@@ -53,10 +57,10 @@ int setbsic_enabled = 0;
 #define TRX_MAX_BURST_LEN	512
 
 /*
- * socket
+ * socket helper functions
  */
 
-/* open socket */
+/*! convenience wrapper to open socket + fill in osmo_fd */
 static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host_local,
 			uint16_t port_local, const char *host_remote, uint16_t port_remote,
 			int (*cb)(struct osmo_fd *fd, unsigned int what))
@@ -77,7 +81,7 @@ static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host_local,
 	return 0;
 }
 
-/* close socket */
+/* close socket + unregister osmo_fd */
 static void trx_udp_close(struct osmo_fd *ofd)
 {
 	if (ofd->fd > 0) {
@@ -89,7 +93,7 @@ static void trx_udp_close(struct osmo_fd *ofd)
 
 
 /*
- * clock
+ * TRX clock socket
  */
 
 /* get clock from clock socket */
@@ -121,6 +125,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"correctly, correcting to fn=%u\n", fn);
 	}
 
+	/* inform core TRX clock handling code that a FN has been received */
 	trx_sched_clock(pinst->trx->bts, fn);
 
 	return 0;
@@ -128,7 +133,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 
 /*
- * ctrl
+ * TRX ctrl socket
  */
 
 static void trx_ctrl_timer_cb(void *data);
@@ -165,7 +170,16 @@ static void trx_ctrl_timer_cb(void *data)
 	trx_ctrl_send(l1h);
 }
 
-/* add a new ctrl command */
+/*! Send a new TRX control command.
+ *  \param[inout] l1h TRX Layer1 handle to which to send command
+ *  \param[in] criticial
+ *  \param[in] cmd zero-terminated string containing command
+ *  \param[in] fmt Format string (+ variable list of arguments)
+ *  \returns 0 on success; negative on error
+ *
+ *  The new ocommand will be added to the end of the control command
+ *  queue.
+ */
 static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	const char *fmt, ...)
 {
@@ -197,15 +211,16 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	tcm->cmd_len = strlen(cmd);
 	tcm->critical = critical;
 	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
-	LOGP(DTRX, LOGL_INFO, "Adding new control '%s'\n", tcm->cmd);
+	LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command '%s'\n", tcm->cmd);
 
-	/* send message, if no pending message */
+	/* send message, if we didn't already have pending messages */
 	if (!pending)
 		trx_ctrl_send(l1h);
 
 	return 0;
 }
 
+/*! Send "POWEROFF" command to TRX */
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -215,6 +230,7 @@ int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 		return 0;
 }
 
+/*! Send "POWERON" command to TRX */
 int trx_if_cmd_poweron(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -224,6 +240,7 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h)
 		return 0;
 }
 
+/*! Send "SETTSC" command to TRX */
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 {
 	if (!settsc_enabled)
@@ -233,6 +250,7 @@ int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 		tsc);
 }
 
+/*! Send "SETBSIC" command to TRX */
 int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 {
 	if (!setbsic_enabled)
@@ -242,31 +260,37 @@ int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 		bsic);
 }
 
+/*! Send "SETRXGAIN" command to TRX */
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 {
 	return trx_ctrl_cmd(l1h, 0, "SETRXGAIN", "%d", db);
 }
 
+/*! Send "SETPOWER" command to TRX */
 int trx_if_cmd_setpower(struct trx_l1h *l1h, int db)
 {
 	return trx_ctrl_cmd(l1h, 0, "SETPOWER", "%d", db);
 }
 
+/*! Send "SETMAXDLY" command to TRX, i.e. maximum delay for RACH bursts */
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly)
 {
 	return trx_ctrl_cmd(l1h, 0, "SETMAXDLY", "%d", dly);
 }
 
+/*! Send "SETMAXDLYNB" command to TRX, i.e. maximum delay for normal bursts */
 int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly)
 {
 	return trx_ctrl_cmd(l1h, 0, "SETMAXDLYNB", "%d", dly);
 }
 
+/*! Send "SETSLOT" command to TRX: Configure Channel Combination for TS */
 int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
 {
 	return trx_ctrl_cmd(l1h, 1, "SETSLOT", "%d %d", tn, type);
 }
 
+/*! Send "RXTUNE" command to TRX: Tune Receiver to given ARFCN */
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -285,6 +309,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 	return trx_ctrl_cmd(l1h, 1, "RXTUNE", "%d", freq10 * 100);
 }
 
+/*! Send "TXTUNE" command to TRX: Tune Transmitter to given ARFCN */
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -303,17 +328,19 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 	return trx_ctrl_cmd(l1h, 1, "TXTUNE", "%d", freq10 * 100);
 }
 
+/*! Send "HANDOVER" command to TRX: Enable handover RACH Detection on timeslot/sub-slot */
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 {
 	return trx_ctrl_cmd(l1h, 1, "HANDOVER", "%d %d", tn, ss);
 }
 
+/*! Send "NOHANDOVER" command to TRX: Disable handover RACH Detection on timeslot/sub-slot */
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 {
 	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
 }
 
-/* get response from ctrl socket */
+/*! Get + parse response from TRX ctrl socket */
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
@@ -353,7 +380,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
 			list);
 
-		/* check if respose matches command */
+		/* check if response matches command */
 		if (rsp_len != tcm->cmd_len) {
 			notmatch:
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
@@ -393,7 +420,7 @@ rsp_error:
 
 
 /*
- * data
+ * TRX burst data socket
  */
 
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
@@ -452,11 +479,20 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	fprintf(stderr, "%s\n", deb);
 #endif
 
+	/* feed received burst into scheduler code */
 	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, burst_len, rssi, toa);
 
 	return 0;
 }
 
+/*! Send burst data for given FN/timeslot to TRX
+ *  \param[inout] l1h TRX Layer1 handle referring to TX
+ *  \param[in] tn Timeslot Number (0..7)
+ *  \param[in] fn GSM Frame Number
+ *  \param[in] pwr Transmit Power to use
+ *  \param[in] bits Unpacked bits to be transmitted
+ *  \param[in] nbits Number of \a bits
+ *  \returns 0 on success; negative on error */
 int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits)
 {
@@ -495,6 +531,7 @@ int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
  * open/close
  */
 
+/*! open the PHY link using TRX protocol */
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst;
@@ -537,6 +574,7 @@ cleanup:
 	return -1;
 }
 
+/*! compute UDP port number used for TRX protocol */
 static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data)
 {
 	struct phy_link *plink = pinst->phy_link;
@@ -551,6 +589,7 @@ static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data
 		return plink->u.osmotrx.base_port_local + (pinst->num << 1) + inc;
 }
 
+/*! open a TRX interface. creates contro + data sockets */
 int trx_if_open(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -593,7 +632,7 @@ err:
 	return rc;
 }
 
-/* flush pending control messages */
+/*! flush (delete) all pending control messages */
 void trx_if_flush(struct trx_l1h *l1h)
 {
 	struct trx_ctrl_msg *tcm;
@@ -607,6 +646,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 	}
 }
 
+/*! close the TRX for given handle (data + control socket) */
 void trx_if_close(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -620,6 +660,7 @@ void trx_if_close(struct trx_l1h *l1h)
 	trx_udp_close(&l1h->trx_ofd_data);
 }
 
+/*! determine if the TRX for given handle is powered up */
 int trx_if_powered(struct trx_l1h *l1h)
 {
 	return l1h->config.poweron;
