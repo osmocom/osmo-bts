@@ -536,47 +536,32 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
  * open/close
  */
 
-/*! open the PHY link using TRX protocol */
-int bts_model_phy_link_open(struct phy_link *plink)
+/*! flush (delete) all pending control messages */
+void trx_if_flush(struct trx_l1h *l1h)
 {
-	struct phy_instance *pinst;
-	int rc;
+	struct trx_ctrl_msg *tcm;
 
-	phy_link_state_set(plink, PHY_LINK_CONNECTING);
-
-	/* open the shared/common clock socket */
-	rc = trx_udp_open(plink, &plink->u.osmotrx.trx_ofd_clk,
-			  plink->u.osmotrx.local_ip,
-			  plink->u.osmotrx.base_port_local,
-			  plink->u.osmotrx.remote_ip,
-			  plink->u.osmotrx.base_port_remote,
-			  trx_clk_read_cb);
-	if (rc < 0) {
-		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
-		return -1;
+	/* free ctrl message list */
+	while (!llist_empty(&l1h->trx_ctrl_list)) {
+		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
+			list);
+		llist_del(&tcm->list);
+		talloc_free(tcm);
 	}
+}
 
-	/* open the individual instances with their ctrl+data sockets */
-	llist_for_each_entry(pinst, &plink->instances, list) {
-		pinst->u.osmotrx.hdl = l1if_open(pinst);
-		if (!pinst->u.osmotrx.hdl)
-			goto cleanup;
-	}
-	/* FIXME: is there better way to check/report TRX availability? */
-	transceiver_available = 1;
-	phy_link_state_set(plink, PHY_LINK_CONNECTED);
-	return 0;
+/*! close the TRX for given handle (data + control socket) */
+void trx_if_close(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for %s\n",
+		phy_instance_name(pinst));
 
-cleanup:
-	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
-	llist_for_each_entry(pinst, &plink->instances, list) {
-		if (pinst->u.osmotrx.hdl) {
-			trx_if_close(pinst->u.osmotrx.hdl);
-			pinst->u.osmotrx.hdl = NULL;
-		}
-	}
-	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
-	return -1;
+	trx_if_flush(l1h);
+
+	/* close sockets */
+	trx_udp_close(&l1h->trx_ofd_ctrl);
+	trx_udp_close(&l1h->trx_ofd_data);
 }
 
 /*! compute UDP port number used for TRX protocol */
@@ -595,7 +580,7 @@ static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data
 }
 
 /*! open a TRX interface. creates contro + data sockets */
-int trx_if_open(struct trx_l1h *l1h)
+static int trx_if_open(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct phy_link *plink = pinst->phy_link;
@@ -637,32 +622,84 @@ err:
 	return rc;
 }
 
-/*! flush (delete) all pending control messages */
-void trx_if_flush(struct trx_l1h *l1h)
+/*! close the control + burst data sockets for one phy_instance */
+static void trx_phy_inst_close(struct phy_instance *pinst)
 {
-	struct trx_ctrl_msg *tcm;
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	/* free ctrl message list */
-	while (!llist_empty(&l1h->trx_ctrl_list)) {
-		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
-			list);
-		llist_del(&tcm->list);
-		talloc_free(tcm);
-	}
+	trx_if_close(l1h);
+	trx_sched_exit(&l1h->l1s);
+	talloc_free(l1h);
 }
 
-/*! close the TRX for given handle (data + control socket) */
-void trx_if_close(struct trx_l1h *l1h)
+/*! open the control + burst data sockets for one phy_instance */
+static int trx_phy_inst_open(struct phy_instance *pinst)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for %s\n",
-		phy_instance_name(pinst));
+	struct trx_l1h *l1h;
+	int rc;
 
-	trx_if_flush(l1h);
+	l1h = pinst->u.osmotrx.hdl;
+	if (!l1h)
+		return -EINVAL;
 
-	/* close sockets */
-	trx_udp_close(&l1h->trx_ofd_ctrl);
-	trx_udp_close(&l1h->trx_ofd_data);
+	rc = trx_sched_init(&l1h->l1s, pinst->trx);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot initialize scheduler for phy "
+		     "instance %d\n", pinst->num);
+		return -EIO;
+	}
+
+	rc = trx_if_open(l1h);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Cannot open TRX interface for phy "
+		     "instance %d\n", pinst->num);
+		trx_phy_inst_close(pinst);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*! open the PHY link using TRX protocol */
+int bts_model_phy_link_open(struct phy_link *plink)
+{
+	struct phy_instance *pinst;
+	int rc;
+
+	phy_link_state_set(plink, PHY_LINK_CONNECTING);
+
+	/* open the shared/common clock socket */
+	rc = trx_udp_open(plink, &plink->u.osmotrx.trx_ofd_clk,
+			  plink->u.osmotrx.local_ip,
+			  plink->u.osmotrx.base_port_local,
+			  plink->u.osmotrx.remote_ip,
+			  plink->u.osmotrx.base_port_remote,
+			  trx_clk_read_cb);
+	if (rc < 0) {
+		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+		return -1;
+	}
+
+	/* open the individual instances with their ctrl+data sockets */
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		if (trx_phy_inst_open(pinst) < 0)
+			goto cleanup;
+	}
+	/* FIXME: is there better way to check/report TRX availability? */
+	transceiver_available = 1;
+	phy_link_state_set(plink, PHY_LINK_CONNECTED);
+	return 0;
+
+cleanup:
+	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		if (pinst->u.osmotrx.hdl) {
+			trx_if_close(pinst->u.osmotrx.hdl);
+			pinst->u.osmotrx.hdl = NULL;
+		}
+	}
+	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
+	return -1;
 }
 
 /*! determine if the TRX for given handle is powered up */

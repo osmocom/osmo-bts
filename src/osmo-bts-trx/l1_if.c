@@ -57,48 +57,6 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 };
 
 
-/*
- * create/destroy trx l1 instance
- */
-
-struct trx_l1h *l1if_open(struct phy_instance *pinst)
-{
-	struct trx_l1h *l1h;
-	int rc;
-
-	l1h = pinst->u.osmotrx.hdl;
-	if (!l1h)
-		return NULL;
-
-	rc = trx_sched_init(&l1h->l1s, pinst->trx);
-	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot initialize scheduler for phy "
-		     "instance %d\n", pinst->num);
-		return NULL;
-	}
-
-	rc = trx_if_open(l1h);
-	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot open TRX interface for phy "
-		     "instance %d\n", pinst->num);
-		l1if_close(l1h);
-		return NULL;
-	}
-
-	return l1h;
-}
-
-void l1if_close(struct trx_l1h *l1h)
-{
-	trx_if_close(l1h);
-	trx_sched_exit(&l1h->l1s);
-	talloc_free(l1h);
-}
-
-void l1if_reset(struct trx_l1h *l1h)
-{
-}
-
 static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 {
 	struct phy_instance *pinst = l1h->phy_inst;

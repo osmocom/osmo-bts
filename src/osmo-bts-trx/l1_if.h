@@ -61,9 +61,6 @@ struct trx_l1h {
 	struct l1sched_trx	l1s;
 };
 
-struct trx_l1h *l1if_open(struct phy_instance *pinst);
-void l1if_close(struct trx_l1h *l1h);
-void l1if_reset(struct trx_l1h *l1h);
 int check_transceiver_availability(struct gsm_bts *bts, int avail);
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h);
 int l1if_provision_transceiver(struct gsm_bts *bts);
