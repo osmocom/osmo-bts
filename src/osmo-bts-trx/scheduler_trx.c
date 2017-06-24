@@ -1398,7 +1398,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			} else
 				gain = 0;
 			if (nbits)
-				trx_if_data(l1h, tn, fn, gain, bits, nbits);
+				trx_if_send_burst(l1h, tn, fn, gain, bits, nbits);
 		}
 	}
 

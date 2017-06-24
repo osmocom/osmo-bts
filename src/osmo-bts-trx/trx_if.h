@@ -29,7 +29,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
-int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
+int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits);
 int trx_if_open(struct trx_l1h *l1h);
 void trx_if_flush(struct trx_l1h *l1h);

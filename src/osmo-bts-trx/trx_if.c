@@ -498,7 +498,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
  *  \param[in] bits Unpacked bits to be transmitted
  *  \param[in] nbits Number of \a bits
  *  \returns 0 on success; negative on error */
-int trx_if_data(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
+int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits)
 {
 	uint8_t buf[TRX_MAX_BURST_LEN];
