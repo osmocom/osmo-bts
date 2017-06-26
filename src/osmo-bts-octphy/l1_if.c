@@ -584,13 +584,14 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	/* create new message */
-	nmsg = l1p_msgb_alloc();
-	if (!nmsg)
-		return -ENOMEM;
-
 	/* create new message and fill data */
 	if (msg) {
+		nmsg = l1p_msgb_alloc();
+		if (!nmsg) {
+			LOGP(DL1C, LOGL_FATAL, "L1SAP PH-TCH.req msg alloc failed\n");
+			return -ENOMEM;
+		}
+
 		msgb_pull(msg, sizeof(*l1sap));
 		tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *data_req =
 			(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *)
