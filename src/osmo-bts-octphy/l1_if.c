@@ -451,7 +451,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
-	struct msgb *l1msg = l1p_msgb_alloc();
+	struct msgb *l1msg = NULL;
 	uint32_t u32Fn;
 	uint8_t u8Tn, subCh, sapi = 0;
 	uint8_t chan_nr, link_id;
@@ -510,6 +510,14 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	if (len) {
 		/* create new PHY primitive in l1msg, copying payload */
+
+		l1msg = l1p_msgb_alloc();
+		if (!l1msg) {
+			LOGP(DL1C, LOGL_FATAL, "L1SAP PH-DATA.req msg alloc failed\n");
+			rc = -ENOMEM;
+			goto done;
+		}
+
 		tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *data_req =
 			(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *)
 				msgb_put(l1msg, sizeof(*data_req));
