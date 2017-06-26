@@ -1058,8 +1058,6 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 			    data_ind->Data.ulDataLength),
 	       data_ind->Data.ulDataLength);
 
-	dump_meas_res(LOGL_DEBUG, &data_ind->MeasurementInfo);
-
 	/* check for TCH */
 	if (sapi == cOCTVC1_GSM_SAPI_ENUM_TCHF ||
 	    sapi == cOCTVC1_GSM_SAPI_ENUM_TCHH) {
