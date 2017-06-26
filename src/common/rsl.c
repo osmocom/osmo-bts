@@ -264,7 +264,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct gsm_bts *bts = trx->bts;
 	struct tlv_parsed tp;
-	uint8_t rsl_si, si2q_index, si2q_count;
+	uint8_t rsl_si, count;
 	enum osmo_sysinfo_type osmo_si;
 	struct gsm48_system_information_type_2quater *si2q;
 	struct bitvec bv;
@@ -307,21 +307,34 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		}
 
 		if (SYSINFO_TYPE_2quater == osmo_si) {
-			si2q = (struct gsm48_system_information_type_2quater *)
-				bts->si_buf[SYSINFO_TYPE_2quater];
+			si2q = (struct gsm48_system_information_type_2quater *) TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO);
 			bv.data = si2q->rest_octets;
-			bv.data_len = 20;
+			bv.data_len = GSM_MACBLOCK_LEN;
 			bv.cur_bit = 3;
-			si2q_index = (uint8_t) bitvec_get_uint(&bv, 4);
-			si2q_count = (uint8_t) bitvec_get_uint(&bv, 4);
-			if (si2q_index || si2q_count) {
-				LOGP(DRSL, LOGL_ERROR,
-				     " Rx RSL SI2quater witn unsupported "
-				     "index %u, count %u\n",
-				     si2q_index, si2q_count);
-				return rsl_tx_error_report(trx,
-							   RSL_ERR_IE_CONTENT);
+			bts->si2q_index = (uint8_t) bitvec_get_uint(&bv, 4);
+
+			count = (uint8_t) bitvec_get_uint(&bv, 4);
+			if (bts->si2q_count && bts->si2q_count != count) {
+				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater count changed while receiving: %u -> %d\n",
+				     bts->si2q_count, count);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 			}
+
+			bts->si2q_count = count;
+			if (bts->si2q_index > bts->si2q_count) {
+				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with index %u > count %u\n",
+				     bts->si2q_index, bts->si2q_count);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+			}
+
+			if (bts->si2q_index > SI2Q_MAX_NUM || bts->si2q_count > SI2Q_MAX_NUM) {
+				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with impossible parameters: index %u, count %u"
+				     "should be <= %u\n", bts->si2q_index, bts->si2q_count, SI2Q_MAX_NUM);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+			}
+
+			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
+			memcpy(GSM_BTS_SI2Q(bts, bts->si2q_index), TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 		}
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
