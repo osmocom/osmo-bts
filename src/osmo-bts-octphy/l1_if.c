@@ -536,22 +536,9 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD_SWAP(data_req);
 	} else {
-		/* No data available, generate Empty frame Req in l1msg */
-		tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD *empty_frame_req =
-			(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD *)
-				msgb_put(l1msg, sizeof(*empty_frame_req));
-
-		l1if_fill_msg_hdr(&empty_frame_req->Header, l1msg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
-			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CID);
-
-		empty_frame_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
-		empty_frame_req->LchId.byTimeslotNb = u8Tn;
-		empty_frame_req->LchId.bySAPI = sapi;
-		empty_frame_req->LchId.bySubChannelNb = subCh;
-		empty_frame_req->LchId.byDirection = cOCTVC1_GSM_DIRECTION_ENUM_TX_BTS_MS;
-		empty_frame_req->ulFrameNumber = u32Fn;
-
-		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD_SWAP(empty_frame_req);
+		/* No data available, Don't send Empty frame to PHY */
+		rc = 0;
+		goto done;
 	}
 
 	rc = l1if_req_compl(fl1h, l1msg, NULL, NULL);
@@ -618,24 +605,8 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD_SWAP(data_req);
 	} else {
-		tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD *empty_frame_req =
-			(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD *)
-			msgb_put(nmsg, sizeof(*empty_frame_req));
-
-		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD_DEF(empty_frame_req);
-
-		l1if_fill_msg_hdr(&empty_frame_req->Header, nmsg, fl1h, cOCTVC1_MSG_TYPE_COMMAND,
-			  	  cOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CID);
-
-		empty_frame_req->TrxId.byTrxId = pinst->u.octphy.trx_id;
-		empty_frame_req->LchId.byTimeslotNb = u8Tn;
-		empty_frame_req->LchId.bySAPI = sapi;
-		empty_frame_req->LchId.bySubChannelNb = subCh;
-		empty_frame_req->LchId.byDirection =
-		    cOCTVC1_GSM_DIRECTION_ENUM_TX_BTS_MS;
-		empty_frame_req->ulFrameNumber = u32Fn;
-
-		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_EMPTY_FRAME_CMD_SWAP(empty_frame_req);
+		/* No data available, Don't send Empty frame to PHY */
+		return 0;
 	}
 
 	return l1if_req_compl(fl1h, nmsg, NULL, NULL);
