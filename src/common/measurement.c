@@ -23,18 +23,27 @@
  * 6           6 and 7                      78 to 77     90,  12,  38,  64
  * 7                         6 and 7        91 to 90     103, 25,  51,  77 */
 
-/* measurement period ends at fn % 104 == ? */
 static const uint8_t tchf_meas_rep_fn104[] = {
-	[0] =	103,
-	[1] =	12,
-	[2] =	25,
-	[3] =	38,
-	[4] =	51,
-	[5] =	64,
-	[6] =	77,
-	[7] =	90,
+	[0] =	90,
+	[1] =	103,
+	[2] =	12,
+	[3] =	25,
+	[4] =	38,
+	[5] =	51,
+	[6] =	64,
+	[7] =	77,
 };
 static const uint8_t tchh0_meas_rep_fn104[] = {
+	[0] =	90,
+	[1] =	90,
+	[2] =	12,
+	[3] =	12,
+	[4] =	38,
+	[5] =	38,
+	[6] =	64,
+	[7] =	64,
+};
+static const uint8_t tchh1_meas_rep_fn104[] = {
 	[0] =	103,
 	[1] =	103,
 	[2] =	25,
@@ -43,16 +52,6 @@ static const uint8_t tchh0_meas_rep_fn104[] = {
 	[5] =	51,
 	[6] =	77,
 	[7] =	77,
-};
-static const uint8_t tchh1_meas_rep_fn104[] = {
-	[0] =	12,
-	[1] =	12,
-	[2] =	38,
-	[3] =	38,
-	[4] =	64,
-	[5] =	64,
-	[6] =	90,
-	[7] =	90,
 };
 
 /* Measurment reporting period for SDCCH8 and SDCCH4 chan
@@ -86,6 +85,46 @@ static const uint8_t sdcch4_meas_rep_fn102[] = {
 	[3] = 36 + 18
 };
 
+/* Note: The reporting of the measurement results is done via the SACCH channel.
+ * The measurement interval is not alligned with the interval in which the
+ * SACCH is tranmitted. When we receive the measurement indication with the
+ * SACCH block, the coresponding measurement interval will already have ended
+ * and we will get the results late, but on spot with the beginning of the
+ * next measurement interval.
+ *
+ * For example: We get a measurement indication on FN%104=38 in TS=2. Then we
+ * will have to look at 3GPP TS 45.008, secton 8.4.1 (or 3GPP TS 05.02 Clause 7
+ * Table 1 of 9) what value we need to feed into the lookup tables in order to
+ * detect the measurement period ending. In this example the "real" ending
+ * was on FN%104=12. This is the value we have to look for in
+ * tchf_meas_rep_fn104 to know that a measurement period has just ended. */
+
+/* See also 3GPP TS 05.02 Clause 7 Table 1 of 9:
+ * Mapping of logical channels onto physical channels (see subclauses 6.3, 6.4, 6.5) */
+static uint8_t translate_tch_meas_rep_fn104(uint8_t fn_mod)
+{
+	switch (fn_mod) {
+	case 25:
+		return 103;
+	case 38:
+		return 12;
+	case 51:
+		return 25;
+	case 64:
+		return 38;
+	case 77:
+		return 51;
+	case 90:
+		return 64;
+	case 103:
+		return 77;
+	case 12:
+		return 90;
+	}
+
+	/* Invalid / not of interest */
+	return 0;
+}
 
 /* determine if a measurement period ends at the given frame number */
 static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
@@ -102,12 +141,12 @@ static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-		fn_mod = fn % 104;
+		fn_mod = translate_tch_meas_rep_fn104(fn % 104);
 		if (tchf_meas_rep_fn104[lchan->ts->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_TCH_H:
-		fn_mod = fn % 104;
+		fn_mod = translate_tch_meas_rep_fn104(fn % 104);
 		if (lchan->nr == 0)
 			tbl = tchh0_meas_rep_fn104;
 		else
@@ -132,9 +171,11 @@ static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 		break;
 	}
 
-	DEBUGP(DMEAS,
-	       "%s meas period end fn:%u, fn_mod:%i, status:%d, pchan:%s\n",
-	       gsm_lchan_name(lchan), fn, fn_mod, rc, gsm_pchan_name(pchan));
+	if (rc == 1) {
+		DEBUGP(DMEAS,
+		       "%s meas period end fn:%u, fn_mod:%i, status:%d, pchan:%s\n",
+		       gsm_lchan_name(lchan), fn, fn_mod, rc, gsm_pchan_name(pchan));
+	}
 
 	return rc;
 }

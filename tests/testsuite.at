@@ -37,3 +37,9 @@ cat $abs_srcdir/tx_power/tx_power_test.ok > expout
 cat $abs_srcdir/tx_power/tx_power_test.err > experr
 AT_CHECK([$abs_top_builddir/tests/tx_power/tx_power_test], [], [expout], [experr])
 AT_CLEANUP
+
+AT_SETUP([meas])
+AT_KEYWORDS([meas])
+cat $abs_srcdir/meas/meas_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/meas/meas_test], [], [expout], [ignore])
+AT_CLEANUP
