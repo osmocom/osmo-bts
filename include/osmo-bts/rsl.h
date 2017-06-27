@@ -9,7 +9,7 @@ enum {
 	LCHAN_REL_ACT_RSL,
 	LCHAN_REL_ACT_PCU,
 	LCHAN_REL_ACT_OML,
-	LCHAN_REL_ACT_REACT,
+	LCHAN_REL_ACT_REACT, /* remove once auto-activation hack is removed from opstart_compl() */
 };
 
 #define LCHAN_FN_DUMMY 0xFFFFFFFF

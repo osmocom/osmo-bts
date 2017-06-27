@@ -109,6 +109,12 @@ int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
+	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
+		lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+		/* FIXME: perform whatever is needed (if any) to set proper PCH/AGCH allocation according to
+		   3GPP TS 44.018 Table 10.5.2.11.1 using num_agch(lchan->ts->trx, "TRX L1"); function */
+		return 0;
+	}
 	/* set lchan inactive */
 	lchan_set_state(lchan, LCHAN_S_NONE);
 
