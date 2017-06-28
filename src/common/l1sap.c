@@ -1061,6 +1061,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct gsm_lchan *lchan;
 	uint8_t  chan_nr;
 	uint32_t fn;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
 	chan_nr = tch_ind->chan_nr;
 	fn = tch_ind->fn;
@@ -1076,22 +1077,33 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	msgb_pull(msg, sizeof(*l1sap));
 
-	/* hand msg to RTP code for transmission */
-	if (lchan->abis_ip.rtp_socket)
-		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-			msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-
-	/* if loopback is enabled, also queue received RTP data */
-	if (lchan->loopback) {
-		/* make sure the queue doesn't get too long */
-		queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
-		/* add new frame to queue */
-		msgb_enqueue(&lchan->dl_tch_queue, msg);
-		/* Return 1 to signal that we're still using msg and it should not be freed */
-		return 1;
+	/* Low level layers always call us when TCH content is expected, even if
+	 * the content is not available due to decoding issues. Content not
+	 * available is expected as empty payload. We also check if quality is
+	 * good enough. */
+	if (msg->len && tch_ind->lqual_cb / 10 >= btsb->min_qual_norm) {
+		/* hand msg to RTP code for transmission */
+		if (lchan->abis_ip.rtp_socket)
+			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+				msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+		/* if loopback is enabled, also queue received RTP data */
+		if (lchan->loopback) {
+			/* make sure the queue doesn't get too long */
+			queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
+			/* add new frame to queue */
+			msgb_enqueue(&lchan->dl_tch_queue, msg);
+			/* Return 1 to signal that we're still using msg and it should not be freed */
+			return 1;
+		}
+		/* Only clear the marker bit once we have sent a RTP packet with it */
+		lchan->rtp_tx_marker = false;
+	} else {
+		DEBUGP(DL1P, "Skipping RTP frame with lost payload\n");
+		if (lchan->abis_ip.rtp_socket)
+			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
+		lchan->rtp_tx_marker = true;
 	}
 
-	lchan->rtp_tx_marker = false;
 	lchan->tch.last_fn = fn;
 	return 0;
 }
