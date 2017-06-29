@@ -967,7 +967,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
 			LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=%d\n", chan_nr);
-		if (lchan && lchan->loopback) {
+		if (lchan && lchan->loopback && !L1SAP_IS_PTCCH(fn)) {
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
 			 * returned in downlink */
