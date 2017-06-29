@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/l1sap.h>
@@ -87,10 +88,6 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 {
 	uint32_t samples_passed, r;
 
-	/* don't adjust duration when DTX is not enabled */
-	if (lchan->ts->trx->bts->dtxu == GSM48_DTX_SHALL_NOT_BE_USED)
-		return GSM_RTP_DURATION;
-
 	if (lchan->tch.last_fn != LCHAN_FN_DUMMY) {
 		/* 12/13 frames usable for audio in TCH,
 		   160 samples per RTP packet,
@@ -100,7 +97,11 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 		   GSM_RTP_DURATION */
 		r = samples_passed + GSM_RTP_DURATION / 2;
 		r -= r % GSM_RTP_DURATION;
-		return r;
+
+		if (r != GSM_RTP_DURATION)
+			LOGP(DL1P, LOGL_ERROR, "RTP clock out of sync with lower layer:"
+				" %"PRIu32" vs %d (%"PRIu32"->%"PRIu32")\n",
+				r, GSM_RTP_DURATION, lchan->tch.last_fn, fn);
 	}
 	return GSM_RTP_DURATION;
 }
