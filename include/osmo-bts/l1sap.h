@@ -85,7 +85,8 @@ extern uint32_t gsmtap_sapi_mask;
 extern uint8_t gsmtap_sapi_acch;
 
 int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
-		     struct gsm_lchan *lchan, uint8_t chan_nr, uint32_t fn);
+		     struct gsm_lchan *lchan, uint8_t chan_nr, uint32_t fn,
+		     uint16_t ber10k, int16_t lqual_cb);
 
 #define msgb_l1sap_prim(msg) ((struct osmo_phsap_prim *)(msg)->l1h)
 

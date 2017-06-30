@@ -1050,8 +1050,6 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	process_meas_res(trx, chan_nr, fn, data_ind->Data.ulDataLength,
 			 &data_ind->MeasurementInfo);
 
-	/* FIXME: check min_qual_norm! */
-
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s: %s data_len:%d \n",
 	       get_value_string(octphy_l1sapi_names, sapi),
 	       osmo_hexdump(data_ind->Data.abyDataContent,

@@ -923,7 +923,6 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
-	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
@@ -943,12 +942,6 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam, fn);
-
-	if (data_ind->measParam.fLinkQuality < btsb->min_qual_norm
-	 && data_ind->msgUnitParam.u8Size != 0) {
-		msgb_free(l1p_msg);
-		return 0;
-	}
 
 	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
 		get_value_string(lc15bts_l1sapi_names, data_ind->sapi),

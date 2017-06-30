@@ -135,11 +135,12 @@ struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 }
 
 int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
-		     struct gsm_lchan *lchan, uint8_t chan_nr, uint32_t fn)
+		     struct gsm_lchan *lchan, uint8_t chan_nr, uint32_t fn,
+		     uint16_t ber10k, int16_t lqual_cb)
 {
 	struct osmo_phsap_prim *l1sap;
 
-	LOGP(DL1C, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
+	LOGP(DL1P, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
 	     gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
 
 	rmsg->l2h = rmsg->data;
@@ -150,6 +151,8 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 		       rmsg);
 	l1sap->u.tch.chan_nr = chan_nr;
 	l1sap->u.tch.fn = fn;
+	l1sap->u.tch.ber10k = ber10k;
+	l1sap->u.tch.lqual_cb = lqual_cb;
 
 	return l1sap_up(trx, l1sap);
 }

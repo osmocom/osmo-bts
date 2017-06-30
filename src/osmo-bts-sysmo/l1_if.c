@@ -918,7 +918,6 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 			      struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
-	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 	uint8_t chan_nr, link_id;
 	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
@@ -937,12 +936,6 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam);
-
-	if (data_ind->measParam.fLinkQuality < btsb->min_qual_norm
-	 && data_ind->msgUnitParam.u8Size != 0) {
-		msgb_free(l1p_msg);
-		return 0;
-	}
 
 	DEBUGP(DL1P, "Rx PH-DATA.ind %s (hL2 %08x): %s",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
@@ -969,7 +962,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.fn = fn;
 	l1sap->u.data.rssi = (int8_t) (data_ind->measParam.fRssi);
-	if (!pcu_direct) {
+	if (!pcu_direct) { /* FIXME: if pcu_direct=1, then this is not set, what to do in pcu_tx_data_ind() in this case ?*/
 		l1sap->u.data.ber10k = data_ind->measParam.fBer * 10000;
 		l1sap->u.data.ta_offs_qbits = data_ind->measParam.i16BurstTiming;
 		l1sap->u.data.lqual_cb = data_ind->measParam.fLinkQuality * 10;

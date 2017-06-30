@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <inttypes.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
@@ -329,10 +330,17 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_data *data_ind;
 	struct gsm_bts *bts = ts->trx->bts;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	LOGP(DPCU, LOGL_DEBUG, "Sending data indication: is_ptcch=%d arfcn=%d "
 		"block=%d data=%s\n", is_ptcch, arfcn, block_nr,
 		osmo_hexdump(data, len));
+
+	if (lqual / 10 < btsb->min_qual_norm) {
+		LOGP(DPCU, LOGL_DEBUG, "Link quality %"PRId16" is below threshold %f, dropping packet\n",
+			lqual, btsb->min_qual_norm);
+		return 0;
+	}
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_IND, bts->nr);
 	if (!msg)
