@@ -798,8 +798,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH-RTS.ind %02u/%02u/%02u chan_nr=%d\n",
-		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+	DEBUGP(DL1P, "Rx TCH-RTS.ind %s chan_nr=%d\n", osmo_dump_gsmtime(&g_time), chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan)
@@ -955,8 +954,8 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-DATA.ind %02u/%02u/%02u chan_nr=%d link_id=%d\n",
-		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
+	DEBUGP(DL1P, "Rx PH-DATA.ind %s chan_nr=%d link_id=%d\n",
+		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
@@ -1060,8 +1059,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH.ind %02u/%02u/%02u chan_nr=%d\n",
-		g_time.t1, g_time.t2, g_time.t3, chan_nr);
+	DEBUGP(DL1P, "Rx TCH.ind %s chan_nr=%d\n", osmo_dump_gsmtime(&g_time), chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan)
@@ -1212,9 +1210,9 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "TX packet data %02u/%02u/%02u is_ptcch=%d trx=%d ts=%d "
-		"block_nr=%d, arfcn=%d, len=%d\n", g_time.t1, g_time.t2,
-		g_time.t3, is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
+	DEBUGP(DL1P, "TX packet data %s is_ptcch=%d trx=%d ts=%d "
+		"block_nr=%d, arfcn=%d, len=%d\n", osmo_dump_gsmtime(&g_time),
+		is_ptcch, ts->trx->nr, ts->nr, block_nr, arfcn, len);
 
 	msg = l1sap_msgb_alloc(len);
 	l1sap = msgb_l1sap_prim(msg);

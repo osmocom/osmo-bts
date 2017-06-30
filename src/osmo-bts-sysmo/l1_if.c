@@ -922,6 +922,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct msgb *sap_msg;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
+	struct gsm_time g_time;
 	int rc = 0;
 
 	chan_nr = chan_nr_by_sapi(&trx->ts[data_ind->u8Tn], data_ind->sapi,
@@ -937,9 +938,11 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam);
 
-	DEBUGP(DL1P, "Rx PH-DATA.ind %s (hL2 %08x): %s",
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "Rx PH-DATA.ind %s %s (hL2 %08x): %s\n",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi),
-		data_ind->hLayer2,
+		osmo_dump_gsmtime(&g_time), data_ind->hLayer2,
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);

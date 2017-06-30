@@ -926,6 +926,7 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	uint8_t chan_nr, link_id;
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
+	struct gsm_time g_time;
 	uint8_t *data, len;
 	int rc = 0;
 	int8_t rssi;
@@ -943,9 +944,11 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam, fn);
 
-	DEBUGP(DL1C, "Rx PH-DATA.ind %s (hL2 %08x): %s",
+	gsm_fn2gsmtime(&g_time, fn);
+
+	DEBUGP(DL1P, "Rx PH-DATA.ind %s %s (hL2 %08x): %s\n",
 		get_value_string(lc15bts_l1sapi_names, data_ind->sapi),
-		(uint32_t)data_ind->hLayer2,
+		osmo_dump_gsmtime(&g_time), (uint32_t)data_ind->hLayer2,
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
 			     data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
