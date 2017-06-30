@@ -58,7 +58,7 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 	struct msgb *msg;
 	uint8_t *cur;
 
-	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
 	if (!msg)
 		return NULL;
 
@@ -113,7 +113,7 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload,
 	struct msgb *msg;
 	uint8_t *cur;
 
-	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
 	if (!msg)
 		return NULL;
 
@@ -200,12 +200,12 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 	struct msgb *msg;
 	uint8_t *cur;
 
-	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
 	if (!msg)
 		return NULL;
 
 	if (payload_len != GSM_HR_BYTES) {
-		LOGP(DL1C, LOGL_ERROR, "L1 HR frame length %u != expected %u\n",
+		LOGP(DL1P, LOGL_ERROR, "L1 HR frame length %u != expected %u\n",
 			payload_len, GSM_HR_BYTES);
 		return NULL;
 	}
@@ -239,7 +239,7 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 {
 
 	if (payload_len != GSM_HR_BYTES) {
-		LOGP(DL1C, LOGL_ERROR, "RTP HR frame length %u != expected %u\n",
+		LOGP(DL1P, LOGL_ERROR, "RTP HR frame length %u != expected %u\n",
 			payload_len, GSM_HR_BYTES);
 		return 0;
 	}
@@ -269,7 +269,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	uint8_t amr_if2_len = payload_len - 2;
 	uint8_t *cur;
 
-	msg = msgb_alloc_headroom(1024, 128, "L1C-to-RTP");
+	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
 	if (!msg)
 		return NULL;
 
@@ -296,7 +296,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	else if (cmr_idx >= amr_mrc->num_modes ||
 		 cmr_idx > GsmL1_AmrCodecMode_Unset) {
 		/* Make sure the CMR of the phone is in the active codec set */
-		LOGP(DL1C, LOGL_NOTICE, "L1->RTP: overriding CMR IDX %u\n", cmr_idx);
+		LOGP(DL1P, LOGL_NOTICE, "L1->RTP: overriding CMR IDX %u\n", cmr_idx);
 		cmr = AMR_CMR_NONE;
 	} else {
 		cmr = amr_mrc->bts_mode[cmr_idx].mode;
@@ -552,31 +552,31 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	case GsmL1_TchPlType_Amr_SidFirstP1:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_P1 from L1 "
+		LOGP(DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_P1 from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstP2:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_P2 from L1 "
+		LOGP(DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_P2 from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
 		lchan->rtp_tx_marker = true;
-		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_FIRST_INH from L1 "
+		LOGP(DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_INH from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidUpdateInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
 		lchan->rtp_tx_marker = true;
-		LOGP(DL1C, LOGL_DEBUG, "DTX: received SID_UPDATE_INH from L1 "
+		LOGP(DL1P, LOGL_DEBUG, "DTX: received SID_UPDATE_INH from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	default:
-		LOGP(DL1C, LOGL_NOTICE, "%s Rx Payload Type %s is unsupported\n",
+		LOGP(DL1P, LOGL_NOTICE, "%s Rx Payload Type %s is unsupported\n",
 			gsm_lchan_name(lchan),
 			get_value_string(femtobts_tch_pl_names, payload_type));
 		break;
@@ -614,7 +614,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	return 0;
 
 err_payload_match:
-	LOGP(DL1C, LOGL_ERROR, "%s Rx Payload Type %s incompatible with lchan\n",
+	LOGP(DL1P, LOGL_ERROR, "%s Rx Payload Type %s incompatible with lchan\n",
 		gsm_lchan_name(lchan),
 		get_value_string(femtobts_tch_pl_names, payload_type));
 	return -EINVAL;
