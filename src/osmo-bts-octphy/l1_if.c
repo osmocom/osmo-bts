@@ -1103,7 +1103,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.ber10k = b_total ? BER_10K * b_error / b_total : 0;
 
 	/* FIXME::burst timing  in 1x but PCU is expecting 4X */
-	l1sap->u.data.ta_offs_qbits = (data_ind->MeasurementInfo.sBurstTiming * 4); 
+	l1sap->u.data.ta_offs_qbits = (data_ind->MeasurementInfo.sBurstTiming * 4);
 	snr = data_ind->MeasurementInfo.sSNRDb;
 	/* FIXME: better converion formulae for SnR -> C / I?
 	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;

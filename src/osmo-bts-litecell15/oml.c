@@ -1,5 +1,5 @@
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
- * 
+ *
  * Based on sysmoBTS:
  *     (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *     (C) 2013-2014 by Holger Hans Peter Freyther

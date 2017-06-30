@@ -74,8 +74,8 @@ struct msgb *pcu_msgb_alloc(uint8_t msg_type, uint8_t bts_nr)
 		return NULL;
 	msgb_put(msg, sizeof(struct gsm_pcu_if));
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
-	pcu_prim->msg_type = msg_type; 
-	pcu_prim->bts_nr = bts_nr; 
+	pcu_prim->msg_type = msg_type;
+	pcu_prim->bts_nr = bts_nr;
 
 	return msg;
 }
@@ -566,7 +566,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 
-	LOGP(DPCU, LOGL_INFO, "%s request received: TRX=%d TX=%d\n", 
+	LOGP(DPCU, LOGL_INFO, "%s request received: TRX=%d TX=%d\n",
 		(act_req->activate) ? "Activate" : "Deactivate",
 		act_req->trx_nr, act_req->ts_nr);
 

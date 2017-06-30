@@ -2,7 +2,7 @@
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
  * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
- * 
+ *
  * Based on sysmoBTS:
  *     (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
  *     (C) 2014 by Holger Hans Peter Freyther
@@ -1482,21 +1482,21 @@ static int get_hwinfo(struct lc15l1_hdl *fl1h)
 	fl1h->hw_info.ver_minor = rc;
 
 	rc = lc15bts_option_get(LC15BTS_OPTION_BAND);
-	if (rc < 0) 
+	if (rc < 0)
 		return rc;
 
 	switch (rc) {
-	case LC15BTS_BAND_850: 
-		fl1h->hw_info.band_support = GSM_BAND_850; 
+	case LC15BTS_BAND_850:
+		fl1h->hw_info.band_support = GSM_BAND_850;
 		break;
-	case LC15BTS_BAND_900: 
-		fl1h->hw_info.band_support = GSM_BAND_900; 
+	case LC15BTS_BAND_900:
+		fl1h->hw_info.band_support = GSM_BAND_900;
 		break;
-	case LC15BTS_BAND_1800: 
-		fl1h->hw_info.band_support = GSM_BAND_1800; 
+	case LC15BTS_BAND_1800:
+		fl1h->hw_info.band_support = GSM_BAND_1800;
 		break;
-	case LC15BTS_BAND_1900: 
-		fl1h->hw_info.band_support = GSM_BAND_1900; 
+	case LC15BTS_BAND_1900:
+		fl1h->hw_info.band_support = GSM_BAND_1900;
 		break;
 	default:
 		return -1;
@@ -1576,4 +1576,3 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	return 0;
 }
-

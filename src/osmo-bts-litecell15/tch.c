@@ -1,7 +1,7 @@
 /* Traffic channel support for NuRAN Wireless Litecell 1.5 BTS L1 */
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
- * 
+ *
  * Based on sysmoBTS:
  *     (C) 2011-2012 by Harald Welte <laforge@gnumonks.org>
  *
