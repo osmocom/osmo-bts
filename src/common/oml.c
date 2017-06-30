@@ -257,27 +257,29 @@ static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, cons
 }
 
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
-static int oml_tx_attr_resp(const struct gsm_bts *bts, struct gsm_abis_mo *mo, const uint8_t *attr, uint16_t attr_len)
+static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *foh, const uint8_t *attr,
+			    uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
 	uint8_t resp[MAX_VERSION_LENGTH * attr_len * 2]; /* heuristic for Attribute Response Info space requirements */
 	int len;
 
-	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n", gsm_abis_mo_name(mo));
+	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n",
+	     get_value_string(abis_nm_obj_class_names, foh->obj_class));
 
 	if (!nmsg)
 		return -ENOMEM;
 
-	switch (mo->obj_class) {
+	switch (foh->obj_class) {
 	case NM_OC_BTS:
 		len = handle_attrs_bts(resp, bts, attr, attr_len);
 		break;
 	case NM_OC_BASEB_TRANSC:
-		len = handle_attrs_trx(resp, gsm_bts_trx_num(bts, mo->obj_inst.trx_nr), attr, attr_len);
+		len = handle_attrs_trx(resp, gsm_bts_trx_num(bts, foh->obj_inst.trx_nr), attr, attr_len);
 		break;
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
-		     get_value_string(abis_nm_obj_class_names, mo->obj_class));
+		     get_value_string(abis_nm_obj_class_names, foh->obj_class));
 		len = -EINVAL;
 	}
 
@@ -290,7 +292,7 @@ static int oml_tx_attr_resp(const struct gsm_bts *bts, struct gsm_abis_mo *mo, c
 	/* §9.4.64 Get Attribute Response Info */
 	msgb_tl16v_put(nmsg, NM_ATT_GET_ARI, len, resp);
 
-	return oml_mo_send_msg(mo, nmsg, NM_MT_GET_ATTR_RESP);
+	return oml_mo_send_msg(&bts->mo, nmsg, NM_MT_GET_ATTR_RESP);
 }
 
 /* 8.8.1 sending State Changed Event Report */
@@ -540,7 +542,7 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	rc = oml_tx_attr_resp(bts, &bts->mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
+	rc = oml_tx_attr_resp(bts, foh, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Failed to respond to O&M Get Attributes message: %s\n", strerror(-rc));
 		switch (-rc) {
