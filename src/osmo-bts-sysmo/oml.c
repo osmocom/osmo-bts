@@ -1047,6 +1047,11 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	case GsmL1_Sapi_TchH:
 	case GsmL1_Sapi_TchF:
 		lchan2lch_par(lch_par, lchan);
+		/*
+		 * Be sure that every packet is received, even if it
+		 * fails. In this case the length might be lower or 0.
+		 */
+		act_req->fBFILevel = -200.0f;
 		break;
 	case GsmL1_Sapi_Ptcch:
 		lch_par->ptcch.u8Bsic = lchan->ts->trx->bts->bsic;
