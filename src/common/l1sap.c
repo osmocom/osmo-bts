@@ -31,6 +31,7 @@
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/l1sap.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
@@ -51,16 +52,6 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/msg_utils.h>
-
-static char *dump_gsmtime(const struct gsm_time *tm)
-{
-	static char buf[64];
-
-	snprintf(buf, sizeof(buf), "%06u/%02u/%02u/%02u/%02u",
-		 tm->fn, tm->t1, tm->t2, tm->t3, tm->fn%52);
-	buf[sizeof(buf)-1] = '\0';
-	return buf;
-}
 
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
@@ -627,13 +618,13 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	loop_msg = msgb_dequeue(&lchan->dl_tch_queue);
 	if (!loop_msg) {
 		LOGP(DL1P, LOGL_NOTICE, "%s %s: no looped PDTCH message, sending empty\n",
-		     gsm_lchan_name(lchan), dump_gsmtime(tm));
+		     gsm_lchan_name(lchan), osmo_dump_gsmtime(tm));
 		/* empty downlink message */
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
 		memset(p, 0, GSM_MACBLOCK_LEN);
 	} else {
 		LOGP(DL1P, LOGL_NOTICE, "%s %s: looped PDTCH message of %u bytes\n",
-		     gsm_lchan_name(lchan), dump_gsmtime(tm), msgb_l2len(loop_msg));
+		     gsm_lchan_name(lchan), osmo_dump_gsmtime(tm), msgb_l2len(loop_msg));
 		/* copy over data from queued response message */
 		p = msgb_put(msg, msgb_l2len(loop_msg));
 		memcpy(p, msgb_l2(loop_msg), msgb_l2len(loop_msg));
@@ -666,7 +657,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	gsm_fn2gsmtime(&g_time, fn);
 
 	DEBUGP(DL1P, "Rx PH-RTS.ind %s chan_nr=%d link_id=%d\n",
-		dump_gsmtime(&g_time), chan_nr, link_id);
+		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {
