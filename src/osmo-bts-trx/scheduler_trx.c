@@ -120,9 +120,9 @@ ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	sb_info[0] =
 		((bsic &  0x3f) << 2) |
 		((t.t1 & 0x600) >> 9);
-	sb_info[1] = 
+	sb_info[1] =
 		((t.t1 & 0x1fe) >> 1);
-	sb_info[2] = 
+	sb_info[2] =
 		((t.t1 & 0x001) << 7) |
 		((t.t2 &  0x1f) << 2) |
 		((t3p  &   0x6) >> 1);
@@ -174,7 +174,7 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto got_msg;
 
 	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-		"trx=%u ts=%u at fn=%u to transmit.\n", 
+		"trx=%u ts=%u at fn=%u to transmit.\n",
 		trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
 
 no_msg:
@@ -270,7 +270,7 @@ ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto got_msg;
 
 	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-		"trx=%u ts=%u at fn=%u to transmit.\n", 
+		"trx=%u ts=%u at fn=%u to transmit.\n",
 		trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
 
 no_msg:
@@ -591,7 +591,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
 		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
+			"trx=%u ts=%u at fn=%u to transmit.\n",
 			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
 		goto send_burst;
 	}
@@ -688,7 +688,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
 		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
+			"trx=%u ts=%u at fn=%u to transmit.\n",
 			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
 		goto send_burst;
 	}
@@ -906,7 +906,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint16_t ber10k;
 	int rc;
 
-	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
 	/* allocate burst memory, if not already */
@@ -1012,7 +1012,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
-	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n", 
+	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n",
 		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
 
 	/* allocate burst memory, if not already */
