@@ -1585,6 +1585,26 @@ no_clock:
 	return 0;
 }
 
+/*! reset clock with current fn and schedule it. Called when trx becomes
+ *  available or when max clock skew is reached */
+static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs,
+	struct timespec *tv_now, const struct timespec *interval, uint32_t fn)
+{
+	tcs->last_fn_timer.fn = fn;
+	/* call trx cheduler function for new 'last' FN */
+	trx_sched_fn(bts, tcs->last_fn_timer.fn);
+
+	/* schedule first FN clock timer */
+	timer_ofd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
+	timer_ofd_schedule(&tcs->fn_timer_ofd, NULL, interval);
+
+	tcs->last_fn_timer.tv = *tv_now;
+	tcs->last_clk_ind.tv = *tv_now;
+	tcs->last_clk_ind.fn = fn;
+
+	return 0;
+}
+
 /*! called every time we receive a clock indication from TRX */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 {
@@ -1615,20 +1635,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 		/* tell BSC */
 		check_transceiver_availability(bts, 1);
 
-new_clock:
-		tcs->last_fn_timer.fn = fn;
-		/* call trx cheduler function for new 'last' FN */
-		trx_sched_fn(bts, tcs->last_fn_timer.fn);
-
-		/* schedule first FN clock timer */
-		timer_ofd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
-		timer_ofd_schedule(&tcs->fn_timer_ofd, NULL, &interval);
-
-		tcs->last_fn_timer.tv = tv_now;
-		tcs->last_clk_ind.tv = tv_now;
-		tcs->last_clk_ind.fn = fn;
-
-		return 0;
+		return trx_setup_clock(bts, tcs, &tv_now, &interval, fn);
 	}
 
 	/* calculate elapsed time +fn since last timer */
@@ -1663,7 +1670,7 @@ new_clock:
 	if (elapsed_fn > MAX_FN_SKEW || elapsed_fn < -MAX_FN_SKEW) {
 		LOGP(DL1C, LOGL_NOTICE, "GSM clock skew: old fn=%u, "
 			"new fn=%u\n", tcs->last_fn_timer.fn, fn);
-		goto new_clock;
+		return trx_setup_clock(bts, tcs, &tv_now, &interval, fn);
 	}
 
 	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d us (elapsed_fn=%d)\n",
