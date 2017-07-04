@@ -1549,14 +1549,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	/* check if transceiver is still alive */
 	if (tcs->fn_without_clock_ind++ == TRX_LOSS_FRAMES) {
 		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
-
-no_clock:
-		timer_ofd_disable(&tcs->fn_timer_ofd);
-		transceiver_available = 0;
-
-		bts_shutdown(bts, "No clock from osmo-trx");
-
-		return -1;
+		goto no_clock;
 	}
 
 	/* compute actual elapsed time and resulting OS scheduling error */
@@ -1583,6 +1576,14 @@ no_clock:
 	}
 
 	return 0;
+
+no_clock:
+	timer_ofd_disable(&tcs->fn_timer_ofd);
+	transceiver_available = 0;
+
+	bts_shutdown(bts, "No clock from osmo-trx");
+
+	return -1;
 }
 
 /*! reset clock with current fn and schedule it. Called when trx becomes
