@@ -14,3 +14,5 @@ EXTRA_DIST = \
 	doc/examples/sysmo/osmo-bts.cfg \
 	doc/examples/sysmobts-mgr.cfg \
 	README.md
+
+@RELMAKE@
