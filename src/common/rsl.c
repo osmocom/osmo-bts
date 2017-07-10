@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
+#include <osmocom/core/byteswap.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/rsl.h>
@@ -36,6 +37,7 @@
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/trau/osmo_ortp.h>
 
@@ -2557,38 +2559,71 @@ static inline int rsl_link_id_is_sacch(uint8_t link_id)
 		return 0;
 }
 
-static int rslms_is_meas_rep(struct msgb *msg)
+static int rslms_get_meas_msg_type(struct msgb *msg, bool rllh_link_id_is_sacch)
 {
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
 	struct abis_rsl_rll_hdr *rllh;
 	struct gsm48_hdr *gh;
 
 	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL)
-		return 0;
+		return -1;
 
 	if (rh->msg_type != RSL_MT_UNIT_DATA_IND)
-		return 0;
+		return -2;
 
 	rllh = msgb_l2(msg);
-	if (rsl_link_id_is_sacch(rllh->link_id) == 0)
-		return 0;
+	if (rsl_link_id_is_sacch(rllh->link_id) != rllh_link_id_is_sacch)
+		return -3;
 
 	gh = msgb_l3(msg);
 	if (gh->proto_discr != GSM48_PDISC_RR)
-		return 0;
+		return -4;
 
-	switch (gh->msg_type) {
+	return gh->msg_type;
+}
+
+static int rslms_is_meas_rep(struct msgb *msg)
+{
+	switch (rslms_get_meas_msg_type(msg, 1)) {
 	case GSM48_MT_RR_MEAS_REP:
 	case GSM48_MT_RR_EXT_MEAS_REP:
 		return 1;
-	default:
-		break;
 	}
 
 	/* FIXME: this does not cover the Bter frame format and the associated
 	 * short RR protocol descriptor for ENHANCED MEASUREMENT REPORT */
 
 	return 0;
+}
+
+static int rslms_is_gprs_susp_req(struct msgb *msg)
+{
+	return rslms_get_meas_msg_type(msg, 0) == GSM48_MT_RR_GPRS_SUSP_REQ;
+}
+
+/* TS 44.018 9.1.13b GPRS suspension request */
+static int handle_gprs_susp_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_gprs_susp_req *gsr;
+	uint32_t tlli;
+	int rc;
+
+	if (!gh || msgb_l3len(msg) < sizeof(*gh)+sizeof(*gsr)) {
+		LOGP(DRSL, LOGL_NOTICE, "%s Short GPRS SUSPEND REQ received, ignoring\n", gsm_lchan_name(msg->lchan));
+		return -EINVAL;
+	}
+
+	gsr = (struct gsm48_gprs_susp_req *) gh->data;
+	tlli = osmo_ntohl(gsr->tlli);
+
+	LOGP(DRSL, LOGL_INFO, "%s Fwd GPRS SUSPEND REQ for TLLI=0x%08x to PCU\n",
+		gsm_lchan_name(msg->lchan), tlli);
+	rc = pcu_tx_susp_req(msg->lchan, tlli, gsr->ra_id, gsr->cause);
+
+	msgb_free(msg);
+
+	return rc;
 }
 
 static inline uint8_t ms_to2rsl(const struct gsm_lchan *lchan, const struct lapdm_entity *le)
@@ -2731,6 +2766,8 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), le);
 		msgb_free(msg);
 		return rc;
+	} else if (rslms_is_gprs_susp_req(msg)) {
+		return handle_gprs_susp_req(msg);
 	} else {
 		LOGP(DRSL, LOGL_INFO, "%s Fwd RLL msg %s from LAPDm to A-bis\n",
 			gsm_lchan_name(lchan), rsl_msg_name(rh->msg_type));

@@ -15,6 +15,7 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
 int pcu_tx_time_ind(uint32_t fn);
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed);
 int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len);
+int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
 
 int pcu_sock_init(const char *path);
 void pcu_sock_exit(void);

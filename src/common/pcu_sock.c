@@ -466,6 +466,23 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
+/* forward data from a RR GPRS SUSPEND REQ towards PCU */
+int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause)
+{
+	struct msgb *msg;
+	struct gsm_pcu_if *pcu_prim;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_SUSP_REQ, lchan->ts->trx->bts->nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	pcu_prim->u.susp_req.tlli = tlli;
+	memcpy(pcu_prim->u.susp_req.ra_id, ra_id, sizeof(pcu_prim->u.susp_req.ra_id));
+	pcu_prim->u.susp_req.cause = cause;
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	const struct gsm_pcu_if_data *data_req)
 {
