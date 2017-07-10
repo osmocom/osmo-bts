@@ -1,5 +1,13 @@
 #!/bin/sh
+# this is a dispatcher script which will call the bts-model-specific
+# script based on the bts model specified as command line argument
+
 bts_model="$1"
+
+if [ "x$bts_model" == "x" ]; then
+	echo "Error: You have to specify the BTS model as first argument, e.g. $0 sysmo"
+	exit 2
+fi
 
 if [ ! -d "./contrib" ]; then
   echo "Run ./contrib/jenkins_bts_model.sh from the root of the osmo-bts tree"

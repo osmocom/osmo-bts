@@ -1,4 +1,5 @@
 #!/bin/sh
+# jenkins build helper script for osmo-bts-octphy
 
 # shellcheck source=contrib/jenkins_common.sh
 . $(dirname "$0")/jenkins_common.sh
