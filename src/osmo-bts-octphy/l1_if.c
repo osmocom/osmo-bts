@@ -774,6 +774,57 @@ int bts_model_init(struct gsm_bts *bts)
  * handling of messages coming up from PHY
  ***********************************************************************/
 
+/* When the measurement indication is received from the phy, the phy will
+ * automatically stamp it with the frame number that matches the frame
+ * number of the SACCH channel that marks the end of the measurement
+ * period. (e.g. fn%104=90, on a TCH/H, TS0). However, the upper layers
+ * expect the frame number to be aligned to the next SACCH frame after,
+ * after the end of the measurement period that has just passed. (e.g.
+ * (fn%104=10, on a TCH/H, TS0). The following function remaps the frame
+ * number in order to match the higher layers expectations.
+ * See also: 3GPP TS 05.02 Clause 7 Table 1 of 9  Mapping of logical channels
+ * onto physical channels (see subclauses 6.3, 6.4, 6.5) */
+static uint32_t translate_tch_meas_rep_fn104_reverse(uint32_t fn)
+{
+	uint8_t new_fn_mod;
+	uint8_t fn_mod;
+
+	fn_mod = fn % 104;
+
+	switch (fn_mod) {
+	case 103:
+		new_fn_mod = 25;
+		break;
+	case 12:
+		new_fn_mod = 38;
+		break;
+	case 25:
+		new_fn_mod = 51;
+		break;
+	case 38:
+		new_fn_mod = 64;
+		break;
+	case 51:
+		new_fn_mod = 77;
+		break;
+	case 64:
+		new_fn_mod = 90;
+		break;
+	case 77:
+		new_fn_mod = 103;
+		break;
+	case 90:
+		new_fn_mod = 12;
+		break;
+	default:
+		/* No translation for frame numbers
+		 * fall out of the raster */
+		new_fn_mod = fn_mod;
+	}
+
+	return (fn - fn_mod) + new_fn_mod;
+}
+
 static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 			     uint32_t fn, uint32_t data_len,
 			     tOCTVC1_GSM_MEASUREMENT_INFO * m)
@@ -812,7 +863,7 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) ((m->sRSSIDbm >> 8) * -1);
 
 	/* copy logical frame number to MEAS IND data structure */
-	l1sap.u.info.u.meas_ind.fn = fn;
+	l1sap.u.info.u.meas_ind.fn = translate_tch_meas_rep_fn104_reverse(fn);
 
 	/* l1sap wants to take msgb ownership.  However, as there is no
 	 * msg, it will msgb_free(l1sap.oph.msg == NULL) */
