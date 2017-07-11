@@ -315,9 +315,8 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 			count = (uint8_t) bitvec_get_uint(&bv, 4);
 			if (bts->si2q_count && bts->si2q_count != count) {
-				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater count changed while receiving: %u -> %d\n",
+				LOGP(DRSL, LOGL_NOTICE, " Rx RSL SI2quater count updated: %u -> %d\n",
 				     bts->si2q_count, count);
-				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
 			}
 
 			bts->si2q_count = count;
