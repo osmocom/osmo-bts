@@ -66,6 +66,13 @@ static struct phy_instance *phy_instance_by_arfcn(struct phy_link *plink, uint16
 static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 {
 	struct phy_link *plink = (struct phy_link *)vui->priv;
+	struct phy_instance *pinst;
+	if (!msg) {
+		pinst = phy_instance_by_num(plink, 0);
+		bts_shutdown(pinst->trx->bts, "VirtPHY read socket died\n");
+		return;
+	}
+
 	struct gsmtap_hdr *gh = msgb_l1(msg);
 	uint32_t fn = ntohl(gh->frame_number);	/* frame number of the rcv msg */
 	uint16_t arfcn = ntohs(gh->arfcn); 	/* arfcn of the cell we currently camp on */
@@ -77,7 +84,6 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	uint8_t rsl_chantype;			/* rsl chan type (8.58, 9.3.1) */
 	uint8_t link_id;			/* rsl link id tells if this is an ssociated or dedicated link */
 	uint8_t chan_nr;			/* encoded rsl channel type, timeslot and mf subslot */
-	struct phy_instance *pinst;
 	struct osmo_phsap_prim l1sap;
 
 	memset(&l1sap, 0, sizeof(l1sap));

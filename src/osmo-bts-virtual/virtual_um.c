@@ -48,11 +48,12 @@ static int virt_um_fd_cb(struct osmo_fd *ofd, unsigned int what)
 			msg->l1h = msgb_data(msg);
 			/* call the l1 callback function for a received msg */
 			vui->recv_cb(vui, msg);
-		} else {
-			/* FIXME: this kind of error handling might be a bit harsh */
+		} else if (rc == 0) {
 			vui->recv_cb(vui, NULL);
 			osmo_fd_close(ofd);
-		}
+		} else
+			perror("Read from multicast socket");
+
 	}
 
 	return 0;
@@ -86,6 +87,8 @@ int virt_um_write_msg(struct virt_um_inst *vui, struct msgb *msg)
 
 	rc = mcast_bidir_sock_tx(vui->mcast_sock, msgb_data(msg),
 	                msgb_length(msg));
+	if (rc < 0)
+		perror("Writing to multicast socket");
 	msgb_free(msg);
 
 	return rc;

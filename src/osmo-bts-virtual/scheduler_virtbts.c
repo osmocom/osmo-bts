@@ -36,6 +36,7 @@
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/bts.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/scheduler.h>
@@ -93,9 +94,13 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (outmsg) {
 		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 		struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msgb_data(outmsg);
+		int rc;
 
-		if (virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg) == -1)
+		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
+		if (rc < 0)
 			LOGP(DL1P, LOGL_ERROR, "%s GSMTAP msg could not send to virtual Um\n", gsmtap_hdr_stringify(gh));
+		else if (rc == 0)
+			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
 			DEBUGP(DL1C, "%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
 	} else
