@@ -129,6 +129,10 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 		else if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2quater) &&
 			 !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2bis) && !GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_2ter))
 			return get_si2q_inc_index(bts);
+
+			/* simply send SI2 if we have nothing else to send */
+		else
+			return GSM_BTS_SI(bts, SYSINFO_TYPE_2);
 		break;
 	case 6:
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_3);
@@ -136,7 +140,9 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_4);
 	}
 
-	return NULL;
+	/* this should never bve reached. We must transmit a BCCH
+	 * message on the normal BCCH in all cases. */
+	OSMO_ASSERT(0);
 }
 
 uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
