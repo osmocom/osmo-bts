@@ -24,12 +24,13 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #include "lc15bts_bid.h"
 
 #define BOARD_REV_SYSFS		"/var/lc15/platform/revision"
 #define BOARD_OPT_SYSFS		"/var/lc15/platform/option"
- 
+
 static const int option_type_mask[_NUM_OPTION_TYPES] = {
         [LC15BTS_OPTION_OCXO]		= 0x07,
 	[LC15BTS_OPTION_FPGA]		= 0x03,
@@ -72,6 +73,21 @@ static const int option_type_shift[_NUM_OPTION_TYPES] = {
 static int board_rev = -1;
 static int board_option = -1;
 
+static inline bool read_board(const char *src, const char *spec, void *dst)
+{
+	FILE *fp = fopen(src, "r");
+        if (!fp) {
+		fprintf(stderr, "Failed to open %s due to '%s' error\n", src, strerror(errno));
+		return false;
+	}
+
+        if (fscanf(fp, spec, dst) != 1) {
+                fclose(fp);
+		fprintf(stderr, "Failed to read %s due to '%s' error\n", src, strerror(errno));
+		return false;
+        }
+        fclose(fp);
+}
 
 int lc15bts_rev_get(void) 
 {
@@ -82,14 +98,8 @@ int lc15bts_rev_get(void)
 		return board_rev;
 	}
 
-        fp = fopen(BOARD_REV_SYSFS, "r");
-        if (fp == NULL) return -1;
-
-        if (fscanf(fp, "%c", &rev) != 1) {
-                fclose( fp );
-                return -1;
-        }
-        fclose(fp);
+	if (!read_board(BOARD_REV_SYSFS, "%c", &rev))
+		return -1;
 
 	board_rev = rev;
 	return board_rev;
@@ -99,22 +109,15 @@ int lc15bts_model_get(void)
 {
         FILE *fp;
         int opt;
+	bool rc;
 
+        if (board_option != -1)
+		return board_option;
 
-        if (board_option == -1) {
-        	fp = fopen(BOARD_OPT_SYSFS, "r");
-	        if (fp == NULL) {
-			return -1;
-		}
-
-	        if (fscanf(fp, "%X", &opt) != 1) {
-	                fclose( fp );
-	                return -1;
-	        }
-	        fclose(fp);
+	if (!read_board(BOARD_OPT_SYSFS, "%X", &opt))
+		return -1;
 	
-	        board_option = opt;
-	}
+	board_option = opt;
         return board_option;
 }
 
