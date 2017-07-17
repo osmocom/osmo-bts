@@ -1,5 +1,5 @@
 [Unit]
-Description=sysmocom %p manager
+Description=osmo-bts manager for %p
 
 [Service]
 Type=simple
@@ -9,4 +9,4 @@ RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
-
+Alias=osmo-bts-mgr.service

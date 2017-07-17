@@ -1,5 +1,5 @@
 [Unit]
-Description=sysmocom sysmoBTS
+Description=osmo-bts for sysmocom sysmoBTS
 
 [Service]
 Type=simple
@@ -18,3 +18,4 @@ CPUSchedulingPriority=1
 [Install]
 WantedBy=multi-user.target
 Alias=sysmobts.service
+Alias=osmo-bts.service
