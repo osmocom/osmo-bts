@@ -15,6 +15,14 @@
       FSM added
     </revremark>
   </revision>
+  <revision>
+    <revnumber>3</revnumber>
+    <date>July 2017</date>
+    <authorinitials>PE</authorinitials>
+    <revremark>
+      Add section and update sequence charts to describe requirement to receive all PH-DATA.ind events
+    </revremark>
+  </revision>
 </revhistory>
 
 <authorgroup>
