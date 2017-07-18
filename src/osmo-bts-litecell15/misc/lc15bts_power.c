@@ -39,7 +39,7 @@ static const char *power_enable_devs[_NUM_POWER_SOURCES] = {
 };
 
 static const char *power_sensor_devs[_NUM_POWER_SOURCES] = {
-	[LC15BTS_POWER_SUPPLY]	= "/var/lc15/pwr-sense/pa-supply/",
+	[LC15BTS_POWER_SUPPLY]	= "/var/lc15/pwr-sense/main-supply/",
 	[LC15BTS_POWER_PA0]	= "/var/lc15/pwr-sense/pa0/",
 	[LC15BTS_POWER_PA1]	= "/var/lc15/pwr-sense/pa1/",
 };
@@ -52,7 +52,8 @@ static const char *power_sensor_type_str[_NUM_POWER_TYPES] = {
 
 int lc15bts_power_sensor_get(
         enum lc15bts_power_source source,
-        enum lc15bts_power_type type)
+        enum lc15bts_power_type type,
+	int *power)
 {
 	char buf[PATH_MAX];
 	char pwrstr[10];
@@ -82,8 +83,8 @@ int lc15bts_power_sensor_get(
 		return -EIO;
 	}
 	close(fd);
-
-	return atoi(pwrstr);
+	*power = atoi(pwrstr);
+	return 0;
 }
 
 
@@ -170,4 +171,40 @@ int lc15bts_power_get(
 	}
 	
         return retVal;
+}
+
+static const char *vswr_devs[_NUM_VSWR_SENSORS] = {
+	[LC15BTS_VSWR_TX0]		= "/var/lc15/vswr/tx0/vswr",
+	[LC15BTS_VSWR_TX1]		= "/var/lc15/vswr/tx1/vswr",
+};
+
+int lc15bts_vswr_get(enum lc15bts_vswr_sensor sensor, int *vswr)
+{
+	char buf[PATH_MAX];
+	char vswrstr[8];
+	int fd, rc;
+
+	if (sensor < 0 || sensor >= _NUM_VSWR_SENSORS)
+		return -EINVAL;
+
+	snprintf(buf, sizeof(buf)-1, "%s", vswr_devs[sensor]);
+	buf[sizeof(buf)-1] = '\0';
+
+	fd = open(buf, O_RDONLY);
+	if (fd < 0)
+		return fd;
+
+	rc = read(fd, vswrstr, sizeof(vswrstr));
+	vswrstr[sizeof(vswrstr)-1] = '\0';
+	if (rc < 0) {
+		close(fd);
+		return rc;
+	}
+	if (rc == 0) {
+		close(fd);
+		return -EIO;
+	}
+	close(fd);
+	*vswr = atoi(vswrstr);
+	return 0;
 }

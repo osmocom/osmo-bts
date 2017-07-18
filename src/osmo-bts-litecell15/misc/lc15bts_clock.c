@@ -100,9 +100,6 @@ static int sysfs_write_str(int fd, const char *str)
 
 int lc15bts_clock_err_open(void)
 {
-	int rc;
-	int fault;
-
 	if (clkerr_fd_err < 0) {
 		clkerr_fd_err = open(CLKERR_ERR_SYSFS, O_RDONLY);
 		if (clkerr_fd_err < 0) {
@@ -149,26 +146,6 @@ int lc15bts_clock_err_open(void)
 			lc15bts_clock_err_close();
 			return clkerr_fd_reset;	
 		}
-	}
-
-	rc = sysfs_write_str(clkerr_fd_refresh, "once");
-	if (rc < 0) {
-		lc15bts_clock_err_close();
-		return rc;	
-	}
-
-	rc = sysfs_read_val(clkerr_fd_fault, &fault);
-	if (rc < 0) {
-		lc15bts_clock_err_close();
-		return rc;	
-	}
-
-	if (fault) { 
-		rc = sysfs_write_val(clkerr_fd_reset, 1);
-		if (rc < 0) {
-                	lc15bts_clock_err_close();
-                	return rc;
-	        }
 	}
 	return 0;
 }

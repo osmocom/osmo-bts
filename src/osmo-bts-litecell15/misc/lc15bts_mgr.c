@@ -46,13 +46,14 @@
 #include "misc/lc15bts_par.h"
 #include "misc/lc15bts_bid.h"
 #include "misc/lc15bts_power.h"
+#include "lc15bts_led.h"
 
 static int no_rom_write = 0;
 static int daemonize = 0;
 void *tall_mgr_ctx;
 
 /* every 6 hours means 365*4 = 1460 rom writes per year (max) */
-#define TEMP_TIMER_SECS		(6 * 3600)
+#define SENSOR_TIMER_SECS		(6 * 3600)
 
 /* every 1 hours means 365*24 = 8760 rom writes per year (max) */
 #define HOURS_TIMER_SECS	(1 * 3600)
@@ -62,54 +63,106 @@ void *tall_mgr_ctx;
 static struct lc15bts_mgr_instance manager = {
 	.config_file	= "lc15bts-mgr.cfg",
 	.temp = {
-		.supply_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.supply_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -40,
 		},
-		.soc_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.soc_temp_limit	= {
+			.thresh_warn_max	= 95,
+			.thresh_crit_max	= 100,
+			.thresh_warn_min	= -40,
 		},
-		.fpga_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.fpga_temp_limit	= {
+			.thresh_warn_max	= 95,
+			.thresh_crit_max	= 100,
+			.thresh_warn_min	= -40,
 		},
-		.logrf_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.rmsdet_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -40,
 		},
-		.ocxo_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.ocxo_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -40,
 		},
-		.tx0_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.tx0_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -20,
 		},
-		.tx1_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.tx1_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -20,
 		},
-		.pa0_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.pa0_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -40,
 		},
-		.pa1_limit	= {
-			.thresh_warn	= 60,
-			.thresh_crit	= 78,
+		.pa1_temp_limit	= {
+			.thresh_warn_max	= 80,
+			.thresh_crit_max	= 85,
+			.thresh_warn_min	= -40,
+		}
+	},
+	.volt = {
+		.supply_volt_limit = {
+			.thresh_warn_max	= 30000,
+			.thresh_crit_max	= 30500,
+			.thresh_warn_min	= 19000,
+			.thresh_crit_min	= 17500,
+		}
+	},
+	.pwr = {
+		.supply_pwr_limit = {
+			.thresh_warn_max	= 110,
+			.thresh_crit_max	= 120,
 		},
+		.pa0_pwr_limit = {
+			.thresh_warn_max	= 50,
+			.thresh_crit_max	= 60,
+		},
+		.pa1_pwr_limit = {
+			.thresh_warn_max	= 50,
+			.thresh_crit_max	= 60,
+		}
+	},
+	.vswr = {
+		.tx0_vswr_limit = {
+			.thresh_warn_max	= 3000,
+			.thresh_crit_max	= 5000,
+		},
+		.tx1_vswr_limit = {
+			.thresh_warn_max	= 3000,
+			.thresh_crit_max	= 5000,
+		}
+	},
+	.gps = {
+		.gps_fix_limit = {
+			.thresh_warn_max	= 7,
+		}
+	},
+	.state = {
+		.action_norm		= SENSOR_ACT_NORM_PA0_ON | SENSOR_ACT_NORM_PA1_ON,
 		.action_warn		= 0,
-		.action_crit		= TEMP_ACT_PA0_OFF | TEMP_ACT_PA1_OFF,
+		.action_crit		= 0,
+		.action_comb		= 0,
 		.state			= STATE_NORMAL,
 	}
 };
 
-static struct osmo_timer_list temp_timer;
-static void check_temp_timer_cb(void *unused)
+static struct osmo_timer_list sensor_timer;
+static void check_sensor_timer_cb(void *unused)
 {
 	lc15bts_check_temp(no_rom_write);
-
-	osmo_timer_schedule(&temp_timer, TEMP_TIMER_SECS, 0);
+	lc15bts_check_power(no_rom_write);
+	lc15bts_check_vswr(no_rom_write);
+	osmo_timer_schedule(&sensor_timer, SENSOR_TIMER_SECS, 0);
+	/* TODO checks if lc15bts_check_temp/lc15bts_check_power/lc15bts_check_vswr went ok */
 }
 
 static struct osmo_timer_list hours_timer;
@@ -118,6 +171,7 @@ static void hours_timer_cb(void *unused)
 	lc15bts_update_hours(no_rom_write);
 
 	osmo_timer_schedule(&hours_timer, HOURS_TIMER_SECS, 0);
+	/* TODO: validates if lc15bts_update_hours went correctly */
 }
 
 static void print_help(void)
@@ -169,6 +223,8 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		lc15bts_check_temp(no_rom_write);
+		lc15bts_check_power(no_rom_write);
+		lc15bts_check_vswr(no_rom_write);
 		lc15bts_update_hours(no_rom_write);
 		exit(0);
 		break;
@@ -207,6 +263,12 @@ static struct log_info_cat mgr_log_info_cat[] = {
 		.color = "\033[1;37m",
 		.enabled = 1, .loglevel = LOGL_INFO,
 	},
+	[DSWD] = {
+		.name = "DSWD",
+		.description = "Software Watchdog",
+		.color = "\033[1;37m",
+		.enabled = 1, .loglevel = LOGL_INFO,
+	},
 };
 
 static const struct log_info mgr_log_info = {
@@ -223,7 +285,6 @@ static int mgr_log_init(void)
 int main(int argc, char **argv)
 {
 	int rc;
-
 
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
 	msgb_talloc_ctx_init(tall_mgr_ctx, 0);
@@ -253,9 +314,12 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	INIT_LLIST_HEAD(&manager.lc15bts_leds.list);
+	INIT_LLIST_HEAD(&manager.alarms.list);
+
 	/* start temperature check timer */
-	temp_timer.cb = check_temp_timer_cb;
-	check_temp_timer_cb(NULL);
+	sensor_timer.cb = check_sensor_timer_cb;
+	check_sensor_timer_cb(NULL);
 
 	/* start operational hours timer */
 	hours_timer.cb = hours_timer_cb;
@@ -271,14 +335,13 @@ int main(int argc, char **argv)
 	if (rc < 0) {
 		exit(3);
 	}
-	
 
 	/* handle broadcast messages for ipaccess-find */
 	if (lc15bts_mgr_nl_init() != 0)
 		exit(3);
 
-	/* Initialize the temperature control */
-	lc15bts_mgr_temp_init(&manager);
+	/* Initialize the sensor control */
+	lc15bts_mgr_sensor_init(&manager);
 
 	if (lc15bts_mgr_calib_init(&manager) != 0)
 		exit(3);
@@ -290,7 +353,6 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-
 
 	while (1) {
 		log_reset_context();

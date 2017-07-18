@@ -29,20 +29,19 @@
 
 #include "lc15bts_temp.h"
 
-
 static const char *temp_devs[_NUM_TEMP_SENSORS] = {
-	[LC15BTS_TEMP_SUPPLY]	= "/var/lc15/temp/pa-supply/temp",
-	[LC15BTS_TEMP_SOC]	= "/var/lc15/temp/cpu/temp",
-	[LC15BTS_TEMP_FPGA]	= "/var/lc15/temp/fpga/temp",
-	[LC15BTS_TEMP_LOGRF]	= "/var/lc15/temp/logrf/temp",
-	[LC15BTS_TEMP_OCXO]	= "/var/lc15/temp/ocxo/temp",
-	[LC15BTS_TEMP_TX0]	= "/var/lc15/temp/tx0/temp",
-	[LC15BTS_TEMP_TX1]	= "/var/lc15/temp/tx1/temp",
-	[LC15BTS_TEMP_PA0]	= "/var/lc15/temp/pa0/temp",
-	[LC15BTS_TEMP_PA1]	= "/var/lc15/temp/pa1/temp",
+	[LC15BTS_TEMP_SUPPLY]	 	= "/var/lc15/temp/main-supply/temp",
+	[LC15BTS_TEMP_SOC]	 	= "/var/lc15/temp/cpu/temp",
+	[LC15BTS_TEMP_FPGA]	 	= "/var/lc15/temp/fpga/temp",
+	[LC15BTS_TEMP_RMSDET] 	= "/var/lc15/temp/rmsdet/temp",
+	[LC15BTS_TEMP_OCXO]		= "/var/lc15/temp/ocxo/temp",
+	[LC15BTS_TEMP_TX0]		= "/var/lc15/temp/tx0/temp",
+	[LC15BTS_TEMP_TX1]		= "/var/lc15/temp/tx1/temp",
+	[LC15BTS_TEMP_PA0]		= "/var/lc15/temp/pa0/temp",
+	[LC15BTS_TEMP_PA1]		= "/var/lc15/temp/pa1/temp",
 };
 
-int lc15bts_temp_get(enum lc15bts_temp_sensor sensor)
+int lc15bts_temp_get(enum lc15bts_temp_sensor sensor, int *temp)
 {
 	char buf[PATH_MAX];
 	char tempstr[8];
@@ -69,7 +68,7 @@ int lc15bts_temp_get(enum lc15bts_temp_sensor sensor)
 		return -EIO;
 	}
 	close(fd);
-
-	return atoi(tempstr);
+	*temp = atoi(tempstr);
+	return 0;
 }
 

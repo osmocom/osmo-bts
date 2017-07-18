@@ -43,12 +43,19 @@ const struct value_string lc15bts_par_names[_NUM_LC15BTS_PAR+1] = {
 	{ LC15BTS_PAR_TEMP_SUPPLY_MAX,	"temp-supply-max" },
 	{ LC15BTS_PAR_TEMP_SOC_MAX,	"temp-soc-max" },
 	{ LC15BTS_PAR_TEMP_FPGA_MAX,	"temp-fpga-max" },
-	{ LC15BTS_PAR_TEMP_LOGRF_MAX,	"temp-logrf-max" },
+	{ LC15BTS_PAR_TEMP_RMSDET_MAX,	"temp-rmsdet-max" },
 	{ LC15BTS_PAR_TEMP_OCXO_MAX,	"temp-ocxo-max" },
 	{ LC15BTS_PAR_TEMP_TX0_MAX,	"temp-tx0-max" },
 	{ LC15BTS_PAR_TEMP_TX1_MAX,	"temp-tx1-max" },
 	{ LC15BTS_PAR_TEMP_PA0_MAX,	"temp-pa0-max" },
 	{ LC15BTS_PAR_TEMP_PA1_MAX,	"temp-pa1-max" },
+	{ LC15BTS_PAR_VOLT_SUPPLY_MAX,	"volt-supply-max" },
+	{ LC15BTS_PAR_PWR_SUPPLY_MAX,	"pwr-supply-max" },
+	{ LC15BTS_PAR_PWR_PA0_MAX,	"pwr-pa0-max" },
+	{ LC15BTS_PAR_PWR_PA1_MAX,	"pwr-pa1-max" },
+	{ LC15BTS_PAR_VSWR_TX0_MAX,	"vswr-tx0-max" },
+	{ LC15BTS_PAR_VSWR_TX1_MAX,	"vswr-tx1-max" },
+	{ LC15BTS_PAR_GPS_FIX, 		"gps-fix" },
 	{ LC15BTS_PAR_SERNR,		"serial-nr" },
 	{ LC15BTS_PAR_HOURS, 		"hours-running" },
 	{ LC15BTS_PAR_BOOTS, 		"boot-count" },
@@ -60,17 +67,23 @@ int lc15bts_par_is_int(enum lc15bts_par par)
 {
 	switch (par) {
 	case LC15BTS_PAR_TEMP_SUPPLY_MAX:
-        case LC15BTS_PAR_TEMP_SOC_MAX:
-        case LC15BTS_PAR_TEMP_FPGA_MAX:
-        case LC15BTS_PAR_TEMP_LOGRF_MAX:
-        case LC15BTS_PAR_TEMP_OCXO_MAX:
-        case LC15BTS_PAR_TEMP_TX0_MAX:
-        case LC15BTS_PAR_TEMP_TX1_MAX:
-        case LC15BTS_PAR_TEMP_PA0_MAX:
-        case LC15BTS_PAR_TEMP_PA1_MAX:
+	case LC15BTS_PAR_TEMP_SOC_MAX:
+	case LC15BTS_PAR_TEMP_FPGA_MAX:
+	case LC15BTS_PAR_TEMP_RMSDET_MAX:
+	case LC15BTS_PAR_TEMP_OCXO_MAX:
+	case LC15BTS_PAR_TEMP_TX0_MAX:
+	case LC15BTS_PAR_TEMP_TX1_MAX:
+	case LC15BTS_PAR_TEMP_PA0_MAX:
+	case LC15BTS_PAR_TEMP_PA1_MAX:
+	case LC15BTS_PAR_VOLT_SUPPLY_MAX:
+	case LC15BTS_PAR_VSWR_TX0_MAX:
+	case LC15BTS_PAR_VSWR_TX1_MAX:
 	case LC15BTS_PAR_SERNR:
 	case LC15BTS_PAR_HOURS:
 	case LC15BTS_PAR_BOOTS:
+	case LC15BTS_PAR_PWR_SUPPLY_MAX:
+	case LC15BTS_PAR_PWR_PA0_MAX:
+	case LC15BTS_PAR_PWR_PA1_MAX:
 		return 1;
 	default:
 		return 0;
@@ -167,4 +180,53 @@ int lc15bts_par_set_buf(void *ctx, enum lc15bts_par par, const uint8_t *buf, uns
         fclose(fp);
 
         return rc;
+}
+
+int lc15bts_par_get_gps_fix(time_t *ret)
+{
+	char fpath[PATH_MAX];
+	FILE *fp;
+	int rc;
+
+	snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, LC15BTS_PAR_GPS_FIX));
+	fpath[sizeof(fpath)-1] = '\0';
+
+	fp = fopen(fpath, "r");
+	if (fp == NULL) {
+		return -errno;
+	}
+
+	rc = fscanf(fp, "%lld", (long long *)ret);
+	if (rc != 1) {
+		fclose(fp);
+		return -EIO;
+	}
+	fclose(fp);
+
+	return 0;
+}
+
+int lc15bts_par_set_gps_fix(time_t val)
+{
+	char fpath[PATH_MAX];
+	FILE *fp;
+	int rc;
+
+	snprintf(fpath, sizeof(fpath)-1, "%s/%s", USER_ROM_PATH, get_value_string(lc15bts_par_names, LC15BTS_PAR_GPS_FIX));
+	fpath[sizeof(fpath)-1] = '\0';
+
+	fp = fopen(fpath, "w");
+	if (fp == NULL) {
+		return -errno;
+	}
+
+	rc = fprintf(fp, "%lld", (long long)val);
+	if (rc < 0) {
+		fclose(fp);
+		return -EIO;
+	}
+	fsync(fp);
+	fclose(fp);
+
+	return 0;
 }

@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 void lc15bts_check_temp(int no_rom_write);
+void lc15bts_check_power(int no_rom_write);
+void lc15bts_check_vswr(int no_rom_write);
 
 int lc15bts_update_hours(int no_rom_write);
 

@@ -5,7 +5,7 @@ enum lc15bts_temp_sensor {
 	LC15BTS_TEMP_SUPPLY,
 	LC15BTS_TEMP_SOC,
 	LC15BTS_TEMP_FPGA,
-	LC15BTS_TEMP_LOGRF,
+	LC15BTS_TEMP_RMSDET,
 	LC15BTS_TEMP_OCXO,
 	LC15BTS_TEMP_TX0,
 	LC15BTS_TEMP_TX1,
@@ -22,6 +22,7 @@ enum lc15bts_temp_type {
 	_NUM_TEMP_TYPES
 };
 
-int lc15bts_temp_get(enum lc15bts_temp_sensor sensor);
+int lc15bts_temp_get(enum lc15bts_temp_sensor sensor, int *temp);
+
 
 #endif

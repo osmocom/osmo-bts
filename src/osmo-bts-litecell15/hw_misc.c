@@ -69,6 +69,7 @@ int lc15bts_led_set(enum lc15bts_led_color c)
 
 	rc = write(fd, cmd[0] ? "1" : "0", 2);
 	if (rc != 2) {
+		close(fd);
 		return -1;
 	}
 	close(fd);
@@ -79,6 +80,7 @@ int lc15bts_led_set(enum lc15bts_led_color c)
 
 	rc = write(fd, cmd[1] ? "1" : "0", 2);
 	if (rc != 2) {
+		close(fd);
 		return -1;
 	}
 	close(fd);
