@@ -1,7 +1,7 @@
 = AMR-RTP in Combination with DTX
 
 The purpose of this document is to describe the sometimes quite
-intricate interactions between a MS, the BTS-PHY and the BTS softare
+intricate interactions between a MS, the BTS-PHY and the BTS software
 in case of AMR (Adaptive Multi Rate) codec and DTX (Discontinuous
 Transmission).
 
@@ -760,7 +760,7 @@ msc {
 }
 ----
 
-ULSF1:: Only SID_FIRST_P1 contains information so it must be the only one transmitted over RTP. 
+ULSF1:: Only SID_FIRST_P1 contains information so it must be the only one transmitted over RTP.
 
 NOTE:: It has been observed that not all phones transmit SID_FIRST_P2 so the PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP2 is not guaranteed to be sent to the BTS.
 
