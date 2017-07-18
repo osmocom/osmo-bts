@@ -87,11 +87,11 @@ static inline bool read_board(const char *src, const char *spec, void *dst)
 		return false;
         }
         fclose(fp);
+	return true;
 }
 
 int lc15bts_rev_get(void) 
 {
-	FILE *fp;
 	char rev;
 
 	if (board_rev != -1) {
@@ -107,9 +107,7 @@ int lc15bts_rev_get(void)
 
 int lc15bts_model_get(void)
 {
-        FILE *fp;
         int opt;
-	bool rc;
 
         if (board_option != -1)
 		return board_option;

@@ -1369,7 +1369,7 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	fl1h->hw_info.fpga_version[1] = sic->fpgaVersion.minor;
 	fl1h->hw_info.fpga_version[2] = sic->fpgaVersion.build;
 
-	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\nn",
+	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\n",
 		sic->dspVersion.major, sic->dspVersion.minor,
 		sic->dspVersion.build, sic->fpgaVersion.major,
 		sic->fpgaVersion.minor, sic->fpgaVersion.build);
@@ -1468,18 +1468,24 @@ static int get_hwinfo(struct lc15l1_hdl *fl1h)
 	int rc;
 
 	rc = lc15bts_rev_get();
-	if (rc < 0)
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to obtain LC15BTS revision: %d\n", rc);
 		return rc;
+	}
 	fl1h->hw_info.ver_major = rc;
 
 	rc = lc15bts_model_get();
-	if (rc < 0)
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to obtain LC15BTS model: %d\n", rc);
 		return rc;
+	}
 	fl1h->hw_info.ver_minor = rc;
 
 	rc = lc15bts_option_get(LC15BTS_OPTION_BAND);
-	if (rc < 0)
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR, "Failed to obtain LC15BTS_OPTION_BAND: %d\n", rc);
 		return rc;
+	}
 
 	switch (rc) {
 	case LC15BTS_BAND_850:
@@ -1495,8 +1501,12 @@ static int get_hwinfo(struct lc15l1_hdl *fl1h)
 		fl1h->hw_info.band_support = GSM_BAND_1900;
 		break;
 	default:
+		LOGP(DL1C, LOGL_ERROR, "Unexpected LC15BTS_BAND value: %d\n", rc);
 		return -1;
 	}
+
+	LOGP(DL1C, LOGL_INFO, "BTS hw support band %s\n", gsm_band_name(fl1h->hw_info.band_support));
+
 	return 0;
 }
 
