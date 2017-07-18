@@ -130,6 +130,8 @@ int lc15bts_par_set_int(void *ctx, enum lc15bts_par par, int val)
 		fclose(fp);
 		return -EIO;
 	}
+
+	fsync(fp);
 	fclose(fp);
 	return 0;
 }
@@ -161,6 +163,7 @@ int lc15bts_par_set_buf(void *ctx, enum lc15bts_par par, const uint8_t *buf, uns
 
         rc = fwrite(buf, 1, size, fp);
 
+        fsync(fp);
         fclose(fp);
 
         return rc;
