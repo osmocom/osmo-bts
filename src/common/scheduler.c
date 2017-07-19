@@ -282,7 +282,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 		l1sap = msgb_l1sap_prim(msg);
 		if (l1sap->oph.operation != PRIM_OP_REQUEST) {
 wrong_type:
-			LOGP(DL1C, LOGL_ERROR, "Prim for ts=%u at fn=%u has "
+			LOGP(DL1P, LOGL_ERROR, "Prim for ts=%u at fn=%u has "
 				"wrong type.\n", tn, fn);
 free_msg:
 			/* unlink and free message */
@@ -305,7 +305,7 @@ free_msg:
 			goto wrong_type;
 		}
 		if (prim_fn > 100) {
-			LOGP(DL1C, LOGL_NOTICE, "Prim %u for trx=%u ts=%u at "
+			LOGP(DL1P, LOGL_NOTICE, "Prim %u for trx=%u ts=%u at "
 			     "fn=%u is out of range (100), or channel %s with "
 			     "type %s is already disabled. If this happens in "
 			     "conjunction with PCU, increase 'rts-advance' by 5."
@@ -329,7 +329,7 @@ free_msg:
 found_msg:
 	if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
 	 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
-		LOGP(DL1C, LOGL_ERROR, "Prim for ts=%u at fn=%u has wrong "
+		LOGP(DL1P, LOGL_ERROR, "Prim for ts=%u at fn=%u has wrong "
 			"chan_nr=%02x link_id=%02x, expecting chan_nr=%02x "
 			"link_id=%02x.\n", tn, fn, chan_nr, link_id,
 			trx_chan_desc[chan].chan_nr | tn,
@@ -418,7 +418,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 	uint8_t tn = l1sap->u.data.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGP(DL1C, LOGL_INFO, "PH-DATA.req: chan_nr=0x%02x link_id=0x%02x "
+	LOGP(DL1P, LOGL_INFO, "PH-DATA.req: chan_nr=0x%02x link_id=0x%02x "
 		"fn=%u ts=%u trx=%u\n", l1sap->u.data.chan_nr,
 		l1sap->u.data.link_id, l1sap->u.data.fn, tn, l1t->trx->nr);
 
@@ -441,7 +441,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 	uint8_t tn = l1sap->u.tch.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGP(DL1C, LOGL_INFO, "TCH.req: chan_nr=0x%02x "
+	LOGP(DL1P, LOGL_INFO, "TCH.req: chan_nr=0x%02x "
 		"fn=%u ts=%u trx=%u\n", l1sap->u.tch.chan_nr,
 		l1sap->u.tch.fn, tn, l1t->trx->nr);
 
@@ -477,12 +477,12 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	link_id = trx_chan_desc[chan].link_id;
 
 	if (!chan_nr) {
-		LOGP(DL1C, LOGL_FATAL, "RTS func for %s with non-existing "
+		LOGP(DL1P, LOGL_FATAL, "RTS func for %s with non-existing "
 			"chan_nr %d\n", trx_chan_desc[chan].name, chan_nr);
 		return -ENODEV;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "PH-RTS.ind: chan=%s chan_nr=0x%02x "
+	LOGP(DL1P, LOGL_INFO, "PH-RTS.ind: chan=%s chan_nr=0x%02x "
 		"link_id=0x%02x fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, link_id, fn, tn, l1t->trx->nr);
 
@@ -514,12 +514,12 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	link_id = trx_chan_desc[chan].link_id;
 
 	if (!chan_nr) {
-		LOGP(DL1C, LOGL_FATAL, "RTS func for %s with non-existing "
+		LOGP(DL1P, LOGL_FATAL, "RTS func for %s with non-existing "
 			"chan_nr %d\n", trx_chan_desc[chan].name, chan_nr);
 		return -ENODEV;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "TCH RTS.ind: chan=%s chan_nr=0x%02x "
+	LOGP(DL1P, LOGL_INFO, "TCH RTS.ind: chan=%s chan_nr=0x%02x "
 		"fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
 		chan_nr, fn, tn, l1t->trx->nr);
 
