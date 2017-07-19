@@ -102,11 +102,8 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 
 	/* Generally ignore all msgs that are either not received with the right ARFCN... */
 	pinst = phy_instance_by_arfcn(plink, arfcn & GSMTAP_ARFCN_MASK);
-	if (!pinst) {
-		LOGP(DL1P, LOGL_NOTICE, "Ignoring incoming msg - msg ARFCN=%d not part of BTS\n",
-		     arfcn & GSMTAP_ARFCN_MASK);
+	if (!pinst)
 		goto nomessage;
-	}
 
 	/* switch case with removed ACCH flag */
 	switch ((gsmtap_chantype & ~GSMTAP_CHANNEL_ACCH) & 0xff) {
