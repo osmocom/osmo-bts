@@ -381,13 +381,32 @@ This is a special BTS model used for research, simulation and testing.
 Rather than communicating over a wireless RF interface, the GSM Um
 messages are encapsulated over GSMTAP/UDP/IP.
 
-At the time of writing, this functionality is not fully completed.  It
-is the idea to adopt the OsmocomBB MS-side GSM implementation to
-interface with this virtual Um interface, so that many instances of
-virtual MS can connect to some instances of OsmoBTS, testing MS, BTS,
-BSC and core network functionality.
+The Virtual Um interface (i.e. virtual radio layer) between OsmoBTS and
+OsmocomBB allows us to run a complete GSM network with 1-N BTSs and 1-M
+MSs without any actual radio hardware, which is of course excellent for
+all kinds of testing scenarios.
 
-=== `osmo-bts-trx` specific VTY commands
+The Virtual Um layer is based on sending L2 frames (blocks) encapsulated
+via GSMTAP UDP multicast packets. There are two separate multicast
+groups, one for uplink and one for downlink. The multicast nature
+simulates the shared medium and enables any simulated phone to receive
+the signal from multiple BTSs via the downlink multicast group.
+
+In OsmoBTS, this is implemented via the `osmo-bts-virtual` BTS model.
+
+Setting up OsmoBTS in its `osmo-bts-virtual` flavor isn't really much
+different from setting it up with real hardware. The amount of required
+configuration at the BTS configuration file is (as always) very minimal,
+as in the GSM network architecture provides almost all relevant
+configuration to the BTS from the BSC.
+
+An example configuratin file is provided as part of the osmo-bts source
+code: `doc/examples/virtual/osmobts-virtual.cfg`
+
+For more information see
+http://osmocom.org/projects/cellular-infrastructure/wiki/Virtual_Um
+
+=== `osmo-bts-virtual` specific VTY commands
 
 For a auto-generated complete syntax reference of the VTY commands,
 please see the associated _OsmoBTS VTY reference manual_
@@ -401,12 +420,22 @@ commands.
 Configure the network device used for sending/receiving the virtual Um
 interface messages (e.g. `eth0`).
 
-===== `virtual-um udp-port <0-65535>`
+===== `virtual-um ms-udp-port <0-65535>`
 
-Configure the UDP port used for sending/receiving the virtual Um
-interface messages (default: GSMTAP 2775).
+Configure the UDP port used for sending virtual Um
+downlink messages towards the MS (default: GSMTAP 4729).
 
-===== `virtual-um multicast-group GROUP`
+===== `virtual-um ms-multicast-group GROUP`
 
-Configure the IP multicast group used for sending/receiving the virtual
-Um interface messages.
+Configure the IP multicast group used for sending virtual
+Um downlink messages towards the MS (default: 239.193.23.1)
+
+===== `virtual-um bts-udp-port <0-65535>`
+
+Configure the UDP port used for receiving virtual Um
+uplink messages from the MS (default: GSMTAP 4729).
+
+===== `virtual-um bts-multicast-group GROUP`
+
+Configure the IP multicast group used for receiving virtual
+Um uplink messages from the MS (default: 239.193.23.2)
