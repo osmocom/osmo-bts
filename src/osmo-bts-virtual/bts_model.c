@@ -38,6 +38,7 @@
 /* TODO: check if dummy method is sufficient, else implement */
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return -1;
 }
 
@@ -45,16 +46,19 @@ int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 int osmo_amr_rtp_dec(const uint8_t *rtppayload, int payload_len, uint8_t *cmr,
 		     int8_t *cmi, enum osmo_amr_type *ft, enum osmo_amr_quality *bfi, int8_t *sti)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return -1;
 }
 
 int bts_model_trx_close(struct gsm_bts_trx *trx)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
@@ -86,6 +90,7 @@ static uint8_t vbts_set_bts(struct gsm_bts *bts)
 
 static uint8_t vbts_set_trx(struct gsm_bts_trx *trx)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
@@ -154,16 +159,19 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
 
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
 int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
 {
+	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
