@@ -143,6 +143,7 @@ if test "$enable_litecell15" = "yes"; then
 	AC_CHECK_HEADER([nrw/litecell15/litecell15.h],[],
 			[AC_MSG_ERROR([nrw/litecell15/litecell15.h can not be found in $litecell15_incdir])],
 			[#include <nrw/litecell15/litecell15.h>])
+	PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd)
 	CPPFLAGS=$oldCPPFLAGS
 fi
 

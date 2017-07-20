@@ -28,6 +28,7 @@
 #include "misc/lc15bts_temp.h"
 #include "misc/lc15bts_power.h"
 #include "misc/lc15bts_led.h"
+#include "misc/lc15bts_swd.h"
 #include "limits.h"
 
 #include <osmo-bts/logging.h>
@@ -116,7 +117,7 @@ static void handle_normal_actions(int actions)
 		 * and used SIGCHLD/waitpid to pick up the dead processes
 		 * without invoking shell.
 		 */
-		system("/bin/systemctl start lc15bts.service");
+		system("/bin/systemctl start osmo-bts.service");
 	}
 }
 
@@ -151,7 +152,7 @@ static void handle_actions(int actions)
 		 * and used SIGCHLD/waitpid to pick up the dead processes
 		 * without invoking shell.
 		 */
-		system("/bin/systemctl stop lc15bts.service");
+		system("/bin/systemctl stop osmo-bts.service");
 	}
 }
 
@@ -364,6 +365,7 @@ static void sensor_ctrl_check_cb(void *_data)
 	osmo_timer_schedule(&sensor_ctrl_timer, LC15BTS_SENSOR_TIMER_DURATION, 0);
 	LOGP(DTEMP, LOGL_DEBUG,"Check sensors timer expired\n");
 	/* TODO: do we want to notify if some sensors could not be read? */
+	lc15bts_swd_event(mgr, SWD_CHECK_TEMP_SENSOR);
 }
 
 int lc15bts_mgr_sensor_init(struct lc15bts_mgr_instance *mgr)

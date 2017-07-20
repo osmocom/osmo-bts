@@ -42,10 +42,9 @@
 #include "lc15bts.h"
 #include "utils.h"
 
-/**
- *  * Maximum calibration data chunk size
- *   */
+/* Maximum calibration data chunk size */
 #define MAX_CALIB_TBL_SIZE  65536
+/* Calibration header version */
 #define CALIB_HDR_V1  0x01
 
 struct calib_file_desc {
@@ -93,19 +92,19 @@ struct calTbl_t
     {
         struct
         {
-            uint8_t u8Version;                // Header version (1)
-            uint8_t u8Parity;                 // Parity byte (xor)
-            uint8_t u8Type;                   // Table type (0:TX Downlink, 1:RX-A Uplink, 2:RX-B Uplink)
-            uint8_t u8Band;                   // GSM Band (0:GSM-850, 1:EGSM-900, 2:DCS-1800, 3:PCS-1900)
-            uint32_t u32Len;                  // Table length in bytes including the header
+            uint8_t u8Version;                /* Header version (1) */
+            uint8_t u8Parity;                 /* Parity byte (xor) */
+            uint8_t u8Type;                   /* Table type (0:TX Downlink, 1:RX-A Uplink, 2:RX-B Uplink) */
+            uint8_t u8Band;                   /* GSM Band (0:GSM-850, 1:EGSM-900, 2:DCS-1800, 3:PCS-1900) */
+            uint32_t u32Len;                  /* Table length in bytes including the header */
             struct
             {
-                uint32_t u32DescOfst;         // Description section offset
-                uint32_t u32DateOfst;         // Date section offset
-                uint32_t u32StationOfst;      // Calibration test station section offset
-                uint32_t u32FpgaFwVerOfst;    // Calibration FPGA firmware version section offset
-                uint32_t u32DspFwVerOfst;     // Calibration DSP firmware section offset
-                uint32_t u32DataOfst;         // Calibration data section offset
+                uint32_t u32DescOfst;         /* Description section offset */
+                uint32_t u32DateOfst;         /* Date section offset */
+                uint32_t u32StationOfst;      /* Calibration test station section offset */
+                uint32_t u32FpgaFwVerOfst;    /* Calibration FPGA firmware version section offset */
+                uint32_t u32DspFwVerOfst;     /* Calibration DSP firmware section offset */
+                uint32_t u32DataOfst;         /* Calibration data section offset */
             } toc;
         } v1;
     } hdr;
@@ -314,15 +313,14 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
        struct calTbl_t *calTbl;
        char calChkSum ;
 
-
-       //calculate file size in bytes
+       /* calculate file size in bytes */
        fseek(st->fp, 0L, SEEK_END);
        sz = ftell(st->fp);
 
-       //rewind read poiner
+       /* rewind read poiner */
        fseek(st->fp, 0L, SEEK_SET);
 
-       //read file
+       /* read file */
        rbuf = (char *) malloc( sizeof(char) * sz );
 
        rc = fread(rbuf, 1, sizeof(char) * sz, st->fp);
@@ -331,7 +329,7 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
                LOGP(DL1C, LOGL_ERROR, "%s reading error\n", desc->fname);
                free(rbuf);
 
-               //close file
+               /* close file */
                rc = calib_file_close(fl1h);
                if (rc < 0 ) {
                        LOGP(DL1C, LOGL_ERROR, "%s can not close\n", desc->fname);
@@ -341,33 +339,32 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
                return -2;
        }
 
-
        calTbl = (struct calTbl_t*) rbuf;
-       //calcualte file checksum
+       /* calculate file checksum */
        calChkSum = 0;
        while ( sz-- ) {
                calChkSum ^= rbuf[sz];
        }
 
-       //validate Tx calibration parity
+       /* validate Tx calibration parity */
        if ( calChkSum ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid checksum %x.\n", desc->fname, calChkSum);
                return -4;
        }
 
-       //validate Tx calibration header
+       /* validate Tx calibration header */
        if ( calTbl->hdr.v1.u8Version != CALIB_HDR_V1 ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid header version %u.\n", desc->fname, calTbl->hdr.v1.u8Version);
                return -5;
        }
 
-       //validate calibration description
+       /* validate calibration description */
        if ( calTbl->hdr.v1.toc.u32DescOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration description  offset.\n", desc->fname);
                return -6;
        }
 
-       //validate calibration date
+       /* validate calibration date */
        if ( calTbl->hdr.v1.toc.u32DateOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration date offset.\n", desc->fname);
                return -7;
@@ -377,24 +374,25 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
                desc->fname,
                calTbl->u8RawData + calTbl->hdr.v1.toc.u32DateOfst);
 
-       //validate calibration station
+       /* validate calibration station */
        if ( calTbl->hdr.v1.toc.u32StationOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration station ID offset.\n", desc->fname);
                return -8;
        }
 
-       //validate FPGA FW version
+       /* validate FPGA FW version */
        if ( calTbl->hdr.v1.toc.u32FpgaFwVerOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid FPGA FW version offset.\n", desc->fname);
                return -9;
        }
-       //validate DSP FW version
+
+       /* validate DSP FW version */
        if ( calTbl->hdr.v1.toc.u32DspFwVerOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid DSP FW version offset.\n", desc->fname);
                return -10;
        }
 
-       //validate Tx calibration data offset
+       /* validate Tx calibration data offset */
        if ( calTbl->hdr.v1.toc.u32DataOfst == 0xFFFFFFFF ) {
                LOGP(DL1C, LOGL_ERROR, "%s has invalid calibration data offset.\n", desc->fname);
                return -11;
@@ -402,11 +400,11 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
 
        if ( !desc->rx ) {
 
-               //parse min/max Tx power
+               /* parse min/max Tx power */
                fl1h->phy_inst->u.lc15.minTxPower = calTbl->u8RawData[calTbl->hdr.v1.toc.u32DataOfst + (5 << 2)];
                fl1h->phy_inst->u.lc15.maxTxPower = calTbl->u8RawData[calTbl->hdr.v1.toc.u32DataOfst + (6 << 2)];
 
-               //override nominal Tx power of given TRX if needed
+               /* override nominal Tx power of given TRX if needed */
                if ( fl1h->phy_inst->trx->nominal_power > fl1h->phy_inst->u.lc15.maxTxPower) {
                        LOGP(DL1C, LOGL_INFO, "Set TRX %u nominal Tx power to %d dBm (%d)\n",
                                        plink->num,
@@ -449,7 +447,7 @@ static int calib_verify(struct lc15l1_hdl *fl1h, const struct calib_file_desc *d
                                fl1h->phy_inst->u.lc15.maxTxPower );
        }
 
-       //rewind read poiner for subsequence tasks
+       /* rewind read pointer for subsequence tasks */
        fseek(st->fp, 0L, SEEK_SET);
        free(rbuf);
 

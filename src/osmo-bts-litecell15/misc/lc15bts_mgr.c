@@ -46,6 +46,8 @@
 #include "misc/lc15bts_par.h"
 #include "misc/lc15bts_bid.h"
 #include "misc/lc15bts_power.h"
+#include "misc/lc15bts_swd.h"
+
 #include "lc15bts_led.h"
 
 static int no_rom_write = 0;
@@ -163,6 +165,7 @@ static void check_sensor_timer_cb(void *unused)
 	lc15bts_check_vswr(no_rom_write);
 	osmo_timer_schedule(&sensor_timer, SENSOR_TIMER_SECS, 0);
 	/* TODO checks if lc15bts_check_temp/lc15bts_check_power/lc15bts_check_vswr went ok */
+	lc15bts_swd_event(&manager, SWD_CHECK_SENSOR);
 }
 
 static struct osmo_timer_list hours_timer;
@@ -172,6 +175,7 @@ static void hours_timer_cb(void *unused)
 
 	osmo_timer_schedule(&hours_timer, HOURS_TIMER_SECS, 0);
 	/* TODO: validates if lc15bts_update_hours went correctly */
+	lc15bts_swd_event(&manager, SWD_UPDATE_HOURS);
 }
 
 static void print_help(void)
@@ -317,6 +321,10 @@ int main(int argc, char **argv)
 	INIT_LLIST_HEAD(&manager.lc15bts_leds.list);
 	INIT_LLIST_HEAD(&manager.alarms.list);
 
+	/* Initialize the service watchdog notification for SWD_LAST event(s) */
+	if (lc15bts_swd_init(&manager, (int)(SWD_LAST)) != 0)
+		exit(3);
+
 	/* start temperature check timer */
 	sensor_timer.cb = check_sensor_timer_cb;
 	check_sensor_timer_cb(NULL);
@@ -357,5 +365,6 @@ int main(int argc, char **argv)
 	while (1) {
 		log_reset_context();
 		osmo_select_main(0);
+		lc15bts_swd_event(&manager, SWD_MAINLOOP);
 	}
 }
