@@ -1,9 +1,9 @@
 [Unit]
-Description=osmo-bts manager for sysmoBTS
+Description=osmo-bts manager for LC15 / sysmoBTS 2100
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/sysmobts-mgr -ns -c /etc/osmocom/sysmobts-mgr.cfg
+ExecStart=/usr/bin/lc15bts-mgr -s -c /etc/osmocom/lc15bts-mgr.cfg
 Restart=always
 RestartSec=2
 
