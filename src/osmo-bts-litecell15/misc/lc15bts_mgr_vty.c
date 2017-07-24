@@ -1040,10 +1040,12 @@ int lc15bts_mgr_vty_init(void)
 
 	install_node(&limit_pa0_pwr_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_pa0_pwr_cmd);
+	register_limit(LIMIT_PA0_PWR_NODE, MGR_LIMIT_TYPE_PWR);
 	vty_install_default(LIMIT_PA0_PWR_NODE);
 
 	install_node(&limit_pa1_pwr_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_pa1_pwr_cmd);
+	register_limit(LIMIT_PA1_PWR_NODE, MGR_LIMIT_TYPE_PWR);
 	vty_install_default(LIMIT_PA1_PWR_NODE);
 
 	install_node(&limit_gps_fix_node, config_write_dummy);
