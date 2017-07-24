@@ -1,5 +1,5 @@
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
- * 
+ *
  * Based on sysmoBTS:
  *     sysmobts_mgr_vty.c
  *     (C) 2014 by lc15com - s.f.m.c. GmbH
@@ -423,7 +423,7 @@ DEFUN(cfg_limit_vswr_warn_max, cfg_thresh_vswr_warn_max_cmd,
 
 DEFUN(cfg_limit_vswr_crit_max, cfg_thresh_vswr_crit_max_cmd,
 	"threshold critical max <1000-200000>",
-	"Threshold to reach\n" "Warning level\n" "Range\n")
+	"Threshold to reach\n" "Critical level\n" "Range\n")
 {
 	struct lc15bts_vswr_limit *limit = vty->index;
 	limit->thresh_crit_max = atoi(argv[0]);
@@ -441,7 +441,7 @@ DEFUN(cfg_limit_pwr_warn_max, cfg_thresh_pwr_warn_max_cmd,
 
 DEFUN(cfg_limit_pwr_crit_max, cfg_thresh_pwr_crit_max_cmd,
 	"threshold critical max <0-200>",
-	"Threshold to reach\n" "Warning level\n" "Range\n")
+	"Threshold to reach\n" "Critical level\n" "Range\n")
 {
 	struct lc15bts_pwr_limit *limit = vty->index;
 	limit->thresh_crit_max = atoi(argv[0]);
@@ -739,7 +739,7 @@ DEFUN(show_thresh, show_thresh_cmd, "show thresholds",
 
 DEFUN(calibrate_clock, calibrate_clock_cmd,
       "calibrate clock",
-      "Calibration commands\n" 
+      "Calibration commands\n"
       "Calibrate clock against GPS PPS\n")
 {
 	if (lc15bts_mgr_calib_run(s_mgr) < 0) {
