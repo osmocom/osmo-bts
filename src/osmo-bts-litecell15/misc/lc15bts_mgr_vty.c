@@ -2,11 +2,11 @@
  *
  * Based on sysmoBTS:
  *     sysmobts_mgr_vty.c
- *     (C) 2014 by lc15com - s.f.m.c. GmbH
+ *     (C) 2014 by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
- * Author: Alvaro Neira Ayuso <anayuso@lc15com.de>
+ * Author: Alvaro Neira Ayuso <anayuso@sysmocom.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
