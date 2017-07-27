@@ -51,7 +51,6 @@
 /* dummy, since no direct dsp support */
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 {
-	LOGP(DSUM, LOGL_NOTICE, "Unimplemneted %s\n", __func__);
 	return 0;
 }
 

@@ -137,13 +137,12 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	case NM_OC_SITE_MANAGER:
 	case NM_OC_BASEB_TRANSC:
 	case NM_OC_BTS:
-		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-		rc = oml_mo_opstart_ack(mo);
-		break;
-		/* TODO: gprs support */
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
 	case NM_OC_GPRS_NSVC:
+		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+		rc = oml_mo_opstart_ack(mo);
+		break;
 	default:
 		rc = oml_mo_opstart_nack(mo, NM_NACK_OBJCLASS_NOTSUPP);
 	}

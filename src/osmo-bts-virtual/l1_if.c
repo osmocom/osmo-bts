@@ -133,6 +133,9 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 #endif
 	case GSMTAP_CHANNEL_SDCCH4:
 	case GSMTAP_CHANNEL_SDCCH8:
+	case GSMTAP_CHANNEL_PACCH:
+	case GSMTAP_CHANNEL_PDCH:
+	case GSMTAP_CHANNEL_PTCCH:
 		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_DATA,
 		               PRIM_OP_INDICATION, msg);
 		l1sap.u.data.chan_nr = chan_nr;
@@ -142,7 +145,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.data.ber10k = 0; /* Bit Error Rate in 0.01%. Best -> 0 */
 		l1sap.u.data.ta_offs_qbits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
 		l1sap.u.data.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
-		l1sap.u.data.pdch_presence_info = PRES_INFO_UNKNOWN;
+		l1sap.u.data.pdch_presence_info = PRES_INFO_BOTH;
 		break;
 	case GSMTAP_CHANNEL_AGCH:
 	case GSMTAP_CHANNEL_PCH:
@@ -151,9 +154,6 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		goto nomessage;
 	case GSMTAP_CHANNEL_SDCCH:
 	case GSMTAP_CHANNEL_CCCH:
-	case GSMTAP_CHANNEL_PACCH:
-	case GSMTAP_CHANNEL_PDCH:
-	case GSMTAP_CHANNEL_PTCCH:
 	case GSMTAP_CHANNEL_CBCH51:
 	case GSMTAP_CHANNEL_CBCH52:
 		LOGP(DL1P, LOGL_NOTICE, "Ignore incoming msg - channel type not supported!\n");
