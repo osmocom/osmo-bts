@@ -317,6 +317,28 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	return 0;
 }
 
+/* Paging Request 1 with "no identity" content, i.e. empty/dummy paging */
+static const uint8_t paging_fill[GSM_MACBLOCK_LEN] = {
+	0x15, 0x06, 0x21, 0x00, 0x01, 0xf0, 0x2b, 0x2b, 0x2b, 0x2b,
+	0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
+	0x2b, 0x2b, 0x2b };
+
+static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int len)
+{
+	switch (chan_type) {
+	case GSMTAP_CHANNEL_AGCH:
+		if (!memcmp(data, fill_frame, GSM_MACBLOCK_LEN))
+			return true;
+		break;
+	case GSMTAP_CHANNEL_PCH:
+		if (!memcmp(data, paging_fill, GSM_MACBLOCK_LEN))
+			return true;
+		break;
+	default:
+		return false;
+	}
+}
+
 static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	uint8_t *data;
@@ -363,6 +385,11 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		if (!((1 << (chan_type & 31)) & gsmtap_sapi_mask))
 			return 0;
 	}
+
+	/* don't log fill frames via GSMTAP; they serve no purpose other than
+	 * to clog up your logs */
+	if (is_fill_frame(chan_type, data, len))
+		return 0;
 
 	gsmtap_send(gsmtap, trx->arfcn | uplink, tn, chan_type, ss, fn, 0, 0,
 		data, len);
