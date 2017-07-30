@@ -555,7 +555,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			chan_nr = l1sap->u.info.u.act_req.chan_nr;
 			lchan = get_lchan_by_chan_nr(trx, chan_nr);
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
-				if ((chan_nr & 0x80)) {
+				if ((chan_nr & 0xE0) == 0x80) {
 					LOGP(DL1C, LOGL_ERROR, "Cannot activate"
 						" chan_nr 0x%02x\n", chan_nr);
 					break;
@@ -605,7 +605,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			/* here, type == PRIM_INFO_DEACTIVATE */
-			if ((chan_nr & 0x80)) {
+			if ((chan_nr & 0xE0) == 0x80) {
 				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
 					"chan_nr 0x%02x\n", chan_nr);
 				break;
