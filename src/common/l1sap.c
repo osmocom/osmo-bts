@@ -656,7 +656,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-RTS.ind %s chan_nr=%d link_id=%d\n",
+	DEBUGP(DL1P, "Rx PH-RTS.ind %s chan_nr=0x%02x link_id=0x%02xd\n",
 		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
@@ -750,7 +750,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
 
-	DEBUGP(DL1P, "Tx PH-DATA.req %02u/%02u/%02u chan_nr=%d link_id=%d\n",
+	DEBUGP(DL1P, "Tx PH-DATA.req %02u/%02u/%02u chan_nr=%02x link_id=0x%02x\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr, link_id);
 
 	l1sap_down(trx, l1sap);
@@ -798,7 +798,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH-RTS.ind %s chan_nr=%d\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	DEBUGP(DL1P, "Rx TCH-RTS.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan)
@@ -851,7 +851,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	resp_l1sap->u.tch.fn = fn;
 	resp_l1sap->u.tch.marker = marker;
 
-	DEBUGP(DL1P, "Tx TCH.req %02u/%02u/%02u chan_nr=%d\n",
+	DEBUGP(DL1P, "Tx TCH.req %02u/%02u/%02u chan_nr=0x%02x\n",
 		g_time.t1, g_time.t2, g_time.t3, chan_nr);
 
 	l1sap_down(trx, resp_l1sap);
@@ -954,13 +954,13 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-DATA.ind %s chan_nr=%d link_id=%d\n",
-		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
+	DEBUGP(DL1P, "Rx PH-DATA.ind %s chan_nr=0x%02x link_id=0x%02x len=%d\n",
+		osmo_dump_gsmtime(&g_time), chan_nr, link_id, len);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
-			LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=%d\n", chan_nr);
+			LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=0x%02x\n", chan_nr);
 		if (lchan && lchan->loopback && !L1SAP_IS_PTCCH(fn)) {
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
@@ -1059,7 +1059,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH.ind %s chan_nr=%d\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	DEBUGP(DL1P, "Rx TCH.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan)
