@@ -152,8 +152,8 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_SACCH8_5,	0x68,	LID_SACCH,	"SACCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_6,	0x70,	LID_SACCH,	"SACCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	0,	TRXC_SACCH8_7,	0x78,	LID_SACCH,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	1,	TRXC_PDTCH,	0x08,	LID_DEDIC,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
-      {	1,	TRXC_PTCCH,	0x08,	LID_DEDIC,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	1,	TRXC_PDTCH,	0xc0,	LID_DEDIC,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
+      {	1,	TRXC_PTCCH,	0xc0,	LID_DEDIC,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
 };
 
 const struct value_string trx_chan_type_names[] = {

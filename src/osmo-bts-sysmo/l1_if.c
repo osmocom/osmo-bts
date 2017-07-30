@@ -354,9 +354,9 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		sapi = GsmL1_Sapi_Sacch;
-		if (!L1SAP_IS_CHAN_TCHF(chan_nr))
+		if (!L1SAP_IS_CHAN_TCHF(chan_nr) && !L1SAP_IS_CHAN_PDCH(chan_nr))
 			subCh = l1sap_chan2ss(chan_nr);
-	} else if (L1SAP_IS_CHAN_TCHF(chan_nr)) {
+	} else if (L1SAP_IS_CHAN_TCHF(chan_nr) || L1SAP_IS_CHAN_PDCH(chan_nr)) {
 		if (ts_is_pdch(&trx->ts[u8Tn])) {
 			if (L1SAP_IS_PTCCH(u32Fn)) {
 				sapi = GsmL1_Sapi_Ptcch;

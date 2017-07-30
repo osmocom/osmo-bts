@@ -22,6 +22,7 @@
 #define L1SAP_IS_CHAN_BCCH(chan_nr) ((chan_nr & 0xf8) == 0x80)
 #define L1SAP_IS_CHAN_RACH(chan_nr) ((chan_nr & 0xf8) == 0x88)
 #define L1SAP_IS_CHAN_AGCH_PCH(chan_nr) ((chan_nr & 0xf8) == 0x90)
+#define L1SAP_IS_CHAN_PDCH(chan_nr) ((chan_nr & 0xf8) == 0xc0)
 
 /* rach type from ra */
 #define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)

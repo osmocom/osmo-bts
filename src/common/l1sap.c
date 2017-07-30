@@ -263,6 +263,8 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 			*chan_type = GSMTAP_CHANNEL_PCH;
 		else
 			*chan_type = GSMTAP_CHANNEL_AGCH;
+	} else if (L1SAP_IS_CHAN_PDCH(chan_nr)) {
+		*chan_type = GSMTAP_CHANNEL_PDTCH;
 	}
 	if (L1SAP_IS_LINK_SACCH(link_id))
 		*chan_type |= GSMTAP_CHANNEL_ACCH;
@@ -1218,7 +1220,7 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	l1sap = msgb_l1sap_prim(msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA, PRIM_OP_REQUEST,
 		msg);
-	l1sap->u.data.chan_nr = 0x08 | ts->nr;
+	l1sap->u.data.chan_nr = RSL_CHAN_OSMO_PDCH | ts->nr;
 	l1sap->u.data.link_id = 0x00;
 	l1sap->u.data.fn = fn;
 	msg->l2h = msgb_put(msg, len);
@@ -1264,11 +1266,6 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		enum osmo_mph_info_type type, uint8_t sacch_only)
 {
 	struct osmo_phsap_prim l1sap;
-
-	/* The caller may pass a non-standard RSL_CHAN_OSMO_PDCH, which the L1
-	 * doesn't understand. Use the normal TCH/F cbits instead. */
-	if ((chan_nr & RSL_CHAN_NR_MASK) == RSL_CHAN_OSMO_PDCH)
-		chan_nr = RSL_CHAN_Bm_ACCHs | (chan_nr & ~RSL_CHAN_NR_MASK);
 
 	memset(&l1sap, 0, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_REQUEST,
