@@ -934,8 +934,8 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 	chan_nr = chan_nr_by_sapi(&trx->ts[data_ind->u8Tn], data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
 	if (!chan_nr) {
-		LOGP(DL1C, LOGL_ERROR, "PH-DATA-INDICATION for unknown sapi "
-			"%d\n", data_ind->sapi);
+		LOGP(DL1C, LOGL_ERROR, "PH-DATA-INDICATION for unknown sapi %s (%d)\n",
+		     get_value_string(lc15bts_l1sapi_names, data_ind->sapi), data_ind->sapi);
 		msgb_free(l1p_msg);
 		return ENOTSUP;
 	}
