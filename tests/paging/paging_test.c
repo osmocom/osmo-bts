@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 
 	bts_log_init(NULL);
 
-	bts = gsm_bts_alloc(tall_bts_ctx);
+	bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (bts_init(bts) < 0) {
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
