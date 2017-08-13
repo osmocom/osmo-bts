@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 	bts_log_init(NULL);
 	osmo_stderr_target->categories[DHO].loglevel = LOGL_DEBUG;
 
-	bts = gsm_bts_alloc(tall_bts_ctx);
+	bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (!bts) {
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);

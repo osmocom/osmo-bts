@@ -241,7 +241,7 @@ int bts_main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-	bts = gsm_bts_alloc(tall_bts_ctx);
+	bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (!bts) {
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
