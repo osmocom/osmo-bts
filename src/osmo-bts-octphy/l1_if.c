@@ -329,11 +329,30 @@ int l1if_activate_rf(struct gsm_bts_trx *trx, int on)
 	return 0;
 }
 
-static uint8_t chan_nr_by_sapi(enum gsm_phys_chan_config pchan,
+static enum gsm_phys_chan_config pick_pchan(struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			return GSM_PCHAN_PDCH;
+		return GSM_PCHAN_TCH_F;
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		return ts->dyn.pchan_is;
+	default:
+		return ts->pchan;
+	}
+}
+
+static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 		      tOCTVC1_GSM_SAPI_ENUM sapi, uint8_t subCh,
 		      uint8_t u8Tn, uint32_t u32Fn)
 {
 	uint8_t cbits = 0;
+	enum gsm_phys_chan_config pchan = pick_pchan(ts);
+
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
+
 	switch (sapi) {
 	case cOCTVC1_GSM_SAPI_ENUM_BCCH:
 		cbits = 0x10;
@@ -476,7 +495,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (!L1SAP_IS_CHAN_TCHF(chan_nr) && !L1SAP_IS_CHAN_PDCH(chan_nr))
 			subCh = l1sap_chan2ss(chan_nr);
 	} else if (L1SAP_IS_CHAN_TCHF(chan_nr) || L1SAP_IS_CHAN_PDCH(chan_nr)) {
-		if (trx->ts[u8Tn].pchan == GSM_PCHAN_PDCH) {
+		if (ts_is_pdch(&trx->ts[u8Tn])) {
 			if (L1SAP_IS_PTCCH(u32Fn)) {
 				sapi = cOCTVC1_GSM_SAPI_ENUM_PTCCH;
 			} else {
@@ -932,7 +951,7 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 	       get_value_string(octphy_l1sapi_names, sapi));
 
 	/* in case we need to forward primitive to common part */
-	chan_nr = chan_nr_by_sapi(trx->ts[ts_num].pchan, sapi, sc, ts_num, fn);
+	chan_nr = chan_nr_by_sapi(&trx->ts[ts_num], sapi, sc, ts_num, fn);
 	if (chan_nr) {
 		if (sapi == cOCTVC1_GSM_SAPI_ENUM_SACCH)
 			link_id = LID_SACCH;
@@ -1053,7 +1072,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	fn = data_ind->Data.ulFrameNumber;
 
 	/* chan_nr and link_id */
-	chan_nr = chan_nr_by_sapi(trx->ts[ts_num].pchan, sapi, sc, ts_num, fn);
+	chan_nr = chan_nr_by_sapi(&trx->ts[ts_num], sapi, sc, ts_num, fn);
 	if (!chan_nr) {
 		LOGP(DL1C, LOGL_ERROR,
 		     "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
