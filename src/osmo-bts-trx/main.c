@@ -130,6 +130,8 @@ void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 	l1h = talloc_zero(tall_bts_ctx, struct trx_l1h);
 	l1h->phy_inst = pinst;
 	pinst->u.osmotrx.hdl = l1h;
+
+	l1h->config.power_oml = 1;
 }
 
 int main(int argc, char **argv)
