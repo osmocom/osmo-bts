@@ -251,7 +251,6 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct gsm_bts_trx *trx = l1t->trx;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
-	int c_i;
 
 	/* check if loop is enabled */
 	if (!chan_state->amr_loop)
@@ -276,9 +275,6 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 
 	/* calculate average (reuse ber variable) */
 	ber = chan_state->ber_sum / chan_state->ber_num;
-
-	/* FIXME: calculate C/I from BER */
-	c_i = ber * 100;
 
 	/* reset bit errors */
 	chan_state->ber_num = 0;
