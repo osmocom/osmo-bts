@@ -198,6 +198,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
+	case SIGTERM:
 		sysmobts_check_temp(no_eeprom_write);
 		sysmobts_update_hours(no_eeprom_write);
 		exit(0);
@@ -266,6 +267,7 @@ int main(int argc, char **argv)
 
 	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 

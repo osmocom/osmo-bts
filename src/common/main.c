@@ -184,6 +184,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
+	case SIGTERM:
 		if (!quit) {
 			oml_fail_rep(OSMO_EVT_CRIT_PROC_STOP,
 				     "BTS: SIGINT received -> shutdown");
@@ -324,6 +325,7 @@ int bts_main(int argc, char **argv)
 	}
 
 	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
 	//signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);

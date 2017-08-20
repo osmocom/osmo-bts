@@ -226,6 +226,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
+	case SIGTERM:
 		lc15bts_check_temp(no_rom_write);
 		lc15bts_check_power(no_rom_write);
 		lc15bts_check_vswr(no_rom_write);
@@ -297,6 +298,7 @@ int main(int argc, char **argv)
 
 	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 
