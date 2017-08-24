@@ -458,7 +458,7 @@ DEFUN(cfg_phy_base_port, cfg_phy_base_port_cmd,
 }
 
 DEFUN(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
-	"osmotrx legacy-setbsic",
+	"osmotrx legacy-setbsic", OSMOTRX_STR
 	"Use SETBSIC to configure transceiver (use ONLY with OpenBTS Transceiver!)\n")
 {
 	struct phy_link *plink = vty->index;
@@ -473,7 +473,7 @@ DEFUN(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
 
 DEFUN(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
 	"no osmotrx legacy-setbsic",
-	NO_STR "Disable Legacy SETBSIC to configure transceiver\n")
+	NO_STR OSMOTRX_STR "Disable Legacy SETBSIC to configure transceiver\n")
 {
 	struct phy_link *plink = vty->index;
 	plink->u.osmotrx.use_legacy_setbsic = false;
@@ -503,7 +503,7 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		plink->u.osmotrx.rts_advance, VTY_NEWLINE);
 
 	if (plink->u.osmotrx.use_legacy_setbsic)
-		vty_out(vty, " osmotrx leyacy-setbsic%s", VTY_NEWLINE);
+		vty_out(vty, " osmotrx legacy-setbsic%s", VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
