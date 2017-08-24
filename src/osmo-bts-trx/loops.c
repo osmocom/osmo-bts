@@ -39,9 +39,6 @@
  * MS Power loop
  */
 
-int trx_ms_power_loop = 0;
-int8_t trx_target_rssi = -10;
-
 static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
@@ -118,6 +115,7 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	uint8_t chan_nr, struct l1sched_chan_state *chan_state)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
+	struct phy_instance *pinst = trx_phy_instance(trx);
 	int rssi;
 	int i;
 
@@ -159,10 +157,10 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	/* change RSSI */
 	LOGP(DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
 		"MS power: %d (%d dBm) of trx=%u chan_nr=0x%02x\n", rssi,
-		trx_target_rssi, lchan->ms_power_ctrl.current,
+		pinst->phy_link->u.osmotrx.trx_target_rssi, lchan->ms_power_ctrl.current,
 		MS_PWR_DBM(trx->arfcn, lchan->ms_power_ctrl.current),
 		trx->nr, chan_nr);
-	ms_power_diff(lchan, chan_nr, trx_target_rssi - rssi);
+	ms_power_diff(lchan, chan_nr, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
 
 	return 0;
 }
@@ -171,8 +169,6 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 /*
  * Timing Advance loop
  */
-
-int trx_ta_loop = 1;
 
 int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state, float toa)
@@ -220,11 +216,12 @@ int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
+	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
-	if (trx_ms_power_loop)
+	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_val(chan_state, rssi);
 
-	if (trx_ta_loop)
+	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
 		ta_val(lchan, chan_nr, chan_state, toa);
 
 	return 0;
@@ -235,8 +232,9 @@ int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
+	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
-	if (trx_ms_power_loop)
+	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_clock(lchan, chan_nr, chan_state);
 
 	/* count the number of SACCH clocks */

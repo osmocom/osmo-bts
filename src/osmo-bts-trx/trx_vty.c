@@ -160,39 +160,47 @@ DEFUN(show_phy, show_phy_cmd, "show phy",
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_ms_power_loop, cfg_bts_ms_power_loop_cmd,
-	"ms-power-loop <-127-127>",
+DEFUN(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
+	"osmotrx ms-power-loop <-127-127>", OSMOTRX_STR
 	"Enable MS power control loop\nTarget RSSI value (transceiver specific, "
 	"should be 6dB or more above noise floor)\n")
 {
-	trx_ms_power_loop = 1;
-	trx_target_rssi = atoi(argv[0]);
+	struct phy_link *plink = vty->index;
+
+	plink->u.osmotrx.trx_target_rssi = atoi(argv[0]);
+	plink->u.osmotrx.trx_ms_power_loop = true;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_no_ms_power_loop, cfg_bts_no_ms_power_loop_cmd,
-	"no ms-power-loop",
-	NO_STR "Disable MS power control loop\n")
+DEFUN(cfg_phy_no_ms_power_loop, cfg_phy_no_ms_power_loop_cmd,
+	"no osmotrx ms-power-loop",
+	NO_STR OSMOTRX_STR "Disable MS power control loop\n")
 {
-	trx_ms_power_loop = 0;
+	struct phy_link *plink = vty->index;
+
+	plink->u.osmotrx.trx_ms_power_loop = false;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_timing_advance_loop, cfg_bts_timing_advance_loop_cmd,
-	"timing-advance-loop",
+DEFUN(cfg_phy_timing_advance_loop, cfg_phy_timing_advance_loop_cmd,
+	"osmotrx timing-advance-loop", OSMOTRX_STR
 	"Enable timing advance control loop\n")
 {
-	trx_ta_loop = 1;
+	struct phy_link *plink = vty->index;
+
+	plink->u.osmotrx.trx_ta_loop = true;
 
 	return CMD_SUCCESS;
 }
-DEFUN(cfg_bts_no_timing_advance_loop, cfg_bts_no_timing_advance_loop_cmd,
-	"no timing-advance-loop",
-	NO_STR "Disable timing advance control loop\n")
+DEFUN(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_cmd,
+	"no osmotrx timing-advance-loop",
+	NO_STR OSMOTRX_STR "Disable timing advance control loop\n")
 {
-	trx_ta_loop = 0;
+	struct phy_link *plink = vty->index;
+
+	plink->u.osmotrx.trx_ta_loop = false;
 
 	return CMD_SUCCESS;
 }
@@ -490,6 +498,12 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		vty_out(vty, " osmotrx ip remote %s%s",
 			plink->u.osmotrx.remote_ip, VTY_NEWLINE);
 
+	if (plink->u.osmotrx.trx_ms_power_loop)
+		vty_out(vty, " osmotrx ms-power-loop %d%s", plink->u.osmotrx.trx_target_rssi, VTY_NEWLINE);
+	else
+		vty_out(vty, " no osmotrx ms-power-loop%s", VTY_NEWLINE);
+	vty_out(vty, " %s osmotrx timing-advance-loop%s", (plink->u.osmotrx.trx_ta_loop) ? "" : "no", VTY_NEWLINE);
+
 	if (plink->u.osmotrx.base_port_local)
 		vty_out(vty, " osmotrx base-port local %"PRIu16"%s",
 			plink->u.osmotrx.base_port_local, VTY_NEWLINE);
@@ -539,13 +553,6 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
-	if (trx_ms_power_loop)
-		vty_out(vty, " ms-power-loop %d%s", trx_target_rssi,
-			VTY_NEWLINE);
-	else
-		vty_out(vty, " no ms-power-loop%s", VTY_NEWLINE);
-	vty_out(vty, " %stiming-advance-loop%s", (trx_ta_loop) ? "":"no ",
-		VTY_NEWLINE);
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
@@ -559,11 +566,10 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element_ve(&show_transceiver_cmd);
 	install_element_ve(&show_phy_cmd);
 
-	install_element(BTS_NODE, &cfg_bts_ms_power_loop_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_ms_power_loop_cmd);
-	install_element(BTS_NODE, &cfg_bts_timing_advance_loop_cmd);
-	install_element(BTS_NODE, &cfg_bts_no_timing_advance_loop_cmd);
-
+	install_element(PHY_NODE, &cfg_phy_ms_power_loop_cmd);
+	install_element(PHY_NODE, &cfg_phy_no_ms_power_loop_cmd);
+	install_element(PHY_NODE, &cfg_phy_timing_advance_loop_cmd);
+	install_element(PHY_NODE, &cfg_phy_no_timing_advance_loop_cmd);
 	install_element(PHY_NODE, &cfg_phy_base_port_cmd);
 	install_element(PHY_NODE, &cfg_phy_fn_advance_cmd);
 	install_element(PHY_NODE, &cfg_phy_rts_advance_cmd);
