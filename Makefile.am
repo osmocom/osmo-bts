@@ -15,6 +15,14 @@ EXTRA_DIST = \
 	doc/examples/sysmo/sysmobts-mgr.cfg \
 	doc/examples/virtual/openbsc-virtual.cfg \
 	doc/examples/virtual/osmobts-virtual.cfg \
+	git-version-gen .version \
 	README.md
 
 @RELMAKE@
+
+BUILT_SOURCES = $(top_srcdir)/.version
+
+$(top_srcdir)/.version:
+	echo $(VERSION) > $@-t && mv $@-t $@
+dist-hook:
+	echo $(VERSION) > $(distdir)/.tarball-version
