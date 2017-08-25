@@ -20,14 +20,7 @@ export deps inst
 mkdir -p "$deps"
 rm -rf "$inst"
 
-cd "$deps"
-
-# Get libosmocore for verify_value_string_arrays_are_terminated.py
-osmo-deps.sh libosmocore
-
-cd "$base"
-
-"$deps"/libosmocore/contrib/verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
+verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
 # generic project build function, usage:
 # build "PROJECT-NAME" "CONFIGURE OPTIONS"
@@ -41,6 +34,7 @@ build_bts() {
     set -x
 
     cd $deps
+    osmo-deps.sh libosmocore
     osmo-deps.sh openbsc
     conf_flags="--with-openbsc=$deps/openbsc/openbsc/include"
     cd $base
