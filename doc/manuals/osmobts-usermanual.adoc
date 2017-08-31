@@ -1,3 +1,5 @@
+:gfdl-enabled:
+
 OsmoBTS User Manual
 ===================
 Harald Welte <hwelte@sysmocom.de>

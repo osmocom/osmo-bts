@@ -1,3 +1,5 @@
+:gfdl-enabled:
+
 OsmoBTS Abis Protocol Specification
 ===================================
 Neels Hofmeyr <nhofmeyr@sysmocom.de>
