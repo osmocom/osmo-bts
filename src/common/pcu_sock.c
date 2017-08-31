@@ -322,7 +322,7 @@ int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
-int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
+int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len,
 	int8_t rssi, uint16_t ber10k, int16_t bto, int16_t lqual)
 {
@@ -332,9 +332,8 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	struct gsm_bts *bts = ts->trx->bts;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	LOGP(DPCU, LOGL_DEBUG, "Sending data indication: is_ptcch=%d arfcn=%d "
-		"block=%d data=%s\n", is_ptcch, arfcn, block_nr,
-		osmo_hexdump(data, len));
+	LOGP(DPCU, LOGL_DEBUG, "Sending data indication: sapi=%s arfcn=%d block=%d data=%s\n",
+	     sapi_string[sapi], arfcn, block_nr, osmo_hexdump(data, len));
 
 	if (lqual / 10 < btsb->min_qual_norm) {
 		LOGP(DPCU, LOGL_DEBUG, "Link quality %"PRId16" is below threshold %f, dropping packet\n",
@@ -348,7 +347,7 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
 	data_ind = &pcu_prim->u.data_ind;
 
-	data_ind->sapi = (is_ptcch) ? PCU_IF_SAPI_PTCCH : PCU_IF_SAPI_PDTCH;
+	data_ind->sapi = sapi;
 	data_ind->rssi = rssi;
 	data_ind->fn = fn;
 	data_ind->arfcn = arfcn;
@@ -488,16 +487,6 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		osmo_hexdump(data_req->data, data_req->len));
 
 	switch (data_req->sapi) {
-	case PCU_IF_SAPI_BCCH:
-		if (data_req->len == 23) {
-			bts->si_valid |= (1 << SYSINFO_TYPE_13);
-			memcpy(bts->si_buf[SYSINFO_TYPE_13], data_req->data,
-				data_req->len);
-		} else {
-			bts->si_valid &= ~(1 << SYSINFO_TYPE_13);
-		}
-		osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
-		break;
 	case PCU_IF_SAPI_PCH:
 		if (msg_type == PCU_IF_MSG_PAG_REQ) {
 			/* FIXME: Add function to schedule paging request.
@@ -546,6 +535,21 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	return rc;
 }
 
+int pcu_tx_si13(const struct gsm_bts *bts)
+{
+	/* the SI is per-BTS so it doesn't matter which TRX we use */
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, 0);
+
+	/* The low-level data like FN, ARFCN etc will be ignored but we have to set lqual high enough to bypass
+	   the check at lower levels */
+	int rc = pcu_tx_data_ind(&trx->ts[0], PCU_IF_SAPI_BCCH, 0, 0, 0, GSM_BTS_SI(bts, SYSINFO_TYPE_13),
+				 GSM_MACBLOCK_LEN, 0, 0, 0, INT16_MAX);
+	if (rc < 0)
+		LOGP(DPCU, LOGL_NOTICE, "Failed to send SI13 to PCU: %d\n", rc);
+
+	return rc;
+}
+
 static int pcu_rx_txt_ind(struct gsm_bts *bts,
 			  struct gsm_pcu_if_txt_ind *txt)
 {
@@ -555,6 +559,11 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 		     txt->text);
 		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_PCU_VERS, txt->text);
 		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
+
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13))
+			return pcu_tx_si13(bts);
+		else
+			LOGP(DPCU, LOGL_INFO, "SI13 is not available on PCU connection\n");
 		break;
 	case PCU_OML_ALERT:
 		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_EXT_ALARM, txt->text);

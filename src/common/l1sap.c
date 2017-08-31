@@ -52,6 +52,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/msg_utils.h>
+#include <osmo-bts/pcuif_proto.h>
 
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
@@ -1013,7 +1014,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		if (len == 0)
 			return -EINVAL;
 		if (L1SAP_IS_PTCCH(fn)) {
-			pcu_tx_data_ind(&trx->ts[tn], 1, fn,
+			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PTCCH, fn,
 					0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
 					data, len, rssi, data_ind->ber10k,
 					data_ind->ta_offs_qbits,
@@ -1023,7 +1024,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			if (pr_info != PRES_INFO_BOTH)
 				return 0;
 			/* PDTCH / PACCH frame handling */
-			pcu_tx_data_ind(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, 0 /* ARFCN */,
 					L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
 					data_ind->ta_offs_qbits, data_ind->lqual_cb);
 		}

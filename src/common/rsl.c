@@ -50,6 +50,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/pcuif_proto.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -305,6 +306,9 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
 				LCHAN_REL_ACT_REACT;
 		}
+
+		if (SYSINFO_TYPE_13 == osmo_si)
+			pcu_tx_si13(trx->bts);
 
 		if (SYSINFO_TYPE_2quater == osmo_si) {
 			si2q = (struct gsm48_system_information_type_2quater *) TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO);
