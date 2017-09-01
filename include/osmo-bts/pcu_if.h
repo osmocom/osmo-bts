@@ -6,7 +6,7 @@
 extern int pcu_direct;
 
 int pcu_tx_info_ind(void);
-int pcu_tx_si13(const struct gsm_bts *bts);
+int pcu_tx_si13(const struct gsm_bts *bts, bool enable);
 int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr);
 int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,

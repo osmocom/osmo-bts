@@ -535,7 +535,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	return rc;
 }
 
-int pcu_tx_si13(const struct gsm_bts *bts)
+int pcu_tx_si13(const struct gsm_bts *bts, bool enable)
 {
 	/* the SI is per-BTS so it doesn't matter which TRX we use */
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, 0);
@@ -543,7 +543,7 @@ int pcu_tx_si13(const struct gsm_bts *bts)
 	/* The low-level data like FN, ARFCN etc will be ignored but we have to set lqual high enough to bypass
 	   the check at lower levels */
 	int rc = pcu_tx_data_ind(&trx->ts[0], PCU_IF_SAPI_BCCH, 0, 0, 0, GSM_BTS_SI(bts, SYSINFO_TYPE_13),
-				 GSM_MACBLOCK_LEN, 0, 0, 0, INT16_MAX);
+				 enable ? GSM_MACBLOCK_LEN : 0, 0, 0, 0, INT16_MAX);
 	if (rc < 0)
 		LOGP(DPCU, LOGL_NOTICE, "Failed to send SI13 to PCU: %d\n", rc);
 
@@ -561,9 +561,9 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
 
 		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13))
-			return pcu_tx_si13(bts);
-		else
-			LOGP(DPCU, LOGL_INFO, "SI13 is not available on PCU connection\n");
+			return pcu_tx_si13(bts, true);
+
+		LOGP(DPCU, LOGL_INFO, "SI13 is not available on PCU connection\n");
 		break;
 	case PCU_OML_ALERT:
 		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_EXT_ALARM, txt->text);

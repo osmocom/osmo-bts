@@ -308,7 +308,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		}
 
 		if (SYSINFO_TYPE_13 == osmo_si)
-			pcu_tx_si13(trx->bts);
+			pcu_tx_si13(trx->bts, true);
 
 		if (SYSINFO_TYPE_2quater == osmo_si) {
 			si2q = (struct gsm48_system_information_type_2quater *) TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO);
@@ -353,6 +353,8 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		bts->si_valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, " RX RSL Disabling BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
+		if (SYSINFO_TYPE_13 == osmo_si)
+			pcu_tx_si13(trx->bts, false);
 	}
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 
