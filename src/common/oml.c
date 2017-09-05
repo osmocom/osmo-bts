@@ -73,7 +73,7 @@ static int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value
 	struct msgb *nmsg;
 	va_list ap;
 
-	LOGP(DOML, LOGL_NOTICE, "Reporting FAILURE to BSC: ");
+	LOGP(DOML, LOGL_NOTICE, "Sending %s to BSC: ", get_value_string(abis_mm_event_cause_names, cause_value));
 	va_start(ap, fmt);
 	osmo_vlogp(DOML, LOGL_NOTICE, __FILE__, __LINE__, 1, fmt, ap);
 	nmsg = abis_nm_fail_evt_vrep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
