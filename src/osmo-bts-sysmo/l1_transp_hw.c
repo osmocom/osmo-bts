@@ -215,9 +215,15 @@ static int l1if_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		iov[i].iov_len = msgb_tailroom(msg[i]);
 	}
 
-
 	rc = readv(ofd->fd, iov, ARRAY_SIZE(iov));
-	count = rc / prim_size;
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_ERROR, "failed to read from fd: %s\n", strerror(errno));
+		/* N. B: we do not abort to let the cycle below cleanup allocated memory properly,
+		   the return value is ignored by the caller anyway.
+		   TODO: use libexplain's explain_readv() to provide detailed error description */
+		count = 0;
+	} else
+		count = rc / prim_size;
 
 	for (i = 0; i < count; ++i) {
 		msgb_put(msg[i], prim_size);
