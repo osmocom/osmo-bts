@@ -1056,6 +1056,7 @@ int lc15bts_mgr_vty_init(void)
 	install_node(&act_norm_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_normal_cmd);
 	register_normal_action(ACT_NORM_NODE);
+	vty_install_default(ACT_NORM_NODE);
 
 	/* install the warning and critical node */
 	install_node(&act_warn_node, config_write_dummy);
