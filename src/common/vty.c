@@ -762,24 +762,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length: %u%s",
 		llist_length(&btsb->smscb_state.queue), VTY_NEWLINE);
-#if 0
-	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
-		paging_pending_requests_nr(bts),
-		bts->paging.available_slots, VTY_NEWLINE);
-	if (is_ipaccess_bts(bts)) {
-		vty_out(vty, "  OML Link state: %s.%s",
-			bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
-	} else {
-		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
-		e1isl_dump_vty(vty, bts->oml_link);
-	}
-
-	/* FIXME: chan_desc */
-	memset(&pl, 0, sizeof(pl));
-	bts_chan_load(&pl, bts);
-	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
-	dump_pchan_load_vty(vty, "    ", &pl);
-#endif
+	vty_out(vty, "  Paging: queue length %d, buffer space %d%s",
+		paging_queue_length(btsb->paging_state), paging_buffer_space(btsb->paging_state),
+		VTY_NEWLINE);
+	vty_out(vty, "  OML Link state: %s.%s",
+		bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
 }
 
 
