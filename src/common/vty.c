@@ -730,6 +730,7 @@ static unsigned int llist_length(struct llist_head *list)
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts->role;
+	struct gsm_bts_trx *trx;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u and %u TRX%s",
@@ -767,6 +768,17 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  OML Link state: %s.%s",
 		bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		struct phy_instance *pinst = trx_phy_instance(trx);
+		vty_out(vty, "  TRX %u%s", trx->nr, VTY_NEWLINE);
+		if (pinst) {
+			vty_out(vty, "    phy %d %s", pinst->num, pinst->version);
+			if (pinst->description)
+				vty_out(vty, " (%s)", pinst->description);
+			vty_out(vty, "%s", VTY_NEWLINE);
+		}
+	}
 }
 
 
