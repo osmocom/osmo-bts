@@ -133,7 +133,7 @@ enum lchan_ciph_state {
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
 
-#include "openbsc/gsm_data_shared.h"
+#include <osmo-bts/gsm_data_shared.h>
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
 int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,

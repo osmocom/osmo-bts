@@ -147,25 +147,9 @@ if test "$enable_litecell15" = "yes"; then
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
-# We share gsm_data.h with OpenBSC and need to be pointed to the source
-# directory of OpenBSC for now.
-AC_ARG_WITH([openbsc],
-	[AS_HELP_STRING([--with-openbsc=INCLUDE_DIR],
-		[OpenBSC include directory for openbsc/gsm_data_shared.h])],
-	[openbsc_incdir="$withval"],
-	[openbsc_incdir="`cd $srcdir; pwd`/../openbsc/openbsc/include"])
-AC_SUBST([OPENBSC_INCDIR], $openbsc_incdir)
-
-oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS -I$OPENBSC_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
-AC_CHECK_HEADER([openbsc/gsm_data_shared.h],[],
-	[AC_MSG_ERROR([openbsc/gsm_data_shared.h can not be found in $openbsc_incdir])],
-	[#include <osmo-bts/tx_power.h>])
-CPPFLAGS=$oldCPPFLAGS
-
 # Check for the sbts2050_header.h that was added after the 3.6 release
 oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS -I$OPENBSC_INCDIR $LIBOSMOCORE_CFLAGS"
+CPPFLAGS="$CPPFLAGS $LIBOSMOCORE_CFLAGS"
 AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
 		[sysmo_uc_header="yes"],[])
 CPPFLAGS=$oldCPPFLAGS

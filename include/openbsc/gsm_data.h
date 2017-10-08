@@ -1,1 +1,0 @@
-../osmo-bts/gsm_data.h
