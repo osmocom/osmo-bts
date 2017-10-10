@@ -35,11 +35,9 @@ build_bts() {
 
     cd $deps
     osmo-deps.sh libosmocore
-    osmo-deps.sh openbsc
-    conf_flags="--with-openbsc=$deps/openbsc/openbsc/include"
     cd $base
     shift
-    conf_flags="$conf_flags $*"
+    conf_flags="$*"
     autoreconf --install --force
     ./configure $conf_flags
     $MAKE $PARALLEL_MAKE
