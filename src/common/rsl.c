@@ -292,23 +292,9 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			     len, sizeof(sysinfo_buf_t), get_value_string(osmo_sitype_strs, osmo_si));
 			len = sizeof(sysinfo_buf_t);
 		}
-		bts->si_valid |= (1 << osmo_si);
-		memset(bts->si_buf[osmo_si], 0x2b, sizeof(sysinfo_buf_t));
-		memcpy(bts->si_buf[osmo_si],
-			TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
+
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s, %u bytes)\n",
 		     get_value_string(osmo_sitype_strs, osmo_si), len);
-
-		if (SYSINFO_TYPE_3 == osmo_si && trx->nr == 0 &&
-		    num_agch(trx, "RSL") != 1) {
-			lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
-			/* will be reactivated by sapi_deactivate_cb() */
-			trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
-				LCHAN_REL_ACT_REACT;
-		}
-
-		if (SYSINFO_TYPE_13 == osmo_si)
-			pcu_tx_si13(trx->bts, true);
 
 		if (SYSINFO_TYPE_2quater == osmo_si) {
 			si2q = (struct gsm48_system_information_type_2quater *) TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO);
@@ -338,7 +324,24 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
 			memcpy(GSM_BTS_SI2Q(bts, bts->si2q_index), TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
+		} else {
+			memset(bts->si_buf[osmo_si], GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
+			memcpy(bts->si_buf[osmo_si], TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 		}
+
+		bts->si_valid |= (1 << osmo_si);
+
+		if (SYSINFO_TYPE_3 == osmo_si && trx->nr == 0 &&
+		    num_agch(trx, "RSL") != 1) {
+			lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
+			/* will be reactivated by sapi_deactivate_cb() */
+			trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+				LCHAN_REL_ACT_REACT;
+		}
+
+		if (SYSINFO_TYPE_13 == osmo_si)
+			pcu_tx_si13(trx->bts, true);
+
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 		if (len > sizeof(sysinfo_buf_t))
