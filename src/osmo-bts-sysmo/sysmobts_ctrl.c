@@ -141,7 +141,7 @@ static int set_clock_info(struct ctrl_cmd *cmd, void *data)
 
 	/* Set GPS/PPS as reference */
 	sysp->id = SuperFemto_PrimId_RfClockSetupReq;
-	sysp->u.rfClockSetupReq.rfTrx.iClkCor = fl1h->clk_cal; /* !!! use get_clk_cal */
+	sysp->u.rfClockSetupReq.rfTrx.iClkCor = get_clk_cal(fl1h);
 	sysp->u.rfClockSetupReq.rfTrx.clkSrc = fl1h->clk_src;
 	sysp->u.rfClockSetupReq.rfTrxClkCal.clkSrc = SuperFemto_ClkSrcId_GpsPps;
 	l1if_req_compl(fl1h, msg, clock_setup_cb, NULL);

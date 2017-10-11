@@ -1238,7 +1238,7 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	return 0;
 }
 
-static int get_clk_cal(struct femtol1_hdl *hdl)
+int get_clk_cal(struct femtol1_hdl *hdl)
 {
 #ifdef FEMTOBTS_API_VERSION
 	return hdl->clk_cal;

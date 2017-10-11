@@ -146,6 +146,7 @@ int l1if_rsl_mode_modify(struct gsm_lchan *lchan);
 
 /* calibration loading */
 int calib_load(struct femtol1_hdl *fl1h);
+int get_clk_cal(struct femtol1_hdl *hdl);
 
 /* on-line re-calibration */
 int l1if_rf_clock_info_reset(struct femtol1_hdl *fl1h);
