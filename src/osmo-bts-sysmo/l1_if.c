@@ -1640,19 +1640,22 @@ struct femtol1_hdl *l1if_open(struct phy_instance *pinst)
 	clk_cal_use_eeprom(fl1h);
 	get_hwinfo_eeprom(fl1h);
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,1,0)
-	if (fl1h->hw_info.model_nr == 2050) {
-		/* On the sysmoBTS 2050, we don't have an OCXO but
-		 * start with the TCXO and will sync it with the PPS
-		 * of the GPS in case there is a fix. */
-		fl1h->clk_src = SuperFemto_ClkSrcId_Tcxo;
-		LOGP(DL1C, LOGL_INFO, "Clock source defaulting to GPS 1PPS "
-			"on sysmoBTS 2050\n");
-	} else {
-		/* default clock source: OCXO */
-		fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
+	if (fl1h->clk_src == SuperFemto_ClkSrcId_None) {
+		if (fl1h->hw_info.model_nr == 2050) {
+			/* On the sysmoBTS 2050, we don't have an OCXO but
+			 * start with the TCXO and will sync it with the PPS
+			 * of the GPS in case there is a fix. */
+			fl1h->clk_src = SuperFemto_ClkSrcId_Tcxo;
+			LOGP(DL1C, LOGL_INFO, "Clock source defaulting to GPS 1PPS "
+			     "on sysmoBTS 2050\n");
+		} else {
+			/* default clock source: OCXO */
+			fl1h->clk_src = SuperFemto_ClkSrcId_Ocxo;
+		}
 	}
 #else
-	fl1h->clk_src = SF_CLKSRC_OCXO;
+	if (fl1h->clk_src == SF_CLKSRC_NONE)
+		fl1h->clk_src = SF_CLKSRC_OCXO;
 #endif
 
 	rc = l1if_transport_open(MQ_SYS_WRITE, fl1h);
