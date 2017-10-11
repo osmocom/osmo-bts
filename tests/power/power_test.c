@@ -23,6 +23,15 @@
 
 #include <stdio.h>
 
+static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_ret, uint8_t exp_current)
+{
+	int ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
+
+	printf("power control [%d]: MS current power %u\n", ret, lchan->ms_power_ctrl.current);
+	OSMO_ASSERT(ret == exp_ret);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == exp_current);
+}
+
 static void test_power_loop(void)
 {
 	struct gsm_bts bts;
@@ -46,39 +55,29 @@ static void test_power_loop(void)
 	trx.ms_power_control = 1;
 	btsb.ul_power_target = -75;
 
-	/* Simply clamping */
 	lchan->state = LCHAN_S_NONE;
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, -60);
-	OSMO_ASSERT(ret == 0);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
 
+	/* Simply clamping */
+	apply_power_test(lchan, -60, 0, 15);
 
 	/*
 	 * Now 15 dB too little and we should power it up. Could be a
 	 * power level of 7 or 8 for 15 dBm
 	 */
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, -90);
-	OSMO_ASSERT(ret == 1);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == 7);
+	apply_power_test(lchan, -90, 1, 7);
 
 	/* It should be clamped to level 0 and 30 dBm */
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, -100);
-	OSMO_ASSERT(ret == 1);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == 0);
+	apply_power_test(lchan, -100, 1, 0);
 
 	/* Fix it and jump down */
 	lchan->ms_power_ctrl.fixed = 1;
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, -60);
-	OSMO_ASSERT(ret == 0);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == 0);
+	apply_power_test(lchan, -60, 0, 0);
 
 	/* And leave it again */
 	lchan->ms_power_ctrl.fixed = 0;
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, -40);
-	OSMO_ASSERT(ret == 1);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	apply_power_test(lchan, -40, 1, 15);
 }
 
 int main(int argc, char **argv)
