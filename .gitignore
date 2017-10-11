@@ -72,3 +72,4 @@ debian/*.substvars
 debian/osmo-bts-trx-dbg/
 debian/osmo-bts-trx/
 debian/tmp/
+/tests/power/power_test

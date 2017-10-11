@@ -178,5 +178,6 @@ AC_OUTPUT(
     tests/misc/Makefile
     tests/handover/Makefile
     tests/tx_power/Makefile
+    tests/power/Makefile
     tests/meas/Makefile
     Makefile)

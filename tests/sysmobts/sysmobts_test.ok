@@ -17,4 +17,3 @@ Checking PCS to PCS
 PCS to PCS band(1) arfcn(512) want(3) got(3)
 PCS to PCS band(8) arfcn(128) want(0) got(0)
 PCS to PCS band(2) arfcn(438) want(-1) got(-1)
-Testing sysmobts power control

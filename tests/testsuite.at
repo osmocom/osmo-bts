@@ -31,6 +31,12 @@ cat $abs_srcdir/handover/handover_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/handover/handover_test], [], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([power])
+AT_KEYWORDS([power])
+cat $abs_srcdir/power/power_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/power/power_test], [], [expout], [ignore])
+AT_CLEANUP
+
 AT_SETUP([tx_power])
 AT_KEYWORDS([tx_power])
 cat $abs_srcdir/tx_power/tx_power_test.ok > expout
