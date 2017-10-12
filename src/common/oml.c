@@ -214,14 +214,23 @@ static inline int handle_attrs_trx(uint8_t *out, struct gsm_bts_trx *trx, const 
 		return -ENOMEM;
 
 	for (i = 0; i < attr_len; i++) {
+		bool processed = false;
 		switch (attr[i]) {
 		case NM_ATT_SW_CONFIG:
-			add_trx_attr(attr_buf, trx);
+			if (trx) {
+				add_trx_attr(attr_buf, trx);
+				processed = true;
+			} else
+				LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unhandled due to missing TRX.\n",
+				     i, get_value_string(abis_nm_att_names, attr[i]));
 			break;
 		default:
 			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by TRX.\n", i,
 			     get_value_string(abis_nm_att_names, attr[i]));
-			out[attr_out_index] = attr[i]; /* assemble values of supported attributes and list of unsupported ones */
+		}
+		/* assemble values of supported attributes and list of unsupported ones */
+		if (!processed) {
+			out[attr_out_index] = attr[i];
 			attr_out_index++;
 		}
 	}
