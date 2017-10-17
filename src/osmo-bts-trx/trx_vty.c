@@ -207,6 +207,7 @@ DEFUN(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_cmd,
 
 DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	"osmotrx maxdly <0-31>",
+	OSMOTRX_STR
 	"Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
 	" Access Burst is the first burst a mobile transmits in order to establish"
 	" a connection and it is used to estimate Timing Advance (TA) which is"
@@ -230,6 +231,7 @@ DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 
 DEFUN(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
 	"osmotrx maxdlynb <0-31>",
+	OSMOTRX_STR
 	"Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
 	" USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
 	" During normal operation, Normal Bursts delay are controled by a Timing"
@@ -396,7 +398,8 @@ DEFUN(cfg_phyinst_no_tx_atten, cfg_phyinst_no_tx_atten_cmd,
 
 DEFUN(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
 	"no osmotrx maxdly",
-	NO_STR "Unset the maximum delay of GSM symbols\n")
+	NO_STR OSMOTRX_STR
+	"Unset the maximum delay of GSM symbols\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -408,7 +411,8 @@ DEFUN(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
 
 DEFUN(cfg_phyinst_no_maxdlynb, cfg_phyinst_no_maxdlynb_cmd,
 	"no osmotrx maxdlynb",
-	NO_STR "Unset the maximum delay of GSM symbols\n")
+	NO_STR OSMOTRX_STR
+	"Unset the maximum delay of GSM symbols\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -502,7 +506,7 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		vty_out(vty, " osmotrx ms-power-loop %d%s", plink->u.osmotrx.trx_target_rssi, VTY_NEWLINE);
 	else
 		vty_out(vty, " no osmotrx ms-power-loop%s", VTY_NEWLINE);
-	vty_out(vty, " %s osmotrx timing-advance-loop%s", (plink->u.osmotrx.trx_ta_loop) ? "" : "no", VTY_NEWLINE);
+	vty_out(vty, " %sosmotrx timing-advance-loop%s", (plink->u.osmotrx.trx_ta_loop) ? "" : "no ", VTY_NEWLINE);
 
 	if (plink->u.osmotrx.base_port_local)
 		vty_out(vty, " osmotrx base-port local %"PRIu16"%s",
@@ -535,9 +539,9 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 				l1h->config.power, VTY_NEWLINE);
 	}
 	if (l1h->config.maxdly_valid)
-		vty_out(vty, "  maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
+		vty_out(vty, "  osmotrx maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
 	if (l1h->config.maxdlynb_valid)
-		vty_out(vty, "  maxdlynb %d%s", l1h->config.maxdlynb, VTY_NEWLINE);
+		vty_out(vty, "  osmotrx maxdlynb %d%s", l1h->config.maxdlynb, VTY_NEWLINE);
 	if (l1h->config.slotmask != 0xff)
 		vty_out(vty, "  slotmask %d %d %d %d %d %d %d %d%s",
 			l1h->config.slotmask & 1,
