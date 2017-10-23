@@ -711,8 +711,9 @@ DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
 
 static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 {
-	vty_out(vty,"Oper '%s', Admin %u, Avail '%s'%s",
-		abis_nm_opstate_name(nms->operational), nms->administrative,
+	vty_out(vty,"Oper '%s', Admin '%s', Avail '%s'%s",
+		abis_nm_opstate_name(nms->operational),
+		get_value_string(abis_nm_adm_state_names, nms->administrative),
 		abis_nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
