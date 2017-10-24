@@ -469,7 +469,7 @@ const struct value_string dtx_dl_amr_fsm_event_names[] = {
 };
 
 struct osmo_fsm dtx_dl_amr_fsm = {
-	.name = "DTX DL AMR FSM",
+	.name = "DTX_DL_AMR_FSM",
 	.states = dtx_dl_amr_fsm_states,
 	.num_states = ARRAY_SIZE(dtx_dl_amr_fsm_states),
 	.event_names = dtx_dl_amr_fsm_event_names,

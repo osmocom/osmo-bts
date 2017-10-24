@@ -180,7 +180,9 @@ int bts_init(struct gsm_bts *bts)
 	INIT_LLIST_HEAD(&btsb->oml_queue);
 
 	/* register DTX DL FSM */
-	osmo_fsm_register(&dtx_dl_amr_fsm);
+	rc = osmo_fsm_register(&dtx_dl_amr_fsm);
+	OSMO_ASSERT(rc == 0);
+
 	return rc;
 }
 
