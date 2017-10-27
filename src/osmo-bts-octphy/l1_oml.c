@@ -52,6 +52,8 @@
 #include <octphy/octvc1/main/octvc1_main_default.h>
 #include <octphy/octvc1/main/octvc1_main_version.h>
 
+bool no_fw_check = 0;
+
 /* Map OSMOCOM logical channel type to OctPHY Logical channel type */
 static tOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM pchan_to_logChComb[_GSM_PCHAN_MAX] =
 {
@@ -1161,11 +1163,23 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 	     "Rx APP-INFO.resp (name='%s', desc='%s', ver='%s', ver_hdr='%s')\n",
 	     air->szName, air->szDescription, air->szVersion, ver_hdr);
 
-	/* Bail if dsp firmware does not match up the header version info */
+	/* Check if the firmware version of the DSP matches the header files
+	 * that were used to compile osmo-bts */
 	if (strcmp(air->szVersion, ver_hdr) != 0) {
 		LOGP(DL1C, LOGL_ERROR,
-		     "Invalid header-file / dsp-firmware combination, exiting...\n");
-		exit(1);
+		     "Invalid header-file-version / dsp-firmware-version combination\n");
+		LOGP(DL1C, LOGL_ERROR,
+		     "Expected firmware version: %s\n", ver_hdr);
+		LOGP(DL1C, LOGL_ERROR,
+		     "Actual firmware version:   %s\n", air->szVersion);
+
+		if (!no_fw_check) {
+			LOGP(DL1C, LOGL_ERROR,
+			     "use option -I to override the check (not recommened)\n");
+			LOGP(DL1C, LOGL_ERROR,
+			     "exiting...\n");
+			exit(1);
+		}
 	}
 
 	talloc_replace(fl1h->info.app.name, fl1h, air->szName);

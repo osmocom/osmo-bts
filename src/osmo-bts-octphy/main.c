@@ -51,9 +51,11 @@
 #define RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
 extern int pcu_direct;
+extern bool no_fw_check;
 
 int bts_model_print_help()
 {
+	printf("  -I	--no-fw-check	Override firmware version check\n");
 	return 0;
 }
 
@@ -65,15 +67,19 @@ int bts_model_handle_options(int argc, char **argv)
 		int option_idx = 0, c;
 		static const struct option long_options[] = {
 			/* specific to this hardware */
+			{ "no-fw-check", 0, 0, 'I' },
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "",
+		c = getopt_long(argc, argv, "I",
 				long_options, &option_idx);
 		if (c == -1)
 			break;
 
 		switch (c) {
+		case 'I':
+			no_fw_check = true;
+			break;
 		default:
 			num_errors++;
 			break;
