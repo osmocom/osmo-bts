@@ -35,14 +35,14 @@ AC_HEADER_STDC
 dnl Checks for typedefs, structures and compiler characteristics
 
 dnl checks for libraries
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.3.9)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.10.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.10.0)
 PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 0.3.2)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.3)
-PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl)
-PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis)
-PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec)
-PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.10.0)
+PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 0.10.0)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.3.2)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 0.10.0)
+PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding >= 0.10.0)
 PKG_CHECK_MODULES(ORTP, ortp)
 
 AC_MSG_CHECKING([whether to enable support for sysmoBTS L1/PHY support])
