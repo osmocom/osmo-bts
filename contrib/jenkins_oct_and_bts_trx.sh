@@ -26,3 +26,5 @@ configure_flags="\
   "
 
 build_bts "osmo-bts-octphy+trx" "$configure_flags"
+
+osmo-clean-workspace.sh

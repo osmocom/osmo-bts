@@ -22,3 +22,5 @@ configure_flags="\
   "
 
 build_bts "osmo-bts-trx" "$configure_flags"
+
+osmo-clean-workspace.sh

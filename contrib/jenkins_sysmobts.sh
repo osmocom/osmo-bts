@@ -24,3 +24,5 @@ build_bts "osmo-bts-sysmo" "$configure_flags"
 if [ $FIRMWARE_VERSION != "femtobts_v2.7" ]; then
   $MAKE -C contrib/sysmobts-calib
 fi
+
+osmo-clean-workspace.sh

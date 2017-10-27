@@ -17,3 +17,5 @@ osmo-layer1-headers.sh lc15 "$FIRMWARE_VERSION"
 configure_flags="--with-litecell15=$deps/layer1-headers/inc/ --enable-litecell15"
 
 build_bts "osmo-bts-lc15" "$configure_flags"
+
+osmo-clean-workspace.sh

@@ -17,8 +17,9 @@ inst="$deps/install"
 
 export deps inst
 
+osmo-clean-workspace.sh
+
 mkdir -p "$deps"
-rm -rf "$inst"
 
 verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
