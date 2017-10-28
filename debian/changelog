@@ -1,3 +1,39 @@
+osmo-bts (0.7.0) unstable; urgency=medium
+
+  [ Max ]
+  * Use value string check from osmo-ci
+  * Support sending SI13 to PCU
+  * Support removing SI13 from PCU
+  * trx: avoid deactivating lchan on LCHAN_REL_ACT_REACT
+  * Check readv() return value to prevent crash
+  * OML: print actual type of report sent to BSC
+  * Replace dead code
+  * vty: print version and description for each phy
+  * Remove build dependency on legacy OpenBSC
+  * Fix multiple SI2q reception
+  * jenkins: remove openbsc dependency
+  * sysmo: use clock calibration source wrapper
+  * sysmo: don't override clock source with defaults
+  * Fix race condition in attribute reporting
+  * Move power loop to generic tests
+  * Make power test more verbose
+
+  [ Neels Hofmeyr ]
+  * vty: mgr: sysmobts, lc15: install default commands for ACT_NORM_NODE
+  * osmo-bts-trx: vty: various fixes of 'write file' and doc
+  * jenkins: use osmo-clean-workspace.sh before and after build
+
+  [ Pau Espin Pedrol ]
+  * l1sap: Improve log msg when frame diff >1
+  * vty: Print string for Administrative state
+
+  [ Harald Welte ]
+  * Fix Downlink AMR FSM name to avoid illegal space character
+  * update dependencies to latest libosmo-*
+  * configure.ac: Fix Mailing list address
+
+ -- Harald Welte <laforge@gnumonks.org>  Sat, 28 Oct 2017 20:53:21 +0200
+
 osmo-bts (0.6.0) unstable; urgency=medium
 
   [ Holger Hans Peter Freyther ]
