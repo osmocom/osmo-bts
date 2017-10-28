@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script
 AC_INIT([osmo-bts],
 	m4_esyscmd([./git-version-gen .tarball-version]),
-	[openbsc-devel@lists.openbsc.org])
+	[openbsc@lists.osmocom.org])
 
 dnl *This* is the root dir, even if an install-sh exists in ../ or ../../
 AC_CONFIG_AUX_DIR([.])
