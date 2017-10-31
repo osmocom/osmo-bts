@@ -1073,7 +1073,6 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_element(CONFIG_NODE, &cfg_vty_telnet_port_cmd);
-	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_bind_ip_cmd);
@@ -1096,7 +1095,6 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
 	install_node(&trx_node, config_write_dummy);
-	install_default(TRX_NODE);
 
 	install_element(TRX_NODE, &cfg_trx_user_gain_cmd);
 	install_element(TRX_NODE, &cfg_trx_pr_max_initial_cmd);
@@ -1111,12 +1109,10 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 
 	install_element(CONFIG_NODE, &cfg_phy_cmd);
 	install_node(&phy_node, config_write_phy);
-	install_default(PHY_NODE);
 	install_element(PHY_NODE, &cfg_phy_inst_cmd);
 	install_element(PHY_NODE, &cfg_phy_no_inst_cmd);
 
 	install_node(&phy_inst_node, config_write_dummy);
-	install_default(PHY_INST_NODE);
 
 	return 0;
 }

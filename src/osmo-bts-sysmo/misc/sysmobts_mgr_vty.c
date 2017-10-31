@@ -480,45 +480,37 @@ int sysmobts_mgr_vty_init(void)
 
 	install_node(&mgr_node, config_write_mgr);
 	install_element(CONFIG_NODE, &cfg_mgr_cmd);
-	vty_install_default(MGR_NODE);
 
 	/* install the limit nodes */
 	install_node(&limit_rf_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_rf_cmd);
 	register_limit(LIMIT_RF_NODE);
-	vty_install_default(LIMIT_RF_NODE);
 
 	install_node(&limit_digital_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_digital_cmd);
 	register_limit(LIMIT_DIGITAL_NODE);
-	vty_install_default(LIMIT_DIGITAL_NODE);
 
 	install_node(&limit_board_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_board_cmd);
 	register_limit(LIMIT_BOARD_NODE);
-	vty_install_default(LIMIT_BOARD_NODE);
 
 	install_node(&limit_pa_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_pa_cmd);
 	register_limit(LIMIT_PA_NODE);
-	vty_install_default(LIMIT_PA_NODE);
 
 	/* install the normal node */
 	install_node(&act_norm_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_normal_cmd);
 	register_normal_action(ACT_NORM_NODE);
-	vty_install_default(ACT_NORM_NODE);
 
 	/* install the warning and critical node */
 	install_node(&act_warn_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_warn_cmd);
 	register_action(ACT_WARN_NODE);
-	vty_install_default(ACT_WARN_NODE);
 
 	install_node(&act_crit_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_critical_cmd);
 	register_action(ACT_CRIT_NODE);
-	vty_install_default(ACT_CRIT_NODE);
 
 	return 0;
 }
