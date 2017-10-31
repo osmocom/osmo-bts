@@ -1354,12 +1354,20 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		return -RSL_ERR_EQUIPMENT_FAIL;
 
 	/* Init DTX DL FSM if necessary */
-	if (trx->bts->dtxd && lchan->type != GSM_LCHAN_SDCCH)
+	if (trx->bts->dtxd && lchan->type != GSM_LCHAN_SDCCH) {
+		char name[32];
+		snprintf(name, sizeof(name), "bts%u-trx%u-ts%u-ss%u", lchan->ts->trx->bts->nr,
+			 lchan->ts->trx->nr, lchan->ts->nr, lchan->nr);
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
 								tall_bts_ctx,
 								lchan,
 								LOGL_DEBUG,
-								lchan->name);
+								name);
+		if (!lchan->tch.dtx.dl_amr_fsm) {
+			l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE, 0);
+			return -RSL_ERR_EQUIPMENT_FAIL;
+		}
+	}
 	return 0;
 }
 
