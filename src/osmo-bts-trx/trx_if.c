@@ -391,6 +391,8 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 				"message '%s'\n", buf, tcm->cmd);
 			goto rsp_error;
 		}
+		OSMO_ASSERT(strlen(buf+4) >= rsp_len);
+		OSMO_ASSERT(strlen(tcm->cmd+4) >= rsp_len);
 		if (!!strncmp(buf + 4, tcm->cmd + 4, rsp_len))
 			goto notmatch;
 
