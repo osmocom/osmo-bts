@@ -103,6 +103,8 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 	int len;
 	uint32_t fn;
 
+	OSMO_ASSERT(pinst);
+
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
 	if (len <= 0)
 		return len;
