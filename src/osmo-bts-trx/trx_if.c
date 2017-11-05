@@ -397,7 +397,9 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			goto notmatch;
 
 		/* check for response code */
-		sscanf(p + 1, "%d", &resp);
+		resp = 0;
+		if (p)
+			sscanf(p + 1, "%d", &resp);
 		if (resp) {
 			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 				"transceiver (%s) rejected TRX command "
