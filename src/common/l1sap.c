@@ -335,9 +335,9 @@ static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int l
 		if (!memcmp(data, paging_fill, GSM_MACBLOCK_LEN))
 			return true;
 		break;
-	default:
-		return false;
+	/* don't use 'default' case here as the above only conditionally return true */
 	}
+	return false;
 }
 
 static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
