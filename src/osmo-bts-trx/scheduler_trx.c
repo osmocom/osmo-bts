@@ -1055,7 +1055,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 								: tch_mode) {
 	case GSM48_CMODE_SPEECH_V1: /* FR */
 		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
-		lchan_set_marker(osmo_fr_check_sid(tch_data, rc), lchan); /* DTXu */
+		if (rc >= 0)
+			lchan_set_marker(osmo_fr_check_sid(tch_data, rc), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
 		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
