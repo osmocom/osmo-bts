@@ -117,7 +117,9 @@ static void queue_limit_to(const char *prefix, struct llist_head *queue, unsigne
  * in front and behind data pointer */
 struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 {
-	struct msgb *msg = msgb_alloc_headroom(512, 128, "l1sap_prim");
+	int headroom = 128;
+	int size = headroom + sizeof(struct osmo_phsap_prim) + l2_len;
+	struct msgb *msg = msgb_alloc_headroom(size, headroom, "l1sap_prim");
 
 	if (!msg)
 		return NULL;
