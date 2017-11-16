@@ -107,12 +107,19 @@ struct gsm_nm_state {
 };
 
 struct gsm_abis_mo {
+	/* A-bis OML Object Class */
 	uint8_t obj_class;
+	/* is there still some procedure pending? */
 	uint8_t procedure_pending;
+	/* A-bis OML Object Instance */
 	struct abis_om_obj_inst obj_inst;
+	/* human-readable name */
 	const char *name;
+	/* NM State */
 	struct gsm_nm_state nm_state;
+	/* Attributes configured in this MO */
 	struct tlv_parsed *nm_attr;
+	/* BTS to which this MO belongs */
 	struct gsm_bts *bts;
 };
 
