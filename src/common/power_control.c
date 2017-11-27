@@ -56,18 +56,9 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (lchan->ms_power_ctrl.current != ms_power)
 		return 0;
 
-	/*
-	 * What is the difference between what we want and received?
-	 * Ignore a margin that is within the range of measurement
-	 * and MS output issues.
-	 */
+	/* What is the difference between what we want and received? */
 	rx = btsb->ul_power_target - rxLevel;
-	if (rx >= 0 && rx < 1)
-		return 0;
-	if (rx < 0 && rx > -1)
-		return 0;
 
-	/* We don't really care about the truncation of int + float */
 	cur_dBm = ms_pwr_dbm(band, ms_power);
 	new_dBm = cur_dBm + rx;
 
