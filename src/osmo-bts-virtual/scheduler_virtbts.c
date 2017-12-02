@@ -102,9 +102,9 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		else if (rc == 0)
 			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
-			DEBUGP(DL1C, "%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
+			DEBUGP(DL1P, "%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
 	} else
-		LOGP(DL1C, LOGL_ERROR, "GSMTAP msg could not be created!\n");
+		LOGP(DL1P, LOGL_ERROR, "GSMTAP msg could not be created!\n");
 
 	/* free incoming message */
 	msgb_free(msg);

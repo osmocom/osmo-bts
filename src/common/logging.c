@@ -68,13 +68,13 @@ static struct log_info_cat bts_log_info_cat[] = {
 	},
 	[DL1C] = {
 		.name = "DL1C",
-		.description = "Layer 1",
+		.description = "Layer 1 Control (MPH)",
 		.loglevel = LOGL_INFO,
 		.enabled = 1,
 	},
 	[DL1P] = {
 		.name = "DL1P",
-		.description = "Layer 1 Primitives",
+		.description = "Layer 1 Primitives (PH)",
 		.loglevel = LOGL_INFO,
 		.enabled = 0,
 	},
