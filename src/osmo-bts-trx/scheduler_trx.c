@@ -843,7 +843,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		l2_len = GSM_MACBLOCK_LEN;
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len,
@@ -860,6 +860,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	float *rssi_sum = &chan_state->rssi_sum;
 	uint8_t *rssi_num = &chan_state->rssi_num;
@@ -884,6 +885,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
 		*mask = 0x0;
+		*first_fn = fn;
 		*rssi_sum = 0;
 		*rssi_num = 0;
 		*toa_sum = 0;
@@ -937,7 +939,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
+	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr | tn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 
 	if (rc <= 0) {
@@ -959,6 +961,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -985,6 +988,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
+		*first_fn = fn;
 	}
 
 	/* update mask */
@@ -1047,7 +1051,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
+	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr|tn,
 		n_errors, n_bits_total, rssi, toa);
 
 	/* Check if the frame is bad */
@@ -1117,6 +1121,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -1148,6 +1153,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 232);
 		*mask = 0x0;
+		*first_fn = fn;
 	}
 
 	/* update mask */
@@ -1221,7 +1227,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr|tn,
+	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr|tn,
 		n_errors, n_bits_total, rssi, toa);
 
 	/* Check if the frame is bad */
