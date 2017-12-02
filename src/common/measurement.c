@@ -8,8 +8,8 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/measurement.h>
 
-/* Measurment reporting period and mapping of SACCH message block for TCHF
- * and TCHH chan As per in 3GPP TS 45.008, secton 8.4.1.
+/* Measurement reporting period and mapping of SACCH message block for TCHF
+ * and TCHH chan As per in 3GPP TS 45.008, section 8.4.1.
  *
  *             Timeslot number (TN)        TDMA frame number (FN) modulo 104
  *             Half rate,    Half rate,     Reporting    SACCH
@@ -54,7 +54,7 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
 	[7] =	77,
 };
 
-/* Measurment reporting period for SDCCH8 and SDCCH4 chan
+/* Measurement reporting period for SDCCH8 and SDCCH4 chan
  * As per in 3GPP TS 45.008, section 8.4.2.
  *
  * Logical Chan		TDMA frame number
@@ -64,7 +64,7 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
  * SDCCH/4		37 to 36
  */
 
-/* Added interleve offset to Meas period end Fn which
+/* Added interleave offset to Meas period end Fn which
  * would reduce the Meas Res msg load at Abis */
 
 static const uint8_t sdcch8_meas_rep_fn102[] = {
@@ -86,14 +86,14 @@ static const uint8_t sdcch4_meas_rep_fn102[] = {
 };
 
 /* Note: The reporting of the measurement results is done via the SACCH channel.
- * The measurement interval is not alligned with the interval in which the
- * SACCH is tranmitted. When we receive the measurement indication with the
- * SACCH block, the coresponding measurement interval will already have ended
+ * The measurement interval is not aligned with the interval in which the
+ * SACCH is transmitted. When we receive the measurement indication with the
+ * SACCH block, the corresponding measurement interval will already have ended
  * and we will get the results late, but on spot with the beginning of the
  * next measurement interval.
  *
  * For example: We get a measurement indication on FN%104=38 in TS=2. Then we
- * will have to look at 3GPP TS 45.008, secton 8.4.1 (or 3GPP TS 05.02 Clause 7
+ * will have to look at 3GPP TS 45.008, section 8.4.1 (or 3GPP TS 05.02 Clause 7
  * Table 1 of 9) what value we need to feed into the lookup tables in order to
  * detect the measurement period ending. In this example the "real" ending
  * was on FN%104=12. This is the value we have to look for in
