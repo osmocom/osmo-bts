@@ -333,7 +333,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		irssi_sub_sum = irssi_full_sum;
 	}
 
-	DEBUGP(DMEAS, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
+	LOGP(DMEAS, LOGL_INFO, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
 		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
 		taqb_sum, ber_full_sum/100,
 		ber_full_sum%100, irssi_full_sum, ber_sub_sum/100, ber_sub_sum%100,
@@ -349,7 +349,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	mru->full.rx_qual = ber10k_to_rxqual(ber_full_sum);
 	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
 
-	DEBUGP(DMEAS, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
+	LOGP(DMEAS, LOGL_INFO, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
 	       "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",
 	       gsm_lchan_name(lchan),
 	       mru->full.rx_lev,
