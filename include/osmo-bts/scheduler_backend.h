@@ -1,5 +1,11 @@
 #pragma once
 
+#define LOGL1S(subsys, level, l1t, tn, chan, fn, fmt, args ...)	\
+		LOGP(subsys, level, "%s %s %s: " fmt,		\
+			gsm_fn_as_gsmtime_str(fn),		\
+			gsm_ts_name(&(l1t)->trx->ts[tn]),	\
+			chan >=0 ? trx_chan_desc[chan].name : "", ## args)
+
 typedef int trx_sched_rts_func(struct l1sched_trx *l1t, uint8_t tn,
 			       uint32_t fn, enum trx_chan_type chan);
 

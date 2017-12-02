@@ -75,8 +75,7 @@ static inline uint16_t compute_ber10k(int n_bits_total, int n_errors)
 ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting IDLE\n");
 
 	if (nbits)
 		*nbits = GSM_BURST_LEN;
@@ -88,8 +87,7 @@ ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
 {
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting FCCH\n");
 
 	if (nbits)
 		*nbits = GSM_BURST_LEN;
@@ -108,8 +106,7 @@ ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	struct	gsm_time t;
 	uint8_t t3p, bsic;
 
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting SCH\n");
 
 	/* BURST BYPASS */
 
@@ -173,9 +170,7 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
-	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-		"trx=%u ts=%u at fn=%u to transmit.\n",
-		trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+	LOGL1S(DL1C, LOGL_INFO, l1t, tn, chan, fn, "No prim for transmit.\n");
 
 no_msg:
 	/* free burst memory */
@@ -188,7 +183,7 @@ no_msg:
 got_msg:
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
+		LOGL1S(DL1C, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
@@ -239,8 +234,7 @@ send_burst:
 	if (nbits)
 		*nbits = GSM_BURST_LEN;
 
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u burst=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
 
 	return bits;
 }
@@ -269,9 +263,7 @@ ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (msg)
 		goto got_msg;
 
-	LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-		"trx=%u ts=%u at fn=%u to transmit.\n",
-		trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+	LOGL1S(DL1C, LOGL_INFO, l1t, tn, chan, fn, "No prim for transmit.\n");
 
 no_msg:
 	/* free burst memory */
@@ -299,7 +291,7 @@ got_msg:
 
 	/* check validity of message */
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Prim invalid length, please FIX! "
+		LOGL1S(DL1C, LOGL_FATAL, l1t, tn, chan, fn, "Prim invalid length, please FIX! "
 			"(len=%ld)\n", msg->tail - msg->l2h);
 		/* free message */
 		msgb_free(msg);
@@ -337,8 +329,7 @@ send_burst:
 			*nbits = GSM_BURST_LEN;
 	}
 
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u burst=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
 
 	return bits;
 }
@@ -367,8 +358,8 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
-		LOGP(DL1C, LOGL_NOTICE, "Missing TCH bursts detected, sending "
-			"BFI for %s\n", trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn,
+			"Missing TCH bursts detected, sending BFI\n");
 
 		/* indicate bad frame */
 		switch (tch_mode) {
@@ -399,8 +390,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			break;
 		default:
 inval_mode1:
-			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
-				"fix!\n");
+			LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode invalid, please fix!\n");
 			len = 0;
 		}
 		if (len)
@@ -417,8 +407,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive == PRIM_TCH) {
-					LOGP(DL1C, LOGL_FATAL, "TCH twice, "
-						"please FIX! ");
+					LOGL1S(DL1C, LOGL_FATAL, l1t, tn, chan, fn,
+						"TCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
 					msg_facch = msg2;
@@ -428,8 +418,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive != PRIM_TCH) {
-					LOGP(DL1C, LOGL_FATAL, "FACCH twice, "
-						"please FIX! ");
+					LOGL1S(DL1C, LOGL_FATAL, l1t, tn, chan, fn,
+						"FACCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
 					msg_tch = msg2;
@@ -445,7 +435,7 @@ inval_mode1:
 
 	/* check validity of message */
 	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
-		LOGP(DL1C, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
+		LOGL1S(DL1C, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! "
 			"(len=%d)\n", msgb_l2len(msg_facch));
 		/* free message */
 		msgb_free(msg_facch);
@@ -462,10 +452,8 @@ inval_mode1:
 		int8_t sti, cmi;
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
-			LOGP(DL1C, LOGL_NOTICE, "%s Dropping speech frame, "
-				"because we are not in speech mode trx=%u "
-				"ts=%u at fn=%u.\n", trx_chan_desc[chan].name,
-				l1t->trx->nr, tn, fn);
+			LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Dropping speech frame, "
+				"because we are not in speech mode\n");
 			goto free_bad_msg;
 		}
 
@@ -502,43 +490,33 @@ inval_mode1:
 				trx_loop_amr_set(chan_state, 1);
 			}
 			if (ft < 0) {
-				LOGP(DL1C, LOGL_ERROR, "%s Codec (FT = %d) "
-					" of RTP frame not in list. "
-					"trx=%u ts=%u\n",
-					trx_chan_desc[chan].name, ft_codec,
-					l1t->trx->nr, tn);
+				LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn,
+					"Codec (FT = %d) of RTP frame not in list\n", ft_codec);
 				goto free_bad_msg;
 			}
 			if (fn_is_codec_mode_request(fn) && chan_state->dl_ft != ft) {
-				LOGP(DL1C, LOGL_NOTICE, "%s Codec (FT = %d) "
-					" of RTP cannot be changed now, but in "
-					"next frame. trx=%u ts=%u\n",
-					trx_chan_desc[chan].name, ft_codec,
-					l1t->trx->nr, tn);
+				LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Codec (FT = %d) "
+					" of RTP cannot be changed now, but in next frame\n", ft_codec);
 				goto free_bad_msg;
 			}
 			chan_state->dl_ft = ft;
 			if (bfi == AMR_BAD) {
-				LOGP(DL1C, LOGL_NOTICE, "%s Transmitting 'bad "
-					"AMR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
+				LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn,
+					"Transmitting 'bad AMR frame'\n");
 				goto free_bad_msg;
 			}
 			break;
 		default:
 inval_mode2:
-			LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, please "
-				"fix!\n");
+			LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode invalid, please fix!\n");
 			goto free_bad_msg;
 		}
 		if (len < 0) {
-			LOGP(DL1C, LOGL_ERROR, "Cannot send invalid AMR "
-				"payload\n");
+			LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send invalid AMR payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
-			LOGP(DL1C, LOGL_ERROR, "Cannot send payload with "
+			LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send payload with "
 				"invalid length! (expecting %d, received %d)\n",
 				len, msgb_l2len(msg_tch));
 free_bad_msg:
@@ -590,9 +568,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n",
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1C, LOGL_INFO, l1t, tn, chan, fn, "No TCH or FACCH prim for transmit.\n");
 		goto send_burst;
 	}
 
@@ -630,8 +606,7 @@ send_burst:
 	if (nbits)
 		*nbits = GSM_BURST_LEN;
 
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u burst=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
 
 	return bits;
 }
@@ -660,9 +635,8 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
-		LOGP(DL1C, LOGL_ERROR, "%s Cannot transmit FACCH starting on "
-			"even frames, please fix RTS!\n",
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "Cannot transmit FACCH starting on "
+			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
 	}
@@ -687,9 +661,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGP(DL1C, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n",
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1C, LOGL_INFO, l1t, tn, chan, fn, "No TCH or FACCH prim for transmit.\n");
 		goto send_burst;
 	}
 
@@ -729,8 +701,7 @@ send_burst:
 	if (nbits)
 		*nbits = GSM_BURST_LEN;
 
-	LOGP(DL1C, LOGL_DEBUG, "Transmitting %s fn=%u ts=%u trx=%u burst=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
 
 	return bits;
 }
@@ -751,14 +722,12 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
 
-	LOGP(DL1C, LOGL_DEBUG, "Received Access Burst on %s fn=%u toa=%.2f\n",
-		trx_chan_desc[chan].name, fn, toa);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received RACH toa=%.2f\n", toa);
 
 	/* decode */
 	rc = gsm0503_rach_decode(&ra, bits + 8 + 41, l1t->trx->bts->bsic);
 	if (rc) {
-		LOGP(DL1C, LOGL_DEBUG, "Received bad AB frame at fn=%u "
-			"(%u/51)\n", fn, fn % 51);
+		LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad AB frame\n");
 		return 0;
 	}
 
@@ -809,8 +778,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
-	LOGP(DL1C, LOGL_DEBUG, "Data received %s fn=%u ts=%u trx=%u bid=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received Data, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -854,10 +822,8 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete data frame at "
-			"fn=%u (%u/%u) for %s\n", *first_fn,
-			(*first_fn) % l1ts->mf_period, l1ts->mf_period,
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete data (%u/%u)\n",
+			*first_fn, (*first_fn) % l1ts->mf_period);
 
 		/* we require first burst to have correct FN */
 		if (!(*mask & 0x1)) {
@@ -870,10 +836,8 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* decode */
 	rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGP(DL1C, LOGL_DEBUG, "Received bad data frame at fn=%u "
-			"(%u/%u) for %s\n", *first_fn,
-			(*first_fn) % l1ts->mf_period, l1ts->mf_period,
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
+			*first_fn, (*first_fn) % l1ts->mf_period);
 		l2_len = 0;
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
@@ -906,8 +870,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint16_t ber10k;
 	int rc;
 
-	LOGP(DL1C, LOGL_DEBUG, "PDTCH received %s fn=%u ts=%u trx=%u bid=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received PDTCH bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -953,10 +916,8 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_DEBUG, "Received incomplete PDTCH block "
-			"ending at fn=%u (%u/%u) for %s\n", fn,
-			fn % l1ts->mf_period, l1ts->mf_period,
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -980,9 +941,8 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa_sum / *toa_num);
 
 	if (rc <= 0) {
-		LOGP(DL1C, LOGL_DEBUG, "Received bad PDTCH block ending at "
-			"fn=%u (%u/%u) for %s\n", fn, fn % l1ts->mf_period,
-			l1ts->mf_period, trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad PDTCH (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 		return 0;
 	}
 	ber10k = compute_ber10k(n_bits_total, n_errors);
@@ -1012,8 +972,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
-	LOGP(DL1C, LOGL_DEBUG, "TCH/F received %s fn=%u ts=%u trx=%u bid=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/F, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -1042,10 +1001,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame ending "
-			"at fn=%u (%u/%u) for %s\n", fn,
-			fn % l1ts->mf_period, l1ts->mf_period,
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -1083,7 +1040,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		}
 		break;
 	default:
-		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
+		LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode %u invalid, please fix!\n",
 			tch_mode);
 		return -EINVAL;
 	}
@@ -1095,14 +1052,13 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
-			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 		goto bfi;
 	}
 	if (rc < 4) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
-			"fn=%u for %s with codec mode %d (out of range)\n",
-			fn, trx_chan_desc[chan].name, rc);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u) "
+			"with invalid codec mode %d\n", fn % l1ts->mf_period, l1ts->mf_period, rc);
 		goto bfi;
 	}
 
@@ -1138,8 +1094,8 @@ bfi:
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
-				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
-					"please fix!\n");
+				LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn,
+					"TCH mode %u invalid, please fix!\n", tch_mode);
 				return -EINVAL;
 			}
 		}
@@ -1179,8 +1135,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa);
 
-	LOGP(DL1C, LOGL_DEBUG, "TCH/H received %s fn=%u ts=%u trx=%u bid=%u\n",
-		trx_chan_desc[chan].name, fn, tn, l1t->trx->nr, bid);
+	LOGL1S(DL1C, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/H, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -1209,10 +1164,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0x3) != 0x3) {
-		LOGP(DL1C, LOGL_NOTICE, "Received incomplete TCH frame ending "
-			"at fn=%u (%u/%u) for %s\n", fn,
-			fn % l1ts->mf_period, l1ts->mf_period,
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -1260,7 +1213,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		}
 		break;
 	default:
-		LOGP(DL1C, LOGL_ERROR, "TCH mode %u invalid, please fix!\n",
+		LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode %u invalid, please fix!\n",
 			tch_mode);
 		return -EINVAL;
 	}
@@ -1273,14 +1226,13 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
-			"fn=%u for %s\n", fn, trx_chan_desc[chan].name);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
+			fn % l1ts->mf_period, l1ts->mf_period);
 		goto bfi;
 	}
 	if (rc < 4) {
-		LOGP(DL1C, LOGL_NOTICE, "Received bad TCH frame ending at "
-			"fn=%u for %s with codec mode %d (out of range)\n",
-			fn, trx_chan_desc[chan].name, rc);
+		LOGL1S(DL1C, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u) "
+			"with invalid codec mode %d\n", fn % l1ts->mf_period, l1ts->mf_period, rc);
 		goto bfi;
 	}
 
@@ -1313,8 +1265,8 @@ bfi:
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
-				LOGP(DL1C, LOGL_ERROR, "TCH mode invalid, "
-					"please fix!\n");
+				LOGL1S(DL1C, LOGL_ERROR, l1t, tn, chan, fn,
+					"TCH mode %u invalid, please fix!\n", tch_mode);
 				return -EINVAL;
 			}
 		}

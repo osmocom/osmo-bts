@@ -282,8 +282,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 		l1sap = msgb_l1sap_prim(msg);
 		if (l1sap->oph.operation != PRIM_OP_REQUEST) {
 wrong_type:
-			LOGP(DL1P, LOGL_ERROR, "Prim for ts=%u at fn=%u has "
-				"wrong type.\n", tn, fn);
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
 free_msg:
 			/* unlink and free message */
 			llist_del(&msg->list);
@@ -305,14 +304,12 @@ free_msg:
 			goto wrong_type;
 		}
 		if (prim_fn > 100) {
-			LOGP(DL1P, LOGL_NOTICE, "Prim %u for trx=%u ts=%u at "
-			     "fn=%u is out of range (100), or channel %s with "
+			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+			     "Prim %u is out of range (100), or channel %s with "
 			     "type %s is already disabled. If this happens in "
-			     "conjunction with PCU, increase 'rts-advance' by 5."
-			     " (current fn=%u)\n", prim_fn, l1t->trx->nr, tn,
-			     l1sap->u.data.fn,
-			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
-			     get_value_string(trx_chan_type_names, chan), fn);
+			     "conjunction with PCU, increase 'rts-advance' by 5.",
+			     prim_fn, get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
+			     get_value_string(trx_chan_type_names, chan));
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);
@@ -329,11 +326,9 @@ free_msg:
 found_msg:
 	if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
 	 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
-		LOGP(DL1P, LOGL_ERROR, "Prim for ts=%u at fn=%u has wrong "
-			"chan_nr=%02x link_id=%02x, expecting chan_nr=%02x "
-			"link_id=%02x.\n", tn, fn, chan_nr, link_id,
-			trx_chan_desc[chan].chan_nr | tn,
-			trx_chan_desc[chan].link_id);
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=%02x link_id=%02x, "
+			"expecting chan_nr=%02x link_id=%02x.\n", chan_nr, link_id,
+			trx_chan_desc[chan].chan_nr | tn, trx_chan_desc[chan].link_id);
 		goto free_msg;
 	}
 
@@ -418,9 +413,9 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 	uint8_t tn = l1sap->u.data.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGP(DL1P, LOGL_INFO, "PH-DATA.req: chan_nr=0x%02x link_id=0x%02x "
-		"fn=%u ts=%u trx=%u\n", l1sap->u.data.chan_nr,
-		l1sap->u.data.link_id, l1sap->u.data.fn, tn, l1t->trx->nr);
+	LOGL1S(DL1P, LOGL_INFO, l1t, tn, -1, l1sap->u.data.fn,
+		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
+		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
 	if (!l1sap->oph.msg)
 		abort();
@@ -441,9 +436,8 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 	uint8_t tn = l1sap->u.tch.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGP(DL1P, LOGL_INFO, "TCH.req: chan_nr=0x%02x "
-		"fn=%u ts=%u trx=%u\n", l1sap->u.tch.chan_nr,
-		l1sap->u.tch.fn, tn, l1t->trx->nr);
+	LOGL1S(DL1P, LOGL_INFO, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
+		l1sap->u.tch.chan_nr);
 
 	if (!l1sap->oph.msg)
 		abort();
@@ -477,14 +471,13 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	link_id = trx_chan_desc[chan].link_id;
 
 	if (!chan_nr) {
-		LOGP(DL1P, LOGL_FATAL, "RTS func for %s with non-existing "
-			"chan_nr %d\n", trx_chan_desc[chan].name, chan_nr);
+		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
+			"RTS func with non-existing chan_nr %d\n", chan_nr);
 		return -ENODEV;
 	}
 
-	LOGP(DL1P, LOGL_INFO, "PH-RTS.ind: chan=%s chan_nr=0x%02x "
-		"link_id=0x%02x fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
-		chan_nr, link_id, fn, tn, l1t->trx->nr);
+	LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn,
+		"PH-RTS.ind: chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
 
 	/* generate prim */
 	msg = l1sap_msgb_alloc(200);
@@ -514,14 +507,12 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	link_id = trx_chan_desc[chan].link_id;
 
 	if (!chan_nr) {
-		LOGP(DL1P, LOGL_FATAL, "RTS func for %s with non-existing "
-			"chan_nr %d\n", trx_chan_desc[chan].name, chan_nr);
+		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
+			"RTS func with non-existing chan_nr %d\n", chan_nr);
 		return -ENODEV;
 	}
 
-	LOGP(DL1P, LOGL_INFO, "TCH RTS.ind: chan=%s chan_nr=0x%02x "
-		"fn=%u ts=%u trx=%u\n", trx_chan_desc[chan].name,
-		chan_nr, fn, tn, l1t->trx->nr);
+	LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
 
 	/* only send, if FACCH is selected */
 	if (facch) {
