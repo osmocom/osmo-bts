@@ -91,7 +91,7 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 		r -= r % GSM_RTP_DURATION;
 
 		if (r != GSM_RTP_DURATION)
-			LOGP(DL1P, LOGL_ERROR, "RTP clock out of sync with lower layer:"
+			LOGP(DRTP, LOGL_ERROR, "RTP clock out of sync with lower layer:"
 				" %"PRIu32" vs %d (%"PRIu32"->%"PRIu32")\n",
 				r, GSM_RTP_DURATION, lchan->tch.last_fn, fn);
 	}
@@ -573,7 +573,7 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1P, LOGL_INFO, "activate confirm chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "activate confirm chan_nr=0x%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
@@ -598,7 +598,7 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1P, LOGL_INFO, "deactivate confirm chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "deactivate confirm chan_nr=0x%02x trx=%d\n",
 		info_act_cnf->chan_nr, trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
@@ -629,7 +629,7 @@ static int l1sap_mph_info_cnf(struct gsm_bts_trx *trx,
 		rc = l1sap_info_rel_cnf(trx, l1sap, &info->u.act_cnf);
 		break;
 	default:
-		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO cnf type %d\n",
+		LOGP(DL1C, LOGL_NOTICE, "unknown MPH_INFO cnf type %d\n",
 			info->type);
 		break;
 	}
@@ -1101,7 +1101,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	LOGP(DL1P, LOGL_INFO, "Rx TCH.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
@@ -1132,7 +1132,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		/* Only clear the marker bit once we have sent a RTP packet with it */
 		lchan->rtp_tx_marker = false;
 	} else {
-		DEBUGP(DL1P, "Skipping RTP frame with lost payload\n");
+		DEBUGP(DRTP, "Skipping RTP frame with lost payload\n");
 		if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
 		lchan->rtp_tx_marker = true;
@@ -1326,7 +1326,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm48_chan_desc *cd;
 	int rc;
 
-	LOGP(DL1P, LOGL_INFO, "activating channel chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "activating channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
@@ -1340,7 +1340,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		 * one one TRX, so we need to make sure not to activate
 		 * channels with a different TSC!! */
 		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
-			LOGP(DRSL, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
+			LOGP(DL1C, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
 				cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
 			return -RSL_ERR_SERV_OPT_UNIMPL;
 		}
@@ -1366,7 +1366,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
-	LOGP(DL1P, LOGL_INFO, "deactivating channel chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "deactivating channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	if (lchan->tch.dtx.dl_amr_fsm) {
@@ -1382,7 +1382,7 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	LOGP(DL1P, LOGL_INFO, "deactivating sacch chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "deactivating sacch chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	lchan->sacch_deact = 1;
@@ -1393,7 +1393,7 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	LOGP(DL1P, LOGL_INFO, "modifying channel chan_nr=0x%02x trx=%d\n",
+	LOGP(DL1C, LOGL_INFO, "modifying channel chan_nr=0x%02x trx=%d\n",
 		chan_nr, trx->nr);
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
