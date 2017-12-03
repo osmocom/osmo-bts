@@ -516,7 +516,6 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		sapi = cOCTVC1_GSM_SAPI_ENUM_BCCH;
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
-#warning Set BS_AG_BLKS_RES
 		sapi = cOCTVC1_GSM_SAPI_ENUM_PCH_AGCH;
 	} else {
 		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
