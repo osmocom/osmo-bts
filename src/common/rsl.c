@@ -1061,7 +1061,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
-		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRSL, LOGL_INFO,
+		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
 			"Closing RTP socket on Channel Release ");
 		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 		lchan->abis_ip.rtp_socket = NULL;
@@ -1682,7 +1682,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx,
 								OSMO_RTP_F_POLL);
 		if (!lchan->abis_ip.rtp_socket) {
-			LOGP(DRSL, LOGL_ERROR,
+			LOGP(DRTP, LOGL_ERROR,
 			     "%s IPAC Failed to create RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
 			oml_fail_rep(OSMO_EVT_CRIT_RTP_TOUT,
@@ -1697,11 +1697,11 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 					       OSMO_RTP_P_JITBUF,
 					       btsb->rtp_jitter_buf_ms);
 		if (rc < 0)
-			LOGP(DRSL, LOGL_ERROR,
+			LOGP(DRTP, LOGL_ERROR,
 			     "%s IPAC Failed to set RTP socket parameters: %s\n",
 			     gsm_lchan_name(lchan), strerror(-rc));
 		else
-			LOGP(DRSL, LOGL_INFO,
+			LOGP(DRTP, LOGL_INFO,
 			     "%s IPAC set RTP socket parameters: %d\n",
 			     gsm_lchan_name(lchan), rc);
 		lchan->abis_ip.rtp_socket->priv = lchan;
@@ -1724,7 +1724,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
 					  ipstr, -1);
 		if (rc < 0) {
-			LOGP(DRSL, LOGL_ERROR,
+			LOGP(DRTP, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
 			     gsm_lchan_name(lchan));
 			oml_fail_rep(OSMO_EVT_CRIT_RTP_TOUT,
@@ -1761,7 +1761,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
 				     inet_ntoa(ia), ntohs(connect_port));
 	if (rc < 0) {
-		LOGP(DRSL, LOGL_ERROR,
+		LOGP(DRTP, LOGL_ERROR,
 		     "%s Failed to connect RTP/RTCP sockets\n",
 		     gsm_lchan_name(lchan));
 		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
@@ -1778,7 +1778,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 					&lchan->abis_ip.bound_ip,
 					&port);
 	if (rc < 0)
-		LOGP(DRSL, LOGL_ERROR, "%s IPAC cannot obtain "
+		LOGP(DRTP, LOGL_ERROR, "%s IPAC cannot obtain "
 		     "locally bound IP/port: %d\n",
 		     gsm_lchan_name(lchan), rc);
 	lchan->abis_ip.bound_port = port;
@@ -1819,7 +1819,7 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 		inc_conn_id = 1;
 
 	rc = rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
-	osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRSL, LOGL_INFO,
+	osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
 		"Closing RTP socket on DLCX ");
 	osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 	lchan->abis_ip.rtp_socket = NULL;
