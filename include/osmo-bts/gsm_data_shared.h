@@ -1002,5 +1002,6 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts);
 uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
 bool ts_is_tch(struct gsm_bts_trx_ts *ts);
+const char *gsm_trx_unit_id(struct gsm_bts_trx *trx);
 
 #endif

@@ -20,6 +20,8 @@
  *
  */
 
+#include "btsconfig.h"	/* for PACKAGE_VERSION */
+
 #include <stdio.h>
 #include <errno.h>
 #include <netdb.h>
@@ -1668,6 +1670,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
+		char cname[32];
 		char *ipstr = NULL;
 		if (lchan->abis_ip.rtp_socket) {
 			LOGP(DRSL, LOGL_ERROR, "%s Rx RSL IPAC CRCX, "
@@ -1736,6 +1739,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
+		/* Ensure RTCP SDES contains some useful information */
+		snprintf(cname, sizeof(cname), "bts@%s", ipstr);
+		osmo_rtp_set_source_desc(lchan->abis_ip.rtp_socket, cname,
+					 gsm_lchan_name(lchan), NULL, NULL,
+					 gsm_trx_unit_id(lchan->ts->trx),
+					 "OsmoBTS-" PACKAGE_VERSION, NULL);
 		/* FIXME: multiplex connection, BSC proxy */
 	} else {
 		/* MDCX */

@@ -851,3 +851,12 @@ bool ts_is_tch(struct gsm_bts_trx_ts *ts)
 {
 	return pchan_is_tch(ts_pchan(ts));
 }
+
+const char *gsm_trx_unit_id(struct gsm_bts_trx *trx)
+{
+	static char buf[23];
+
+	snprintf(buf, sizeof(buf), "%u/%u/%u", trx->bts->ip_access.site_id,
+		trx->bts->ip_access.bts_id, trx->nr);
+	return buf;
+}
