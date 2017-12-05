@@ -266,8 +266,8 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 
 	rc = open(rd_devnames[q], O_RDONLY);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
-			strerror(errno));
+		LOGP(DL1C, LOGL_FATAL, "[%d] unable to open %s for reading: %s\n",
+		     q, rd_devnames[q], strerror(errno));
 		return rc;
 	}
 	read_ofd->fd = rc;
@@ -284,8 +284,8 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 
 	rc = open(wr_devnames[q], O_WRONLY);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "unable to open msg_queue: %s\n",
-			strerror(errno));
+		LOGP(DL1C, LOGL_FATAL, "[%d] unable to open %s for writing: %s\n",
+		     q, wr_devnames[q], strerror(errno));
 		goto out_read;
 	}
 	osmo_wqueue_init(wq, 10);
