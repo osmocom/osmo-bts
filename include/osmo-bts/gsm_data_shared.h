@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <osmocom/codec/ecu.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/bitvec.h>
 #include <osmocom/core/statistics.h>
@@ -316,6 +317,11 @@ struct gsm_lchan {
 	} ms_power_ctrl;
 
 	struct msgb *pending_rel_ind_msg;
+
+	/* ECU (Error Concealment Unit) state */
+	union {
+		struct osmo_ecu_fr_state fr;
+	} ecu_state;
 };
 
 extern const struct value_string lchan_ciph_state_names[];

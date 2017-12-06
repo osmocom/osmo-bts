@@ -31,6 +31,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/codec/codec.h>
+#include <osmocom/codec/ecu.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 #include <osmocom/coding/gsm0503_coding.h>
@@ -964,6 +965,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
 	int n_errors, n_bits_total;
+	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
 
@@ -1054,11 +1056,13 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (rc < 0) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
 			fn % l1ts->mf_period, l1ts->mf_period);
+		bfi_flag = true;
 		goto bfi;
 	}
 	if (rc < 4) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u) "
 			"with invalid codec mode %d\n", fn % l1ts->mf_period, l1ts->mf_period, rc);
+		bfi_flag = true;
 		goto bfi;
 	}
 
@@ -1075,8 +1079,14 @@ bfi:
 			case GSM48_CMODE_SPEECH_V1: /* FR */
 				if (lchan->tch.dtx.ul_sid)
 					return 0; /* DTXu: pause in progress */
-				memset(tch_data, 0, GSM_FR_BYTES);
-				tch_data[0] = 0xd0;
+
+				/* Perform error concealment if possible */
+				rc = osmo_ecu_fr_conceal(&lchan->ecu_state.fr, tch_data);
+				if (rc) {
+					memset(tch_data, 0, GSM_FR_BYTES);
+					tch_data[0] = 0xd0;
+				}
+
 				rc = GSM_FR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
@@ -1103,6 +1113,10 @@ bfi:
 
 	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
 		return 0;
+
+	/* Reset ECU with a good frame */
+	if (!bfi_flag && tch_mode == GSM48_CMODE_SPEECH_V1)
+		osmo_ecu_fr_reset(&lchan->ecu_state.fr, tch_data);
 
 	/* TCH or BFI */
 	return _sched_compose_tch_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
