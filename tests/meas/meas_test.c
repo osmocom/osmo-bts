@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
 	printf("\n");
 	printf("***********************\n");
-	printf("*** FULL RATE TESTS ***\n");
+	printf("*** HALF RATE TESTS ***\n");
 	printf("***********************\n");
 
 	/* Test half rate */
