@@ -31,10 +31,6 @@
 static struct gsm_bts *bts;
 static struct gsm_bts_role_bts *btsb;
 
-static const uint8_t static_ilv[] = {
-	0x08, 0x59, 0x51, 0x30, 0x99, 0x00, 0x00, 0x00, 0x19
-};
-
 static int count_imm_ass_rej_refs(struct gsm48_imm_ass_rej *rej)
 {
 	int count = 0;
