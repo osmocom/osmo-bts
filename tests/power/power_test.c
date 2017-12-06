@@ -39,7 +39,6 @@ static void test_power_loop(void)
 	struct gsm_bts_trx trx;
 	struct gsm_bts_trx_ts ts;
 	struct gsm_lchan *lchan;
-	int ret;
 
 	memset(&bts, 0, sizeof(bts));
 	memset(&btsb, 0, sizeof(btsb));
