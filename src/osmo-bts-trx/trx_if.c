@@ -214,8 +214,13 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	tcm->cmd[sizeof(tcm->cmd)-1] = '\0';
 	tcm->cmd_len = strlen(cmd);
 	tcm->critical = critical;
-	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
-	LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command '%s'\n", tcm->cmd);
+
+	/* Avoid adding consecutive duplicate messages, eg: two consecutive POWEROFF */
+	if (!pending ||
+	    strcmp(tcm->cmd, llist_entry(l1h->trx_ctrl_list.prev, struct trx_ctrl_msg, list)->cmd)) {
+		LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command '%s'\n", tcm->cmd);
+		llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
+	}
 
 	/* send message, if we didn't already have pending messages */
 	if (!pending)
