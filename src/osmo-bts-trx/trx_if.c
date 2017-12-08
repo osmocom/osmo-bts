@@ -189,7 +189,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 {
 	struct trx_ctrl_msg *tcm;
 	va_list ap;
-	int l, pending = 0;
+	int l, pending;
 
 	if (!transceiver_available &&
 	    !(!strcmp(cmd, "POWEROFF") || !strcmp(cmd, "POWERON"))) {
@@ -198,8 +198,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		return -EIO;
 	}
 
-	if (!llist_empty(&l1h->trx_ctrl_list))
-		pending = 1;
+	pending = !llist_empty(&l1h->trx_ctrl_list);
 
 	/* create message */
 	tcm = talloc_zero(tall_bts_ctx, struct trx_ctrl_msg);
