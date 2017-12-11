@@ -252,6 +252,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	if (!nmsg)
 		return -ENOMEM;
 	// FIXME: add interference levels of TRX
+	msgb_tlv_put(nmsg, RSL_IE_RESOURCE_INFO, 0, NULL);
 	rsl_trx_push_hdr(nmsg, RSL_MT_RF_RES_IND);
 	nmsg->trx = trx;
 
