@@ -10,7 +10,6 @@ Build-Depends: debhelper (>= 9),
                pkg-config,
                libosmocore-dev,
                libosmo-abis-dev,
-               libosmo-netif-dev,
                libgps-dev,
                libortp-dev,
                txt2man
