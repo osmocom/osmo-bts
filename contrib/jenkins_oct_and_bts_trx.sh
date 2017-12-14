@@ -7,7 +7,7 @@
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
 
-osmo-build-dep.sh libosmocore
+osmo-build-dep.sh libosmocore "" --disable-doxygen
 
 osmo-build-dep.sh libosmo-abis
 

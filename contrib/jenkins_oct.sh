@@ -4,7 +4,7 @@
 # shellcheck source=contrib/jenkins_common.sh
 . $(dirname "$0")/jenkins_common.sh
 
-osmo-build-dep.sh libosmocore
+osmo-build-dep.sh libosmocore "" --disable-doxygen
 
 export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
