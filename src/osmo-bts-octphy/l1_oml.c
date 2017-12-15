@@ -54,6 +54,9 @@
 
 bool no_fw_check = 0;
 
+#define LOGPTRX(byTrxId, level, fmt, args...) \
+	LOGP(DL1C, level, "(byTrxId %u) " fmt, byTrxId, ## args)
+
 /* Map OSMOCOM logical channel type to OctPHY Logical channel type */
 static tOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM pchan_to_logChComb[_GSM_PCHAN_MAX] =
 {
@@ -377,6 +380,10 @@ static int lchan_act_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *d
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ar);
 	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(ar->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during lchan activation\n");
+		return -EINVAL;
+	}
 
 	lchan = get_lchan_by_lchid(trx, &ar->LchId);
 	sapi = ar->LchId.bySAPI;
@@ -488,6 +495,11 @@ static int set_ciph_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *da
 	}
 
 	trx = trx_by_l1h(fl1, pcr->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(pcr->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during cipher mode activation\n");
+		return -EINVAL;
+	}
+
 	OSMO_ASSERT(pcr->TrxId.byTrxId == trx->nr);
 	ts = &trx->ts[pcr->PchId.byTimeslotNb];
 	/* for some strange reason the response does not tell which
@@ -687,6 +699,10 @@ static int lchan_deact_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void 
 
 	mOCTVC1_GSM_MSG_TRX_DEACTIVATE_LOGICAL_CHANNEL_RSP_SWAP(ldr);
 	trx = trx_by_l1h(fl1, ldr->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(ldr->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during lchan deactivation\n");
+		return -EINVAL;
+	}
 
 	lchan = get_lchan_by_lchid(trx, &ldr->LchId);
 
@@ -1266,6 +1282,10 @@ static int trx_open_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *d
 
 	mOCTVC1_GSM_MSG_TRX_OPEN_RSP_SWAP(or);
 	trx = trx_by_l1h(fl1h, or->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(or->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during TRX opening procedure -- abort\n");
+		exit(1);
+	}
 
 	LOGP(DL1C, LOGL_INFO, "TRX-OPEN.resp(trx=%u) = %s\n",
 		trx->nr, octvc1_rc2string(or->Header.ulReturnCode));
@@ -1394,6 +1414,11 @@ static int pchan_act_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *d
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP_SWAP(ar);
 	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(ar->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during physical channel activation -- abort\n");
+		exit(1);
+	}
+
 	ts_nr = ar->PchId.byTimeslotNb;
 	OSMO_ASSERT(ts_nr <= ARRAY_SIZE(trx->ts));
 
@@ -1472,6 +1497,11 @@ static int ts_disconnect_cb(struct octphy_hdl *fl1, struct msgb *resp,
 	struct gsm_bts_trx_ts *ts;
 
 	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(ar->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id during ts disconnection\n");
+		return -EINVAL;
+	}
+
 	ts_nr = ar->PchId.byTimeslotNb;
 	ts = &trx->ts[ts_nr];
 
@@ -1495,6 +1525,11 @@ static int ts_connect_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_RSP_SWAP(ar);
 	trx = trx_by_l1h(fl1, ar->TrxId.byTrxId);
+	if (!trx) {
+		LOGPTRX(ar->TrxId.byTrxId, LOGL_ERROR, "response with unexpected physical transceiver-id while connecting ts\n");
+		return -EINVAL;
+	}
+
 	ts_nr = ar->PchId.byTimeslotNb;
 	OSMO_ASSERT(ts_nr <= ARRAY_SIZE(trx->ts));
 
