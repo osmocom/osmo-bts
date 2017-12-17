@@ -212,6 +212,7 @@ AC_OUTPUT(
     src/Makefile
     src/common/Makefile
     src/osmo-bts-virtual/Makefile
+    src/osmo-bts-omldummy/Makefile
     src/osmo-bts-sysmo/Makefile
     src/osmo-bts-litecell15/Makefile
     src/osmo-bts-trx/Makefile
