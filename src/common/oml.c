@@ -173,7 +173,7 @@ static inline void add_trx_attr(struct msgb *msg, struct gsm_bts_trx *trx)
 {
 	const struct phy_instance *pinst = trx_phy_instance(trx);
 
-	abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), strlen(pinst->version) ? pinst->version : "Unknown",
+	abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), pinst && strlen(pinst->version) ? pinst->version : "Unknown",
 			    true);
 }
 
@@ -1361,14 +1361,14 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	in.s_addr = htonl(ip);
 	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
 		inet_ntoa(in), port, stream_id);
-
+#if 0
 	rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port,
 		trx->nr);
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "Error in abis_open(RSL): %d\n", rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
 	}
-
+#endif
 	return oml_fom_ack_nack(msg, 0);
 }
 
