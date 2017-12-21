@@ -34,6 +34,15 @@ AC_HEADER_STDC
 
 dnl Checks for typedefs, structures and compiler characteristics
 
+AC_ARG_ENABLE(sanitize,
+		[AS_HELP_STRING([--enable-sanitize], [Compile with address sanitizer enabled], )],
+		[sanitize=$enableval], [sanitize="no"])
+if test x"$sanitize" = x"yes"
+then
+	CFLAGS="$CFLAGS -fsanitize=address -fsanitize=undefined"
+	CPPFLAGS="$CPPFLAGS -fsanitize=address -fsanitize=undefined"
+fi
+
 dnl checks for libraries
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore  >= 0.10.0)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.10.0)
