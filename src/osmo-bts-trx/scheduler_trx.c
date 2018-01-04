@@ -716,18 +716,29 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t chan_nr;
 	struct osmo_phsap_prim l1sap;
 	int n_errors, n_bits_total;
+	bool is_11bit = true;
+	uint16_t ra11;
 	uint8_t ra;
-	int rc;
+	int rc = 1;
 
 	chan_nr = trx_chan_desc[chan].chan_nr | tn;
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received RACH toa=%d\n", toa256);
 
-	/* decode */
-	rc = gsm0503_rach_decode_ber(&ra, bits + 8 + 41, l1t->trx->bts->bsic, &n_errors, &n_bits_total);
+	if (chan == TRXC_RACH) /* Attempt to decode as extended (11-bit) RACH first */
+		rc = gsm0503_rach_ext_decode_ber(&ra11, bits + 8 + 41,
+						 l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad AB frame\n");
-		return 0;
+		/* Indicate non-extended RACH */
+		is_11bit = false;
+
+		/* Fall-back to the normal RACH decoding */
+		rc = gsm0503_rach_decode_ber(&ra, bits + 8 + 41,
+			l1t->trx->bts->bsic, &n_errors, &n_bits_total);
+		if (rc) {
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad AB frame\n");
+			return 0;
+		}
 	}
 
 	/* compose primitive */
@@ -736,16 +747,33 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
 		NULL);
 	l1sap.u.rach_ind.chan_nr = chan_nr;
-	l1sap.u.rach_ind.ra = ra;
 	l1sap.u.rach_ind.acc_delay = (toa256 >= 0) ? toa256/256 : 0;
 	l1sap.u.rach_ind.fn = fn;
-
-	/* 11bit RACH is not supported for osmo-trx */
-	l1sap.u.rach_ind.is_11bit = 0;
-	l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
 	l1sap.u.rach_ind.rssi = rssi;
 	l1sap.u.rach_ind.ber10k = compute_ber10k(n_bits_total, n_errors);
 	l1sap.u.rach_ind.acc_delay_256bits = toa256;
+
+	if (is_11bit) {
+		l1sap.u.rach_ind.is_11bit = 1;
+		l1sap.u.rach_ind.ra = ra11;
+		l1sap.u.rach_ind.burst_type = BSIC2BCC(l1t->trx->bts->bsic);
+		switch (l1sap.u.rach_ind.burst_type) {
+		case GSM_L1_BURST_TYPE_ACCESS_0:
+		case GSM_L1_BURST_TYPE_ACCESS_1:
+		case GSM_L1_BURST_TYPE_ACCESS_2:
+			break;
+		default:
+			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+			       "Received RACH frame with unexpected TSC %u, "
+			       "forcing default %u\n", l1sap.u.rach_ind.burst_type,
+			       GSM_L1_BURST_TYPE_ACCESS_0);
+			l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+		}
+	} else {
+		l1sap.u.rach_ind.is_11bit = 0;
+		l1sap.u.rach_ind.ra = ra;
+		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+	}
 
 	/* forward primitive */
 	l1sap_up(l1t->trx, &l1sap);
