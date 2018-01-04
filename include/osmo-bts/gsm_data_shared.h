@@ -19,10 +19,7 @@
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmocom/abis/e1_input.h>
-
-#ifndef ROLE_BSC
 #include <osmocom/gsm/lapdm.h>
-#endif
 
 /* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018 Table 10.5.2.33b.1:
    4-bit index is used (2#1111 = 10#15) */
@@ -261,46 +258,13 @@ struct gsm_lchan {
 		uint8_t rtp_payload;
 		uint8_t rtp_payload2;
 		uint8_t speech_mode;
-#ifdef ROLE_BSC
-		struct rtp_socket *rtp_socket;
-#else
 		struct osmo_rtp_socket *rtp_socket;
-#endif
 	} abis_ip;
 
 	uint8_t rqd_ta;
 
 	char *name;
 
-#ifdef ROLE_BSC
-	struct osmo_timer_list T3101;
-	struct osmo_timer_list T3109;
-	struct osmo_timer_list T3111;
-	struct osmo_timer_list error_timer;
-	struct osmo_timer_list act_timer;
-	struct osmo_timer_list rel_work;
-	uint8_t error_cause;
-
-	/* table of neighbor cell measurements */
-	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
-
-	/* cache of last measurement reports on this lchan */
-	struct gsm_meas_rep meas_rep[6];
-	int meas_rep_idx;
-
-	/* GSM Random Access data */
-	struct gsm48_req_ref *rqd_ref;
-
-	struct gsm_subscriber_connection *conn;
-
-	struct {
-		/* channel activation type and handover ref */
-		uint8_t act_type;
-		uint8_t ho_ref;
-		struct gsm48_req_ref *rqd_ref;
-		uint8_t rqd_ta;
-	} dyn;
-#else
 	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.
 	 * Currently we don't share these headers so this is a magic number. */
 	struct llist_head sapi_cmds;
@@ -381,7 +345,6 @@ struct gsm_lchan {
 	} ms_power_ctrl;
 
 	struct msgb *pending_rel_ind_msg;
-#endif
 };
 
 enum {
@@ -465,14 +428,12 @@ struct gsm_bts_trx {
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
 
-#ifndef ROLE_BSC
 	struct trx_power_params power_params;
 	int ms_power_control;
 
 	struct {
 		void *l1h;
 	} role_bts;
-#endif
 
 	union {
 		struct {
@@ -846,68 +807,6 @@ struct gsm_bts {
 	int force_combined_si;
 	int bcch_change_mark;
 
-#ifdef ROLE_BSC
-	/* Abis NM queue */
-	struct llist_head abis_queue;
-	int abis_nm_pend;
-
-	struct gsm_network *network;
-
-	/* should the channel allocator allocate channels from high TRX to TRX0,
-	 * rather than starting from TRX0 and go upwards? */
-	int chan_alloc_reverse;
-
-	enum neigh_list_manual_mode neigh_list_manual_mode;
-	/* parameters from which we build SYSTEM INFORMATION */
-	struct {
-		struct gsm48_rach_control rach_control;
-		uint8_t ncc_permitted;
-		struct gsm48_cell_sel_par cell_sel_par;
-		struct gsm48_si_selection_params cell_ro_sel_par; /* rest octet */
-		struct gsm48_cell_options cell_options;
-		struct gsm48_control_channel_descr chan_desc;
-		struct bitvec neigh_list;
-		struct bitvec cell_alloc;
-		struct bitvec si5_neigh_list;
-		struct osmo_earfcn_si2q si2quater_neigh_list;
-		size_t uarfcn_length; /* index for uarfcn and scramble lists */
-		struct {
-			/* bitmask large enough for all possible ARFCN's */
-			uint8_t neigh_list[1024/8];
-			uint8_t cell_alloc[1024/8];
-			/* If the user wants a different neighbor list in SI5 than in SI2 */
-			uint8_t si5_neigh_list[1024/8];
-			uint8_t meas_bw_list[MAX_EARFCN_LIST];
-			uint16_t earfcn_list[MAX_EARFCN_LIST];
-			uint16_t uarfcn_list[MAX_EARFCN_LIST];
-			uint16_t scramble_list[MAX_EARFCN_LIST];
-		} data;
-	} si_common;
-	bool early_classmark_allowed;
-	/* for testing only: Have an infinitely long radio link timeout */
-	bool infinite_radio_link_timeout;
-
-	/* do we use static (user-defined) system information messages? (bitmask) */
-	uint32_t si_mode_static;
-
-	/* exclude the BTS from the global RF Lock handling */
-	int excl_from_rf_lock;
-
-	/* supported codecs beside FR */
-	struct bts_codec_conf codec;
-
-	/* BTS dependencies bit field */
-	uint32_t depends_on[256/(8*4)];
-
-	/* full and half rate multirate config */
-	struct amr_multirate_conf mr_full;
-	struct amr_multirate_conf mr_half;
-
-	/* PCU socket state */
-	char *pcu_sock_path;
-	struct pcu_sock_state *pcu_state;
-
-#endif /* ROLE_BSC */
 	void *role;
 };
 

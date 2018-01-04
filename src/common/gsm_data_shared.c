@@ -271,9 +271,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 			name = gsm_lchan_name_compute(lchan);
 			lchan->name = talloc_strdup(trx, name);
-#ifndef ROLE_BSC
 			INIT_LLIST_HEAD(&lchan->sapi_cmds);
-#endif
 		}
 	}
 
@@ -679,17 +677,13 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		break;
 	default:
 	case GSM_PCHAN_CCCH:
-#ifdef ROLE_BSC
-		OSMO_ASSERT(lchan_nr == 0);
-#else
-		/*
+		/* OSMO_ASSERT(lchan_nr == 0);
 		 * FIXME: On octphy and litecell, we hit above assertion (see
 		 * Max's comment at https://gerrit.osmocom.org/589 ); disabled
 		 * for BTS until this is clarified; remove the #ifdef when it
 		 * is fixed.
 		 */
 #warning "fix caller that passes lchan_nr != 0"
-#endif
 		cbits = 0x10;
 		break;
 	}
