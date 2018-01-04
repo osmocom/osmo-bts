@@ -221,8 +221,8 @@ int pcu_tx_info_ind(void)
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
 			    && ts_should_be_pdch(ts)) {
 				info_ind->trx[i].pdch_mask |= (1 << j);
-				info_ind->trx[i].tsc[j] =
-					(ts->tsc >= 0) ? ts->tsc : bts->bsic & 7;
+				info_ind->trx[i].tsc[j] = gsm_ts_tsc(ts);
+
 				LOGP(DPCU, LOGL_INFO, "trx=%d ts=%d: "
 					"available (tsc=%d arfcn=%d)\n",
 					trx->nr, ts->nr,
