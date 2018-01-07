@@ -1204,7 +1204,7 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BVCI, 2))
 		bts->gprs.cell.bvci =
-			htons(tlvp_val16_unal(tp, NM_ATT_IPACC_BVCI));
+			ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_BVCI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG, 9)) {
 		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG);
