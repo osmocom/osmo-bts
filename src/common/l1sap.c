@@ -458,8 +458,8 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
 	if (frames_expired > 1) {
 		LOGP(DL1P, LOGL_ERROR,
-		     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32" > 1!\n",
-	             info_time_ind->fn, btsb->gsm_time.fn);
+		     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32"=%d > 1!\n",
+	             info_time_ind->fn, btsb->gsm_time.fn, frames_expired);
 	}
 
 	/* Update our data structures with the current GSM time */
