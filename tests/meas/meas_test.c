@@ -1,37 +1,12 @@
+#include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <getopt.h>
-#include <limits.h>
-#include <sched.h>
-#include <sys/signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <net/if.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
-#include <osmocom/vty/telnet_interface.h>
-#include <osmocom/vty/logging.h>
-#include <osmocom/core/gsmtap.h>
-#include <osmocom/core/gsmtap_util.h>
-#include <osmocom/core/bits.h>
-#include <osmocom/core/backtrace.h>
-#include <osmocom/abis/abis.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
-#include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
-#include <osmo-bts/vty.h>
-#include <osmo-bts/bts_model.h>
-#include <osmo-bts/pcu_if.h>
-#include <osmo-bts/l1sap.h>
 #include <osmo-bts/measurement.h>
 
 static struct gsm_bts *bts;
