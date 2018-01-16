@@ -416,12 +416,8 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 				"transceiver (%s) rejected TRX command "
 				"with response: '%s'\n",
 				phy_instance_name(pinst), buf);
-rsp_error:
-			if (tcm->critical) {
-				bts_shutdown(pinst->trx->bts, "TRX-CTRL-MSG: CRITICAL");
-				/* keep tcm list, so process is stopped */
-				return -EIO;
-			}
+			if (tcm->critical)
+				goto rsp_error;
 		}
 
 		/* remove command from list */
@@ -434,6 +430,11 @@ rsp_error:
 			buf);
 
 	return 0;
+
+rsp_error:
+	bts_shutdown(pinst->trx->bts, "TRX-CTRL-MSG: CRITICAL");
+	/* keep tcm list, so process is stopped */
+	return -EIO;
 }
 
 
