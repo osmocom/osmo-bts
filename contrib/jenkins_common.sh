@@ -43,5 +43,5 @@ build_bts() {
     ./configure $conf_flags
     $MAKE $PARALLEL_MAKE
     $MAKE check || cat-testlogs.sh
-    DISTCHECK_CONFIGURE_FLAGS=$conf_flags $MAKE distcheck || cat-testlogs.sh
+    DISTCHECK_CONFIGURE_FLAGS="$conf_flags" $MAKE distcheck || cat-testlogs.sh
 }
