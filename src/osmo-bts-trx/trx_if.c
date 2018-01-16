@@ -167,9 +167,14 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 static void trx_ctrl_timer_cb(void *data)
 {
 	struct trx_l1h *l1h = data;
+	struct trx_ctrl_msg *tcm = NULL;
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s\n",
-		phy_instance_name(l1h->phy_inst));
+	/* get first command */
+	OSMO_ASSERT(!llist_empty(&l1h->trx_ctrl_list));
+	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
+
+	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s (%s)\n",
+		phy_instance_name(l1h->phy_inst), tcm->cmd);
 
 	trx_ctrl_send(l1h);
 }
