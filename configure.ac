@@ -54,6 +54,14 @@ PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 0.10.0)
 PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding >= 0.10.0)
 PKG_CHECK_MODULES(ORTP, ortp)
 
+AC_MSG_CHECKING([whether to enable support for sysmobts calibration tool])
+AC_ARG_ENABLE(sysmobts-calib,
+		AC_HELP_STRING([--enable-sysmobts-calib],
+				[enable code for sysmobts calibration tool [default=no]]),
+		[enable_sysmobts_calib="yes"],[enable_sysmobts_calib="no"])
+AC_MSG_RESULT([$enable_sysmobts_calib])
+AM_CONDITIONAL(ENABLE_SYSMOBTS_CALIB, test "x$enable_sysmobts_calib" = "xyes")
+
 AC_MSG_CHECKING([whether to enable support for sysmoBTS L1/PHY support])
 AC_ARG_ENABLE(sysmocom-bts,
 		AC_HELP_STRING([--enable-sysmocom-bts],

@@ -18,11 +18,11 @@ ln -s $deps/layer1-headers/include/* "$inst/include/sysmocom/femtobts/"
 
 configure_flags="--enable-sysmocom-bts"
 
-build_bts "osmo-bts-sysmo" "$configure_flags"
-
 # This will not work for the femtobts
 if [ $FIRMWARE_VERSION != "femtobts_v2.7" ]; then
-  $MAKE -C contrib/sysmobts-calib
+    configure_flags="$configure_flags --enable-sysmobts-calib"
 fi
+
+build_bts "osmo-bts-sysmo" "$configure_flags"
 
 osmo-clean-workspace.sh

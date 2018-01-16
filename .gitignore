@@ -22,8 +22,7 @@ stamp-h1
 core
 core.*
 
-contrib/sysmobts-calib/sysmobts-calib
-
+src/osmo-bts-sysmo/sysmobts-calib
 src/osmo-bts-sysmo/l1fwd-proxy
 src/osmo-bts-sysmo/osmo-bts-sysmo
 src/osmo-bts-sysmo/osmo-bts-sysmo-remote
