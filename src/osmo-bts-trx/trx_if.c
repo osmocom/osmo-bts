@@ -146,16 +146,20 @@ static void trx_ctrl_timer_cb(void *data);
 static void trx_ctrl_send(struct trx_l1h *l1h)
 {
 	struct trx_ctrl_msg *tcm;
+	char buf[1500];
+	int len;
 
 	/* get first command */
 	if (llist_empty(&l1h->trx_ctrl_list))
 		return;
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to %s\n", tcm->cmd,
-		phy_instance_name(l1h->phy_inst));
+	len = snprintf(buf, sizeof(buf), "CMD %s%s%s", tcm->cmd, tcm->params_len ? " ":"", tcm->params);
+	OSMO_ASSERT(len < sizeof(buf));
+
+	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to %s\n", buf, phy_instance_name(l1h->phy_inst));
 	/* send command */
-	send(l1h->trx_ofd_ctrl.fd, tcm->cmd, strlen(tcm->cmd)+1, 0);
+	send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
 
 	/* start timer */
 	l1h->trx_ctrl_timer.cb = trx_ctrl_timer_cb;
@@ -173,8 +177,9 @@ static void trx_ctrl_timer_cb(void *data)
 	OSMO_ASSERT(!llist_empty(&l1h->trx_ctrl_list));
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s (%s)\n",
-		phy_instance_name(l1h->phy_inst), tcm->cmd);
+	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s (CMD %s%s%s)\n",
+		phy_instance_name(l1h->phy_inst),
+		tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 
 	trx_ctrl_send(l1h);
 }
@@ -193,8 +198,9 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	const char *fmt, ...)
 {
 	struct trx_ctrl_msg *tcm;
+	struct trx_ctrl_msg *prev = NULL;
 	va_list ap;
-	int l, pending;
+	int pending;
 
 	if (!transceiver_available &&
 	    !(!strcmp(cmd, "POWEROFF") || !strcmp(cmd, "POWERON"))) {
@@ -209,21 +215,29 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 	tcm = talloc_zero(tall_bts_ctx, struct trx_ctrl_msg);
 	if (!tcm)
 		return -ENOMEM;
-	if (fmt && fmt[0]) {
-		l = snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "CMD %s ", cmd);
-		va_start(ap, fmt);
-		vsnprintf(tcm->cmd + l, sizeof(tcm->cmd) - l - 1, fmt, ap);
-		va_end(ap);
-	} else
-		snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "CMD %s", cmd);
+	snprintf(tcm->cmd, sizeof(tcm->cmd)-1, "%s", cmd);
 	tcm->cmd[sizeof(tcm->cmd)-1] = '\0';
-	tcm->cmd_len = strlen(cmd);
+	tcm->cmd_len = strlen(tcm->cmd);
+	if (fmt && fmt[0]) {
+		va_start(ap, fmt);
+		vsnprintf(tcm->params, sizeof(tcm->params) - 1, fmt, ap);
+		va_end(ap);
+		tcm->params[sizeof(tcm->params)-1] = '\0';
+		tcm->params_len = strlen(tcm->params);
+	} else {
+		tcm->params[0] ='\0';
+		tcm->params_len = 0;
+	}
 	tcm->critical = critical;
 
 	/* Avoid adding consecutive duplicate messages, eg: two consecutive POWEROFF */
+	if(pending)
+		prev = llist_entry(l1h->trx_ctrl_list.prev, struct trx_ctrl_msg, list);
+
 	if (!pending ||
-	    strcmp(tcm->cmd, llist_entry(l1h->trx_ctrl_list.prev, struct trx_ctrl_msg, list)->cmd)) {
-		LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command '%s'\n", tcm->cmd);
+	    !(strcmp(tcm->cmd, prev->cmd) == 0 && strcmp(tcm->params, prev->params) == 0)) {
+		LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command 'CMD %s%s%s'\n",
+			tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 		llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
 	}
 
@@ -354,80 +368,124 @@ int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
 }
 
+static int parse_rsp(const char *buf_in, size_t len_in, char *cmdname_out, size_t cmdname_len,
+			char *params_out, size_t params_len, int *status)
+{
+	char *p, *k;
+
+	if (strncmp(buf_in, "RSP ", 4))
+		goto parse_err;
+
+	/* Get the RSP cmd name */
+	if (!(p = strchr(buf_in + 4, ' ')))
+		goto parse_err;
+
+	if (p - buf_in >= cmdname_len) {
+		LOGP(DTRX, LOGL_ERROR, "cmdname buffer too small %lu >= %lu\n",
+			p - buf_in, cmdname_len);
+		goto parse_err;
+	}
+
+	cmdname_out[0] = '\0';
+	strncat(cmdname_out, buf_in + 4, p - buf_in - 4);
+
+	/* Now comes the status code of the response */
+	p++;
+	if (sscanf(p, "%d", status) != 1)
+		goto parse_err;
+
+	/* Now copy back the parameters */
+	k = strchr(p, ' ');
+	if (k)
+		k++;
+	else
+		k = p + strlen(p);
+
+	if (strlen(k) >= params_len) {
+		LOGP(DTRX, LOGL_ERROR, "params buffer too small %lu >= %lu\n",
+			strlen(k), params_len);
+		goto parse_err;
+	}
+	params_out[0] = '\0';
+	strcat(params_out, k);
+	return 0;
+
+parse_err:
+	LOGP(DTRX, LOGL_NOTICE, "Unknown message on ctrl port: %s\n",
+		buf_in);
+	return -1;
+}
+
+static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, char *rspname, char* params)
+{
+	if (strcmp(tcm->cmd, rspname))
+		return false;
+
+	/* For SETSLOT we also need to check if it's the response for the
+	   specific timeslot. For other commands such as SETRXGAIN, it is
+	   expected that they can return different values */
+	if (strcmp(tcm->cmd, "SETSLOT") == 0 && strcmp(tcm->params, params))
+		return false;
+
+	return true;
+}
+
 /*! Get + parse response from TRX ctrl socket */
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
 	struct phy_instance *pinst = l1h->phy_inst;
-	char buf[1500];
+	char buf[1500], cmdname[50], params[100];
 	int len, resp;
+	struct trx_ctrl_msg *tcm;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
 	if (len <= 0)
 		return len;
 	buf[len] = '\0';
 
-	if (!strncmp(buf, "RSP ", 4)) {
-		struct trx_ctrl_msg *tcm;
-		char *p;
-		int rsp_len = 0;
+	if (parse_rsp(buf, len, cmdname, sizeof(cmdname), params, sizeof(params), &resp) < 0)
+		return 0;
 
-		/* calculate the length of response item */
-		p = strchr(buf + 4, ' ');
-		if (p)
-			rsp_len = p - buf - 4;
-		else
-			rsp_len = strlen(buf) - 4;
+	LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
-		LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
+	/* abort timer and send next message, if any */
+	if (osmo_timer_pending(&l1h->trx_ctrl_timer))
+		osmo_timer_del(&l1h->trx_ctrl_timer);
 
-		/* abort timer and send next message, if any */
-		if (osmo_timer_pending(&l1h->trx_ctrl_timer))
-			osmo_timer_del(&l1h->trx_ctrl_timer);
+	/* get command for response message */
+	if (llist_empty(&l1h->trx_ctrl_list)) {
+		LOGP(DTRX, LOGL_NOTICE, "Response message without "
+			"command\n");
+		return -EINVAL;
+	}
+	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
+		list);
 
-		/* get command for response message */
-		if (llist_empty(&l1h->trx_ctrl_list)) {
-			LOGP(DTRX, LOGL_NOTICE, "Response message without "
-				"command\n");
-			return -EINVAL;
-		}
-		tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
-			list);
+	/* check if response matches command */
+	if (!cmd_matches_rsp(tcm, cmdname, params)) {
+		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+			"Response message '%s' does not match command "
+			"message 'CMD %s%s%s'\n",
+			buf, tcm->cmd, tcm->params_len ? " ":"", tcm->params);
+		goto rsp_error;
+	}
 
-		/* check if response matches command */
-		if (rsp_len != tcm->cmd_len) {
-			notmatch:
-			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"Response message '%s' does not match command "
-				"message '%s'\n", buf, tcm->cmd);
+	/* check for response code */
+	if (resp) {
+		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+			"transceiver (%s) rejected TRX command "
+			"with response: '%s'\n",
+			phy_instance_name(pinst), buf);
+		if (tcm->critical)
 			goto rsp_error;
-		}
-		OSMO_ASSERT(strlen(buf+4) >= rsp_len);
-		OSMO_ASSERT(strlen(tcm->cmd+4) >= rsp_len);
-		if (!!strncmp(buf + 4, tcm->cmd + 4, rsp_len))
-			goto notmatch;
+	}
 
-		/* check for response code */
-		resp = 0;
-		if (p)
-			sscanf(p + 1, "%d", &resp);
-		if (resp) {
-			LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-				"transceiver (%s) rejected TRX command "
-				"with response: '%s'\n",
-				phy_instance_name(pinst), buf);
-			if (tcm->critical)
-				goto rsp_error;
-		}
+	/* remove command from list */
+	llist_del(&tcm->list);
+	talloc_free(tcm);
 
-		/* remove command from list */
-		llist_del(&tcm->list);
-		talloc_free(tcm);
-
-		trx_ctrl_send(l1h);
-	} else
-		LOGP(DTRX, LOGL_NOTICE, "Unknown message on ctrl port: %s\n",
-			buf);
+	trx_ctrl_send(l1h);
 
 	return 0;
 

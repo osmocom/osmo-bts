@@ -7,8 +7,10 @@ struct trx_l1h;
 
 struct trx_ctrl_msg {
 	struct llist_head	list;
-	char 			cmd[128];
+	char 			cmd[28];
+	char 			params[100];
 	int			cmd_len;
+	int			params_len;
 	int			critical;
 };
 
