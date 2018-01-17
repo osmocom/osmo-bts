@@ -455,6 +455,12 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* get command for response message */
 	if (llist_empty(&l1h->trx_ctrl_list)) {
+		/* RSP from a retransmission, skip it */
+		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, cmdname, params)) {
+			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
+				"from old CMD '%s'\n", buf);
+			return 0;
+		}
 		LOGP(DTRX, LOGL_NOTICE, "Response message without "
 			"command\n");
 		return -EINVAL;
@@ -464,6 +470,12 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* check if response matches command */
 	if (!cmd_matches_rsp(tcm, cmdname, params)) {
+		/* RSP from a retransmission, skip it */
+		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, cmdname, params)) {
+			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
+				"from old CMD '%s'\n", buf);
+			return 0;
+		}
 		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 			"Response message '%s' does not match command "
 			"message 'CMD %s%s%s'\n",
@@ -481,9 +493,10 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			goto rsp_error;
 	}
 
-	/* remove command from list */
+	/* remove command from list, save it to last_acked and removed previous last_acked */
 	llist_del(&tcm->list);
-	talloc_free(tcm);
+	talloc_free(l1h->last_acked);
+	l1h->last_acked = tcm;
 
 	trx_ctrl_send(l1h);
 
@@ -621,6 +634,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 		llist_del(&tcm->list);
 		talloc_free(tcm);
 	}
+	talloc_free(l1h->last_acked);
 }
 
 /*! close the TRX for given handle (data + control socket) */

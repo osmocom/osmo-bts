@@ -3,6 +3,7 @@
 
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/phy_link.h>
+#include "trx_if.h"
 
 struct trx_config {
 	uint8_t			poweron;	/* poweron(1) or poweroff(0) */
@@ -46,6 +47,8 @@ struct trx_config {
 
 struct trx_l1h {
 	struct llist_head	trx_ctrl_list;
+	/* Latest RSPed cmd, used to catch duplicate RSPs from sent retransmissions */
+	struct trx_ctrl_msg 	*last_acked;
 
 	//struct gsm_bts_trx	*trx;
 	struct phy_instance	*phy_inst;
