@@ -73,10 +73,6 @@ if test "x$sysmobts_incdir" != "x"; then
 	# --with-sysmobts was passed, imply enable_sysmocom_bts
 	enable_sysmocom_bts="yes"
 fi
-if test "x$enable_sysmocom_bts" = "xyes" -a "x$sysmobts_incdir" = "x"; then
-	# --enable-sysmocom-bts was passed but no --with-sysmobts. Use default.
-	sysmobts_incdir="."
-fi
 AC_SUBST([SYSMOBTS_INCDIR], -I$sysmobts_incdir)
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
