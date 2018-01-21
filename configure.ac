@@ -110,7 +110,7 @@ AC_MSG_RESULT([$enable_octphy])
 AM_CONDITIONAL(ENABLE_OCTPHY, test "x$enable_octphy" = "xyes")
 if test "$enable_octphy" = "yes" ; then
 	oldCPPFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
+	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include"
 
 	AC_CHECK_HEADER([octphy/octvc1/gsm/octvc1_gsm_default.h],[],
 			[AC_MSG_ERROR([octphy/octvc1/gsm/octvc1_gsm_default.h can not be found in $octsdr2g_incdir])],
@@ -173,7 +173,7 @@ AC_MSG_RESULT([$enable_litecell15])
 AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15" = "xyes")
 if test "$enable_litecell15" = "yes"; then
 	oldCPPFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS -I$LITECELL15_INCDIR -I$srcdir/include $LIBOSMOCORE_CFLAGS"
+	CPPFLAGS="$CPPFLAGS -I$LITECELL15_INCDIR -I$srcdir/include"
 	AC_CHECK_HEADER([nrw/litecell15/litecell15.h],[],
 			[AC_MSG_ERROR([nrw/litecell15/litecell15.h can not be found in $litecell15_incdir])],
 			[#include <nrw/litecell15/litecell15.h>])
@@ -183,7 +183,7 @@ fi
 
 # Check for the sbts2050_header.h that was added after the 3.6 release
 oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS $LIBOSMOCORE_CFLAGS"
+CPPFLAGS="$CPPFLAGS"
 AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
 		[sysmo_uc_header="yes"],[])
 CPPFLAGS=$oldCPPFLAGS
