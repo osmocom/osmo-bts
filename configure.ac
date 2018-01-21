@@ -183,7 +183,7 @@ fi
 
 # Check for the sbts2050_header.h that was added after the 3.6 release
 oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS -I$SYSMOBTS_INCDIR"
 AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
 		[sysmo_uc_header="yes"],[])
 CPPFLAGS=$oldCPPFLAGS
