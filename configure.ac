@@ -77,12 +77,12 @@ if test "x$enable_sysmocom_bts" = "xyes" -a "x$sysmobts_incdir" = "x"; then
 	# --enable-sysmocom-bts was passed but no --with-sysmobts. Use default.
 	sysmobts_incdir="."
 fi
-AC_SUBST([SYSMOBTS_INCDIR], $sysmobts_incdir)
+AC_SUBST([SYSMOBTS_INCDIR], -I$sysmobts_incdir)
 AC_MSG_RESULT([$enable_sysmocom_bts])
 AM_CONDITIONAL(ENABLE_SYSMOBTS, test "x$enable_sysmocom_bts" = "xyes")
 if test "$enable_sysmocom_bts" = "yes"; then
 	oldCPPFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS -I$SYSMOBTS_INCDIR -I$srcdir/include"
+	CPPFLAGS="$CPPFLAGS $SYSMOBTS_INCDIR -I$srcdir/include"
 	AC_CHECK_HEADER([sysmocom/femtobts/superfemto.h],[],
 			[AC_MSG_ERROR([sysmocom/femtobts/superfemto.h can not be found in $sysmobts_incdir])],
 			[#include <sysmocom/femtobts/superfemto.h>])
@@ -105,12 +105,12 @@ AC_ARG_ENABLE(octphy,
 		[enable_octphy="yes"],[enable_octphy="no"])
 AC_ARG_WITH([octsdr-2g], [AS_HELP_STRING([--with-octsdr-2g], [Location of the OCTSDR-2G API header files])],
 			 [octsdr2g_incdir="$withval"],[octsdr2g_incdir="`cd $srcdir; pwd`/src/osmo-bts-octphy/"])
-AC_SUBST([OCTSDR2G_INCDIR], $octsdr2g_incdir)
+AC_SUBST([OCTSDR2G_INCDIR], -I$octsdr2g_incdir)
 AC_MSG_RESULT([$enable_octphy])
 AM_CONDITIONAL(ENABLE_OCTPHY, test "x$enable_octphy" = "xyes")
 if test "$enable_octphy" = "yes" ; then
 	oldCPPFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS -I$OCTSDR2G_INCDIR -I$srcdir/include"
+	CPPFLAGS="$CPPFLAGS $OCTSDR2G_INCDIR -I$srcdir/include"
 
 	AC_CHECK_HEADER([octphy/octvc1/gsm/octvc1_gsm_default.h],[],
 			[AC_MSG_ERROR([octphy/octvc1/gsm/octvc1_gsm_default.h can not be found in $octsdr2g_incdir])],
@@ -168,12 +168,12 @@ AC_ARG_ENABLE(litecell15,
 		[enable_litecell15="yes"],[enable_litecell15="no"])
 AC_ARG_WITH([litecell15], [AS_HELP_STRING([--with-litecell15=INCLUDE_DIR], [Location of the litecell 1.5 API header files])],
 			 [litecell15_incdir="$withval"],[litecell15_incdir="$incdir"])
-AC_SUBST([LITECELL15_INCDIR], $litecell15_incdir)
+AC_SUBST([LITECELL15_INCDIR], -I$litecell15_incdir)
 AC_MSG_RESULT([$enable_litecell15])
 AM_CONDITIONAL(ENABLE_LC15BTS, test "x$enable_litecell15" = "xyes")
 if test "$enable_litecell15" = "yes"; then
 	oldCPPFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS -I$LITECELL15_INCDIR -I$srcdir/include"
+	CPPFLAGS="$CPPFLAGS $LITECELL15_INCDIR -I$srcdir/include"
 	AC_CHECK_HEADER([nrw/litecell15/litecell15.h],[],
 			[AC_MSG_ERROR([nrw/litecell15/litecell15.h can not be found in $litecell15_incdir])],
 			[#include <nrw/litecell15/litecell15.h>])
@@ -183,7 +183,7 @@ fi
 
 # Check for the sbts2050_header.h that was added after the 3.6 release
 oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS -I$SYSMOBTS_INCDIR"
+CPPFLAGS="$CPPFLAGS $SYSMOBTS_INCDIR"
 AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
 		[sysmo_uc_header="yes"],[])
 CPPFLAGS=$oldCPPFLAGS
