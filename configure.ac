@@ -82,9 +82,17 @@ if test "$enable_sysmocom_bts" = "yes"; then
 	AC_CHECK_HEADER([sysmocom/femtobts/superfemto.h],[],
 			[AC_MSG_ERROR([sysmocom/femtobts/superfemto.h can not be found in $sysmobts_incdir])],
 			[#include <sysmocom/femtobts/superfemto.h>])
+
+	# Check for the sbts2050_header.h that was added after the 3.6 release
+	AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h], [sysmo_uc_header="yes"], [])
+	if test "$sysmo_uc_header" = "yes" ; then
+	   	AC_DEFINE(BUILD_SBTS2050, 1, [Define if we want to build SBTS2050])
+	fi
+
 	PKG_CHECK_MODULES(LIBGPS, libgps)
 	CPPFLAGS=$oldCPPFLAGS
 fi
+AM_CONDITIONAL(BUILD_SBTS2050, test "x$sysmo_uc_header" = "xyes")
 
 AC_MSG_CHECKING([whether to enable support for osmo-trx based L1/PHY support])
 AC_ARG_ENABLE(trx,
@@ -177,17 +185,6 @@ if test "$enable_litecell15" = "yes"; then
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
-# Check for the sbts2050_header.h that was added after the 3.6 release
-oldCPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS $SYSMOBTS_INCDIR"
-AC_CHECK_HEADER([sysmocom/femtobts/sbts2050_header.h],
-		[sysmo_uc_header="yes"],[])
-CPPFLAGS=$oldCPPFLAGS
-
-if test "$sysmo_uc_header" = "yes" ; then
-	AC_DEFINE(BUILD_SBTS2050, 1, [Define if we want to build SBTS2050])
-fi
-AM_CONDITIONAL(BUILD_SBTS2050, test "x$sysmo_uc_header" = "xyes")
 AM_CONFIG_HEADER(btsconfig.h)
 
 AC_OUTPUT(
