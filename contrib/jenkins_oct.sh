@@ -14,7 +14,7 @@ osmo-build-dep.sh libosmo-abis
 cd "$deps"
 osmo-layer1-headers.sh oct "$FIRMWARE_VERSION"
 
-configure_flags="--with-octsdr-2g=$deps/layer1-headers/ --enable-octphy"
+configure_flags="--enable-sanitize --with-octsdr-2g=$deps/layer1-headers/ --enable-octphy"
 
 build_bts "osmo-bts-octphy" "$configure_flags"
 
