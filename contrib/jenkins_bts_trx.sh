@@ -13,9 +13,6 @@ osmo-build-dep.sh libosmo-abis
 
 cd "$deps"
 
-# Get osmo-pcu for pcuif_proto.h
-osmo-deps.sh osmo-pcu
-
 configure_flags="\
   --with-osmo-pcu=$deps/osmo-pcu/include \
   --enable-trx \

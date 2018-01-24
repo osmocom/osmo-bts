@@ -13,9 +13,6 @@ osmo-build-dep.sh libosmo-abis
 
 cd "$deps"
 
-# Get osmo-pcu for pcuif_proto.h
-osmo-deps.sh osmo-pcu
-
 osmo-layer1-headers.sh oct "$FIRMWARE_VERSION"
 
 configure_flags="\
