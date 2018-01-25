@@ -1248,6 +1248,7 @@ static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_NACK, chan_nr);
 	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
 
 	return abis_bts_rsl_sendmsg(msg);
 }
