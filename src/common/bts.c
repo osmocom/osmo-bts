@@ -675,3 +675,33 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 
 	return &btsb->gsm_time;
 }
+
+int bts_supports_cm(struct gsm_bts_role_bts *bts,
+		    enum gsm_phys_chan_config pchan, enum gsm48_chan_mode cm)
+{
+	const struct bts_cm *supported;
+	int i;
+
+	supported = bts->support.cm;
+
+	/* Check if we got a list with supported codec, if not, no list has
+	 * been configured yet for that BTS. In that case we will just skip
+	 * and accept any combination */
+	if (supported == NULL)
+		return 1;
+
+	for (i = 0;; i++) {
+		/* If we manage to find the given combination in the list,
+		 * we know that the pchan/cm combination is supported */
+		if (supported[i].pchan == pchan && supported[i].cm == cm)
+			return 1;
+
+		/* When we hit the terminator, we know that the given
+		 * pchan/cm combination is not supported because it
+		 * is not in the list. */
+		if (supported[i].pchan == _GSM_PCHAN_MAX)
+			return 0;
+	}
+
+	return 0;
+}

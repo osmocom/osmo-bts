@@ -157,6 +157,31 @@ static void test_sacch_get(void)
 	}
 }
 
+static const struct bts_cm bts_model_supported_cm[] = {
+	{GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1},
+	{GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1},
+	{GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_AMR},
+	{GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_AMR},
+	{_GSM_PCHAN_MAX, 0}
+};
+
+static void test_bts_supports_cm(void)
+{
+	struct gsm_bts_role_bts bts;
+	bts.support.cm = bts_model_supported_cm;
+
+	OSMO_ASSERT(bts_supports_cm
+		    (&bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1) == 1);
+	OSMO_ASSERT(bts_supports_cm
+		    (&bts, GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1) == 1);
+	OSMO_ASSERT(bts_supports_cm
+		    (&bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_EFR) == 0);
+	OSMO_ASSERT(bts_supports_cm
+		    (&bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_AMR) == 1);
+	OSMO_ASSERT(bts_supports_cm
+		    (&bts, GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_AMR) == 1);
+}
+
 int main(int argc, char **argv)
 {
 	bts_log_init(NULL);
@@ -164,5 +189,6 @@ int main(int argc, char **argv)
 	test_sacch_get();
 	test_msg_utils_ipa();
 	test_msg_utils_oml();
+	test_bts_supports_cm();
 	return EXIT_SUCCESS;
 }
