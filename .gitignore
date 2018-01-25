@@ -19,8 +19,14 @@ depcomp
 install-sh
 missing
 stamp-h1
+libtool
+ltmain.sh
 core
 core.*
+
+# git-version-gen magic
+.tarball-version
+.version
 
 src/osmo-bts-sysmo/sysmobts-calib
 src/osmo-bts-sysmo/l1fwd-proxy
@@ -46,6 +52,7 @@ tests/agch/agch_test
 tests/paging/paging_test
 tests/cipher/cipher_test
 tests/sysmobts/sysmobts_test
+tests/meas/meas_test
 tests/misc/misc_test
 tests/handover/handover_test
 tests/tx_power/tx_power_test
