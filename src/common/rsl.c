@@ -1283,7 +1283,6 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.6 Channel Mode */
 	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-		msgb_free(msg);
 		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
