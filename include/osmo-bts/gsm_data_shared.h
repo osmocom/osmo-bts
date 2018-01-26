@@ -525,7 +525,8 @@ struct gsm_bts_model {
 };
 
 /* N. B: always add new features to the end of the list (right before _NUM_BTS_FEAT) to avoid breaking compatibility
-   with BTS compiled against earlier version of this header */
+   with BTS compiled against earlier version of this header. Also make sure that the description strings
+   gsm_bts_features_descs[] in gsm_data_shared.c are also updated accordingly! */
 enum gsm_bts_features {
 	BTS_FEAT_HSCSD,
 	BTS_FEAT_GPRS,
@@ -536,6 +537,11 @@ enum gsm_bts_features {
 	BTS_FEAT_OML_ALERTS,
 	BTS_FEAT_AGCH_PCH_PROP,
 	BTS_FEAT_CBCH,
+	BTS_FEAT_SPEECH_F_V1,
+	BTS_FEAT_SPEECH_H_V1,
+	BTS_FEAT_SPEECH_F_EFR,
+	BTS_FEAT_SPEECH_F_AMR,
+	BTS_FEAT_SPEECH_H_AMR,
 	_NUM_BTS_FEAT
 };
 

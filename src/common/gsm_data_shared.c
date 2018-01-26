@@ -117,6 +117,11 @@ const struct value_string gsm_bts_features_descs[] = {
 	{ BTS_FEAT_OML_ALERTS,		"OML Alerts" },
 	{ BTS_FEAT_AGCH_PCH_PROP,	"AGCH/PCH proportional allocation" },
 	{ BTS_FEAT_CBCH,		"CBCH" },
+	{ BTS_FEAT_SPEECH_F_V1,		"Fullrate speech V1" },
+	{ BTS_FEAT_SPEECH_H_V1,		"Halfrate speech V1" },
+	{ BTS_FEAT_SPEECH_F_EFR,	"Fullrate speech EFR" },
+	{ BTS_FEAT_SPEECH_F_AMR,	"Fullrate speech AMR" },
+	{ BTS_FEAT_SPEECH_H_AMR,	"Halfrate speech AMR" },
 	{ 0, NULL }
 };
 
