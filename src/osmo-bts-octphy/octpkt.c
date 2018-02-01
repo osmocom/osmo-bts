@@ -73,22 +73,6 @@ void octvocnet_push_ctl_hdr(struct msgb *msg, uint32_t dest_fifo_id,
 	ch->ulSocketId = htonl(socket_id);
 }
 
-/* push a data header (3 dwords) to the start of a msgb. This format is
- * used for event packets */
-static void octvocnet_push_data_hdr(struct msgb *msg,
-				 uint32_t log_obj_hdl,
-				 uint32_t log_obj_pkt_port,
-				 uint32_t dest_fifo_id)
-{
-	tOCTVOCNET_PKT_DATA_HEADER *dh;
-
-	dh = (tOCTVOCNET_PKT_DATA_HEADER *) msgb_push(msg, sizeof(*dh));
-
-	dh->hLogicalObj = htonl(log_obj_hdl);
-	dh->ulLogicalObjPktPort = htonl(log_obj_pkt_port);
-	dh->ulDestFifoId = htonl(dest_fifo_id);
-}
-
 /* common msg_header shared by all control messages. host byte order! */
 void octvc1_fill_msg_hdr(tOCTVC1_MSG_HEADER *mh, uint32_t len,
 			uint32_t sess_id, uint32_t trans_id,
@@ -108,22 +92,6 @@ void octvc1_fill_msg_hdr(tOCTVC1_MSG_HEADER *mh, uint32_t len,
 	mh->ulSessionId = sess_id;
 	mh->ulReturnCode = 0;
 	mh->ulUserInfo = user_info;
-}
-
-static void octvc1_push_msg_hdr(struct msgb *msg,
-				uint32_t sess_id,
-				uint32_t trans_id,
-				uint32_t user_info,
-				uint32_t msg_type,
-				uint32_t flags,
-				uint32_t api_cmd)
-{
-	tOCTVC1_MSG_HEADER *mh;
-	uint32_t len = msgb_length(msg);
-
-	mh = (tOCTVC1_MSG_HEADER *) msgb_push(msg, sizeof(*mh));
-
-	octvc1_fill_msg_hdr(mh, len, sess_id, trans_id, user_info, msg_type, flags, api_cmd);
 }
 
 #include <sys/ioctl.h>
