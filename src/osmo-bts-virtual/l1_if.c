@@ -163,8 +163,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		goto nomessage;
 	}
 
-	/* forward primitive, forwarded msg will not be freed */
-#warning "we cannot just pass a l1sap primitive on the stack!!!"
+	/* forward primitive, lsap takes ownership of the msgb. */
 	l1sap_up(pinst->trx, &l1sap);
 	DEBUGP(DL1P, "Message forwarded to layer 2.\n");
 	return;
