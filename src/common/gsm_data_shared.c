@@ -675,15 +675,15 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		cbits = 0x08;
 		cbits += lchan_nr;
 		break;
-	default:
 	case GSM_PCHAN_CCCH:
+	default:
 		/* OSMO_ASSERT(lchan_nr == 0);
 		 * FIXME: On octphy and litecell, we hit above assertion (see
 		 * Max's comment at https://gerrit.osmocom.org/589 ); disabled
 		 * for BTS until this is clarified; remove the #ifdef when it
-		 * is fixed.
+		 * is fixed. Tracked in OS#2906.
 		 */
-#warning "fix caller that passes lchan_nr != 0"
+#pragma message "fix caller that passes lchan_nr != 0"
 		cbits = 0x10;
 		break;
 	}
