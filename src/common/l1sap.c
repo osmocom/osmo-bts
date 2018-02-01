@@ -448,7 +448,6 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 			       struct osmo_phsap_prim *l1sap,
 			       struct info_time_ind_param *info_time_ind)
 {
-	struct gsm_bts_trx *trx;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	int frames_expired;
 

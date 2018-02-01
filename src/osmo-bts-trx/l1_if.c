@@ -135,7 +135,6 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
  */
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 {
-	struct phy_link *plink = l1h->phy_inst->phy_link;
 	uint8_t tn;
 
 	if (!transceiver_available)
@@ -215,7 +214,6 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct phy_link *plink = pinst->phy_link;
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		l1h->config.arfcn_sent = 0;
 		l1h->config.tsc_sent = 0;
@@ -305,7 +303,6 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 {
 	struct gsm_bts_trx *trx;
 	uint8_t bsic = bts->bsic;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
@@ -327,7 +324,6 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
-	struct phy_link *plink = pinst->phy_link;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint16_t arfcn = trx->arfcn;
 
