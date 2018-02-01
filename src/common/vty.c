@@ -391,7 +391,6 @@ DEFUN(cfg_bts,
 	return CMD_SUCCESS;
 }
 
-#warning merge with OpenBSC?
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
       "ipa unit-id <0-65534> <0-255>",
