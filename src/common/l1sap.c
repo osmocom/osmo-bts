@@ -827,8 +827,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr, marker = 0;
-	uint16_t seq;
-	uint32_t fn, timestamp;
+	uint32_t fn;
 	int rc;
 
 	chan_nr = rts_ind->chan_nr;
@@ -863,10 +862,6 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	} else {
 		/* Obtain RTP header Marker bit from control buffer */
 		marker = rtpmsg_marker_bit(resp_msg);
-		/* Obtain RTP header Sequence Number from control buffer */
-		seq = rtpmsg_seq(resp_msg);
-		/* Obtain RTP header Timestamp from control buffer */
-		timestamp = rtpmsg_ts(resp_msg);
 
 		resp_msg->l2h = resp_msg->data;
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
