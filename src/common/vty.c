@@ -29,6 +29,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/abis_nm.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
@@ -54,6 +55,14 @@
 #include <osmo-bts/l1sap.h>
 
 #define VTY_STR	"Configure the VTY\n"
+
+#define BTS_NR_STR "BTS Number\n"
+#define TRX_NR_STR "TRX Number\n"
+#define TS_NR_STR "Timeslot Number\n"
+#define LCHAN_NR_STR "Logical Channel Number\n"
+#define BTS_TRX_STR BTS_NR_STR TRX_NR_STR
+#define BTS_TRX_TS_STR BTS_TRX_STR TS_NR_STR
+#define BTS_TRX_TS_LCHAN_STR BTS_TRX_TS_STR LCHAN_NR_STR
 
 int g_vty_port_num = OSMO_VTY_PORT_BTS;
 
@@ -784,7 +793,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 
 DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 	SHOW_STR "Display information about a BTS\n"
-		"BTS number")
+		BTS_NR_STR)
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr;
@@ -805,6 +814,394 @@ DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
 
 	return CMD_SUCCESS;
+}
+
+static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
+{
+	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
+		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "Description: %s%s",
+		trx->description ? trx->description : "(null)", VTY_NEWLINE);
+	vty_out(vty, "  RF Nominal Power: %d dBm, reduced by %u dB, "
+		"resulting BS power: %d dBm%s",
+		trx->nominal_power, trx->max_power_red,
+		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
+	vty_out(vty, "  NM State: ");
+	net_dump_nmstate(vty, &trx->mo.nm_state);
+	vty_out(vty, "  RSL State: %s%s", trx->rsl_link? "connected" : "disconnected", VTY_NEWLINE);
+	vty_out(vty, "  Baseband Transceiver NM State: ");
+	net_dump_nmstate(vty, &trx->bb_transc.mo.nm_state);
+	vty_out(vty, "  IPA stream ID: 0x%02x%s", trx->rsl_tei, VTY_NEWLINE);
+}
+
+static inline void print_all_trx(struct vty *vty, const struct gsm_bts *bts)
+{
+	uint8_t trx_nr;
+	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++)
+		trx_dump_vty(vty, gsm_bts_trx_num(bts, trx_nr));
+}
+
+DEFUN(show_trx,
+      show_trx_cmd,
+      "show trx [<0-255>] [<0-255>]",
+	SHOW_STR "Display information about a TRX\n"
+	BTS_TRX_STR)
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = NULL;
+	int bts_nr, trx_nr;
+
+	if (argc >= 1) {
+		/* use the BTS number that the user has specified */
+		bts_nr = atoi(argv[0]);
+		if (bts_nr >= net->num_bts) {
+			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		bts = gsm_bts_num(net, bts_nr);
+	}
+	if (argc >= 2) {
+		trx_nr = atoi(argv[1]);
+		if (trx_nr >= bts->num_trx) {
+			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		trx_dump_vty(vty, gsm_bts_trx_num(bts, trx_nr));
+		return CMD_SUCCESS;
+	}
+	if (bts) {
+		/* print all TRX in this BTS */
+		print_all_trx(vty, bts);
+		return CMD_SUCCESS;
+	}
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
+		print_all_trx(vty, gsm_bts_num(net, bts_nr));
+
+	return CMD_SUCCESS;
+}
+
+
+static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
+{
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s, TSC %u",
+		ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		gsm_pchan_name(ts->pchan), gsm_ts_tsc(ts));
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		vty_out(vty, " (%s mode)",
+			ts->flags & TS_F_PDCH_ACTIVE ? "PDCH" : "TCH/F");
+	vty_out(vty, "%s", VTY_NEWLINE);
+	vty_out(vty, "  NM State: ");
+	net_dump_nmstate(vty, &ts->mo.nm_state);
+}
+
+DEFUN(show_ts,
+      show_ts_cmd,
+      "show timeslot [<0-255>] [<0-255>] [<0-7>]",
+	SHOW_STR "Display information about a TS\n"
+	BTS_TRX_TS_STR)
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = NULL;
+	struct gsm_bts_trx *trx = NULL;
+	struct gsm_bts_trx_ts *ts = NULL;
+	int bts_nr, trx_nr, ts_nr;
+
+	if (argc >= 1) {
+		/* use the BTS number that the user has specified */
+		bts_nr = atoi(argv[0]);
+		if (bts_nr >= net->num_bts) {
+			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		bts = gsm_bts_num(net, bts_nr);
+	}
+	if (argc >= 2) {
+		trx_nr = atoi(argv[1]);
+		if (trx_nr >= bts->num_trx) {
+			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		trx = gsm_bts_trx_num(bts, trx_nr);
+	}
+	if (argc >= 3) {
+		ts_nr = atoi(argv[2]);
+		if (ts_nr >= TRX_NR_TS) {
+			vty_out(vty, "%% can't find TS '%s'%s", argv[2],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		/* Fully Specified: print and exit */
+		ts = &trx->ts[ts_nr];
+		ts_dump_vty(vty, ts);
+		return CMD_SUCCESS;
+	}
+
+	if (bts && trx) {
+		/* Iterate over all TS in this TRX */
+		for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+			ts = &trx->ts[ts_nr];
+			ts_dump_vty(vty, ts);
+		}
+	} else if (bts) {
+		/* Iterate over all TRX in this BTS, TS in each TRX */
+		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+			trx = gsm_bts_trx_num(bts, trx_nr);
+			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+				ts = &trx->ts[ts_nr];
+				ts_dump_vty(vty, ts);
+			}
+		}
+	} else {
+		/* Iterate over all BTS, TRX in each BTS, TS in each TRX */
+		for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+			bts = gsm_bts_num(net, bts_nr);
+			for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+				trx = gsm_bts_trx_num(bts, trx_nr);
+				for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+					ts = &trx->ts[ts_nr];
+					ts_dump_vty(vty, ts);
+				}
+			}
+		}
+	}
+
+	return CMD_SUCCESS;
+}
+
+/* FIXME: move this to libosmogsm */
+static const struct value_string gsm48_cmode_names[] = {
+	{ GSM48_CMODE_SIGN,		"signalling" },
+	{ GSM48_CMODE_SPEECH_V1,	"FR or HR" },
+	{ GSM48_CMODE_SPEECH_EFR,	"EFR" },
+	{ GSM48_CMODE_SPEECH_AMR,	"AMR" },
+	{ GSM48_CMODE_DATA_14k5,	"CSD(14k5)" },
+	{ GSM48_CMODE_DATA_12k0,	"CSD(12k0)" },
+	{ GSM48_CMODE_DATA_6k0,		"CSD(6k0)" },
+	{ GSM48_CMODE_DATA_3k6,		"CSD(3k6)" },
+	{ 0, NULL }
+};
+
+/* call vty_out() to print a string like " as TCH/H" for dynamic timeslots.
+ * Don't do anything if the ts is not dynamic. */
+static void vty_out_dyn_ts_status(struct vty *vty, struct gsm_bts_trx_ts *ts)
+{
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
+			vty_out(vty, " as %s",
+				gsm_pchan_name(ts->dyn.pchan_is));
+		else
+			vty_out(vty, " switching %s -> %s",
+				gsm_pchan_name(ts->dyn.pchan_is),
+				gsm_pchan_name(ts->dyn.pchan_want));
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		if ((ts->flags & TS_F_PDCH_PENDING_MASK) == 0)
+			vty_out(vty, " as %s",
+				(ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							      : "TCH/F");
+		else
+			vty_out(vty, " switching %s -> %s",
+				(ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
+							      : "TCH/F",
+				(ts->flags & TS_F_PDCH_ACT_PENDING)? "PDCH"
+								   : "TCH/F");
+		break;
+	default:
+		/* no dyn ts */
+		break;
+	}
+}
+
+static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
+{
+	struct in_addr ia;
+
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u: Type %s%s",
+		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
+	/* show dyn TS details, if applicable */
+	switch (lchan->ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		vty_out(vty, "  Osmocom Dyn TS:");
+		vty_out_dyn_ts_status(vty, lchan->ts);
+		vty_out(vty, VTY_NEWLINE);
+		break;
+	case GSM_PCHAN_TCH_F_PDCH:
+		vty_out(vty, "  IPACC Dyn PDCH TS:");
+		vty_out_dyn_ts_status(vty, lchan->ts);
+		vty_out(vty, VTY_NEWLINE);
+		break;
+	default:
+		/* no dyn ts */
+		break;
+	}
+	vty_out(vty, "  State: %s%s%s%s",
+		gsm_lchans_name(lchan->state),
+		lchan->state == LCHAN_S_BROKEN ? " Error reason: " : "",
+		lchan->state == LCHAN_S_BROKEN ? lchan->broken_reason : "",
+		VTY_NEWLINE);
+	vty_out(vty, "  BS Power: %d dBm, MS Power: %u dBm%s",
+		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
+		- lchan->bs_power*2,
+		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		VTY_NEWLINE);
+	vty_out(vty, "  Channel Mode / Codec: %s%s",
+		get_value_string(gsm48_cmode_names, lchan->tch_mode),
+		VTY_NEWLINE);
+
+	ia.s_addr = htonl(lchan->abis_ip.bound_ip);
+	vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
+		inet_ntoa(ia), lchan->abis_ip.bound_port,
+		lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
+		VTY_NEWLINE);
+}
+
+static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
+{
+	const struct gsm_meas_rep_unidir *mru = &lchan->meas.ul_res;
+
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u %s",
+		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		gsm_pchan_name(lchan->ts->pchan));
+	vty_out_dyn_ts_status(vty, lchan->ts);
+	vty_out(vty, ", Lchan %u, Type %s, State %s - "
+		"RXL-FULL-ul: %4d dBm%s",
+		lchan->nr,
+		gsm_lchant_name(lchan->type), gsm_lchans_name(lchan->state),
+		rxlev2dbm(mru->full.rx_lev),
+		VTY_NEWLINE);
+}
+
+static int dump_lchan_trx_ts(struct gsm_bts_trx_ts *ts, struct vty *vty,
+			     void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int lchan_nr;
+	for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; lchan_nr++) {
+		struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+		if (lchan->state == LCHAN_S_NONE)
+			continue;
+		dump_cb(vty, lchan);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int dump_lchan_trx(struct gsm_bts_trx *trx, struct vty *vty,
+			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int ts_nr;
+
+	for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+		dump_lchan_trx_ts(ts, vty, dump_cb);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int dump_lchan_bts(struct gsm_bts *bts, struct vty *vty,
+			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int trx_nr;
+
+	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
+		dump_lchan_trx(trx, vty, dump_cb);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int lchan_summary(struct vty *vty, int argc, const char **argv,
+			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+	struct gsm_lchan *lchan;
+	int bts_nr, trx_nr, ts_nr, lchan_nr;
+
+	if (argc >= 1) {
+		/* use the BTS number that the user has specified */
+		bts_nr = atoi(argv[0]);
+		if (bts_nr >= net->num_bts) {
+			vty_out(vty, "%% can't find BTS %s%s", argv[0],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		bts = gsm_bts_num(net, bts_nr);
+
+		if (argc == 1)
+			return dump_lchan_bts(bts, vty, dump_cb);
+	}
+	if (argc >= 2) {
+		trx_nr = atoi(argv[1]);
+		if (trx_nr >= bts->num_trx) {
+			vty_out(vty, "%% can't find TRX %s%s", argv[1],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		trx = gsm_bts_trx_num(bts, trx_nr);
+
+		if (argc == 2)
+			return dump_lchan_trx(trx, vty, dump_cb);
+	}
+	if (argc >= 3) {
+		ts_nr = atoi(argv[2]);
+		if (ts_nr >= TRX_NR_TS) {
+			vty_out(vty, "%% can't find TS %s%s", argv[2],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		ts = &trx->ts[ts_nr];
+
+		if (argc == 3)
+			return dump_lchan_trx_ts(ts, vty, dump_cb);
+	}
+	if (argc >= 4) {
+		lchan_nr = atoi(argv[3]);
+		if (lchan_nr >= TS_MAX_LCHAN) {
+			vty_out(vty, "%% can't find LCHAN %s%s", argv[3],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		lchan = &ts->lchan[lchan_nr];
+		dump_cb(vty, lchan);
+		return CMD_SUCCESS;
+	}
+
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = gsm_bts_num(net, bts_nr);
+		dump_lchan_bts(bts, vty, dump_cb);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_lchan,
+	show_lchan_cmd,
+	"show lchan [<0-255>] [<0-255>] [<0-7>] [<0-7>]",
+	SHOW_STR "Display information about a logical channel\n"
+	BTS_TRX_TS_LCHAN_STR)
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
+}
+
+DEFUN(show_lchan_summary,
+	show_lchan_summary_cmd,
+	"show lchan summary [<0-255>] [<0-255>] [<0-7>] [<0-7>]",
+	SHOW_STR "Display information about a logical channel\n"
+	"Short summary\n"
+	BTS_TRX_TS_LCHAN_STR)
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
 static struct gsm_lchan *resolve_lchan(struct gsm_network *net,
@@ -1066,6 +1463,10 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 						"\n", "", 0);
 
 	install_element_ve(&show_bts_cmd);
+	install_element_ve(&show_trx_cmd);
+	install_element_ve(&show_ts_cmd);
+	install_element_ve(&show_lchan_cmd);
+	install_element_ve(&show_lchan_summary_cmd);
 
 	logging_vty_add_cmds(cat);
 
