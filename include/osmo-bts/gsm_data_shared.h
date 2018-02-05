@@ -345,6 +345,11 @@ struct gsm_lchan {
 	struct msgb *pending_rel_ind_msg;
 };
 
+extern const struct value_string lchan_ciph_state_names[];
+static inline const char *lchan_ciph_state_name(uint8_t state) {
+	return get_value_string(lchan_ciph_state_names, state);
+}
+
 enum {
 	TS_F_PDCH_ACTIVE =		0x1000,
 	TS_F_PDCH_ACT_PENDING =		0x2000,

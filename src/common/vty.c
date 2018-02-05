@@ -1060,6 +1060,37 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 		inet_ntoa(ia), lchan->abis_ip.bound_port,
 		lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
 		VTY_NEWLINE);
+	if (lchan->abis_ip.connect_ip) {
+		ia.s_addr = htonl(lchan->abis_ip.connect_ip);
+		vty_out(vty, "  Conn. IP: %s Port %u RTP_TYPE=%u SPEECH_MODE=0x%02u%s",
+			inet_ntoa(ia), lchan->abis_ip.connect_port,
+			lchan->abis_ip.rtp_payload, lchan->abis_ip.speech_mode,
+			VTY_NEWLINE);
+	}
+#define LAPDM_ESTABLISHED(link, sapi_idx) \
+		(link).datalink[sapi_idx].dl.state == LAPD_STATE_MF_EST
+	vty_out(vty, "  LAPDm SAPIs: DCCH %c%c, SACCH %c%c%s",
+		LAPDM_ESTABLISHED(lchan->lapdm_ch.lapdm_dcch, DL_SAPI0) ? '0' : '-',
+		LAPDM_ESTABLISHED(lchan->lapdm_ch.lapdm_dcch, DL_SAPI3) ? '3' : '-',
+		LAPDM_ESTABLISHED(lchan->lapdm_ch.lapdm_acch, DL_SAPI0) ? '0' : '-',
+		LAPDM_ESTABLISHED(lchan->lapdm_ch.lapdm_acch, DL_SAPI3) ? '3' : '-',
+		VTY_NEWLINE);
+#undef LAPDM_ESTABLISHED
+	vty_out(vty, "  Valid System Information: 0x%08x%s",
+		lchan->si.valid, VTY_NEWLINE);
+	/* TODO: L1 SAPI (but those are BTS speific :( */
+	/* TODO: AMR bits */
+	vty_out(vty, "  MS Timing Offset: %d, propagation delay: %d symbols %s",
+		lchan->ms_t_offs, lchan->p_offs, VTY_NEWLINE);
+	if (lchan->encr.alg_id) {
+		vty_out(vty, "  Ciphering A5/%u State: %s, N(S)=%u%s",
+			lchan->encr.alg_id-1, lchan_ciph_state_name(lchan->ciph_state),
+			lchan->ciph_ns, VTY_NEWLINE);
+	}
+	if (lchan->loopback)
+		vty_out(vty, "  RTP/PDCH Loopback Enabled%s", VTY_NEWLINE);
+	vty_out(vty, "  Radio Link Failure Counter 'S': %d%s", lchan->s, VTY_NEWLINE);
+	/* TODO: MS Power Control */
 }
 
 static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)

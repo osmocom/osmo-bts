@@ -854,3 +854,13 @@ const char *gsm_trx_unit_id(struct gsm_bts_trx *trx)
 		trx->bts->ip_access.bts_id, trx->nr);
 	return buf;
 }
+
+const struct value_string lchan_ciph_state_names[] = {
+	{ LCHAN_CIPH_NONE,	"NONE" },
+	{ LCHAN_CIPH_RX_REQ,	"RX_REQ" },
+	{ LCHAN_CIPH_RX_CONF,	"RX_CONF" },
+	{ LCHAN_CIPH_RXTX_REQ,	"RXTX_REQ" },
+	{ LCHAN_CIPH_RX_CONF_TX_REQ,	"RX_CONF_TX_REQ" },
+	{ LCHAN_CIPH_RXTX_CONF,	"RXTX_CONF" },
+	{ 0, NULL }
+};
