@@ -1055,11 +1055,13 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 		get_value_string(gsm48_cmode_names, lchan->tch_mode),
 		VTY_NEWLINE);
 
-	ia.s_addr = htonl(lchan->abis_ip.bound_ip);
-	vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
-		inet_ntoa(ia), lchan->abis_ip.bound_port,
-		lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
-		VTY_NEWLINE);
+	if (lchan->abis_ip.bound_ip) {
+		ia.s_addr = htonl(lchan->abis_ip.bound_ip);
+		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
+			inet_ntoa(ia), lchan->abis_ip.bound_port,
+			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
+			VTY_NEWLINE);
+	}
 	if (lchan->abis_ip.connect_ip) {
 		ia.s_addr = htonl(lchan->abis_ip.connect_ip);
 		vty_out(vty, "  Conn. IP: %s Port %u RTP_TYPE=%u SPEECH_MODE=0x%02u%s",
