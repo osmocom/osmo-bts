@@ -13,8 +13,14 @@ int main(int argc, char **argv)
 	struct e1inp_line *line;
 	int rc, i;
 
+	if (argc < 4) {
+		fprintf(stderr, "Usage: osmo-bts-omldummy <dst_host> <site_id> <num_trx>\n");
+		exit(2);
+	}
+
 	char *dst_host = argv[1];
 	int site_id = atoi(argv[2]);
+	int num_trx = atoi(argv[3]);
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	msgb_talloc_ctx_init(tall_bts_ctx, 10*1024);
@@ -28,7 +34,7 @@ int main(int argc, char **argv)
 	bts->ip_access.bts_id = 0;
 
 	/* Additional TRXs */
-	for (i = 1; i < 8; i++) {
+	for (i = 1; i < num_trx; i++) {
 		trx = gsm_bts_trx_alloc(bts);
 		if (!trx)
 			exit(1);
