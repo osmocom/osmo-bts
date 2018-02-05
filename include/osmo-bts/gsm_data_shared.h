@@ -242,11 +242,9 @@ struct gsm_lchan {
 	} encr;
 
 	/* AMR bits */
-	uint8_t mr_ms_lv[7];
 	uint8_t mr_bts_lv[7];
 
 	/* Established data link layer services */
-	uint8_t sapis[8];
 	int sacch_deact;
 
 	struct {
