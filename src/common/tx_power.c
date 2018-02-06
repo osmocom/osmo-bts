@@ -275,7 +275,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 			/* Set attenuation to cause no power change right now */
 			tpp->ramp.attenuation_mdB = tpp->p_total_tgt_mdBm - tpp->p_total_cur_mdBm;
 
-			/* start with the firsrt step */
+			/* start with the first step */
 			power_ramp_do_step(trx, 1);
 		}
 	} else {
@@ -283,7 +283,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 		 * steps until it reaches 0 */
 		tpp->ramp.attenuation_mdB = tpp->p_total_tgt_mdBm - tpp->p_total_cur_mdBm;
 
-		/* start with the firsrt step */
+		/* start with the first step */
 		power_ramp_do_step(trx, 1);
 	}
 
