@@ -344,7 +344,7 @@ int bts_main(int argc, char **argv)
 
 	rc = phy_links_open();
 	if (rc < 0) {
-		fprintf(stderr, "unable ot open PHY link(s)\n");
+		fprintf(stderr, "unable to open PHY link(s)\n");
 		exit(2);
 	}
 
