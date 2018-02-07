@@ -890,6 +890,8 @@ struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
 int gsm_parse_reg(void *ctx, regex_t *reg, char **str,
 		int argc, const char **argv) __attribute__ ((warn_unused_result));
 
+#define BSIC2BCC(bsic) ((bsic) & 0x3)
+
 static inline uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
 {
 	if (ts->tsc != -1)
