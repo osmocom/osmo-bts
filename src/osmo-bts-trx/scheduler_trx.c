@@ -1300,7 +1300,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	uint8_t tn;
 	const ubit_t *bits;
 	uint8_t gain;
-	uint16_t nbits;
+	uint16_t nbits = 0;
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
