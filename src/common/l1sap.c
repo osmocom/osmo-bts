@@ -819,6 +819,47 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_len)
+{
+	/*
+	 * Logic: If 1st bit padding is not zero, packet is either:
+	 * - bandwidth-efficient AMR payload.
+	 * - malformed packet.
+	 * However, Bandwidth-efficient AMR 4,75 frame last in payload(F=0, FT=0)
+	 * with 4th,5ht,6th AMR payload to 0 matches padding==0.
+	 * Furthermore, both AMR 4,75 bw-efficient and octet alignment are 14 bytes long (AMR 4,75 encodes 95b):
+	 * bw-efficient: 95b, + 4b hdr + 6b ToC = 105b, + padding = 112b = 14B.
+	 * octet-aligned: 1B hdr + 1B ToC + 95b = 111b, + padding = 112b = 14B.
+	 * We cannot use other fields to match since they are inside the AMR
+	 * payload bits which are unknown.
+	 * As a result, this function may return false positive (true) for some AMR
+	 * 4,75 AMR frames, but given the length, CMR and FT read is the same as a
+	 * consequence, the damage in here is harmless other than being unable to
+	 * decode the audio at the other side.
+	 */
+	#define AMR_PADDING1(rtp_pl) (rtp_pl[0] & 0x0f)
+	#define AMR_PADDING2(rtp_pl) (rtp_pl[1] & 0x03)
+
+	if(payload_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
+		return false;
+
+	return true;
+}
+
+static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
+{
+	/* Avoid sending bw-efficient AMR to lower layers, most bts models
+	 * don't support it. */
+	if(lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
+		!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
+		LOGP(DL1P, LOGL_NOTICE,
+			"%s RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
+			gsm_lchan_name(lchan), osmo_hexdump(resp_msg->data, resp_msg->len));
+		return false;
+	}
+	return true;
+}
+
 /* TCH-RTS-IND prim recevied from bts model */
 static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_tch_param *rts_ind)
@@ -859,6 +900,10 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	if (!resp_msg) {
 		LOGP(DL1P, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
 			gsm_lchan_name(lchan));
+		resp_l1sap = &empty_l1sap;
+	} else if(!rtppayload_is_valid(lchan, resp_msg)) {
+		msgb_free(resp_msg);
+		resp_msg = NULL;
 		resp_l1sap = &empty_l1sap;
 	} else {
 		/* Obtain RTP header Marker bit from control buffer */
