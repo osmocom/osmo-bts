@@ -1502,6 +1502,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element_ve(&show_lchan_summary_cmd);
 
 	logging_vty_add_cmds(cat);
+	osmo_talloc_vty_add_cmds();
 
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
