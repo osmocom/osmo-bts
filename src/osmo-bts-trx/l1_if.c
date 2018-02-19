@@ -487,7 +487,7 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 }
 
 
-void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, float ta,
+static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, float ta,
 	float ber, float rssi, uint32_t fn)
 {
 	memset(l1sap, 0, sizeof(*l1sap));
