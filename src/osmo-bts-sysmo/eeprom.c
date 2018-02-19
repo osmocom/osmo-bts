@@ -495,7 +495,7 @@ eeprom_Error_t eeprom_ReadSysInfo( eeprom_SysInfo_t *pSysInfo )
         case EEPROM_HDR_V2:
         {
             // Get a copy of the EEPROM section
-            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.sysInfo - (uint32_t)&ee), sizeof(ee.cfg.v1.sysInfo), (char *)&ee.cfg.v1.sysInfo );
+            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t*)&ee.cfg.v1.sysInfo - (uint32_t*)&ee), sizeof(ee.cfg.v1.sysInfo), (char *)&ee.cfg.v1.sysInfo );
             if ( err != sizeof(ee.cfg.v1.sysInfo) )
             {
                 PERROR( "Error while reading the EEPROM content (%d)\n", err );
@@ -602,7 +602,7 @@ eeprom_Error_t eeprom_WriteSysInfo( const eeprom_SysInfo_t *pSysInfo )
             ee.cfg.v1.sysInfo.u16Crc = eeprom_crc( (uint8_t *)&ee.cfg.v1.sysInfo.u32Time, sizeof(ee.cfg.v1.sysInfo) - 2 * sizeof(uint16_t) );
 
             // Write it to the EEPROM
-            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.sysInfo - (uint32_t)&ee), sizeof(ee.cfg.v1.sysInfo), (const char *) &ee.cfg.v1.sysInfo );
+            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t*)&ee.cfg.v1.sysInfo - (uint32_t*)&ee), sizeof(ee.cfg.v1.sysInfo), (const char *) &ee.cfg.v1.sysInfo );
             if ( err != sizeof(ee.cfg.v1.sysInfo) )
             {
                 PERROR( "Error while writing to the EEPROM (%d)\n", err );
@@ -660,7 +660,7 @@ eeprom_Error_t eeprom_ReadRfClockCal( eeprom_RfClockCal_t *pRfClockCal )
     	case EEPROM_HDR_V2:
         {
             // Get a copy of the EEPROM section 
-            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.rfClk - (uint32_t)&ee), sizeof(ee.cfg.v1.rfClk), (char *)&ee.cfg.v1.rfClk );
+            err = eeprom_read( EEPROM_CFG_START_ADDR + ((uint32_t*)&ee.cfg.v1.rfClk - (uint32_t*)&ee), sizeof(ee.cfg.v1.rfClk), (char *)&ee.cfg.v1.rfClk );
             if ( err != sizeof(ee.cfg.v1.rfClk) )
             {
                 PERROR( "Error while reading the EEPROM content (%d)\n", err );
@@ -755,7 +755,7 @@ eeprom_Error_t eeprom_WriteRfClockCal( const eeprom_RfClockCal_t *pRfClockCal )
             ee.cfg.v1.rfClk.u16Crc = eeprom_crc( (uint8_t *)&ee.cfg.v1.rfClk.u32Time, sizeof(ee.cfg.v1.rfClk) - 2 * sizeof(uint16_t) );
 
             // Write it to the EEPROM
-            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)&ee.cfg.v1.rfClk - (uint32_t)&ee), sizeof(ee.cfg.v1.rfClk), (const char *) &ee.cfg.v1.rfClk );
+            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t*)&ee.cfg.v1.rfClk - (uint32_t*)&ee), sizeof(ee.cfg.v1.rfClk), (const char *) &ee.cfg.v1.rfClk );
             if ( err != sizeof(ee.cfg.v1.rfClk) )
             {
                 PERROR( "Error while writing to the EEPROM (%d)\n", err );
@@ -1099,7 +1099,7 @@ eeprom_Error_t eeprom_WriteTxCal( int iBand, const eeprom_TxCal_t *pTxCal )
             pCfgTxCal->u16Crc = eeprom_crc( (uint8_t *)&pCfgTxCal->u32Time, size - 2 * sizeof(uint16_t) );
 
             // Write it to the EEPROM
-            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgTxCal - (uint32_t)&ee), size, (const char *)pCfgTxCal );
+            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t*)pCfgTxCal - (uint32_t*)&ee), size, (const char *)pCfgTxCal );
             if ( err != size )
             {
                 PERROR( "Error while writing to the EEPROM (%d)\n", err );
@@ -1592,7 +1592,7 @@ eeprom_Error_t eeprom_WriteRxCal( int iBand, int iUplink, const eeprom_RxCal_t *
             pCfgRxCal->u16Crc = eeprom_crc( (uint8_t *)&pCfgRxCal->u32Time, size - 2 * sizeof(uint16_t) );
 
             // Write it to the EEPROM
-            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t)pCfgRxCal - (uint32_t)&ee), size, (const char *)pCfgRxCal );
+            err = eeprom_write( EEPROM_CFG_START_ADDR + ((uint32_t*)pCfgRxCal - (uint32_t*)&ee), size, (const char *)pCfgRxCal );
             if ( err != size )
             {
                 PERROR( "Error while writing to the EEPROM (%d)\n", err );
