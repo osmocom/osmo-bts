@@ -480,7 +480,7 @@ send_burst:
 
 int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa)
+	int8_t rssi, int16_t toa256)
 {
 	return 0;
 }
@@ -488,28 +488,28 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 /*! \brief a single burst was received by the PHY, process it */
 int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa)
+	int8_t rssi, int16_t toa256)
 {
 	return 0;
 }
 
 int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa)
+	int8_t rssi, int16_t toa256)
 {
 	return 0;
 }
 
 int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa)
+	int8_t rssi, int16_t toa256)
 {
 	return 0;
 }
 
 int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa)
+	int8_t rssi, int16_t toa256)
 {
 	return 0;
 }

@@ -16,7 +16,7 @@ typedef ubit_t *trx_sched_dl_func(struct l1sched_trx *l1t, uint8_t tn,
 typedef int trx_sched_ul_func(struct l1sched_trx *l1t, uint8_t tn,
 			      uint32_t fn, enum trx_chan_type chan,
 			      uint8_t bid, sbit_t *bits, uint16_t nbits,
-			      int8_t rssi, float toa);
+			      int8_t rssi, int16_t toa256);
 
 struct trx_chan_desc {
 	/*! \brief Is this on a PDCH (PS) ? */
@@ -74,19 +74,19 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
 int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa);
+	int8_t rssi, int16_t toa256);
 int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa);
+	int8_t rssi, int16_t toa256);
 int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa);
+	int8_t rssi, int16_t toa256);
 int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa);
+	int8_t rssi, int16_t toa256);
 int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, float toa);
+	int8_t rssi, int16_t toa256);
 
 const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
 			      uint32_t fn, uint16_t *nbits);

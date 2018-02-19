@@ -14,7 +14,7 @@
  */
 
 int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int8_t rssi, float toa);
+	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa);
 
 int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
         struct l1sched_chan_state *chan_state);

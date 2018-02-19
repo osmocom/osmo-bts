@@ -166,12 +166,15 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 }
 
 
+/* 90% of one bit duration in 1/256 symbols: 256*0.9 */
+#define TOA256_9OPERCENT	230
+
 /*
  * Timing Advance loop
  */
 
 int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, float toa)
+	struct l1sched_chan_state *chan_state, int16_t toa256)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 
@@ -180,39 +183,39 @@ int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 		return 0;
 
 	/* sum measurement */
-	chan_state->meas.toa_sum += toa;
+	chan_state->meas.toa256_sum += toa256;
 	if (++(chan_state->meas.toa_num) < 16)
 		return 0;
 
 	/* complete set */
-	toa = chan_state->meas.toa_sum / chan_state->meas.toa_num;
+	toa256 = chan_state->meas.toa256_sum / chan_state->meas.toa_num;
 
 	/* check for change of TOA */
-	if (toa < -0.9F && lchan->rqd_ta > 0) {
+	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > 0) {
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
-			"early (%.2f), now lowering TA from %d to %d\n",
-			trx->nr, chan_nr, toa, lchan->rqd_ta,
+			"early (%d), now lowering TA from %d to %d\n",
+			trx->nr, chan_nr, toa256, lchan->rqd_ta,
 			lchan->rqd_ta - 1);
 		lchan->rqd_ta--;
-	} else if (toa > 0.9F && lchan->rqd_ta < 63) {
+	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < 63) {
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
-			"late (%.2f), now raising TA from %d to %d\n",
-			trx->nr, chan_nr, toa, lchan->rqd_ta,
+			"late (%d), now raising TA from %d to %d\n",
+			trx->nr, chan_nr, toa256, lchan->rqd_ta,
 			lchan->rqd_ta + 1);
 		lchan->rqd_ta++;
 	} else
 		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is "
-			"correct (%.2f), keeping current TA of %d\n",
-			trx->nr, chan_nr, toa, lchan->rqd_ta);
+			"correct (%d), keeping current TA of %d\n",
+			trx->nr, chan_nr, toa256, lchan->rqd_ta);
 
 	chan_state->meas.toa_num = 0;
-	chan_state->meas.toa_sum = 0;
+	chan_state->meas.toa256_sum = 0;
 
 	return 0;
 }
 
 int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int8_t rssi, float toa)
+	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa256)
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
@@ -222,7 +225,7 @@ int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 		ms_power_val(chan_state, rssi);
 
 	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
-		ta_val(lchan, chan_nr, chan_state, toa);
+		ta_val(lchan, chan_nr, chan_state, toa256);
 
 	return 0;
 }

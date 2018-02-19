@@ -75,7 +75,7 @@ struct l1sched_chan_state {
 	uint8_t			rssi_num;	/* number of RSSI values */
 	float			rssi_sum;	/* sum of RSSI values */
 	uint8_t			toa_num;	/* number of TOA values */
-	float			toa_sum;	/* sum of TOA values */
+	int32_t			toa256_sum;	/* sum of TOA values (1/256 symbol) */
 
 	/* loss detection */
 	uint8_t			lost;		/* (SACCH) loss detection */
@@ -113,7 +113,7 @@ struct l1sched_chan_state {
 		int		rssi_count;	/* received RSSI values */
 		int		rssi_valid_count; /* number of stored value */
 		int		rssi_got_burst; /* any burst received so far */
-		float		toa_sum;	/* sum of TOA values */
+		int32_t		toa256_sum;	/* sum of TOA values (1/256 symbol) */
 		int		toa_num;	/* number of TOA value */
 	} meas;
 
@@ -165,7 +165,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
 /*! \brief handle an UL burst received by PHY */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-        sbit_t *bits, uint16_t nbits, int8_t rssi, float toa);
+        sbit_t *bits, uint16_t nbits, int8_t rssi, int16_t toa);
 
 /*! \brief set multiframe scheduler to given physical channel config */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,

@@ -846,7 +846,7 @@ no_data:
 
 /* process uplink burst */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
-	sbit_t *bits, uint16_t nbits, int8_t rssi, float toa)
+	sbit_t *bits, uint16_t nbits, int8_t rssi, int16_t toa256)
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	struct l1sched_chan_state *l1cs;
@@ -907,7 +907,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
 				}
 			}
 
-			func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa);
+			func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa256);
 		} else if (chan != TRXC_RACH && !l1cs->ho_rach_detect) {
 			sbit_t spare[GSM_BURST_LEN];
 			memset(spare, 0, GSM_BURST_LEN);

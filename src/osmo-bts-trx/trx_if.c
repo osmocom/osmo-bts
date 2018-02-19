@@ -520,7 +520,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	int len;
 	uint8_t tn;
 	int8_t rssi;
-	float toa = 0.0;
+	int16_t toa256 = 0;
 	uint32_t fn;
 	sbit_t bits[EGPRS_BURST_LEN];
 	int i, burst_len = GSM_BURST_LEN;
@@ -539,7 +539,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	tn = buf[0];
 	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
 	rssi = -(int8_t)buf[5];
-	toa = ((int16_t)(buf[6] << 8) | buf[7]) / 256.0F;
+	toa256 = ((int16_t)(buf[6] << 8) | buf[7]);
 
 	/* copy and convert bits {254..0} to sbits {-127..127} */
 	for (i = 0; i < burst_len; i++) {
@@ -558,20 +558,20 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EINVAL;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa=%.2f\n",
-		tn, fn, rssi, toa);
+	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa256=%d\n",
+		tn, fn, rssi, toa256);
 
 #ifdef TOA_RSSI_DEBUG
 	char deb[128];
 
 	sprintf(deb, "|                                0              "
-		"                 | rssi=%4d  toa=%4.2f fn=%u", rssi, toa, fn);
+		"                 | rssi=%4d  toa=%5d fn=%u", rssi, toa256, fn);
 	deb[1 + (128 + rssi) / 4] = '*';
 	fprintf(stderr, "%s\n", deb);
 #endif
 
 	/* feed received burst into scheduler code */
-	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, burst_len, rssi, toa);
+	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, burst_len, rssi, toa256);
 
 	return 0;
 }
