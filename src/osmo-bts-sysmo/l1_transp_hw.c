@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
