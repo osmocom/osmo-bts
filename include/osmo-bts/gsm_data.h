@@ -4,6 +4,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/lapdm.h>
+#include <osmocom/gsm/gsm23003.h>
 
 #include <osmo-bts/paging.h>
 #include <osmo-bts/tx_power.h>
@@ -29,7 +30,7 @@ struct smscb_msg;
 struct gsm_network {
 	struct llist_head bts_list;
 	unsigned int num_bts;
-	uint16_t mcc, mnc;
+	struct osmo_plmn_id plmn;
 	struct pcu_sock_state *pcu_state;
 };
 

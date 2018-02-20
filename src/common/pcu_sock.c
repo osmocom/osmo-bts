@@ -34,6 +34,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/gsm/gsm23003.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/pcu_if.h>
@@ -143,8 +144,9 @@ int pcu_tx_info_ind(void)
 		info_ind->flags |= PCU_IF_FLAG_SYSMO;
 
 	/* RAI */
-	info_ind->mcc = net->mcc;
-	info_ind->mnc = net->mnc;
+	info_ind->mcc = net->plmn.mcc;
+	info_ind->mnc = net->plmn.mnc;
+	info_ind->mnc_3_digits = net->plmn.mnc_3_digits;
 	info_ind->lac = bts->location_area_code;
 	info_ind->rac = bts->gprs.rac;
 
@@ -254,14 +256,7 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 			break;
 		si3 = (struct gsm48_system_information_type_3 *)
 						bts->si_buf[SYSINFO_TYPE_3];
-		net->mcc = ((si3->lai.digits[0] & 0x0f) << 8)
-			| (si3->lai.digits[0] & 0xf0)
-			| (si3->lai.digits[1] & 0x0f);
-		net->mnc = ((si3->lai.digits[2] & 0x0f) << 8)
-			| (si3->lai.digits[2] & 0xf0)
-			| ((si3->lai.digits[1] & 0xf0) >> 4);
-		if ((net->mnc & 0x00f) == 0x00f)
-			net->mnc >>= 4;
+		osmo_plmn_from_bcd(si3->lai.digits, &net->plmn);
 		bts->location_area_code = ntohs(si3->lai.lac);
 		bts->cell_identity = si3->cell_identity;
 		avail_lai = 1;

@@ -5,7 +5,7 @@
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x08
+#define PCU_IF_VERSION		0x09
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -122,7 +122,9 @@ struct gsm_pcu_if_info_ind {
 	struct gsm_pcu_if_info_trx trx[8];	/* TRX infos per BTS */
 	uint8_t		bsic;
 	/* RAI */
-	uint16_t	mcc, mnc, lac, rac;
+	uint16_t	mcc, mnc;
+	uint8_t		mnc_3_digits;
+	uint16_t	lac, rac;
 	/* NSE */
 	uint16_t	nsei;
 	uint8_t		nse_timer[7];
