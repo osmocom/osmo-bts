@@ -165,8 +165,8 @@ enum gsm_lchan_state {
 struct bts_ul_meas {
 	/* BER in units of 0.01%: 10.000 == 100% ber, 0 == 0% ber */
 	uint16_t ber10k;
-	/* timing advance offset (in quarter bits) */
-	int16_t ta_offs_qbits;
+	/* timing advance offset (in 1/256 bits) */
+	int16_t ta_offs_256bits;
 	/* C/I ratio in dB */
 	float c_i;
 	/* flags */

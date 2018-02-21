@@ -342,7 +342,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	uint32_t irssi_full_sum = 0;
 	uint32_t ber_sub_sum = 0;
 	uint32_t irssi_sub_sum = 0;
-	int32_t taqb_sum = 0;
+	int32_t ta256b_sum = 0;
 	unsigned int num_meas_sub = 0;
 	int i;
 
@@ -362,7 +362,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 
 		ber_full_sum += m->ber10k;
 		irssi_full_sum += m->inv_rssi;
-		taqb_sum += m->ta_offs_qbits;
+		ta256b_sum += m->ta_offs_256bits;
 
 		if (m->is_sub) {
 			num_meas_sub++;
@@ -374,7 +374,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	/* step 2: divide */
 	ber_full_sum = ber_full_sum / lchan->meas.num_ul_meas;
 	irssi_full_sum = irssi_full_sum / lchan->meas.num_ul_meas;
-	taqb_sum = taqb_sum / lchan->meas.num_ul_meas;
+	ta256b_sum = ta256b_sum / lchan->meas.num_ul_meas;
 
 	if (num_meas_sub) {
 		ber_sub_sum = ber_sub_sum / num_meas_sub;
@@ -387,9 +387,9 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		irssi_sub_sum = 120; /* -120 dBm */
 	}
 
-	LOGP(DMEAS, LOGL_INFO, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
+	LOGP(DMEAS, LOGL_INFO, "%s Computed TA256(% 4d) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
 		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
-		taqb_sum, ber_full_sum/100,
+		ta256b_sum, ber_full_sum/100,
 		ber_full_sum%100, irssi_full_sum, ber_sub_sum/100, ber_sub_sum%100,
 		irssi_sub_sum);
 

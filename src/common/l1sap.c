@@ -522,7 +522,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 		return 0;
 
 	memset(&ulm, 0, sizeof(ulm));
-	ulm.ta_offs_qbits = info_meas_ind->ta_offs_qbits;
+	ulm.ta_offs_256bits = info_meas_ind->ta_offs_qbits*(256/4);
 	ulm.ber10k = info_meas_ind->ber10k;
 	ulm.inv_rssi = info_meas_ind->inv_rssi;
 	ulm.is_sub = info_meas_ind->is_sub;
