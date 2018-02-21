@@ -92,8 +92,14 @@ int bts_model_init(struct gsm_bts *bts)
 	}
 
 	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
+	gsm_bts_set_feature(bts, BTS_FEAT_EGPRS);
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
 	gsm_bts_set_feature(bts, BTS_FEAT_AGCH_PCH_PROP);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_EFR);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
 
 	bts_model_vty_init(bts);
 

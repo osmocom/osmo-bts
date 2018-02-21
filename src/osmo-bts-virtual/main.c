@@ -61,6 +61,13 @@ int bts_model_init(struct gsm_bts *bts)
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
+	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_EFR);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
+
 	bts_model_vty_init(bts);
 
 	return 0;

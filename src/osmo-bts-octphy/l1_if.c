@@ -791,6 +791,11 @@ int bts_model_init(struct gsm_bts *bts)
 
 	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
+#if defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_FCCH_SCH_BCCH_CCCH_SDCCH4_CBCH_SACCHC4) && defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_SDCCH8_CBCH_SACCHC8)
+	gsm_bts_set_feature(bts, BTS_FEAT_CBCH);
+#endif
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
+	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
 
 	bts_model_vty_init(bts);
 
