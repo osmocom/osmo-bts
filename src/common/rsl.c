@@ -135,6 +135,16 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
  * support
  */
 
+/* Is this channel number for a dedicated channel (true) or not (false) */
+static bool chan_nr_is_dchan(uint8_t chan_nr)
+{
+	/* See TS 48.058 9.3.1 */
+	if (chan_nr & 0x80)
+		return false;
+	else
+		return true;
+}
+
 static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				      const char *log_name)
 {
@@ -2254,6 +2264,9 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)rh + sizeof(*rh);
 
+	if (!chan_nr_is_dchan(rh->chan_nr))
+		return rsl_reject_unknown_lchan(msg);
+
 	lchan = lchan_lookup(trx, rh->chan_nr, "RSL rx RLL: ");
 	if (!lchan) {
 		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
@@ -2445,6 +2458,9 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)cch + sizeof(*cch);
 
+	if (chan_nr_is_dchan(cch->chan_nr))
+		return rsl_reject_unknown_lchan(msg);
+
 	msg->lchan = lchan_lookup(trx, cch->chan_nr, "RSL rx CCHAN: ");
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
@@ -2497,6 +2513,9 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		return -EIO;
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
+
+	if (!chan_nr_is_dchan(dch->chan_nr))
+		return rsl_reject_unknown_lchan(msg);
 
 	msg->lchan = lchan_lookup(trx, dch->chan_nr, "RSL rx DCHAN: ");
 	if (!msg->lchan) {
@@ -2595,6 +2614,9 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 		return -EIO;
 	}
 	msg->l3h = (unsigned char *)dch + sizeof(*dch);
+
+	if (!chan_nr_is_dchan(dch->chan_nr))
+		return rsl_reject_unknown_lchan(msg);
 
 	msg->lchan = lchan_lookup(trx, dch->chan_nr, "RSL rx IPACC: ");
 	if (!msg->lchan) {
