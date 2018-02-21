@@ -676,32 +676,45 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 	return &btsb->gsm_time;
 }
 
-int bts_supports_cm(struct gsm_bts_role_bts *bts,
-		    enum gsm_phys_chan_config pchan, enum gsm48_chan_mode cm)
+int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
+		    enum gsm48_chan_mode cm)
 {
-	const struct bts_cm *supported;
-	int i;
+	enum gsm_bts_features feature = _NUM_BTS_FEAT;
 
-	supported = bts->support.cm;
-
-	/* Check if we got a list with supported codec, if not, no list has
-	 * been configured yet for that BTS. In that case we will just skip
-	 * and accept any combination */
-	if (supported == NULL)
-		return 1;
-
-	for (i = 0;; i++) {
-		/* If we manage to find the given combination in the list,
-		 * we know that the pchan/cm combination is supported */
-		if (supported[i].pchan == pchan && supported[i].cm == cm)
-			return 1;
-
-		/* When we hit the terminator, we know that the given
-		 * pchan/cm combination is not supported because it
-		 * is not in the list. */
-		if (supported[i].pchan == _GSM_PCHAN_MAX)
+	/* Before the requested pchan/cm combination can be checked, we need to
+	 * convert it to a feature identifier we can check */
+	if (pchan == GSM_PCHAN_TCH_F) {
+		switch(cm) {
+		case GSM48_CMODE_SPEECH_V1:
+			feature	= BTS_FEAT_SPEECH_F_V1;
+			break;
+		case GSM48_CMODE_SPEECH_EFR:
+			feature	= BTS_FEAT_SPEECH_F_EFR;
+			break;
+		case GSM48_CMODE_SPEECH_AMR:
+			feature = BTS_FEAT_SPEECH_F_AMR;
+			break;
+		default:
+			/* Invalid speech codec type => Not supported! */
 			return 0;
+		}
+	} else if (pchan == GSM_PCHAN_TCH_H) {
+		switch(cm) {
+		case GSM48_CMODE_SPEECH_V1:
+			feature	= BTS_FEAT_SPEECH_H_V1;
+			break;
+		case GSM48_CMODE_SPEECH_AMR:
+			feature = BTS_FEAT_SPEECH_H_AMR;
+			break;
+		default:
+			/* Invalid speech codec type => Not supported! */
+			return 0;
+		}
 	}
+
+	/* Check if the feature is supported by this BTS */
+	if (gsm_bts_has_feature(bts, feature))
+		return 1;
 
 	return 0;
 }

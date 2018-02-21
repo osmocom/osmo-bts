@@ -33,11 +33,6 @@ struct gsm_network {
 	struct pcu_sock_state *pcu_state;
 };
 
-struct bts_cm {
-	enum gsm_phys_chan_config pchan;
-	enum gsm48_chan_mode cm;
-};
-
 /* data structure for BTS related data specific to the BTS role */
 struct gsm_bts_role_bts {
 	struct {
@@ -94,7 +89,6 @@ struct gsm_bts_role_bts {
 	bool rtp_jitter_adaptive;
 	struct {
 		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
-		const struct bts_cm *cm; /* Table with supp. ch rate/mode combinations */
 	} support;
 	struct {
 		uint8_t tc4_ctr;

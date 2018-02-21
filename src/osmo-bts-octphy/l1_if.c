@@ -76,14 +76,6 @@
 /* timeout until which we expect PHY to respond */
 #define CMD_TIMEOUT		5
 
-/* Table with channel rate / and codec configuration that are supported
- * by the hardware bts_supports_cm() */
-static const struct bts_cm bts_model_supported_cm[] = {
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1},
-	{ GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1},
-	{ _GSM_PCHAN_MAX, 0 }
-};
-
 /* allocate a msgb for a Layer1 primitive */
 struct msgb *l1p_msgb_alloc(void)
 {
@@ -784,7 +776,6 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->variant = BTS_OSMO_OCTPHY;
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-	btsb->support.cm = bts_model_supported_cm;
 
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;

@@ -45,8 +45,8 @@ struct gsm_time *get_time(struct gsm_bts *bts);
 
 int bts_main(int argc, char **argv);
 
-int bts_supports_cm(struct gsm_bts_role_bts *bts,
-		    enum gsm_phys_chan_config pchan, enum gsm48_chan_mode cm);
+int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
+		    enum gsm48_chan_mode cm);
 
 #endif /* _BTS_H */
 

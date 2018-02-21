@@ -55,17 +55,6 @@
 #include "hw_misc.h"
 #include "oml_router.h"
 
-/* Table with channel rate / and codec configuration that are supported
- * by the hardware bts_supports_cm() */
-static const struct bts_cm bts_model_supported_cm[] = {
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1},
-	{ GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1},
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_EFR},
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_AMR},
-	{ GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_AMR},
-	{ _GSM_PCHAN_MAX, 0 }
-};
-
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb;
@@ -76,7 +65,6 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->variant = BTS_OSMO_SYSMO;
 	btsb = bts_role_bts(bts);
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-	btsb->support.cm = bts_model_supported_cm;
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {

@@ -59,17 +59,6 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
-/* Table with channel rate / and codec configuration that are supported
- * by the hardware bts_supports_cm() */
-static const struct bts_cm bts_model_supported_cm[] = {
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1},
-	{ GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1},
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_EFR},
-	{ GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_AMR},
-	{ GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_AMR},
-	{ _GSM_PCHAN_MAX, 0 }
-};
-
 /* dummy, since no direct dsp support */
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 {
@@ -112,7 +101,6 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts->variant = BTS_OSMO_TRX;
 	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
-	btsb->support.cm = bts_model_supported_cm;
 
 	/* FIXME: this needs to be overridden with the real hardrware
 	 * value */

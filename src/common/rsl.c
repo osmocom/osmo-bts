@@ -1302,7 +1302,7 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 	lchan_tchmode_from_cmode(lchan, cm);
 
-	if (bts_supports_cm(btsb, lchan->ts->pchan, lchan->tch_mode) != 1) {
+	if (bts_supports_cm(lchan->ts->trx->bts, lchan->ts->pchan, lchan->tch_mode) != 1) {
 		LOGP(DRSL, LOGL_ERROR, "invalid mode/codec instructed by BSC, check BSC configuration.\n");
 		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_SERV_OPT_UNAVAIL);
 	}
