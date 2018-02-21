@@ -736,6 +736,24 @@ static unsigned int llist_length(struct llist_head *list)
 	return len;
 }
 
+static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
+{
+	unsigned int i;
+	bool no_features = true;
+	vty_out(vty, "  Features:%s", VTY_NEWLINE);
+
+	for (i = 0; i < _NUM_BTS_FEAT; i++) {
+		if (gsm_bts_has_feature(bts, i)) {
+			vty_out(vty, "    %03u ", i);
+			vty_out(vty, "%-40s%s", get_value_string(gsm_bts_features_descs, i), VTY_NEWLINE);
+			no_features = false;
+		}
+	}
+
+	if (no_features)
+		vty_out(vty, "    (not available)%s", VTY_NEWLINE);
+}
+
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts->role;
@@ -788,6 +806,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 			vty_out(vty, "%s", VTY_NEWLINE);
 		}
 	}
+
+	bts_dump_vty_features(vty, bts);
 }
 
 
