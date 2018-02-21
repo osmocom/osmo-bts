@@ -1,7 +1,7 @@
 /* GSM TS 08.58 RSL, BTS Side */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011-2014 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2017 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -135,18 +135,6 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
  * support
  */
 
-/**
- * Handle GSM 08.58 7 Error Handling for the given input. This method will
- * send either a CHANNEL ACTIVATION NACK, MODE MODIFY NACK or ERROR REPORT
- * depending on the input of the method.
- *
- * TODO: actually make the decision
- */
-static int report_error(struct gsm_bts_trx *trx)
-{
-	return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
-}
-
 static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				      const char *log_name)
 {
@@ -159,9 +147,11 @@ static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		return NULL;
 	}
 
-	if (rc < 0)
+	if (rc < 0) {
 		LOGP(DRSL, LOGL_ERROR, "%s %smismatching chan_nr=0x%02x\n",
 		     gsm_ts_and_pchan_name(lchan->ts), log_name, chan_nr);
+		return NULL;
+	}
 	return lchan;
 }
 
@@ -643,14 +633,16 @@ int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
-static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
+static int _rsl_tx_chan_act_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uint8_t cause,
+				 struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE,
-		"%s Sending Channel Activated NACK: cause = 0x%02x\n",
-		gsm_lchan_name(lchan), cause);
+	if (lchan)
+		LOGP(DRSL, LOGL_NOTICE, "%s: ", gsm_lchan_name(lchan));
+	else
+		LOGP(DRSL, LOGL_NOTICE, "0x%02x: ", chan_nr);
+	LOGPC(DRSL, LOGL_NOTICE, "Sending Channel Activated NACK: cause = 0x%02x\n", cause);
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
@@ -659,9 +651,12 @@ static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause)
 	/* 9.3.26 Cause */
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, RSL_MT_CHAN_ACTIV_NACK, chan_nr);
-	msg->trx = lchan->ts->trx;
+	msg->trx = trx;
 
 	return abis_bts_rsl_sendmsg(msg);
+}
+static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause) {
+	return _rsl_tx_chan_act_nack(lchan->ts->trx, gsm_lchan2chan_nr(lchan), cause, lchan);
 }
 
 /* Send an RSL Channel Activation Ack if cause is zero, a Nack otherwise. */
@@ -1229,13 +1224,16 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 }
 
 /* 8.4.11 MODE MODIFY NEGATIVE ACKNOWLEDGE */
-static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
+static int _rsl_tx_mode_modif_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uint8_t cause,
+				  struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Tx MODE MODIFY NACK (cause = 0x%02x)\n",
-	     gsm_lchan_name(lchan), cause);
+	if (lchan)
+		LOGP(DRSL, LOGL_NOTICE, "%s: ", gsm_lchan_name(lchan));
+	else
+		LOGP(DRSL, LOGL_NOTICE, "0x%02x: ", chan_nr);
+	LOGPC(DRSL, LOGL_NOTICE, "Tx MODE MODIFY NACK (cause = 0x%02x)\n", cause);
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
@@ -1247,11 +1245,15 @@ static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 	/* 9.3.26 Cause */
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 	rsl_dch_push_hdr(msg, RSL_MT_MODE_MODIFY_NACK, chan_nr);
-	msg->lchan = lchan;
-	msg->trx = lchan->ts->trx;
+	msg->trx = trx;
 
 	return abis_bts_rsl_sendmsg(msg);
 }
+static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
+{
+	return _rsl_tx_mode_modif_nack(lchan->ts->trx, gsm_lchan2chan_nr(lchan), cause, lchan);
+}
+
 
 /* 8.4.10 MODE MODIFY ACK */
 static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
@@ -2190,6 +2192,52 @@ void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 		     pdch_act? "ACT" : "DEACT", rc);
 }
 
+/* handle a message with an RSL CHAN_NR that is incompatible/unknown */
+static int rsl_reject_unknown_lchan(struct msgb *msg)
+{
+	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
+	struct abis_rsl_dchan_hdr *dch;
+	int rc;
+
+	/* Handle GSM 08.58 7 Error Handling for the given input. This method will
+	 * send either a CHANNEL ACTIVATION NACK, MODE MODIFY NACK or ERROR REPORT
+	 * depending on the input of the method. */
+
+	/* TS 48.058 Section 7 explains how to do error handling */
+	switch (rh->msg_discr & 0xfe) {
+	case ABIS_RSL_MDISC_DED_CHAN:
+		dch = msgb_l2(msg);
+		switch (dch->c.msg_type) {
+		case RSL_MT_CHAN_ACTIV:
+			rc = _rsl_tx_chan_act_nack(msg->trx, dch->chan_nr,
+						   RSL_ERR_MAND_IE_ERROR, NULL);
+			break;
+		case RSL_MT_MODE_MODIFY_REQ:
+			rc = _rsl_tx_mode_modif_nack(msg->trx, dch->chan_nr,
+						     RSL_ERR_MAND_IE_ERROR, NULL);
+			break;
+		default:
+			rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+			break;
+		}
+		break;
+	case ABIS_RSL_MDISC_RLL:
+		/* fall-through */
+	case ABIS_RSL_MDISC_COM_CHAN:
+		/* fall-through */
+	case ABIS_RSL_MDISC_TRX:
+		/* fall-through */
+	case ABIS_RSL_MDISC_IPACCESS:
+		/* fall-through */
+	default:
+		/* ERROR REPORT */
+		rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+	}
+
+	msgb_free(msg);
+	return rc;
+}
+
 /*
  * selecting message
  */
@@ -2210,8 +2258,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!lchan) {
 		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
 			rsl_msg_name(rh->c.msg_type));
-		msgb_free(msg);
-		return report_error(trx);
+		return rsl_reject_unknown_lchan(msg);
 	}
 
 	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
@@ -2402,8 +2449,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_msg_name(cch->c.msg_type));
-		msgb_free(msg);
-		return report_error(trx);
+		return rsl_reject_unknown_lchan(msg);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
@@ -2456,8 +2502,7 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_or_ipac_msg_name(dch->c.msg_type));
-		msgb_free(msg);
-		return report_error(trx);
+		return rsl_reject_unknown_lchan(msg);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
@@ -2555,8 +2600,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!msg->lchan) {
 		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
 			rsl_msg_name(dch->c.msg_type));
-		msgb_free(msg);
-		return report_error(trx);
+		return rsl_reject_unknown_lchan(msg);
 	}
 
 	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
