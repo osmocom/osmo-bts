@@ -58,6 +58,8 @@ static struct phy_instance *phy_instance_by_arfcn(struct phy_link *plink, uint16
 	return NULL;
 }
 
+static int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
+				 int n_errors, int n_bits_total, float rssi, float toa);
 /**
  * Callback to handle incoming messages from the MS.
  * The incoming message should be GSM_TAP encapsulated.
@@ -146,6 +148,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.data.ta_offs_qbits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
 		l1sap.u.data.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
 		l1sap.u.data.pdch_presence_info = PRES_INFO_BOTH;
+		l1if_process_meas_res(pinst->trx, timeslot, fn, chan_nr, 0, 0, 0, 0);
 		break;
 	case GSMTAP_CHANNEL_AGCH:
 	case GSMTAP_CHANNEL_PCH:
@@ -305,8 +308,8 @@ static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, f
 	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
 }
 
-int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
-	int n_errors, int n_bits_total, float rssi, float toa)
+static int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
+				 int n_errors, int n_bits_total, float rssi, float toa)
 {
 	struct gsm_lchan *lchan = &trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)];
 	struct osmo_phsap_prim l1sap;
