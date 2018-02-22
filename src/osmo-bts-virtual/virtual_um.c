@@ -66,6 +66,11 @@ struct virt_um_inst *virt_um_init(void *ctx, char *tx_mcast_group, uint16_t tx_m
 	struct virt_um_inst *vui = talloc_zero(ctx, struct virt_um_inst);
 	vui->mcast_sock = mcast_bidir_sock_setup(ctx, tx_mcast_group, tx_mcast_port,
 						 rx_mcast_group, rx_mcast_port, 1, virt_um_fd_cb, vui);
+	if (!vui->mcast_sock) {
+		perror("Unable to create VirtualUm multicast socket");
+		talloc_free(vui);
+		return NULL;
+	}
 	vui->recv_cb = recv_cb;
 
 	return vui;
