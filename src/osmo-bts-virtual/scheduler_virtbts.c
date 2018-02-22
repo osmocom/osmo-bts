@@ -98,13 +98,15 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
 		if (rc < 0)
-			LOGP(DL1P, LOGL_ERROR, "%s GSMTAP msg could not send to virtual Um\n", gsmtap_hdr_stringify(gh));
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+				"%s GSMTAP msg could not send to virtual Um\n", gsmtap_hdr_stringify(gh));
 		else if (rc == 0)
 			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
-			DEBUGP(DL1P, "%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
+				"%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
 	} else
-		LOGP(DL1P, LOGL_ERROR, "GSMTAP msg could not be created!\n");
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "GSMTAP msg could not be created!\n");
 
 	/* free incoming message */
 	msgb_free(msg);
@@ -144,16 +146,14 @@ ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
 	if (!msg) {
-		LOGP(DL1P, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
 		return NULL;
 	}
 
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGP(DL1P, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
-			"(len=%d)\n", msgb_l2len(msg));
+		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
+			msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
 		return NULL;
@@ -176,9 +176,7 @@ ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
 	if (!msg) {
-		LOGP(DL1P, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
 		return NULL;
 	}
 
@@ -204,7 +202,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
-		LOGP(DL1P, LOGL_NOTICE, "Missing TCH bursts detected, sending "
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Missing TCH bursts detected, sending "
 			"BFI for %s\n", trx_chan_desc[chan].name);
 
 		/* indicate bad frame */
@@ -255,8 +253,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive == PRIM_TCH) {
-					LOGP(DL1P, LOGL_FATAL, "TCH twice, "
-						"please FIX! ");
+					LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
+						"TCH twice, please FIX! ");
 					msgb_free(msg2);
 				} else
 					msg_facch = msg2;
@@ -266,8 +264,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive != PRIM_TCH) {
-					LOGP(DL1P, LOGL_FATAL, "FACCH twice, "
-						"please FIX! ");
+					LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
+						"FACCH twice, please FIX! ");
 					msgb_free(msg2);
 				} else
 					msg_tch = msg2;
@@ -283,8 +281,8 @@ inval_mode1:
 
 	/* check validity of message */
 	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
-		LOGP(DL1P, LOGL_FATAL, "Prim not 23 bytes, please FIX! "
-			"(len=%d)\n", msgb_l2len(msg_facch));
+		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
+			msgb_l2len(msg_facch));
 		/* free message */
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -299,10 +297,8 @@ inval_mode1:
 #endif
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
-			LOGP(DL1P, LOGL_NOTICE, "%s Dropping speech frame, "
-				"because we are not in speech mode trx=%u "
-				"ts=%u at fn=%u.\n", trx_chan_desc[chan].name,
-				l1t->trx->nr, tn, fn);
+			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Dropping speech frame, "
+				"because we are not in speech mode\n");
 			goto free_bad_msg;
 		}
 
@@ -312,12 +308,8 @@ inval_mode1:
 				len = 15;
 				if (msgb_l2len(msg_tch) >= 1
 				 && (msg_tch->l2h[0] & 0xf0) != 0x00) {
-					LOGP(DL1P, LOGL_NOTICE, "%s "
-						"Transmitting 'bad "
-						"HR frame' trx=%u ts=%u at "
-						"fn=%u.\n",
-						trx_chan_desc[chan].name,
-						l1t->trx->nr, tn, fn);
+					LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+						"Transmitting 'bad HR frame'\n");
 					goto free_bad_msg;
 				}
 				break;
@@ -325,10 +317,8 @@ inval_mode1:
 			len = GSM_FR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
-				LOGP(DL1P, LOGL_NOTICE, "%s Transmitting 'bad "
-					"FR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
+				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+					"Transmitting 'bad FR frame'\n");
 				goto free_bad_msg;
 			}
 			break;
@@ -338,10 +328,8 @@ inval_mode1:
 			len = GSM_EFR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xc) {
-				LOGP(DL1P, LOGL_NOTICE, "%s Transmitting 'bad "
-					"EFR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
+				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+					"Transmitting 'bad EFR frame'\n");
 				goto free_bad_msg;
 			}
 			break;
@@ -367,49 +355,39 @@ inval_mode1:
 				trx_loop_amr_set(chan_state, 1);
 			}
 			if (ft < 0) {
-				LOGP(DL1P, LOGL_ERROR, "%s Codec (FT = %d) "
-					" of RTP frame not in list. "
-					"trx=%u ts=%u\n",
-					trx_chan_desc[chan].name, ft_codec,
-					l1t->trx->nr, tn);
+				LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+					"Codec (FT = %d) of RTP frame not in list. ", ft_codec);
 				goto free_bad_msg;
 			}
 			if (codec_mode_request && chan_state->dl_ft != ft) {
-				LOGP(DL1P, LOGL_NOTICE, "%s Codec (FT = %d) "
-					" of RTP cannot be changed now, but in "
-					"next frame. trx=%u ts=%u\n",
-					trx_chan_desc[chan].name, ft_codec,
-					l1t->trx->nr, tn);
+				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+					"Codec (FT = %d) of RTP cannot be changed now, but in "
+					"next frame\n", ft_codec);
 				goto free_bad_msg;
 			}
 			chan_state->dl_ft = ft;
 			if (bfi) {
-				LOGP(DL1P, LOGL_NOTICE, "%s Transmitting 'bad "
-					"AMR frame' trx=%u ts=%u at fn=%u.\n",
-					trx_chan_desc[chan].name,
-					l1t->trx->nr, tn, fn);
+				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+					"Transmitting 'bad AMR frame'\n");
 				goto free_bad_msg;
 			}
 #else
-			LOGP(DL1P, LOGL_ERROR, "AMR not supported!\n");
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "AMR not supported!\n");
 			goto free_bad_msg;
 #endif
 			break;
 		default:
 inval_mode2:
-			LOGP(DL1P, LOGL_ERROR, "TCH mode invalid, please "
-				"fix!\n");
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode invalid, please fix!\n");
 			goto free_bad_msg;
 		}
 		if (len < 0) {
-			LOGP(DL1P, LOGL_ERROR, "Cannot send invalid AMR "
-				"payload\n");
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send invalid AMR payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
-			LOGP(DL1P, LOGL_ERROR, "Cannot send payload with "
-				"invalid length! (expecing %d, received %d)\n",
-				len, msgb_l2len(msg_tch));
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send payload with "
+				"invalid length! (expecing %d, received %d)\n", len, msgb_l2len(msg_tch));
 free_bad_msg:
 			/* free message */
 			msgb_free(msg_tch);
@@ -436,9 +414,7 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGP(DL1P, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
 		goto send_burst;
 	}
 
@@ -471,18 +447,15 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
-		LOGP(DL1P, LOGL_ERROR, "%s Cannot transmit FACCH starting on "
-			"even frames, please fix RTS!\n",
-			trx_chan_desc[chan].name);
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot transmit FACCH starting on "
+			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
 	}
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGP(DL1P, LOGL_INFO, "%s has not been served !! No prim for "
-			"trx=%u ts=%u at fn=%u to transmit.\n", 
-			trx_chan_desc[chan].name, l1t->trx->nr, tn, fn);
+		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
 		goto send_burst;
 	}
 
