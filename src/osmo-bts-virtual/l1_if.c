@@ -98,7 +98,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 
 	/* ... or not uplink */
 	if (!(arfcn & GSMTAP_ARFCN_F_UPLINK)) {
-		LOGP(DL1P, LOGL_NOTICE, "Ignoring incoming msg - no uplink flag\n");
+		LOGPFN(DL1P, LOGL_NOTICE, fn, "Ignoring incoming msg - no uplink flag\n");
 		goto nomessage;
 	}
 
@@ -153,22 +153,22 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	case GSMTAP_CHANNEL_AGCH:
 	case GSMTAP_CHANNEL_PCH:
 	case GSMTAP_CHANNEL_BCCH:
-		LOGP(DL1P, LOGL_NOTICE, "Ignore incoming msg - channel type downlink only!\n");
+		LOGPFN(DL1P, LOGL_NOTICE, fn, "Ignore incoming msg - channel type downlink only!\n");
 		goto nomessage;
 	case GSMTAP_CHANNEL_SDCCH:
 	case GSMTAP_CHANNEL_CCCH:
 	case GSMTAP_CHANNEL_CBCH51:
 	case GSMTAP_CHANNEL_CBCH52:
-		LOGP(DL1P, LOGL_NOTICE, "Ignore incoming msg - channel type not supported!\n");
+		LOGPFN(DL1P, LOGL_NOTICE, fn, "Ignore incoming msg - channel type not supported!\n");
 		goto nomessage;
 	default:
-		LOGP(DL1P, LOGL_NOTICE, "Ignore incoming msg - channel type unknown\n");
+		LOGPFN(DL1P, LOGL_NOTICE, fn, "Ignore incoming msg - channel type unknown\n");
 		goto nomessage;
 	}
 
 	/* forward primitive, lsap takes ownership of the msgb. */
 	l1sap_up(pinst->trx, &l1sap);
-	DEBUGP(DL1P, "Message forwarded to layer 2.\n");
+	DEBUGPFN(DL1P, fn, "Message forwarded to layer 2.\n");
 	return;
 
 nomessage:
@@ -316,9 +316,9 @@ static int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t f
 	/* 100% BER is n_bits_total is 0 */
 	float ber = n_bits_total==0 ? 1.0 : (float)n_errors / (float)n_bits_total;
 
-	LOGP(DMEAS, LOGL_DEBUG, "RX L1 frame %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
+	DEBUGPFN(DMEAS, fn, "RX L1 frame %s chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
 		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
-		gsm_lchan_name(lchan), fn, chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		gsm_lchan_name(lchan), chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
 		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info[1], lchan->rqd_ta, toa);
 
 	l1if_fill_meas_res(&l1sap, chan_nr, lchan->rqd_ta + toa, ber, rssi);

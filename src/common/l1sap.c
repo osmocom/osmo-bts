@@ -451,13 +451,13 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	struct gsm_bts_role_bts *btsb = bts->role;
 	int frames_expired;
 
-	DEBUGP(DL1P, "MPH_INFO time ind %u\n", info_time_ind->fn);
+	DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
 
 	/* Calculate and check frame difference */
 	frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
 	if (frames_expired > 1) {
 		if (btsb->gsm_time.fn)
-			LOGP(DL1P, LOGL_ERROR,
+			LOGPFN(DL1P, LOGL_ERROR, info_time_ind->fn,
 			     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32"=%d > 1!\n",
 			     info_time_ind->fn, btsb->gsm_time.fn, frames_expired);
 	}
@@ -506,12 +506,13 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 
 	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
 	if (!lchan) {
-		LOGP(DL1P, LOGL_ERROR, "No lchan for MPH INFO MEAS IND (chan_nr=%u)\n",
-		     info_meas_ind->chan_nr);
+		LOGPFN(DL1P, LOGL_ERROR, info_meas_ind->fn,
+			"No lchan for MPH INFO MEAS IND (chan_nr=%u)\n", info_meas_ind->chan_nr);
 		return 0;
 	}
 
-	DEBUGP(DL1P, "%s MPH_INFO meas ind, ta_offs_qbits=%d, ber10k=%d, inv_rssi=%u\n",
+	DEBUGPFN(DL1P, info_meas_ind->fn,
+		"%s MPH_INFO meas ind, ta_offs_qbits=%d, ber10k=%d, inv_rssi=%u\n",
 		gsm_lchan_name(lchan), info_meas_ind->ta_offs_qbits,
 		info_meas_ind->ber10k, info_meas_ind->inv_rssi);
 
@@ -546,9 +547,9 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	switch (info->type) {
 	case PRIM_INFO_TIME:
 		if (trx != trx->bts->c0) {
-			LOGP(DL1P, LOGL_NOTICE, "BTS model is sending us "
-			     "PRIM_INFO_TIME for TRX %u, please fix it\n",
-			     trx->nr);
+			LOGPFN(DL1P, LOGL_NOTICE, info->u.time_ind.fn,
+				"BTS model is sending us PRIM_INFO_TIME for TRX %u, please fix it\n",
+				trx->nr);
 			rc = -1;
 		} else
 			rc = l1sap_info_time_ind(trx->bts, l1sap,
@@ -654,14 +655,14 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	/* de-queue response message (loopback) */
 	loop_msg = msgb_dequeue(&lchan->dl_tch_queue);
 	if (!loop_msg) {
-		LOGP(DL1P, LOGL_NOTICE, "%s %s: no looped PDTCH message, sending empty\n",
-		     gsm_lchan_name(lchan), osmo_dump_gsmtime(tm));
+		LOGPGT(DL1P, LOGL_NOTICE, tm, "%s: no looped PDTCH message, sending empty\n",
+		     gsm_lchan_name(lchan));
 		/* empty downlink message */
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
 		memset(p, 0, GSM_MACBLOCK_LEN);
 	} else {
-		LOGP(DL1P, LOGL_NOTICE, "%s %s: looped PDTCH message of %u bytes\n",
-		     gsm_lchan_name(lchan), osmo_dump_gsmtime(tm), msgb_l2len(loop_msg));
+		LOGPGT(DL1P, LOGL_NOTICE, tm, "%s: looped PDTCH message of %u bytes\n",
+		     gsm_lchan_name(lchan), msgb_l2len(loop_msg));
 		/* copy over data from queued response message */
 		p = msgb_put(msg, msgb_l2len(loop_msg));
 		memcpy(p, msgb_l2(loop_msg), msgb_l2len(loop_msg));
@@ -693,13 +694,11 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-RTS.ind %s chan_nr=0x%02x link_id=0x%02xd\n",
-		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
+	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind chan_nr=0x%02x link_id=0x%02xd\n", chan_nr, link_id);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {
-		LOGP(DL1P, LOGL_FATAL, "RTS without msg to be reused. Please "
-			"fix!\n");
+		LOGPGT(DL1P, LOGL_FATAL, &g_time, "RTS without msg to be reused. Please fix!\n");
 		abort();
 	}
 	msgb_trim(msg, sizeof(*l1sap));
@@ -736,7 +735,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
 		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan) {
-			LOGP(DL1P, LOGL_ERROR, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
+			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
 			return 0;
 		}
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
@@ -789,8 +788,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
 
-	DEBUGP(DL1P, "Tx PH-DATA.req %s chan_nr=0x%02x link_id=0x%02x\n",
-		osmo_dump_gsmtime(&g_time), chan_nr, link_id);
+	DEBUGPGT(DL1P, &g_time, "Tx PH-DATA.req chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
 
 	l1sap_down(trx, l1sap);
 
@@ -877,11 +875,11 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx TCH-RTS.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	DEBUGPGT(DL1P, &g_time, "Rx TCH-RTS.ind chan_nr=0x%02x\n", chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGP(DL1P, LOGL_ERROR, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
 		return 0;
 	}
 
@@ -898,8 +896,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	/* get a msgb from the dl_tx_queue */
 	resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
 	if (!resp_msg) {
-		LOGP(DL1P, LOGL_DEBUG, "%s DL TCH Tx queue underrun\n",
-			gsm_lchan_name(lchan));
+		DEBUGPGT(DL1P, &g_time, "%s DL TCH Tx queue underrun\n", gsm_lchan_name(lchan));
 		resp_l1sap = &empty_l1sap;
 	} else if(!rtppayload_is_valid(lchan, resp_msg)) {
 		msgb_free(resp_msg);
@@ -917,7 +914,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	/* check for pending REL_IND */
 	if (lchan->pending_rel_ind_msg) {
-		LOGP(DRSL, LOGL_INFO, "%s Forward REL_IND to L3\n", gsm_lchan_name(lchan));
+		LOGPGT(DRSL, LOGL_INFO, &g_time, "%s Forward REL_IND to L3\n", gsm_lchan_name(lchan));
 		/* Forward it to L3 */
 		rc = abis_bts_rsl_sendmsg(lchan->pending_rel_ind_msg);
 		lchan->pending_rel_ind_msg = NULL;
@@ -932,7 +929,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	resp_l1sap->u.tch.fn = fn;
 	resp_l1sap->u.tch.marker = marker;
 
-	DEBUGP(DL1P, "Tx TCH.req %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	DEBUGPGT(DL1P, &g_time, "Tx TCH.req chan_nr=0x%02x\n", chan_nr);
 
 	l1sap_down(trx, resp_l1sap);
 
@@ -1034,13 +1031,13 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-DATA.ind %s chan_nr=0x%02x link_id=0x%02x len=%d\n",
-		osmo_dump_gsmtime(&g_time), chan_nr, link_id, len);
+	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=0x%02x link_id=0x%02x len=%d\n",
+		 chan_nr, link_id, len);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
-			LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=0x%02x\n", chan_nr);
+			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=0x%02x\n", chan_nr);
 		if (lchan && lchan->loopback && !L1SAP_IS_PTCCH(fn)) {
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
@@ -1076,7 +1073,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGP(DL1P, LOGL_ERROR, "No lchan for chan_nr=%d\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%d\n", chan_nr);
 		return 0;
 	}
 
@@ -1096,8 +1093,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		le = &lchan->lapdm_ch.lapdm_acch;
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (len < 2) {
-			LOGP(DL1P, LOGL_NOTICE, "SACCH with size %u<2 !?!\n",
-				len);
+			LOGPGT(DL1P, LOGL_NOTICE, &g_time, "SACCH with size %u<2 !?!\n", len);
 			return -EINVAL;
 		}
 		/* Some brilliant engineer decided that the ordering of
@@ -1141,11 +1137,11 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	LOGP(DL1P, LOGL_INFO, "Rx TCH.ind %s chan_nr=0x%02x\n", osmo_dump_gsmtime(&g_time), chan_nr);
+	LOGPGT(DL1P, LOGL_INFO, &g_time, "Rx TCH.ind chan_nr=0x%02x\n", chan_nr);
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGP(DL1P, LOGL_ERROR, "No lchan for TCH.ind (chan_nr=%u)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=%u)\n", chan_nr);
 		return 0;
 	}
 
@@ -1172,7 +1168,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		/* Only clear the marker bit once we have sent a RTP packet with it */
 		lchan->rtp_tx_marker = false;
 	} else {
-		DEBUGP(DRTP, "Skipping RTP frame with lost payload\n");
+		DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
+			 chan_nr);
 		if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
 		lchan->rtp_tx_marker = true;
@@ -1191,13 +1188,13 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	struct lapdm_channel *lc;
 	uint8_t acc_delay;
 
-	DEBUGP(DL1P, "Rx PH-RA.ind");
+	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
 
 	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
 	/* check for under/overflow / sign */
 	if (!check_acc_delay(rach_ind, btsb, &acc_delay)) {
-		LOGP(DL1C, LOGL_INFO, "ignoring RACH request %u > max_ta(%u)\n",
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "ignoring RACH request %u > max_ta(%u)\n",
 		     acc_delay, btsb->max_ta);
 		return 0;
 	}
@@ -1213,7 +1210,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||
 		(trx == bts->c0 && rach_ind->is_11bit)) {
 
-		LOGP(DL1P, LOGL_INFO, "RACH for packet access (toa=%d, ra=%d)\n",
+		LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for packet access (toa=%d, ra=%d)\n",
 			rach_ind->acc_delay, rach_ind->ra);
 
 		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
@@ -1222,7 +1219,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		return 0;
 	}
 
-	LOGP(DL1P, LOGL_INFO, "RACH for RR access (toa=%d, ra=%d)\n",
+	LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for RR access (toa=%d, ra=%d)\n",
 		rach_ind->acc_delay, rach_ind->ra);
 	lapdm_phsap_up(&l1sap->oph, &lc->lapdm_dcch);
 

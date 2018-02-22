@@ -478,7 +478,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	int rc;
 
 	if (!msg) {
-		LOGP(DL1C, LOGL_FATAL, "L1SAP PH-DATA.req without msg. "
+		LOGPFN(DL1C, LOGL_FATAL, l1sap->u.data.fn, "L1SAP PH-DATA.req without msg. "
 		     "Please fix!\n");
 		abort();
 	}
@@ -518,10 +518,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		sapi = cOCTVC1_GSM_SAPI_ENUM_PCH_AGCH;
 	} else {
-		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
-		     "chan_nr %d link_id %d\n",
-		     l1sap->oph.primitive, l1sap->oph.operation,
-		     chan_nr, link_id);
+		LOGPFN(DL1C, LOGL_NOTICE, u32Fn, "unknown prim %d op %d chan_nr %d link_id %d\n",
+		     l1sap->oph.primitive, l1sap->oph.operation, chan_nr, link_id);
 		rc = -EINVAL;
 		goto done;
 	}
@@ -531,7 +529,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 		l1msg = l1p_msgb_alloc();
 		if (!l1msg) {
-			LOGP(DL1C, LOGL_FATAL, "L1SAP PH-DATA.req msg alloc failed\n");
+			LOGPFN(DL1C, LOGL_FATAL, u32Fn, "L1SAP PH-DATA.req msg alloc failed\n");
 			rc = -ENOMEM;
 			goto done;
 		}
@@ -593,7 +591,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (msg) {
 		nmsg = l1p_msgb_alloc();
 		if (!nmsg) {
-			LOGP(DL1C, LOGL_FATAL, "L1SAP PH-TCH.req msg alloc failed\n");
+			LOGPFN(DL1C, LOGL_FATAL, u32Fn, "L1SAP PH-TCH.req msg alloc failed\n");
 			return -ENOMEM;
 		}
 
@@ -950,8 +948,7 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u SAPI=%s\n",
-	       g_time.t1, g_time.t2, g_time.t3,
+	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind SAPI=%s\n",
 	       get_value_string(octphy_l1sapi_names, sapi));
 
 	/* in case we need to forward primitive to common part */
@@ -1032,14 +1029,14 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 		/* send empty frame request */
 		rc = Logical_Channel_Empty_Frame_Cmd(empty_frame_req);
 		if (cOCTVC1_RC_OK != rc) {
-			LOGP(DL1P, LOGL_ERROR,
+			LOGPGT(DL1P, LOGL_ERROR, &g_time,
 			     "Sending Empty Frame Request Failed! (%s)\n",
 			     octvc1_rc2string(rc));
 		}
 		break;
 #endif
 	default:
-		LOGP(DL1P, LOGL_ERROR, "SAPI %s not handled via L1SAP!\n",
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "SAPI %s not handled via L1SAP!\n",
 			get_value_string(octphy_l1sapi_names, sapi));
 #if 0
 		data_req->Data.ulDataLength = GSM_MACBLOCK_LEN;
@@ -1078,8 +1075,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	/* chan_nr and link_id */
 	chan_nr = chan_nr_by_sapi(&trx->ts[ts_num], sapi, sc, ts_num, fn);
 	if (!chan_nr) {
-		LOGP(DL1C, LOGL_ERROR,
-		     "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
+		LOGPFN(DL1C, LOGL_ERROR, fn, "Rx PH-DATA.ind for unknown L1 SAPI %s\n",
 		     get_value_string(octphy_l1sapi_names, sapi));
 		return ENOTSUP;
 	}
@@ -1095,11 +1091,10 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	process_meas_res(trx, chan_nr, fn, data_ind->Data.ulDataLength,
 			 &data_ind->MeasurementInfo);
 
-	DEBUGP(DL1C, "Rx PH-DATA.ind %s: %s data_len:%d \n",
-	       get_value_string(octphy_l1sapi_names, sapi),
-	       osmo_hexdump(data_ind->Data.abyDataContent,
-			    data_ind->Data.ulDataLength),
-	       data_ind->Data.ulDataLength);
+	DEBUGPFN(DL1C, fn, "Rx PH-DATA.ind %s: %s data_len:%d \n",
+		 get_value_string(octphy_l1sapi_names, sapi),
+		 osmo_hexdump(data_ind->Data.abyDataContent, data_ind->Data.ulDataLength),
+		 data_ind->Data.ulDataLength);
 
 	/* check for TCH */
 	if (sapi == cOCTVC1_GSM_SAPI_ENUM_TCHF ||
@@ -1187,15 +1182,15 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->MeasurementInfo);
 
+	fn = ra_ind->ulFrameNumber;
+	ra = ra_ind->abyMsg[0];
+
 	if (ra_ind->ulMsgLength != 1) {
-		LOGP(DL1C, LOGL_ERROR, "Rx PH-RACH.ind has lenghth %d > 1\n",
-		     ra_ind->ulMsgLength);
+		LOGPFN(DL1C, LOGL_ERROR, fn, "Rx PH-RACH.ind has lenghth %d > 1\n", ra_ind->ulMsgLength);
 		msgb_free(l1p_msg);
 		return 0;
 	}
 
-	fn = ra_ind->ulFrameNumber;
-	ra = ra_ind->abyMsg[0];
 	/* check for under/overflow / sign */
 	if (ra_ind->MeasurementInfo.sBurstTiming < 0)
 		acc_delay = 0;

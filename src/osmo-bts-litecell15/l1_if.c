@@ -343,8 +343,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	int len;
 
 	if (!msg) {
-		LOGP(DL1C, LOGL_FATAL, "PH-DATA.req without msg. "
-			"Please fix!\n");
+		LOGPFN(DL1C, LOGL_FATAL, l1sap->u.data.fn, "PH-DATA.req without msg. Please fix!\n");
 		abort();
 	}
 
@@ -394,7 +393,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		else
 			sapi = GsmL1_Sapi_Agch;
 	} else {
-		LOGP(DL1C, LOGL_NOTICE, "unknown prim %d op %d "
+		LOGPFN(DL1C, LOGL_NOTICE, u32Fn, "unknown prim %d op %d "
 			"chan_nr %d link_id %d\n", l1sap->oph.primitive,
 			l1sap->oph.operation, chan_nr, link_id);
 		msgb_free(l1msg);
@@ -457,7 +456,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h,
 			       msgb_l2len(msg));
 		}
-		LOGP(DL1P, LOGL_DEBUG, "PH-DATA.req(%s)\n",
+		LOGPFN(DL1P, LOGL_DEBUG, u32Fn, "PH-DATA.req(%s)\n",
 		     osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer,
 					  l1p->u.phDataReq.msgUnitParam.u8Size));
 	} else {
@@ -469,7 +468,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	/* send message to DSP's queue */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
-		LOGP(DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		LOGPFN(DL1P, LOGL_ERROR, u32Fn, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(l1msg);
 	} else
 		dtx_int_signal(lchan);
@@ -838,8 +837,7 @@ static int handle_ph_readytosend_ind(struct lc15l1_hdl *fl1,
 
 	gsm_fn2gsmtime(&g_time, rts_ind->u32Fn);
 
-	DEBUGP(DL1P, "Rx PH-RTS.ind %02u/%02u/%02u SAPI=%s\n",
-		g_time.t1, g_time.t2, g_time.t3,
+	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind SAPI=%s\n",
 		get_value_string(lc15bts_l1sapi_names, rts_ind->sapi));
 
 	/* in all other cases, we need to allocate a new PH-DATA.ind
@@ -877,7 +875,7 @@ tx:
 
 	/* transmit */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], resp_msg) != 0) {
-		LOGP(DL1C, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		LOGPGT(DL1C, LOGL_ERROR, &g_time, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(resp_msg);
 	}
 
@@ -933,24 +931,23 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 
 	chan_nr = chan_nr_by_sapi(&trx->ts[data_ind->u8Tn], data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
+	fn = data_ind->u32Fn;
+	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
+	gsm_fn2gsmtime(&g_time, fn);
+
 	if (!chan_nr) {
-		LOGP(DL1C, LOGL_ERROR, "PH-DATA-INDICATION for unknown sapi %s (%d)\n",
+		LOGPGT(DL1C, LOGL_ERROR, &g_time, "PH-DATA-INDICATION for unknown sapi %s (%d)\n",
 		     get_value_string(lc15bts_l1sapi_names, data_ind->sapi), data_ind->sapi);
 		msgb_free(l1p_msg);
 		return ENOTSUP;
 	}
-	fn = data_ind->u32Fn;
-	link_id =  (data_ind->sapi == GsmL1_Sapi_Sacch) ? LID_SACCH : LID_DEDIC;
 
 	process_meas_res(trx, chan_nr, &data_ind->measParam, fn);
 
-	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGP(DL1P, "Rx PH-DATA.ind %s %s (hL2 %08x): %s\n",
-		get_value_string(lc15bts_l1sapi_names, data_ind->sapi),
-		osmo_dump_gsmtime(&g_time), (uint32_t)data_ind->hLayer2,
-		osmo_hexdump(data_ind->msgUnitParam.u8Buffer,
-			     data_ind->msgUnitParam.u8Size));
+	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind %s (hL2 %08x): %s\n",
+		get_value_string(lc15bts_l1sapi_names, data_ind->sapi), (uint32_t)data_ind->hLayer2,
+		osmo_hexdump(data_ind->msgUnitParam.u8Buffer, data_ind->msgUnitParam.u8Size));
 	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
 
 	/* check for TCH */
@@ -1028,12 +1025,10 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 
 	if ((ra_ind->msgUnitParam.u8Size != 1) &&
 		(ra_ind->msgUnitParam.u8Size != 2)) {
-		LOGP(DL1C, LOGL_ERROR, "PH-RACH-INDICATION has %d bits\n",
-			ra_ind->sapi);
+		LOGPFN(DL1P, LOGL_ERROR, ra_ind->u32Fn, "PH-RACH-INDICATION has %d bits\n", ra_ind->sapi);
 		msgb_free(l1p_msg);
 		return 0;
 	}
-
 
 	if (ra_ind->msgUnitParam.u8Size == 2) {
 		is_11bit = 1;
