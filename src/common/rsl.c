@@ -2376,8 +2376,7 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->meas.bts_tx_pwr);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
 		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
-		/* Note: L1 info valid flag is cleared by function
-		 * lchan_meas_update_ordered_TA() in measurement.c */
+		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
 	}
 	msgb_tl16v_put(msg, RSL_IE_L3_INFO, l3_len, l3);
 	if (ms_to_valid(lchan)) {
