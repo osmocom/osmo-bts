@@ -1725,8 +1725,11 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
 			func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa);
 		} else if (chan != TRXC_RACH && !l1cs->ho_rach_detect) {
 			sbit_t spare[GSM_BURST_LEN];
-
 			memset(spare, 0, GSM_BURST_LEN);
+			/* We missed a couple of frame numbers (system overload?) and are now
+			 * substituting some zero-filled bursts for those bursts we missed */
+			LOGPFN(DL1P, LOGL_ERROR, fn, "Substituting all-zero burst (current_fn=%u, "
+				"elapsed=%u\n", current_fn, elapsed);
 			func(l1t, tn, fn, chan, bid, spare, GSM_BURST_LEN, -128, 0);
 		}
 
