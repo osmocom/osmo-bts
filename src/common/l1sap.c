@@ -529,7 +529,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	/* we assume that symbol period is 1 bit: */
 	set_ms_to_data(lchan, info_meas_ind->ta_offs_qbits / 4, true);
 
-	lchan_new_ul_meas(lchan, &ulm);
+	lchan_new_ul_meas(lchan, &ulm, info_meas_ind->fn);
 
 	/* Check measurement period end and prepare the UL measurment
 	 * report at Meas period End*/

@@ -181,20 +181,20 @@ static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 }
 
 /* receive a L1 uplink measurement from L1 */
-int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm)
+int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
 {
-	DEBUGP(DMEAS, "%s adding measurement, num_ul_meas=%d\n",
+	DEBUGPFN(DMEAS, fn, "%s adding measurement, num_ul_meas=%d\n",
 		gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DMEAS, LOGL_NOTICE,
+		LOGPFN(DMEAS, LOGL_NOTICE, fn,
 		     "%s measurement during state: %s, num_ul_meas=%d\n",
 		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state),
 		     lchan->meas.num_ul_meas);
 	}
 
 	if (lchan->meas.num_ul_meas >= ARRAY_SIZE(lchan->meas.uplink)) {
-		LOGP(DMEAS, LOGL_NOTICE,
+		LOGPFN(DMEAS, LOGL_NOTICE, fn,
 		     "%s no space for uplink measurement, num_ul_meas=%d\n",
 		     gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
 		return -ENOSPC;
