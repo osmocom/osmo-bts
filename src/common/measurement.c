@@ -64,25 +64,24 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
  * SDCCH/4		37 to 36
  */
 
-/* Added interleave offset to Meas period end Fn which
- * would reduce the Meas Res msg load at Abis */
-
+/* FN of the first burst whose block completes before reaching fn%102=11 */
 static const uint8_t sdcch8_meas_rep_fn102[] = {
-	[0] = 11 + 7,
-	[1] = 11 + 11,
-	[2] = 11 + 15,
-	[3] = 11 + 19,
-	[4] = 11 + 23,
-	[5] = 11 + 27,
-	[6] = 11 + 31,
-	[7] = 11 + 35
+	[0] = 66,	/* 15(SDCCH), 47(SACCH), 66(SDCCH) */
+	[1] = 70,	/* 19(SDCCH), 51(SACCH), 70(SDCCH) */
+	[2] = 74,	/* 23(SDCCH), 55(SACCH), 74(SDCCH) */
+	[3] = 78,	/* 27(SDCCH), 59(SACCH), 78(SDCCH) */
+	[4] = 98,	/* 31(SDCCH), 98(SACCH), 82(SDCCH) */
+	[5] = 0,	/* 35(SDCCH),  0(SACCH), 86(SDCCH) */
+	[6] = 4,	/* 39(SDCCH),  4(SACCH), 90(SDCCH) */
+	[7] = 8,	/* 43(SDCCH),  8(SACCH), 94(SDCCH) */
 };
 
+/* FN of the first burst whose block completes before reaching fn%102=37 */
 static const uint8_t sdcch4_meas_rep_fn102[] = {
-	[0] = 36 + 4,
-	[1] = 36 + 8,
-	[2] = 36 + 14,
-	[3] = 36 + 18
+	[0] = 88,	/* 37(SDCCH), 57(SACCH), 88(SDCCH) */
+	[1] = 92,	/* 41(SDCCH), 61(SACCH), 92(SDCCH) */
+	[2] = 6,	/*  6(SACCH), 47(SDCCH), 98(SDCCH) */
+	[3] = 10	/* 10(SACCH),  0(SDCCH), 51(SDCCH) */
 };
 
 /* Note: The reporting of the measurement results is done via the SACCH channel.
