@@ -525,6 +525,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	ulm.ta_offs_qbits = info_meas_ind->ta_offs_qbits;
 	ulm.ber10k = info_meas_ind->ber10k;
 	ulm.inv_rssi = info_meas_ind->inv_rssi;
+	ulm.is_sub = info_meas_ind->is_sub;
 
 	/* we assume that symbol period is 1 bit: */
 	set_ms_to_data(lchan, info_meas_ind->ta_offs_qbits / 4, true);
