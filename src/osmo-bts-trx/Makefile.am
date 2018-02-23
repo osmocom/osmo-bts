@@ -7,5 +7,5 @@ EXTRA_DIST = trx_if.h l1_if.h loops.h
 bin_PROGRAMS = osmo-bts-trx
 
 osmo_bts_trx_SOURCES = main.c trx_if.c l1_if.c scheduler_trx.c trx_vty.c loops.c
-osmo_bts_trx_LDADD = $(top_builddir)/src/common/libbts.a $(top_builddir)/src/common/libl1sched.a $(LDADD)
+osmo_bts_trx_LDADD = $(top_builddir)/src/common/libl1sched.a $(top_builddir)/src/common/libbts.a $(LDADD)
 

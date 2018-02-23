@@ -188,7 +188,37 @@ int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
 /* \brief close all logical channels and reset timeslots */
 void trx_sched_reset(struct l1sched_trx *l1t);
 
+
+/* frame structures */
+struct trx_sched_frame {
+	/*! \brief downlink TRX channel type */
+	enum trx_chan_type		dl_chan;
+	/*! \brief downlink block ID */
+	uint8_t				dl_bid;
+	/*! \brief uplink TRX channel type */
+	enum trx_chan_type		ul_chan;
+	/*! \brief uplink block ID */
+	uint8_t				ul_bid;
+};
+
+/* multiframe structure */
+struct trx_sched_multiframe {
+	/*! \brief physical channel config (channel combination) */
+	enum gsm_phys_chan_config	pchan;
+	/*! \brief applies to which timeslots? */
+	uint8_t				slotmask;
+	/*! \brief repeats how many frames */
+	uint8_t				period;
+	/*! \brief pointer to scheduling structure */
+	const struct trx_sched_frame	*frames;
+	/*! \brief human-readable name */
+	const char 			*name;
+};
+
+int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn);
+
 /*! Determine if given frame number contains SACCH (true) or other (false) burst */
 bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink);
+extern const struct trx_sched_multiframe trx_sched_multiframes[];
 
 #endif /* TRX_SCHEDULER_H */
