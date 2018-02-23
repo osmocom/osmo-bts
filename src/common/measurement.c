@@ -380,8 +380,11 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		ber_sub_sum = ber_sub_sum / num_meas_sub;
 		irssi_sub_sum = irssi_sub_sum / num_meas_sub;
 	} else {
-		ber_sub_sum = ber_full_sum;
-		irssi_sub_sum = irssi_full_sum;
+		LOGP(DMEAS, LOGL_ERROR, "%s No measurements for SUB!!!\n", gsm_lchan_name(lchan));
+		/* The only situation in which this can occur is if the related uplink burst/block was
+		 * missing, so let's set BER to 100% and level to lowest possible. */
+		ber_sub_sum = 10000; /* 100% */
+		irssi_sub_sum = 120; /* -120 dBm */
 	}
 
 	LOGP(DMEAS, LOGL_INFO, "%s Computed TA(% 4dqb) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
