@@ -188,4 +188,7 @@ int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
 /* \brief close all logical channels and reset timeslots */
 void trx_sched_reset(struct l1sched_trx *l1t);
 
+/*! Determine if given frame number contains SACCH (true) or other (false) burst */
+bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink);
+
 #endif /* TRX_SCHEDULER_H */

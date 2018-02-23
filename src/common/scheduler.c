@@ -1340,6 +1340,46 @@ static int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn)
 	return -1;
 }
 
+/* Determine if given frame number contains SACCH (true) or other (false) burst */
+bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink)
+{
+	int i;
+	const struct trx_sched_multiframe *sched;
+	const struct trx_sched_frame *frame;
+	enum trx_chan_type ch_type;
+
+	i = find_sched_mframe_idx(ts->pchan, ts->nr);
+	if (i < 0)
+		return -EINVAL;
+	sched = &trx_sched_multiframes[i];
+	frame = &sched->frames[fn % sched->period];
+	if (uplink)
+		ch_type = frame->ul_chan;
+	else
+		ch_type = frame->dl_chan;
+
+	switch (ch_type) {
+	case TRXC_SACCH4_0:
+	case TRXC_SACCH4_1:
+	case TRXC_SACCH4_2:
+	case TRXC_SACCH4_3:
+	case TRXC_SACCH8_0:
+	case TRXC_SACCH8_1:
+	case TRXC_SACCH8_2:
+	case TRXC_SACCH8_3:
+	case TRXC_SACCH8_4:
+	case TRXC_SACCH8_5:
+	case TRXC_SACCH8_6:
+	case TRXC_SACCH8_7:
+	case TRXC_SACCHTF:
+	case TRXC_SACCHTH_0:
+	case TRXC_SACCHTH_1:
+		return true;
+	default:
+		return false;
+	}
+}
+
 /* set multiframe scheduler to given pchan */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 	enum gsm_phys_chan_config pchan)
