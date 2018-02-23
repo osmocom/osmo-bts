@@ -1327,6 +1327,19 @@ static const struct trx_sched_multiframe trx_sched_multiframes[] = {
  * scheduler functions
  */
 
+static int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(trx_sched_multiframes); i++) {
+		if (trx_sched_multiframes[i].pchan == pchan
+		 && (trx_sched_multiframes[i].slotmask & (1 << tn))) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 /* set multiframe scheduler to given pchan */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 	enum gsm_phys_chan_config pchan)
@@ -1334,24 +1347,18 @@ int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(trx_sched_multiframes); i++) {
-		if (trx_sched_multiframes[i].pchan == pchan
-		 && (trx_sched_multiframes[i].slotmask & (1 << tn))) {
-			l1ts->mf_index = i;
-			l1ts->mf_period = trx_sched_multiframes[i].period;
-			l1ts->mf_frames = trx_sched_multiframes[i].frames;
-			LOGP(DL1C, LOGL_NOTICE, "Configuring multiframe with "
-				"%s trx=%d ts=%d\n",
-				trx_sched_multiframes[i].name,
-				l1t->trx->nr, tn);
-			return 0;
-		}
+	i = find_sched_mframe_idx(pchan, tn);
+	if (i < 0) {
+		LOGP(DL1C, LOGL_NOTICE, "Failed to configure multiframe "
+			"trx=%d ts=%d\n", l1t->trx->nr, tn);
+		return -ENOTSUP;
 	}
-
-	LOGP(DL1C, LOGL_NOTICE, "Failed to configure multiframe "
-		"trx=%d ts=%d\n", l1t->trx->nr, tn);
-
-	return -ENOTSUP;
+	l1ts->mf_index = i;
+	l1ts->mf_period = trx_sched_multiframes[i].period;
+	l1ts->mf_frames = trx_sched_multiframes[i].frames;
+	LOGP(DL1C, LOGL_NOTICE, "Configuring multiframe with %s trx=%d ts=%d\n",
+		trx_sched_multiframes[i].name, l1t->trx->nr, tn);
+	return 0;
 }
 
 /* setting all logical channels given attributes to active/inactive */
