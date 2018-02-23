@@ -7,6 +7,97 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/measurement.h>
+#include <osmo-bts/scheduler.h>
+
+/* Tables as per TS 45.008 Section 8.3 */
+static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
+static const uint8_t ts45008_83_tch_hs0[] = { 0, 2, 4, 6, 52, 54, 56, 58 };
+static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 29, 66, 68, 70, 72 };
+
+/* find out if an array contains a given key as element */
+#define ARRAY_CONTAINS(arr, val) array_contains(arr, ARRAY_SIZE(arr), val)
+static bool array_contains(const uint8_t *arr, unsigned int len, uint8_t val) {
+	int i;
+	for (i = 0; i < len; i++) {
+		if (arr[i] == val)
+			return true;
+	}
+	return false;
+}
+
+/* Decide if a given frame number is part of the "-SUB" measurements (true) or not (false) */
+static bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_update)
+{
+	uint32_t fn104 = fn % 104;
+
+	/* See TS 45.008 Sections 8.3 and 8.4 for a detailed descriptions of the rules
+	 * implemented here. We only implement the logic for Voice, not CSD */
+
+	switch (lchan->type) {
+	case GSM_LCHAN_TCH_F:
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SIGN:
+		case GSM48_CMODE_SPEECH_V1:
+		case GSM48_CMODE_SPEECH_EFR:
+			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
+				return true;
+			if (ARRAY_CONTAINS(ts45008_83_tch_f, fn104))
+				return true;
+			break;
+		case GSM48_CMODE_SPEECH_AMR:
+			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
+				return true;
+			if (is_amr_sid_update)
+				return true;
+			break;
+		default:
+			LOGPFN(DMEAS, LOGL_ERROR, fn, "%s: Unsupported lchan->tch_mode %u\n",
+				gsm_lchan_name(lchan), lchan->tch_mode);
+			break;
+		}
+		break;
+	case GSM_LCHAN_TCH_H:
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SPEECH_V1:
+			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
+				return true;
+			switch (lchan->nr) {
+			case 0:
+				if (ARRAY_CONTAINS(ts45008_83_tch_hs0, fn104))
+					return true;
+				break;
+			case 1:
+				if (ARRAY_CONTAINS(ts45008_83_tch_hs1, fn104))
+					return true;
+				break;
+			default:
+				OSMO_ASSERT(0);
+			}
+			break;
+		case GSM48_CMODE_SPEECH_AMR:
+			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
+				return true;
+			if (is_amr_sid_update)
+				return true;
+			break;
+		case GSM48_CMODE_SIGN:
+			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
+			 * SUB */
+			return true;
+		default:
+			LOGPFN(DMEAS, LOGL_ERROR, fn, "%s: Unsupported lchan->tch_mode %u\n",
+				gsm_lchan_name(lchan), lchan->tch_mode);
+			break;
+		}
+		break;
+	case GSM_LCHAN_SDCCH:
+		/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are SUB */
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
 
 /* Measurement reporting period and mapping of SACCH message block for TCHF
  * and TCHH chan As per in 3GPP TS 45.008, section 8.4.1.
@@ -182,9 +273,6 @@ static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 /* receive a L1 uplink measurement from L1 */
 int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
 {
-	DEBUGPFN(DMEAS, fn, "%s adding measurement, num_ul_meas=%d\n",
-		gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
-
 	if (lchan->state != LCHAN_S_ACTIVE) {
 		LOGPFN(DMEAS, LOGL_NOTICE, fn,
 		     "%s measurement during state: %s, num_ul_meas=%d\n",
@@ -198,6 +286,14 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 		     gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
 		return -ENOSPC;
 	}
+
+	/* We expect the lower layers to mark AMR SID_UPDATE frames already as such.
+	 * In this function, we only deal with the comon logic as per the TS 45.008 tables */
+	if (!ulm->is_sub)
+		ulm->is_sub = ts45008_83_is_sub(lchan, fn, false);
+
+	DEBUGPFN(DMEAS, fn, "%s adding measurement (is_sub=%u), num_ul_meas=%d\n",
+		gsm_lchan_name(lchan), ulm->is_sub, lchan->meas.num_ul_meas);
 
 	memcpy(&lchan->meas.uplink[lchan->meas.num_ul_meas++], ulm,
 		sizeof(*ulm));
