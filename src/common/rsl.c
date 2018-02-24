@@ -552,6 +552,8 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
 
+	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_AGCH_RCVD);
+
 	/* cut down msg to the 04.08 RR part */
 	msg->l3h = (uint8_t *) TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO);
 	msg->data = msg->l3h;
@@ -563,6 +565,7 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 		/* if there is no space in the queue: send DELETE IND */
 		rsl_tx_delete_ind(trx->bts, TLVP_VAL(&tp, RSL_IE_FULL_IMM_ASS_INFO),
 				  TLVP_LEN(&tp, RSL_IE_FULL_IMM_ASS_INFO));
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_AGCH_DELETED);
 		msgb_free(msg);
 	}
 

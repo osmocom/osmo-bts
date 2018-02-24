@@ -1190,6 +1190,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	uint8_t acc_delay;
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
+	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);
 
 	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
@@ -1222,6 +1223,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for RR access (toa=%d, ra=%d)\n",
 		rach_ind->acc_delay, rach_ind->ra);
+	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_SENT);
 	lapdm_phsap_up(&l1sap->oph, &lc->lapdm_dcch);
 
 	return 0;

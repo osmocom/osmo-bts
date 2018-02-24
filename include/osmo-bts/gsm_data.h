@@ -35,6 +35,7 @@ struct gsm_network {
 
 /* data structure for BTS related data specific to the BTS role */
 struct gsm_bts_role_bts {
+	struct gsm_bts *bts;
 	struct {
 		/* Interference Boundaries for OML */
 		int16_t boundary[6];
@@ -132,6 +133,7 @@ enum lchan_ciph_state {
 };
 
 #define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
+#define btsb_bts(x)	(x)->bts
 
 #include <osmo-bts/gsm_data_shared.h>
 

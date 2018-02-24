@@ -179,9 +179,12 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	struct llist_head *group_q = &ps->paging_queue[paging_group];
 	struct paging_record *pr;
 
+	rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_RCVD);
+
 	if (ps->num_paging >= ps->num_paging_max) {
 		LOGP(DPAG, LOGL_NOTICE, "Dropping paging, queue full (%u)\n",
 			ps->num_paging);
+		rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_DROP);
 		return -ENOSPC;
 	}
 
@@ -503,6 +506,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* skip those that we might have re-added above */
 			if (pr[i] == NULL)
 				continue;
+			rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_SENT);
 			/* check if we can expire the paging record,
 			 * or if we need to re-queue it */
 			if (pr[i]->u.paging.expiration_time <= now) {

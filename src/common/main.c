@@ -240,6 +240,7 @@ int bts_main(int argc, char **argv)
 	bts_log_init(NULL);
 	vty_init(&bts_vty_info);
 	ctrl_vty_init(tall_bts_ctx);
+	rate_ctr_init(tall_bts_ctx);
 
 	handle_options(argc, argv);
 

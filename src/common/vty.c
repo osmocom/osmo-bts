@@ -808,6 +808,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	}
 
 	bts_dump_vty_features(vty, bts);
+	vty_out_rate_ctr_group(vty, "  ", bts->ctrs);
 }
 
 

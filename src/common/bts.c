@@ -32,6 +32,8 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/stats.h>
+#include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/trau/osmo_ortp.h>
@@ -79,6 +81,26 @@ static int bts_signal_cbfn(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static const struct rate_ctr_desc bts_ctr_desc[] = {
+	[BTS_CTR_PAGING_RCVD] =		{"paging:rcvd", "Received paging requests (Abis)"},
+	[BTS_CTR_PAGING_DROP] =		{"paging:drop", "Dropped paging requests (Abis)"},
+	[BTS_CTR_PAGING_SENT] =		{"paging:sent", "Sent paging requests (Um)"},
+
+	[BTS_CTR_RACH_RCVD] =		{"rach:rcvd", "Received RACH requests (Um)"},
+	[BTS_CTR_RACH_SENT] =		{"rach:sent", "Sent RACH requests (Abis)"},
+
+	[BTS_CTR_AGCH_RCVD] =		{"agch:rcvd", "Received AGCH requests (Abis)"},
+	[BTS_CTR_AGCH_SENT] =		{"agch:sent", "Sent AGCH requests (Abis)"},
+	[BTS_CTR_AGCH_DELETED] =	{"agch:delete", "Sent AGCH DELETE IND (Abis)"},
+};
+static const struct rate_ctr_group_desc bts_ctrg_desc = {
+	"bts",
+	"base transceiver station",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(bts_ctr_desc),
+	bts_ctr_desc
+};
+
 /* Initialize the BTS (and TRX) data structures, called before config
  * file reading */
 int bts_init(struct gsm_bts *bts)
@@ -95,9 +117,12 @@ int bts_init(struct gsm_bts *bts)
 	bts->band = GSM_BAND_1800;
 
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
+	btsb->bts = bts;
 
 	INIT_LLIST_HEAD(&btsb->agch_queue);
 	btsb->agch_queue_length = 0;
+
+	bts->ctrs = rate_ctr_group_alloc(bts, &bts_ctrg_desc, bts->nr);
 
 	/* enable management with default levels,
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
@@ -635,6 +660,8 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	msg = bts_agch_dequeue(bts);
 	if (!msg)
 		return rc;
+
+	rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_SENT);
 
 	/* Copy AGCH message */
 	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));

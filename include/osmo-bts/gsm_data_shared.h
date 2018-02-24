@@ -816,6 +816,8 @@ struct gsm_bts {
 	int force_combined_si;
 	int bcch_change_mark;
 
+	struct rate_ctr_group *ctrs;
+
 	void *role;
 };
 

@@ -1,12 +1,24 @@
 #ifndef _BTS_H
 #define _BTS_H
 
+#include <osmocom/core/rate_ctr.h>
 #include <osmo-bts/gsm_data.h>
 
 enum bts_global_status {
 	BTS_STATUS_RF_ACTIVE,
 	BTS_STATUS_RF_MUTE,
 	BTS_STATUS_LAST,
+};
+
+enum {
+	BTS_CTR_PAGING_RCVD,
+	BTS_CTR_PAGING_DROP,
+	BTS_CTR_PAGING_SENT,
+	BTS_CTR_RACH_RCVD,
+	BTS_CTR_RACH_SENT,
+	BTS_CTR_AGCH_RCVD,
+	BTS_CTR_AGCH_SENT,
+	BTS_CTR_AGCH_DELETED,
 };
 
 extern void *tall_bts_ctx;
