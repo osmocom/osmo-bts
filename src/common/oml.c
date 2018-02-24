@@ -695,8 +695,10 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		btsb->load.ccch.load_ind_thresh = *TLVP_VAL(&tp, NM_ATT_CCCH_L_T);
 
 	/* 9.4.11 CCCH Load Indication Period */
-	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_I_P, 1))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_I_P, 1)) {
 		btsb->load.ccch.load_ind_period = *TLVP_VAL(&tp, NM_ATT_CCCH_L_I_P);
+		load_timer_start(bts);
+	}
 
 	/* 9.4.44 RACH Busy Threshold */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_RACH_B_THRESH, 1)) {

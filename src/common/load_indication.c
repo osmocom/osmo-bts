@@ -85,11 +85,12 @@ void load_timer_start(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->load.ccch.timer.data = bts;
-	btsb->load.ccch.timer.cb = load_timer_cb;
-	reset_load_counters(bts);
-	osmo_timer_schedule(&btsb->load.ccch.timer,
-			    btsb->load.ccch.load_ind_period, 0);
+	if (!btsb->load.ccch.timer.data) {
+		btsb->load.ccch.timer.data = bts;
+		btsb->load.ccch.timer.cb = load_timer_cb;
+		reset_load_counters(bts);
+	}
+	osmo_timer_schedule(&btsb->load.ccch.timer, btsb->load.ccch.load_ind_period, 0);
 }
 
 void load_timer_stop(struct gsm_bts *bts)
