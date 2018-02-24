@@ -290,7 +290,7 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 	pt1->cneed2 = chan2 & 3;
 	cur = lv_put(pt1->data, identity1_lv[0], identity1_lv+1);
 	if (identity2_lv)
-		cur = lv_put(cur, identity2_lv[0], identity2_lv+1);
+		cur = tlv_put(cur, GSM48_IE_MOBILE_ID, identity2_lv[0], identity2_lv+1);
 
 	pt1->l2_plen = L2_PLEN(cur - out_buf);
 
@@ -316,7 +316,7 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	cur = out_buf + sizeof(*pt2);
 
 	if (identity3_lv)
-		cur = lv_put(pt2->data, identity3_lv[0], identity3_lv+1);
+		cur = tlv_put(pt2->data, GSM48_IE_MOBILE_ID, identity3_lv[0], identity3_lv+1);
 
 	pt2->l2_plen = L2_PLEN(cur - out_buf);
 
