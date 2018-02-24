@@ -35,6 +35,7 @@
 
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm0502.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
@@ -177,9 +178,17 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 			const uint8_t *identity_lv, uint8_t chan_needed)
 {
 	struct llist_head *group_q = &ps->paging_queue[paging_group];
+	int blocks = gsm48_number_of_paging_subchannels(&ps->chan_desc);
 	struct paging_record *pr;
 
 	rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_RCVD);
+
+	if (paging_group >= blocks) {
+		LOGP(DPAG, LOGL_ERROR, "BSC Send PAGING for group %u, but number of paging "
+			"sub-channels is only %u\n", paging_group, blocks);
+		rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_DROP);
+		return -EINVAL;
+	}
 
 	if (ps->num_paging >= ps->num_paging_max) {
 		LOGP(DPAG, LOGL_NOTICE, "Dropping paging, queue full (%u)\n",
