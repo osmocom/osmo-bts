@@ -2276,6 +2276,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*rh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Radio Link Layer message too short\n");
+		rsl_tx_error_report(trx, RSL_ERR_PROTO);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2469,6 +2470,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*cch)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Common Channel Management message too short\n");
+		rsl_tx_error_report(trx, RSL_ERR_PROTO);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2598,6 +2600,7 @@ static int rsl_rx_trx(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*th)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL TRX message too short\n");
+		rsl_tx_error_report(trx, RSL_ERR_PROTO);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2626,6 +2629,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*dch)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL ip.access message too short\n");
+		rsl_tx_error_report(trx, RSL_ERR_PROTO);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2683,6 +2687,7 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*rslh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL message too short\n");
+		rsl_tx_error_report(trx, RSL_ERR_PROTO);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2708,6 +2713,7 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unknown RSL msg_discr 0x%02x\n",
 			rslh->msg_discr);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_DISCR);
 		msgb_free(msg);
 		ret = -EINVAL;
 	}
