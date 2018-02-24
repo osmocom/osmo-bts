@@ -56,7 +56,9 @@
 
 //#define FAKE_CIPH_MODE_COMPL
 
-static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause);
+
+static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause, const uint8_t *chan_nr,
+				const uint8_t *link_id, const struct msgb *orig_msg);
 
 /* list of RSL SI types that can occur on the SACCH */
 static const unsigned int rsl_sacch_sitypes[] = {
@@ -225,16 +227,36 @@ static void rsl_ipa_push_hdr(struct msgb *msg, uint8_t msg_type, uint8_t chan_nr
  */
 
 /* 8.6.4 sending ERROR REPORT */
-static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause)
+static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause, const uint8_t *chan_nr,
+				const uint8_t *link_id, const struct msgb *orig_msg)
 {
+	unsigned int len = sizeof(struct abis_rsl_common_hdr);
 	struct msgb *nmsg;
 
 	LOGP(DRSL, LOGL_NOTICE, "Tx RSL Error Report: cause = 0x%02x\n", cause);
 
-	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
+	if (orig_msg)
+		len += 2 + 3+msgb_l2len(orig_msg); /* chan_nr + TLV(orig_msg) */
+	if (chan_nr)
+		len += 2;
+	if (link_id)
+		len += 2;
+
+	nmsg = rsl_msgb_alloc(len);
 	if (!nmsg)
 		return -ENOMEM;
 	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
+	if (orig_msg && msgb_l2len(orig_msg) >= sizeof(struct abis_rsl_common_hdr)) {
+		struct abis_rsl_common_hdr *ch = (struct abis_rsl_common_hdr *) msgb_l2(orig_msg);
+		msgb_tv_put(nmsg, RSL_IE_MSG_ID, ch->msg_type);
+	}
+	if (chan_nr)
+		msgb_tv_put(nmsg, RSL_IE_CHAN_NR, *chan_nr);
+	if (link_id)
+		msgb_tv_put(nmsg, RSL_IE_LINK_IDENT, *link_id);
+	if (orig_msg)
+		msgb_tlv_put(nmsg, RSL_IE_ERR_MSG, msgb_l2len(orig_msg), msgb_l2(orig_msg));
+
 	rsl_trx_push_hdr(nmsg, RSL_MT_ERROR_REPORT);
 	nmsg->trx = trx;
 
@@ -276,16 +298,16 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 
 	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
 	if (OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 
 	osmo_si = osmo_rsl2sitype(rsl_si);
 	if (osmo_si == SYSINFO_TYPE_NONE) {
 		LOGP(DRSL, LOGL_NOTICE, " Rx RSL SI 0x%02x not supported.\n", rsl_si);
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 	}
 	/* 9.3.39 Full BCCH Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_FULL_BCCH_INFO)) {
@@ -316,13 +338,13 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			if (bts->si2q_index > bts->si2q_count) {
 				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with index %u > count %u\n",
 				     bts->si2q_index, bts->si2q_count);
-				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 			}
 
 			if (bts->si2q_index > SI2Q_MAX_NUM || bts->si2q_count > SI2Q_MAX_NUM) {
 				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with impossible parameters: index %u, count %u"
 				     "should be <= %u\n", bts->si2q_index, bts->si2q_count, SI2Q_MAX_NUM);
-				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 			}
 
 			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
@@ -432,7 +454,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_PAGING_GROUP) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_MS_IDENTITY))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 
 	paging_group = *TLVP_VAL(&tp, RSL_IE_PAGING_GROUP);
 	identity_lv = TLVP_VAL(&tp, RSL_IE_MS_IDENTITY)-1;
@@ -464,7 +486,7 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_CB_CMD_TYPE) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 
 	cb_cmd_type = (struct rsl_ie_cb_cmd_type *)
 					TLVP_VAL(&tp, RSL_IE_CB_CMD_TYPE);
@@ -514,16 +536,16 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 
 	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
 	if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 
 	osmo_si = osmo_rsl2sitype(rsl_si);
 	if (osmo_si == SYSINFO_TYPE_NONE) {
 		LOGP(DRSL, LOGL_NOTICE, " Rx SACCH SI 0x%02x not supported.\n", rsl_si);
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
@@ -550,7 +572,7 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_AGCH_RCVD);
 
@@ -916,8 +938,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
 
-		if (encr_info2lchan(lchan, val, len) < 0)
-			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		if (encr_info2lchan(lchan, val, len) < 0) {
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT,
+						    &dch->chan_nr, NULL, msg);
+		}
 	} else
 		memset(&lchan->encr, 0, sizeof(lchan->encr));
 
@@ -958,13 +982,16 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			uint8_t si_len = *cur++;
 			uint8_t osmo_si;
 
-			if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+			if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes)) {
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT,
+							   &dch->chan_nr, NULL, msg);
+			}
 
 			osmo_si = osmo_rsl2sitype(rsl_si);
 			if (osmo_si == SYSINFO_TYPE_NONE) {
 				LOGP(DRSL, LOGL_NOTICE, " Rx SACCH SI 0x%02x not supported.\n", rsl_si);
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+							   NULL, msg);
 			}
 
 			lapdm_ui_prefix_lchan(lchan, cur, osmo_si, si_len);
@@ -972,7 +999,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			cur += si_len;
 			if (cur >= val + tot_len) {
 				LOGP(DRSL, LOGL_ERROR, "Error parsing SACCH INFO IE\n");
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+							   NULL, msg);
 			}
 		}
 	} else {
@@ -983,7 +1011,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
 		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+						   NULL, msg);
 		}
 		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
 		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
@@ -1040,8 +1069,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			rc = 0;
 		}
 		if (rc)
-			return rsl_tx_error_report(msg->trx,
-						   RSL_ERR_NORMAL_UNSPEC);
+			return rsl_tx_error_report(msg->trx, RSL_ERR_NORMAL_UNSPEC, &dch->chan_nr,
+						   NULL, msg);
 		return 0;
 	}
 
@@ -1193,21 +1222,25 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t link_id;
 
-	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0)
-		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_L3_INFO) ||
-	    !TLVP_PRESENT(&tp, RSL_IE_LINK_IDENT))
-		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+	    !TLVP_PRESENT(&tp, RSL_IE_LINK_IDENT)) {
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
+	}
 
 	/* 9.3.7 Encryption Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {
 		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
 
-		if (encr_info2lchan(lchan, val, len) < 0)
-			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		if (encr_info2lchan(lchan, val, len) < 0) {
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+					 	    NULL, msg);
+		}
 	}
 
 	/* 9.3.2 Link Identifier */
@@ -1332,8 +1365,10 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 		uint8_t len = TLVP_LEN(&tp, RSL_IE_ENCR_INFO);
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
 
-		if (encr_info2lchan(lchan, val, len) < 0)
-			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		if (encr_info2lchan(lchan, val, len) < 0) {
+			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+					 	    NULL, msg);
+		}
 	}
 
 	/* 9.3.45 Main channel reference */
@@ -1342,7 +1377,8 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
 		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+						   NULL, msg);
 		}
 		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
 			TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
@@ -1386,6 +1422,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 /* 8.4.20 SACCH INFO MODify */
 static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 {
+	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct tlv_parsed tp;
 	uint8_t rsl_si, osmo_si;
@@ -1394,22 +1431,22 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 
 	if (TLVP_PRESENT(&tp, RSL_IE_STARTNG_TIME)) {
 		LOGP(DRSL, LOGL_NOTICE, "Starting time not supported\n");
-		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL, &dch->chan_nr, NULL, msg);
 	}
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
-		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
 
 	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
 	if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
-		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
 
 	osmo_si = osmo_rsl2sitype(rsl_si);
 	if (osmo_si == SYSINFO_TYPE_NONE) {
 		LOGP(DRSL, LOGL_NOTICE, "%s Rx SACCH SI 0x%02x not supported.\n",
 			gsm_lchan_name(lchan), rsl_si);
-		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
@@ -2247,7 +2284,7 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 						     RSL_ERR_MAND_IE_ERROR, NULL);
 			break;
 		default:
-			rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+			rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 			break;
 		}
 		break;
@@ -2261,7 +2298,7 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 		/* fall-through */
 	default:
 		/* ERROR REPORT */
-		rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR);
+		rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
 	}
 
 	msgb_free(msg);
@@ -2279,7 +2316,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*rh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Radio Link Layer message too short\n");
-		rsl_tx_error_report(trx, RSL_ERR_PROTO);
+		rsl_tx_error_report(trx, RSL_ERR_PROTO, &rh->chan_nr, &rh->link_id, msg);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2473,7 +2510,7 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*cch)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Common Channel Management message too short\n");
-		rsl_tx_error_report(trx, RSL_ERR_PROTO);
+		rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2603,7 +2640,7 @@ static int rsl_rx_trx(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*th)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL TRX message too short\n");
-		rsl_tx_error_report(trx, RSL_ERR_PROTO);
+		rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2632,7 +2669,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*dch)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL ip.access message too short\n");
-		rsl_tx_error_report(trx, RSL_ERR_PROTO);
+		rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2690,7 +2727,7 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*rslh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL message too short\n");
-		rsl_tx_error_report(trx, RSL_ERR_PROTO);
+		rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -2716,7 +2753,7 @@ int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg)
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unknown RSL msg_discr 0x%02x\n",
 			rslh->msg_discr);
-		rsl_tx_error_report(trx, RSL_ERR_MSG_DISCR);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_DISCR, NULL, NULL, msg);
 		msgb_free(msg);
 		ret = -EINVAL;
 	}
