@@ -323,13 +323,12 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	return cur - out_buf;
 }
 
-static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv,
-				uint8_t cneed1, const uint8_t *tmsi2_lv,
-				uint8_t cneed2, const uint8_t *tmsi3_lv,
-				const uint8_t *tmsi4_lv)
+static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv, uint8_t cneed1,
+				const uint8_t *tmsi2_lv, uint8_t cneed2,
+				const uint8_t *tmsi3_lv, uint8_t cneed3,
+				const uint8_t *tmsi4_lv, uint8_t cneed4)
 {
 	struct gsm48_paging3 *pt3 = (struct gsm48_paging3 *) out_buf;
-	uint8_t *cur;
 
 	memset(out_buf, 0, sizeof(*pt3));
 
@@ -343,9 +342,12 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	tmsi_mi_to_uint(&pt3->tmsi3, tmsi3_lv);
 	tmsi_mi_to_uint(&pt3->tmsi4, tmsi4_lv);
 
-	cur = out_buf + sizeof(*pt3);
+	/* The structure definition in libosmocore is wrong. It includes as last
+	 * byte some invalid definition of chneed3/chneed4, so we must do this by hand
+	 * here and cannot rely on sizeof(*pt3) */
+	out_buf[20] = (0x23 & ~0xf8) | 0x80 | (cneed3 & 3) << 5 | (cneed4 & 3) << 3;
 
-	return cur - out_buf;
+	return 21;
 }
 
 static const uint8_t empty_id_lv[] = { 0x01, 0xF0 };
@@ -469,7 +471,9 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 						 pr[1]->u.paging.identity_lv,
 						 pr[1]->u.paging.chan_needed,
 						 pr[2]->u.paging.identity_lv,
-						 pr[3]->u.paging.identity_lv);
+						 pr[2]->u.paging.chan_needed,
+						 pr[3]->u.paging.identity_lv,
+						 pr[3]->u.paging.chan_needed);
 		} else if (num_pr >= 3 && num_imsi <= 1) {
 			/* 3 or 4, of which only up to 1 is IMSI */
 			DEBUGP(DPAG, "Tx PAGING TYPE 2 (2 TMSI,1 xMSI)\n");
