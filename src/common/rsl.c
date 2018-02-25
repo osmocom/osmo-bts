@@ -1904,11 +1904,13 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 		inc_conn_id = 1;
 
 	rc = rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
-	osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
-		"Closing RTP socket on DLCX ");
-	osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-	lchan->abis_ip.rtp_socket = NULL;
-	msgb_queue_flush(&lchan->dl_tch_queue);
+	if (lchan->abis_ip.rtp_socket) {
+		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
+					  "Closing RTP socket on DLCX ");
+		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+		msgb_queue_flush(&lchan->dl_tch_queue);
+	}
 	return rc;
 }
 
