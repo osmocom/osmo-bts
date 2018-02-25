@@ -1482,14 +1482,13 @@ static void rsl_add_rtp_stats(struct gsm_lchan *lchan, struct msgb *msg)
 
 	struct ipa_stats stats;
 
-
 	memset(&stats, 0, sizeof(stats));
 
-
-	osmo_rtp_socket_stats(lchan->abis_ip.rtp_socket,
-				&stats.packets_sent, &stats.octets_sent,
-				&stats.packets_recv, &stats.octets_recv,
-				&stats.packets_lost, &stats.arrival_jitter);
+	if (lchan->abis_ip.rtp_socket)
+		osmo_rtp_socket_stats(lchan->abis_ip.rtp_socket,
+					&stats.packets_sent, &stats.octets_sent,
+					&stats.packets_recv, &stats.octets_recv,
+					&stats.packets_lost, &stats.arrival_jitter);
 	/* convert to network byte order */
 	stats.packets_sent = htonl(stats.packets_sent);
 	stats.octets_sent = htonl(stats.octets_sent);
