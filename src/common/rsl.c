@@ -1585,7 +1585,7 @@ static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 		return -ENOMEM;
 
 	if (inc_conn_id) {
-		msgb_tv_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
+		msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
 		rsl_add_rtp_stats(lchan, msg);
 	}
 
