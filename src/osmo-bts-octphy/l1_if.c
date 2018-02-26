@@ -846,6 +846,21 @@ static uint32_t translate_tch_meas_rep_fn104_reverse(uint32_t fn)
 	return (fn - fn_mod) + new_fn_mod;
 }
 
+static unsigned int oct_meas2ber10k(const tOCTVC1_GSM_MEASUREMENT_INFO *m)
+{
+	if (m->usBERTotalBitCnt != 0) {
+		return (unsigned int)((m->usBERCnt * BER_10K) / m->usBERTotalBitCnt);
+	} else {
+		return 0;
+	}
+}
+
+static int oct_meas2rssi_dBm(const tOCTVC1_GSM_MEASUREMENT_INFO *m)
+{
+	/* rssi is in q8 format */
+	return (m->sRSSIDbm >> 8);
+}
+
 static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 			     uint32_t fn, uint32_t data_len,
 			     tOCTVC1_GSM_MEASUREMENT_INFO * m)
@@ -872,16 +887,10 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		l1sap.u.info.u.meas_ind.ta_offs_qbits = 0;
 	}
 
-	if (m->usBERTotalBitCnt != 0) {
-		l1sap.u.info.u.meas_ind.ber10k =
-		    (unsigned int)((m->usBERCnt * BER_10K) /
-				   m->usBERTotalBitCnt);
-	} else {
-		l1sap.u.info.u.meas_ind.ber10k = 0;
-	}
+	l1sap.u.info.u.meas_ind.ber10k = oct_meas2ber10k(m);
 
 	/* rssi is in q8 format */
-	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) ((m->sRSSIDbm >> 8) * -1);
+	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) oct_meas2rssi_dBm(m);
 
 	/* copy logical frame number to MEAS IND data structure */
 	l1sap.u.info.u.meas_ind.fn = translate_tch_meas_rep_fn104_reverse(fn);
@@ -1060,9 +1069,8 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	struct osmo_phsap_prim *l1sap;
 	uint32_t fn;
 	uint8_t *data;
-	uint16_t len, b_total, b_error;
+	uint16_t len;
 	int16_t snr;
-	int8_t rssi;
 	int rc;
 
 	uint8_t sapi = (uint8_t) data_ind->LchId.bySAPI;
@@ -1104,8 +1112,6 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 		return rc;
 	}
 
-	/* get rssi, rssi is in q8 format */
-	rssi = (int8_t) (data_ind->MeasurementInfo.sRSSIDbm >> 8);
 	/* get data pointer and length */
 	data = data_ind->Data.abyDataContent;
 	len = data_ind->Data.ulDataLength;
@@ -1135,13 +1141,11 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.fn = fn;
 #endif
 
-	l1sap->u.data.rssi = rssi;
-	b_total = data_ind->MeasurementInfo.usBERTotalBitCnt;
-	b_error =data_ind->MeasurementInfo.usBERCnt;
-	l1sap->u.data.ber10k = b_total ? BER_10K * b_error / b_total : 0;
+	l1sap->u.data.rssi = oct_meas2rssi_dBm(&data_ind->MeasurementInfo);
+	l1sap->u.data.ber10k = oct_meas2ber10k(&data_ind->MeasurementInfo);
 
-	/* FIXME::burst timing  in 1x but PCU is expecting 4X */
-	l1sap->u.data.ta_offs_qbits = (data_ind->MeasurementInfo.sBurstTiming * 4);
+	/* burst timing  in 1x but PCU is expecting 4X */
+	l1sap->u.data.ta_offs_qbits = data_ind->MeasurementInfo.sBurstTiming4x;
 	snr = data_ind->MeasurementInfo.sSNRDb;
 	/* FIXME: better converion formulae for SnR -> C / I?
 	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;
