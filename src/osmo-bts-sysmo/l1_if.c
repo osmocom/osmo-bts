@@ -992,23 +992,15 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	uint16_t ra = 0, is_11bit = 0, burst_type = 0, temp = 0;
 	int rc;
 
-	/* increment number of busy RACH slots, if required */
-	if (trx == bts->c0 &&
-	    ra_ind->measParam.fRssi >= btsb->load.rach.busy_thresh)
-		btsb->load.rach.busy++;
-
+	/* FIXME: this should be deprecated/obsoleted as it bypasses rach.busy counting */
 	if (ra_ind->measParam.fLinkQuality < btsb->min_qual_rach) {
 		msgb_free(l1p_msg);
 		return 0;
 	}
 
+	/* the old legacy full-bits acc_delay cannot express negative values */
 	if (ra_ind->measParam.i16BurstTiming > 0)
 		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-
-	/* increment number of RACH slots with valid non-handover RACH burst */
-	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
-	if (trx == bts->c0 && !(lchan && lchan->ho.active == HANDOVER_ENABLED))
-		btsb->load.rach.access++;
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 	burst_type = ra_ind->burstType;
@@ -1043,6 +1035,9 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	l1sap->u.rach_ind.acc_delay = acc_delay;
 	l1sap->u.rach_ind.fn = fn;
 	l1sap->u.rach_ind.is_11bit = is_11bit;	/* no of bits in 11 bit RACH */
+	l1sap->u.rach_ind.rssi = (int8_t) ra_ind->measParam.fRssi;
+	l1sap->u.rach_ind.ber10k = (unsigned int) (ra_ind->measParam.fBer * 10000.0);
+	l1sap->u.rach_ind.acc_delay_256bits = ra_ind->measParam.i16BurstTiming * 64;
 
 	/*mapping of the burst type, the values are specific to osmo-bts-sysmo*/
 
@@ -1065,6 +1060,7 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		break;
 	}
 
+	lchan = l1if_hLayer_to_lchan(trx, ra_ind->hLayer2);
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)

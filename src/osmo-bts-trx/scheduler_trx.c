@@ -718,6 +718,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 {
 	uint8_t chan_nr;
 	struct osmo_phsap_prim l1sap;
+	int n_errors, n_bits_total;
 	uint8_t ra;
 	int rc;
 
@@ -726,7 +727,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received RACH toa=%.2f\n", toa);
 
 	/* decode */
-	rc = gsm0503_rach_decode(&ra, bits + 8 + 41, l1t->trx->bts->bsic);
+	rc = gsm0503_rach_decode_ber(&ra, bits + 8 + 41, l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 	if (rc) {
 		LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad AB frame\n");
 		return 0;
@@ -749,6 +750,9 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* 11bit RACH is not supported for osmo-trx */
 	l1sap.u.rach_ind.is_11bit = 0;
 	l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+	l1sap.u.rach_ind.rssi = rssi;
+	l1sap.u.rach_ind.ber10k = compute_ber10k(n_bits_total, n_errors);
+	l1sap.u.rach_ind.acc_delay_256bits = 256*toa;
 
 	/* forward primitive */
 	l1sap_up(l1t->trx, &l1sap);

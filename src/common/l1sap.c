@@ -1190,7 +1190,23 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	uint8_t acc_delay;
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
+
+	/* check for handover access burst on dedicated channels */
+	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
+		return l1sap_handover_rach(trx, l1sap, rach_ind);
+	}
+
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);
+
+	/* increment number of busy RACH slots, if required */
+	if (rach_ind->rssi >= btsb->load.rach.busy_thresh)
+		btsb->load.rach.busy++;
+
+	/* FIXME: RACH filtering due to BER limit */
+
+	/* increment number of RACH slots with valid non-handover RACH burst */
+	btsb->load.rach.access++;
 
 	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
@@ -1204,12 +1220,6 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	/* According to 3GPP TS 48.058 § 9.3.17 Access Delay is expressed same way as TA (number of symbols) */
 	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr), acc_delay, false);
-
-	/* check for handover rach */
-	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
-		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
-		return l1sap_handover_rach(trx, l1sap, rach_ind);
-	}
 
 	/* check for packet access */
 	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||

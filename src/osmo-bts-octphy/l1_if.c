@@ -1167,30 +1167,17 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	struct gsm_bts_trx *trx = trx_by_l1h(fl1, ra_ind->TrxId.byTrxId);
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim *l1sap;
-	uint32_t fn;
 	uint8_t ra, acc_delay;
 	int rc;
 
-	/* increment number of busy RACH slots, if required */
-	if (trx == bts->c0 &&
-	    ra_ind->MeasurementInfo.sRSSIDbm >= btsb->load.rach.busy_thresh) {
-		btsb->load.rach.busy++;
-	}
-	/* FIXME: Check min_qual_rach */
-
-	lchan = get_lchan_by_lchid(trx, &ra_ind->LchId);
-	if (trx == bts->c0 && !(lchan && lchan->ho.active == HANDOVER_ENABLED))
-		btsb->load.rach.access++;
-
 	dump_meas_res(LOGL_DEBUG, &ra_ind->MeasurementInfo);
 
-	fn = ra_ind->ulFrameNumber;
 	ra = ra_ind->abyMsg[0];
 
 	if (ra_ind->ulMsgLength != 1) {
-		LOGPFN(DL1C, LOGL_ERROR, fn, "Rx PH-RACH.ind has lenghth %d > 1\n", ra_ind->ulMsgLength);
+		LOGPFN(DL1C, LOGL_ERROR, ra_ind->ulFrameNumber,
+			"Rx PH-RACH.ind has lenghth %d > 1\n", ra_ind->ulMsgLength);
 		msgb_free(l1p_msg);
 		return 0;
 	}
@@ -1209,16 +1196,19 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 			l1p_msg);
 	l1sap->u.rach_ind.ra = ra;
 	l1sap->u.rach_ind.acc_delay = acc_delay;
-	l1sap->u.rach_ind.fn = fn;
+	l1sap->u.rach_ind.fn = ra_ind->ulFrameNumber;
 	l1sap->u.rach_ind.is_11bit = 0;
+	l1sap->u.rach_ind.rssi = oct_meas2rssi_dBm(&ra_ind->MeasurementInfo);
+	l1sap->u.rach_ind.ber10k = oct_meas2ber10k(&ra_ind->MeasurementInfo);
+	l1sap->u.rach_ind.acc_delay_256bits = ra_ind->MeasurementInfo.sBurstTiming4x * 64;
 
-	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
-	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
-	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
+	if (ra_ind->LchId.bySubChannelNb == cOCTVC1_GSM_ID_SUB_CHANNEL_NB_ENUM_ALL &&
+	    ra_ind->LchId.bySAPI == cOCTVC1_GSM_SAPI_ENUM_RACH) {
 		l1sap->u.rach_ind.chan_nr = 0x88;
-	else
+	} else {
+		struct gsm_lchan *lchan = get_lchan_by_lchid(trx, &ra_ind->LchId);
 		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
-
+	}
 	l1sap_up(trx, l1sap);
 
 	/* return '1' to indicate l1sap_up has taken msgb ownership */
