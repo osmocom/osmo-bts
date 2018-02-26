@@ -307,7 +307,7 @@ free_msg:
 			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
 			     "Prim %u is out of range (100), or channel %s with "
 			     "type %s is already disabled. If this happens in "
-			     "conjunction with PCU, increase 'rts-advance' by 5.",
+			     "conjunction with PCU, increase 'rts-advance' by 5.\n",
 			     prim_fn, get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
 			     get_value_string(trx_chan_type_names, chan));
 			/* unlink and free message */
