@@ -1198,6 +1198,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if (!check_acc_delay(rach_ind, btsb, &acc_delay)) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "ignoring RACH request %u > max_ta(%u)\n",
 		     acc_delay, btsb->max_ta);
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
 
@@ -1205,12 +1206,15 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr), acc_delay, false);
 
 	/* check for handover rach */
-	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr))
+	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
 		return l1sap_handover_rach(trx, l1sap, rach_ind);
+	}
 
 	/* check for packet access */
 	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||
 		(trx == bts->c0 && rach_ind->is_11bit)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_PS);
 
 		LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for packet access (toa=%d, ra=%d)\n",
 			rach_ind->acc_delay, rach_ind->ra);
@@ -1223,7 +1227,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for RR access (toa=%d, ra=%d)\n",
 		rach_ind->acc_delay, rach_ind->ra);
-	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_SENT);
+	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_CS);
 	lapdm_phsap_up(&l1sap->oph, &lc->lapdm_dcch);
 
 	return 0;

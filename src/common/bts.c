@@ -87,7 +87,10 @@ static const struct rate_ctr_desc bts_ctr_desc[] = {
 	[BTS_CTR_PAGING_SENT] =		{"paging:sent", "Sent paging requests (Um)"},
 
 	[BTS_CTR_RACH_RCVD] =		{"rach:rcvd", "Received RACH requests (Um)"},
-	[BTS_CTR_RACH_SENT] =		{"rach:sent", "Sent RACH requests (Abis)"},
+	[BTS_CTR_RACH_DROP] =		{"rach:drop", "Dropped RACH requests (Um)"},
+	[BTS_CTR_RACH_HO] =		{"rach:handover", "Received RACH requests (Handover)"},
+	[BTS_CTR_RACH_CS] =		{"rach:cs", "Received RACH requests (CS/Abis)"},
+	[BTS_CTR_RACH_PS] =		{"rach:ps", "Received RACH requests (PS/PCU)"},
 
 	[BTS_CTR_AGCH_RCVD] =		{"agch:rcvd", "Received AGCH requests (Abis)"},
 	[BTS_CTR_AGCH_SENT] =		{"agch:sent", "Sent AGCH requests (Abis)"},
