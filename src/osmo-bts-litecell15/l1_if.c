@@ -908,7 +908,7 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap.u.info.type = PRIM_INFO_MEAS;
 	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
 	l1sap.u.info.u.meas_ind.ta_offs_qbits = m->i16BurstTiming;
-	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 100);
+	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 10000);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
 	l1sap.u.info.u.meas_ind.fn = fn;
 
