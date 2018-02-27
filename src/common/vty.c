@@ -295,6 +295,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (strcmp(btsb->pcu.sock_path, PCU_SOCK_DEFAULT))
 		vty_out(vty, " pcu-socket %s%s", btsb->pcu.sock_path, VTY_NEWLINE);
+	if (bts->supp_meas_toa256)
+		vty_out(vty, " supp-meas-info toa256%s", VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -621,6 +623,30 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	btsb->pcu.sock_path = talloc_strdup(btsb, argv[0]);
 	/* FIXME: re-open the interface? */
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_supp_meas_toa256, cfg_bts_supp_meas_toa256_cmd,
+	"supp-meas-info toa256",
+	"Configure the RSL Supplementary Measurement Info\n"
+	"Report the TOA in 1/256th symbol periods\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	bts->supp_meas_toa256 = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
+	"no supp-meas-info toa256",
+	NO_STR "Configure the RSL Supplementary Measurement Info\n"
+	"Report the TOA in 1/256th symbol periods\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
+
+	bts->supp_meas_toa256 = false;
 	return CMD_SUCCESS;
 }
 
@@ -1559,6 +1585,8 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
 	install_element(BTS_NODE, &cfg_bts_max_ber_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
+	install_element(BTS_NODE, &cfg_bts_supp_meas_toa256_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_supp_meas_toa256_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);

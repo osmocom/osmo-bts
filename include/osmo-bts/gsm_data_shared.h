@@ -818,6 +818,7 @@ struct gsm_bts {
 	int bcch_change_mark;
 
 	struct rate_ctr_group *ctrs;
+	bool supp_meas_toa256;
 
 	void *role;
 };

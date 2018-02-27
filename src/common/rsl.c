@@ -2400,6 +2400,7 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 	uint8_t meas_res[16];
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	int res_valid = lchan->meas.flags & LC_UL_M_F_RES_VALID;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	LOGP(DRSL, LOGL_DEBUG,
 	     "%s chan_num:%u Tx MEAS RES valid(%d), flags(%02x)\n",
@@ -2429,6 +2430,17 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 						meas_res);
 	lchan->tch.dtx.dl_active = false;
 	if (ie_len >= 3) {
+		if (bts->supp_meas_toa256) {
+			/* append signed 16bit value containing MS timing offset in 1/256th symbols
+			 * in the vendor-specific "Supplementary Measurement Information" part of
+			 * the uplink measurements IE.  This is the current offset *relative* to the
+			 * TA which the MS has already applied.  So if you want to know the total
+			 * propagation time between MS and BTS, you need to add the actual TA value
+			 * used (from L1_INFO below, in full symbols) plus the ms_toa256 value
+			 * in 1/256 symbol periods. */
+			meas_res[ie_len++] = lchan->meas.ms_toa256 >> 8;
+			meas_res[ie_len++] = lchan->meas.ms_toa256 & 0xff;
+		}
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
 	}
