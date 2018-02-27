@@ -1,8 +1,6 @@
 #ifndef _PCU_IF_H
 #define _PCU_IF_H
 
-#define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
-
 extern int pcu_direct;
 
 int pcu_tx_info_ind(void);

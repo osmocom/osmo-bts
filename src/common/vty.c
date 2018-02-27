@@ -49,7 +49,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
-#include <osmo-bts/pcu_if.h>
+#include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>

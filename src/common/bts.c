@@ -43,7 +43,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
-#include <osmo-bts/pcu_if.h>
+#include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>

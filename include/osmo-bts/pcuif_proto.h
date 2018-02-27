@@ -3,6 +3,8 @@
 
 #include <osmocom/gsm/l1sap.h>
 
+#define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
+
 #define PCU_IF_VERSION		0x07
 #define TXT_MAX_LEN	128
 
