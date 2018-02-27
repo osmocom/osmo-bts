@@ -876,7 +876,7 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	/* Update Timing offset for valid radio block */
 	if (data_len != 0) {
 		/* burst timing in 1x */
-		l1sap.u.info.u.meas_ind.ta_offs_qbits = m->sBurstTiming;
+		l1sap.u.info.u.meas_ind.ta_offs_256bits = m->sBurstTiming4x*64;
 	} else {
 		/* FIXME, In current implementation, OCTPHY would send DATA_IND
 		 * for all radio blocks (valid or invalid) But timing offset
@@ -884,7 +884,7 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		 * counter to accumulate Timing offset.. even we add zero for
 		 * invalid block.. timing offset average calucation would not
 		 * correct. */
-		l1sap.u.info.u.meas_ind.ta_offs_qbits = 0;
+		l1sap.u.info.u.meas_ind.ta_offs_256bits = 0;
 	}
 
 	l1sap.u.info.u.meas_ind.ber10k = oct_meas2ber10k(m);
@@ -1145,7 +1145,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	l1sap->u.data.ber10k = oct_meas2ber10k(&data_ind->MeasurementInfo);
 
 	/* burst timing  in 1x but PCU is expecting 4X */
-	l1sap->u.data.ta_offs_qbits = data_ind->MeasurementInfo.sBurstTiming4x;
+	l1sap->u.data.ta_offs_256bits = data_ind->MeasurementInfo.sBurstTiming4x*64;
 	snr = data_ind->MeasurementInfo.sSNRDb;
 	/* FIXME: better converion formulae for SnR -> C / I?
 	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;

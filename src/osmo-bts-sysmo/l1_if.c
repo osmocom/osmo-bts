@@ -904,7 +904,7 @@ static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		PRIM_OP_INDICATION, NULL);
 	l1sap.u.info.type = PRIM_INFO_MEAS;
 	l1sap.u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap.u.info.u.meas_ind.ta_offs_qbits = m->i16BurstTiming;
+	l1sap.u.info.u.meas_ind.ta_offs_256bits = m->i16BurstTiming * 64;
 	l1sap.u.info.u.meas_ind.ber10k = (unsigned int) (m->fBer * 10000);
 	l1sap.u.info.u.meas_ind.inv_rssi = (uint8_t) (m->fRssi * -1);
 	l1sap.u.info.u.meas_ind.fn = fn;
@@ -965,7 +965,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	l1sap->u.data.rssi = (int8_t) (data_ind->measParam.fRssi);
 	if (!pcu_direct) { /* FIXME: if pcu_direct=1, then this is not set, what to do in pcu_tx_data_ind() in this case ?*/
 		l1sap->u.data.ber10k = data_ind->measParam.fBer * 10000;
-		l1sap->u.data.ta_offs_qbits = data_ind->measParam.i16BurstTiming;
+		l1sap->u.data.ta_offs_256bits = data_ind->measParam.i16BurstTiming * 64;
 		l1sap->u.data.lqual_cb = data_ind->measParam.fLinkQuality * 10;
 	}
 	/* copy data from L1 primitive to L1SAP primitive */

@@ -145,7 +145,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.data.fn = fn;
 		l1sap.u.data.rssi = 0; /* Radio Signal Strength Indicator. Best -> 0 */
 		l1sap.u.data.ber10k = 0; /* Bit Error Rate in 0.01%. Best -> 0 */
-		l1sap.u.data.ta_offs_qbits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
+		l1sap.u.data.ta_offs_256bits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
 		l1sap.u.data.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
 		l1sap.u.data.pdch_presence_info = PRES_INFO_BOTH;
 		l1if_process_meas_res(pinst->trx, timeslot, fn, chan_nr, 0, 0, 0, 0);
@@ -303,7 +303,7 @@ static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, f
 		PRIM_OP_INDICATION, NULL);
 	l1sap->u.info.type = PRIM_INFO_MEAS;
 	l1sap->u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap->u.info.u.meas_ind.ta_offs_qbits = (int16_t)(ta*4);
+	l1sap->u.info.u.meas_ind.ta_offs_256bits = (int16_t)(ta*4);
 	l1sap->u.info.u.meas_ind.ber10k = (unsigned int) (ber * 10000);
 	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
 	l1sap->u.info.u.meas_ind.fn = fn;

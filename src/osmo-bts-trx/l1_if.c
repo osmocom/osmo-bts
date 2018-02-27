@@ -495,7 +495,7 @@ static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, i
 		PRIM_OP_INDICATION, NULL);
 	l1sap->u.info.type = PRIM_INFO_MEAS;
 	l1sap->u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap->u.info.u.meas_ind.ta_offs_qbits = toa256/64;
+	l1sap->u.info.u.meas_ind.ta_offs_256bits = toa256;
 	l1sap->u.info.u.meas_ind.ber10k = (unsigned int) (ber * 10000);
 	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
 	l1sap->u.info.u.meas_ind.fn = fn;

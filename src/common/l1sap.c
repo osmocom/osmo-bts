@@ -512,8 +512,8 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	}
 
 	DEBUGPFN(DL1P, info_meas_ind->fn,
-		"%s MPH_INFO meas ind, ta_offs_qbits=%d, ber10k=%d, inv_rssi=%u\n",
-		gsm_lchan_name(lchan), info_meas_ind->ta_offs_qbits,
+		"%s MPH_INFO meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u\n",
+		gsm_lchan_name(lchan), info_meas_ind->ta_offs_256bits,
 		info_meas_ind->ber10k, info_meas_ind->inv_rssi);
 
 	/* in the GPRS case we are not interested in measurement
@@ -522,13 +522,13 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 		return 0;
 
 	memset(&ulm, 0, sizeof(ulm));
-	ulm.ta_offs_256bits = info_meas_ind->ta_offs_qbits*(256/4);
+	ulm.ta_offs_256bits = info_meas_ind->ta_offs_256bits;
 	ulm.ber10k = info_meas_ind->ber10k;
 	ulm.inv_rssi = info_meas_ind->inv_rssi;
 	ulm.is_sub = info_meas_ind->is_sub;
 
 	/* we assume that symbol period is 1 bit: */
-	set_ms_to_data(lchan, info_meas_ind->ta_offs_qbits / 4, true);
+	set_ms_to_data(lchan, info_meas_ind->ta_offs_256bits / 256, true);
 
 	lchan_new_ul_meas(lchan, &ulm, info_meas_ind->fn);
 
@@ -1058,7 +1058,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PTCCH, fn,
 					0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
 					data, len, rssi, data_ind->ber10k,
-					data_ind->ta_offs_qbits,
+					data_ind->ta_offs_256bits/64,
 					data_ind->lqual_cb);
 		} else {
 			/* drop incomplete UL block */
@@ -1067,7 +1067,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			/* PDTCH / PACCH frame handling */
 			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, 0 /* ARFCN */,
 					L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
-					data_ind->ta_offs_qbits, data_ind->lqual_cb);
+					data_ind->ta_offs_256bits/64, data_ind->lqual_cb);
 		}
 		return 0;
 	}
