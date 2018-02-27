@@ -399,6 +399,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	mru->sub.rx_lev = dbm2rxlev((int)irssi_sub_sum * -1);
 	mru->full.rx_qual = ber10k_to_rxqual(ber_full_sum);
 	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
+	lchan->meas.ms_toa256 = ta256b_sum;
 
 	LOGP(DMEAS, LOGL_INFO, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
 	       "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",

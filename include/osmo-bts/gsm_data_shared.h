@@ -290,6 +290,7 @@ struct gsm_lchan {
 		/* last L1 header from the MS */
 		uint8_t l1_info[2];
 		struct gsm_meas_rep_unidir ul_res;
+		int16_t ms_toa256;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
