@@ -521,6 +521,12 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			rc = -EINVAL;
 			break;
 		}
+		if (data_req->ts_nr >= ARRAY_SIZE(trx->ts)) {
+			LOGP(DPCU, LOGL_ERROR, "Received PCU data request with "
+				"not existing TS %u\n", data_req->ts_nr);
+			rc = -EINVAL;
+			break;
+		}
 		ts = &trx->ts[data_req->ts_nr];
 		is_ptcch = (data_req->sapi == PCU_IF_SAPI_PTCCH);
 		rc = l1sap_pdch_req(ts, is_ptcch, data_req->fn, data_req->arfcn,
