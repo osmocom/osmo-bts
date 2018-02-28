@@ -528,6 +528,12 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			break;
 		}
 		ts = &trx->ts[data_req->ts_nr];
+		if (!ts_should_be_pdch(ts)) {
+			LOGP(DPCU, LOGL_ERROR, "%s: Received PCU DATA request for non-PDCH TS\n",
+				gsm_ts_name(ts));
+			rc = -EINVAL;
+			break;
+		}
 		is_ptcch = (data_req->sapi == PCU_IF_SAPI_PTCCH);
 		rc = l1sap_pdch_req(ts, is_ptcch, data_req->fn, data_req->arfcn,
 			data_req->block_nr, data_req->data, data_req->len);
