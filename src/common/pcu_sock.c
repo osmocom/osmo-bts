@@ -534,6 +534,12 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			rc = -EINVAL;
 			break;
 		}
+		if (ts->lchan[0].state != LCHAN_S_ACTIVE) {
+			LOGP(DPCU, LOGL_ERROR, "%s: Received PCU DATA request for inactive lchan\n",
+				gsm_ts_name(ts));
+			rc = -EINVAL;
+			break;
+		}
 		is_ptcch = (data_req->sapi == PCU_IF_SAPI_PTCCH);
 		rc = l1sap_pdch_req(ts, is_ptcch, data_req->fn, data_req->arfcn,
 			data_req->block_nr, data_req->data, data_req->len);
