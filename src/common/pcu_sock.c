@@ -749,6 +749,12 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 		goto close;
 	}
 
+	if (rc < sizeof(*pcu_prim)) {
+		LOGP(DPCU, LOGL_ERROR, "Received %d bytes on PCU Socket, but primitive size "
+			"is %lu, discarding\n", rc, sizeof(*pcu_prim));
+		return 0;
+	}
+
 	rc = pcu_rx(state->net, pcu_prim->msg_type, pcu_prim);
 
 	/* as we always synchronously process the message in pcu_rx() and
