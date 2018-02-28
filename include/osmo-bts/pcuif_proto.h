@@ -9,7 +9,7 @@
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
 #define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
-#define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */	
+#define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
 #define PCU_IF_MSG_INFO_IND	0x32	/* retrieve BTS info */
@@ -64,9 +64,9 @@ struct gsm_pcu_if_data {
 	uint8_t		ts_nr;
 	uint8_t		block_nr;
 	int8_t		rssi;
-	uint16_t ber10k;	/*!< \brief BER in units of 0.01% */
-	int16_t ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
-	int16_t lqual_cb;	/* !< \brief Link quality in centiBel */
+	uint16_t	ber10k;		/* !< \brief BER in units of 0.01% */
+	int16_t		ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
+	int16_t		lqual_cb;	/* !< \brief Link quality in centiBel */
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_rts_req {
@@ -108,7 +108,7 @@ struct gsm_pcu_if_info_ind {
 	uint16_t	nsei;
 	uint8_t		nse_timer[7];
 	uint8_t		cell_timer[11];
-	/* cell  */
+	/* cell */
 	uint16_t	cell_id;
 	uint16_t	repeat_time;
 	uint8_t		repeat_count;
