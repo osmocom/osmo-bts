@@ -5,7 +5,7 @@
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x07
+#define PCU_IF_VERSION		0x08
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -13,6 +13,7 @@
 #define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
+#define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (with direct tlli) */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
 #define PCU_IF_MSG_INFO_IND	0x32	/* retrieve BTS info */
 #define PCU_IF_MSG_ACT_REQ	0x40	/* activate/deactivate PDCH */
@@ -28,6 +29,7 @@
 #define PCU_IF_SAPI_PDTCH	0x05	/* packet data/control/ccch block */
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
 #define PCU_IF_SAPI_PTCCH	0x07	/* packet TA control channel */
+#define PCU_IF_SAPI_AGCH_DT	0x08	/* assignment on AGCH but with additional TLLI */
 
 /* flags */
 #define PCU_IF_FLAG_ACTIVE	(1 << 0)/* BTS is active */
@@ -60,6 +62,21 @@ struct gsm_pcu_if_data {
 	uint8_t		sapi;
 	uint8_t		len;
 	uint8_t		data[162];
+	uint32_t	fn;
+	uint16_t	arfcn;
+	uint8_t		trx_nr;
+	uint8_t		ts_nr;
+	uint8_t		block_nr;
+	int8_t		rssi;
+	uint16_t	ber10k;		/* !< \brief BER in units of 0.01% */
+	int16_t		ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
+	int16_t		lqual_cb;	/* !< \brief Link quality in centiBel */
+} __attribute__ ((packed));
+
+/* data confirmation with direct tlli (instead of raw mac block with tlli) */
+struct gsm_pcu_if_data_cnf_dt {
+	uint8_t		sapi;
+	uint32_t	tlli;
 	uint32_t	fn;
 	uint16_t	arfcn;
 	uint8_t		trx_nr;
@@ -161,6 +178,7 @@ struct gsm_pcu_if {
 	union {
 		struct gsm_pcu_if_data		data_req;
 		struct gsm_pcu_if_data		data_cnf;
+		struct gsm_pcu_if_data_cnf_dt	data_cnf_dt;
 		struct gsm_pcu_if_data		data_ind;
 		struct gsm_pcu_if_rts_req	rts_req;
 		struct gsm_pcu_if_rach_ind	rach_ind;
