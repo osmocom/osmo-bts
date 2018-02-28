@@ -660,7 +660,7 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		if (l1sap->u.info.type == PRIM_INFO_ACTIVATE)
 			l1if_rsl_chan_act(lchan);
 		else if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
-#warning "Mode Modify is currently not not supported for Octasic PHY"
+#pragma message ("Mode Modify is currently not supported for Octasic PHY (OS#3015)")
 			/* l1if_rsl_mode_modify(lchan); */
 		} else if (l1sap->u.info.u.act_req.sacch_only)
 			l1if_rsl_deact_sacch(lchan);

@@ -1722,7 +1722,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 {
-#warning "Implement bts_model_change_power based on TRX_MODIFY_RF_CID"
+#pragma message ("Implement bts_model_change_power based on TRX_MODIFY_RF_CID (OS#3016)")
 	return 0;
 }
 
