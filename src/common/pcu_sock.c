@@ -354,7 +354,6 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	data_ind->trx_nr = ts->trx->nr;
 	data_ind->ts_nr = ts->nr;
 	data_ind->block_nr = block_nr;
-	data_ind->rssi = rssi;
 	data_ind->ber10k = ber10k;
 	data_ind->ta_offs_qbits = bto;
 	data_ind->lqual_cb = lqual;
