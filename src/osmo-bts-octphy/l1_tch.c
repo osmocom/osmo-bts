@@ -47,11 +47,6 @@ struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
 	if (!msg)
 		return NULL;
 
-#ifdef USE_L1_RTP_MODE
-	/* new L1 can deliver bits like we need them */
-	cur = msgb_put(msg, GSM_FR_BYTES);
-	memcpy(cur, l1_payload, GSM_FR_BYTES);
-#else
 	/* step1: reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, payload_len);
 
@@ -61,7 +56,6 @@ struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
 	osmo_nibble_shift_right(cur, l1_payload, GSM_FR_BITS / 4);
 
 	cur[0] |= 0xD0;
-#endif /* USE_L1_RTP_MODE */
 
 	return msg;
 }
@@ -75,56 +69,12 @@ struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len)
 int rtppayload_to_l1_fr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 			unsigned int payload_len)
 {
-#ifdef USE_L1_RTP_MODE
-	/* new L1 can deliver bits like we need them */
-	memcpy(l1_payload, rtp_payload, GSM_FR_BYTES);
-#else
 	/* step2: we need to shift the RTP payload left by one nibble */
 	osmo_nibble_shift_left_unal(l1_payload, rtp_payload, GSM_FR_BITS / 4);
 
 	/* step1: reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, payload_len);
-#endif /* USE_L1_RTP_MODE */
 	return GSM_FR_BYTES;
-}
-
-static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload, uint8_t payload_len)
-{
-	struct msgb *msg;
-	uint8_t *cur;
-
-	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
-	if (!msg)
-		return NULL;
-
-#ifdef USE_L1_RTP_MODE
-	/* new L1 can deliver bits like we need them */
-	cur = msgb_put(msg, GSM_EFR_BYTES);
-	memcpy(cur, l1_payload, GSM_EFR_BYTES);
-#else
-	/* step1: reverse the bit-order of each payload byte */
-	osmo_revbytebits_buf(l1_payload, payload_len);
-
-	cur = msgb_put(msg, GSM_EFR_BYTES);
-
-	/* step 2: we need to shift the entire L1 payload by 4 bits right */
-	osmo_nibble_shift_right(cur, l1_payload, GSM_EFR_BITS/4);
-
-	cur[0] |= 0xC0;
-#endif /* USE_L1_RTP_MODE */
-	return msg;
-}
-
-static int rtppayload_to_l1_efr(uint8_t *l1_payload, const uint8_t *rtp_payload,
-				unsigned int payload_len)
-{
-#ifndef USE_L1_RTP_MODE
-#warning "We don't support EFR with L1 that doesn't support RTP mode!"
-#else
-	memcpy(l1_payload, rtp_payload, payload_len);
-
-#endif
-	return payload_len;
 }
 
 static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len)
@@ -145,10 +95,8 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 	cur = msgb_put(msg, GSM_HR_BYTES);
 	memcpy(cur, l1_payload, GSM_HR_BYTES);
 
-#ifndef USE_L1_RTP_MODE
 	/* reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(cur, GSM_HR_BYTES);
-#endif /* USE_L1_RTP_MODE */
 
 	return msg;
 }
@@ -171,10 +119,8 @@ static int rtppayload_to_l1_hr(uint8_t *l1_payload, const uint8_t *rtp_payload,
 
 	memcpy(l1_payload, rtp_payload, GSM_HR_BYTES);
 
-#ifndef USE_L1_RTP_MODE
 	/* reverse the bit-order of each payload byte */
 	osmo_revbytebits_buf(l1_payload, GSM_HR_BYTES);
-#endif /* USE_L1_RTP_MODE */
 
 	return GSM_HR_BYTES;
 }
@@ -315,18 +261,8 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint32_t *payload_type,
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
 		/* Not supported currently */
-#if 0
-		*payload_type = cOCTVC1_GSM_PAYLOAD_TYPE_ENUM_EFR;
-		rc = rtppayload_to_l1_efr(l1_payload, rtp_pl, rtp_pl_len);
-		break;
-#endif
 	case GSM48_CMODE_SPEECH_AMR:
 		/* Not supported currently */
-#if 0
-		*payload_type = cOCTVC1_GSM_PAYLOAD_TYPE_ENUM_AMR;
-		rc = rtppayload_to_l1_amr(l1_payload, rtp_pl, rtp_pl_len);
-		break;
-#endif
 		LOGP(DRTP, LOGL_ERROR, "OctPHY only supports FR!\n");
 	default:
 		/* we don't support CSD modes */
