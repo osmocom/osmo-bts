@@ -1343,7 +1343,6 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(lchan->ts->trx->bts);
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
