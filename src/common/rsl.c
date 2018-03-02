@@ -1689,6 +1689,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	int rc, inc_ip_port = 0, port;
 	char *name;
 	struct in_addr ia;
+	struct in_addr addr;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
 		name = "CRCX";
@@ -1705,31 +1706,28 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
 					 0, dch->c.msg_type);
 
+	LOGP(DRSL, LOGL_DEBUG, "%s IPAC_%s: ", gsm_lchan_name(lchan), name);
 	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_IP, 4)) {
 		connect_ip = tlvp_val32_unal(&tp, RSL_IE_IPAC_REMOTE_IP);
-		LOGP(DRSL, LOGL_NOTICE, "connect_ip %d \n", connect_ip );
+		addr.s_addr = connect_ip;
+		LOGPC(DRSL, LOGL_DEBUG, "connect_ip=%s ", inet_ntoa(addr));
 	}
-	else
-		LOGP(DRSL, LOGL_NOTICE, "CRCX does not specify a remote IP\n");
 
 	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_PORT, 2)) {
 		connect_port = tlvp_val16_unal(&tp, RSL_IE_IPAC_REMOTE_PORT);
-		LOGP(DRSL, LOGL_NOTICE, "connect_port %d \n", connect_port );
+		LOGPC(DRSL, LOGL_DEBUG, "connect_port=%u ",
+		      ntohs(connect_port));
 	}
-	else
-		LOGP(DRSL, LOGL_NOTICE, "CRCX does not specify a remote port\n");
 
 	speech_mode = TLVP_VAL(&tp, RSL_IE_IPAC_SPEECH_MODE);
 	if (speech_mode)
-		LOGP(DRSL, LOGL_NOTICE, "speech mode: %d\n", *speech_mode);
-	else
-		LOGP(DRSL, LOGL_NOTICE, "speech mode: none\n");
+		LOGPC(DRSL, LOGL_DEBUG, "speech_mode=%u ", *speech_mode);
 
 	payload_type = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD);
 	if (payload_type)
-		LOGP(DRSL, LOGL_NOTICE, "payload type: %d\n",*payload_type);
-	else
-		LOGP(DRSL, LOGL_NOTICE, "payload type: none\n");
+		LOGPC(DRSL, LOGL_DEBUG, "payload_type=%u ", *payload_type);
+
+	LOGPC(DRSL, LOGL_DEBUG, "\n");
 
 	payload_type2 = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD2);
 
