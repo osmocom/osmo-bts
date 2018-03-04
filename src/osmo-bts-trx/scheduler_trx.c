@@ -50,11 +50,6 @@
 
 extern void *tall_bts_ctx;
 
-/* Enable this to multiply TOA of RACH by 10.
- * This is useful to check tenth of timing advances with RSSI test tool.
- * Note that regular phones will not work when using this test! */
-//#define TA_TEST
-
 /* Maximum size of a EGPRS message in bytes */
 #define EGPRS_0503_MAX_BYTES		155
 
@@ -740,10 +735,6 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		NULL);
 	l1sap.u.rach_ind.chan_nr = chan_nr;
 	l1sap.u.rach_ind.ra = ra;
-#ifdef TA_TEST
-#warning TIMING ADVANCE TEST-HACK IS ENABLED!!!
-	toa256 *= 10;
-#endif
 	l1sap.u.rach_ind.acc_delay = (toa256 >= 0) ? toa256/256 : 0;
 	l1sap.u.rach_ind.fn = fn;
 
