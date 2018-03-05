@@ -797,20 +797,6 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-/* special case where handover RACH is detected */
-static int l1sap_handover_rach(struct gsm_bts_trx *trx,
-	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
-{
-	struct gsm_lchan *lchan;
-
-	lchan = get_lchan_by_chan_nr(trx, rach_ind->chan_nr);
-
-	handover_rach(lchan, rach_ind->ra, rach_ind->acc_delay);
-
-	/* must return 0, so in case of msg at l1sap, it will be freed */
-	return 0;
-}
-
 static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_len)
 {
 	/*
@@ -1193,6 +1179,23 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
 	}
 
 	return true;
+}
+
+/* Special case where handover RACH is detected */
+static int l1sap_handover_rach(struct gsm_bts_trx *trx,
+	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
+{
+	/* Filter out noise / interference / ghosts */
+	if (!rach_pass_filter(rach_ind, trx->bts->role)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
+		return 0;
+	}
+
+	handover_rach(get_lchan_by_chan_nr(trx, rach_ind->chan_nr),
+		rach_ind->ra, rach_ind->acc_delay);
+
+	/* must return 0, so in case of msg at l1sap, it will be freed */
+	return 0;
 }
 
 /* RACH received from bts model */
