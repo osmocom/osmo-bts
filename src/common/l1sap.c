@@ -1211,11 +1211,6 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		return 0;
 	}
 
-	/* increment number of RACH slots with valid non-handover RACH burst */
-	btsb->load.rach.access++;
-
-	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
-
 	/* check for under/overflow / sign */
 	if (!check_acc_delay(rach_ind, btsb, &acc_delay)) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "ignoring RACH request %u > max_ta(%u)\n",
@@ -1223,6 +1218,11 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
+
+	/* increment number of RACH slots with valid non-handover RACH burst */
+	btsb->load.rach.access++;
+
+	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
 	/* According to 3GPP TS 48.058 § 9.3.17 Access Delay is expressed same way as TA (number of symbols) */
 	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr), acc_delay, false);
