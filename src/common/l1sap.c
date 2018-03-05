@@ -797,13 +797,6 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-static int check_acc_delay(struct ph_rach_ind_param *rach_ind,
-	struct gsm_bts_role_bts *btsb, uint8_t *acc_delay)
-{
-	*acc_delay = rach_ind->acc_delay;
-	return *acc_delay <= btsb->max_ta;
-}
-
 /* special case where handover RACH is detected */
 static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
@@ -1180,6 +1173,28 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	return 0;
 }
 
+static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
+	struct gsm_bts_role_bts *btsb)
+{
+	/* Check for RACH exceeding BER threshold (ghost RACH) */
+	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+			"BER10k(%u) > BER10k_MAX(%u)\n",
+			rach_ind->ber10k, btsb->max_ber10k_rach);
+		return false;
+	}
+
+	/* Make sure that ToA (Timing of Arrival) is acceptable */
+	if (rach_ind->acc_delay > btsb->max_ta) {
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+			"ToA(%u) exceeds the maximal allowed TA(%u) value\n",
+			rach_ind->acc_delay, btsb->max_ta);
+		return false;
+	}
+
+	return true;
+}
+
 /* RACH received from bts model */
 static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
@@ -1187,7 +1202,6 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct lapdm_channel *lc;
-	uint8_t acc_delay;
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
 
@@ -1203,18 +1217,8 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if (rach_ind->rssi >= btsb->load.rach.busy_thresh)
 		btsb->load.rach.busy++;
 
-	/* check for RACH exceeding BER threshold (ghost RACH) */
-	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
-		DEBUGPFN(DL1C, rach_ind->fn, "ignoring RACH request: %u > %u (max BER)\n",
-			rach_ind->ber10k, btsb->max_ber10k_rach);
-		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
-		return 0;
-	}
-
-	/* check for under/overflow / sign */
-	if (!check_acc_delay(rach_ind, btsb, &acc_delay)) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "ignoring RACH request %u > max_ta(%u)\n",
-		     acc_delay, btsb->max_ta);
+	/* Filter out noise / interference / ghosts */
+	if (!rach_pass_filter(rach_ind, btsb)) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
@@ -1225,7 +1229,8 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
 	/* According to 3GPP TS 48.058 § 9.3.17 Access Delay is expressed same way as TA (number of symbols) */
-	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr), acc_delay, false);
+	set_ms_to_data(get_lchan_by_chan_nr(trx, rach_ind->chan_nr),
+		rach_ind->acc_delay, false);
 
 	/* check for packet access */
 	if ((trx == bts->c0 && L1SAP_IS_PACKET_RACH(rach_ind->ra)) ||
