@@ -1159,9 +1159,13 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	return 0;
 }
 
+#define RACH_MIN_TOA256 -2 * 256
+
 static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
 	struct gsm_bts_role_bts *btsb)
 {
+	int16_t toa256 = rach_ind->acc_delay_256bits;
+
 	/* Check for RACH exceeding BER threshold (ghost RACH) */
 	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
@@ -1170,11 +1174,15 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
 		return false;
 	}
 
-	/* Make sure that ToA (Timing of Arrival) is acceptable */
-	if (rach_ind->acc_delay > btsb->max_ta) {
+	/**
+	 * Make sure that ToA (Timing of Arrival) is acceptable.
+	 * We allow early arrival up to 2 symbols, and delay
+	 * according to maximal allowed Timing Advance value.
+	 */
+	if (toa256 < RACH_MIN_TOA256 || toa256 > btsb->max_ta * 256) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
-			"ToA(%u) exceeds the maximal allowed TA(%u) value\n",
-			rach_ind->acc_delay, btsb->max_ta);
+			"ToA(%d) exceeds the allowed range (%d..%d)\n",
+			toa256, RACH_MIN_TOA256, btsb->max_ta * 256);
 		return false;
 	}
 
