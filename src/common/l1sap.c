@@ -1207,6 +1207,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
 		DEBUGPFN(DL1C, rach_ind->fn, "ignoring RACH request: %u > %u (max BER)\n",
 			rach_ind->ber10k, btsb->max_ber10k_rach);
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
 
