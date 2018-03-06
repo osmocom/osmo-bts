@@ -632,7 +632,6 @@ DEFUN(cfg_bts_supp_meas_toa256, cfg_bts_supp_meas_toa256_cmd,
 	"Report the TOA in 1/256th symbol periods\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	bts->supp_meas_toa256 = true;
 	return CMD_SUCCESS;
@@ -644,7 +643,6 @@ DEFUN(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
 	"Report the TOA in 1/256th symbol periods\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	bts->supp_meas_toa256 = false;
 	return CMD_SUCCESS;
