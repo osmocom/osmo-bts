@@ -26,6 +26,8 @@ include::chapters/bts-models.adoc[]
 
 include::chapters/architecture.adoc[]
 
+include::../common/chapters/trx_if.adoc[]
+
 include::../common/chapters/control_if.adoc[]
 
 include::../common/chapters/port_numbers.adoc[]
@@ -35,4 +37,3 @@ include::../common/chapters/bibliography.adoc[]
 include::../common/chapters/glossary.adoc[]
 
 include::../common/chapters/gfdl.adoc[]
-
