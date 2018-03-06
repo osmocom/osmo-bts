@@ -182,7 +182,7 @@ Got message: SET_REPLY 1 trx.0.clock-correction success
 == `osmo-bts-trx` for OsmoTRX
 
 OsmoTRX is a C-language implementation of the GSM radio modem,
-originally developed as the 'Transceiver' part of OpenBTS.  This radio
+originally developed as the 'Transceiver' part of OpenBTS. This radio
 modem offers an interface based on top of UDP streams.
 
 The OsmoBTS bts_model code for OsmoTRX is called
@@ -190,10 +190,10 @@ The OsmoBTS bts_model code for OsmoTRX is called
 OsmoTRX, so both parts can be used together to implement a complete GSM
 BTS based on general-purpose computing SDR.
 
-As OsmoTRX is general-purpose software running on top of Linux, it is
-thus not tied to any specific physical hardware.   At the time of this
-writing, OsmoTRX supports a variety of Ettus USRP SDRs via the UHD
-driver, as well as the Fairwaves UmTRX and derived products.
+As OsmoTRX is general-purpose software running on top of Linux, it is thus not
+tied to any specific physical hardware. At the time of this writing, OsmoTRX
+supports a variety of Lime Microsystems and Ettus USRP SDRs via the UHD driver,
+as well as the Fairwaves UmTRX and derived products.
 
 OsmoTRX is not a complete GSM PHY but 'just' the radio modem.  This
 means that all of the Layer 1 functionality such as scheduling,
