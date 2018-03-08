@@ -1168,12 +1168,10 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	struct gsm_bts *bts = trx->bts;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct osmo_phsap_prim *l1sap;
-	uint8_t ra, acc_delay;
 	int rc;
+	struct ph_rach_ind_param rach_ind_param;
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->MeasurementInfo);
-
-	ra = ra_ind->abyMsg[0];
 
 	if (ra_ind->ulMsgLength != 1) {
 		LOGPFN(DL1C, LOGL_ERROR, ra_ind->ulFrameNumber,
@@ -1182,33 +1180,43 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 		return 0;
 	}
 
+	/* We need to evaluate ra_ind before below msgb_trim(), since that invalidates *ra_ind. */
+	rach_ind_param = (struct ph_rach_ind_param) {
+		/* .chan_nr set below */
+		.ra = ra_ind->abyMsg[0],
+		/* .acc_delay set below */
+		.fn = ra_ind->ulFrameNumber,
+		.is_11bit = 0,
+		/* .burst_type remains unset */
+		.rssi = oct_meas2rssi_dBm(&ra_ind->MeasurementInfo),
+		.ber10k = oct_meas2ber10k(&ra_ind->MeasurementInfo),
+		.acc_delay_256bits = ra_ind->MeasurementInfo.sBurstTiming4x * 64,
+	};
+
+	if (ra_ind->LchId.bySubChannelNb == cOCTVC1_GSM_ID_SUB_CHANNEL_NB_ENUM_ALL &&
+	    ra_ind->LchId.bySAPI == cOCTVC1_GSM_SAPI_ENUM_RACH) {
+		rach_ind_param.chan_nr = 0x88;
+	} else {
+		struct gsm_lchan *lchan = get_lchan_by_lchid(trx, &ra_ind->LchId);
+		rach_ind_param.chan_nr = gsm_lchan2chan_nr(lchan);
+	}
+
 	/* check for under/overflow / sign */
 	if (ra_ind->MeasurementInfo.sBurstTiming < 0)
-		acc_delay = 0;
+		rach_ind_param.acc_delay = 0;
 	else
-		acc_delay = ra_ind->MeasurementInfo.sBurstTiming;
+		rach_ind_param.acc_delay = ra_ind->MeasurementInfo.sBurstTiming;
 
+	/* msgb_trim() invalidates ra_ind, make that abundantly clear: */
+	ra_ind = NULL;
 	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 	if (rc < 0)
 		MSGB_ABORT(l1p_msg, "No room for primitive\n");
 	l1sap = msgb_l1sap_prim(l1p_msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
 			l1p_msg);
-	l1sap->u.rach_ind.ra = ra;
-	l1sap->u.rach_ind.acc_delay = acc_delay;
-	l1sap->u.rach_ind.fn = ra_ind->ulFrameNumber;
-	l1sap->u.rach_ind.is_11bit = 0;
-	l1sap->u.rach_ind.rssi = oct_meas2rssi_dBm(&ra_ind->MeasurementInfo);
-	l1sap->u.rach_ind.ber10k = oct_meas2ber10k(&ra_ind->MeasurementInfo);
-	l1sap->u.rach_ind.acc_delay_256bits = ra_ind->MeasurementInfo.sBurstTiming4x * 64;
+	l1sap->u.rach_ind = rach_ind_param;
 
-	if (ra_ind->LchId.bySubChannelNb == cOCTVC1_GSM_ID_SUB_CHANNEL_NB_ENUM_ALL &&
-	    ra_ind->LchId.bySAPI == cOCTVC1_GSM_SAPI_ENUM_RACH) {
-		l1sap->u.rach_ind.chan_nr = 0x88;
-	} else {
-		struct gsm_lchan *lchan = get_lchan_by_lchid(trx, &ra_ind->LchId);
-		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
-	}
 	l1sap_up(trx, l1sap);
 
 	/* return '1' to indicate l1sap_up has taken msgb ownership */

@@ -997,10 +997,8 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim *l1sap;
-	uint32_t fn;
-	uint8_t acc_delay = 0;
-	uint16_t ra = 0, is_11bit = 0, burst_type = 0, temp = 0;
 	int rc;
+	struct ph_rach_ind_param rach_ind_param;
 
 	/* FIXME: this should be deprecated/obsoleted as it bypasses rach.busy counting */
 	if (ra_ind->measParam.fLinkQuality < btsb->min_qual_rach) {
@@ -1008,12 +1006,7 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		return 0;
 	}
 
-	/* the old legacy full-bits acc_delay cannot express negative values */
-	if (ra_ind->measParam.i16BurstTiming > 0)
-		acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
-
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
-	burst_type = ra_ind->burstType;
 
 	if ((ra_ind->msgUnitParam.u8Size != 1) &&
 		(ra_ind->msgUnitParam.u8Size != 2)) {
@@ -1022,60 +1015,74 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		return 0;
 	}
 
+	/* We need to evaluate ra_ind before below msgb_trim(), since that invalidates *ra_ind. */
+	rach_ind_param = (struct ph_rach_ind_param) {
+		/* .chan_nr set below */
+		/* .ra set below */
+		.acc_delay = 0,
+		.fn = ra_ind->u32Fn,
+		/* .is_11bit set below */
+		/* .burst_type set below */
+		.rssi = (int8_t) ra_ind->measParam.fRssi,
+		.ber10k = (unsigned int) (ra_ind->measParam.fBer * 10000.0),
+		.acc_delay_256bits = ra_ind->measParam.i16BurstTiming * 64,
+	};
+
+	lchan = l1if_hLayer_to_lchan(trx, (uint32_t)ra_ind->hLayer2);
+	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
+	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
+		rach_ind_param.chan_nr = 0x88;
+	else
+		rach_ind_param.chan_nr = gsm_lchan2chan_nr(lchan);
+
 	if (ra_ind->msgUnitParam.u8Size == 2) {
-		is_11bit = 1;
-		ra = ra_ind->msgUnitParam.u8Buffer[0];
+		uint16_t temp;
+		uint16_t ra = ra_ind->msgUnitParam.u8Buffer[0];
 		ra = ra << 3;
 		temp = (ra_ind->msgUnitParam.u8Buffer[1] & 0x7);
 		ra = ra | temp;
+		rach_ind_param.is_11bit = 1;
+		rach_ind_param.ra = ra;
 	} else {
-		is_11bit = 0;
-		ra = ra_ind->msgUnitParam.u8Buffer[0];
+		rach_ind_param.is_11bit = 0;
+		rach_ind_param.ra = ra_ind->msgUnitParam.u8Buffer[0];
 	}
 
-	fn = ra_ind->u32Fn;
+	/* the old legacy full-bits acc_delay cannot express negative values */
+	if (ra_ind->measParam.i16BurstTiming > 0)
+		rach_ind_param.acc_delay = ra_ind->measParam.i16BurstTiming >> 2;
+
+	/* mapping of the burst type, the values are specific to
+	 * osmo-bts-litecell15 */
+	switch (ra_ind->burstType) {
+	case GsmL1_BurstType_Access_0:
+		rach_ind_param.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_0;
+		break;
+	case GsmL1_BurstType_Access_1:
+		rach_ind_param.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_1;
+		break;
+	case GsmL1_BurstType_Access_2:
+		rach_ind_param.burst_type =
+			GSM_L1_BURST_TYPE_ACCESS_2;
+		break;
+	default:
+		rach_ind_param.burst_type =
+			GSM_L1_BURST_TYPE_NONE;
+		break;
+	}
+
+	/* msgb_trim() invalidates ra_ind, make that abundantly clear: */
+	ra_ind = NULL;
 	rc = msgb_trim(l1p_msg, sizeof(*l1sap));
 	if (rc < 0)
 		MSGB_ABORT(l1p_msg, "No room for primitive data\n");
 	l1sap = msgb_l1sap_prim(l1p_msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
 		l1p_msg);
-	l1sap->u.rach_ind.ra = ra;
-	l1sap->u.rach_ind.acc_delay = acc_delay;
-	l1sap->u.rach_ind.fn = fn;
-	l1sap->u.rach_ind.is_11bit = is_11bit; /* no of bits in 11 bit RACH */
-	l1sap->u.rach_ind.rssi = (int8_t) ra_ind->measParam.fRssi;
-	l1sap->u.rach_ind.ber10k = (unsigned int) (ra_ind->measParam.fBer * 10000.0);
-	l1sap->u.rach_ind.acc_delay_256bits = ra_ind->measParam.i16BurstTiming * 64;
-
-	/* mapping of the burst type, the values are specific to
-	 * osmo-bts-litecell15 */
-	switch (burst_type) {
-	case GsmL1_BurstType_Access_0:
-		l1sap->u.rach_ind.burst_type =
-			GSM_L1_BURST_TYPE_ACCESS_0;
-		break;
-	case GsmL1_BurstType_Access_1:
-		l1sap->u.rach_ind.burst_type =
-			GSM_L1_BURST_TYPE_ACCESS_1;
-		break;
-	case GsmL1_BurstType_Access_2:
-		l1sap->u.rach_ind.burst_type =
-			GSM_L1_BURST_TYPE_ACCESS_2;
-		break;
-	default:
-		l1sap->u.rach_ind.burst_type =
-			GSM_L1_BURST_TYPE_NONE;
-		break;
-	}
-
-	lchan = l1if_hLayer_to_lchan(trx, (uint32_t)ra_ind->hLayer2);
-	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
-	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
-	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
-		l1sap->u.rach_ind.chan_nr = 0x88;
-	else
-		l1sap->u.rach_ind.chan_nr = gsm_lchan2chan_nr(lchan);
+	l1sap->u.rach_ind = rach_ind_param;
 
 	return l1sap_up(trx, l1sap);
 }
