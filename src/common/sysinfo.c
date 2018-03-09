@@ -73,7 +73,9 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 		 * present in a cell. If the MS finds another message
 		 * when TC = 0, it can assume that System Information
 		 * Type 1 is not in use.  */
-		return GSM_BTS_SI(bts, SYSINFO_TYPE_1);
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_1))
+			return GSM_BTS_SI(bts, SYSINFO_TYPE_1);
+		return GSM_BTS_SI(bts, SYSINFO_TYPE_2);
 	case 1:
 		/* A SI 2 message will be sent at least every time TC = 1. */
 		return GSM_BTS_SI(bts, SYSINFO_TYPE_2);
