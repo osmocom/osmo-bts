@@ -1322,7 +1322,6 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 	return l1if_req_compl(hdl, msg, activate_rf_compl_cb, NULL);
 }
 
-#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
 static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 {
 	int i;
@@ -1350,6 +1349,7 @@ static void mute_handle_ts(struct gsm_bts_trx_ts *ts, int is_muted)
 	}
 }
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3,6,0)
 static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			    void *data)
 {
@@ -1388,8 +1388,11 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 /* mute/unmute RF time slots */
 int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 {
+	const uint8_t unmuted[8] = { 0,0,0,0,0,0,0,0 };
 	struct msgb *msg = sysp_msgb_alloc();
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
+	struct gsm_bts_trx *trx = hdl->phy_inst->trx;
+	int i;
 
 	LOGP(DL1C, LOGL_INFO, "Tx RF-MUTE.req (%d, %d, %d, %d, %d, %d, %d, %d)\n",
 	     mute[0], mute[1], mute[2], mute[3],
@@ -1399,6 +1402,14 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 #if SUPERFEMTO_API_VERSION < SUPERFEMTO_API(3,6,0)
 	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
 	msgb_free(msg);
+	/* always acknowledge an un-MUTE (which is a no-op if MUTE is not supported */
+	if (!memcmp(mute, unmuted, ARRAY_SIZE(mute))) {
+		bts_update_status(BTS_STATUS_RF_MUTE, mute[0]);
+		oml_mo_rf_lock_chg(&trx->mo, mute, 1);
+		for (i = 0; i < ARRAY_SIZE(mute); ++i)
+			mute_handle_ts(&trx->ts[i], mute[i]);
+		return 0;
+	}
 	return -ENOTSUP;
 #else
 	sysp->id = SuperFemto_PrimId_MuteRfReq;
