@@ -160,6 +160,7 @@ uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
 	return 1;
 }
 
+/* obtain the next to-be transmitted dowlink SACCH frame (L2 hdr + L3); returns pointer to lchan->si buffer */
 uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 {
 	uint32_t tmp;
