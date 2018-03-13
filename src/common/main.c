@@ -233,6 +233,9 @@ int bts_main(int argc, char **argv)
 
 	printf("((*))\n  |\n / \\ OsmoBTS\n");
 
+	/* Track the use of talloc NULL memory contexts */
+	talloc_enable_null_tracking();
+
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	msgb_talloc_ctx_init(tall_bts_ctx, 100*1024);
 	bts_vty_info.tall_ctx = tall_bts_ctx;
