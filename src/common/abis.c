@@ -81,6 +81,13 @@ static void drain_oml_queue(struct gsm_bts *bts)
 
 int abis_bts_rsl_sendmsg(struct msgb *msg)
 {
+	OSMO_ASSERT(msg->trx);
+
+	if (msg->trx->bts->variant == BTS_OSMO_OMLDUMMY) {
+		msgb_free(msg);
+		return 0;
+	}
+
 	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
 	 * the signalling link at msg->dst */
 	msg->dst = msg->trx->rsl_link;
