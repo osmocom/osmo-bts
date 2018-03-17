@@ -422,6 +422,7 @@ enum gsm_bts_type_variant {
 	BTS_OSMO_OCTPHY,
 	BTS_OSMO_SYSMO,
 	BTS_OSMO_TRX,
+	BTS_OSMO_VIRTUAL,
 	_NUM_BTS_VARIANT
 };
 

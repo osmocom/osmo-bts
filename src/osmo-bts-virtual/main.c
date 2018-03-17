@@ -56,6 +56,7 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	bts->variant = BTS_OSMO_VIRTUAL;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
