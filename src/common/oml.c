@@ -1362,7 +1362,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
 		inet_ntoa(in), port, stream_id);
 
-	if (trx->bts->variant != BTS_OSMO_OMLDUMMY) {
+	if (trx->bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
 		LOGP(DOML, LOGL_NOTICE, "Not connecting RSL in OML-DUMMY!\n");
 	} else
