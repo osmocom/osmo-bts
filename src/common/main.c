@@ -226,7 +226,6 @@ static int write_pid_file(char *procname)
 
 int bts_main(int argc, char **argv)
 {
-	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
 	int rc, i;
@@ -289,7 +288,6 @@ int bts_main(int argc, char **argv)
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
 	}
-	btsb = bts_role_bts(bts);
 
 	abis_init(bts);
 
@@ -324,7 +322,7 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (pcu_sock_init(btsb->pcu.sock_path)) {
+	if (pcu_sock_init(bts->pcu.sock_path)) {
 		fprintf(stderr, "PCU L1 socket failed\n");
 		exit(1);
 	}
@@ -336,12 +334,12 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	if (!btsb->bsc_oml_host) {
+	if (!bts->bsc_oml_host) {
 		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
 		exit(1);
 	}
 
-	line = abis_open(bts, btsb->bsc_oml_host, "sysmoBTS");
+	line = abis_open(bts, bts->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(2);

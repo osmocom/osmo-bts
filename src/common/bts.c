@@ -108,7 +108,6 @@ static const struct rate_ctr_group_desc bts_ctrg_desc = {
  * file reading */
 int bts_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb;
 	struct gsm_bts_trx *trx;
 	int rc, i;
 	static int initialized = 0;
@@ -119,11 +118,8 @@ int bts_init(struct gsm_bts *bts)
 
 	bts->band = GSM_BAND_1800;
 
-	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
-	btsb->bts = bts;
-
-	INIT_LLIST_HEAD(&btsb->agch_queue.queue);
-	btsb->agch_queue.length = 0;
+	INIT_LLIST_HEAD(&bts->agch_queue.queue);
+	bts->agch_queue.length = 0;
 
 	bts->ctrs = rate_ctr_group_alloc(bts, &bts_ctrg_desc, bts->nr);
 
@@ -131,31 +127,31 @@ int bts_init(struct gsm_bts *bts)
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
 	 * disable this feature.
 	 */
-	btsb->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
-	btsb->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
-	btsb->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+	bts->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	bts->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+	bts->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
 
 	/* configurable via VTY */
-	btsb->paging_state = paging_init(btsb, 200, 0);
-	btsb->ul_power_target = -75;	/* dBm default */
-	btsb->rtp_jitter_adaptive = false;
+	bts->paging_state = paging_init(bts, 200, 0);
+	bts->ul_power_target = -75;	/* dBm default */
+	bts->rtp_jitter_adaptive = false;
 
 	/* configurable via OML */
-	btsb->load.ccch.load_ind_period = 112;
+	bts->load.ccch.load_ind_period = 112;
 	load_timer_start(bts);
-	btsb->rtp_jitter_buf_ms = 100;
-	btsb->max_ta = 63;
-	btsb->ny1 = 4;
-	btsb->t3105_ms = 300;
-	btsb->min_qual_rach = MIN_QUAL_RACH;
-	btsb->min_qual_norm = MIN_QUAL_NORM;
-	btsb->max_ber10k_rach = 1707; /* 7 of 41 bits is Eb/N0 of 0 dB = 0.1707 */
-	btsb->pcu.sock_path = talloc_strdup(btsb, PCU_SOCK_DEFAULT);
-	for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++)
-		btsb->t200_ms[i] = oml_default_t200_ms[i];
+	bts->rtp_jitter_buf_ms = 100;
+	bts->max_ta = 63;
+	bts->ny1 = 4;
+	bts->t3105_ms = 300;
+	bts->min_qual_rach = MIN_QUAL_RACH;
+	bts->min_qual_norm = MIN_QUAL_NORM;
+	bts->max_ber10k_rach = 1707; /* 7 of 41 bits is Eb/N0 of 0 dB = 0.1707 */
+	bts->pcu.sock_path = talloc_strdup(bts, PCU_SOCK_DEFAULT);
+	for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++)
+		bts->t200_ms[i] = oml_default_t200_ms[i];
 
 	/* default RADIO_LINK_TIMEOUT */
-	btsb->radio_link_timeout = 32;
+	bts->radio_link_timeout = 32;
 
 	/* Start with the site manager */
 	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
@@ -205,8 +201,8 @@ int bts_init(struct gsm_bts *bts)
 		initialized = 1;
 	}
 
-	INIT_LLIST_HEAD(&btsb->smscb_state.queue);
-	INIT_LLIST_HEAD(&btsb->oml_queue);
+	INIT_LLIST_HEAD(&bts->smscb_state.queue);
+	INIT_LLIST_HEAD(&bts->oml_queue);
 
 	/* register DTX DL FSM */
 	rc = osmo_fsm_register(&dtx_dl_amr_fsm);
@@ -387,22 +383,21 @@ int bts_agch_max_queue_length(int T, int bcch_conf)
 
 static void bts_update_agch_max_queue_length(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm48_system_information_type_3 *si3;
-	int old_max_length = btsb->agch_queue.max_length;
+	int old_max_length = bts->agch_queue.max_length;
 
 	if (!(bts->si_valid & (1<<SYSINFO_TYPE_3)))
 		return;
 
 	si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
 
-	btsb->agch_queue.max_length =
+	bts->agch_queue.max_length =
 		bts_agch_max_queue_length(si3->rach_control.tx_integer,
 					  si3->control_channel_desc.ccch_conf);
 
-	if (btsb->agch_queue.max_length != old_max_length)
+	if (bts->agch_queue.max_length != old_max_length)
 		LOGP(DRSL, LOGL_INFO, "Updated AGCH max queue length to %d\n",
-		     btsb->agch_queue.max_length);
+		     bts->agch_queue.max_length);
 }
 
 #define REQ_REFS_PER_IMM_ASS_REJ 4
@@ -534,47 +529,45 @@ static int try_merge_imm_ass_rej(struct gsm48_imm_ass_rej *old_rej,
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	int hard_limit = 1000;
 	struct gsm48_imm_ass_rej *imm_ass_cmd = msgb_l3(msg);
 
-	if (btsb->agch_queue.length > hard_limit) {
+	if (bts->agch_queue.length > hard_limit) {
 		LOGP(DSUM, LOGL_ERROR,
 		     "AGCH: too many messages in queue, "
 		     "refusing message type 0x%02x, length = %d/%d\n",
 		     ((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type,
-		     btsb->agch_queue.length, btsb->agch_queue.max_length);
+		     bts->agch_queue.length, bts->agch_queue.max_length);
 
-		btsb->agch_queue.rejected_msgs++;
+		bts->agch_queue.rejected_msgs++;
 		return -ENOMEM;
 	}
 
-	if (btsb->agch_queue.length > 0) {
+	if (bts->agch_queue.length > 0) {
 		struct msgb *last_msg =
-			llist_entry(btsb->agch_queue.queue.prev, struct msgb, list);
+			llist_entry(bts->agch_queue.queue.prev, struct msgb, list);
 		struct gsm48_imm_ass_rej *last_imm_ass_rej = msgb_l3(last_msg);
 
 		if (try_merge_imm_ass_rej(last_imm_ass_rej, imm_ass_cmd)) {
-			btsb->agch_queue.merged_msgs++;
+			bts->agch_queue.merged_msgs++;
 			msgb_free(msg);
 			return 0;
 		}
 	}
 
-	msgb_enqueue(&btsb->agch_queue.queue, msg);
-	btsb->agch_queue.length++;
+	msgb_enqueue(&bts->agch_queue.queue, msg);
+	bts->agch_queue.length++;
 
 	return 0;
 }
 
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct msgb *msg = msgb_dequeue(&btsb->agch_queue.queue);
+	struct msgb *msg = msgb_dequeue(&bts->agch_queue.queue);
 	if (!msg)
 		return NULL;
 
-	btsb->agch_queue.length--;
+	bts->agch_queue.length--;
 	return msg;
 }
 
@@ -586,19 +579,18 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
  */
 static void compact_agch_queue(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct msgb *msg, *msg2;
 	int max_len, slope, offs;
-	int level_low = btsb->agch_queue.low_level;
-	int level_high = btsb->agch_queue.high_level;
-	int level_thres = btsb->agch_queue.thresh_level;
+	int level_low = bts->agch_queue.low_level;
+	int level_high = bts->agch_queue.high_level;
+	int level_thres = bts->agch_queue.thresh_level;
 
-	max_len = btsb->agch_queue.max_length;
+	max_len = bts->agch_queue.max_length;
 
 	if (max_len == 0)
 		max_len = 1;
 
-	if (btsb->agch_queue.length < max_len * level_thres / 100)
+	if (bts->agch_queue.length < max_len * level_thres / 100)
 		return;
 
 	/* p^
@@ -615,7 +607,7 @@ static void compact_agch_queue(struct gsm_bts *bts)
 	else
 		slope = 0x10000 * max_len; /* p_drop >= 1 if len > offs */
 
-	llist_for_each_entry_safe(msg, msg2, &btsb->agch_queue.queue, list) {
+	llist_for_each_entry_safe(msg, msg2, &bts->agch_queue.queue, list) {
 		struct gsm48_imm_ass *imm_ass_cmd = msgb_l3(msg);
 		int p_drop;
 
@@ -624,16 +616,16 @@ static void compact_agch_queue(struct gsm_bts *bts)
 
 		/* IMMEDIATE ASSIGN REJECT */
 
-		p_drop = (btsb->agch_queue.length - offs) * slope / max_len;
+		p_drop = (bts->agch_queue.length - offs) * slope / max_len;
 
 		if ((random() & 0xffff) >= p_drop)
 			return;
 
 		llist_del(&msg->list);
-		btsb->agch_queue.length--;
+		bts->agch_queue.length--;
 		msgb_free(msg);
 
-		btsb->agch_queue.dropped_msgs++;
+		bts->agch_queue.dropped_msgs++;
 	}
 	return;
 }
@@ -642,7 +634,6 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 		      int is_ag_res)
 {
 	struct msgb *msg = NULL;
-	struct gsm_bts_role_bts *btsb = bts->role;
 	int rc = 0;
 	int is_empty = 1;
 
@@ -655,7 +646,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 
 	/* Check for paging messages first if this is PCH */
 	if (!is_ag_res)
-		rc = paging_gen_msg(btsb->paging_state, out_buf, gt, &is_empty);
+		rc = paging_gen_msg(bts->paging_state, out_buf, gt, &is_empty);
 
 	/* Check whether the block may be overwritten */
 	if (!is_empty)
@@ -673,14 +664,14 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	msgb_free(msg);
 
 	if (is_ag_res)
-		btsb->agch_queue.agch_msgs++;
+		bts->agch_queue.agch_msgs++;
 	else
-		btsb->agch_queue.pch_msgs++;
+		bts->agch_queue.pch_msgs++;
 
 	return rc;
 }
 
-int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher)
+int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher)
 {
 	int sup;
 
@@ -702,9 +693,7 @@ int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
 
 struct gsm_time *get_time(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts->role;
-
-	return &btsb->gsm_time;
+	return &bts->gsm_time;
 }
 
 int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,

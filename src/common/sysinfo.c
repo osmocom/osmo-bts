@@ -38,7 +38,6 @@ static inline uint8_t *get_si2q_inc_index(struct gsm_bts *bts)
 /* Apply the rules from 05.02 6.3.1.3 Mapping of BCCH Data */
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	unsigned int tc4_cnt = 0;
 	unsigned int tc4_sub[4];
 
@@ -110,12 +109,12 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 			return GSM_BTS_SI(bts, SYSINFO_TYPE_2);
 		else {
 			/* increment static counter by one, modulo count */
-			btsb->si.tc4_ctr = (btsb->si.tc4_ctr + 1) % tc4_cnt;
+			bts->si.tc4_ctr = (bts->si.tc4_ctr + 1) % tc4_cnt;
 
-			if (tc4_sub[btsb->si.tc4_ctr] == SYSINFO_TYPE_2quater)
+			if (tc4_sub[bts->si.tc4_ctr] == SYSINFO_TYPE_2quater)
 				return get_si2q_inc_index(bts);
 
-			return GSM_BTS_SI(bts, tc4_sub[btsb->si.tc4_ctr]);
+			return GSM_BTS_SI(bts, tc4_sub[bts->si.tc4_ctr]);
 		}
 	case 5:
 		/* 2bis, 2ter, 2quater */

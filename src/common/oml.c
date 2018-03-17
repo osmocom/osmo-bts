@@ -486,29 +486,28 @@ static void dl_set_t200(struct lapdm_datalink *dl, unsigned int t200_msec)
 int oml_set_lchan_t200(struct gsm_lchan *lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct lapdm_channel *lc = &lchan->lapdm_ch;
 	unsigned int t200_dcch, t200_dcch_sapi3, t200_acch, t200_acch_sapi3;
 
 	/* set T200 for main and associated channel */
 	switch (lchan->type) {
 	case GSM_LCHAN_SDCCH:
-		t200_dcch = btsb->t200_ms[T200_SDCCH];
-		t200_dcch_sapi3 = btsb->t200_ms[T200_SDCCH_SAPI3];
-		t200_acch = btsb->t200_ms[T200_SACCH_SDCCH];
-		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_SDCCH];
+		t200_dcch = bts->t200_ms[T200_SDCCH];
+		t200_dcch_sapi3 = bts->t200_ms[T200_SDCCH_SAPI3];
+		t200_acch = bts->t200_ms[T200_SACCH_SDCCH];
+		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_SDCCH];
 		break;
 	case GSM_LCHAN_TCH_F:
-		t200_dcch = btsb->t200_ms[T200_FACCH_F];
-		t200_dcch_sapi3 = btsb->t200_ms[T200_FACCH_F];
-		t200_acch = btsb->t200_ms[T200_SACCH_TCH_SAPI0];
-		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_TCH_SAPI3];
+		t200_dcch = bts->t200_ms[T200_FACCH_F];
+		t200_dcch_sapi3 = bts->t200_ms[T200_FACCH_F];
+		t200_acch = bts->t200_ms[T200_SACCH_TCH_SAPI0];
+		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_TCH_SAPI3];
 		break;
 	case GSM_LCHAN_TCH_H:
-		t200_dcch = btsb->t200_ms[T200_FACCH_H];
-		t200_dcch_sapi3 = btsb->t200_ms[T200_FACCH_H];
-		t200_acch = btsb->t200_ms[T200_SACCH_TCH_SAPI0];
-		t200_acch_sapi3 = btsb->t200_ms[T200_SACCH_TCH_SAPI3];
+		t200_dcch = bts->t200_ms[T200_FACCH_H];
+		t200_dcch_sapi3 = bts->t200_ms[T200_FACCH_H];
+		t200_acch = bts->t200_ms[T200_SACCH_TCH_SAPI0];
+		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_TCH_SAPI3];
 		break;
 	default:
 		return -1;
@@ -572,7 +571,6 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct tlv_parsed tp, *tp_merged;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	int rc, i;
 	const uint8_t *payload;
 
@@ -627,12 +625,12 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		payload = TLVP_VAL(&tp, NM_ATT_INTERF_BOUND);
 		for (i = 0; i < 6; i++) {
 			int16_t boundary = *payload;
-			btsb->interference.boundary[i] = -1 * boundary;
+			bts->interference.boundary[i] = -1 * boundary;
 		}
 	}
 	/* 9.4.24 Intave Parameter */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_INTAVE_PARAM, 1))
-		btsb->interference.intave = *TLVP_VAL(&tp, NM_ATT_INTAVE_PARAM);
+		bts->interference.intave = *TLVP_VAL(&tp, NM_ATT_INTAVE_PARAM);
 
 	/* 9.4.14 Connection Failure Criterion */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_CONN_FAIL_CRIT, 1)) {
@@ -642,12 +640,12 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		case 0xFF: /* Osmocom specific Extension of TS 12.21 */
 			LOGP(DOML, LOGL_NOTICE, "WARNING: Radio Link Timeout "
 			     "explicitly disabled, only use this for lab testing!\n");
-			btsb->radio_link_timeout = -1;
+			bts->radio_link_timeout = -1;
 			break;
 		case 0x01: /* Based on uplink SACCH (radio link timeout) */
 			if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) >= 2 &&
 			    val[1] >= 4 && val[1] <= 64) {
-				btsb->radio_link_timeout = val[1];
+				bts->radio_link_timeout = val[1];
 				break;
 			}
 			/* fall-through */
@@ -661,15 +659,15 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.53 T200 */
-	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(btsb->t200_ms))) {
+	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(bts->t200_ms))) {
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
-		for (i = 0; i < ARRAY_SIZE(btsb->t200_ms); i++) {
+		for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++) {
 			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
 #if 0
-			btsb->t200_ms[i] = t200_ms;
+			bts->t200_ms[i] = t200_ms;
 			DEBUGP(DOML, "T200[%u]: OML=%u, mult=%u => %u ms\n",
 				i, payload[i], abis_nm_t200_mult[i],
-				btsb->t200_ms[i]);
+				bts->t200_ms[i]);
 #else
 			/* we'd rather use the 1s/2s (long) defaults by
 			 * libosmocore, as we appear to have some bug(s)
@@ -684,31 +682,31 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	/* 9.4.31 Maximum Timing Advance */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_MAX_TA, 1))
-		btsb->max_ta = *TLVP_VAL(&tp, NM_ATT_MAX_TA);
+		bts->max_ta = *TLVP_VAL(&tp, NM_ATT_MAX_TA);
 
 	/* 9.4.39 Overload Period */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_OVERL_PERIOD, 1))
-		btsb->load.overload_period = *TLVP_VAL(&tp, NM_ATT_OVERL_PERIOD);
+		bts->load.overload_period = *TLVP_VAL(&tp, NM_ATT_OVERL_PERIOD);
 
 	/* 9.4.12 CCCH Load Threshold */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_T, 1))
-		btsb->load.ccch.load_ind_thresh = *TLVP_VAL(&tp, NM_ATT_CCCH_L_T);
+		bts->load.ccch.load_ind_thresh = *TLVP_VAL(&tp, NM_ATT_CCCH_L_T);
 
 	/* 9.4.11 CCCH Load Indication Period */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_CCCH_L_I_P, 1)) {
-		btsb->load.ccch.load_ind_period = *TLVP_VAL(&tp, NM_ATT_CCCH_L_I_P);
+		bts->load.ccch.load_ind_period = *TLVP_VAL(&tp, NM_ATT_CCCH_L_I_P);
 		load_timer_start(bts);
 	}
 
 	/* 9.4.44 RACH Busy Threshold */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_RACH_B_THRESH, 1)) {
 		int16_t thresh = *TLVP_VAL(&tp, NM_ATT_RACH_B_THRESH);
-		btsb->load.rach.busy_thresh = -1 * thresh;
+		bts->load.rach.busy_thresh = -1 * thresh;
 	}
 
 	/* 9.4.45 RACH Load Averaging Slots */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_LDAVG_SLOTS, 2)) {
-		btsb->load.rach.averaging_slots =
+		bts->load.rach.averaging_slots =
 			ntohs(tlvp_val16_unal(&tp, NM_ATT_LDAVG_SLOTS));
 	}
 
@@ -720,13 +718,13 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 				"T3105 must have a value != 0.\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
-		btsb->t3105_ms = t3105 * 10;
+		bts->t3105_ms = t3105 * 10;
 	}
 
 	/* 9.4.37 NY1 */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_NY1, 1))
-		btsb->ny1 = *TLVP_VAL(&tp, NM_ATT_NY1);
-	
+		bts->ny1 = *TLVP_VAL(&tp, NM_ATT_NY1);
+
 	/* 9.4.8 BCCH ARFCN */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2))
 		bts->c0->arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));

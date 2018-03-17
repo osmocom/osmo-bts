@@ -28,7 +28,6 @@
 #include <unistd.h>
 
 static struct gsm_bts *bts;
-static struct gsm_bts_role_bts *btsb;
 
 static const uint8_t static_ilv[] = {
 	0x08, 0x59, 0x51, 0x30, 0x99, 0x00, 0x00, 0x00, 0x19
@@ -50,28 +49,28 @@ static void test_paging_smoke(void)
 	printf("Testing that paging messages expire.\n");
 
 	/* add paging entry */
-	rc = paging_add_identity(btsb->paging_state, 0, static_ilv, 0);
+	rc = paging_add_identity(bts->paging_state, 0, static_ilv, 0);
 	ASSERT_TRUE(rc == 0);
-	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 1);
+	ASSERT_TRUE(paging_queue_length(bts->paging_state) == 1);
 
 	/* generate messages */
 	g_time.fn = 0;
 	g_time.t1 = 0;
 	g_time.t2 = 0;
 	g_time.t3 = 6;
-	rc = paging_gen_msg(btsb->paging_state, out_buf, &g_time, &is_empty);
+	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
 	ASSERT_TRUE(rc == 13);
 	ASSERT_TRUE(is_empty == 0);
 
-	ASSERT_TRUE(paging_group_queue_empty(btsb->paging_state, 0));
-	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 0);
+	ASSERT_TRUE(paging_group_queue_empty(bts->paging_state, 0));
+	ASSERT_TRUE(paging_queue_length(bts->paging_state) == 0);
 
 	/* now test the empty queue */
 	g_time.fn = 0;
 	g_time.t1 = 0;
 	g_time.t2 = 0;
 	g_time.t3 = 6;
-	rc = paging_gen_msg(btsb->paging_state, out_buf, &g_time, &is_empty);
+	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
 	ASSERT_TRUE(rc == 6);
 	ASSERT_TRUE(is_empty == 1);
 
@@ -90,9 +89,9 @@ static void test_paging_sleep(void)
 	printf("Testing that paging messages expire with sleep.\n");
 
 	/* add paging entry */
-	rc = paging_add_identity(btsb->paging_state, 0, static_ilv, 0);
+	rc = paging_add_identity(bts->paging_state, 0, static_ilv, 0);
 	ASSERT_TRUE(rc == 0);
-	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 1);
+	ASSERT_TRUE(paging_queue_length(bts->paging_state) == 1);
 
 	/* sleep */
 	sleep(1);
@@ -102,12 +101,12 @@ static void test_paging_sleep(void)
 	g_time.t1 = 0;
 	g_time.t2 = 0;
 	g_time.t3 = 6;
-	rc = paging_gen_msg(btsb->paging_state, out_buf, &g_time, &is_empty);
+	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
 	ASSERT_TRUE(rc == 13);
 	ASSERT_TRUE(is_empty == 0);
 
-	ASSERT_TRUE(paging_group_queue_empty(btsb->paging_state, 0));
-	ASSERT_TRUE(paging_queue_length(btsb->paging_state) == 0);
+	ASSERT_TRUE(paging_group_queue_empty(bts->paging_state, 0));
+	ASSERT_TRUE(paging_queue_length(bts->paging_state) == 0);
 }
 
 int main(int argc, char **argv)
@@ -123,7 +122,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	btsb = bts_role_bts(bts);
 	test_paging_smoke();
 	test_paging_sleep();
 	printf("Success\n");

@@ -984,14 +984,13 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 {
 	struct gsm_bts_trx *trx = femtol1_hdl_trx(fl1);
 	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;
 
 	/* FIXME: this should be deprecated/obsoleted as it bypasses rach.busy counting */
-	if (ra_ind->measParam.fLinkQuality < btsb->min_qual_rach) {
+	if (ra_ind->measParam.fLinkQuality < bts->min_qual_rach) {
 		msgb_free(l1p_msg);
 		return 0;
 	}

@@ -30,28 +30,25 @@
 
 static void reset_load_counters(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
 	/* re-set the counters */
-	btsb->load.ccch.pch_used = btsb->load.ccch.pch_total = 0;
+	bts->load.ccch.pch_used = bts->load.ccch.pch_total = 0;
 }
 
 static void load_timer_cb(void *data)
 {
 	struct gsm_bts *bts = data;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	unsigned int pch_percent, rach_percent;
 
 	/* compute percentages */
-	if (btsb->load.ccch.pch_total == 0)
+	if (bts->load.ccch.pch_total == 0)
 		pch_percent = 0;
 	else
-		pch_percent = (btsb->load.ccch.pch_used * 100) /
-					btsb->load.ccch.pch_total;
+		pch_percent = (bts->load.ccch.pch_used * 100) /
+					bts->load.ccch.pch_total;
 
-	if (pch_percent >= btsb->load.ccch.load_ind_thresh) {
+	if (pch_percent >= bts->load.ccch.load_ind_thresh) {
 		/* send RSL load indication message to BSC */
-		uint16_t buffer_space = paging_buffer_space(btsb->paging_state);
+		uint16_t buffer_space = paging_buffer_space(bts->paging_state);
 		rsl_tx_ccch_load_ind_pch(bts, buffer_space);
 	} else {
 		/* This is an extenstion of TS 08.58.  We don't only
@@ -61,41 +58,37 @@ static void load_timer_cb(void *data)
 		rsl_tx_ccch_load_ind_pch(bts, 0xffff);
 	}
 
-	if (btsb->load.rach.total == 0)
+	if (bts->load.rach.total == 0)
 		rach_percent = 0;
 	else
-		rach_percent = (btsb->load.rach.busy * 100) /
-					btsb->load.rach.total;
+		rach_percent = (bts->load.rach.busy * 100) /
+					bts->load.rach.total;
 
-	if (rach_percent >= btsb->load.ccch.load_ind_thresh) {
+	if (rach_percent >= bts->load.ccch.load_ind_thresh) {
 		/* send RSL load indication message to BSC */
-		rsl_tx_ccch_load_ind_rach(bts, btsb->load.rach.total,
-					  btsb->load.rach.busy,
-					  btsb->load.rach.access);
+		rsl_tx_ccch_load_ind_rach(bts, bts->load.rach.total,
+					  bts->load.rach.busy,
+					  bts->load.rach.access);
 	}
 
 	reset_load_counters(bts);
 
 	/* re-schedule the timer */
-	osmo_timer_schedule(&btsb->load.ccch.timer,
-			    btsb->load.ccch.load_ind_period, 0);
+	osmo_timer_schedule(&bts->load.ccch.timer,
+			    bts->load.ccch.load_ind_period, 0);
 }
 
 void load_timer_start(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	if (!btsb->load.ccch.timer.data) {
-		btsb->load.ccch.timer.data = bts;
-		btsb->load.ccch.timer.cb = load_timer_cb;
+	if (!bts->load.ccch.timer.data) {
+		bts->load.ccch.timer.data = bts;
+		bts->load.ccch.timer.cb = load_timer_cb;
 		reset_load_counters(bts);
 	}
-	osmo_timer_schedule(&btsb->load.ccch.timer, btsb->load.ccch.load_ind_period, 0);
+	osmo_timer_schedule(&bts->load.ccch.timer, bts->load.ccch.load_ind_period, 0);
 }
 
 void load_timer_stop(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
-	osmo_timer_del(&btsb->load.ccch.timer);
+	osmo_timer_del(&bts->load.ccch.timer);
 }

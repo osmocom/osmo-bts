@@ -44,7 +44,6 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	int rx;
 	int cur_dBm, new_dBm, new_pwr;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	const enum gsm_band band = bts->band;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
@@ -57,7 +56,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 
 	/* What is the difference between what we want and received? */
-	rx = btsb->ul_power_target - rxLevel;
+	rx = bts->ul_power_target - rxLevel;
 
 	cur_dBm = ms_pwr_dbm(band, ms_power);
 	new_dBm = cur_dBm + rx;

@@ -203,9 +203,8 @@ gDEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
 	"Automatically select band for ARFCN based on configured band\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->auto_band = 1;
+	bts->auto_band = 1;
 	return CMD_SUCCESS;
 }
 
@@ -214,9 +213,8 @@ gDEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	NO_STR "Automatically select band for ARFCN based on configured band\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->auto_band = 0;
+	bts->auto_band = 0;
 	return CMD_SUCCESS;
 }
 
@@ -247,7 +245,6 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm_bts_trx *trx;
 	char buf_casecnvt[256];
 	int i;
@@ -256,26 +253,26 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->description)
 		vty_out(vty, " description %s%s", bts->description, VTY_NEWLINE);
 	vty_out(vty, " band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
-	if (btsb->auto_band)
+	if (bts->auto_band)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
-	vty_out(vty, " oml remote-ip %s%s", btsb->bsc_oml_host, VTY_NEWLINE);
-	vty_out(vty, " rtp jitter-buffer %u", btsb->rtp_jitter_buf_ms);
-	if (btsb->rtp_jitter_adaptive)
+	vty_out(vty, " oml remote-ip %s%s", bts->bsc_oml_host, VTY_NEWLINE);
+	vty_out(vty, " rtp jitter-buffer %u", bts->rtp_jitter_buf_ms);
+	if (bts->rtp_jitter_adaptive)
 		vty_out(vty, " adaptive");
 	vty_out(vty, "%s", VTY_NEWLINE);
-	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(btsb->paging_state),
+	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
+	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " uplink-power-target %d%s", btsb->ul_power_target, VTY_NEWLINE);
-	if (btsb->agch_queue.thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
-		 || btsb->agch_queue.low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
-		 || btsb->agch_queue.high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
+	vty_out(vty, " uplink-power-target %d%s", bts->ul_power_target, VTY_NEWLINE);
+	if (bts->agch_queue.thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
+		 || bts->agch_queue.low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
+		 || bts->agch_queue.high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
 		vty_out(vty, " agch-queue-mgmt threshold %d low %d high %d%s",
-			btsb->agch_queue.thresh_level, btsb->agch_queue.low_level,
-			btsb->agch_queue.high_level, VTY_NEWLINE);
+			bts->agch_queue.thresh_level, bts->agch_queue.low_level,
+			bts->agch_queue.high_level, VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (gsmtap_sapi_mask & (1 << i)) {
@@ -287,14 +284,14 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		osmo_str2lower(buf_casecnvt, get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
 		vty_out(vty, " gsmtap-sapi %s%s", buf_casecnvt, VTY_NEWLINE);
 	}
-	vty_out(vty, " min-qual-rach %.0f%s", btsb->min_qual_rach * 10.0f,
+	vty_out(vty, " min-qual-rach %.0f%s", bts->min_qual_rach * 10.0f,
 		VTY_NEWLINE);
-	vty_out(vty, " min-qual-norm %.0f%s", btsb->min_qual_norm * 10.0f,
+	vty_out(vty, " min-qual-norm %.0f%s", bts->min_qual_norm * 10.0f,
 		VTY_NEWLINE);
-	vty_out(vty, " max-ber10k-rach %u%s", btsb->max_ber10k_rach,
+	vty_out(vty, " max-ber10k-rach %u%s", bts->max_ber10k_rach,
 		VTY_NEWLINE);
-	if (strcmp(btsb->pcu.sock_path, PCU_SOCK_DEFAULT))
-		vty_out(vty, " pcu-socket %s%s", btsb->pcu.sock_path, VTY_NEWLINE);
+	if (strcmp(bts->pcu.sock_path, PCU_SOCK_DEFAULT))
+		vty_out(vty, " pcu-socket %s%s", bts->pcu.sock_path, VTY_NEWLINE);
 	if (bts->supp_meas_toa256)
 		vty_out(vty, " supp-meas-info toa256%s", VTY_NEWLINE);
 
@@ -454,12 +451,11 @@ DEFUN(cfg_bts_oml_ip,
       "OML Parameters\n" "OML IP Address\n" "OML IP Address\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (btsb->bsc_oml_host)
-		talloc_free(btsb->bsc_oml_host);
+	if (bts->bsc_oml_host)
+		talloc_free(bts->bsc_oml_host);
 
-	btsb->bsc_oml_host = talloc_strdup(btsb, argv[0]);
+	bts->bsc_oml_host = talloc_strdup(bts, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -482,11 +478,10 @@ DEFUN(cfg_bts_rtp_jitbuf,
 	RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->rtp_jitter_buf_ms = atoi(argv[0]);
+	bts->rtp_jitter_buf_ms = atoi(argv[0]);
 	if (argc > 1)
-		btsb->rtp_jitter_adaptive = true;
+		bts->rtp_jitter_adaptive = true;
 
 	return CMD_SUCCESS;
 }
@@ -500,9 +495,8 @@ DEFUN(cfg_bts_paging_queue_size,
 	        "Maximum length of BTS-internal paging queue\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	paging_set_queue_max(btsb->paging_state, atoi(argv[0]));
+	paging_set_queue_max(bts->paging_state, atoi(argv[0]));
 
 	return CMD_SUCCESS;
 }
@@ -514,9 +508,8 @@ DEFUN(cfg_bts_paging_lifetime,
 	        "Maximum lifetime of a paging record (secods)\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	paging_set_lifetime(btsb->paging_state, atoi(argv[0]));
+	paging_set_lifetime(bts->paging_state, atoi(argv[0]));
 
 	return CMD_SUCCESS;
 }
@@ -532,11 +525,10 @@ DEFUN(cfg_bts_agch_queue_mgmt_params,
 	"High water mark for cleanup\nin %% of the maximum queue length\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->agch_queue.thresh_level = atoi(argv[0]);
-	btsb->agch_queue.low_level = atoi(argv[1]);
-	btsb->agch_queue.high_level = atoi(argv[2]);
+	bts->agch_queue.thresh_level = atoi(argv[0]);
+	bts->agch_queue.low_level = atoi(argv[1]);
+	bts->agch_queue.high_level = atoi(argv[2]);
 
 	return CMD_SUCCESS;
 }
@@ -548,11 +540,10 @@ DEFUN(cfg_bts_agch_queue_mgmt_default,
 	"Reset clean parameters to default values\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
-	btsb->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
-	btsb->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+	bts->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+	bts->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	bts->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
 
 	return CMD_SUCCESS;
 }
@@ -563,9 +554,8 @@ DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	"Target uplink Rx level in dBm\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->ul_power_target = atoi(argv[0]);
+	bts->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -576,9 +566,8 @@ DEFUN(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
 	"C/I level in tenth of dB\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
+	bts->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
 
 	return CMD_SUCCESS;
 }
@@ -589,9 +578,8 @@ DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
 	"C/I level in tenth of dB\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+	bts->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
 
 	return CMD_SUCCESS;
 }
@@ -602,9 +590,8 @@ DEFUN(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
 	"BER in 1/10000 units (0=no BER; 100=1% BER)\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->max_ber10k_rach = strtoul(argv[0], NULL, 10);
+	bts->max_ber10k_rach = strtoul(argv[0], NULL, 10);
 
 	return CMD_SUCCESS;
 }
@@ -614,13 +601,12 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	"Configure the PCU socket file/path name\n")
 {
 	struct gsm_bts *bts = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (btsb->pcu.sock_path) {
+	if (bts->pcu.sock_path) {
 		/* FIXME: close the interface? */
-		talloc_free(btsb->pcu.sock_path);
+		talloc_free(bts->pcu.sock_path);
 	}
-	btsb->pcu.sock_path = talloc_strdup(btsb, argv[0]);
+	bts->pcu.sock_path = talloc_strdup(bts, argv[0]);
 	/* FIXME: re-open the interface? */
 
 	return CMD_SUCCESS;
@@ -795,7 +781,6 @@ static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts->role;
 	struct gsm_bts_trx *trx;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
@@ -817,20 +802,20 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  PCU version %s connected%s",
 			bts->pcu_version, VTY_NEWLINE);
 	vty_out(vty, "  Paging: Queue size %u, occupied %u, lifetime %us%s",
-		paging_get_queue_max(btsb->paging_state), paging_queue_length(btsb->paging_state),
-		paging_get_lifetime(btsb->paging_state), VTY_NEWLINE);
+		paging_get_queue_max(bts->paging_state), paging_queue_length(bts->paging_state),
+		paging_get_lifetime(bts->paging_state), VTY_NEWLINE);
 	vty_out(vty, "  AGCH: Queue limit %u, occupied %d, "
 		"dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 		"ag-res %"PRIu64", non-res %"PRIu64"%s",
-		btsb->agch_queue.max_length, btsb->agch_queue.length,
-		btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
-		btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
-		btsb->agch_queue.pch_msgs,
+		bts->agch_queue.max_length, bts->agch_queue.length,
+		bts->agch_queue.dropped_msgs, bts->agch_queue.merged_msgs,
+		bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
+		bts->agch_queue.pch_msgs,
 		VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length: %u%s",
-		llist_length(&btsb->smscb_state.queue), VTY_NEWLINE);
+		llist_length(&bts->smscb_state.queue), VTY_NEWLINE);
 	vty_out(vty, "  Paging: queue length %d, buffer space %d%s",
-		paging_queue_length(btsb->paging_state), paging_buffer_space(btsb->paging_state),
+		paging_queue_length(bts->paging_state), paging_buffer_space(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, "  OML Link state: %s.%s",
 		bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
@@ -1476,7 +1461,6 @@ DEFUN(bts_t_t_l_jitter_buf,
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
-	struct gsm_bts_role_bts *btsb;
 	int jitbuf_ms = atoi(argv[4]), rc;
 
 	lchan = resolve_lchan(net, argv, 0);
@@ -1489,9 +1473,8 @@ DEFUN(bts_t_t_l_jitter_buf,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	btsb = bts_role_bts(lchan->ts->trx->bts);
 	rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-				  btsb->rtp_jitter_adaptive ?
+				  lchan->ts->trx->bts->rtp_jitter_adaptive ?
 				  OSMO_RTP_P_JIT_ADAP : OSMO_RTP_P_JITBUF,
 				  jitbuf_ms);
 	if (rc < 0)

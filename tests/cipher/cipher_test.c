@@ -28,7 +28,6 @@
 #include <unistd.h>
 
 static struct gsm_bts *bts;
-static struct gsm_bts_role_bts *btsb;
 
 #define ASSERT_TRUE(rc) \
 	if (!(rc)) { \
@@ -41,27 +40,27 @@ static void test_cipher_parsing(void)
 {
 	int i;
 
-	btsb->support.ciphers = 0;
+	bts->support.ciphers = 0;
 
 	/* always support A5/0 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x0) == -ENOTSUP);
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x1) == 1); /* A5/0 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x0) == -ENOTSUP);
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x1) == 1); /* A5/0 */
 	for (i = 2; i <= 8; ++i) {
-		ASSERT_TRUE(bts_supports_cipher(btsb, i) == 0);
+		ASSERT_TRUE(bts_supports_cipher(bts, i) == 0);
 	}
 
 	/* checking default A5/1 to A5/3 support */
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x0) == -ENOTSUP);
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x1) == 1); /* A5/0 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x2) == 1); /* A5/1 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x3) == 1); /* A5/2 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x4) == 1); /* A5/3 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x5) == 0); /* A5/4 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x6) == 0); /* A5/5 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x7) == 0); /* A5/6 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x8) == 0); /* A5/7 */
-	ASSERT_TRUE(bts_supports_cipher(btsb, 0x9) == -ENOTSUP);
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x0) == -ENOTSUP);
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x1) == 1); /* A5/0 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x2) == 1); /* A5/1 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x3) == 1); /* A5/2 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x4) == 1); /* A5/3 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x5) == 0); /* A5/4 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x6) == 0); /* A5/5 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x7) == 0); /* A5/6 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x8) == 0); /* A5/7 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x9) == -ENOTSUP);
 }
 
 int main(int argc, char **argv)
@@ -77,7 +76,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	btsb = bts_role_bts(bts);
 	test_cipher_parsing();
 	printf("Success\n");
 

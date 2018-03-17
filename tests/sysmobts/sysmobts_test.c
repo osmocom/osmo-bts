@@ -51,16 +51,13 @@ static int pcs_to_pcs[][3] = {
 static void test_sysmobts_auto_band(void)
 {
 	struct gsm_bts bts;
-	struct gsm_bts_role_bts btsb; 
 	struct gsm_bts_trx trx;
 	struct femtol1_hdl hdl;
 	int i;
 
 	memset(&bts, 0, sizeof(bts));
-	memset(&btsb, 0, sizeof(btsb));
 	memset(&trx, 0, sizeof(trx));
 	memset(&hdl, 0, sizeof(hdl));
-	bts.role = &btsb;
 	trx.bts = &bts;
 	trx.role_bts.l1h = &hdl;
 
@@ -74,7 +71,7 @@ static void test_sysmobts_auto_band(void)
 		uint16_t arfcn;
 		int res;
 
-		btsb.auto_band = 0;
+		bts.auto_band = 0;
 		bts.band = direct_map[i][0];
 		arfcn = direct_map[i][2];
 		res = sysmobts_select_femto_band(&trx, arfcn);
@@ -89,7 +86,7 @@ static void test_sysmobts_auto_band(void)
 		uint16_t arfcn;
 		int res;
 
-		btsb.auto_band = 1;
+		bts.auto_band = 1;
 		bts.band = direct_map[i][0];
 		arfcn = direct_map[i][2];
 		res = sysmobts_select_femto_band(&trx, arfcn);
@@ -104,7 +101,7 @@ static void test_sysmobts_auto_band(void)
 		uint16_t arfcn;
 		int res;
 
-		btsb.auto_band = 1;
+		bts.auto_band = 1;
 		bts.band = dcs_to_dcs[i][0];
 		arfcn = dcs_to_dcs[i][2];
 		res = sysmobts_select_femto_band(&trx, arfcn);
@@ -119,7 +116,7 @@ static void test_sysmobts_auto_band(void)
 		uint16_t arfcn;
 		int res;
 
-		btsb.auto_band = 1;
+		bts.auto_band = 1;
 		bts.band = pcs_to_pcs[i][0];
 		arfcn = pcs_to_pcs[i][2];
 		res = sysmobts_select_femto_band(&trx, arfcn);

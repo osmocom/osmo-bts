@@ -54,10 +54,9 @@ static struct gsm_bts *g_bts;
 int abis_oml_sendmsg(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	if (!bts->oml_link) {
-		llist_add_tail(&msg->list, &btsb->oml_queue);
+		llist_add_tail(&msg->list, &bts->oml_queue);
 		return 0;
 	} else {
 		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
@@ -69,10 +68,9 @@ int abis_oml_sendmsg(struct msgb *msg)
 
 static void drain_oml_queue(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct msgb *msg, *msg2;
 
-	llist_for_each_entry_safe(msg, msg2, &btsb->oml_queue, list) {
+	llist_for_each_entry_safe(msg, msg2, &bts->oml_queue, list) {
 		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
 		 * the signalling link at msg->dst */
 		llist_del(&msg->list);

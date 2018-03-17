@@ -67,10 +67,9 @@ static void ho_t3105_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
 
 	LOGP(DHO, LOGL_INFO, "%s T3105 timeout (%d resends left)\n",
-		gsm_lchan_name(lchan), btsb->ny1 - lchan->ho.phys_info_count);
+		gsm_lchan_name(lchan), bts->ny1 - lchan->ho.phys_info_count);
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
 		LOGP(DHO, LOGL_NOTICE,
@@ -79,7 +78,7 @@ static void ho_t3105_cb(void *data)
 		return;
 	}
 
-	if (lchan->ho.phys_info_count >= btsb->ny1) {
+	if (lchan->ho.phys_info_count >= bts->ny1) {
 		/* HO Abort */
 		LOGP(DHO, LOGL_NOTICE, "%s NY1 reached, sending CONNection "
 			"FAILure to BSC.\n", gsm_lchan_name(lchan));
@@ -89,14 +88,13 @@ static void ho_t3105_cb(void *data)
 
 	ho_tx_phys_info(lchan);
 	lchan->ho.phys_info_count++;
-	osmo_timer_schedule(&lchan->ho.t3105, 0, btsb->t3105_ms * 1000);
+	osmo_timer_schedule(&lchan->ho.t3105, 0, bts->t3105_ms * 1000);
 }
 
 /* received random access on dedicated channel */
 void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
 
 	/* Ignore invalid handover ref */
 	if (lchan->ho.ref != ra) {
@@ -141,10 +139,10 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 	/* Start T3105 */
 	LOGP(DHO, LOGL_DEBUG,
 		"%s Starting T3105 with %u ms\n",
-		gsm_lchan_name(lchan), btsb->t3105_ms);
+		gsm_lchan_name(lchan), bts->t3105_ms);
 	lchan->ho.t3105.cb = ho_t3105_cb;
 	lchan->ho.t3105.data = lchan;
-	osmo_timer_schedule(&lchan->ho.t3105, 0, btsb->t3105_ms * 1000);
+	osmo_timer_schedule(&lchan->ho.t3105, 0, bts->t3105_ms * 1000);
 }
 
 /* received frist valid data frame on dedicated channel */

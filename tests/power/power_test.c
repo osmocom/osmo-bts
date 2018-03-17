@@ -35,13 +35,11 @@ static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_
 static void test_power_loop(void)
 {
 	struct gsm_bts bts;
-	struct gsm_bts_role_bts btsb;
 	struct gsm_bts_trx trx;
 	struct gsm_bts_trx_ts ts;
 	struct gsm_lchan *lchan;
 
 	memset(&bts, 0, sizeof(bts));
-	memset(&btsb, 0, sizeof(btsb));
 	memset(&trx, 0, sizeof(trx));
 	memset(&ts, 0, sizeof(ts));
 
@@ -49,10 +47,9 @@ static void test_power_loop(void)
 	lchan->ts = &ts;
 	ts.trx = &trx;
 	trx.bts = &bts;
-	bts.role = &btsb;
 	bts.band = GSM_BAND_1800;
 	trx.ms_power_control = 1;
-	btsb.ul_power_target = -75;
+	bts.ul_power_target = -75;
 
 	lchan->state = LCHAN_S_NONE;
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);

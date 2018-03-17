@@ -29,7 +29,6 @@
 #include <unistd.h>
 
 static struct gsm_bts *bts;
-static struct gsm_bts_role_bts *btsb;
 
 static int count_imm_ass_rej_refs(struct gsm48_imm_ass_rej *rej)
 {
@@ -116,11 +115,11 @@ static void test_agch_queue(void)
 	g_time.t3 = 6;
 
 	printf("Testing AGCH messages queue handling.\n");
-	btsb->agch_queue.max_length = 32;
+	bts->agch_queue.max_length = 32;
 
-	btsb->agch_queue.low_level = 30;
-	btsb->agch_queue.high_level = 30;
-	btsb->agch_queue.thresh_level = 60;
+	bts->agch_queue.low_level = 30;
+	bts->agch_queue.high_level = 30;
+	bts->agch_queue.thresh_level = 60;
 
 	for (round = 1; round <= num_rounds; round++) {
 		for (idx = 0; idx < num_ima_per_round; idx++) {
@@ -143,10 +142,10 @@ static void test_agch_queue(void)
 	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       count, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
-	       btsb->agch_queue.max_length, btsb->agch_queue.length,
-	       btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
-	       btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
-	       btsb->agch_queue.pch_msgs);
+	       bts->agch_queue.max_length, bts->agch_queue.length,
+	       bts->agch_queue.dropped_msgs, bts->agch_queue.merged_msgs,
+	       bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
+	       bts->agch_queue.pch_msgs);
 
 	imm_ass_count = 0;
 	imm_ass_rej_count = 0;
@@ -182,10 +181,10 @@ static void test_agch_queue(void)
 	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       multiframes, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
-	       btsb->agch_queue.max_length, btsb->agch_queue.length,
-	       btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
-	       btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
-	       btsb->agch_queue.pch_msgs);
+	       bts->agch_queue.max_length, bts->agch_queue.length,
+	       bts->agch_queue.dropped_msgs, bts->agch_queue.merged_msgs,
+	       bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
+	       bts->agch_queue.pch_msgs);
 }
 
 static void test_agch_queue_length_computation(void)
@@ -231,7 +230,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	btsb = bts_role_bts(bts);
 	test_agch_queue_length_computation();
 	test_agch_queue();
 	printf("Success\n");

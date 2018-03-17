@@ -325,14 +325,13 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_data *data_ind;
 	struct gsm_bts *bts = ts->trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
 	LOGP(DPCU, LOGL_DEBUG, "Sending data indication: sapi=%s arfcn=%d block=%d data=%s\n",
 	     sapi_string[sapi], arfcn, block_nr, osmo_hexdump(data, len));
 
-	if (lqual / 10 < btsb->min_qual_norm) {
+	if (lqual / 10 < bts->min_qual_norm) {
 		LOGP(DPCU, LOGL_DEBUG, "Link quality %"PRId16" is below threshold %f, dropping packet\n",
-			lqual, btsb->min_qual_norm);
+			lqual, bts->min_qual_norm);
 		return 0;
 	}
 
@@ -487,10 +486,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			 * This might not be required, if PCU_IF_MSG_DATA_REQ
 			 * is used instead. */
 		} else {
-			struct gsm_bts_role_bts *btsb = bts->role;
-
-			paging_add_imm_ass(btsb->paging_state, data_req->data,
-				data_req->len);
+			paging_add_imm_ass(bts->paging_state, data_req->data, data_req->len);
 		}
 		break;
 	case PCU_IF_SAPI_AGCH:

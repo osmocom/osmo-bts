@@ -52,9 +52,8 @@ static int get_smscb_null_block(uint8_t *out)
 static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 {
 	int to_copy;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm412_block_type *block_type;
-	struct smscb_msg *msg = btsb->smscb_state.cur_msg;
+	struct smscb_msg *msg = bts->smscb_state.cur_msg;
 
 	if (!msg) {
 		/* No message: Send NULL mesage */
@@ -86,8 +85,8 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 
 	if (block_type->lb == 1) {
 		/* remove/release the message memory */
-		talloc_free(btsb->smscb_state.cur_msg);
-		btsb->smscb_state.cur_msg = NULL;
+		talloc_free(bts->smscb_state.cur_msg);
+		bts->smscb_state.cur_msg = NULL;
 	}
 
 	return block_type->lb;
@@ -106,7 +105,6 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 			  struct rsl_ie_cb_cmd_type cmd_type,
 			  uint8_t msg_len, const uint8_t *msg)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct smscb_msg *scm;
 
 	if (msg_len > sizeof(scm->msg)) {
@@ -137,7 +135,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 		break;
 	}
 
-	llist_add_tail(&scm->list, &btsb->smscb_state.queue);
+	llist_add_tail(&scm->list, &bts->smscb_state.queue);
 
 	return 0;
 }
@@ -145,12 +143,11 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 {
 	struct smscb_msg *msg;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (llist_empty(&btsb->smscb_state.queue))
+	if (llist_empty(&bts->smscb_state.queue))
 		return NULL;
 
-	msg = llist_entry(btsb->smscb_state.queue.next,
+	msg = llist_entry(bts->smscb_state.queue.next,
 			  struct smscb_msg, list);
 
 	llist_del(&msg->list);
@@ -162,7 +159,6 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
  * block for a given gsm_time.  outbuf must have 23 bytes of space. */
 int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	uint32_t fn = gsm_gsmtime2fn(g_time);
 	/* According to 05.02 Section 6.5.4 */
 	uint32_t tb = (fn / 51) % 8;
@@ -180,7 +176,7 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 	switch (tb) {
 	case 0:
 		/* select a new SMSCB message */
-		btsb->smscb_state.cur_msg = select_next_smscb(bts);
+		bts->smscb_state.cur_msg = select_next_smscb(bts);
 		rc = get_smscb_block(bts, outbuf);
 		break;
 	case 1: case 2: case 3:

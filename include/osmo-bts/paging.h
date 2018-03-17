@@ -6,10 +6,10 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 
 struct paging_state;
-struct gsm_bts_role_bts;
+struct gsm_bts;
 
 /* initialize paging code */
-struct paging_state *paging_init(struct gsm_bts_role_bts *btsb, 
+struct paging_state *paging_init(struct gsm_bts *bts,
 				 unsigned int num_paging_max,
 				 unsigned int paging_lifetime);
 

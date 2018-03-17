@@ -56,10 +56,7 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb;
-
-	btsb = bts_role_bts(bts);
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);

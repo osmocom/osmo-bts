@@ -767,13 +767,10 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb;
-
 	LOGP(DL1C, LOGL_NOTICE, "model_init()\n");
 
 	bts->variant = BTS_OSMO_OCTPHY;
-	btsb = bts_role_bts(bts);
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;
@@ -1166,7 +1163,6 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 {
 	struct gsm_bts_trx *trx = trx_by_l1h(fl1, ra_ind->TrxId.byTrxId);
 	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;

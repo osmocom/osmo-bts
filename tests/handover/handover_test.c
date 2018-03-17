@@ -56,7 +56,6 @@ static void expect_phys_info(struct lapdm_entity *le)
 
 int main(int argc, char **argv)
 {
-	struct gsm_bts_role_bts *btsb;
 	void *tall_bts_ctx;
 	struct e1inp_line *line;
 	struct gsm_lchan *lchan;
@@ -86,8 +85,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "unable to to open bts\n");
 		exit(1);
 	}
-
-	btsb = bts_role_bts(bts);
 
 	libosmo_abis_init(NULL);
 
@@ -170,7 +167,7 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(rslh->c.msg_type == RSL_MT_HANDO_DET);
 	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
 
-	for (i = 0; i < btsb->ny1 - 1; i++) {
+	for (i = 0; i < bts->ny1 - 1; i++) {
 		/* expect T3105 running */
 		OSMO_ASSERT(osmo_timer_pending(&trx->ts[2].lchan[0].ho.t3105))
 

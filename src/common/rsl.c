@@ -444,8 +444,8 @@ static int rsl_tx_delete_ind(struct gsm_bts *bts, const uint8_t *ia, uint8_t ia_
 /* 8.5.5 PAGING COMMAND */
 static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 {
-	struct gsm_bts_role_bts *btsb = trx->bts->role;
 	struct tlv_parsed tp;
+	struct gsm_bts *bts = trx->bts;
 	uint8_t chan_needed = 0, paging_group;
 	const uint8_t *identity_lv;
 	int rc;
@@ -462,8 +462,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_CHAN_NEEDED, 1))
 		chan_needed = *TLVP_VAL(&tp, RSL_IE_CHAN_NEEDED);
 
-	rc = paging_add_identity(btsb->paging_state, paging_group,
-				 identity_lv, chan_needed);
+	rc = paging_add_identity(bts->paging_state, paging_group, identity_lv, chan_needed);
 	if (rc < 0) {
 		/* FIXME: notfiy the BSC on other errors? */
 		if (rc == -ENOSPC)
@@ -818,10 +817,10 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 			   const uint8_t *val, uint8_t len)
 {
 	int rc;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(lchan->ts->trx->bts);
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	/* check if the encryption algorithm sent by BSC is supported! */
-	rc = bts_supports_cipher(btsb, *val);
+	rc = bts_supports_cipher(bts, *val);
 	if (rc != 1)
 		return rc;
 
@@ -1696,7 +1695,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(msg->lchan->ts->trx->bts);
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	const uint8_t *payload_type, *speech_mode, *payload_type2;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
@@ -1782,10 +1781,10 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 						 inc_ip_port, dch->c.msg_type);
 		}
 		rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-					       btsb->rtp_jitter_adaptive ?
+					       bts->rtp_jitter_adaptive ?
 					       OSMO_RTP_P_JIT_ADAP :
 					       OSMO_RTP_P_JITBUF,
-					       btsb->rtp_jitter_buf_ms);
+					       bts->rtp_jitter_buf_ms);
 		if (rc < 0)
 			LOGP(DRTP, LOGL_ERROR,
 			     "%s IPAC Failed to set RTP socket parameters: %s\n",

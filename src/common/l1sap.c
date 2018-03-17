@@ -448,29 +448,28 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 			       struct osmo_phsap_prim *l1sap,
 			       struct info_time_ind_param *info_time_ind)
 {
-	struct gsm_bts_role_bts *btsb = bts->role;
 	int frames_expired;
 
 	DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
 
 	/* Calculate and check frame difference */
-	frames_expired = info_time_ind->fn - btsb->gsm_time.fn;
+	frames_expired = info_time_ind->fn - bts->gsm_time.fn;
 	if (frames_expired > 1) {
-		if (btsb->gsm_time.fn)
+		if (bts->gsm_time.fn)
 			LOGPFN(DL1P, LOGL_ERROR, info_time_ind->fn,
 			     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32"=%d > 1!\n",
-			     info_time_ind->fn, btsb->gsm_time.fn, frames_expired);
+			     info_time_ind->fn, bts->gsm_time.fn, frames_expired);
 	}
 
 	/* Update our data structures with the current GSM time */
-	gsm_fn2gsmtime(&btsb->gsm_time, info_time_ind->fn);
+	gsm_fn2gsmtime(&bts->gsm_time, info_time_ind->fn);
 
 	/* Update time on PCU interface */
 	pcu_tx_time_ind(info_time_ind->fn);
 
 	/* increment number of RACH slots that have passed by since the
 	 * last time indication */
-	btsb->load.rach.total +=
+	bts->load.rach.total +=
 	    calc_exprd_rach_frames(bts, info_time_ind->fn) * frames_expired;
 
 	return 0;
@@ -921,10 +920,10 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
  * network operator." */
 static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 {
-	struct gsm_bts_role_bts *btsb = lchan->ts->trx->bts->role;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	/* Bypass radio link timeout if set to -1 */
-	if (btsb->radio_link_timeout < 0)
+	if (bts->radio_link_timeout < 0)
 		return;
 
 	/* if link loss criterion already reached */
@@ -944,11 +943,11 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 		return;
 	}
 
-	if (lchan->s < btsb->radio_link_timeout) {
+	if (lchan->s < bts->radio_link_timeout) {
 		/* count up radio link counter S */
 		lchan->s += 2;
-		if (lchan->s > btsb->radio_link_timeout)
-			lchan->s = btsb->radio_link_timeout;
+		if (lchan->s > bts->radio_link_timeout)
+			lchan->s = bts->radio_link_timeout;
 		DEBUGP(DMEAS, "%s counting up radio link counter S=%d\n",
 			gsm_lchan_name(lchan), lchan->s);
 	}
@@ -1105,12 +1104,12 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct ph_tch_param *tch_ind)
 {
+	struct gsm_bts *bts = trx->bts;
 	struct msgb *msg = l1sap->oph.msg;
 	struct gsm_time g_time;
 	struct gsm_lchan *lchan;
 	uint8_t  chan_nr;
 	uint32_t fn;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
 	chan_nr = tch_ind->chan_nr;
 	fn = tch_ind->fn;
@@ -1131,7 +1130,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * the content is not available due to decoding issues. Content not
 	 * available is expected as empty payload. We also check if quality is
 	 * good enough. */
-	if (msg->len && tch_ind->lqual_cb / 10 >= btsb->min_qual_norm) {
+	if (msg->len && tch_ind->lqual_cb / 10 >= bts->min_qual_norm) {
 		/* hand msg to RTP code for transmission */
 		if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
@@ -1161,16 +1160,15 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 #define RACH_MIN_TOA256 -2 * 256
 
-static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
-	struct gsm_bts_role_bts *btsb)
+static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts *bts)
 {
 	int16_t toa256 = rach_ind->acc_delay_256bits;
 
 	/* Check for RACH exceeding BER threshold (ghost RACH) */
-	if (rach_ind->ber10k > btsb->max_ber10k_rach) {
+	if (rach_ind->ber10k > bts->max_ber10k_rach) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
 			"BER10k(%u) > BER10k_MAX(%u)\n",
-			rach_ind->ber10k, btsb->max_ber10k_rach);
+			rach_ind->ber10k, bts->max_ber10k_rach);
 		return false;
 	}
 
@@ -1179,10 +1177,10 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind,
 	 * We allow early arrival up to 2 symbols, and delay
 	 * according to maximal allowed Timing Advance value.
 	 */
-	if (toa256 < RACH_MIN_TOA256 || toa256 > btsb->max_ta * 256) {
+	if (toa256 < RACH_MIN_TOA256 || toa256 > bts->max_ta * 256) {
 		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
 			"ToA(%d) exceeds the allowed range (%d..%d)\n",
-			toa256, RACH_MIN_TOA256, btsb->max_ta * 256);
+			toa256, RACH_MIN_TOA256, bts->max_ta * 256);
 		return false;
 	}
 
@@ -1194,7 +1192,7 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
 {
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, trx->bts->role)) {
+	if (!rach_pass_filter(rach_ind, trx->bts)) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
@@ -1211,7 +1209,6 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
 {
 	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts->role;
 	struct lapdm_channel *lc;
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
@@ -1225,17 +1222,17 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);
 
 	/* increment number of busy RACH slots, if required */
-	if (rach_ind->rssi >= btsb->load.rach.busy_thresh)
-		btsb->load.rach.busy++;
+	if (rach_ind->rssi >= bts->load.rach.busy_thresh)
+		bts->load.rach.busy++;
 
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, btsb)) {
+	if (!rach_pass_filter(rach_ind, bts)) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
 
 	/* increment number of RACH slots with valid non-handover RACH burst */
-	btsb->load.rach.access++;
+	bts->load.rach.access++;
 
 	lc = &trx->ts[0].lchan[CCCH_LCHAN].lapdm_ch;
 
@@ -1397,7 +1394,6 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp)
 {
-	struct gsm_bts_role_bts *btsb = trx->bts->role;
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	struct gsm48_chan_desc *cd;
 	int rc;
@@ -1423,7 +1419,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	}
 
 	lchan->sacch_deact = 0;
-	lchan->s = btsb->radio_link_timeout;
+	lchan->s = lchan->ts->trx->bts->radio_link_timeout;
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)

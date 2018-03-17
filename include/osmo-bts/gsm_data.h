@@ -24,107 +24,11 @@
 #define GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT 41
 #define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
 
-struct pcu_sock_state;
-struct smscb_msg;
-
 struct gsm_network {
 	struct llist_head bts_list;
 	unsigned int num_bts;
 	struct osmo_plmn_id plmn;
 	struct pcu_sock_state *pcu_state;
-};
-
-/* data structure for BTS related data specific to the BTS role */
-struct gsm_bts_role_bts {
-	struct gsm_bts *bts;
-	struct {
-		/* Interference Boundaries for OML */
-		int16_t boundary[6];
-		uint8_t intave;
-	} interference;
-	unsigned int t200_ms[7];
-	unsigned int t3105_ms;
-	struct {
-		uint8_t overload_period;
-		struct {
-			/* Input parameters from OML */
-			uint8_t load_ind_thresh;	/* percent */
-			uint8_t load_ind_period;	/* seconds */
-			/* Internal data */
-			struct osmo_timer_list timer;
-			unsigned int pch_total;
-			unsigned int pch_used;
-		} ccch;
-		struct {
-			/* Input parameters from OML */
-			int16_t busy_thresh;		/* in dBm */
-			uint16_t averaging_slots;
-			/* Internal data */
-			unsigned int total;	/* total nr */
-			unsigned int busy;	/* above busy_thresh */
-			unsigned int access;	/* access bursts */
-		} rach;
-	} load;
-	uint8_t ny1;
-	uint8_t max_ta;
-
-	/* AGCH queuing */
-	struct {
-		struct llist_head queue;
-		int length;
-		int max_length;
-
-		int thresh_level;	/* Cleanup threshold in percent of max len */
-		int low_level;		/* Low water mark in percent of max len */
-		int high_level;		/* High water mark in percent of max len */
-
-		/* TODO: Use a rate counter group instead */
-		uint64_t dropped_msgs;
-		uint64_t merged_msgs;
-		uint64_t rejected_msgs;
-		uint64_t agch_msgs;
-		uint64_t pch_msgs;
-	} agch_queue;
-
-	struct paging_state *paging_state;
-	char *bsc_oml_host;
-	struct llist_head oml_queue;
-	unsigned int rtp_jitter_buf_ms;
-	bool rtp_jitter_adaptive;
-	struct {
-		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
-	} support;
-	struct {
-		uint8_t tc4_ctr;
-	} si;
-	struct gsm_time gsm_time;
-	/* Radio Link Timeout counter. -1 disables timeout for
-	 * lab/measurement purpose */
-	int radio_link_timeout;
-
-	int ul_power_target;		/* Uplink Rx power target */
-
-	/* used by the sysmoBTS to adjust band */
-	uint8_t auto_band;
-
-	struct {
-		struct llist_head queue;	/* list of struct smscb_msg */
-		struct smscb_msg *cur_msg;	/* current SMS-CB */
-	} smscb_state;
-
-	float min_qual_rach;	/* minimum quality for RACH bursts */
-	float min_qual_norm;	/* minimum quality for normal daata */
-	uint16_t max_ber10k_rach;	/* Maximum permitted RACH BER in 0.01% */
-
-	struct {
-		char *sock_path;
-	} pcu;
-
-	struct {
-		uint32_t last_fn;
-		struct timeval tv_clock;
-		struct osmo_timer_list fn_timer;
-	} vbts;
 };
 
 enum lchan_ciph_state {
@@ -136,9 +40,6 @@ enum lchan_ciph_state {
 	LCHAN_CIPH_RXTX_CONF,
 };
 
-#define bts_role_bts(x)	((struct gsm_bts_role_bts *)(x)->role)
-#define btsb_bts(x)	(x)->bts
-
 #include <osmo-bts/gsm_data_shared.h>
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
@@ -148,7 +49,7 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 /* cipher code */
 #define CIPHER_A5(x) (1 << (x-1))
 
-int bts_supports_cipher(struct gsm_bts_role_bts *bts, int rsl_cipher);
+int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher);
 
 bool ts_is_pdch(const struct gsm_bts_trx_ts *ts);
 

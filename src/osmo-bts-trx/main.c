@@ -97,10 +97,8 @@ int bts_model_handle_options(int argc, char **argv)
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-
 	bts->variant = BTS_OSMO_TRX;
-	btsb->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2);
 
 	/* FIXME: this needs to be overridden with the real hardrware
 	 * value */

@@ -153,9 +153,8 @@ DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	"Target uplink Rx level in dBm\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(trx->bts);
 
-	btsb->ul_power_target = atoi(argv[0]);
+	trx->bts->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }

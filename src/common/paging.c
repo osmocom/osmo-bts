@@ -68,7 +68,7 @@ struct paging_record {
 };
 
 struct paging_state {
-	struct gsm_bts_role_bts *btsb;
+	struct gsm_bts *bts;
 
 	/* parameters taken / interpreted from BCCH/CCCH configuration */
 	struct gsm48_control_channel_descr chan_desc;
@@ -181,19 +181,19 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	int blocks = gsm48_number_of_paging_subchannels(&ps->chan_desc);
 	struct paging_record *pr;
 
-	rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_RCVD);
+	rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_RCVD);
 
 	if (paging_group >= blocks) {
 		LOGP(DPAG, LOGL_ERROR, "BSC Send PAGING for group %u, but number of paging "
 			"sub-channels is only %u\n", paging_group, blocks);
-		rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_DROP);
+		rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_DROP);
 		return -EINVAL;
 	}
 
 	if (ps->num_paging >= ps->num_paging_max) {
 		LOGP(DPAG, LOGL_NOTICE, "Dropping paging, queue full (%u)\n",
 			ps->num_paging);
-		rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_DROP);
+		rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_DROP);
 		return -ENOSPC;
 	}
 
@@ -399,7 +399,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 	int len;
 
 	*is_empty = 0;
-	ps->btsb->load.ccch.pch_total += 1;
+	ps->bts->load.ccch.pch_total += 1;
 
 	group = get_pag_subch_nr(ps, gt);
 	if (group < 0) {
@@ -423,7 +423,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		time_t now = time(NULL);
 		unsigned int i, num_imsi = 0;
 
-		ps->btsb->load.ccch.pch_used += 1;
+		ps->bts->load.ccch.pch_used += 1;
 
 		/* get (if we have) up to four paging records */
 		for (i = 0; i < ARRAY_SIZE(pr); i++) {
@@ -519,7 +519,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* skip those that we might have re-added above */
 			if (pr[i] == NULL)
 				continue;
-			rate_ctr_inc2(ps->btsb->bts->ctrs, BTS_CTR_PAGING_SENT);
+			rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_SENT);
 			/* check if we can expire the paging record,
 			 * or if we need to re-queue it */
 			if (pr[i]->u.paging.expiration_time <= now) {
@@ -551,8 +551,7 @@ static int paging_signal_cbfn(unsigned int subsys, unsigned int signal, void *hd
 {
 	if (subsys == SS_GLOBAL && signal == S_NEW_SYSINFO) {
 		struct gsm_bts *bts = signal_data;
-		struct gsm_bts_role_bts *btsb = bts->role;
-		struct paging_state *ps = btsb->paging_state;
+		struct paging_state *ps = bts->paging_state;
 		struct gsm48_system_information_type_3 *si3 = (void *) bts->si_buf[SYSINFO_TYPE_3];
 
 		paging_si_update(ps, &si3->control_channel_desc);
@@ -562,18 +561,18 @@ static int paging_signal_cbfn(unsigned int subsys, unsigned int signal, void *hd
 
 static int initialized = 0;
 
-struct paging_state *paging_init(struct gsm_bts_role_bts *btsb,
+struct paging_state *paging_init(struct gsm_bts *bts,
 				 unsigned int num_paging_max,
 				 unsigned int paging_lifetime)
 {
 	struct paging_state *ps;
 	unsigned int i;
 
-	ps  = talloc_zero(btsb, struct paging_state);
+	ps  = talloc_zero(bts, struct paging_state);
 	if (!ps)
 		return NULL;
 
-	ps->btsb = btsb;
+	ps->bts = bts;
 	ps->paging_lifetime = paging_lifetime;
 	ps->num_paging_max = num_paging_max;
 

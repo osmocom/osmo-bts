@@ -82,9 +82,8 @@ int lc15bts_select_lc15_band(struct gsm_bts_trx *trx, uint16_t arfcn)
 {
 	enum gsm_band band;
 	struct gsm_bts *bts = trx->bts;
-	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	if (!btsb->auto_band)
+	if (!bts->auto_band)
 		return band_osmo2lc15(trx, bts->band);
 
 	/*
