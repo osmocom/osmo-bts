@@ -87,26 +87,6 @@ const char *btsvariant2str(enum gsm_bts_type_variant v)
 	return get_value_string(osmo_bts_variant_names, v);
 }
 
-const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE + 1] = {
-	{ GSM_BTS_TYPE_UNKNOWN,		"unknown" },
-	{ GSM_BTS_TYPE_BS11,		"bs11" },
-	{ GSM_BTS_TYPE_NANOBTS,		"nanobts" },
-	{ GSM_BTS_TYPE_RBS2000,		"rbs2000" },
-	{ GSM_BTS_TYPE_NOKIA_SITE,	"nokia_site" },
-	{ GSM_BTS_TYPE_OSMOBTS,		"sysmobts" },
-	{ 0, NULL }
-};
-
-enum gsm_bts_type str2btstype(const char *arg)
-{
-	return get_string_value(bts_type_names, arg);
-}
-
-const char *btstype2str(enum gsm_bts_type type)
-{
-	return get_value_string(bts_type_names, type);
-}
-
 const struct value_string gsm_bts_features_descs[] = {
 	{ BTS_FEAT_HSCSD,		"HSCSD" },
 	{ BTS_FEAT_GPRS,		"GPRS" },
@@ -360,7 +340,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 
 	bts->rach_b_thresh = -1;
 	bts->rach_ldavg_slots = -1;
-	bts->paging.free_chans_need = -1;
 	bts->features.data = &bts->_features_data[0];
 	bts->features.data_len = sizeof(bts->_features_data);
 
@@ -527,35 +506,6 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_SITE_MANAGER:
 		mo = &bts->site_mgr.mo;
-		break;
-	case NM_OC_BS11:
-		switch (obj_inst->bts_nr) {
-		case BS11_OBJ_CCLK:
-			mo = &bts->bs11.cclk.mo;
-			break;
-		case BS11_OBJ_BBSIG:
-			if (obj_inst->ts_nr > bts->num_trx)
-				return NULL;
-			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-			mo = &trx->bs11.bbsig.mo;
-			break;
-		case BS11_OBJ_PA:
-			if (obj_inst->ts_nr > bts->num_trx)
-				return NULL;
-			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-			mo = &trx->bs11.pa.mo;
-			break;
-		default:
-			return NULL;
-		}
-		break;
-	case NM_OC_BS11_RACK:
-		mo = &bts->bs11.rack.mo;
-		break;
-	case NM_OC_BS11_ENVABTSE:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->bs11.envabtse))
-			return NULL;
-		mo = &bts->bs11.envabtse[obj_inst->trx_nr].mo;
 		break;
 	case NM_OC_GPRS_NSE:
 		mo = &bts->gprs.nse.mo;

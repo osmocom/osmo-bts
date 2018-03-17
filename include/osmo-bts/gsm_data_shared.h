@@ -28,19 +28,6 @@
 #define SI2Q_MAX_LEN 160
 #define SI2Q_MIN_LEN 18
 
-struct osmo_bsc_data;
-
-struct osmo_bsc_sccp_con;
-struct gsm_sms_queue;
-
-/* RRLP mode of operation */
-enum rrlp_mode {
-	RRLP_MODE_NONE,
-	RRLP_MODE_MS_BASED,
-	RRLP_MODE_MS_PREF,
-	RRLP_MODE_ASS_PREF,
-};
-
 /* Channel Request reason */
 enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_EMERG,
@@ -90,11 +77,7 @@ enum bts_gprs_mode {
 };
 
 struct gsm_lchan;
-struct gsm_subscriber;
-struct gsm_mncc;
 struct osmo_rtp_socket;
-struct rtp_socket;
-struct bsc_api;
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -118,19 +101,6 @@ struct gsm_abis_mo {
 	struct tlv_parsed *nm_attr;
 	/* BTS to which this MO belongs */
 	struct gsm_bts *bts;
-};
-
-/* Ericsson OM2000 Managed Object */
-struct abis_om2k_mo {
-	uint8_t class;
-	uint8_t bts;
-	uint8_t assoc_so;
-	uint8_t inst;
-} __attribute__ ((packed));
-
-struct om2k_mo {
-	struct abis_om2k_mo addr;
-	struct osmo_fsm_inst *fsm;
 };
 
 #define MAX_A5_KEY_LEN	(128/8)
@@ -392,15 +362,6 @@ struct gsm_bts_trx_ts {
 		uint8_t ma_data[8];	/* 10.5.2.21: max 8 bytes value part */
 	} hopping;
 
-	/* To which E1 subslot are we connected */
-	struct gsm_e1_subslot e1_link;
-
-	union {
-		struct {
-			struct om2k_mo om2k_mo;
-		} rbs2000;
-	};
-
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
@@ -415,7 +376,6 @@ struct gsm_bts_trx {
 	/* human readable name / description */
 	char *description;
 	/* how do we talk RSL with this TRX? */
-	struct gsm_e1_subslot rsl_e1_link;
 	uint8_t rsl_tei;
 	struct e1inp_sign_link *rsl_link;
 
@@ -441,29 +401,10 @@ struct gsm_bts_trx {
 
 	union {
 		struct {
-			struct {
-				struct gsm_abis_mo mo;
-			} bbsig;
-			struct {
-				struct gsm_abis_mo mo;
-			} pa;
-		} bs11;
-		struct {
 			unsigned int test_state;
 			uint8_t test_nr;
 			struct rxlev_stats rxlev_stat;
 		} ipaccess;
-		struct {
-			struct {
-				struct om2k_mo om2k_mo;
-			} trxc;
-			struct {
-				struct om2k_mo om2k_mo;
-			} rx;
-			struct {
-				struct om2k_mo om2k_mo;
-			} tx;
-		} rbs2000;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
@@ -472,16 +413,6 @@ struct gsm_bts_trx {
 #define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
 #define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
 #define GSM_LCHAN_SI(lchan, i) (void *)((lchan)->si.buf[i][0])
-
-enum gsm_bts_type {
-	GSM_BTS_TYPE_UNKNOWN,
-	GSM_BTS_TYPE_BS11,
-	GSM_BTS_TYPE_NANOBTS,
-	GSM_BTS_TYPE_RBS2000,
-	GSM_BTS_TYPE_NOKIA_SITE,
-	GSM_BTS_TYPE_OSMOBTS,
-	_NUM_GSM_BTS_TYPE
-};
 
 enum gsm_bts_type_variant {
 	BTS_UNKNOWN,
@@ -500,30 +431,6 @@ enum bts_attribute {
 };
 
 struct vty;
-
-struct gsm_bts_model {
-	struct llist_head list;
-
-	enum gsm_bts_type type;
-	enum gsm_bts_type_variant variant;
-	const char *name;
-
-	bool started;
-	int (*start)(struct gsm_network *net);
-	int (*oml_rcvmsg)(struct msgb *msg);
-
-	void (*e1line_bind_ops)(struct e1inp_line *line);
-
-	void (*config_write_bts)(struct vty *vty, struct gsm_bts *bts);
-	void (*config_write_trx)(struct vty *vty, struct gsm_bts_trx *trx);
-	void (*config_write_ts)(struct vty *vty, struct gsm_bts_trx_ts *ts);
-
-	struct tlv_definition nm_att_tlvdef;
-
-	/* features of a given BTS model set via gsm_bts_model_register() locally */
-	struct bitvec features;
-	uint8_t _features_data[MAX_BTS_FEATURES/8];
-};
 
 /* N. B: always add new features to the end of the list (right before _NUM_BTS_FEAT) to avoid breaking compatibility
    with BTS compiled against earlier version of this header. Also make sure that the description strings
@@ -547,30 +454,6 @@ enum gsm_bts_features {
 };
 
 extern const struct value_string gsm_bts_features_descs[];
-
-/*
- * This keeps track of the paging status of one BTS. It
- * includes a number of pending requests, a back pointer
- * to the gsm_bts, a timer and some more state.
- */
-struct gsm_bts_paging_state {
-	/* pending requests */
-	struct llist_head pending_requests;
-	struct gsm_bts *bts;
-
-	struct osmo_timer_list work_timer;
-	struct osmo_timer_list credit_timer;
-
-	/* free chans needed */
-	int free_chans_need;
-
-	/* load */
-	uint16_t available_slots;
-};
-
-struct gsm_envabtse {
-	struct gsm_abis_mo mo;
-};
 
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
@@ -628,30 +511,6 @@ struct gprs_rlc_cfg {
 	uint8_t initial_mcs;
 };
 
-
-enum neigh_list_manual_mode {
-	NL_MODE_AUTOMATIC = 0,
-	NL_MODE_MANUAL = 1,
-	NL_MODE_MANUAL_SI5SEP = 2, /* SI2 and SI5 have separate neighbor lists */
-};
-
-enum bts_loc_fix {
-	BTS_LOC_FIX_INVALID = 0,
-	BTS_LOC_FIX_2D = 1,
-	BTS_LOC_FIX_3D = 2,
-};
-
-extern const struct value_string bts_loc_fix_names[];
-
-struct bts_location {
-	struct llist_head list;
-	time_t tstamp;
-	enum bts_loc_fix valid;
-	double lat;
-	double lon;
-	double height;
-};
-
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -672,9 +531,7 @@ struct gsm_bts {
 	 * which is used as TSC for the CCCH */
 	uint8_t bsic;
 	/* type of BTS */
-	enum gsm_bts_type type;
 	enum gsm_bts_type_variant variant;
-	struct gsm_bts_model *model;
 	enum gsm_band band;
 	char version[MAX_VERSION_LENGTH];
 	char sub_model[MAX_VERSION_LENGTH];
@@ -690,11 +547,8 @@ struct gsm_bts {
 	int ms_max_power;
 
 	/* how do we talk OML with this TRX? */
-	struct gsm_e1_subslot oml_e1_link;
 	uint8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
-	/* when OML link was established */
-	time_t uptime;
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
@@ -707,9 +561,6 @@ struct gsm_bts {
 	/* DTX features of this BTS */
 	enum gsm48_dtx_mode dtxu;
 	bool dtxd;
-
-	/* paging state and control */
-	struct gsm_bts_paging_state paging;
 
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;
@@ -737,51 +588,6 @@ struct gsm_bts {
 			uint32_t flags;
 			uint32_t rsl_ip;
 		} ip_access;
-		struct {
-			struct {
-				struct gsm_abis_mo mo;
-			} cclk;
-			struct {
-				struct gsm_abis_mo mo;
-			} rack;
-			struct gsm_envabtse envabtse[4];
-		} bs11;
-		struct {
-			struct {
-				struct om2k_mo om2k_mo;
-				struct gsm_abis_mo mo;
-				struct llist_head conn_groups;
-			} cf;
-			struct {
-				struct om2k_mo om2k_mo;
-				struct gsm_abis_mo mo;
-				struct llist_head conn_groups;
-			} is;
-			struct {
-				struct om2k_mo om2k_mo;
-				struct gsm_abis_mo mo;
-				struct llist_head conn_groups;
-			} con;
-			struct {
-				struct om2k_mo om2k_mo;
-				struct gsm_abis_mo mo;
-			} dp;
-			struct {
-				struct om2k_mo om2k_mo;
-				struct gsm_abis_mo mo;
-			} tf;
-			uint32_t use_superchannel:1;
-		} rbs2000;
-		struct {
-			uint8_t bts_type;
-			unsigned int configured:1,
-				skip_reset:1,
-				no_loc_rel_cnf:1,
-				bts_reset_timer_cnf,
-				did_reset:1,
-				wait_reset:1;
-			struct osmo_timer_list reset_timer;
-		} nokia;
 	};
 
 	/* Not entirely sure how ip.access specific this is */
@@ -829,9 +635,6 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
-
-enum gsm_bts_type str2btstype(const char *arg);
-const char *btstype2str(enum gsm_bts_type type);
 
 enum bts_attribute str2btsattr(const char *s);
 const char *btsatttr2str(enum bts_attribute v);

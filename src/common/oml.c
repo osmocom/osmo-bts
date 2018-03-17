@@ -156,7 +156,7 @@ char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
 
 static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 {
-	abis_nm_put_sw_file(msg, btstype2str(GSM_BTS_TYPE_OSMOBTS), PACKAGE_VERSION, true);
+	abis_nm_put_sw_file(msg, "osmobts", PACKAGE_VERSION, true);
 	abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT), btsvariant2str(bts->variant), true);
 
 	if (strlen(bts->sub_model))
