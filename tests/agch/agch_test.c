@@ -116,11 +116,11 @@ static void test_agch_queue(void)
 	g_time.t3 = 6;
 
 	printf("Testing AGCH messages queue handling.\n");
-	btsb->agch_max_queue_length = 32;
+	btsb->agch_queue.max_length = 32;
 
-	btsb->agch_queue_low_level = 30;
-	btsb->agch_queue_high_level = 30;
-	btsb->agch_queue_thresh_level = 60;
+	btsb->agch_queue.low_level = 30;
+	btsb->agch_queue.high_level = 30;
+	btsb->agch_queue.thresh_level = 60;
 
 	for (round = 1; round <= num_rounds; round++) {
 		for (idx = 0; idx < num_ima_per_round; idx++) {
@@ -143,10 +143,10 @@ static void test_agch_queue(void)
 	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       count, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
-	       btsb->agch_max_queue_length, btsb->agch_queue_length,
-	       btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,
-	       btsb->agch_queue_rejected_msgs, btsb->agch_queue_agch_msgs,
-	       btsb->agch_queue_pch_msgs);
+	       btsb->agch_queue.max_length, btsb->agch_queue.length,
+	       btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
+	       btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
+	       btsb->agch_queue.pch_msgs);
 
 	imm_ass_count = 0;
 	imm_ass_rej_count = 0;
@@ -182,10 +182,10 @@ static void test_agch_queue(void)
 	       "dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 	       "ag-res %"PRIu64", non-res %"PRIu64"\n",
 	       multiframes, imm_ass_count, imm_ass_rej_count, imm_ass_rej_ref_count,
-	       btsb->agch_max_queue_length, btsb->agch_queue_length,
-	       btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,
-	       btsb->agch_queue_rejected_msgs, btsb->agch_queue_agch_msgs,
-	       btsb->agch_queue_pch_msgs);
+	       btsb->agch_queue.max_length, btsb->agch_queue.length,
+	       btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
+	       btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
+	       btsb->agch_queue.pch_msgs);
 }
 
 static void test_agch_queue_length_computation(void)

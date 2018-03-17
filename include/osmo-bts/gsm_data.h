@@ -69,20 +69,22 @@ struct gsm_bts_role_bts {
 	uint8_t max_ta;
 
 	/* AGCH queuing */
-	struct llist_head agch_queue;
-	int agch_queue_length;
-	int agch_max_queue_length;
+	struct {
+		struct llist_head queue;
+		int length;
+		int max_length;
 
-	int agch_queue_thresh_level;	/* Cleanup threshold in percent of max len */
-	int agch_queue_low_level;	/* Low water mark in percent of max len */
-	int agch_queue_high_level;	/* High water mark in percent of max len */
+		int thresh_level;	/* Cleanup threshold in percent of max len */
+		int low_level;		/* Low water mark in percent of max len */
+		int high_level;		/* High water mark in percent of max len */
 
-	/* TODO: Use a rate counter group instead */
-	uint64_t agch_queue_dropped_msgs;
-	uint64_t agch_queue_merged_msgs;
-	uint64_t agch_queue_rejected_msgs;
-	uint64_t agch_queue_agch_msgs;
-	uint64_t agch_queue_pch_msgs;
+		/* TODO: Use a rate counter group instead */
+		uint64_t dropped_msgs;
+		uint64_t merged_msgs;
+		uint64_t rejected_msgs;
+		uint64_t agch_msgs;
+		uint64_t pch_msgs;
+	} agch_queue;
 
 	struct paging_state *paging_state;
 	char *bsc_oml_host;

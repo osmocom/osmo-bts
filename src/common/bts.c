@@ -122,8 +122,8 @@ int bts_init(struct gsm_bts *bts)
 	bts->role = btsb = talloc_zero(bts, struct gsm_bts_role_bts);
 	btsb->bts = bts;
 
-	INIT_LLIST_HEAD(&btsb->agch_queue);
-	btsb->agch_queue_length = 0;
+	INIT_LLIST_HEAD(&btsb->agch_queue.queue);
+	btsb->agch_queue.length = 0;
 
 	bts->ctrs = rate_ctr_group_alloc(bts, &bts_ctrg_desc, bts->nr);
 
@@ -131,9 +131,9 @@ int bts_init(struct gsm_bts *bts)
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
 	 * disable this feature.
 	 */
-	btsb->agch_queue_low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
-	btsb->agch_queue_high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
-	btsb->agch_queue_thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+	btsb->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	btsb->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+	btsb->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
 
 	/* configurable via VTY */
 	btsb->paging_state = paging_init(btsb, 200, 0);
@@ -389,20 +389,20 @@ static void bts_update_agch_max_queue_length(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct gsm48_system_information_type_3 *si3;
-	int old_max_length = btsb->agch_max_queue_length;
+	int old_max_length = btsb->agch_queue.max_length;
 
 	if (!(bts->si_valid & (1<<SYSINFO_TYPE_3)))
 		return;
 
 	si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
 
-	btsb->agch_max_queue_length =
+	btsb->agch_queue.max_length =
 		bts_agch_max_queue_length(si3->rach_control.tx_integer,
 					  si3->control_channel_desc.ccch_conf);
 
-	if (btsb->agch_max_queue_length != old_max_length)
+	if (btsb->agch_queue.max_length != old_max_length)
 		LOGP(DRSL, LOGL_INFO, "Updated AGCH max queue length to %d\n",
-		     btsb->agch_max_queue_length);
+		     btsb->agch_queue.max_length);
 }
 
 #define REQ_REFS_PER_IMM_ASS_REJ 4
@@ -538,31 +538,31 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 	int hard_limit = 1000;
 	struct gsm48_imm_ass_rej *imm_ass_cmd = msgb_l3(msg);
 
-	if (btsb->agch_queue_length > hard_limit) {
+	if (btsb->agch_queue.length > hard_limit) {
 		LOGP(DSUM, LOGL_ERROR,
 		     "AGCH: too many messages in queue, "
 		     "refusing message type 0x%02x, length = %d/%d\n",
 		     ((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type,
-		     btsb->agch_queue_length, btsb->agch_max_queue_length);
+		     btsb->agch_queue.length, btsb->agch_queue.max_length);
 
-		btsb->agch_queue_rejected_msgs++;
+		btsb->agch_queue.rejected_msgs++;
 		return -ENOMEM;
 	}
 
-	if (btsb->agch_queue_length > 0) {
+	if (btsb->agch_queue.length > 0) {
 		struct msgb *last_msg =
-			llist_entry(btsb->agch_queue.prev, struct msgb, list);
+			llist_entry(btsb->agch_queue.queue.prev, struct msgb, list);
 		struct gsm48_imm_ass_rej *last_imm_ass_rej = msgb_l3(last_msg);
 
 		if (try_merge_imm_ass_rej(last_imm_ass_rej, imm_ass_cmd)) {
-			btsb->agch_queue_merged_msgs++;
+			btsb->agch_queue.merged_msgs++;
 			msgb_free(msg);
 			return 0;
 		}
 	}
 
-	msgb_enqueue(&btsb->agch_queue, msg);
-	btsb->agch_queue_length++;
+	msgb_enqueue(&btsb->agch_queue.queue, msg);
+	btsb->agch_queue.length++;
 
 	return 0;
 }
@@ -570,11 +570,11 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
-	struct msgb *msg = msgb_dequeue(&btsb->agch_queue);
+	struct msgb *msg = msgb_dequeue(&btsb->agch_queue.queue);
 	if (!msg)
 		return NULL;
 
-	btsb->agch_queue_length--;
+	btsb->agch_queue.length--;
 	return msg;
 }
 
@@ -589,16 +589,16 @@ static void compact_agch_queue(struct gsm_bts *bts)
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 	struct msgb *msg, *msg2;
 	int max_len, slope, offs;
-	int level_low = btsb->agch_queue_low_level;
-	int level_high = btsb->agch_queue_high_level;
-	int level_thres = btsb->agch_queue_thresh_level;
+	int level_low = btsb->agch_queue.low_level;
+	int level_high = btsb->agch_queue.high_level;
+	int level_thres = btsb->agch_queue.thresh_level;
 
-	max_len = btsb->agch_max_queue_length;
+	max_len = btsb->agch_queue.max_length;
 
 	if (max_len == 0)
 		max_len = 1;
 
-	if (btsb->agch_queue_length < max_len * level_thres / 100)
+	if (btsb->agch_queue.length < max_len * level_thres / 100)
 		return;
 
 	/* p^
@@ -615,7 +615,7 @@ static void compact_agch_queue(struct gsm_bts *bts)
 	else
 		slope = 0x10000 * max_len; /* p_drop >= 1 if len > offs */
 
-	llist_for_each_entry_safe(msg, msg2, &btsb->agch_queue, list) {
+	llist_for_each_entry_safe(msg, msg2, &btsb->agch_queue.queue, list) {
 		struct gsm48_imm_ass *imm_ass_cmd = msgb_l3(msg);
 		int p_drop;
 
@@ -624,16 +624,16 @@ static void compact_agch_queue(struct gsm_bts *bts)
 
 		/* IMMEDIATE ASSIGN REJECT */
 
-		p_drop = (btsb->agch_queue_length - offs) * slope / max_len;
+		p_drop = (btsb->agch_queue.length - offs) * slope / max_len;
 
 		if ((random() & 0xffff) >= p_drop)
 			return;
 
 		llist_del(&msg->list);
-		btsb->agch_queue_length--;
+		btsb->agch_queue.length--;
 		msgb_free(msg);
 
-		btsb->agch_queue_dropped_msgs++;
+		btsb->agch_queue.dropped_msgs++;
 	}
 	return;
 }
@@ -673,9 +673,9 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	msgb_free(msg);
 
 	if (is_ag_res)
-		btsb->agch_queue_agch_msgs++;
+		btsb->agch_queue.agch_msgs++;
 	else
-		btsb->agch_queue_pch_msgs++;
+		btsb->agch_queue.pch_msgs++;
 
 	return rc;
 }

@@ -270,12 +270,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(btsb->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " uplink-power-target %d%s", btsb->ul_power_target, VTY_NEWLINE);
-	if (btsb->agch_queue_thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
-		 || btsb->agch_queue_low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
-		 || btsb->agch_queue_high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
+	if (btsb->agch_queue.thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
+		 || btsb->agch_queue.low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
+		 || btsb->agch_queue.high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
 		vty_out(vty, " agch-queue-mgmt threshold %d low %d high %d%s",
-			btsb->agch_queue_thresh_level, btsb->agch_queue_low_level,
-			btsb->agch_queue_high_level, VTY_NEWLINE);
+			btsb->agch_queue.thresh_level, btsb->agch_queue.low_level,
+			btsb->agch_queue.high_level, VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
 		if (gsmtap_sapi_mask & (1 << i)) {
@@ -534,9 +534,9 @@ DEFUN(cfg_bts_agch_queue_mgmt_params,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->agch_queue_thresh_level = atoi(argv[0]);
-	btsb->agch_queue_low_level = atoi(argv[1]);
-	btsb->agch_queue_high_level = atoi(argv[2]);
+	btsb->agch_queue.thresh_level = atoi(argv[0]);
+	btsb->agch_queue.low_level = atoi(argv[1]);
+	btsb->agch_queue.high_level = atoi(argv[2]);
 
 	return CMD_SUCCESS;
 }
@@ -550,9 +550,9 @@ DEFUN(cfg_bts_agch_queue_mgmt_default,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
 
-	btsb->agch_queue_thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
-	btsb->agch_queue_low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
-	btsb->agch_queue_high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
+	btsb->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
+	btsb->agch_queue.low_level = GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT;
+	btsb->agch_queue.high_level = GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT;
 
 	return CMD_SUCCESS;
 }
@@ -822,10 +822,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  AGCH: Queue limit %u, occupied %d, "
 		"dropped %"PRIu64", merged %"PRIu64", rejected %"PRIu64", "
 		"ag-res %"PRIu64", non-res %"PRIu64"%s",
-		btsb->agch_max_queue_length, btsb->agch_queue_length,
-		btsb->agch_queue_dropped_msgs, btsb->agch_queue_merged_msgs,
-		btsb->agch_queue_rejected_msgs, btsb->agch_queue_agch_msgs,
-		btsb->agch_queue_pch_msgs,
+		btsb->agch_queue.max_length, btsb->agch_queue.length,
+		btsb->agch_queue.dropped_msgs, btsb->agch_queue.merged_msgs,
+		btsb->agch_queue.rejected_msgs, btsb->agch_queue.agch_msgs,
+		btsb->agch_queue.pch_msgs,
 		VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length: %u%s",
 		llist_length(&btsb->smscb_state.queue), VTY_NEWLINE);
