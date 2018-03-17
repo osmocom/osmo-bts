@@ -32,3 +32,10 @@ Depends: osmo-bts-trx (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the osmo-bts-trx
  Make debugging possible
 
+Package: osmo-bts-virtual
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Virtual Osmocom GSM BTS (no RF hardware; GSMTAP/UDP)
+ This version of OsmoBTS doesn't use actual GSM PHY/Hardware/RF, but
+ utilizes GSMTAP-over-UDP frames for the Um interface.  This is useful
+ in fully virtualized setups e.g. in combination with OsmocomBB virt_phy.
