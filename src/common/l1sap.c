@@ -235,14 +235,14 @@ const struct value_string gsmtap_sapi_names[] = {
 
 /* send primitive as gsmtap */
 static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-			  uint8_t *ss, uint32_t fn, uint8_t **data, int *len,
+			  uint8_t *ss, uint32_t fn, uint8_t **data, unsigned int *len,
 			  uint8_t num_agch)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr, link_id;
 
-	*data = msg->data + sizeof(struct osmo_phsap_prim);
-	*len = msg->len - sizeof(struct osmo_phsap_prim);
+	*data = msgb_l2(msg);
+	*len = msgb_l2len(msg);
 	chan_nr = l1sap->u.data.chan_nr;
 	link_id = l1sap->u.data.link_id;
 
@@ -276,18 +276,18 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 }
 
 static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-		       uint8_t *ss, uint32_t fn, uint8_t **data, int *len)
+		       uint8_t *ss, uint32_t fn, uint8_t **data, unsigned int *len)
 {
 	struct msgb *msg = l1sap->oph.msg;
 
-	*data = msg->data + sizeof(struct osmo_phsap_prim);
-	*len = msg->len - sizeof(struct osmo_phsap_prim);
+	*data = msgb_l2(msg);
+	*len = msgb_l2len(msg);
 
 	if (L1SAP_IS_PTCCH(fn)) {
 		*chan_type = GSMTAP_CHANNEL_PTCCH;
 		*ss = L1SAP_FN2PTCCHBLOCK(fn);
-		if (l1sap->oph.primitive
-				== PRIM_OP_INDICATION) {
+		if (l1sap->oph.primitive == PRIM_OP_INDICATION) {
+			OSMO_ASSERT(len > 0);
 			if ((*data[0]) == 7)
 				return -EINVAL;
 			(*data)++;
@@ -300,7 +300,7 @@ static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 }
 
 static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, int *len)
+	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, unsigned int *len)
 {
 	uint8_t chan_nr;
 
@@ -345,7 +345,7 @@ static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int l
 static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	uint8_t *data;
-	int len;
+	unsigned int len;
 	uint8_t chan_type = 0, tn = 0, ss = 0;
 	uint32_t fn;
 	uint16_t uplink = GSMTAP_ARFCN_F_UPLINK;
@@ -1262,7 +1262,11 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
-/* any L1 prim received from bts model, takes ownership of the msgb */
+/* Process any L1 prim received from bts model.
+ *
+ * This function takes ownership of the msgb.
+ * If l1sap contains a msgb, it assumes that msgb->l2h was set by lower layer.
+ */
 int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	struct msgb *msg = l1sap->oph.msg;
