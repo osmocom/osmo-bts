@@ -285,14 +285,6 @@ static const struct value_string clocksync_sel_vals[] = {
 	{ 0, NULL }
 };
 
-static const struct value_string clocksync_source_state_vals[] = {
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_SOURCE_STATE_ENUM_INVALID, "Invalid" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_SOURCE_STATE_ENUM_VALID, "Valid" },
-	{ cOCTVC1_HW_CLOCK_SYNC_MGR_SOURCE_STATE_ENUM_UNSPECIFIED,
-							"Unspecified" },
-	{ 0, NULL }
-};
-
 /* Chapter 12.15 */
 static int get_clock_sync_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 				   void *data)
