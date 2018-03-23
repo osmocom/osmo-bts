@@ -1162,7 +1162,6 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 		struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = trx_by_l1h(fl1, ra_ind->TrxId.byTrxId);
-	struct gsm_bts *bts = trx->bts;
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;
