@@ -275,6 +275,7 @@ static const struct value_string clocksync_source_vals[] = {
 	{ 0, NULL }
 };
 
+#if OCTPHY_USE_CLK_SOURCE_SELECTION == 1
 static const struct value_string clocksync_sel_vals[] = {
 	{ cOCTVC1_HW_CLOCK_SYNC_MGR_SOURCE_SELECTION_ENUM_AUTOSELECT,
 		"Autoselect" },
@@ -284,6 +285,7 @@ static const struct value_string clocksync_sel_vals[] = {
 		"Host Application" },
 	{ 0, NULL }
 };
+#endif
 
 /* Chapter 12.15 */
 static int get_clock_sync_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
@@ -296,8 +298,14 @@ static int get_clock_sync_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 
 	LOGP(DL1C, LOGL_INFO, "CLOCK-SYNC-MGR-INFO.resp Reference=%s ",
 		get_value_string(clocksync_source_vals, cir->ulClkSourceRef));
+
+#if OCTPHY_USE_CLK_SOURCE_SELECTION == 1
 	LOGPC(DL1C, LOGL_INFO, "Selection=%s)\n",
 		get_value_string(clocksync_sel_vals, cir->ulClkSourceSelection));
+#else
+	LOGPC(DL1C, LOGL_INFO, "Clock Drift= %u Us\n",
+		cir->ulMaxDriftDurationUs);
+#endif
 
 	msgb_free(resp);
 	return 0;
@@ -330,18 +338,45 @@ static int get_clock_sync_stats_cb(struct octphy_hdl *fl1, struct msgb *resp,
 
 	mOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP_SWAP(csr);
 
-	LOGP(DL1C, LOGL_INFO, "CLOCK-SYNC-MGR-STATS.resp State=%s, "
-		"ClockError=%d DroppedCycles=%d, PllFreqHz=%u, PllFract=%u, "
-		"SlipCnt=%u SyncLosses=%u SourceState=%u, DacValue=%u\n",
-		get_value_string(clocksync_state_vals, csr->ulState),
-	       	csr->lClockError, csr->lDroppedCycles, csr->ulPllFreqHz,
-		csr->ulPllFractionalFreqHz, csr->ulSlipCnt,
-#if OCTPHY_USE_SYNC_LOSS_CNT == 1
-		csr->ulSyncLossCnt,
-#else
-		csr->ulSyncLosseCnt,
+	LOGP(DL1C, LOGL_INFO, "CLOCK-SYNC-MGR-STATS.resp");
+	LOGPC(DL1C, LOGL_INFO, " State=%s,",
+	      get_value_string(clocksync_state_vals, csr->ulState));
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_CLOCK_ERROR == 1
+	LOGPC(DL1C, LOGL_INFO, " ClockError=%d,", csr->lClockError);
 #endif
-		csr->ulSourceState, csr->ulDacValue);
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DROPPED_CYCLES == 1
+	LOGPC(DL1C, LOGL_INFO, " DroppedCycles=%d,", csr->lDroppedCycles);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FREQ_HZ == 1
+	LOGPC(DL1C, LOGL_INFO, " PllFreqHz=%u,", csr->ulPllFreqHz);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FRACTIONAL_FREQ_HZ == 1
+	LOGPC(DL1C, LOGL_INFO, " PllFract=%u,", csr->ulPllFractionalFreqHz);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SLIP_CNT == 1
+	LOGPC(DL1C, LOGL_INFO, " SlipCnt=%u,", csr->ulSlipCnt);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSS_CNT == 1
+	LOGPC(DL1C, LOGL_INFO, " SyncLosses=%u,", csr->ulSyncLossCnt);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSSE_CNT == 1
+	LOGPC(DL1C, LOGL_INFO, " SyncLosses=%u,", csr->ulSyncLosseCnt);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SOURCE_STATE == 1
+	LOGPC(DL1C, LOGL_INFO, " SourceState=%u,", csr->ulSourceState);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DAC_STATE == 1
+	LOGPC(DL1C, LOGL_INFO, " CLOCK-SYNC-MGR-STATS.resp State=%s,",
+	      get_value_string(clocksync_dac_vals, csr->ulDacState));
+#endif
+	LOGPC(DL1C, LOGL_INFO, " LOCK-SYNC-MGR-USR-PROCESS.resp State=%s,",
+	      get_value_string(usr_process_id, csr->ulOwnerProcessUid));
+	LOGPC(DL1C, LOGL_INFO, " DacValue=%u,", csr->ulDacValue);
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DRIFT_ELAPSE_TIME_US == 1
+	LOGPC(DL1C, LOGL_INFO, " DriftElapseTime=%u Us,",
+	      csr->ulDriftElapseTimeUs);
+#endif
+	LOGPC(DL1C, LOGL_INFO, "\n");
 
 	get_cb_data = (struct octphy_hw_get_cb_data*) data;
 	get_cb_data->cb(resp,get_cb_data->data);

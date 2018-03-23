@@ -34,6 +34,36 @@ static const struct value_string clocksync_state_vals[] = {
 	{ 0, NULL }
 };
 
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DAC_STATE == 1
+static const struct value_string clocksync_dac_vals[] = {
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_DAC_STATE_ENUM_UNUSED, "Unused" },
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_DAC_STATE_ENUM_MASTER, "Master" },
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_DAC_STATE_ENUM_SLAVE, "Slave" },
+	{ cOCTVC1_HW_CLOCK_SYNC_MGR_DAC_STATE_ENUM_FREE_RUNNING, "Free_Run"},
+	{ 0, NULL }
+};
+#endif
+
+static const struct value_string usr_process_id[] = {
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_INVALID, "Invalid" },
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_MAIN_APP, "MainApp" },
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_MAIN_ROUTER, "MainRouter" },
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_DL_0, "DL"},
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_ULIM_0, "ULIM" },
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_ULOM_0, "ULOM" },
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_SCHED_0, "SCHED" },
+#ifdef cOCTVC1_USER_ID_PROCESS_ENUM_GSM_DECOMB
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_DECOMB, "DECOMB"},
+#endif
+#ifdef cOCTVC1_USER_ID_PROCESS_ENUM_GSM_ULEQ
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_ULEQ, "ULEQ" },
+#endif
+#ifdef cOCTVC1_USER_ID_PROCESS_ENUM_GSM_TEST
+	{ cOCTVC1_USER_ID_PROCESS_ENUM_GSM_TEST, "TEST"},
+#endif
+	{ 0, NULL }
+};
+
 typedef void octphy_hw_get_cb(struct msgb *resp, void *data);
 
 struct octphy_hw_get_cb_data {

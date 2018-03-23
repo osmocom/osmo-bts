@@ -282,18 +282,44 @@ void show_clk_sync_stats_cb(struct msgb *resp, void *data)
 	vty_out(vty, "State=%s%s",
 		get_value_string(clocksync_state_vals, csr->ulState),
 		VTY_NEWLINE);
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_CLOCK_ERROR == 1
 	vty_out(vty, "ClockError=%d%s", csr->lClockError, VTY_NEWLINE);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DROPPED_CYCLES == 1
 	vty_out(vty, "DroppedCycles=%d%s", csr->lDroppedCycles, VTY_NEWLINE);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FREQ_HZ == 1
 	vty_out(vty, "PllFreqHz=%u%s", csr->ulPllFreqHz, VTY_NEWLINE);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FRACTIONAL_FREQ_HZ == 1
 	vty_out(vty, "PllFract=%u%s", csr->ulPllFractionalFreqHz, VTY_NEWLINE);
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SLIP_CNT == 1
 	vty_out(vty, "SlipCnt=%u%s", csr->ulSlipCnt, VTY_NEWLINE);
-#if OCTPHY_USE_SYNC_LOSS_CNT == 1
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSS_CNT == 1
 	vty_out(vty, "SyncLosses=%u%s", csr->ulSyncLossCnt, VTY_NEWLINE);
-#else
+#endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSSE_CNT == 1
 	vty_out(vty, "SyncLosses=%u%s", csr->ulSyncLosseCnt, VTY_NEWLINE);
 #endif
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SOURCE_STATE == 1
 	vty_out(vty, "SourceState=%u%s", csr->ulSourceState, VTY_NEWLINE);
+#endif
 	vty_out(vty, "DacValue=%u%s", csr->ulDacValue, VTY_NEWLINE);
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DAC_STATE == 1
+	vty_out(vty, "CLOCK-SYNC-MGR-STATS.resp State=%s%s",
+		get_value_string(clocksync_dac_vals, csr->ulDacState),
+		VTY_NEWLINE);
+#endif
+	vty_out(vty, "LOCK-SYNC-MGR-USR-PROCESS.resp State=%s%s",
+		get_value_string(usr_process_id, csr->ulOwnerProcessUid),
+		VTY_NEWLINE);
+	vty_out(vty, "DacValue=%u%s", csr->ulDacValue, VTY_NEWLINE);
+#if OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DRIFT_ELAPSE_TIME_US == 1
+	vty_out(vty, "DriftElapseTime=%u Us%s", csr->ulDriftElapseTimeUs,
+		VTY_NEWLINE);
+#endif
 }
 
 DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,

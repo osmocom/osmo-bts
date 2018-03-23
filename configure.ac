@@ -152,13 +152,6 @@ if test "$enable_octphy" = "yes" ; then
 			[],
 			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
 
-	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSyncLossCnt],
-			AC_DEFINE([OCTPHY_USE_SYNC_LOSS_CNT],
-			[1],
-			[Define to 1 if your octphy header files renamed ulSyncLosseCnt to ulSyncLossCnt]),
-			[],
-			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
-
 	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_RF_PORT_INFO_ANTENNA_TX_CONFIG_RSP.TxConfig],
 			AC_DEFINE([OCTPHY_USE_TX_CONFIG],
 			[1],
@@ -179,6 +172,83 @@ if test "$enable_octphy" = "yes" ; then
 			[Define to 1 if your octphy header files support antenna ids in tOCTVC1_GSM_RF_CONFIG]),
 			[],
 			[#include <octphy/octvc1/gsm/octvc1_gsm_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_INFO_RSP.ulClkSourceSelection],
+			AC_DEFINE([OCTPHY_USE_CLK_SOURCE_SELECTION],
+			[1],
+			[Define to 1 if your octphy header files supports ulClkSourceSelection in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_INFO_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.lClockError],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_CLOCK_ERROR],
+			[1],
+			[Define to 1 if your octphy header files supports lClockError in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.lDroppedCycles],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DROPPED_CYCLES],
+			[1],
+			[Define to 1 if your octphy header files supports lDroppedCycles in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulPllFreqHz],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FREQ_HZ],
+			[1],
+			[Define to 1 if your octphy header files supports ulPllFreqHz in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulPllFractionalFreqHz],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_PLL_FRACTIONAL_FREQ_HZ],
+			[1],
+			[Define to 1 if your octphy header files supports ulPllFractionalFreqHz in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSlipCnt],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SLIP_CNT],
+			[1],
+			[Define to 1 if your octphy header files supports ulSlipCnt in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSyncLosseCnt],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSSE_CNT],
+			[1],
+			[Define to 1 if your octphy header files supports ulSyncLosseCnt in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSyncLossCnt],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SYNC_LOSS_CNT],
+			[1],
+			[Define to 1 if your octphy header files supports ulSyncLossCnt in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulSourceState],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_SOURCE_STATE],
+			[1],
+			[Define to 1 if your octphy header files supports ulSourceState in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulDacState],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DAC_STATE],
+			[1],
+			[Define to 1 if your octphy header files supports ulDacState in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
+
+	AC_CHECK_MEMBER([tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP.ulDriftElapseTimeUs],
+			AC_DEFINE([OCTPHY_USE_CLOCK_SYNC_MGR_STATS_DRIFT_ELAPSE_TIME_US],
+			[1],
+			[Define to 1 if your octphy header files supports ulDriftElapseTimeUs in tOCTVC1_HW_MSG_CLOCK_SYNC_MGR_STATS_RSP]),
+			[],
+			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
 
 	CPPFLAGS=$oldCPPFLAGS
 fi
