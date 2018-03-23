@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
-	int rc, i;
+	int i;
 
 	char *dst_host = argv[1];
 	int site_id = atoi(argv[2]);
