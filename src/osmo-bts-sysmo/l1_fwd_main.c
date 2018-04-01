@@ -37,6 +37,7 @@
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/core/application.h>
 #include <osmocom/gsm/gsm_utils.h>
 
 #include <osmo-bts/logging.h>
@@ -169,11 +170,12 @@ int main(int argc, char **argv)
 	struct l1fwd_hdl *l1fh;
 	struct femtol1_hdl *fl1h;
 	int rc, i;
+	void *ctx = talloc_named_const(NULL, 0, "l1_fwd");
 
 	printf("sizeof(GsmL1_Prim_t) = %zu\n", sizeof(GsmL1_Prim_t));
 	printf("sizeof(SuperFemto_Prim_t) = %zu\n", sizeof(SuperFemto_Prim_t));
 
-	bts_log_init(NULL);
+	osmo_init_logging2(ctx, &bts_log_info);
 
 	/*
 	 * hack and prevent that two l1fwd-proxy/sysmobts run at the same
@@ -187,7 +189,7 @@ int main(int argc, char **argv)
 	}
 
 	/* allocate new femtol1_handle */
-	fl1h = talloc_zero(NULL, struct femtol1_hdl);
+	fl1h = talloc_zero(ctx, struct femtol1_hdl);
 	INIT_LLIST_HEAD(&fl1h->wlc_list);
 
 	/* open the actual hardware transport */
@@ -198,7 +200,7 @@ int main(int argc, char **argv)
 	}
 
 	/* create our fwd handle */
-	l1fh = talloc_zero(NULL, struct l1fwd_hdl);
+	l1fh = talloc_zero(ctx, struct l1fwd_hdl);
 
 	l1fh->fl1h = fl1h;
 	fl1h->priv = l1fh;

@@ -239,7 +239,7 @@ int bts_main(int argc, char **argv)
 	msgb_talloc_ctx_init(tall_bts_ctx, 100*1024);
 	bts_vty_info.tall_ctx = tall_bts_ctx;
 
-	bts_log_init(NULL);
+	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
 	vty_init(&bts_vty_info);
 	ctrl_vty_init(tall_bts_ctx);
 	rate_ctr_init(tall_bts_ctx);

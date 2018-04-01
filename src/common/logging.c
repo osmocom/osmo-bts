@@ -148,13 +148,3 @@ const struct log_info bts_log_info = {
 	.cat = bts_log_info_cat,
 	.num_cat = ARRAY_SIZE(bts_log_info_cat),
 };
-
-int bts_log_init(const char *category_mask)
-{
-	osmo_init_logging(&bts_log_info);
-
-	if (category_mask)
-		log_parse_category_mask(osmo_stderr_target, category_mask);
-
-	return 0;
-}

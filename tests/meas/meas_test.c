@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	msgb_talloc_ctx_init(tall_bts_ctx, 0);
 
-	bts_log_init(NULL);
+	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
 	osmo_stderr_target->categories[DMEAS].loglevel = LOGL_DEBUG;
 
 	bts = gsm_bts_alloc(tall_bts_ctx, 0);

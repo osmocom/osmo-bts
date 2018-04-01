@@ -25,8 +25,6 @@ enum {
 
 extern const struct log_info bts_log_info;
 
-int bts_log_init(const char *category_mask);
-
 /* LOGP with gsm_time prefix */
 #define LOGPGT(ss, lvl, gt, fmt, args...) \
 	LOGP(ss, lvl, "%s " fmt, osmo_dump_gsmtime(gt), ## args)

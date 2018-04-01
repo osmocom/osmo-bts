@@ -24,10 +24,13 @@
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/logging.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 
 #include <stdlib.h>
 #include <stdio.h>
+
+void *ctx = NULL;
 
 static const uint8_t ipa_rsl_connect[] = {
 	0x00, 0x1c, 0xff, 0x10, 0x80, 0x00, 0x0a, 0x0d,
@@ -161,7 +164,7 @@ static void test_bts_supports_cm(void)
 {
 	struct gsm_bts *bts;
 
-	bts = gsm_bts_alloc(NULL, 0);
+	bts = gsm_bts_alloc(ctx, 0);
 
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
@@ -184,7 +187,9 @@ static void test_bts_supports_cm(void)
 
 int main(int argc, char **argv)
 {
-	bts_log_init(NULL);
+	ctx = talloc_named_const(NULL, 0, "misc_test");
+
+	osmo_init_logging2(ctx, &bts_log_info);
 
 	test_sacch_get();
 	test_msg_utils_ipa();

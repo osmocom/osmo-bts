@@ -245,12 +245,6 @@ static const struct log_info mgr_log_info = {
 	.num_cat = ARRAY_SIZE(mgr_log_info_cat),
 };
 
-static int mgr_log_init(void)
-{
-	osmo_init_logging(&mgr_log_info);
-	return 0;
-}
-
 int main(int argc, char **argv)
 {
 	int rc;
@@ -261,7 +255,7 @@ int main(int argc, char **argv)
 
 	srand(time(NULL));
 
-	mgr_log_init();
+	osmo_init_logging2(tall_mgr_ctx, &mgr_log_info);
 	if (classify_bts() != 0)
 		exit(2);
 
