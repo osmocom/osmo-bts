@@ -140,8 +140,8 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
 /* Is this channel number for a dedicated channel (true) or not (false) */
 static bool chan_nr_is_dchan(uint8_t chan_nr)
 {
-	/* See TS 48.058 9.3.1 */
-	if (chan_nr & 0x80)
+	/* See TS 48.058 9.3.1 + Osmocom extension for RSL_CHAN_OSMO_PDCH */
+	if ((chan_nr & 0xc0) == 0x80)
 		return false;
 	else
 		return true;
