@@ -709,6 +709,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH
 		    && !(ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
 			 && (ts->dyn.pchan_is == GSM_PCHAN_TCH_F
+			     || ts->dyn.pchan_is == GSM_PCHAN_NONE
 			     || ts->dyn.pchan_want == GSM_PCHAN_TCH_F)))
 			ok = false;
 	} else if ((cbits & 0x1e) == 0x02) {
@@ -716,6 +717,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		if (ts->pchan != GSM_PCHAN_TCH_H
 		    && !(ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
 			 && (ts->dyn.pchan_is == GSM_PCHAN_TCH_H
+			     || ts->dyn.pchan_is == GSM_PCHAN_NONE
 			     || ts->dyn.pchan_want == GSM_PCHAN_TCH_H)))
 			ok = false;
 	} else if ((cbits & 0x1c) == 0x04) {
