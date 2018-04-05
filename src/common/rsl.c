@@ -1932,8 +1932,10 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 /* PDCH ACT/DEACT ACKNOWLEDGE */
 static int rsl_tx_dyn_pdch_ack(struct gsm_lchan *lchan, bool pdch_act)
 {
-	struct msgb *msg;
+	struct gsm_time *gtime = get_time(lchan->ts->trx->bts);
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	struct msgb *msg;
+	uint8_t ie[2];
 
 	LOGP(DRSL, LOGL_NOTICE, "%s Tx PDCH %s ACK\n",
 	     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT");
@@ -1942,9 +1944,10 @@ static int rsl_tx_dyn_pdch_ack(struct gsm_lchan *lchan, bool pdch_act)
 	if (!msg)
 		return -ENOMEM;
 
-	msg->len = 0;
-	msg->data = msg->tail = msg->l3h;
-
+	if (pdch_act) {
+		gsm48_gen_starting_time(ie, gtime);
+		msgb_tv_fixed_put(msg, RSL_IE_FRAME_NUMBER, 2, ie);
+	}
 	rsl_dch_push_hdr(msg,
 			 pdch_act? RSL_MT_IPAC_PDCH_ACT_ACK
 				 : RSL_MT_IPAC_PDCH_DEACT_ACK,
