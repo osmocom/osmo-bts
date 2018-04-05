@@ -4,7 +4,7 @@
 
 bts_model="$1"
 
-if [ "x$bts_model" == "x" ]; then
+if [ "x$bts_model" = "x" ]; then
 	echo "Error: You have to specify the BTS model as first argument, e.g. $0 sysmo"
 	exit 2
 fi
