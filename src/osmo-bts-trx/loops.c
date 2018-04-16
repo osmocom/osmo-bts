@@ -39,50 +39,38 @@
  * MS Power loop
  */
 
-static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
+static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t deltaDb)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	uint16_t arfcn = trx->arfcn;
+	enum gsm_band band = gsm_arfcn2band(arfcn);
 	int8_t new_power;
 
-	new_power = lchan->ms_power_ctrl.current - (diff >> 1);
+	/* Convert current level to dBm, and apply delta. */
+	new_power = ms_pwr_dbm(band, lchan->ms_power) + deltaDb;
 
-	if (diff == 0)
-		return 0;
-
+	/* Clip minimum */
 	if (new_power < 0)
 		new_power = 0;
 
 	// FIXME: to go above 1W, we need to know classmark of MS
-	if (arfcn >= 512 && arfcn <= 885) {
-		if (new_power > 15)
-			new_power = 15;
-	} else {
-		if (new_power > 19)
-			new_power = 19;
-	}
+	/* Convert to a MS power control level. ms_pwr_ctl_lvl() clips based on band. */
+	new_power = ms_pwr_ctl_lvl(band, new_power);
 
-	/* a higher value means a lower level (and vice versa) */
-	if (new_power > lchan->ms_power_ctrl.current + MS_LOWER_MAX)
-		new_power = lchan->ms_power_ctrl.current + MS_LOWER_MAX;
-	else if (new_power < lchan->ms_power_ctrl.current - MS_RAISE_MAX)
-		new_power = lchan->ms_power_ctrl.current - MS_RAISE_MAX;
-
-	if (lchan->ms_power_ctrl.current == new_power) {
-		LOGP(DLOOP, LOGL_INFO, "Keeping MS new_power of trx=%u "
+	if (lchan->ms_power == new_power) {
+		LOGP(DLOOP, LOGL_INFO, "Keeping MS power of trx=%u "
 			"chan_nr=0x%02x at control level %d (%d dBm)\n",
 			trx->nr, chan_nr, new_power,
-			MS_PWR_DBM(arfcn, new_power));
-
+			ms_pwr_dbm(band, new_power));
 		return 0;
 	}
 
-	LOGP(DLOOP, LOGL_INFO, "%s MS new_power of trx=%u chan_nr=0x%02x from "
-		"control level %d (%d dBm) to %d (%d dBm)\n",
-		(diff > 0) ? "Raising" : "Lowering",
-		trx->nr, chan_nr, lchan->ms_power_ctrl.current,
-		MS_PWR_DBM(arfcn, lchan->ms_power_ctrl.current), new_power,
-		MS_PWR_DBM(arfcn, new_power));
+	LOGP(DLOOP, LOGL_INFO, "Changing MS power of trx=%u chan_nr=0x%02x from "
+	     "control level %d (%d dBm) by %+d (%+d dBm) to %d (%d dBm)\n",
+	     trx->nr, chan_nr,
+	     lchan->ms_power, ms_pwr_dbm(band, lchan->ms_power),
+	     new_power - lchan->ms_power, ms_pwr_dbm(band, new_power) - ms_pwr_dbm(band, lchan->ms_power),
+	     new_power, ms_pwr_dbm(band, new_power));
 
 	lchan->ms_power_ctrl.current = new_power;
 
@@ -102,8 +90,12 @@ static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 	chan_state->meas.rssi_got_burst = 1;
 
 	/* store and process RSSI */
-	if (chan_state->meas.rssi_valid_count >= ARRAY_SIZE(chan_state->meas.rssi))
+	if (chan_state->meas.rssi_valid_count
+	    >= ARRAY_SIZE(chan_state->meas.rssi)) {
+		LOGP(DLOOP, LOGL_DEBUG, "RSSI values full");
 		return 0;
+	}
+
 	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
 
 	return 0;
@@ -144,8 +136,11 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	 * power level */
 	if (chan_state->meas.rssi_valid_count == 0)
 		return 0;
-	for (rssi = 999, i = 0; i < chan_state->meas.rssi_valid_count; i++) {
-		if (rssi > chan_state->meas.rssi[i])
+
+	/* find smallest rssi */
+	rssi = chan_state->meas.rssi[0];
+	for (i = 1; i < chan_state->meas.rssi_valid_count; i++) {
+		if (chan_state->meas.rssi[i] < rssi)
 			rssi = chan_state->meas.rssi[i];
 	}
 
