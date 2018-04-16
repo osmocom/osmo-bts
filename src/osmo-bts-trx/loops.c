@@ -102,11 +102,9 @@ static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 	chan_state->meas.rssi_got_burst = 1;
 
 	/* store and process RSSI */
-	if (chan_state->meas.rssi_valid_count
-					== ARRAY_SIZE(chan_state->meas.rssi))
+	if (chan_state->meas.rssi_valid_count >= ARRAY_SIZE(chan_state->meas.rssi))
 		return 0;
 	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
-	chan_state->meas.rssi_valid_count++;
 
 	return 0;
 }
