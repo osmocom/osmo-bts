@@ -19,6 +19,7 @@
  *
  */
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/application.h>
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/logging.h>

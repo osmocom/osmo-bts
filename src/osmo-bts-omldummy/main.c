@@ -1,5 +1,6 @@
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/application.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>

@@ -23,6 +23,7 @@
 #include <osmo-bts/gsm_data.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/application.h>
 
 #include <errno.h>
 #include <unistd.h>
