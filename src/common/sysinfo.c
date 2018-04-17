@@ -144,6 +144,7 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 	/* this should never bve reached. We must transmit a BCCH
 	 * message on the normal BCCH in all cases. */
 	OSMO_ASSERT(0);
+	return 0;
 }
 
 uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
