@@ -211,7 +211,7 @@ static inline int handle_attrs_trx(uint8_t *out, struct gsm_bts_trx *trx, const 
 	struct msgb *attr_buf = oml_msgb_alloc();
 
 	if (!attr_buf)
-		return -ENOMEM;
+		return -NM_NACK_CANT_PERFORM;
 
 	for (i = 0; i < attr_len; i++) {
 		bool processed = false;
@@ -244,7 +244,7 @@ static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, cons
 	struct msgb *attr_buf = oml_msgb_alloc();
 
 	if (!attr_buf)
-		return -ENOMEM;
+		return -NM_NACK_CANT_PERFORM;
 
 	for (i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
@@ -277,7 +277,7 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 	     get_value_string(abis_nm_obj_class_names, foh->obj_class));
 
 	if (!nmsg)
-		return -ENOMEM;
+		return -NM_NACK_CANT_PERFORM;
 
 	switch (foh->obj_class) {
 	case NM_OC_BTS:
@@ -289,7 +289,7 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
 		     get_value_string(abis_nm_obj_class_names, foh->obj_class));
-		len = -EINVAL;
+		len = -NM_NACK_RES_NOTIMPL;
 	}
 
 	if (len < 0) {
@@ -301,7 +301,8 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 	/* §9.4.64 Get Attribute Response Info */
 	msgb_tl16v_put(nmsg, NM_ATT_GET_ARI, len, resp);
 
-	return oml_mo_send_msg(&bts->mo, nmsg, NM_MT_GET_ATTR_RESP);
+	len = oml_mo_send_msg(&bts->mo, nmsg, NM_MT_GET_ATTR_RESP);
+	return (len < 0) ? -NM_NACK_CANT_PERFORM : len;
 }
 
 /* 8.8.1 sending State Changed Event Report */
@@ -552,15 +553,8 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	rc = oml_tx_attr_resp(bts, foh, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "Failed to respond to O&M Get Attributes message: %s\n", strerror(-rc));
-		switch (-rc) {
-		case ENOMEM:
-			return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
-		case ENOTSUP:
-			return oml_fom_ack_nack(msg, NM_NACK_OBJCLASS_NOTSUPP);
-		default:
-			return oml_fom_ack_nack(msg, NM_NACK_RES_NOTIMPL);
-		}
+		LOGP(DOML, LOGL_ERROR, "responding to O&M Get Attributes message with NACK 0%x\n", -rc);
+		return oml_fom_ack_nack(msg, -rc);
 	}
 
 	return 0;
