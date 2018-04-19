@@ -807,8 +807,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		if (length != 2) {
 			LOGP(DOML, LOGL_ERROR, "Expecting only one ARFCN, "
 				"because hopping not supported\n");
-			/* FIXME: send NACK */
-			return -ENOTSUP;
+			return oml_fom_ack_nack(msg, NM_NACK_MSGINCONSIST_PHYSCFG);
 		}
 		memcpy(&_value, value, 2);
 		arfcn = ntohs(_value);
