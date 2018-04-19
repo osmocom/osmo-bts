@@ -21,7 +21,7 @@
  */
 
 /*
- * Operation and Maintainance Messages
+ * Operation and Maintenance Messages
  */
 
 #include "btsconfig.h"
@@ -464,8 +464,8 @@ int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
-/* the below defaults correpsond to the libocmocore default of 1s for
- * DCCH and 2s for ACCH. The BSC should overried this via OML anyway. */
+/* The defaults below correspond to the libosmocore default of 1s for
+ * DCCH and 2s for ACCH. The BSC should override this via OML anyway. */
 const unsigned int oml_default_t200_ms[7] = {
 	[T200_SDCCH]		= 1000,
 	[T200_FACCH_F]		= 1000,
@@ -652,7 +652,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		case 0x02: /* Based on RXLEV/RXQUAL measurements */
 		default:
 			LOGP(DOML, LOGL_NOTICE, "Given Conn. Failure Criterion "
-				"not supported. Please use critetion 0x01 with "
+				"not supported. Please use criterion 0x01 with "
 				"RADIO_LINK_TIMEOUT value of 4..64\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
