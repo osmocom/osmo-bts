@@ -922,6 +922,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 	}
 
+	LOGP(DRSL, LOGL_DEBUG, "%s: rx Channel Activation in state: %s.\n",
+	     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
+
 	/* Initialize channel defaults */
 	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power;
@@ -2124,8 +2127,8 @@ static void osmo_dyn_ts_disconnected(struct gsm_bts_trx_ts *ts)
 		break;
 	default:
 		LOGP(DRSL, LOGL_ERROR,
-		     "%s Dyn TS disconnected, but invalid desired pchan",
-		     gsm_ts_and_pchan_name(ts));
+		     "%s Dyn TS disconnected, but invalid desired pchan: %s\n",
+		     gsm_ts_and_pchan_name(ts), gsm_pchan_name(ts->dyn.pchan_want));
 		ts->dyn.pchan_want = GSM_PCHAN_NONE;
 		/* TODO: how would this recover? */
 		return;

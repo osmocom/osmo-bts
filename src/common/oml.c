@@ -941,6 +941,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* Call into BTS driver to check attribute values */
 	rc = bts_model_check_oml(bts, foh->msg_type, ts->mo.nm_attr, tp_merged, ts);
 	if (rc < 0) {
+		LOGP(DOML, LOGL_ERROR, "SET CHAN ATTR: invalid attribute value, rc=%d\n", rc);
 		talloc_free(tp_merged);
 		/* Send NACK */
 		return oml_fom_ack_nack(msg, -rc);
@@ -956,6 +957,9 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		ts->pchan = abis_nm_pchan4chcomb(comb);
 		rc = conf_lchans(ts);
 		if (rc < 0) {
+			LOGP(DOML, LOGL_ERROR, "SET CHAN ATTR: invalid Chan Comb 0x%x"
+			     " (pchan=%s, conf_lchans()->%d)\n",
+			     comb, gsm_pchan_name(ts->pchan), rc);
 			talloc_free(tp_merged);
 			/* Send NACK */
 			return oml_fom_ack_nack(msg, -rc);
@@ -971,8 +975,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc = BSIC2BCC(bts->bsic);
 	}
-	LOGP(DOML, LOGL_INFO, "%s SET CHAN ATTR (TSC = %u)\n",
-		gsm_abis_mo_name(&ts->mo), ts->tsc);
+	LOGP(DOML, LOGL_INFO, "%s SET CHAN ATTR (TSC=%u pchan=%s)\n",
+		gsm_abis_mo_name(&ts->mo), ts->tsc, gsm_pchan_name(ts->pchan));
 
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);
