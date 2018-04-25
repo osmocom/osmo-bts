@@ -1581,7 +1581,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	struct osmo_trx_clock_state *tcs = &g_clk_s;
 	struct timespec tv_now;
 	int elapsed_us, elapsed_fn;
-	int elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
+	int64_t elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
 	unsigned int fn_caught_up = 0;
 	const struct timespec interval = { .tv_sec = 0, .tv_nsec = FRAME_DURATION_nS };
 
@@ -1625,7 +1625,8 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	elapsed_fn_since_clk = compute_elapsed_fn(tcs->last_clk_ind.fn, fn);
 	/* error (delta) between local clock since last CLK and CLK based on FN clock at TRX */
 	error_us_since_clk = elapsed_us_since_clk - (FRAME_DURATION_uS * elapsed_fn_since_clk);
-	LOGP(DL1C, LOGL_INFO, "TRX Clock Ind: elapsed_us=%7d, elapsed_fn=%3d, error_us=%+5d\n",
+	LOGP(DL1C, LOGL_INFO, "TRX Clock Ind: elapsed_us=%7"PRId64", "
+		"elapsed_fn=%3"PRId64", error_us=%+5"PRId64"\n",
 		elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk);
 
 	/* TODO: put this computed error_us_since_clk into some filter
