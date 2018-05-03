@@ -1,3 +1,210 @@
+osmo-bts (0.8.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * vty: skip installing cmds now always installed by default
+  * jenkins_common.sh: fix build_bts distcheck for more than one conf_flag
+  * fix build: tests/sysmobts: add missing -I$(SYSMOBTS_INCDIR)
+  * fix handover: handle_ph_ra_ind(): evaluate ra_ind before msgb_trim()
+  * implement support for 3-digit MNC with leading zeros
+  * configure: add --enable-werror
+  * use osmo_init_logging2() with proper talloc ctx
+
+  [ Pau Espin Pedrol ]
+  * lc15: Fix cfg indentation
+  * l1sap: Fix abort on big RTP packet received
+  * bts-trx: trx_ctrl_cmd: Simplify var assignment logic
+  * bts-trx: Avoid enqueueing consecutive duplicate messages to TRX
+  * Fix malformed Resource Indication packet
+  * debian/control: Remove uneeded dep libosmo-netif-dev
+  * jenkins.sh: Disable building doxygen for deps
+  * oml.c: Fix use of htons instead of ntohs
+  * bts-trx: trx_if.c: Log timedout+retransmitted CMD
+  * bts-trx: trx_if.c: trx_ctrl_read_cb: Move error handling to end of func
+  * bts-trx: trx_if.c: Improve parsing of received RSP messages from TRX
+  * bts-trx: Detect duplicated responses for retransmitted commands
+  * gsm_pchan2chan_nr: move warning to pragma message and track issue
+  * Remove unused variables
+  * bts-trx: scheduler_trx.c: Fix missing header
+  * l1sap.c: l1sap_tch_rts_ind: Remove unused variables
+  * octphy: octpkt.c: Remove unused static functions
+  * vty.c: Remove warning message
+  * virtual: l1_if.c: Remove unneeded warning message
+  * main.c: bts_main: fix typo in error message
+  * l1sap: Validate incoming RTP payload, drop bw-efficient AMR
+  * l1sap: Avoid assumption that l1sap is at head of msgb
+  * contrib: jenkins_bts_model: Fix bashism expr
+  * Include missing headers for osmo_init_logging2
+  * common/sysinfo.c: Fix no return on on-void function
+  * gsm_data_shared.h: Remove unused enum gsm_paging_event
+  * scheduler_trx: Fix signed integer overflow in clock calculations
+
+  [ Harald Welte ]
+  * trx: Better be safe than sorry before calling strlen
+  * trx: Avoid NULL+1 dereference in trx_ctrl_read_cb()
+  * trx: Don't call osmo_fr_check_sid with negative 'rc'
+  * trx: Don't assume phy_instance_by_num() returns non-NULL
+  * l1sap: fix wrong return value of is_fill_frame()
+  * measurement.c: Fix various typos in comments
+  * Comments on individual members of struct gsm_abis_mo
+  * scheduler: Harmonize log line format; Always print TS name + decoded FN
+  * scheduler_trx: L1P is for PH (data), L1M for MPH (control)
+  * l1sap: Fix log subsystem: Use DRTP for RTP related bits, L1C for MPH
+  * measurment.c: Introduce INFO category for DMEAS logging
+  * osmo-bts-octphy: Remove bogus warning about BS_AG_BLKS_RES
+  * rsl.c: Log RTP socket related errors as DRTP, not DRSL
+  * Put useful information in RTCP SDES.
+  * osmo-bts-trx: Fix reported frame number during PRIM_INFO_MEAS
+  * DTX: avoid illegal character contained in DTX FSM allocation which causes BTS crash
+  * gsm_lchan: remove unused member fields
+  * Add 'show (bts|trx|ts|lchan)' commands
+  * Print much more information during 'show lchan'
+  * vty: don't print "Bound IP / Port" if it isn't bound [yet]
+  * osmo-bts: Add talloc context introspection via VTY
+  * sysmo: Fix compiler warnings in eeprom.c
+  * sysmo+lc15: Add missign include for readv/writev
+  * trx: make l1if_fill_meas_res() static
+  * RSL: Properly reject RSL CHAN_NR IE for incompatible PCHAN
+  * RSL: Ensure we don't accept DCHAN messages for CCHAN
+  * osmo-bts-virtual: Shut down gracefully on socket creation failure
+  * osmo-bts-virtual: Generate PRIM_INFO_MEAS (with bogus values)
+  * Introduce + use LOG/DEBUGP with frame number prefixing/printing
+  * osmo-bts-virtual: Make use of LOGL1S() macro for context
+  * osmo-bts-virtual: Make sure PRIM_INFO_MEAS have non-zero frame number
+  * scheduler.c: Factor out find_sched_mframe_idx() function
+  * scheduler: add trx_sched_is_sacch_fn() function
+  * Revert "measurement: fix measurement computation"
+  * measurement.c: Hand Frame Number into measurement computation
+  * l1sap: Pass is_sub from L1 primitive into the Uplink Measurement
+  * osmo-bts-trx: Add missing frame number to l1if_process_meas_res()
+  * scheduler.c: Print message when burst substitution happens
+  * load_indication: Fix start of load indication timer
+  * RSL: Implement DELETE INDICATION on AGCH overflow
+  * RSL: Send ERROR REPORT on too short/truncated messages + wrong discriminator
+  * BTS: add rate_ctr about CCCH (paging, agch, pch)
+  * paging: Drop + Log paging requests for non-existant paging groups
+  * paging.c: Fix encoding of optional Mobile ID RR PAGING TYPE 1 / 2
+  * rsl: Improve ERROR REPORTing
+  * paging: Fix encoding of PAGING TYPE 3 Rest Octets
+  * RSL IPA DLCX: Avoid null-pointer dereference
+  * RSL: Fix encoding of ConnectionID in IPA_DLCX_ACK
+  * RSL IPA DLCX: Avoid another null-pointer dereference
+  * measurement.c: Fix sdcch4_meas_rep_fn102 / sdcch8_meas_rep_fn102
+  * counters: split rach:sent into rach:drop, rach:ho, rach:cs and rach:ps
+  * octphy: Remove code duplication for BER / RSSI conversion
+  * {sysmo,lc15}: Correctly report BER to L1SAP in INFO_MEAS_IND
+  * {sysmo,lc15}: Fix RACH reporting in combined CBCH case
+  * split scheduler_mframe.c from scheduler.c
+  * measurement: Compute RX{LEV,QUAL}-SUB for SDCCH and non-AMR TCH
+  * measurement.c: Don't silently copy "FULL" measurements to "SUB"
+  * scheduler: Add missing \n at end of LOG statement
+  * Move rach_busy counting above L1SAP
+  * RACH decoding: Use BER threshold for RACH ghost detection
+  * trx/scheduler: Use integer math for TOA (Timing of Arrival)
+  * measurement.c: higher-precision TA/TOA math
+  * L1SAP: Increase resolution of reported burst timing
+  * measurement: Keep average of high-accurate ToA value in lchan
+  * Add high-accuracy ToA value to Uplink Measurement Reports
+  * pcu_sock: Discard messages that are too short
+  * pcu_sock: Don't overflow the timeslot array
+  * pcu_sock: Log an error message and discard PCU primitives for BTS != 0
+  * pcu_sock: LOG + drop DATA.req from PCU for non-PDCH timeslot
+  * pcu_sock: LOG + drop PCU DATA.req for inactive lchan
+  * sysinfo.c: SI1 is optional; Send SI2 at TC=0 if no SI1 exists
+  * sysmobts: Compatibility with older firmware versions
+  * cosmetic: Document some SI scheduling related function API
+  * sysinfo: Fix scheduling of downlink SACCH information
+  * gsm_data_shared: Remove unused definitions/members/functions
+  * cosmetic: Move agch_queue to sub-structure of gsm_bts_role_bts
+  * Get rid of 'struct gsm_bts_role_bts'
+  * virtual: Correctly set+report BTS variant in OML attributes
+  * Add 'osmo-bts-omldummy' to bring up only OML without RSL
+  * fix inverted logic bug in omldummy patch
+  * omldummy: Suppress RSL transmission errors
+  * debian: Split osmo-bts-virtual from osmo-bts-trx
+  * fox chan_nr_is_dchan() for RSL_CHAN_OSMO_PDCH
+  * rsl_tx_dyn_pdch_ack: Add missing FRAME_NR information element
+  * fix activation of osmocom-style dynamic PDCH as TCH/F or TCH/H
+
+  [ Philipp Maier ]
+  * octphy: override firmware version check
+  * cosmetic: meas_test: fix section comment
+  * cosmetic: tests/Makefile.am: remove excess whitespace
+  * cosmetic: tests/power: remove unused var "ret"
+  * cosmetic: tests/agch: remove unused var "static_ilv"
+  * octphy: l1_oml: check returncode of trx_by_l1h()
+  * meas_test: fix header file references
+  * rsl: fix double-free in rsl_rx_mode_modif()
+  * fix nullpointer deref in rsl_tx_mode_modif_nack()
+  * rsl: do not allow MODE MODIFY request with unsupp. codec/rate
+  * gsm_data_shared: extend bts feature list with speech codecs
+  * octphy: ensure all BTS models set features
+  * vty: display bts features in vty command show bts
+  * bts: use feature list instead of speech codec table
+  * octphy: replace #warning with #pragma message
+  * ipac: fix log output
+  * rsl: remove unused variable
+  * l1_tch: remove dead code
+  * cosmetic: remove dead code
+  * cosmetic: remove unused variable
+  * cosmetic: remove unused variable in osmo-bts-omldummy/main.c
+  * octphy: integrate octasics latest header release
+  * osmo-bts-trx: perform error concealment for FR frames
+
+  [ Max ]
+  * Remove leftover comments and checks
+  * Log filenames on L1 errors
+  * Add --enable-sanitize configure option
+  * Use existing function to obtain TSC
+  * Remove BSC-specific parts
+  * Print FN delta on L1 errors
+  * Move sysmobts-calib into osmo-bts-sysmo
+  * Allow specifying sysmocom headers explicitly
+  * fix build: tests/misc: missing libosmo-abis and -trau flags
+  * Enable optional static builds
+  * Remove unneeded LIBOSMOCORE_CFLAGS from tests
+  * sysmobts: use proper includes for sbts2050 test
+  * Move -I inside *INCDIR variable
+  * sysmobts: remove weird default header location
+  * sysmobts: move header check to appropriate place
+  * CI: drop unused OsmoPCU dependency
+  * Enable sanitize for CI tests
+  * Add helper to get BCC from BSIC
+  * osmo-bts-trx: init nbits to know value
+  * osmo-bts-trx: ignore frame offset error on startup
+
+  [ Vadim Yanitskiy ]
+  * doc/examples: add CalypsoBTS configuration example
+  * common/pcu_sock.c: fix double field assignment
+  * scheduler_trx.c: remove ToA (Time of Arrival) hack
+  * common/l1sap.c: increase the BTS_CTR_RACH_DROP in RACH BER check
+  * common/l1sap.c: increment valid RACH counter after all checks
+  * common/l1sap.c: clean up noise / ghost RACH filtering
+  * common/l1sap.c: perform noise / ghost filtering for handover RACH
+  * common/l1sap.c: limit the minimal ToA for RACH bursts
+  * common/vty.c: remove unused variables
+  * common/main.c: track talloc NULL contexts by default
+
+  [ Alexander Huemer ]
+  * cosmetic: Makefile.am whitespace
+  * various Makefile.am: add missing CFLAGS
+  * gitignore: add missing entries
+
+  [ Stefan Sperling ]
+  * Cosmetic fixes for power ramping code.
+  * respond with NACK for non-hopping BTS with multiple ARFCN
+  * cosmetic: fix typos in src/common/oml.c
+  * return NACK codes instead of errno values from oml_tx_attr_resp()
+
+  [ Alexander Couzens ]
+  * pcuif_proto: correct indention of gsm_pcu_if_data
+  * pcu_if: move definition PCU_SOCK_DEFAULT into pcuif_proto.h
+  * pcuif_proto: add version 8 features
+
+  [ Keith ]
+  * osmo-bts-sysmo eeprom.c Restore ability to read/write EEPROM
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 03 May 2018 17:02:19 +0200
+
 osmo-bts (0.7.0) unstable; urgency=medium
 
   [ Max ]
