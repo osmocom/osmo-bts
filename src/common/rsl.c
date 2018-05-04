@@ -1182,10 +1182,13 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
 	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
 		rc = dyn_ts_pdch_release(lchan);
-		if (rc != 1)
-			return rc;
-		/* If the PCU is not connected, continue right away. */
-		return rsl_tx_rf_rel_ack(lchan);
+		if (rc == 1) {
+			/* If the PCU is not connected, continue to rel ack right away. */
+			lchan->rel_act_kind = LCHAN_REL_ACT_PCU;
+			return rsl_tx_rf_rel_ack(lchan);
+		}
+		/* Waiting for PDCH release */
+		return rc;
 	}
 
 	l1sap_chan_rel(lchan->ts->trx, chan_nr);
