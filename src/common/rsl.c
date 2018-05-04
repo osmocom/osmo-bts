@@ -634,6 +634,8 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 				     gsm_ts_and_pchan_name(lchan->ts), lchan->nr);
 				/* well, what to do about it ... carry on and hope it's fine. */
 			}
+			/* remember the fact that the TS is now released */
+			lchan->ts->dyn.pchan_is = GSM_PCHAN_NONE;
 			/* Continue to ack the release below. (This is a non-standard rel ack invented
 			 * specifically for GSM_PCHAN_TCH_F_TCH_H_PDCH). */
 			send_rel_ack = true;
