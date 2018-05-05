@@ -618,16 +618,48 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	bool send_rel_ack;
 
-	/*
-	 * Normally, PDCH deactivation via PCU does not ack back to the BSC.
-	 * But for GSM_PCHAN_TCH_F_TCH_H_PDCH, send a non-standard rel ack for
-	 * LCHAN_REL_ACT_PCU, since the rel req came from RSL initially.
-	 */
-	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL
-	    && !(lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
-		 && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH
-		 && lchan->rel_act_kind == LCHAN_REL_ACT_PCU)) {
+	switch (lchan->rel_act_kind) {
+	case LCHAN_REL_ACT_RSL:
+		send_rel_ack = true;
+		break;
+
+	case LCHAN_REL_ACT_PCU:
+		switch (lchan->ts->pchan) {
+		case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+			if (lchan->ts->dyn.pchan_is != GSM_PCHAN_PDCH) {
+				LOGP(DRSL, LOGL_ERROR,
+				     "%s (ss=%d) PDCH release: not in PDCH mode\n",
+				     gsm_ts_and_pchan_name(lchan->ts), lchan->nr);
+				/* well, what to do about it ... carry on and hope it's fine. */
+			}
+			/* Continue to ack the release below. (This is a non-standard rel ack invented
+			 * specifically for GSM_PCHAN_TCH_F_TCH_H_PDCH). */
+			send_rel_ack = true;
+			break;
+		case GSM_PCHAN_TCH_F_PDCH:
+			/* GSM_PCHAN_TCH_F_PDCH, does not require a rel ack. The caller
+			 * l1sap_info_rel_cnf() will continue with bts_model_ts_disconnect(). */
+			send_rel_ack = false;
+			break;
+		default:
+			LOGP(DRSL, LOGL_ERROR, "%s PCU rel ack for unexpected lchan kind\n",
+			     gsm_lchan_name(lchan));
+			/* Release certainly was not requested by the BSC via RSL, so don't ack. */
+			send_rel_ack = false;
+			break;
+		}
+		break;
+
+	default:
+		/* A rel that was not requested by the BSC via RSL, hence not sending a rel ack to the
+		 * BSC. */
+		send_rel_ack = false;
+		break;
+	}
+
+	if (!send_rel_ack) {
 		LOGP(DRSL, LOGL_NOTICE, "%s not sending REL ACK\n",
 			gsm_lchan_name(lchan));
 		return 0;
