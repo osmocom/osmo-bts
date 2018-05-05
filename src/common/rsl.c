@@ -871,6 +871,26 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 	return 0;
 }
 
+/* Make sure no state from TCH use remains. */
+static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
+{
+	/* These values don't apply to PDCH, just clear them. Particularly the encryption must be
+	 * cleared, or we would enable encryption on PDCH with parameters remaining from the TCH. */
+	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	lchan->ms_power_ctrl.current = lchan->ms_power;
+	lchan->ms_power_ctrl.fixed = 0;
+	lchan->rsl_cmode = 0;
+	lchan->tch_mode = 0;
+	memset(&lchan->encr, 0, sizeof(lchan->encr));
+	memset(&lchan->ho, 0, sizeof(lchan->ho));
+	lchan->bs_power = 0;
+	lchan->ms_power = 0;
+	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
+	lchan->rqd_ta = 0;
+	copy_sacch_si_to_lchan(lchan);
+	memset(&lchan->tch, 0, sizeof(lchan->tch));
+}
+
 /*!
  * Store the CHAN_ACTIV msg, connect the L1 timeslot in the proper type and
  * then invoke rsl_rx_chan_activ() with msg.
@@ -882,7 +902,10 @@ static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	switch (ts->dyn.pchan_want) {
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
+		break;
 	case GSM_PCHAN_PDCH:
+		/* Only the first lchan matters for PDCH */
+		clear_lchan_for_pdch_activ(ts->lchan);
 		break;
 	default:
 		LOGP(DRSL, LOGL_ERROR,
@@ -2096,6 +2119,9 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 	}
 
 	if (pdch_act) {
+		/* Clear TCH state. Only first lchan matters for PDCH */
+		clear_lchan_for_pdch_activ(ts->lchan);
+
 		/* First, disconnect the TCH channel, to connect PDTCH later */
 		rc = bts_model_ts_disconnect(ts);
 	} else {
