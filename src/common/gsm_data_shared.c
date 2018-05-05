@@ -597,9 +597,11 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 {
 	uint8_t cbits, chan_nr;
 
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
+	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
+
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-	case GSM_PCHAN_TCH_F_PDCH:
 		OSMO_ASSERT(lchan_nr == 0);
 		cbits = 0x01;
 		break;
@@ -652,11 +654,19 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
-	enum gsm_phys_chan_config pchan = lchan->ts->pchan;
-	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+	switch (lchan->ts->pchan) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		/* Return chan_nr reflecting the current TS pchan, either a standard TCH kind, or the
+		 * nonstandard value reflecting PDCH for Osmocom style dyn TS. */
 		return gsm_lchan_as_pchan2chan_nr(lchan,
 						  lchan->ts->dyn.pchan_is);
-	return gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
+	case GSM_PCHAN_TCH_F_PDCH:
+		/* For ip.access style dyn TS, we always want to use the chan_nr as if it was TCH/F.
+		 * We're using custom PDCH ACT and DEACT messages that use the usual chan_nr values. */
+		return gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+	default:
+		return gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
+	}
 }
 
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
