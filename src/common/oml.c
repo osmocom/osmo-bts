@@ -322,6 +322,9 @@ int oml_tx_state_changed(struct gsm_abis_mo *mo)
 	/* 9.4.7 Availability Status */
 	msgb_tl16v_put(nmsg, NM_ATT_AVAIL_STATUS, 1, &mo->nm_state.availability);
 
+	/* 9.4.4 Administrative Status -- not in spec but also sent by nanobts */
+	msgb_tv_put(nmsg, NM_ATT_ADM_STATE, mo->nm_state.administrative);
+
 	return oml_mo_send_msg(mo, nmsg, NM_MT_STATECHG_EVENT_REP);
 }
 
@@ -383,6 +386,7 @@ int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
 {
 	struct msgb *msg;
+	int rc = 0;
 
 	msg = oml_msgb_alloc();
 	if (!msg)
@@ -390,7 +394,12 @@ int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
 
 	msgb_tv_put(msg, NM_ATT_ADM_STATE, mo->nm_state.administrative);
 
-	return oml_mo_send_msg(mo, msg, NM_MT_CHG_ADM_STATE_ACK);
+	rc = oml_mo_send_msg(mo, msg, NM_MT_CHG_ADM_STATE_ACK);
+	if (rc != 0)
+		return rc;
+
+	/* Emulate behaviour of ipaccess nanobts: Send a 'State Changed Event Report' as well. */
+	return oml_tx_state_changed(mo);
 }
 
 int oml_mo_statechg_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
