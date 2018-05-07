@@ -514,6 +514,10 @@ struct gprs_rlc_cfg {
 	uint8_t initial_mcs;
 };
 
+/* The amount of time within which a sudden disconnect of a newly established
+ * OML connection will cause a special warning to be logged. */
+#define OSMO_BTS_OML_CONN_EARLY_DISCONNECT 10	 /* in seconds */
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -552,6 +556,7 @@ struct gsm_bts {
 	/* how do we talk OML with this TRX? */
 	uint8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
+	struct timespec oml_conn_established_timestamp;
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
