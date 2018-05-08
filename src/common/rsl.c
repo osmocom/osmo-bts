@@ -613,10 +613,26 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
  * dedicated channel related messages
  */
 
+/* Send an RF CHANnel RELease ACKnowledge with the given chan_nr. This chan_nr may mismatch the current
+ * lchan state, if we received a CHANnel RELease for an already released channel, and we're just acking
+ * what we got without taking any action. */
+static int tx_rf_rel_ack(struct gsm_lchan *lchan, uint8_t chan_nr)
+{
+	struct msgb *msg;
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	rsl_dch_push_hdr(msg, RSL_MT_RF_CHAN_REL_ACK, chan_nr);
+	msg->trx = lchan->ts->trx;
+
+	return abis_bts_rsl_sendmsg(msg);
+}
+
 /* 8.4.19 sending RF CHANnel RELease ACKnowledge */
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
-	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	bool send_rel_ack;
 
@@ -675,14 +691,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	 */
 	lapdm_channel_exit(&lchan->lapdm_ch);
 
-	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
-	if (!msg)
-		return -ENOMEM;
-
-	rsl_dch_push_hdr(msg, RSL_MT_RF_CHAN_REL_ACK, chan_nr);
-	msg->trx = lchan->ts->trx;
-
-	return abis_bts_rsl_sendmsg(msg);
+	return tx_rf_rel_ack(lchan, chan_nr);
 }
 
 /* 8.4.2 sending CHANnel ACTIVation ACKnowledge */
@@ -1186,6 +1195,17 @@ static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
 static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 {
 	int rc;
+
+	if (lchan->state == LCHAN_S_NONE) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s ss=%d state=%s Rx RSL RF Channel Release, but is already inactive;"
+		     " just ACKing the release\n",
+		     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
+		     gsm_lchans_name(lchan->state));
+		/* Just ack the release and ignore. Make sure to reflect the same chan_nr we received,
+		 * not necessarily reflecting the current lchan state. */
+		return tx_rf_rel_ack(lchan, chan_nr);
+	}
 
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
