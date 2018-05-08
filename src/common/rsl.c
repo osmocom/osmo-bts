@@ -966,7 +966,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		LOGP(DRSL, LOGL_ERROR,
 		     "%s: error: lchan is not available, but in state: %s.\n",
 		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
-		return rsl_tx_chan_act_acknack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
 	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
@@ -981,8 +981,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			 */
 			rc = dyn_ts_l1_reconnect(ts, msg);
 			if (rc)
-				return rsl_tx_chan_act_acknack(lchan,
-						       RSL_ERR_NORMAL_UNSPEC);
+				return rsl_tx_chan_act_nack(lchan, RSL_ERR_NORMAL_UNSPEC);
 			/* indicate that the msgb should not be freed. */
 			return 1;
 		}
@@ -998,7 +997,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.3 Activation Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
 		LOGP(DRSL, LOGL_NOTICE, "missing Activation Type\n");
-		return rsl_tx_chan_act_acknack(lchan, RSL_ERR_MAND_IE_ERROR);
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
@@ -1006,8 +1005,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (type != RSL_ACT_OSMO_PDCH) {
 		if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
 			LOGP(DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-			return rsl_tx_chan_act_acknack(lchan,
-						       RSL_ERR_MAND_IE_ERROR);
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 		}
 		cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
 		lchan_tchmode_from_cmode(lchan, cm);
