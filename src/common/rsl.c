@@ -683,7 +683,9 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 		return 0;
 	}
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Tx RF CHAN REL ACK\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s (ss=%d) %s Tx CHAN REL ACK\n",
+	     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
+	     gsm_lchant_name(lchan->type));
 
 	/*
 	 * Free the LAPDm resources now that the BTS
@@ -702,7 +704,9 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
 	uint8_t ie[2];
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Tx CHAN ACT ACK\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_NOTICE, "%s (ss=%d) %s Tx CHAN ACT ACK\n",
+	     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
+	     gsm_lchant_name(lchan->type));
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
@@ -986,6 +990,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return 1;
 		}
 	}
+
+	LOGP(DRSL, LOGL_DEBUG, "%s: rx Channel Activation in state: %s.\n",
+	     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
 
 	/* Initialize channel defaults */
 	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
@@ -2106,7 +2113,7 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 	if (ts->flags & TS_F_PDCH_PENDING_MASK) {
 		/* Only one of the pending flags should ever be set at the same
 		 * time, but just log both in case both should be set. */
-		LOGP(DL1C, LOGL_ERROR,
+		LOGP(DRSL, LOGL_ERROR,
 		     "%s Request to PDCH %s, but PDCH%s%s is still pending\n",
 		     gsm_lchan_name(lchan), pdch_act? "ACT" : "DEACT",
 		     (ts->flags & TS_F_PDCH_ACT_PENDING)? " ACT" : "",
@@ -2212,8 +2219,8 @@ static void osmo_dyn_ts_disconnected(struct gsm_bts_trx_ts *ts)
 		break;
 	default:
 		LOGP(DRSL, LOGL_ERROR,
-		     "%s Dyn TS disconnected, but invalid desired pchan",
-		     gsm_ts_and_pchan_name(ts));
+		     "%s Dyn TS disconnected, but invalid desired pchan: %s\n",
+		     gsm_ts_and_pchan_name(ts), gsm_pchan_name(ts->dyn.pchan_want));
 		ts->dyn.pchan_want = GSM_PCHAN_NONE;
 		/* TODO: how would this recover? */
 		return;
@@ -2351,7 +2358,7 @@ void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 		ts->flags |= TS_F_PDCH_ACTIVE;
 	else
 		ts->flags &= ~TS_F_PDCH_ACTIVE;
-	DEBUGP(DL1C, "%s %s switched to %s mode (ts->flags == %x)\n",
+	DEBUGP(DRSL, "%s %s switched to %s mode (ts->flags == %x)\n",
 	       gsm_lchan_name(ts->lchan), gsm_pchan_name(ts->pchan),
 	       pdch_act? "PDCH" : "TCH/F", ts->flags);
 
@@ -2697,8 +2704,9 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		return rsl_reject_unknown_lchan(msg);
 	}
 
-	LOGP(DRSL, LOGL_INFO, "%s Rx RSL %s\n", gsm_lchan_name(msg->lchan),
-		rsl_or_ipac_msg_name(dch->c.msg_type));
+	LOGP(DRSL, LOGL_INFO, "%s ss=%d Rx RSL %s\n",
+	     gsm_ts_and_pchan_name(msg->lchan->ts), msg->lchan->nr,
+	     rsl_or_ipac_msg_name(dch->c.msg_type));
 
 	switch (dch->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV:
