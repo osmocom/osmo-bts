@@ -2115,6 +2115,13 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 		return;
 	}
 
+	if (lchan->state != LCHAN_S_NONE) {
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s Request to PDCH %s, but lchan is still active\n",
+		     gsm_ts_and_pchan_name(ts), pdch_act? "ACT" : "DEACT");
+		rsl_tx_dyn_pdch_nack(lchan, pdch_act, RSL_ERR_NORMAL_UNSPEC);
+	}
+
 	ts->flags |= pdch_act? TS_F_PDCH_ACT_PENDING
 			     : TS_F_PDCH_DEACT_PENDING;
 
