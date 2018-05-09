@@ -1032,8 +1032,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
 
 		if (encr_info2lchan(lchan, val, len) < 0) {
-			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT,
-						    &dch->chan_nr, NULL, msg);
+			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+			return rsl_tx_chan_act_acknack(lchan, RSL_ERR_ENCR_UNIMPL);
 		}
 	} else
 		memset(&lchan->encr, 0, sizeof(lchan->encr));
@@ -1476,8 +1476,8 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 		const uint8_t *val = TLVP_VAL(&tp, RSL_IE_ENCR_INFO);
 
 		if (encr_info2lchan(lchan, val, len) < 0) {
-			 return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
-					 	    NULL, msg);
+			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+			return rsl_tx_mode_modif_nack(lchan, RSL_ERR_ENCR_UNIMPL);
 		}
 	}
 
