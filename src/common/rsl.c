@@ -868,18 +868,26 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 
 	/* check if the encryption algorithm sent by BSC is supported! */
 	rc = bts_supports_cipher(bts, *val);
-	if (rc != 1)
+	if (rc != 1) {
+		LOGP(DRSL, LOGL_ERROR, "%s: BTS doesn't support cipher 0x%02x\n",
+			gsm_lchan_name(lchan), *val);
 		return rc;
+	}
 
 	/* length can be '1' in case of no ciphering */
-	if (len < 1)
+	if (len < 1) {
+		LOGP(DRSL, LOGL_ERROR, "%s: Encryption Info cannot have len=%d\n",
+			gsm_lchan_name(lchan), len);
 		return -EINVAL;
+	}
 
 	lchan->encr.alg_id = *val++;
 	lchan->encr.key_len = len -1;
 	if (lchan->encr.key_len > sizeof(lchan->encr.key))
 		lchan->encr.key_len = sizeof(lchan->encr.key);
 	memcpy(lchan->encr.key, val, lchan->encr.key_len);
+	DEBUGP(DRSL, "%s: Setting lchan cipher algorithm 0x%02x\n",
+		gsm_lchan_name(lchan), lchan->encr.alg_id);
 
 	return 0;
 }
