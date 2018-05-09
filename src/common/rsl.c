@@ -871,7 +871,7 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 	if (rc != 1) {
 		LOGP(DRSL, LOGL_ERROR, "%s: BTS doesn't support cipher 0x%02x\n",
 			gsm_lchan_name(lchan), *val);
-		return rc;
+		return -EINVAL;
 	}
 
 	/* length can be '1' in case of no ciphering */
