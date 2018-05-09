@@ -1076,15 +1076,17 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			uint8_t osmo_si;
 
 			if (!OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes)) {
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT,
-							   &dch->chan_nr, NULL, msg);
+				rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT,
+						    &dch->chan_nr, NULL, msg);
+				return rsl_tx_chan_act_acknack(lchan, RSL_ERR_IE_CONTENT);
 			}
 
 			osmo_si = osmo_rsl2sitype(rsl_si);
 			if (osmo_si == SYSINFO_TYPE_NONE) {
 				LOGP(DRSL, LOGL_NOTICE, " Rx SACCH SI 0x%02x not supported.\n", rsl_si);
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
-							   NULL, msg);
+				rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+						    NULL, msg);
+				return rsl_tx_chan_act_acknack(lchan, RSL_ERR_IE_CONTENT);
 			}
 
 			lapdm_ui_prefix_lchan(lchan, cur, osmo_si, si_len);
@@ -1092,8 +1094,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			cur += si_len;
 			if (cur >= val + tot_len) {
 				LOGP(DRSL, LOGL_ERROR, "Error parsing SACCH INFO IE\n");
-				return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
-							   NULL, msg);
+				rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
+						    NULL, msg);
+				return rsl_tx_chan_act_acknack(lchan, RSL_ERR_IE_CONTENT);
 			}
 		}
 	} else {
@@ -1104,8 +1107,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
 		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
-						   NULL, msg);
+			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+			return rsl_tx_chan_act_acknack(lchan, RSL_ERR_IE_CONTENT);
 		}
 		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
 		       TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
@@ -1161,9 +1164,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			       gsm_ts_and_pchan_name(ts));
 			rc = 0;
 		}
-		if (rc)
-			return rsl_tx_error_report(msg->trx, RSL_ERR_NORMAL_UNSPEC, &dch->chan_nr,
-						   NULL, msg);
+		if (rc) {
+			rsl_tx_error_report(msg->trx, RSL_ERR_NORMAL_UNSPEC, &dch->chan_nr, NULL, msg);
+			return rsl_tx_chan_act_acknack(lchan, RSL_ERR_NORMAL_UNSPEC);
+		}
 		return 0;
 	}
 
@@ -1483,8 +1487,8 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
 		if (TLVP_LEN(&tp, RSL_IE_MR_CONFIG) > sizeof(lchan->mr_bts_lv) - 1) {
 			LOGP(DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
-						   NULL, msg);
+			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+			return rsl_tx_mode_modif_nack(lchan, RSL_ERR_IE_CONTENT);;
 		}
 		memcpy(lchan->mr_bts_lv, TLVP_VAL(&tp, RSL_IE_MR_CONFIG) - 1,
 			TLVP_LEN(&tp, RSL_IE_MR_CONFIG) + 1);
