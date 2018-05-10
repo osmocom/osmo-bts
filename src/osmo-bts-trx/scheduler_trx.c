@@ -1427,6 +1427,7 @@ static inline void normalize_timespec(struct timespec *ts)
 }
 
 /*! disable the osmocom-wrapped timerfd */
+/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
 static int timer_ofd_disable(struct osmo_fd *ofd)
 {
 	const struct itimerspec its_null = {
@@ -1441,6 +1442,7 @@ static int timer_ofd_disable(struct osmo_fd *ofd)
  *  \param[in] first Relative time at which the timer should first execute (NULL = \a interval)
  *  \param[in] interval Time interval at which subsequent timer shall fire
  *  \returns 0 on success; negative on error */
+/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
 static int timer_ofd_schedule(struct osmo_fd *ofd, const struct timespec *first,
 			      const struct timespec *interval)
 {
@@ -1469,6 +1471,7 @@ static int timer_ofd_schedule(struct osmo_fd *ofd, const struct timespec *first,
  *  We simply initialize the data structures here, but do not yet
  *  schedule the timer.
  */
+/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
 static int timer_ofd_setup(struct osmo_fd *ofd, int (*cb)(struct osmo_fd *, unsigned int), void *data)
 {
 	ofd->cb = cb;
