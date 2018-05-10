@@ -956,7 +956,7 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 static inline int check_for_first_ciphrd(struct gsm_lchan *lchan,
 					  uint8_t *data, int len)
 {
-	uint8_t n_s;
+	uint8_t n_r;
 
 	/* if this is the first valid message after enabling Rx
 	 * decryption, we have to enable Tx encryption */
@@ -972,8 +972,8 @@ static inline int check_for_first_ciphrd(struct gsm_lchan *lchan,
 	if ((data[1] & 0x01) != 0)
 		return 0;
 
-	n_s = data[1] >> 5;
-	if (lchan->ciph_ns != n_s)
+	n_r = data[1] >> 5;
+	if (lchan->ciph_ns != n_r)
 		return 0;
 
 	return 1;
