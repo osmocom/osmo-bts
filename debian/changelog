@@ -1,3 +1,29 @@
+osmo-bts (0.8.1) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * cosmetic: dyn TS: clarify rsl_tx_rf_rel_ack() with a switch
+  * dyn TS: fix TCH/F_TCH/H_PDCH: properly record release of PDCH TS
+  * dyn TS: rx_rf_chan_rel: properly mark PDCH rel when no PCU, clarify
+  * dyn TS: clear TCH state upon reconnecting as PDCH
+  * cosmetic: dyn TS: clarify chan_nr composition
+  * ignore RSL RF CHAN REL for inactive lchans
+  * fix RSL Chan Activ Nack messages
+  * ip.access dyn ts: properly NACK a PDCH ACT on a still active lchan
+  * add/improve various logging around dyn ts
+  * dyn TS: be less strict on chan_nr, to allow arbitrary pchan switches
+
+  [ Stefan Sperling ]
+  * send a State Changed Event Report when rf is locked/unlocked
+
+  [ Harald Welte ]
+  * rsl: log errors when parsing of  encryption information fails
+  * rsl: Make channel activation fail if encryption algorithm not supported
+  * rsl: Properly NACK CHAN_ACKT / MODE_MODIFY
+  * rsl: If CHAN ACT or MODE MODIF fails, send respective NACK
+  * osmo-bts-trx: Enable A5/3 cipher support
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 15 May 2018 14:08:47 +0200
+
 osmo-bts (0.8.0) unstable; urgency=medium
 
   [ Neels Hofmeyr ]
