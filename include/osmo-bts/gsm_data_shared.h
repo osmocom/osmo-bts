@@ -688,6 +688,11 @@ struct gsm_bts {
 	struct llist_head oml_queue;
 	unsigned int rtp_jitter_buf_ms;
 	bool rtp_jitter_adaptive;
+
+	uint16_t rtp_port_range_start;
+	uint16_t rtp_port_range_end;
+	uint16_t rtp_port_range_next;
+
 	struct {
 		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
 	} support;

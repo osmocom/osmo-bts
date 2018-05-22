@@ -135,6 +135,9 @@ int bts_init(struct gsm_bts *bts)
 	bts->paging_state = paging_init(bts, 200, 0);
 	bts->ul_power_target = -75;	/* dBm default */
 	bts->rtp_jitter_adaptive = false;
+	bts->rtp_port_range_start = 16384;
+	bts->rtp_port_range_end = 17407;
+	bts->rtp_port_range_next = bts->rtp_port_range_start;
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;

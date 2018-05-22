@@ -1787,6 +1787,29 @@ static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
 	return hostbuf;
 }
 
+static int bind_rtp(struct gsm_bts *bts, struct osmo_rtp_socket *rs, const char *ip)
+{
+	int rc;
+	unsigned int i;
+	unsigned int tries;
+
+	tries = (bts->rtp_port_range_end - bts->rtp_port_range_start) / 2;
+	for (i = 0; i < tries; i++) {
+
+		if (bts->rtp_port_range_next >= bts->rtp_port_range_end)
+			bts->rtp_port_range_next = bts->rtp_port_range_start;
+
+		rc = osmo_rtp_socket_bind(rs, ip, bts->rtp_port_range_next);
+
+		bts->rtp_port_range_next += 2;
+
+		if (rc == 0)
+			return 0;
+	}
+
+	return -1;
+}
+
 static int rsl_rx_ipac_XXcx(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
@@ -1907,8 +1930,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			 * back to the BSC in the CRCX_ACK */
 			ipstr = get_rsl_local_ip(lchan->ts->trx);
 		}
-		rc = osmo_rtp_socket_bind(lchan->abis_ip.rtp_socket,
-					  ipstr, -1);
+		rc = bind_rtp(bts, lchan->abis_ip.rtp_socket, ipstr);
 		if (rc < 0) {
 			LOGP(DRTP, LOGL_ERROR,
 			     "%s IPAC Failed to bind RTP/RTCP sockets\n",
