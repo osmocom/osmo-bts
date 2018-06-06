@@ -538,8 +538,8 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 	if (bts->agch_queue.length > hard_limit) {
 		LOGP(DSUM, LOGL_ERROR,
 		     "AGCH: too many messages in queue, "
-		     "refusing message type 0x%02x, length = %d/%d\n",
-		     ((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type,
+		     "refusing message type %s, length = %d/%d\n",
+		     gsm48_rr_msg_name(((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type),
 		     bts->agch_queue.length, bts->agch_queue.max_length);
 
 		bts->agch_queue.rejected_msgs++;
