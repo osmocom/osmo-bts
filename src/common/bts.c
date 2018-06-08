@@ -35,6 +35,7 @@
 #include <osmocom/core/stats.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/trau/osmo_ortp.h>
 
