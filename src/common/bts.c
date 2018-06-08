@@ -615,11 +615,6 @@ static void compact_agch_queue(struct gsm_bts *bts)
 		struct gsm48_imm_ass *imm_ass_cmd = msgb_l3(msg);
 		int p_drop;
 
-		if (imm_ass_cmd->msg_type != GSM48_MT_RR_IMM_ASS_REJ)
-			return;
-
-		/* IMMEDIATE ASSIGN REJECT */
-
 		p_drop = (bts->agch_queue.length - offs) * slope / max_len;
 
 		if ((random() & 0xffff) >= p_drop)
