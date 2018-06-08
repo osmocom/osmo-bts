@@ -533,7 +533,7 @@ static int try_merge_imm_ass_rej(struct gsm48_imm_ass_rej *old_rej,
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 {
-	int hard_limit = 1000;
+	int hard_limit = 100;
 	struct gsm48_imm_ass_rej *imm_ass_cmd = msgb_l3(msg);
 
 	if (bts->agch_queue.length > hard_limit) {
