@@ -427,7 +427,7 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 }
 
 /* 8.5.4 DELETE INDICATION */
-static int rsl_tx_delete_ind(struct gsm_bts *bts, const uint8_t *ia, uint8_t ia_len)
+int rsl_tx_delete_ind(struct gsm_bts *bts, const uint8_t *ia, uint8_t ia_len)
 {
 	struct msgb *msg;
 

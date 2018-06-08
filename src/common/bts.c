@@ -622,6 +622,8 @@ static void compact_agch_queue(struct gsm_bts *bts)
 
 		llist_del(&msg->list);
 		bts->agch_queue.length--;
+		rsl_tx_delete_ind(bts, (uint8_t *)imm_ass_cmd, msgb_l3len(msg));
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_DELETED);
 		msgb_free(msg);
 
 		bts->agch_queue.dropped_msgs++;
