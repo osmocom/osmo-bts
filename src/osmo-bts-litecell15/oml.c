@@ -348,7 +348,7 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		bts_shutdown(trx->bts, "MPH-INIT failure");
 	}
 
-	fl1h->hLayer1 = (uint32_t)ic->hLayer1;
+	fl1h->hLayer1 = ic->hLayer1;
 
 	/* If the TRX was already locked the MphInit would have undone it */
 	if (trx->mo.nm_state.administrative == NM_STATE_LOCKED)
