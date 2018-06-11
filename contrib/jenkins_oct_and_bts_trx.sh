@@ -16,6 +16,7 @@ cd "$deps"
 osmo-layer1-headers.sh oct "$FIRMWARE_VERSION"
 
 configure_flags="\
+  --enable-werror \
   --with-osmo-pcu=$deps/osmo-pcu/include \
   --with-octsdr-2g=$deps/layer1-headers/ \
   --enable-octphy \
