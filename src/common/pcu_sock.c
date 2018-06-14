@@ -932,6 +932,8 @@ int pcu_sock_init(const char *path)
 
 	bts_gsmnet.pcu_state = state;
 
+	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket: %s\n", path);
+
 	return 0;
 }
 
