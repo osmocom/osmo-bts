@@ -250,6 +250,13 @@ if test "$enable_octphy" = "yes" ; then
 			[],
 			[#include <octphy/octvc1/hw/octvc1_hw_api.h>])
 
+	AC_CHECK_MEMBER([tOCTVC1_GSM_MSG_OVERSAMPLE_SELECT_16X_MODIFY_CMD.ulOversample16xEnableFlag],
+			AC_DEFINE([OCTPHY_USE_16X_OVERSAMPLING],
+			[1],
+			[Define to 1 if your octphy header files support 16x oversampling]),
+			[],
+			[#include <octphy/octvc1/gsm/octvc1_gsm_api.h>])
+
 	CPPFLAGS=$oldCPPFLAGS
 fi
 

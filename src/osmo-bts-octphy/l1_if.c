@@ -1659,6 +1659,7 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.octphy.rf_port_index = 0;
 	plink->u.octphy.rx_gain_db = 70;
 	plink->u.octphy.tx_atten_db = 0;
+	plink->u.octphy.over_sample_16x = true;
 }
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
