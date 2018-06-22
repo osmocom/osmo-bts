@@ -1387,8 +1387,6 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 /* mute/unmute RF time slots */
 int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 {
-	struct msgb *msg = sysp_msgb_alloc();
-	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 
 	LOGP(DL1C, LOGL_INFO, "Tx RF-MUTE.req (%d, %d, %d, %d, %d, %d, %d, %d)\n",
 	     mute[0], mute[1], mute[2], mute[3],
@@ -1400,7 +1398,6 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 	struct gsm_bts_trx *trx = hdl->phy_inst->trx;
 	int i;
 	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
-	msgb_free(msg);
 	/* always acknowledge an un-MUTE (which is a no-op if MUTE is not supported */
 	if (!memcmp(mute, unmuted, ARRAY_SIZE(unmuted))) {
 		bts_update_status(BTS_STATUS_RF_MUTE, mute[0]);
@@ -1411,6 +1408,8 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 	}
 	return -ENOTSUP;
 #else
+	struct msgb *msg = sysp_msgb_alloc();
+	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = SuperFemto_PrimId_MuteRfReq;
 	memcpy(sysp->u.muteRfReq.u8Mute, mute, sizeof(sysp->u.muteRfReq.u8Mute));
 	/* save for later use */
