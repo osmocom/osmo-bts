@@ -1402,10 +1402,10 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 	LOGP(DL1C, LOGL_ERROR, "RF-MUTE.req not supported by SuperFemto\n");
 	msgb_free(msg);
 	/* always acknowledge an un-MUTE (which is a no-op if MUTE is not supported */
-	if (!memcmp(mute, unmuted, ARRAY_SIZE(mute))) {
+	if (!memcmp(mute, unmuted, ARRAY_SIZE(unmuted))) {
 		bts_update_status(BTS_STATUS_RF_MUTE, mute[0]);
 		oml_mo_rf_lock_chg(&trx->mo, mute, 1);
-		for (i = 0; i < ARRAY_SIZE(mute); ++i)
+		for (i = 0; i < ARRAY_SIZE(unmuted); ++i)
 			mute_handle_ts(&trx->ts[i], mute[i]);
 		return 0;
 	}
