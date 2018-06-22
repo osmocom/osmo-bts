@@ -1259,6 +1259,7 @@ int get_clk_cal(struct femtol1_hdl *hdl)
 #endif
 }
 
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,2,0)
 /*
  * RevC was the last HW revision without an external
  * attenuator. Check for that.
@@ -1268,13 +1269,13 @@ static int has_external_atten(struct femtol1_hdl *hdl)
 	/* older version doesn't have an attenuator */
 	return hdl->hw_info.ver_major > 2;
 }
+#endif /* 2.2.0 */
 
 /* activate or de-activate the entire RF-Frontend */
 int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
-	struct gsm_bts_trx *trx = hdl->phy_inst->trx;
 
 	if (on) {
 		sysp->id = SuperFemto_PrimId_ActivateRfReq;
@@ -1302,6 +1303,7 @@ int l1if_activate_rf(struct femtol1_hdl *hdl, int on)
 		sysp->u.activateRfReq.rfRx.iClkCor = get_clk_cal(hdl);
 #endif /* API 2.4.0 */
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,2,0)
+		struct gsm_bts_trx *trx = hdl->phy_inst->trx;
 		if (has_external_atten(hdl)) {
 			LOGP(DL1C, LOGL_INFO, "Using external attenuator.\n");
 			sysp->u.activateRfReq.rfTrx.u8UseExtAtten = 1;
@@ -1426,7 +1428,6 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	SuperFemto_Prim_t *sysp = msgb_sysprim(resp);
 	SuperFemto_SystemInfoCnf_t *sic = &sysp->u.systemInfoCnf;
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
-	int rc;
 
 	fl1h->hw_info.dsp_version[0] = sic->dspVersion.major;
 	fl1h->hw_info.dsp_version[1] = sic->dspVersion.minor;
@@ -1469,7 +1470,7 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 #if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(2,4,0)
 	/* load calibration tables (if we know their path) */
-	rc = calib_load(fl1h);
+	int rc = calib_load(fl1h);
 	if (rc < 0)
 		LOGP(DL1C, LOGL_ERROR, "Operating without calibration; "
 			"unable to load tables!\n");
