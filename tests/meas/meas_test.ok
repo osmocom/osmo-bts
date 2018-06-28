@@ -539,4 +539,38 @@ Testing: ts[7]->lchan[0], fn=15066=>015066/11/12/21/10, fn%104=90, rc=1, delta=9
 Testing: ts[7]->lchan[1], fn=15079=>015079/11/25/34/23, fn%104=103, rc=1, delta=13
 Testing: ts[7]->lchan[0], fn=15170=>015170/11/12/23/14, fn%104=90, rc=1, delta=91
 Testing: ts[7]->lchan[1], fn=15183=>015183/11/25/36/27, fn%104=103, rc=1, delta=13
+
+Measurement Compute Test TOA256 Min-Max negative/positive
+meas.ext.toa256_min      |   -256 |   -256
+meas.ext.toa256_max      |    256 |    256
+meas.ms_toa256           |      0 |      0
+meas.ext.toa256_std_dev  |    209 |    209
+meas.ul_res.full.rx_lev  |     20 |     20
+meas.ul_res.full.rx_qual |      0 |      0
+
+Measurement Compute Test TOA256 small jitter around 256
+meas.ext.toa256_min      |    254 |    254
+meas.ext.toa256_max      |    258 |    258
+meas.ms_toa256           |    256 |    256
+meas.ext.toa256_std_dev  |      1 |      1
+meas.ul_res.full.rx_lev  |     20 |     20
+meas.ul_res.full.rx_qual |      0 |      0
+
+Measurement Compute Test RxLEv averaging
+meas.ext.toa256_min      |      0 |      0
+meas.ext.toa256_max      |      0 |      0
+meas.ms_toa256           |      0 |      0
+meas.ext.toa256_std_dev  |      0 |      0
+meas.ul_res.full.rx_lev  |     20 |     20
+meas.ul_res.full.rx_qual |      0 |      0
+
+Measurement Compute Test Empty measurements
+
+Measurement Compute Test TOA256 26 blocks with max TOA256
+meas.ext.toa256_min      |  16384 |  16384
+meas.ext.toa256_max      |  16384 |  16384
+meas.ms_toa256           |  16384 |  16384
+meas.ext.toa256_std_dev  |      0 |      0
+meas.ul_res.full.rx_lev  |     20 |     20
+meas.ul_res.full.rx_qual |      0 |      0
 Success

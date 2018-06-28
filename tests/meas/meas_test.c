@@ -3,6 +3,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
+#include <osmocom/gsm/gsm_utils.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -62,6 +63,214 @@ void test_fn_sample(struct fn_sample *s, unsigned int len, uint8_t pchan, uint8_
 	OSMO_ASSERT(tsmap_result == tsmap);
 }
 
+#define ULM(ber, ta, neg_rssi) \
+	{ .ber10k = (ber), .ta_offs_256bits = (ta), .c_i = 1.0, .is_sub = 0, .inv_rssi = (neg_rssi) }
+
+struct meas_testcase {
+	const char *name;
+	/* input data */
+	const struct bts_ul_meas *ulm;
+	unsigned int ulm_count;
+	uint32_t final_fn;
+	/* results */
+	struct {
+		int success;
+		uint8_t rx_lev_full;
+		uint8_t rx_qual_full;
+		int16_t toa256_mean;
+		int16_t toa256_min;
+		int16_t toa256_max;
+		uint16_t toa256_std_dev;
+	} res;
+};
+
+static struct bts_ul_meas ulm1[] = {
+	ULM(0, 0, 90),
+	ULM(0, 256, 90),
+	ULM(0, -256, 90),
+};
+static const struct meas_testcase mtc1 = {
+	.name = "TOA256 Min-Max negative/positive",
+	.ulm = ulm1,
+	.ulm_count = ARRAY_SIZE(ulm1),
+	.final_fn = 25,
+	.res = {
+		.success = 1,
+		.rx_lev_full = 110-90,
+		.rx_qual_full = 0,
+		.toa256_mean = 0,
+		.toa256_max = 256,
+		.toa256_min = -256,
+		.toa256_std_dev = 209,
+	},
+};
+
+
+static struct bts_ul_meas ulm2[] = {
+	ULM(0, 256, 90),
+	ULM(0, 258, 90),
+	ULM(0, 254, 90),
+	ULM(0, 258, 90),
+	ULM(0, 254, 90),
+	ULM(0, 256, 90),
+};
+static const struct meas_testcase mtc2 = {
+	.name = "TOA256 small jitter around 256",
+	.ulm = ulm2,
+	.ulm_count = ARRAY_SIZE(ulm2),
+	.final_fn = 25,
+	.res = {
+		.success = 1,
+		.rx_lev_full = 110-90,
+		.rx_qual_full = 0,
+		.toa256_mean = 256,
+		.toa256_max = 258,
+		.toa256_min = 254,
+		.toa256_std_dev = 1,
+	},
+};
+
+static struct bts_ul_meas ulm3[] = {
+	ULM(0, 0, 90),
+	ULM(0, 0, 80),
+	ULM(0, 0, 80),
+	ULM(0, 0, 100),
+	ULM(0, 0, 100),
+};
+static const struct meas_testcase mtc3 = {
+	.name = "RxLEv averaging",
+	.ulm = ulm3,
+	.ulm_count = ARRAY_SIZE(ulm3),
+	.final_fn = 25,
+	.res = {
+		.success = 1,
+		.rx_lev_full = 110-90,
+		.rx_qual_full = 0,
+		.toa256_mean = 0,
+		.toa256_max = 0,
+		.toa256_min = 0,
+		.toa256_std_dev = 0,
+	},
+};
+
+static struct bts_ul_meas ulm4[] = {
+};
+static const struct meas_testcase mtc4 = {
+	.name = "Empty measurements",
+	.ulm = ulm4,
+	.ulm_count = ARRAY_SIZE(ulm4),
+	.final_fn = 25,
+	.res = {
+		.success = 0,
+		.rx_lev_full = 0,
+		.rx_qual_full = 0,
+		.toa256_mean = 0,
+		.toa256_max = 0,
+		.toa256_min = 0,
+		.toa256_std_dev = 0,
+	},
+};
+
+static struct bts_ul_meas ulm5[] = {
+	/* one 104 multiframe can at max contain 26 blocks (TCH/F),
+	 * each of which can at maximum be 64 bits in advance (TA range) */
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+	ULM(0, 64*256, 90),
+};
+static const struct meas_testcase mtc5 = {
+	.name = "TOA256 26 blocks with max TOA256",
+	.ulm = ulm5,
+	.ulm_count = ARRAY_SIZE(ulm5),
+	.final_fn = 25,
+	.res = {
+		.success = 1,
+		.rx_lev_full = 110-90,
+		.rx_qual_full = 0,
+		.toa256_mean = 64*256,
+		.toa256_max = 64*256,
+		.toa256_min = 64*256,
+		.toa256_std_dev = 0,
+	},
+};
+
+
+static void reset_lchan_meas(struct gsm_lchan *lchan)
+{
+	lchan->state = LCHAN_S_ACTIVE;
+	memset(&lchan->meas, 0, sizeof(lchan->meas));
+}
+
+static void test_meas_compute(const struct meas_testcase *mtc)
+{
+	struct gsm_lchan *lchan = &trx->ts[1].lchan[0];
+	unsigned int i;
+	unsigned int fn = 0;
+
+	printf("\nMeasurement Compute Test %s\n", mtc->name);
+
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	reset_lchan_meas(lchan);
+
+	/* feed uplink measurements into the code */
+	for (i = 0; i < mtc->ulm_count; i++) {
+		lchan_new_ul_meas(lchan, (struct bts_ul_meas *) &mtc->ulm[i], fn);
+		fn += 1;
+	}
+
+	/* compute the results */
+	OSMO_ASSERT(lchan_meas_check_compute(lchan, mtc->final_fn) == mtc->res.success);
+	if (!mtc->res.success) {
+		OSMO_ASSERT(!(lchan->meas.flags & LC_UL_M_F_RES_VALID));
+	} else {
+		OSMO_ASSERT(lchan->meas.flags & (LC_UL_M_F_RES_VALID|LC_UL_M_F_OSMO_EXT_VALID));
+		printf("meas.ext.toa256_min      | %6d | %6d\n",
+			lchan->meas.ext.toa256_min, mtc->res.toa256_min);
+		printf("meas.ext.toa256_max      | %6d | %6d\n",
+			lchan->meas.ext.toa256_max, mtc->res.toa256_max);
+		printf("meas.ms_toa256           | %6d | %6d\n",
+			lchan->meas.ms_toa256, mtc->res.toa256_mean);
+		printf("meas.ext.toa256_std_dev  | %6u | %6u\n",
+			lchan->meas.ext.toa256_std_dev, mtc->res.toa256_std_dev);
+		printf("meas.ul_res.full.rx_lev  | %6u | %6u\n",
+			lchan->meas.ul_res.full.rx_lev, mtc->res.rx_lev_full);
+		printf("meas.ul_res.full.rx_qual | %6u | %6u\n",
+			lchan->meas.ul_res.full.rx_qual, mtc->res.rx_qual_full);
+
+		if ((lchan->meas.ext.toa256_min != mtc->res.toa256_min) ||
+		    (lchan->meas.ext.toa256_max != mtc->res.toa256_max) ||
+		    (lchan->meas.ms_toa256 != mtc->res.toa256_mean) ||
+		    (lchan->meas.ext.toa256_std_dev != mtc->res.toa256_std_dev) ||
+		    (lchan->meas.ul_res.full.rx_lev != mtc->res.rx_lev_full)) {
+			fprintf(stderr, "%s: Unexpected measurement result!\n", mtc->name);
+		}
+	}
+
+}
+
 int main(int argc, char **argv)
 {
 	void *tall_bts_ctx;
@@ -110,6 +319,12 @@ int main(int argc, char **argv)
 	test_fn_sample(test_fn_tch_h_ts_5_ss0_ss1, ARRAY_SIZE(test_fn_tch_h_ts_5_ss0_ss1), GSM_PCHAN_TCH_H, (1 << 5));
 	test_fn_sample(test_fn_tch_h_ts_6_ss0_ss1, ARRAY_SIZE(test_fn_tch_h_ts_6_ss0_ss1), GSM_PCHAN_TCH_H, (1 << 6));
 	test_fn_sample(test_fn_tch_h_ts_7_ss0_ss1, ARRAY_SIZE(test_fn_tch_h_ts_7_ss0_ss1), GSM_PCHAN_TCH_H, (1 << 7));
+
+	test_meas_compute(&mtc1);
+	test_meas_compute(&mtc2);
+	test_meas_compute(&mtc3);
+	test_meas_compute(&mtc4);
+	test_meas_compute(&mtc5);
 
 	printf("Success\n");
 

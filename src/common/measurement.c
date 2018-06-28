@@ -3,6 +3,7 @@
 #include <errno.h>
 
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/utils.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -335,6 +336,64 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 	return 7;
 }
 
+/* if we clip the TOA value to 12 bits, i.e. toa256=3200,
+ *  -> the maximum deviation can be 2*3200 = 6400
+ *  -> the maximum squared deviation can be 6400^2 = 40960000
+ *  -> the maximum sum of squared deviations can be 104*40960000 = 4259840000
+ *     and hence fit into uint32_t
+ *  -> once the value is divided by 104, it's again below 40960000
+ *     leaving 6 MSBs of freedom, i.e. we could extend by 64, resulting in 2621440000
+ *  -> as a result, the standard deviation could be communicated with up to six bits
+ *     of fractional fixed-point number.
+ */
+
+/* compute Osmocom extended measurements for the given lchan */
+static void lchan_meas_compute_extended(struct gsm_lchan *lchan)
+{
+	/* we assume that lchan_meas_check_compute() has already computed the mean value
+	 * and we can compute the min/max/variance/stddev from this */
+	int i;
+
+	/* each measurement is an int32_t, so the squared difference value must fit in 32bits */
+	/* the sum of the squared values (each up to 32bit) can very easily exceed 32 bits */
+	u_int64_t sq_diff_sum = 0;
+	/* initialize min/max values with their counterpart */
+	lchan->meas.ext.toa256_min = INT16_MAX;
+	lchan->meas.ext.toa256_max = INT16_MIN;
+
+	OSMO_ASSERT(lchan->meas.num_ul_meas);
+
+	/* all computations are done on the relative arrival time of the burst, relative to the
+	 * beginning of its slot. This is of course excluding the TA value that the MS has already
+	 * compensated/pre-empted its transmission */
+
+	/* step 1: compute the sum of the squared difference of each value to mean */
+	for (i = 0; i < lchan->meas.num_ul_meas; i++) {
+		struct bts_ul_meas *m = &lchan->meas.uplink[i];
+		int32_t diff = (int32_t)m->ta_offs_256bits - (int32_t)lchan->meas.ms_toa256;
+		/* diff can now be any value of +65535 to -65535, so we can safely square it,
+		 * but only in unsigned math.  As squaring looses the sign, we can simply drop
+		 * it before squaring, too. */
+		uint32_t diff_abs = labs(diff);
+		uint32_t diff_squared = diff_abs * diff_abs;
+		sq_diff_sum += diff_squared;
+
+		/* also use this loop iteration to compute min/max values */
+		if (m->ta_offs_256bits > lchan->meas.ext.toa256_max)
+			lchan->meas.ext.toa256_max = m->ta_offs_256bits;
+		if (m->ta_offs_256bits < lchan->meas.ext.toa256_min)
+			lchan->meas.ext.toa256_min = m->ta_offs_256bits;
+	}
+	/* step 2: compute the variance (mean of sum of squared differences) */
+	sq_diff_sum = sq_diff_sum / lchan->meas.num_ul_meas;
+	/* as the individual summed values can each not exceed 2^32, and we're
+	 * dividing by the number of summands, the resulting value can also not exceed 2^32 */
+	OSMO_ASSERT(sq_diff_sum <= UINT32_MAX);
+	/* step 3: compute the standard deviation from the variance */
+	lchan->meas.ext.toa256_std_dev = osmo_isqrt32(sq_diff_sum);
+	lchan->meas.flags |= LC_UL_M_F_OSMO_EXT_VALID;
+}
+
 int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct gsm_meas_rep_unidir *mru;
@@ -410,8 +469,10 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	       mru->sub.rx_qual, num_meas_sub, lchan->meas.num_ul_meas);
 
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
-	lchan->meas.num_ul_meas = 0;
 
+	lchan_meas_compute_extended(lchan);
+
+	lchan->meas.num_ul_meas = 0;
 	/* send a signal indicating computation is complete */
 
 	return 1;

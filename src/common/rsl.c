@@ -2536,6 +2536,13 @@ static inline bool ms_to_valid(const struct gsm_lchan *lchan)
 	return (lchan->ms_t_offs >= 0) || (lchan->p_offs >= 0);
 }
 
+struct osmo_bts_supp_meas_info {
+	int16_t toa256_mean;
+	int16_t toa256_min;
+	int16_t toa256_max;
+	uint16_t toa256_std_dev;
+} __attribute__((packed));
+
 /* 8.4.8 MEASUREMENT RESult */
 static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const struct lapdm_entity *le)
 {
@@ -2573,16 +2580,23 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 						meas_res);
 	lchan->tch.dtx.dl_active = false;
 	if (ie_len >= 3) {
-		if (bts->supp_meas_toa256) {
+		if (bts->supp_meas_toa256 && lchan->meas.flags & LC_UL_M_F_OSMO_EXT_VALID) {
+			struct osmo_bts_supp_meas_info *smi;
+			smi = (struct osmo_bts_supp_meas_info *) &meas_res[ie_len];
+			ie_len += sizeof(struct osmo_bts_supp_meas_info);
 			/* append signed 16bit value containing MS timing offset in 1/256th symbols
 			 * in the vendor-specific "Supplementary Measurement Information" part of
-			 * the uplink measurements IE.  This is the current offset *relative* to the
-			 * TA which the MS has already applied.  So if you want to know the total
-			 * propagation time between MS and BTS, you need to add the actual TA value
-			 * used (from L1_INFO below, in full symbols) plus the ms_toa256 value
-			 * in 1/256 symbol periods. */
-			meas_res[ie_len++] = lchan->meas.ms_toa256 >> 8;
-			meas_res[ie_len++] = lchan->meas.ms_toa256 & 0xff;
+			 * the uplink measurements IE.  The lchan->meas.ext members are the current
+			 * offset *relative* to the TA which the MS has already applied.  As we want
+			 * to know the total propagation time between MS and BTS, we need to add
+			 * the actual TA value applied by the MS plus the respective toa256 value in
+			 * 1/256 symbol periods. */
+			int16_t ta256 = lchan_get_ta(lchan) * 256;
+			smi->toa256_mean = htons(ta256 + lchan->meas.ms_toa256);
+			smi->toa256_min = htons(ta256 + lchan->meas.ext.toa256_min);
+			smi->toa256_max = htons(ta256 + lchan->meas.ext.toa256_max);
+			smi->toa256_std_dev = htons(lchan->meas.ext.toa256_std_dev);
+			lchan->meas.flags &= ~LC_UL_M_F_OSMO_EXT_VALID;
 		}
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;

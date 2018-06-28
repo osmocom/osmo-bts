@@ -127,6 +127,7 @@ enum gsm_lchan_state {
 #define MAX_NUM_UL_MEAS	104
 #define LC_UL_M_F_L1_VALID	(1 << 0)
 #define LC_UL_M_F_RES_VALID	(1 << 1)
+#define LC_UL_M_F_OSMO_EXT_VALID (1 << 2)
 
 struct bts_ul_meas {
 	/* BER in units of 0.01%: 10.000 == 100% ber, 0 == 0% ber */
@@ -257,6 +258,15 @@ struct gsm_lchan {
 		uint8_t l1_info[2];
 		struct gsm_meas_rep_unidir ul_res;
 		int16_t ms_toa256;
+		/* Osmocom extended measurement results, see LC_UL_M_F_EXTD_VALID */
+		struct {
+			/* minimum value of toa256 during measurement period */
+			int16_t toa256_min;
+			/* maximum value of toa256 during measurement period */
+			int16_t toa256_max;
+			/* standard deviation of toa256 value during measurement period */
+			uint16_t toa256_std_dev;
+		} ext;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
@@ -316,6 +326,11 @@ struct gsm_lchan {
 		struct osmo_ecu_fr_state fr;
 	} ecu_state;
 };
+
+static inline uint8_t lchan_get_ta(const struct gsm_lchan *lchan)
+{
+	return lchan->meas.l1_info[1];
+}
 
 extern const struct value_string lchan_ciph_state_names[];
 static inline const char *lchan_ciph_state_name(uint8_t state) {
