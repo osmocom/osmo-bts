@@ -70,7 +70,6 @@ PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 0.11.0)
 PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding >= 0.11.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.5.0)
 PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 0.5.0)
-PKG_CHECK_MODULES(ORTP, ortp)
 
 AC_MSG_CHECKING([whether to enable support for sysmobts calibration tool])
 AC_ARG_ENABLE(sysmobts-calib,
