@@ -1,1 +1,3 @@
 usr/bin/osmo-bts-trx
+usr/share/doc/osmo-bts/examples/osmo-bts-trx/osmo-bts.cfg
+usr/share/doc/osmo-bts/examples/osmo-bts-trx/osmo-bts-trx-calypso.cfg
