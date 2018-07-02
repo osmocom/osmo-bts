@@ -19,6 +19,7 @@ Homepage: https://projects.osmocom.org/projects/osmobts
 
 Package: osmo-bts-trx
 Architecture: any
+Conflicts: osmo-bts
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: osmo-bts-trx GSM BTS with osmo-trx
  osmo-bts-trx to be used with the osmo-trx application
@@ -33,6 +34,7 @@ Description: Debug symbols for the osmo-bts-trx
 
 Package: osmo-bts-virtual
 Architecture: any
+Conflicts: osmo-bts
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Virtual Osmocom GSM BTS (no RF hardware; GSMTAP/UDP)
  This version of OsmoBTS doesn't use actual GSM PHY/Hardware/RF, but
