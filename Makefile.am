@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2 1.6
 
-SUBDIRS = include src tests
+SUBDIRS = include src tests doc
 
 
 # package the contrib and doc
