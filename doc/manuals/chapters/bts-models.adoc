@@ -6,7 +6,7 @@ _hardware-specific_ parts for each BTS model.  The hardware specific parts are
 generally referred to as the _bts_model_ code.
 
 The common part includes the core BTS architecture as well as code for
-implementing the external interfaces such Abis, control, PCU socket and
+implementing the external interfaces such as Abis, control, PCU socket and
 GSMTAP.
 
 The bts_model parts include support for driving one particular
