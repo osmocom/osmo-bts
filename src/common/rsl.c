@@ -865,12 +865,13 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 {
 	int rc;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
+	const char *ciph_name = get_value_string(gsm0808_chosen_enc_alg_names, *val);
 
 	/* check if the encryption algorithm sent by BSC is supported! */
 	rc = bts_supports_cipher(bts, *val);
 	if (rc != 1) {
-		LOGP(DRSL, LOGL_ERROR, "%s: BTS doesn't support cipher 0x%02x\n",
-			gsm_lchan_name(lchan), *val);
+		LOGP(DRSL, LOGL_ERROR, "%s: BTS doesn't support cipher %s\n",
+			gsm_lchan_name(lchan), ciph_name);
 		return -EINVAL;
 	}
 
@@ -886,8 +887,8 @@ static int encr_info2lchan(struct gsm_lchan *lchan,
 	if (lchan->encr.key_len > sizeof(lchan->encr.key))
 		lchan->encr.key_len = sizeof(lchan->encr.key);
 	memcpy(lchan->encr.key, val, lchan->encr.key_len);
-	DEBUGP(DRSL, "%s: Setting lchan cipher algorithm 0x%02x\n",
-		gsm_lchan_name(lchan), lchan->encr.alg_id);
+	DEBUGP(DRSL, "%s: Setting lchan cipher algorithm %s\n",
+		gsm_lchan_name(lchan), ciph_name);
 
 	return 0;
 }
