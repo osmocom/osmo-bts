@@ -380,14 +380,17 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
+	struct gsm_bts_trx *trx = l1t->trx;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(tch_len);
 	l1sap = msgb_l1sap_prim(msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH,
 		PRIM_OP_INDICATION, msg);
-	l1sap->u.tch.chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	l1sap->u.tch.chan_nr = chan_nr;
 	l1sap->u.tch.fn = fn;
 	msg->l2h = msgb_put(msg, tch_len);
 	if (tch_len)
@@ -396,6 +399,9 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (l1ts->chan_state[chan].lost)
 		l1ts->chan_state[chan].lost--;
 
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.data.fn,
+	       "%s Rx -> RTP: %s\n",
+	       gsm_lchan_name(lchan), osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 	/* forward primitive */
 	l1sap_up(l1t->trx, l1sap);
 
