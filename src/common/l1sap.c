@@ -139,8 +139,7 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 	     gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
 
 	rmsg->l2h = rmsg->data;
-	msgb_push(rmsg, sizeof(*l1sap));
-	rmsg->l1h = rmsg->data;
+	rmsg->l1h = msgb_push(rmsg, sizeof(*l1sap));
 	l1sap = msgb_l1sap_prim(rmsg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION,
 		       rmsg);
