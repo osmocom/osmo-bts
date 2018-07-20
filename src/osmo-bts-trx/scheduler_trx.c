@@ -1077,8 +1077,11 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
-				if (lchan->tch.dtx.ul_sid)
-					return 0; /* DTXu: pause in progress */
+				if (lchan->tch.dtx.ul_sid) {
+					/* DTXu: pause in progress. Push empty payload to upper layers */
+					rc = 0;
+					goto compose_l1sap;
+				}
 
 				/* Perform error concealment if possible */
 				rc = osmo_ecu_fr_conceal(&lchan->ecu_state.fr, tch_data);
@@ -1119,6 +1122,7 @@ bfi:
 		osmo_ecu_fr_reset(&lchan->ecu_state.fr, tch_data);
 
 	/* TCH or BFI */
+compose_l1sap:
 	return _sched_compose_tch_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 		tch_data, rc);
 }
@@ -1265,8 +1269,11 @@ bfi:
 			/* indicate bad frame */
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* HR */
-				if (lchan->tch.dtx.ul_sid)
-					return 0; /* DTXu: pause in progress */
+				if (lchan->tch.dtx.ul_sid) {
+					/* DTXu: pause in progress. Push empty payload to upper layers */
+					rc = 0;
+					goto compose_l1sap;
+				}
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
 				rc = 15;
@@ -1291,6 +1298,7 @@ bfi:
 	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
 		return 0;
 
+compose_l1sap:
 	/* TCH or BFI */
 	/* Note on FN 19 or 20: If we received the last burst of a frame,
 	 * it actually starts at FN 8 or 9. A burst starting there, overlaps
