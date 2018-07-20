@@ -870,10 +870,13 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
 
 	/* start counting from last fn + 1, but only if not too many fn have
 	 * been elapsed */
-	if (elapsed < 10)
+	if (elapsed < 10) {
 		fn = (l1ts->mf_last_fn + 1) % GSM_HYPERFRAME;
-	else
+	} else {
+		LOGPFN(DL1P, LOGL_NOTICE, current_fn,
+		       "Too many contiguous elapsed fn, dropping %u\n", elapsed);
 		fn = current_fn;
+	}
 
 	while (42) {
 		/* get frame from multiframe */
