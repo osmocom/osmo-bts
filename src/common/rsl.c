@@ -563,12 +563,44 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+		struct gsm_bts_trx *t;
+
 		lapdm_ui_prefix_bts(bts, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
+
+		/* Propagate SI change to all lchans. */
+		llist_for_each_entry(t, &bts->trx_list, list) {
+			int i, j;
+			for (i = 0; i < ARRAY_SIZE(t->ts); i++) {
+				struct gsm_bts_trx_ts *ts = &t->ts[i];
+				for (j = 0; j < ARRAY_SIZE(ts->lchan); j++) {
+					struct gsm_lchan *lchan = &ts->lchan[j];
+					if (lchan->state == LCHAN_S_NONE)
+						continue;
+					lapdm_ui_prefix_lchan(lchan, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
+				}
+			}
+		}
 
 		LOGP(DRSL, LOGL_INFO, " Rx RSL SACCH FILLING (SI%s, %u bytes)\n",
 		     get_value_string(osmo_sitype_strs, osmo_si), len);
 	} else {
+		struct gsm_bts_trx *t;
+
 		bts->si_valid &= ~(1 << osmo_si);
+
+		/* Propagate SI change to all lchans. */
+		llist_for_each_entry(t, &bts->trx_list, list) {
+			int i, j;
+			for (i = 0; i < ARRAY_SIZE(t->ts); i++) {
+				struct gsm_bts_trx_ts *ts = &t->ts[i];
+				for (j = 0; j < ARRAY_SIZE(ts->lchan); j++) {
+					struct gsm_lchan *lchan = &ts->lchan[j];
+					if (lchan->state == LCHAN_S_NONE)
+						continue;
+					lchan->si.valid &= ~(1 << osmo_si);
+				}
+			}
+		}
 		LOGP(DRSL, LOGL_INFO, " Rx RSL Disabling SACCH FILLING (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
 	}
