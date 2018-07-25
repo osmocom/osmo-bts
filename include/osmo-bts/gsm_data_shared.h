@@ -240,6 +240,8 @@ struct gsm_lchan {
 	struct {
 		/* bitmask of all SI that are present/valid in si_buf */
 		uint32_t valid;
+		/* bitmask of all SI that do not mirror the BTS-global SI values */
+		uint32_t overridden;
 		uint32_t last;
 		/* buffers where we put the pre-computed SI:
 		   SI2Q_MAX_NUM is the max number of SI2quater messages (see 3GPP TS 44.018) */

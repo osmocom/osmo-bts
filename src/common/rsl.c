@@ -567,14 +567,14 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		lapdm_ui_prefix_bts(bts, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
 
-		/* Propagate SI change to all lchans. */
+		/* Propagate SI change to all lchans which adhere to BTS-global default. */
 		llist_for_each_entry(t, &bts->trx_list, list) {
 			int i, j;
 			for (i = 0; i < ARRAY_SIZE(t->ts); i++) {
 				struct gsm_bts_trx_ts *ts = &t->ts[i];
 				for (j = 0; j < ARRAY_SIZE(ts->lchan); j++) {
 					struct gsm_lchan *lchan = &ts->lchan[j];
-					if (lchan->state == LCHAN_S_NONE)
+					if (lchan->state == LCHAN_S_NONE || (lchan->si.overridden & (1 << osmo_si)))
 						continue;
 					lapdm_ui_prefix_lchan(lchan, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
 				}
@@ -588,14 +588,14 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		bts->si_valid &= ~(1 << osmo_si);
 
-		/* Propagate SI change to all lchans. */
+		/* Propagate SI change to all lchans which adhere to BTS-global default. */
 		llist_for_each_entry(t, &bts->trx_list, list) {
 			int i, j;
 			for (i = 0; i < ARRAY_SIZE(t->ts); i++) {
 				struct gsm_bts_trx_ts *ts = &t->ts[i];
 				for (j = 0; j < ARRAY_SIZE(ts->lchan); j++) {
 					struct gsm_lchan *lchan = &ts->lchan[j];
-					if (lchan->state == LCHAN_S_NONE)
+					if (lchan->state == LCHAN_S_NONE || (lchan->si.overridden & (1 << osmo_si)))
 						continue;
 					lchan->si.valid &= ~(1 << osmo_si);
 				}
@@ -1567,6 +1567,7 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct tlv_parsed tp;
 	uint8_t rsl_si, osmo_si;
 
@@ -1593,7 +1594,12 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
+
 		lapdm_ui_prefix_lchan(lchan, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
+		if (memcmp(GSM_BTS_SI(bts, osmo_si), TLVP_VAL(&tp, RSL_IE_L3_INFO), sizeof(sysinfo_buf_t) != 0))
+			lchan->si.overridden |= (1 << osmo_si);
+		else
+			lchan->si.overridden &= ~(1 << osmo_si);
 
 		LOGP(DRSL, LOGL_INFO, "%s Rx RSL SACCH FILLING (SI%s)\n",
 			gsm_lchan_name(lchan),
