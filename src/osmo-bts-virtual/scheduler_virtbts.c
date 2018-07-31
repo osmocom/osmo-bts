@@ -198,7 +198,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 #if 0
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
-	 && ++(chan_state->lost) > 5) {
+	 && ++(chan_state->lost_frames) > 5) {
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 

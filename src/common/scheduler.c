@@ -367,7 +367,7 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		memcpy(msg->l2h, l2, l2_len);
 
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
-		l1ts->chan_state[chan].lost = 0;
+		l1ts->chan_state[chan].lost_frames = 0;
 
 	/* forward primitive */
 	l1sap_up(l1t->trx, l1sap);
@@ -396,8 +396,8 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (tch_len)
 		memcpy(msg->l2h, tch, tch_len);
 
-	if (l1ts->chan_state[chan].lost)
-		l1ts->chan_state[chan].lost--;
+	if (l1ts->chan_state[chan].lost_frames)
+		l1ts->chan_state[chan].lost_frames--;
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.data.fn,
 	       "%s Rx -> RTP: %s\n",

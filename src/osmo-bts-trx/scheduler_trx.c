@@ -192,7 +192,7 @@ got_msg:
 	/* handle loss detection of SACCH */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
-		if (++(l1ts->chan_state[chan].lost) > 1) {
+		if (++(l1ts->chan_state[chan].lost_frames) > 1) {
 			/* TODO: Should we pass old TOA here? Otherwise we risk
 			 * unnecessary decreasing TA */
 
@@ -351,7 +351,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
-	    && ++(chan_state->lost) > 5) {
+	    && ++(chan_state->lost_frames) > 5) {
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
