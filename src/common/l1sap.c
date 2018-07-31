@@ -754,9 +754,16 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 					memcpy(p + 2, si, GSM_MACBLOCK_LEN - 2);
 				} else
 					memcpy(p + 2, fill_frame, GSM_MACBLOCK_LEN - 2);
-			} else if ((!L1SAP_IS_CHAN_TCHF(chan_nr) && !L1SAP_IS_CHAN_TCHH(chan_nr))
-				|| lchan->rsl_cmode == RSL_CMOD_SPD_SIGN) {
-				/* send fill frame only, if not TCH/x != Signalling, otherwise send empty frame */
+			} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr) || L1SAP_IS_CHAN_SDCCH8(chan_nr) ||
+				   (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN && !lchan->ts->trx->bts->dtxd)) {
+				/*
+				 * SDCCH or TCH in signalling mode without DTX.
+				 *
+				 * Send fill frame according to GSM 05.08, section 8.3: "On the SDCCH and on the
+				 * half rate speech traffic channel in signalling only mode DTX is not allowed.
+				 * In these cases and during signalling on the TCH when DTX is not used, the same
+				 * L2 fill frame shall be transmitted in case there is nothing else to transmit."
+				 */
 				p = msgb_put(msg, GSM_MACBLOCK_LEN);
 				memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 			} /* else the message remains empty, so TCH frames are sent */
