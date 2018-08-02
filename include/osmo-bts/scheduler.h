@@ -80,6 +80,9 @@ struct l1sched_chan_state {
 
 	/* loss detection */
 	uint8_t			lost_frames;	/* how many L2 frames were lost */
+	uint32_t		last_tdma_fn;	/* last processed TDMA frame number */
+	uint32_t		proc_tdma_fs;	/* how many TDMA frames were processed */
+	uint32_t		lost_tdma_fs;	/* how many TDMA frames were lost */
 
 	/* mode */
 	uint8_t			rsl_cmode, tch_mode; /* mode for TCH channels */
@@ -124,7 +127,6 @@ struct l1sched_chan_state {
 
 struct l1sched_ts {
 	uint8_t 		mf_index;	/* selected multiframe index */
-	uint32_t 		mf_last_fn;	/* last received frame number */
 	uint8_t			mf_period;	/* period of multiframe */
 	const struct trx_sched_frame *mf_frames; /* pointer to frame layout */
 

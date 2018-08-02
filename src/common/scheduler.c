@@ -222,7 +222,6 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 		struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
 		l1ts->mf_index = 0;
-		l1ts->mf_last_fn = 0;
 		INIT_LLIST_HEAD(&l1ts->dl_prims);
 		for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
 			struct l1sched_chan_state *chan_state;
@@ -853,8 +852,115 @@ no_data:
 	return bits;
 }
 
+#define TDMA_FN_SUM(a, b) \
+	((a + GSM_HYPERFRAME + b) % GSM_HYPERFRAME)
+
+#define TDMA_FN_SUB(a, b) \
+	((a + GSM_HYPERFRAME - b) % GSM_HYPERFRAME)
+
+static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
+	struct l1sched_chan_state *l1cs, uint8_t tn, uint32_t fn)
+{
+	const struct trx_sched_frame *frame_head;
+	const struct trx_sched_frame *frame;
+	struct l1sched_ts *l1ts;
+	uint32_t elapsed_fs;
+	uint8_t offset, i;
+	uint32_t fn_i;
+
+	/**
+	 * When a channel is just activated, the MS needs some time
+	 * to synchronize and start burst transmission,
+	 * so let's wait until the first UL burst...
+	 */
+	if (l1cs->proc_tdma_fs == 0)
+		return 0;
+
+	/* Get current TDMA frame info */
+	l1ts = l1sched_trx_get_ts(l1t, tn);
+	offset = fn % l1ts->mf_period;
+	frame_head = l1ts->mf_frames + offset;
+
+	/* Not applicable for some logical channels */
+	switch (frame_head->ul_chan) {
+	case TRXC_IDLE:
+	case TRXC_RACH:
+	case TRXC_PDTCH:
+	case TRXC_PTCCH:
+		return 0;
+	default:
+		/* No applicable if we are waiting for handover RACH */
+		if (l1cs->ho_rach_detect)
+			return 0;
+	}
+
+	/* How many frames elapsed since the last one? */
+	elapsed_fs = TDMA_FN_SUB(fn, l1cs->last_tdma_fn);
+	if (elapsed_fs > l1ts->mf_period) { /* Too many! */
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, frame_head->ul_chan, fn,
+			"Too many (>%u) contiguous TDMA frames=%u elapsed "
+			"since the last processed fn=%u\n", l1ts->mf_period,
+			elapsed_fs, l1cs->last_tdma_fn);
+		/* FIXME: how should this affect the measurements? */
+		return -EINVAL;
+	}
+
+	/**
+	 * There are several TDMA frames between the last processed
+	 * frame and currently received one. Let's walk through this
+	 * path and count potentially lost frames, i.e. for which
+	 * we didn't receive the corresponsing UL bursts.
+	 *
+	 * Start counting from the last_fn + 1.
+	 */
+	for (i = 1; i < elapsed_fs; i++) {
+		fn_i = TDMA_FN_SUM(l1cs->last_tdma_fn, i);
+		offset = fn_i % l1ts->mf_period;
+		frame = l1ts->mf_frames + offset;
+
+		if (frame->ul_chan == frame_head->ul_chan)
+			l1cs->lost_tdma_fs++;
+	}
+
+	if (l1cs->lost_tdma_fs > 0) {
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, frame_head->ul_chan, fn,
+			"At least %u TDMA frames were lost since the last "
+			"processed fn=%u\n", l1cs->lost_tdma_fs, l1cs->last_tdma_fn);
+
+		/**
+		 * HACK: substitute lost bursts by zero-filled ones
+		 *
+		 * Instead of doing this, it makes sense to use the
+		 * amount of lost frames in measurement calculations.
+		 */
+		static sbit_t zero_burst[GSM_BURST_LEN] = { 0 };
+		trx_sched_ul_func *func;
+
+		for (i = 1; i < elapsed_fs; i++) {
+			fn_i = TDMA_FN_SUM(l1cs->last_tdma_fn, i);
+			offset = fn_i % l1ts->mf_period;
+			frame = l1ts->mf_frames + offset;
+			func = trx_chan_desc[frame->ul_chan].ul_fn;
+
+			if (frame->ul_chan != frame_head->ul_chan)
+				continue;
+
+			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, frame->ul_chan, fn,
+				"Substituting lost TDMA frame=%u by all-zero "
+				"dummy burst\n", fn_i);
+
+			func(l1t, tn, fn_i, frame->ul_chan, frame->ul_bid,
+				zero_burst, GSM_BURST_LEN, -128, 0);
+
+			l1cs->lost_tdma_fs--;
+		}
+	}
+
+	return 0;
+}
+
 /* process uplink burst */
-int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
+int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	sbit_t *bits, uint16_t nbits, int8_t rssi, int16_t toa256)
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
@@ -863,82 +969,51 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t current_fn,
 	uint8_t offset, period, bid;
 	trx_sched_ul_func *func;
 	enum trx_chan_type chan;
-	uint32_t fn, elapsed;
 
 	if (!l1ts->mf_index)
 		return -EINVAL;
 
-	/* calculate how many frames have been elapsed */
-	elapsed = (current_fn + GSM_HYPERFRAME - l1ts->mf_last_fn) % GSM_HYPERFRAME;
+	/* get frame from multiframe */
+	period = l1ts->mf_period;
+	offset = fn % period;
+	frame = l1ts->mf_frames + offset;
 
-	/* start counting from last fn + 1, but only if not too many fn have
-	 * been elapsed */
-	if (elapsed < 10) {
-		fn = (l1ts->mf_last_fn + 1) % GSM_HYPERFRAME;
-	} else {
-		LOGPFN(DL1P, LOGL_NOTICE, current_fn,
-		       "Too many contiguous elapsed fn, dropping %u\n", elapsed);
-		fn = current_fn;
-	}
+	chan = frame->ul_chan;
+	bid = frame->ul_bid;
+	l1cs = &l1ts->chan_state[chan];
+	func = trx_chan_desc[chan].ul_fn;
 
-	while (42) {
-		/* get frame from multiframe */
-		period = l1ts->mf_period;
-		offset = fn % period;
-		frame = l1ts->mf_frames + offset;
+	/* check if channel is active */
+	if (!trx_chan_desc[chan].auto_active && !l1cs->active)
+		return -EINVAL;
 
-		chan = frame->ul_chan;
-		bid = frame->ul_bid;
-		func = trx_chan_desc[chan].ul_fn;
+	/* omit bursts which have no handler, like IDLE bursts */
+	if (!func)
+		return -EINVAL;
 
-		l1cs = &l1ts->chan_state[chan];
+	/* calculate how many TDMA frames were potentially lost */
+	trx_sched_calc_frame_loss(l1t, l1cs, tn, fn);
 
-		/* check if channel is active */
-		if (!trx_chan_desc[chan].auto_active && !l1cs->active)
-			goto next_frame;
+	/* update TDMA frame counters */
+	l1cs->last_tdma_fn = fn;
+	l1cs->proc_tdma_fs++;
 
-		/* omit bursts which have no handler, like IDLE bursts */
-		if (!func)
-			goto next_frame;
+	/* decrypt */
+	if (bits && l1cs->ul_encr_algo) {
+		ubit_t ks[114];
+		int i;
 
-		/* put burst to function */
-		if (fn == current_fn) {
-			/* decrypt */
-			if (bits && l1cs->ul_encr_algo) {
-				ubit_t ks[114];
-				int i;
-
-				osmo_a5(l1cs->ul_encr_algo,
-					l1cs->ul_encr_key,
-					fn, NULL, ks);
-				for (i = 0; i < 57; i++) {
-					if (ks[i])
-						bits[i + 3] = - bits[i + 3];
-					if (ks[i + 57])
-						bits[i + 88] = - bits[i + 88];
-				}
-			}
-
-			func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa256);
-		} else if (chan != TRXC_RACH && !l1cs->ho_rach_detect) {
-			sbit_t spare[GSM_BURST_LEN];
-			memset(spare, 0, GSM_BURST_LEN);
-			/* We missed a couple of frame numbers (system overload?) and are now
-			 * substituting some zero-filled bursts for those bursts we missed */
-			LOGPFN(DL1P, LOGL_ERROR, fn, "Substituting all-zero burst (current_fn=%u, "
-				"elapsed=%u\n", current_fn, elapsed);
-			func(l1t, tn, fn, chan, bid, spare, GSM_BURST_LEN, -128, 0);
+		osmo_a5(l1cs->ul_encr_algo, l1cs->ul_encr_key, fn, NULL, ks);
+		for (i = 0; i < 57; i++) {
+			if (ks[i])
+				bits[i + 3] = - bits[i + 3];
+			if (ks[i + 57])
+				bits[i + 88] = - bits[i + 88];
 		}
-
-next_frame:
-		/* reached current fn */
-		if (fn == current_fn)
-			break;
-
-		fn = (fn + 1) % GSM_HYPERFRAME;
 	}
 
-	l1ts->mf_last_fn = fn;
+	/* put burst to function */
+	func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa256);
 
 	return 0;
 }
