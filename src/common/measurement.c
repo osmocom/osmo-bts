@@ -16,6 +16,21 @@ static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
 static const uint8_t ts45008_83_tch_hs0[] = { 0, 2, 4, 6, 52, 54, 56, 58 };
 static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
 
+/* In cases where we less measurements than we expect we must assume that we
+ * just did not receive the block because it was lost due to bad channel
+ * conditions. We set up a dummy measurement result here that reflects the
+ * worst possible result. In our* calculation we will use this dummy to replace
+ * the missing measurements */
+#define MEASUREMENT_DUMMY_BER 10000 /* 100% BER */
+#define MEASUREMENT_DUMMY_IRSSI 109 /* noise floor in -dBm */
+static const struct bts_ul_meas measurement_dummy = (struct bts_ul_meas) {
+	.ber10k = MEASUREMENT_DUMMY_BER,
+	.ta_offs_256bits = 0,
+	.c_i = 0,
+	.is_sub = 0,
+	.inv_rssi = MEASUREMENT_DUMMY_IRSSI
+};
+
 /* find out if an array contains a given key as element */
 #define ARRAY_CONTAINS(arr, val) array_contains(arr, ARRAY_SIZE(arr), val)
 static bool array_contains(const uint8_t *arr, unsigned int len, uint8_t val) {
@@ -468,6 +483,64 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 	return 7;
 }
 
+/* Get the number of measurements that we expect for a specific lchan.
+ * (This is a static number that is defined by the specific slot layout of
+ * the channel) */
+static unsigned int lchan_meas_num_expected(const struct gsm_lchan *lchan)
+{
+	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
+
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
+		/* 24 for TCH + 1 for SACCH */
+		return 25;
+	case GSM_PCHAN_TCH_H:
+		/* 24 half-blocks for TCH + 1 for SACCH */
+		return 25;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		/* 2 for SDCCH + 1 for SACCH */
+		return 3;
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		/* 2 for SDCCH + 1 for SACCH */
+		return 3;
+	default:
+		return lchan->meas.num_ul_meas;
+	}
+}
+
+/* In DTX a subset of blocks must always be transmitted
+ * See also: GSM 05.08, chapter 8.3 Aspects of discontinuous transmission (DTX) */
+static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
+{
+	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
+
+	/* AMR is using a more elaborated model with a dymanic amount of
+	 * DTX blocks so this function is not applicable to determine the
+	 * amount of expected SUB Measurements when AMR is used */
+	OSMO_ASSERT(lchan->tch_mode != GSM48_CMODE_SPEECH_AMR)
+
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
+		/* 1 block SDCCH, 2 blocks TCH */
+		return 3;
+	case GSM_PCHAN_TCH_H:
+		/* 1 block SDCCH, 4 half-blocks TCH */
+		return 5;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		/* no DTX here, all blocks must be present! */
+		return 3;
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		/* no DTX here, all blocks must be present! */
+		return 3;
+	default:
+		return 0;
+	}
+}
+
 /* if we clip the TOA value to 12 bits, i.e. toa256=3200,
  *  -> the maximum deviation can be 2*3200 = 6400
  *  -> the maximum squared deviation can be 6400^2 = 40960000
@@ -482,6 +555,10 @@ static uint8_t ber10k_to_rxqual(uint32_t ber10k)
 /* compute Osmocom extended measurements for the given lchan */
 static void lchan_meas_compute_extended(struct gsm_lchan *lchan)
 {
+	unsigned int num_ul_meas;
+	unsigned int num_ul_meas_excess = 0;
+        unsigned int num_ul_meas_expect;
+
 	/* we assume that lchan_meas_check_compute() has already computed the mean value
 	 * and we can compute the min/max/variance/stddev from this */
 	int i;
@@ -489,19 +566,47 @@ static void lchan_meas_compute_extended(struct gsm_lchan *lchan)
 	/* each measurement is an int32_t, so the squared difference value must fit in 32bits */
 	/* the sum of the squared values (each up to 32bit) can very easily exceed 32 bits */
 	u_int64_t sq_diff_sum = 0;
+
+	/* In case we do not have any measurement values collected there is no
+	 * computation possible. We just skip the whole computation here, the
+	 * lchan->meas.flags will not get the LC_UL_M_F_OSMO_EXT_VALID flag set
+	 * so no extended measurement results will be reported back via RSL.
+	 * this is ok, since we have nothing to report anyway and apart of that
+	 * we also just lost the signal (otherwise we would have at least some
+	 * measurements). */
+	if (!lchan->meas.num_ul_meas)
+		return;
+
 	/* initialize min/max values with their counterpart */
 	lchan->meas.ext.toa256_min = INT16_MAX;
 	lchan->meas.ext.toa256_max = INT16_MIN;
 
-	OSMO_ASSERT(lchan->meas.num_ul_meas);
+	/* Determine the number of measurement values we need to take into the
+	 * computation. In this case we only compute over the measurements we
+	 * have indeed received. Since this computation is about timing
+	 * information it does not make sense to approach missing measurement
+	 * samples the TOA with 0. This would bend the average towards 0. What
+	 * counts is the average TOA of the properly received blocks so that
+	 * the TA logic can make a proper decision. */
+        num_ul_meas_expect = lchan_meas_num_expected(lchan);
+	if (lchan->meas.num_ul_meas > num_ul_meas_expect) {
+		num_ul_meas = num_ul_meas_expect;
+		num_ul_meas_excess = lchan->meas.num_ul_meas - num_ul_meas_expect;
+	}
+	else
+		num_ul_meas = lchan->meas.num_ul_meas;
 
 	/* all computations are done on the relative arrival time of the burst, relative to the
 	 * beginning of its slot. This is of course excluding the TA value that the MS has already
 	 * compensated/pre-empted its transmission */
 
 	/* step 1: compute the sum of the squared difference of each value to mean */
-	for (i = 0; i < lchan->meas.num_ul_meas; i++) {
-		struct bts_ul_meas *m = &lchan->meas.uplink[i];
+	for (i = 0; i < num_ul_meas; i++) {
+		const struct bts_ul_meas *m;
+
+		OSMO_ASSERT(i < lchan->meas.num_ul_meas);
+		m = &lchan->meas.uplink[i+num_ul_meas_excess];
+
 		int32_t diff = (int32_t)m->ta_offs_256bits - (int32_t)lchan->meas.ms_toa256;
 		/* diff can now be any value of +65535 to -65535, so we can safely square it,
 		 * but only in unsigned math.  As squaring looses the sign, we can simply drop
@@ -517,7 +622,7 @@ static void lchan_meas_compute_extended(struct gsm_lchan *lchan)
 			lchan->meas.ext.toa256_min = m->ta_offs_256bits;
 	}
 	/* step 2: compute the variance (mean of sum of squared differences) */
-	sq_diff_sum = sq_diff_sum / lchan->meas.num_ul_meas;
+	sq_diff_sum = sq_diff_sum / num_ul_meas;
 	/* as the individual summed values can each not exceed 2^32, and we're
 	 * dividing by the number of summands, the resulting value can also not exceed 2^32 */
 	OSMO_ASSERT(sq_diff_sum <= UINT32_MAX);
@@ -535,54 +640,137 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	uint32_t irssi_sub_sum = 0;
 	int32_t ta256b_sum = 0;
 	unsigned int num_meas_sub = 0;
+	unsigned int num_meas_sub_actual = 0;
+	unsigned int num_meas_sub_subst = 0;
+	unsigned int num_meas_sub_expect;
+	unsigned int num_ul_meas;
+	unsigned int num_ul_meas_actual = 0;
+	unsigned int num_ul_meas_subst = 0;
+	unsigned int num_ul_meas_expect;
+	unsigned int num_ul_meas_excess = 0;
 	int i;
 
 	/* if measurement period is not complete, abort */
 	if (!is_meas_complete(lchan, fn))
 		return 0;
 
-	/* if there are no measurements, skip computation */
-	if (lchan->meas.num_ul_meas == 0)
-		return 0;
+	LOGP(DMEAS, LOGL_DEBUG, "%s Calculating measurement results for physical channel:%s\n",
+	     gsm_lchan_name(lchan), gsm_pchan_name(ts_pchan(lchan->ts)));
 
-	/* compute the actual measurements */
+	/* Note: Some phys will send no measurement indication at all
+	 * when a block is lost. Also in DTX mode blocks are left out
+	 * intentionally to save energy. It is not necessarly an error
+	 * when we get less measurements as we expect. */
+	num_ul_meas_expect = lchan_meas_num_expected(lchan);
 
-	/* step 1: add up */
-	for (i = 0; i < lchan->meas.num_ul_meas; i++) {
-		struct bts_ul_meas *m = &lchan->meas.uplink[i];
+	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR)
+		num_meas_sub_expect = lchan_meas_sub_num_expected(lchan);
+	else {
+		/* FIXME: the amount of SUB Measurements is a dynamic parameter
+		 * in AMR and can not be determined by using a lookup table.
+		 * See also: OS#2978 */
+		num_meas_sub_expect = 0;
+	}
+
+	if (lchan->meas.num_ul_meas > num_ul_meas_expect)
+		num_ul_meas_excess = lchan->meas.num_ul_meas - num_ul_meas_expect;
+	num_ul_meas = num_ul_meas_expect;
+
+	LOGP(DMEAS, LOGL_DEBUG, "%s received %u UL measurements, expected %u\n", gsm_lchan_name(lchan),
+	     lchan->meas.num_ul_meas, num_ul_meas_expect);
+	if (num_ul_meas_excess)
+		LOGP(DMEAS, LOGL_DEBUG, "%s received %u excess UL measurements\n", gsm_lchan_name(lchan),
+		     num_ul_meas_excess);
+
+	/* Measurement computation step 1: add up */
+	for (i = 0; i < num_ul_meas; i++) {
+		const struct bts_ul_meas *m;
+		bool is_sub = false;
+
+		/* Note: We will always compute over a full measurement,
+		 * interval even when not enough measurement samples are in
+		 * the buffer. As soon as we run out of measurement values
+		 * we continue the calculation using dummy values. This works
+		 * well for the BER, since there we can safely assume 100%
+		 * since a missing measurement means that the data (block)
+		 * is lost as well (some phys do not give us measurement
+		 * reports for lost blocks or blocks that are spaced out for
+		 * DTX). However, for RSSI and TA this does not work since
+		 * there we would distort the calculation if we would replace
+		 * them with a made up number. This means for those values we
+		 * only compute over the data we have actually received. */
+
+		if (i < lchan->meas.num_ul_meas) {
+			m = &lchan->meas.uplink[i + num_ul_meas_excess];
+			if (m->is_sub) {
+				irssi_sub_sum += m->inv_rssi;
+				num_meas_sub_actual++;
+				is_sub = true;
+			}
+			irssi_full_sum += m->inv_rssi;
+			ta256b_sum += m->ta_offs_256bits;
+
+			num_ul_meas_actual++;
+		} else {
+			m = &measurement_dummy;
+			if (num_ul_meas_expect - i <= num_meas_sub_expect - num_meas_sub) {
+				num_meas_sub_subst++;
+				is_sub = true;
+			}
+
+			num_ul_meas_subst++;
+		}
 
 		ber_full_sum += m->ber10k;
-		irssi_full_sum += m->inv_rssi;
-		ta256b_sum += m->ta_offs_256bits;
-
-		if (m->is_sub) {
+		if (is_sub) {
 			num_meas_sub++;
 			ber_sub_sum += m->ber10k;
-			irssi_sub_sum += m->inv_rssi;
 		}
 	}
 
-	/* step 2: divide */
-	ber_full_sum = ber_full_sum / lchan->meas.num_ul_meas;
-	irssi_full_sum = irssi_full_sum / lchan->meas.num_ul_meas;
-	ta256b_sum = ta256b_sum / lchan->meas.num_ul_meas;
+	LOGP(DMEAS, LOGL_DEBUG, "%s received UL measurements contain %u SUB measurements, expected %u\n",
+	     gsm_lchan_name(lchan), num_meas_sub_actual, num_meas_sub_expect);
+	LOGP(DMEAS, LOGL_DEBUG, "%s replaced %u measurements with dummy values, from which %u were SUB measurements\n",
+	     gsm_lchan_name(lchan), num_ul_meas_subst, num_meas_sub_subst);
 
-	if (num_meas_sub) {
-		ber_sub_sum = ber_sub_sum / num_meas_sub;
-		irssi_sub_sum = irssi_sub_sum / num_meas_sub;
-	} else {
-		LOGP(DMEAS, LOGL_ERROR, "%s No measurements for SUB!!!\n", gsm_lchan_name(lchan));
-		/* The only situation in which this can occur is if the related uplink burst/block was
-		 * missing, so let's set BER to 100% and level to lowest possible. */
-		ber_sub_sum = 10000; /* 100% */
-		irssi_sub_sum = 120; /* -120 dBm */
+	if (num_meas_sub != num_meas_sub_expect) {
+		LOGP(DMEAS, LOGL_ERROR, "%s Incorrect number of SUB measurements detected!\n", gsm_lchan_name(lchan));
+		/* Normally the logic above should make sure that there is
+		 * always the exact amount of SUB measurements taken into
+		 * account. If not then the logic that decides tags the received
+		 * measurements as is_sub works incorrectly. Since the logic
+		 * above only adds missing measurements during the calculation
+		 * it can not remove excess SUB measurements or add missing SUB
+		 * measurements when there is no more room in the interval. */
 	}
 
+	/* Measurement computation step 2: divide */
+	ber_full_sum = ber_full_sum / num_ul_meas;
+
+	if (!irssi_full_sum)
+		ber_full_sum = MEASUREMENT_DUMMY_IRSSI;
+	else
+		irssi_full_sum = irssi_full_sum / num_ul_meas_actual;
+
+	if (!num_ul_meas_actual)
+		ta256b_sum = lchan->meas.ms_toa256;
+	else
+		ta256b_sum = ta256b_sum / num_ul_meas_actual;
+
+	if (!num_meas_sub)
+		ber_sub_sum = MEASUREMENT_DUMMY_BER;
+	else
+		ber_sub_sum = ber_sub_sum / num_meas_sub;
+
+	if (!num_meas_sub_actual)
+		irssi_sub_sum = MEASUREMENT_DUMMY_IRSSI;
+	else
+		irssi_sub_sum = irssi_sub_sum / num_meas_sub_actual;
+
 	LOGP(DMEAS, LOGL_INFO, "%s Computed TA256(% 4d) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
-		"BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
-		ta256b_sum, ber_full_sum/100,
-		ber_full_sum%100, irssi_full_sum, ber_sub_sum/100, ber_sub_sum%100,
-		irssi_sub_sum);
+	     "BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
+	     ta256b_sum, ber_full_sum / 100,
+	     ber_full_sum % 100, irssi_full_sum, ber_sub_sum / 100, ber_sub_sum % 100, irssi_sub_sum);
 
 	/* store results */
 	mru = &lchan->meas.ul_res;
@@ -593,20 +781,18 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	lchan->meas.ms_toa256 = ta256b_sum;
 
 	LOGP(DMEAS, LOGL_INFO, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
-	       "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",
-	       gsm_lchan_name(lchan),
-	       mru->full.rx_lev,
-	       mru->sub.rx_lev,
-	       mru->full.rx_qual,
-	       mru->sub.rx_qual, num_meas_sub, lchan->meas.num_ul_meas);
+	     "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",
+	     gsm_lchan_name(lchan),
+	     mru->full.rx_lev, mru->sub.rx_lev, mru->full.rx_qual, mru->sub.rx_qual, num_meas_sub, num_ul_meas_expect);
 
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
 
 	lchan_meas_compute_extended(lchan);
 
 	lchan->meas.num_ul_meas = 0;
-	/* send a signal indicating computation is complete */
 
+	/* return 1 to indicte that the computation has been done and the next
+	 * interval begins. */
 	return 1;
 }
 

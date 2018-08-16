@@ -24,6 +24,7 @@ struct fn_sample {
 #include "sysmobts_fr_samples.h"
 #include "meas_testcases.h"
 
+
 void test_fn_sample(struct fn_sample *s, unsigned int len, uint8_t pchan, uint8_t tsmap)
 {
 	int rc;
@@ -73,13 +74,16 @@ static void reset_lchan_meas(struct gsm_lchan *lchan)
 
 static void test_meas_compute(const struct meas_testcase *mtc)
 {
-	struct gsm_lchan *lchan = &trx->ts[1].lchan[0];
+	struct gsm_lchan *lchan;
 	unsigned int i;
 	unsigned int fn = 0;
 
-	printf("\nMeasurement Compute Test %s\n", mtc->name);
+	printf("\n\n");
+	printf("===========================================================\n");
+	printf("Measurement Compute Test: %s\n", mtc->name);
 
-	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan = &trx->ts[mtc->ts].lchan[0];
+	lchan->ts->pchan = mtc->pchan;
 	reset_lchan_meas(lchan);
 
 	/* feed uplink measurements into the code */
@@ -94,6 +98,8 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 		OSMO_ASSERT(!(lchan->meas.flags & LC_UL_M_F_RES_VALID));
 	} else {
 		OSMO_ASSERT(lchan->meas.flags & (LC_UL_M_F_RES_VALID|LC_UL_M_F_OSMO_EXT_VALID));
+		printf("number of measurements: %u\n",  mtc->ulm_count);
+		printf("parameter                | actual | expected\n");
 		printf("meas.ext.toa256_min      | %6d | %6d\n",
 			lchan->meas.ext.toa256_min, mtc->res.toa256_min);
 		printf("meas.ext.toa256_max      | %6d | %6d\n",
@@ -113,6 +119,7 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 		    (lchan->meas.ext.toa256_std_dev != mtc->res.toa256_std_dev) ||
 		    (lchan->meas.ul_res.full.rx_lev != mtc->res.rx_lev_full)) {
 			fprintf(stderr, "%s: Unexpected measurement result!\n", mtc->name);
+			OSMO_ASSERT(false);
 		}
 	}
 
@@ -1121,6 +1128,15 @@ int main(int argc, char **argv)
 	test_meas_compute(&mtc3);
 	test_meas_compute(&mtc4);
 	test_meas_compute(&mtc5);
+	test_meas_compute(&mtc_tch_f_complete);
+	test_meas_compute(&mtc_tch_f_dtx_with_lost_subs);
+	test_meas_compute(&mtc_tch_f_dtx);
+	test_meas_compute(&mtc_tch_h_complete);
+	test_meas_compute(&mtc_tch_h_dtx_with_lost_subs);
+	test_meas_compute(&mtc_tch_h_dtx);
+	test_meas_compute(&mtc_overrun);
+	test_meas_compute(&mtc_sdcch4_complete);
+	test_meas_compute(&mtc_sdcch8_complete);
 
 	printf("\n");
 	printf("***************************************************\n");
