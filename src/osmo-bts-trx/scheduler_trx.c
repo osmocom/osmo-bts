@@ -30,6 +30,7 @@
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/timer_compat.h>
 #include <osmocom/codec/codec.h>
 #include <osmocom/codec/ecu.h>
 #include <osmocom/core/bits.h>
@@ -1409,13 +1410,12 @@ static struct osmo_trx_clock_state g_clk_s = { .fn_timer_ofd.fd = -1 };
 #define TRX_LOSS_FRAMES		400
 
 /*! compute the number of micro-seconds difference elapsed between \a last and \a now */
-static inline int compute_elapsed_us(const struct timespec *last, const struct timespec *now)
+static inline int64_t compute_elapsed_us(const struct timespec *last, const struct timespec *now)
 {
-	int elapsed;
+	struct timespec elapsed;
 
-	elapsed = (now->tv_sec - last->tv_sec) * 1000000
-		+ (now->tv_nsec - last->tv_nsec) / 1000;
-	return elapsed;
+	timespecsub(now, last, &elapsed);
+	return (int64_t)(elapsed.tv_sec * 1000000) + (elapsed.tv_nsec / 1000);
 }
 
 /*! compute the number of frame number intervals elapsed between \a last and \a now */
@@ -1508,8 +1508,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	struct osmo_trx_clock_state *tcs = &g_clk_s;
 	struct timespec tv_now;
 	uint64_t expire_count;
-	int elapsed_us;
-	int error_us;
+	int64_t elapsed_us, error_us;
 	int rc, i;
 
 	if (!(what & BSC_FD_READ))
@@ -1537,14 +1536,14 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	elapsed_us = compute_elapsed_us(&tcs->last_fn_timer.tv, &tv_now);
 	error_us = elapsed_us - FRAME_DURATION_uS;
 #ifdef DEBUG_CLOCK
-	printf("%s(): %09ld, elapsed_us=%05d, error_us=%-d: fn=%d\n", __func__,
+	printf("%s(): %09ld, elapsed_us=%05" PRId64 ", error_us=%-d: fn=%d\n", __func__,
 		tv_now.tv_nsec, elapsed_us, error_us, tcs->last_fn_timer.fn+1);
 #endif
 	tcs->last_fn_timer.tv = tv_now;
 
 	/* if someone played with clock, or if the process stalled */
 	if (elapsed_us > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed_us < 0) {
-		LOGP(DL1C, LOGL_ERROR, "PC clock skew: elapsed_us=%d, error_us=%d\n",
+		LOGP(DL1C, LOGL_ERROR, "PC clock skew: elapsed_us=%" PRId64 ", error_us=%" PRId64 "\n",
 			elapsed_us, error_us);
 		goto no_clock;
 	}
@@ -1591,8 +1590,8 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 {
 	struct osmo_trx_clock_state *tcs = &g_clk_s;
 	struct timespec tv_now;
-	int elapsed_us, elapsed_fn;
-	int64_t elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
+	int elapsed_fn;
+	int64_t elapsed_us, elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
 	unsigned int fn_caught_up = 0;
 	const struct timespec interval = { .tv_sec = 0, .tv_nsec = FRAME_DURATION_nS };
 
@@ -1655,7 +1654,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 		return trx_setup_clock(bts, tcs, &tv_now, &interval, fn);
 	}
 
-	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %d us (elapsed_fn=%d)\n",
+	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %" PRId64 "us (elapsed_fn=%d)\n",
 		elapsed_fn * FRAME_DURATION_uS - elapsed_us, elapsed_fn);
 
 	/* too many frames have been processed already */
