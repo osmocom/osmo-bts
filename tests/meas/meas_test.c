@@ -9,6 +9,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/measurement.h>
+#include <osmo-bts/rsl.h>
 
 static struct gsm_bts *bts;
 struct gsm_bts_trx *trx;
@@ -117,6 +118,434 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 
 }
 
+/* This tests the function is_meas_overdue() and since is_meas_overdue()
+ * internally makes use of is_meas_complete(), this also gives
+ * is_meas_complete() a detailed check. */
+static void test_is_meas_overdue(void)
+{
+	struct gsm_lchan *lchan;
+	bool rc;
+	uint32_t fn_missed_end;
+	unsigned int i;
+
+	printf("\n\n");
+	printf("===========================================================\n");
+	printf("Testing is_meas_overdue() and is_meas_complete()\n");
+
+	/* Missing period-end-trigger at fn=12, TCH/F, TS0 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 95;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 17 + 104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 12 + 104);
+
+	/* Missing period-end-trigger at fn=12, TCH/H, TS0 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 95;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 17 + 104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 12 + 104);
+
+	/* Missing period-end-trigger at fn=12, TCH/H, TS1 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[1].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 95;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 17 + 104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 12 + 104);
+
+	/* Missing period-end-trigger at fn=25, TCH/F, TS1 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[1].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 21;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 30);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 25);
+
+	/* Missing period-end-trigger at fn=25, TCH/H, TS0 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 21;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 30);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 25);
+
+	/* Missing period-end-trigger at fn=25, TCH/H, TS1 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[1].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 21;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 30);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 25);
+
+	/* Missing period-end-trigger at fn=38, TCH/F, TS2 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 34;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 43);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 38);
+
+	/* Missing period-end-trigger at fn=38, TCH/H, TS2 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 34;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 43);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 38);
+
+	/* Missing period-end-trigger at fn=38, TCH/H, TS3 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[3].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 34;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 43);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 38);
+
+	/* Missing period-end-trigger at fn=51, TCH/F, TS3 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[3].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 47;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 52);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 51);
+
+	/* Missing period-end-trigger at fn=51, TCH/H, TS2 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 47;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 52);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 51);
+
+	/* Missing period-end-trigger at fn=51, TCH/H, TS3 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[3].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 47;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 52);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 51);
+
+	/* Missing period-end-trigger at fn=64, TCH/F, TS4 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[4].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 60;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 69);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 64);
+
+	/* Missing period-end-trigger at fn=64, TCH/H, TS4 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[4].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 60;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 69);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 64);
+
+	/* Missing period-end-trigger at fn=64, TCH/H, TS4 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[5].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 60;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 69);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 64);
+
+	/* Missing period-end-trigger at fn=77, TCH/F, TS5 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[5].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 73;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 78);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 77);
+
+	/* Missing period-end-trigger at fn=77, TCH/H, TS4 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[4].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 73;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 78);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 77);
+
+	/* Missing period-end-trigger at fn=77, TCH/H, TS5 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[5].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 73;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 78);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 77);
+
+	/* Missing period-end-trigger at fn=90, TCH/F, TS6 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[6].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 86;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 91);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 90);
+
+	/* Missing period-end-trigger at fn=90, TCH/H, TS6 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[6].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 86;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 91);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 90);
+
+	/* Missing period-end-trigger at fn=90, TCH/H, TS7 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 86;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 91);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 90);
+
+	/* Missing period-end-trigger at fn=103, TCH/F, TS7 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = 99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 103);
+
+	/* Missing period-end-trigger at fn=103, TCH/H, TS6 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[6].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 103);
+
+	/* Missing period-end-trigger at fn=103, TCH/H, TS7 */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[7].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 103);
+
+	/* Dropout inside the interval, no period-end-trigger missed */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 56;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 69);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, but right after period-end-trigger */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 38;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 39);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, two neigbouring frames at random position
+	 * (should not happen in the real world) */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 43;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 44);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, Two neigbouring frames (period end, right side) */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 38;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 39);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, Two neigbouring frames (period end, left side,
+	 * should not happen in the real world) */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 37;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 38);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, test directly on a the trigger frame */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 34;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 38);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* No dropout, previous frame is trigger frame
+	 * (should not happen in the real world) */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	lchan->meas.last_fn = 38;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 38);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* Missing period-end-trigger at fn=38+i*104, TCH/F, TS2 to
+	 * see the modulus is correct. */
+	for (i = 0; i < 100; i++) {
+		fn_missed_end = LCHAN_FN_DUMMY;
+		lchan = &trx->ts[2].lchan[0];
+		lchan->ts->pchan = GSM_PCHAN_TCH_F;
+		lchan->meas.last_fn = 34 + 104 * 1;
+		rc = is_meas_overdue(lchan, &fn_missed_end, 43 + 104 * 1);
+		OSMO_ASSERT(rc);
+		OSMO_ASSERT(fn_missed_end == 38 + 104 * 1);
+	}
+
+	/* See whats happening if we miss a period-end-triggerend at the
+	 * hyperframe beginning. */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+95;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 17);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == 12);
+
+	/* See whats happening if we miss a period-end-triggerend at the
+	 * hyperframe ending. */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[6].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+86;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 8);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN-104+90);
+
+	/* See whats happening if we miss a period-end-triggerend exactly at the
+	 * hyperframe ending. */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0);
+	OSMO_ASSERT(rc);
+	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN-1);
+
+	/* Test a wrap around at the hyperframe ending, while no measurements
+	 * are lost */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* Test a wrap around at the hyperframe ending, measurements are lost,
+	 * but not the one that triggers the period end */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+95;
+	rc = is_meas_overdue(lchan, &fn_missed_end, 4);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+
+	/* Test a wrap around right before the hyperframe ending, while no
+	 * measurements are lost. */
+	fn_missed_end = LCHAN_FN_DUMMY;
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	lchan->meas.last_fn = GSM_MAX_FN-104+99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, GSM_MAX_FN-1);
+	OSMO_ASSERT(!rc);
+	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
+}
+
+/* This tests the robustness of lchan_meas_process_measurement(). This is the
+ * function that is called from l1_sap.c each time a measurement indication is
+ * received. The process must still go on when measurement indications (blocks)
+ * are lost or otherwise spaced out. Even the complete absence of the
+ * measurement indications from the SACCH which are used to detect the interval
+ * end must not keep the interval from beeing processed. */
+void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
+{
+	struct gsm_lchan *lchan = &trx->ts[2].lchan[0];
+	unsigned int i;
+	unsigned int k = 0;
+	unsigned int fn = 0;
+	struct bts_ul_meas ulm;
+
+	printf("\n\n");
+	printf("===========================================================\n");
+	printf("Testing lchan_meas_process_measurement()\n");
+	if (no_sacch)
+		printf(" * SACCH blocks not generated.\n");
+	if (dropouts)
+		printf
+		    (" * Simulate dropouts by leaving out every 4th measurement\n");
+
+	ulm.ber10k = 0;
+	ulm.ta_offs_256bits = 256;
+	ulm.c_i = 0;
+	ulm.is_sub = 0;
+	ulm.inv_rssi = 90;
+
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	reset_lchan_meas(lchan);
+
+	/* feed uplink measurements into the code */
+	for (i = 0; i < 100; i++) {
+
+		if (dropouts == false || i % 4)
+			lchan_meas_process_measurement(lchan, &ulm, fn);
+		else
+			printf
+			    ("(leaving out measurement sample for frame number %u)\n",
+			     fn);
+
+		fn += 4;
+		if (k == 2) {
+			fn++;
+			k = 0;
+		} else
+			k++;
+
+		if (fn % 104 == 39 && no_sacch == false) {
+			printf
+			    ("(now adding measurement sample for SACCH block)\n");
+			lchan_meas_process_measurement(lchan, &ulm, fn - 1);
+		} else
+			printf
+			    ("(leaving out measurement sample for SACCH block)\n");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	void *tall_bts_ctx;
@@ -171,6 +600,17 @@ int main(int argc, char **argv)
 	test_meas_compute(&mtc3);
 	test_meas_compute(&mtc4);
 	test_meas_compute(&mtc5);
+
+	printf("\n");
+	printf("***************************************************\n");
+	printf("*** MEASUREMENT INTERVAL ENDING DETECTION TESTS ***\n");
+	printf("***************************************************\n");
+
+	test_is_meas_overdue();
+	test_lchan_meas_process_measurement(false, false);
+	test_lchan_meas_process_measurement(true, false);
+	test_lchan_meas_process_measurement(false, true);
+	test_lchan_meas_process_measurement(true, true);
 
 	printf("Success\n");
 

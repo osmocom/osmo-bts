@@ -12,4 +12,6 @@ void lchan_meas_process_measurement(struct gsm_lchan *lchan, struct bts_ul_meas 
 
 void lchan_meas_reset(struct gsm_lchan *lchan);
 
+bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t fn);
+
 #endif

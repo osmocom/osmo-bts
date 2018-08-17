@@ -260,6 +260,8 @@ struct gsm_lchan {
 		uint8_t l1_info[2];
 		struct gsm_meas_rep_unidir ul_res;
 		int16_t ms_toa256;
+		/* Frame number of the last measurement indication receceived */
+		uint32_t last_fn;
 		/* Osmocom extended measurement results, see LC_UL_M_F_EXTD_VALID */
 		struct {
 			/* minimum value of toa256 during measurement period */
