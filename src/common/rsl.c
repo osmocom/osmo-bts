@@ -750,7 +750,7 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	msg->trx = lchan->ts->trx;
 
 	/* since activation was successful, do some lchan initialization */
-	lchan->meas.res_nr = 0;
+	lchan_meas_reset(lchan);
 
 	return abis_bts_rsl_sendmsg(msg);
 }

@@ -490,3 +490,11 @@ void lchan_meas_process_measurement(struct gsm_lchan *lchan, struct bts_ul_meas 
 	 * measurment report at Meas period End */
 	lchan_meas_check_compute(lchan, fn);
 }
+
+/* Reset all measurement related struct members to their initial values. This
+ * function will be called every time an lchan is activated to ensure the
+ * measurement process starts with a defined state. */
+void lchan_meas_reset(struct gsm_lchan *lchan)
+{
+	memset(&lchan->meas, 0, sizeof(lchan->meas));
+}
