@@ -328,7 +328,6 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 		break;
 	case GSM_PCHAN_TCH_H:
 		modulus = 104;
-		last_fn_mod = lchan->meas.last_fn % 104;
 		if (lchan->nr == 0)
 			tbl = tchh0_meas_rep_fn104;
 		else
@@ -339,13 +338,12 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		modulus = 102;
-		last_fn_mod = lchan->meas.last_fn % 102;
 		interval_end = sdcch8_meas_rep_fn102[lchan->ts->nr];
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		modulus = 102;
-		interval_end = sdcch8_meas_rep_fn102[lchan->ts->nr];
+		interval_end = sdcch4_meas_rep_fn102[lchan->ts->nr];
 		break;
 	default:
 		return false;
