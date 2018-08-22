@@ -562,6 +562,20 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 						" chan_nr 0x%02x\n", chan_nr);
 					break;
 				}
+
+				/* trx_chan_desc[] in scheduler.c uses the RSL_CHAN_OSMO_PDCH cbits
+				 * (0xc0) to indicate the need for PDTCH and PTCCH SAPI activation.
+				 * However, 0xc0 is a cbits pattern exclusively used for Osmocom style
+				 * dyn TS (a non-standard RSL Chan Activ mod); hence, for IPA style dyn
+				 * TS, the chan_nr will never reflect 0xc0 and we would omit the
+				 * PDTCH,PTTCH SAPIs. To properly de-/activate the PDTCH SAPIs in
+				 * scheduler.c, make sure the 0xc0 cbits are set for de-/activating PDTCH
+				 * lchans, i.e. both Osmocom and IPA style dyn TS. (For Osmocom style dyn
+				 * TS, the chan_nr typically already reflects 0xc0, while it doesn't for
+				 * IPA style.) */
+				if (lchan->type == GSM_LCHAN_PDTCH)
+					chan_nr = RSL_CHAN_OSMO_PDCH | (chan_nr & ~RSL_CHAN_NR_MASK);
+
 				/* activate dedicated channel */
 				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, 1);
 				/* activate associated channel */
