@@ -666,31 +666,6 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	return 0;
 }
 
- /* Determine whether we need to send a DTX TCH fill frame according to GSM 05.08, section 8.3. */
-static bool is_required_tchf_fill_frame_dtx(uint32_t fn, struct gsm_time *g_time) {
-	/* On TCHF this subset of TDMA frames (mod 104) is always used for transmission during DTX: */
-	const int tchf_required_fn_dtx[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
-	/* And the subset of those frames which corresponds to a TCH/F block boundary,
-	 * which is the level at which L1SAP operates: */
-	const int tchf_required_block_fn_dtx[] = { 52, 56 };
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(tchf_required_block_fn_dtx); i++) {
-		if (fn % 104 == tchf_required_block_fn_dtx[i])
-			return true;
-	}
-
-	/* We should only see block-level frame numbers here. Log a warning otherwise. */
-	for (i = 0; i < ARRAY_SIZE(tchf_required_fn_dtx); i++) {
-		if (fn % 104 == tchf_required_fn_dtx[i])
-			LOGPGT(DL1P, LOGL_NOTICE, g_time,
-			    "Unexpected TCH/F frame number received in RTS.IND "
-			    "(not at TCH/F block boundary): %u (mod 104: %u)\n", fn, fn % 104);
-	}
-
-	return false;
-}
-
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -750,18 +725,14 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		si = bts_sysinfo_get(trx->bts, &g_time);
 		if (si)
 			memcpy(p, si, GSM_MACBLOCK_LEN);
-		else {
+		else
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
-			DEBUGPGT(DL1P, &g_time, "sending fill frame BCCH chan_nr=%d fn=%u\n", chan_nr, fn);
-		}
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
-		bool dtxd = false;
 		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan) {
 			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
 			return 0;
 		}
-		dtxd = lchan->ts->trx->bts->dtxd;
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
@@ -781,39 +752,20 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				if (si) {
 					/* The +2 is empty space where the DSP inserts the L1 hdr */
 					memcpy(p + 2, si, GSM_MACBLOCK_LEN - 2);
-				} else {
+				} else
 					memcpy(p + 2, fill_frame, GSM_MACBLOCK_LEN - 2);
-					DEBUGPGT(DL1P, &g_time, "sending fill frame SACCH chan_nr=%d fn=%u dtx=%s\n", chan_nr, fn, dtxd ? "enabled" : "disabled");
-				}
-			} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr) || L1SAP_IS_CHAN_SDCCH8(chan_nr)) {
+			} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr) || L1SAP_IS_CHAN_SDCCH8(chan_nr) ||
+				   (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN && !lchan->ts->trx->bts->dtxd)) {
+				/*
+				 * SDCCH or TCH in signalling mode without DTX.
+				 *
+				 * Send fill frame according to GSM 05.08, section 8.3: "On the SDCCH and on the
+				 * half rate speech traffic channel in signalling only mode DTX is not allowed.
+				 * In these cases and during signalling on the TCH when DTX is not used, the same
+				 * L2 fill frame shall be transmitted in case there is nothing else to transmit."
+				 */
 				p = msgb_put(msg, GSM_MACBLOCK_LEN);
 				memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
-				DEBUGPGT(DL1P, &g_time, "sending fill frame SDCCH chan_nr=%d fn=%u dtx=%s\n", chan_nr, fn, dtxd ? "enabled" : "disabled");
-			} else if (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN) {
-				if (dtxd_facch) {
-					/*
-					 * TCH in signalling mode with DTX.
-					 * Send fill frame according to GSM 05.08, section 8.3.
-					 */
-					if (L1SAP_IS_CHAN_TCHF(chan_nr) && is_required_tchf_fill_frame_dtx(fn, &g_time)) {
-						p = msgb_put(msg, GSM_MACBLOCK_LEN);
-						memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
-						DEBUGPGT(DL1P, &g_time, "sending fill frame TCH chan_nr=%d fn=%u dtx=%s\n", chan_nr, fn, dtxd ? "enabled" : "disabled");
-						//dtx_dispatch(lchan, E_FACCH); /* XXX is this needed? */
-					}
-				} else {
-					/*
-					 * TCH in signalling mode without DTX.
-					 *
-					 * Send fill frame according to GSM 05.08, section 8.3: "On the SDCCH and on the
-					 * half rate speech traffic channel in signalling only mode DTX is not allowed.
-					 * In these cases and during signalling on the TCH when DTX is not used, the same
-					 * L2 fill frame shall be transmitted in case there is nothing else to transmit."
-					 */
-					p = msgb_put(msg, GSM_MACBLOCK_LEN);
-					memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
-					DEBUGPGT(DL1P, &g_time, "sending fill frame TCH chan_nr=%d fn=%u dtx=%s\n", chan_nr, fn, dtxd ? "enabled" : "disabled");
-				}
 			} /* else the message remains empty, so TCH frames are sent */
 		} else {
 			/* The +2 is empty space where the DSP inserts the L1 hdr */
@@ -834,10 +786,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		rc = bts_ccch_copy_msg(trx->bts, p, &g_time,
 				       (L1SAP_FN2CCCHBLOCK(fn) <
 					num_agch(trx, "PH-RTS-IND")));
-		if (rc <= 0) {
+		if (rc <= 0)
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
-			DEBUGPGT(DL1P, &g_time, "sending fill frame AGCH PCH chan_nr=%d fn=%u\n", chan_nr, fn);
-		}
 	}
 
 	DEBUGPGT(DL1P, &g_time, "Tx PH-DATA.req chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
@@ -1486,7 +1436,6 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		char name[32];
 		snprintf(name, sizeof(name), "bts%u-trx%u-ts%u-ss%u", lchan->ts->trx->bts->nr,
 			 lchan->ts->trx->nr, lchan->ts->nr, lchan->nr);
-		LOGP(DL1C, LOGL_NOTICE, "allocating DTX FSM for chan_nr=%d\n", chan_nr);
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
 								tall_bts_ctx,
 								lchan,
