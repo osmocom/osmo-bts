@@ -116,6 +116,7 @@ const ubit_t _sched_sch_train[64] = {
  */
 
 const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
+  /*   	is_pdch	chan_type	chan_nr	link_id		name		rts_fn		dl_fn		ul_fn	auto_active */
       {	0,	TRXC_IDLE,	0,	LID_DEDIC,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
       {	0,	TRXC_FCCH,	0,	LID_DEDIC,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
       {	0,	TRXC_SCH,	0,	LID_DEDIC,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
@@ -154,6 +155,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
       {	0,	TRXC_SACCH8_7,	0x78,	LID_SACCH,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
       {	1,	TRXC_PDTCH,	0xc0,	LID_DEDIC,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
       {	1,	TRXC_PTCCH,	0xc0,	LID_DEDIC,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
+      {	0,	TRXC_CBCH,	0xc8,	LID_DEDIC,	"CBCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
 };
 
 const struct value_string trx_chan_type_names[] = {
@@ -195,6 +197,7 @@ const struct value_string trx_chan_type_names[] = {
 	OSMO_VALUE_STRING(TRXC_SACCH8_7),
 	OSMO_VALUE_STRING(TRXC_PDTCH),
 	OSMO_VALUE_STRING(TRXC_PTCCH),
+	OSMO_VALUE_STRING(TRXC_CBCH),
 	OSMO_VALUE_STRING(_TRX_CHAN_MAX),
  	{ 0, NULL }
 };
