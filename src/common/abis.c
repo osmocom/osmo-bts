@@ -122,7 +122,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 			trx_nr);
 		trx = gsm_bts_trx_num(g_bts, trx_nr);
 		if (!trx) {
-			LOGP(DABIS, LOGL_ERROR, "TRX%d does not exixt!\n",
+			LOGP(DABIS, LOGL_ERROR, "TRX%d does not exist!\n",
 				trx_nr);
 			break;
 		}
