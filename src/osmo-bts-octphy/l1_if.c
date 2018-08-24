@@ -43,7 +43,6 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/handover.h>
-#include <osmo-bts/cbch.h>
 
 #include "l1_if.h"
 #include "l1_oml.h"
@@ -356,6 +355,9 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 	switch (sapi) {
 	case cOCTVC1_GSM_SAPI_ENUM_BCCH:
 		cbits = 0x10;
+		break;
+	case cOCTVC1_GSM_SAPI_ENUM_CBCH:
+		cbits = 0xc8; /* Osmocom extension for CBCH via L1SAP */
 		break;
 	case cOCTVC1_GSM_SAPI_ENUM_SACCH:
 		switch (pchan) {
@@ -1016,10 +1018,6 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 		data_req->Data.abyDataContent[2] =
 		    	(g_time.t1 << 7) | (g_time.t2 << 2) | (t3p >> 1);
 		data_req->Data.abyDataContent[3] = (t3p & 1);
-		break;
-	case cOCTVC1_GSM_SAPI_ENUM_CBCH:
-		rc = bts_cbch_get(bts, data_req->Data.abyDataContent, &g_time);
-		data_req->Data.ulDataLength = 23;   /* GSM MAX BLK SIZE */
 		break;
 	case cOCTVC1_GSM_SAPI_ENUM_PRACH:
 #if 0

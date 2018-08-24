@@ -53,6 +53,7 @@
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/pcuif_proto.h>
+#include <osmo-bts/cbch.h>
 
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
@@ -265,6 +266,8 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 			*chan_type = GSMTAP_CHANNEL_PCH;
 		else
 			*chan_type = GSMTAP_CHANNEL_AGCH;
+	} else if (L1SAP_IS_CHAN_CBCH(chan_nr)) {
+		*chan_type = GSMTAP_CHANNEL_CBCH51;
 	} else if (L1SAP_IS_CHAN_PDCH(chan_nr)) {
 		*chan_type = GSMTAP_CHANNEL_PDTCH;
 	}
@@ -737,6 +740,9 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, si, GSM_MACBLOCK_LEN);
 		else
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
+	} else if (L1SAP_IS_CHAN_CBCH(chan_nr)) {
+		p = msgb_put(msg, GSM_MACBLOCK_LEN);
+		bts_cbch_get(trx->bts, p, &g_time);
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
 		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan) {

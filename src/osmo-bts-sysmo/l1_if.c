@@ -46,7 +46,6 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/handover.h>
-#include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/msg_utils.h>
@@ -697,6 +696,9 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 	case GsmL1_Sapi_Bcch:
 		cbits = 0x10;
 		break;
+	case GsmL1_Sapi_Cbch:
+		cbits = 0xc8; /* Osmocom extension for CBCH via L1SAP */
+		break;
 	case GsmL1_Sapi_Sacch:
 		switch(pchan) {
 		case GSM_PCHAN_TCH_F:
@@ -863,10 +865,6 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 		break;
 	case GsmL1_Sapi_Prach:
 		goto empty_frame;
-		break;
-	case GsmL1_Sapi_Cbch:
-		/* get them from bts->si_buf[] */
-		bts_cbch_get(bts, msu_param->u8Buffer, &g_time);
 		break;
 	default:
 		memcpy(msu_param->u8Buffer, fill_frame, GSM_MACBLOCK_LEN);
