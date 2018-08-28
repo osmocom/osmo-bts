@@ -244,8 +244,10 @@ static uint8_t translate_tch_meas_rep_fn104_inv(uint8_t fn_mod)
 	return 0;
 }
 
-/* determine if a measurement period ends at the given frame number */
-static int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
+/* determine if a measurement period ends at the given frame number
+ * (this function is only used internally, it is public to call it from
+ * unit-tests) */
+int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 {
 	unsigned int fn_mod = -1;
 	const uint8_t *tbl;

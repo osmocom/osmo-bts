@@ -584,6 +584,10 @@ Testing is_meas_overdue() and is_meas_complete()
 
 
 ===========================================================
+Testing is_meas_complete()
+
+
+===========================================================
 Testing lchan_meas_process_measurement()
 (leaving out measurement sample for SACCH block)
 (leaving out measurement sample for SACCH block)

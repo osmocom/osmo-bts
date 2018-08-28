@@ -484,6 +484,182 @@ static void test_is_meas_overdue(void)
 	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
 }
 
+static void test_is_meas_complete_single(struct gsm_lchan *lchan,
+					 uint32_t fn_end, uint8_t intv_len)
+{
+	unsigned int i;
+	unsigned int k;
+	int rc;
+	uint32_t offset;
+
+	/* Walk through multiple measurement intervals and make sure that the
+	 * interval end is detected only in the expected location */
+	for (k = 0; k < 100; k++) {
+		offset = intv_len * k;
+		for (i = 0; i < intv_len; i++) {
+			rc = is_meas_complete(lchan, i + offset);
+			if (rc)
+				OSMO_ASSERT(i + offset == fn_end + offset);
+		}
+	}
+}
+
+static void test_is_meas_complete(void)
+{
+	struct gsm_lchan *lchan;
+	printf("\n\n");
+	printf("===========================================================\n");
+	printf("Testing is_meas_complete()\n");
+
+	/* Test interval end detection on TCH/F TS0-TS7 */
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 12, 104);
+
+	lchan = &trx->ts[1].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 25, 104);
+
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 38, 104);
+
+	lchan = &trx->ts[3].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 51, 104);
+
+	lchan = &trx->ts[4].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 64, 104);
+
+	lchan = &trx->ts[5].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 77, 104);
+
+	lchan = &trx->ts[6].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 90, 104);
+
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_F;
+	test_is_meas_complete_single(lchan, 103, 104);
+
+	/* Test interval end detection on TCH/H TS0-TS7 */
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 12, 104);
+
+	lchan = &trx->ts[1].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 12, 104);
+
+	lchan = &trx->ts[0].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 25, 104);
+
+	lchan = &trx->ts[1].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 25, 104);
+
+	lchan = &trx->ts[2].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 38, 104);
+
+	lchan = &trx->ts[3].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 38, 104);
+
+	lchan = &trx->ts[2].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 51, 104);
+
+	lchan = &trx->ts[3].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 51, 104);
+
+	lchan = &trx->ts[4].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 64, 104);
+
+	lchan = &trx->ts[5].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 64, 104);
+
+	lchan = &trx->ts[4].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 77, 104);
+
+	lchan = &trx->ts[5].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 77, 104);
+
+	lchan = &trx->ts[6].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 90, 104);
+
+	lchan = &trx->ts[7].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 90, 104);
+
+	lchan = &trx->ts[6].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 103, 104);
+
+	lchan = &trx->ts[7].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_TCH_H;
+	test_is_meas_complete_single(lchan, 103, 104);
+
+	/* Test interval end detection on SDCCH/8 SS0-SS7 */
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 66, 102);
+
+	lchan = &trx->ts[0].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 70, 102);
+
+	lchan = &trx->ts[0].lchan[2];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 74, 102);
+
+	lchan = &trx->ts[0].lchan[3];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 78, 102);
+
+	lchan = &trx->ts[0].lchan[4];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 98, 102);
+
+	lchan = &trx->ts[0].lchan[5];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 0, 102);
+
+	lchan = &trx->ts[0].lchan[6];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 4, 102);
+
+	lchan = &trx->ts[0].lchan[7];
+	lchan->ts->pchan = GSM_PCHAN_SDCCH8_SACCH8C;
+	test_is_meas_complete_single(lchan, 8, 102);
+
+	/* Test interval end detection on SDCCH/4 SS0-SS3 */
+	lchan = &trx->ts[0].lchan[0];
+	lchan->ts->pchan = GSM_PCHAN_CCCH_SDCCH4;
+	test_is_meas_complete_single(lchan, 88, 102);
+
+	lchan = &trx->ts[0].lchan[1];
+	lchan->ts->pchan = GSM_PCHAN_CCCH_SDCCH4;
+	test_is_meas_complete_single(lchan, 92, 102);
+
+	lchan = &trx->ts[0].lchan[2];
+	lchan->ts->pchan = GSM_PCHAN_CCCH_SDCCH4;
+	test_is_meas_complete_single(lchan, 6, 102);
+
+	lchan = &trx->ts[0].lchan[3];
+	lchan->ts->pchan = GSM_PCHAN_CCCH_SDCCH4;
+	test_is_meas_complete_single(lchan, 10, 102);
+}
+
 /* This tests the robustness of lchan_meas_process_measurement(). This is the
  * function that is called from l1_sap.c each time a measurement indication is
  * received. The process must still go on when measurement indications (blocks)
@@ -604,6 +780,7 @@ int main(int argc, char **argv)
 	printf("***************************************************\n");
 
 	test_is_meas_overdue();
+	test_is_meas_complete();
 	test_lchan_meas_process_measurement(false, false);
 	test_lchan_meas_process_measurement(true, false);
 	test_lchan_meas_process_measurement(false, true);
