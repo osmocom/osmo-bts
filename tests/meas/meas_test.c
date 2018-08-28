@@ -118,9 +118,6 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 
 }
 
-/* This tests the function is_meas_overdue() and since is_meas_overdue()
- * internally makes use of is_meas_complete(), this also gives
- * is_meas_complete() a detailed check. */
 static void test_is_meas_overdue(void)
 {
 	struct gsm_lchan *lchan;
