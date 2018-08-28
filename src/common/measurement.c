@@ -120,7 +120,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_upd
  * Note: The array index of the following three lookup tables refes to a
  *       timeslot number. */
 
-static const uint8_t tchf_meas_rep_fn104[] = {
+static const uint8_t tchf_meas_rep_fn104_by_ts[] = {
 	[0] =	90,
 	[1] =	103,
 	[2] =	12,
@@ -130,7 +130,7 @@ static const uint8_t tchf_meas_rep_fn104[] = {
 	[6] =	64,
 	[7] =	77,
 };
-static const uint8_t tchh0_meas_rep_fn104[] = {
+static const uint8_t tchh0_meas_rep_fn104_by_ts[] = {
 	[0] =	90,
 	[1] =	90,
 	[2] =	12,
@@ -140,7 +140,7 @@ static const uint8_t tchh0_meas_rep_fn104[] = {
 	[6] =	64,
 	[7] =	64,
 };
-static const uint8_t tchh1_meas_rep_fn104[] = {
+static const uint8_t tchh1_meas_rep_fn104_by_ts[] = {
 	[0] =	103,
 	[1] =	103,
 	[2] =	25,
@@ -165,7 +165,7 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
  *       subslot number. */
 
 /* FN of the first burst whose block completes before reaching fn%102=11 */
-static const uint8_t sdcch8_meas_rep_fn102[] = {
+static const uint8_t sdcch8_meas_rep_fn102_by_ss[] = {
 	[0] = 66,	/* 15(SDCCH), 47(SACCH), 66(SDCCH) */
 	[1] = 70,	/* 19(SDCCH), 51(SACCH), 70(SDCCH) */
 	[2] = 74,	/* 23(SDCCH), 55(SACCH), 74(SDCCH) */
@@ -177,7 +177,7 @@ static const uint8_t sdcch8_meas_rep_fn102[] = {
 };
 
 /* FN of the first burst whose block completes before reaching fn%102=37 */
-static const uint8_t sdcch4_meas_rep_fn102[] = {
+static const uint8_t sdcch4_meas_rep_fn102_by_ss[] = {
 	[0] = 88,	/* 37(SDCCH), 57(SACCH), 88(SDCCH) */
 	[1] = 92,	/* 41(SDCCH), 61(SACCH), 92(SDCCH) */
 	[2] = 6,	/*  6(SACCH), 47(SDCCH), 98(SDCCH) */
@@ -196,7 +196,7 @@ static const uint8_t sdcch4_meas_rep_fn102[] = {
  * Table 1 of 9) what value we need to feed into the lookup tables in order to
  * detect the measurement period ending. In this example the "real" ending
  * was on FN%104=12. This is the value we have to look for in
- * tchf_meas_rep_fn104 to know that a measurement period has just ended. */
+ * tchf_meas_rep_fn104_by_ts to know that a measurement period has just ended. */
 
 /* See also 3GPP TS 05.02 Clause 7 Table 1 of 9:
  * Mapping of logical channels onto physical channels (see subclauses 6.3, 6.4, 6.5) */
@@ -269,28 +269,28 @@ int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 		fn_mod = translate_tch_meas_rep_fn104(fn % 104);
-		if (tchf_meas_rep_fn104[lchan->ts->nr] == fn_mod)
+		if (tchf_meas_rep_fn104_by_ts[lchan->ts->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_TCH_H:
 		fn_mod = translate_tch_meas_rep_fn104(fn % 104);
 		if (lchan->nr == 0)
-			tbl = tchh0_meas_rep_fn104;
+			tbl = tchh0_meas_rep_fn104_by_ts;
 		else
-			tbl = tchh1_meas_rep_fn104;
+			tbl = tchh1_meas_rep_fn104_by_ts;
 		if (tbl[lchan->ts->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		fn_mod = fn % 102;
-		if (sdcch8_meas_rep_fn102[lchan->nr] == fn_mod)
+		if (sdcch8_meas_rep_fn102_by_ss[lchan->nr] == fn_mod)
 			rc = 1;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		fn_mod = fn % 102;
-		if (sdcch4_meas_rep_fn102[lchan->nr] == fn_mod)
+		if (sdcch4_meas_rep_fn102_by_ss[lchan->nr] == fn_mod)
 			rc = 1;
 		break;
 	default:
@@ -333,27 +333,27 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 		modulus = 104;
-		interval_end = tchf_meas_rep_fn104[lchan->ts->nr];
+		interval_end = tchf_meas_rep_fn104_by_ts[lchan->ts->nr];
 		interval_end = translate_tch_meas_rep_fn104_inv(interval_end);
 		break;
 	case GSM_PCHAN_TCH_H:
 		modulus = 104;
 		if (lchan->nr == 0)
-			tbl = tchh0_meas_rep_fn104;
+			tbl = tchh0_meas_rep_fn104_by_ts;
 		else
-			tbl = tchh1_meas_rep_fn104;
+			tbl = tchh1_meas_rep_fn104_by_ts;
 		interval_end = tbl[lchan->ts->nr];
 		interval_end = translate_tch_meas_rep_fn104_inv(interval_end);
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		modulus = 102;
-		interval_end = sdcch8_meas_rep_fn102[lchan->nr];
+		interval_end = sdcch8_meas_rep_fn102_by_ss[lchan->nr];
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		modulus = 102;
-		interval_end = sdcch4_meas_rep_fn102[lchan->nr];
+		interval_end = sdcch4_meas_rep_fn102_by_ss[lchan->nr];
 		break;
 	default:
 		return false;
