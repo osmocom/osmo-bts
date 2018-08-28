@@ -115,7 +115,10 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_upd
  * 4           4 and 5                      52 to 51     64,  90,  12,  38
  * 5                         4 and 5        65 to 64     77,  103, 25,  51
  * 6           6 and 7                      78 to 77     90,  12,  38,  64
- * 7                         6 and 7        91 to 90     103, 25,  51,  77 */
+ * 7                         6 and 7        91 to 90     103, 25,  51,  77
+ *
+ * Note: The array index of the following three lookup tables refes to a
+ *       timeslot number. */
 
 static const uint8_t tchf_meas_rep_fn104[] = {
 	[0] =	90,
@@ -156,7 +159,10 @@ static const uint8_t tchh1_meas_rep_fn104[] = {
  *
  * SDCCH/8		12 to 11
  * SDCCH/4		37 to 36
- */
+ *
+ *
+ * Note: The array index of the following three lookup tables refes to a
+ *       subslot number. */
 
 /* FN of the first burst whose block completes before reaching fn%102=11 */
 static const uint8_t sdcch8_meas_rep_fn102[] = {
@@ -311,6 +317,7 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 {
 	uint32_t fn_mod;
 	uint32_t last_fn_mod;
+	uint32_t fn_rounded;
 	uint8_t interval_end;
 	uint8_t modulus;
 	const uint8_t *tbl;
@@ -341,12 +348,12 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		modulus = 102;
-		interval_end = sdcch8_meas_rep_fn102[lchan->ts->nr];
+		interval_end = sdcch8_meas_rep_fn102[lchan->nr];
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		modulus = 102;
-		interval_end = sdcch4_meas_rep_fn102[lchan->ts->nr];
+		interval_end = sdcch4_meas_rep_fn102[lchan->nr];
 		break;
 	default:
 		return false;
@@ -355,6 +362,7 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 
 	fn_mod = fn % modulus;
 	last_fn_mod = lchan->meas.last_fn % modulus;
+	fn_rounded = fn - fn_mod;
 
 	if (fn_mod > last_fn_mod) {
 		/* When the current frame number is larger then the last frame
@@ -362,7 +370,7 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 		 * the two. If it does we calculate the absolute frame number
 		 * position on which the interval should have ended. */
 		if (interval_end > last_fn_mod && interval_end < fn_mod) {
-			*fn_missed_end = interval_end + fn - fn_mod;
+			*fn_missed_end = interval_end + fn_rounded;
 			return true;
 		}
 	} else {
@@ -375,7 +383,7 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 			if (fn < lchan->meas.last_fn)
 				*fn_missed_end = interval_end + GSM_MAX_FN - modulus;
 			else
-				*fn_missed_end = interval_end + fn - modulus;
+				*fn_missed_end = interval_end + fn_rounded - modulus;
 			return true;
 		}
 		/* We also check the section that starts from the beginning of
@@ -384,7 +392,7 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 			if (fn < lchan->meas.last_fn)
 				*fn_missed_end = interval_end;
 			else
-				*fn_missed_end = interval_end + fn - fn_mod;
+				*fn_missed_end = interval_end + fn_rounded;
 			return true;
 		}
 	}
