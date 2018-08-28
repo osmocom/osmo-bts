@@ -326,7 +326,7 @@ static void test_is_meas_overdue(void)
 	lchan = &trx->ts[7].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
 	lchan->meas.last_fn = 99;
-	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0 + 104);
 	OSMO_ASSERT(rc);
 	OSMO_ASSERT(fn_missed_end == 103);
 
@@ -335,7 +335,7 @@ static void test_is_meas_overdue(void)
 	lchan = &trx->ts[6].lchan[1];
 	lchan->ts->pchan = GSM_PCHAN_TCH_H;
 	lchan->meas.last_fn = 99;
-	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0 + 104);
 	OSMO_ASSERT(rc);
 	OSMO_ASSERT(fn_missed_end == 103);
 
@@ -344,7 +344,7 @@ static void test_is_meas_overdue(void)
 	lchan = &trx->ts[7].lchan[1];
 	lchan->ts->pchan = GSM_PCHAN_TCH_H;
 	lchan->meas.last_fn = 99;
-	rc = is_meas_overdue(lchan, &fn_missed_end, 0+104);
+	rc = is_meas_overdue(lchan, &fn_missed_end, 0 + 104);
 	OSMO_ASSERT(rc);
 	OSMO_ASSERT(fn_missed_end == 103);
 
@@ -431,7 +431,7 @@ static void test_is_meas_overdue(void)
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[0].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+95;
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 95;
 	rc = is_meas_overdue(lchan, &fn_missed_end, 17);
 	OSMO_ASSERT(rc);
 	OSMO_ASSERT(fn_missed_end == 12);
@@ -441,27 +441,27 @@ static void test_is_meas_overdue(void)
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[6].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+86;
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 86;
 	rc = is_meas_overdue(lchan, &fn_missed_end, 8);
 	OSMO_ASSERT(rc);
-	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN-104+90);
+	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN - 104 + 90);
 
 	/* See whats happening if we miss a period-end-triggerend exactly at the
 	 * hyperframe ending. */
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[7].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+99;
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 99;
 	rc = is_meas_overdue(lchan, &fn_missed_end, 0);
 	OSMO_ASSERT(rc);
-	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN-1);
+	OSMO_ASSERT(fn_missed_end == GSM_MAX_FN - 1);
 
 	/* Test a wrap around at the hyperframe ending, while no measurements
 	 * are lost */
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[0].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+99;
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 99;
 	rc = is_meas_overdue(lchan, &fn_missed_end, 0);
 	OSMO_ASSERT(!rc);
 	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
@@ -471,7 +471,7 @@ static void test_is_meas_overdue(void)
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[0].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+95;
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 95;
 	rc = is_meas_overdue(lchan, &fn_missed_end, 4);
 	OSMO_ASSERT(!rc);
 	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
@@ -481,8 +481,8 @@ static void test_is_meas_overdue(void)
 	fn_missed_end = LCHAN_FN_DUMMY;
 	lchan = &trx->ts[7].lchan[0];
 	lchan->ts->pchan = GSM_PCHAN_TCH_F;
-	lchan->meas.last_fn = GSM_MAX_FN-104+99;
-	rc = is_meas_overdue(lchan, &fn_missed_end, GSM_MAX_FN-1);
+	lchan->meas.last_fn = GSM_MAX_FN - 104 + 99;
+	rc = is_meas_overdue(lchan, &fn_missed_end, GSM_MAX_FN - 1);
 	OSMO_ASSERT(!rc);
 	OSMO_ASSERT(fn_missed_end == LCHAN_FN_DUMMY);
 }
