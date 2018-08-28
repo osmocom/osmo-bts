@@ -127,7 +127,7 @@ static void test_is_meas_overdue(void)
 
 	printf("\n\n");
 	printf("===========================================================\n");
-	printf("Testing is_meas_overdue() and is_meas_complete()\n");
+	printf("Testing is_meas_overdue()\n");
 
 	/* Missing period-end-trigger at fn=12, TCH/F, TS0 */
 	fn_missed_end = LCHAN_FN_DUMMY;

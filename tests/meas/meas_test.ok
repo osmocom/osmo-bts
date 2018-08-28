@@ -580,7 +580,7 @@ meas.ul_res.full.rx_qual |      0 |      0
 
 
 ===========================================================
-Testing is_meas_overdue() and is_meas_complete()
+Testing is_meas_overdue()
 
 
 ===========================================================
