@@ -1055,4 +1055,29 @@ Testing lchan_meas_process_measurement()
 (leaving out measurement sample for SACCH block)
 (leaving out measurement sample for SACCH block)
 (leaving out measurement sample for SACCH block)
+
+
+===========================================================
+Testing ts45008_83_is_sub()
+Checking: TCH/F TS=0 SS=0
+Checking: TCH/F TS=1 SS=0
+Checking: TCH/F TS=2 SS=0
+Checking: TCH/F TS=3 SS=0
+Checking: TCH/F TS=4 SS=0
+Checking: TCH/F TS=5 SS=0
+Checking: TCH/F TS=6 SS=0
+Checking: TCH/H TS=0 SS=0
+Checking: TCH/H TS=1 SS=0
+Checking: TCH/H TS=2 SS=0
+Checking: TCH/H TS=3 SS=0
+Checking: TCH/H TS=4 SS=0
+Checking: TCH/H TS=5 SS=0
+Checking: TCH/H TS=6 SS=0
+Checking: TCH/H TS=0 SS=1
+Checking: TCH/H TS=1 SS=1
+Checking: TCH/H TS=2 SS=1
+Checking: TCH/H TS=3 SS=1
+Checking: TCH/H TS=4 SS=1
+Checking: TCH/H TS=5 SS=1
+Checking: TCH/H TS=6 SS=1
 Success

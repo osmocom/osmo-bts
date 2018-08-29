@@ -27,8 +27,9 @@ static bool array_contains(const uint8_t *arr, unsigned int len, uint8_t val) {
 	return false;
 }
 
-/* Decide if a given frame number is part of the "-SUB" measurements (true) or not (false) */
-static bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_update)
+/* Decide if a given frame number is part of the "-SUB" measurements (true) or not (false)
+ * (this function is only used internally, it is public to call it from unit-tests) */
+bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_update)
 {
 	uint32_t fn104 = fn % 104;
 

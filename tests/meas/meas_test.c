@@ -719,6 +719,138 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 	}
 }
 
+static bool test_ts45008_83_is_sub_is_sacch(uint32_t fn)
+{
+	if (fn % 104 == 12)
+		return true;
+	if (fn % 104 == 25)
+		return true;
+	if (fn % 104 == 38)
+		return true;
+	if (fn % 104 == 51)
+		return true;
+	if (fn % 104 == 64)
+		return true;
+	if (fn % 104 == 77)
+		return true;
+	if (fn % 104 == 90)
+		return true;
+	if (fn % 104 == 103)
+		return true;
+
+	return false;
+}
+
+static bool test_ts45008_83_is_sub_is_sub(uint32_t fn, uint8_t ss)
+{
+	fn = fn % 104;
+
+	if (fn >= 52 && fn <= 59)
+		return true;
+
+	if (ss == 0) {
+		if (fn == 0)
+			return true;
+		if (fn == 2)
+			return true;
+		if (fn == 4)
+			return true;
+		if (fn == 6)
+			return true;
+		if (fn == 52)
+			return true;
+		if (fn == 54)
+			return true;
+		if (fn == 56)
+			return true;
+		if (fn == 58)
+			return true;
+	} else if (ss == 1) {
+		if (fn == 14)
+			return true;
+		if (fn == 16)
+			return true;
+		if (fn == 18)
+			return true;
+		if (fn == 20)
+			return true;
+		if (fn == 66)
+			return true;
+		if (fn == 68)
+			return true;
+		if (fn == 70)
+			return true;
+		if (fn == 72)
+			return true;
+	} else
+		OSMO_ASSERT(false);
+
+	return false;
+}
+
+static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
+{
+	struct gsm_lchan *lchan;
+	bool rc;
+	unsigned int i;
+
+	lchan = &trx->ts[ts].lchan[ss];
+
+	printf("Checking: ");
+
+	if (fr) {
+		printf("TCH/F");
+		lchan->type = GSM_LCHAN_TCH_F;
+		lchan->ts->pchan = GSM_PCHAN_TCH_F;
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+	} else {
+		printf("TCH/H");
+		lchan->type = GSM_LCHAN_TCH_H;
+		lchan->ts->pchan = GSM_PCHAN_TCH_H;
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+	}
+
+	printf(" TS=%u ", ts);
+	printf("SS=%u", ss);
+
+	/* Walk trough the first 100 intervals and check for unexpected
+	 * results (false positive and false negative) */
+	for (i = 0; i < 104 * 100; i++) {
+		rc = ts45008_83_is_sub(lchan, i, false);
+		if (rc) {
+			if (!test_ts45008_83_is_sub_is_sacch(i)
+			    && !test_ts45008_83_is_sub_is_sub(i, ss)) {
+				printf("==> Unexpected SUB frame at fn=%u", i);
+				OSMO_ASSERT(false);
+			}
+		} else {
+			if (test_ts45008_83_is_sub_is_sacch(i)
+			    && test_ts45008_83_is_sub_is_sub(i, ss)) {
+				printf("==> Unexpected non-SUB frame at fn=%u",
+				       i);
+				OSMO_ASSERT(false);
+			}
+		}
+	}
+	printf("\n");
+}
+
+static void test_ts45008_83_is_sub(void)
+{
+	unsigned int i;
+
+	printf("\n\n");
+	printf("===========================================================\n");
+	printf("Testing ts45008_83_is_sub()\n");
+
+	for (i = 0; i < 7; i++)
+		test_ts45008_83_is_sub_single(i, 0, true);
+	for (i = 0; i < 7; i++)
+		test_ts45008_83_is_sub_single(i, 0, false);
+	for (i = 0; i < 7; i++)
+		test_ts45008_83_is_sub_single(i, 1, false);
+}
+
 int main(int argc, char **argv)
 {
 	void *tall_bts_ctx;
@@ -785,6 +917,7 @@ int main(int argc, char **argv)
 	test_lchan_meas_process_measurement(true, false);
 	test_lchan_meas_process_measurement(false, true);
 	test_lchan_meas_process_measurement(true, true);
+	test_ts45008_83_is_sub();
 
 	printf("Success\n");
 
