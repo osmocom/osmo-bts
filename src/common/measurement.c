@@ -14,7 +14,7 @@
 /* Tables as per TS 45.008 Section 8.3 */
 static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
 static const uint8_t ts45008_83_tch_hs0[] = { 0, 2, 4, 6, 52, 54, 56, 58 };
-static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 29, 66, 68, 70, 72 };
+static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
 
 /* find out if an array contains a given key as element */
 #define ARRAY_CONTAINS(arr, val) array_contains(arr, ARRAY_SIZE(arr), val)
