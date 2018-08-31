@@ -93,4 +93,7 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 
 int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
 				uint8_t *data, int len);
+
+int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn);
+
 #endif /* L1SAP_H */

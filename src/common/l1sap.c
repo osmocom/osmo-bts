@@ -666,6 +666,15 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	return 0;
 }
 
+/* Check if given CCCH frame number is for a PCH or for an AGCH (this function is
+ * only used internally, it is public to call it from unit-tests) */
+int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
+	/* Note: The number of available access grant channels is set by the
+	 * parameter BS_AG_BLKS_RES via system information type 3. This SI is
+	 * transfered to osmo-bts via RSL */
+        return L1SAP_FN2CCCHBLOCK(fn) < num_agch(trx, "PH-RTS-IND");
+}
+
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -681,6 +690,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim pp;
 	bool dtxd_facch = false;
 	int rc;
+	int is_ag_res;
 
 	chan_nr = rts_ind->chan_nr;
 	link_id = rts_ind->link_id;
@@ -783,9 +793,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		}
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
-		rc = bts_ccch_copy_msg(trx->bts, p, &g_time,
-				       (L1SAP_FN2CCCHBLOCK(fn) <
-					num_agch(trx, "PH-RTS-IND")));
+		is_ag_res = is_ccch_for_agch(trx, fn);
+		rc = bts_ccch_copy_msg(trx->bts, p, &g_time, is_ag_res);
 		if (rc <= 0)
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
