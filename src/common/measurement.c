@@ -415,21 +415,46 @@ bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t 
 	return false;
 }
 
+/* determine the measurement interval modulus by a given lchan */
+static uint8_t modulus_by_lchan(struct gsm_lchan *lchan)
+{
+	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
+
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+		return 104;
+		break;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		return 102;
+		break;
+	default:
+		/* Invalid */
+		return 1;
+		break;
+	}
+}
+
 /* receive a L1 uplink measurement from L1 (this function is only used
  * internally, it is public to call it from unit-tests)  */
 int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
 {
+	uint32_t fn_mod = fn % modulus_by_lchan(lchan);
+
 	if (lchan->state != LCHAN_S_ACTIVE) {
 		LOGPFN(DMEAS, LOGL_NOTICE, fn,
-		     "%s measurement during state: %s, num_ul_meas=%d\n",
-		     gsm_lchan_name(lchan), gsm_lchans_name(lchan->state),
-		     lchan->meas.num_ul_meas);
+		       "%s measurement during state: %s, num_ul_meas=%d, fn_mod=%u\n",
+		       gsm_lchan_name(lchan), gsm_lchans_name(lchan->state),
+		       lchan->meas.num_ul_meas, fn_mod);
 	}
 
 	if (lchan->meas.num_ul_meas >= ARRAY_SIZE(lchan->meas.uplink)) {
 		LOGPFN(DMEAS, LOGL_NOTICE, fn,
-		     "%s no space for uplink measurement, num_ul_meas=%d\n",
-		     gsm_lchan_name(lchan), lchan->meas.num_ul_meas);
+		       "%s no space for uplink measurement, num_ul_meas=%d, fn_mod=%u\n",
+		       gsm_lchan_name(lchan), lchan->meas.num_ul_meas, fn_mod);
 		return -ENOSPC;
 	}
 
@@ -438,8 +463,8 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 	if (!ulm->is_sub)
 		ulm->is_sub = ts45008_83_is_sub(lchan, fn, false);
 
-	DEBUGPFN(DMEAS, fn, "%s adding measurement (is_sub=%u), num_ul_meas=%d\n",
-		gsm_lchan_name(lchan), ulm->is_sub, lchan->meas.num_ul_meas);
+	DEBUGPFN(DMEAS, fn, "%s adding measurement (is_sub=%u), num_ul_meas=%d, fn_mod=%u\n",
+		 gsm_lchan_name(lchan), ulm->is_sub, lchan->meas.num_ul_meas, fn_mod);
 
 	memcpy(&lchan->meas.uplink[lchan->meas.num_ul_meas++], ulm,
 		sizeof(*ulm));
