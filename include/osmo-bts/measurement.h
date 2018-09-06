@@ -16,6 +16,4 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_upd
 
 int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn);
 
-bool is_meas_overdue(struct gsm_lchan *lchan, uint32_t *fn_missed_end, uint32_t fn);
-
 #endif
