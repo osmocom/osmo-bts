@@ -706,9 +706,11 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 			cbits = 0x02 + subCh;
 			break;
 		case GSM_PCHAN_CCCH_SDCCH4:
+		case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 			cbits = 0x04 + subCh;
 			break;
 		case GSM_PCHAN_SDCCH8_SACCH8C:
+		case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 			cbits = 0x08 + subCh;
 			break;
 		default:
@@ -720,9 +722,11 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 	case GsmL1_Sapi_Sdcch:
 		switch(pchan) {
 		case GSM_PCHAN_CCCH_SDCCH4:
+		case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 			cbits = 0x04 + subCh;
 			break;
 		case GSM_PCHAN_SDCCH8_SACCH8C:
+		case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 			cbits = 0x08 + subCh;
 			break;
 		default:
