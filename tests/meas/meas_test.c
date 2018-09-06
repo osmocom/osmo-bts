@@ -315,6 +315,7 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 	unsigned int fn = 0;
 	unsigned int fn104;
 	struct bts_ul_meas ulm;
+	int rc;
 
 	printf("\n\n");
 	printf("===========================================================\n");
@@ -347,7 +348,8 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 		if (dropouts == false || i % 4) {
 			if (ulm.is_sub == 1)
 				printf("(now adding SUB measurement sample %u)\n", fn);
-			lchan_meas_process_measurement(lchan, &ulm, fn);
+			rc = lchan_meas_process_measurement(lchan, &ulm, fn);
+			OSMO_ASSERT(rc == 0);
 		} else if (ulm.is_sub == 1)
 			printf("(leaving out SUB measurement sample for frame number %u)\n", fn);
 		else
@@ -363,7 +365,8 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 		if (fn % 104 == 39 && no_sacch == false) {
 			printf("(now adding SUB measurement sample for SACCH block at frame number %u)\n", fn);
 			ulm.is_sub = 1;
-			lchan_meas_process_measurement(lchan, &ulm, fn - 1);
+			rc = lchan_meas_process_measurement(lchan, &ulm, fn - 1);
+			OSMO_ASSERT(rc);
 		} else if (fn % 104 == 39 && no_sacch == true)
 			printf("(leaving out SUB measurement sample for SACCH block at frame number %u)\n", fn);
 	}
