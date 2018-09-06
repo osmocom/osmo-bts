@@ -77,7 +77,6 @@ static void print_help()
 		"  -T	--timestamp		Prefix every log line with a timestamp\n"
 		"  -V	--version		Print version information and exit\n"
 		"  -e 	--log-level		Set a global log-level\n"
-		"  -i	--gsmtap-ip		The destination IP used for GSMTAP.\n"
 		"\nVTY reference generation:\n"
 		"	--vty-ref-mode MODE	VTY reference generation mode (e.g. 'expert').\n"
 		"	--vty-ref-xml		Generate the VTY reference XML output and exit.\n"
@@ -186,6 +185,8 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'i':
 			gsmtap_ip = optarg;
+			fprintf(stderr, "Command line argument '-i' is deprecated, use VTY "
+				"parameter 'gsmtap-remote-host %s' instead.\n", gsmtap_ip);
 			break;
 		case 't':
 			fprintf(stderr, "Command line argument '-t' is deprecated and does nothing, "
@@ -320,15 +321,6 @@ int bts_main(int argc, char **argv)
 		}
 	}
 
-        if (gsmtap_ip) {
-		g_bts->gsmtap.inst = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
-		if (g_bts->gsmtap.inst == NULL) {
-			fprintf(stderr, "Failed during gsmtap_init()\n");
-			exit(1);
-		}
-		gsmtap_source_add_sink(g_bts->gsmtap.inst);
-	}
-
 	if (bts_init(g_bts) < 0) {
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
@@ -357,6 +349,32 @@ int bts_main(int argc, char **argv)
 	}
 
 	write_pid_file("osmo-bts");
+
+	/* Accept a GSMTAP host from VTY config, but a commandline option overrides that. */
+	if (gsmtap_ip != NULL) {
+		if (g_bts->gsmtap.remote_host != NULL) {
+			LOGP(DLGLOBAL, LOGL_NOTICE,
+			     "Command line argument '-i %s' overrides "
+			     "'gsmtap-remote-host %s' from the config file\n",
+			     gsmtap_ip, g_bts->gsmtap.remote_host);
+			talloc_free(g_bts->gsmtap.remote_host);
+		}
+		g_bts->gsmtap.remote_host = talloc_strdup(g_bts, gsmtap_ip);
+	}
+
+	/* TODO: move this to gsm_bts_alloc() */
+	if (g_bts->gsmtap.remote_host != NULL) {
+		LOGP(DLGLOBAL, LOGL_NOTICE,
+		     "Setting up GSMTAP Um forwarding to '%s:%u'\n",
+		     g_bts->gsmtap.remote_host, GSMTAP_UDP_PORT);
+		g_bts->gsmtap.inst = gsmtap_source_init(g_bts->gsmtap.remote_host,
+							GSMTAP_UDP_PORT, 1);
+		if (g_bts->gsmtap.inst == NULL) {
+			fprintf(stderr, "Failed during gsmtap_source_init()\n");
+			exit(1);
+		}
+		gsmtap_source_add_sink(g_bts->gsmtap.inst);
+	}
 
 	bts_controlif_setup(g_bts, ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BTS);
 

@@ -346,6 +346,7 @@ struct gsm_bts {
 	/* GSMTAP Um logging (disabled by default) */
 	struct {
 		struct gsmtap_inst *inst;
+		char *remote_host;
 		uint32_t sapi_mask;
 		uint8_t sapi_acch;
 	} gsmtap;

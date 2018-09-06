@@ -315,6 +315,10 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 			bts->agch_queue.thresh_level, bts->agch_queue.low_level,
 			bts->agch_queue.high_level, VTY_NEWLINE);
 
+	if (bts->gsmtap.remote_host != NULL)
+		vty_out(vty, " gsmtap-remote-host %s%s",
+			bts->gsmtap.remote_host,
+			VTY_NEWLINE);
 	for (i = 0; i < sizeof(uint32_t) * 8; i++) {
 		if (bts->gsmtap.sapi_mask & ((uint32_t) 1 << i)) {
 			sapi_buf = get_value_string_or_null(gsmtap_sapi_names, i);
@@ -1826,6 +1830,40 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	"logical channel commands\n"	\
 	"logical channel number\n"
 
+DEFUN(cfg_bts_gsmtap_remote_host,
+      cfg_bts_gsmtap_remote_host_cmd,
+      "gsmtap-remote-host [HOSTNAME]",
+      "Enable GSMTAP Um logging (see also 'gsmtap-sapi')\n"
+      "Remote IP address or hostname ('localhost' if omitted)\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	osmo_talloc_replace_string(bts, &bts->gsmtap.remote_host,
+				   argc > 0 ? argv[0] : "localhost");
+
+	if (vty->type != VTY_FILE)
+		vty_out(vty, "%% This command requires restart%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_gsmtap_remote_host,
+      cfg_bts_no_gsmtap_remote_host_cmd,
+      "no gsmtap-remote-host",
+      NO_STR "Disable GSMTAP Um logging\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->gsmtap.remote_host != NULL)
+		talloc_free(bts->gsmtap.remote_host);
+	bts->gsmtap.remote_host = NULL;
+
+	if (vty->type != VTY_FILE)
+		vty_out(vty, "%% This command requires restart%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gsmtap_sapi_all, cfg_bts_gsmtap_sapi_all_cmd,
 	"gsmtap-sapi (enable-all|disable-all)",
 	"Enable/disable sending of UL/DL messages over GSMTAP\n"
@@ -2237,6 +2275,8 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_smscb_tgt_qlen_cmd);
 	install_element(BTS_NODE, &cfg_bts_smscb_qhyst_cmd);
 
+	install_element(BTS_NODE, &cfg_bts_gsmtap_remote_host_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_gsmtap_remote_host_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_all_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_gsmtap_sapi_cmd);
