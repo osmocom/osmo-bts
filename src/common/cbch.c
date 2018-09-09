@@ -136,6 +136,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	}
 
 	llist_add_tail(&scm->list, &bts->smscb_state.queue);
+	/* FIXME: limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
 
 	return 0;
 }
@@ -145,8 +146,10 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 	struct smscb_msg *msg;
 
 	msg = llist_first_entry_or_null(&bts->smscb_state.queue, struct smscb_msg, list);
-	if (!msg)
+	if (!msg) {
+		/* FIXME: send CBCH LOAD Information (underflow) via RSL */
 		return NULL;
+	}
 
 	llist_del(&msg->list);
 
