@@ -2725,8 +2725,12 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 	msg->l3h = (unsigned char *)cch + sizeof(*cch);
 
-	if (chan_nr_is_dchan(cch->chan_nr))
-		return rsl_reject_unknown_lchan(msg);
+	/* normally we don't permit dedicated channels here ... */
+	if (chan_nr_is_dchan(cch->chan_nr)) {
+		/* ... however, CBCH is on a SDCCH, so we must permit it */
+		if (cch->c.msg_type != RSL_MT_SMS_BC_CMD && cch->c.msg_type != RSL_MT_SMS_BC_REQ)
+			return rsl_reject_unknown_lchan(msg);
+	}
 
 	msg->lchan = lchan_lookup(trx, cch->chan_nr, "RSL rx CCHAN: ");
 	if (!msg->lchan) {
