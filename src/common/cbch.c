@@ -144,11 +144,9 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 {
 	struct smscb_msg *msg;
 
-	if (llist_empty(&bts->smscb_state.queue))
+	msg = llist_first_entry_or_null(&bts->smscb_state.queue, struct smscb_msg, list);
+	if (!msg)
 		return NULL;
-
-	msg = llist_entry(bts->smscb_state.queue.next,
-			  struct smscb_msg, list);
 
 	llist_del(&msg->list);
 
