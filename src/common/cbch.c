@@ -20,6 +20,7 @@
 
 #include <errno.h>
 
+#include <osmocom/core/utils.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/protocol/gsm_04_12.h>
 
@@ -59,6 +60,7 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 		/* No message: Send NULL mesage */
 		return get_smscb_null_block(out);
 	}
+	OSMO_ASSERT(msg->next_seg < 4);
 
 	block_type = (struct gsm412_block_type *) out++;
 
@@ -70,6 +72,7 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 	to_copy = GSM412_MSG_LEN - (msg->next_seg * GSM412_BLOCK_LEN);
 	if (to_copy > GSM412_BLOCK_LEN)
 		to_copy = GSM412_BLOCK_LEN;
+	OSMO_ASSERT(to_copy >= 0);
 
 	/* copy data and increment index */
 	memcpy(out, &msg->msg[msg->next_seg * GSM412_BLOCK_LEN], to_copy);
@@ -115,6 +118,8 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	}
 
 	scm = talloc_zero_size(bts, sizeof(*scm));
+	if (!scm)
+		return -1;
 
 	/* initialize entire message with default padding */
 	memset(scm->msg, GSM_MACBLOCK_PADDING, sizeof(scm->msg));
