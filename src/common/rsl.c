@@ -1499,7 +1499,10 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	lchan_tchmode_from_cmode(lchan, cm);
 
 	if (bts_supports_cm(lchan->ts->trx->bts, ts_pchan(lchan->ts), lchan->tch_mode) != 1) {
-		LOGP(DRSL, LOGL_ERROR, "invalid mode/codec instructed by BSC, check BSC configuration.\n");
+		LOGP(DRSL, LOGL_ERROR,
+		     "%s %s: invalid mode: %s (wrong BSC configuration?)\n",
+		     gsm_ts_and_pchan_name(lchan->ts), gsm_lchan_name(lchan),
+		     gsm48_chan_mode_name(lchan->tch_mode));
 		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_SERV_OPT_UNAVAIL);
 	}
 
