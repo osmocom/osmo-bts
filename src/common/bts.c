@@ -704,7 +704,8 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 
 	/* Before the requested pchan/cm combination can be checked, we need to
 	 * convert it to a feature identifier we can check */
-	if (pchan == GSM_PCHAN_TCH_F) {
+	switch (pchan) {
+	case GSM_PCHAN_TCH_F:
 		switch(cm) {
 		case GSM48_CMODE_SPEECH_V1:
 			feature	= BTS_FEAT_SPEECH_F_V1;
@@ -719,7 +720,9 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 			/* Invalid speech codec type => Not supported! */
 			return 0;
 		}
-	} else if (pchan == GSM_PCHAN_TCH_H) {
+		break;
+
+	case GSM_PCHAN_TCH_H:
 		switch(cm) {
 		case GSM48_CMODE_SPEECH_V1:
 			feature	= BTS_FEAT_SPEECH_H_V1;
@@ -731,6 +734,12 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 			/* Invalid speech codec type => Not supported! */
 			return 0;
 		}
+		break;
+
+	default:
+		LOGP(DRSL, LOGL_ERROR, "BTS %u: unhandled pchan %s when checking mode %s\n",
+		     bts->nr, gsm_pchan_name(pchan), gsm48_chan_mode_name(cm));
+		return 0;
 	}
 
 	/* Check if the feature is supported by this BTS */
