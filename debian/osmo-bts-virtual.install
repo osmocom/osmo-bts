@@ -1,3 +1,4 @@
+lib/systemd/system/osmo-bts-virtual.service
 usr/bin/osmo-bts-virtual
 usr/bin/osmo-bts-omldummy
 usr/share/doc/osmo-bts/examples/osmo-bts-virtual/osmobts-virtual.cfg
