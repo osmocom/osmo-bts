@@ -7,10 +7,6 @@ SUBDIRS = include src tests doc contrib
 EXTRA_DIST = \
 	contrib/dump_docs.py contrib/screenrc-l1fwd \
 	contrib/l1fwd.init contrib/screenrc-sysmobts contrib/respawn.sh \
-	doc/examples/sysmo/osmo-bts.cfg \
-	doc/examples/sysmo/sysmobts-mgr.cfg \
-	doc/examples/virtual/openbsc-virtual.cfg \
-	doc/examples/virtual/osmobts-virtual.cfg \
 	git-version-gen .version \
 	README.md
 
