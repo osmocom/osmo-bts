@@ -823,7 +823,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 
 /* Process a single uplink measurement sample. This function is called from
  * l1sap.c every time a measurement indication is received. It collects the
- * measurement samples and automatically detects the end oft the measurement
+ * measurement samples and automatically detects the end of the measurement
  * interval. */
 void lchan_meas_process_measurement(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
 {
