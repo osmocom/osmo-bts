@@ -12,7 +12,7 @@ doc_sysmo_DATA = \
         sysmo/osmo-bts-sysmo.cfg \
         sysmo/sysmobts-mgr.cfg
 EXTRA_DIST += $(doc_sysmo_DATA)
-OSMOCONF_FILES += sysmo/osmo-bts-sysmo.cfg
+OSMOCONF_FILES += sysmo/osmo-bts-sysmo.cfg sysmo/sysmobts-mgr.cfg
 endif
 
 if ENABLE_TRX
@@ -39,7 +39,7 @@ doc_lc15_DATA = \
         litecell15/osmo-bts-lc15.cfg \
         litecell15/lc15bts-mgr.cfg
 EXTRA_DIST += $(doc_lc15_DATA)
-OSMOCONF_FILES += litecell15/osmo-bts-lc15.cfg
+OSMOCONF_FILES += litecell15/osmo-bts-lc15.cfg litecell15/lc15bts-mgr.cfg
 endif
 
 osmoconfdir = $(sysconfdir)/osmocom
