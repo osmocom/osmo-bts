@@ -508,7 +508,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
 	if (!lchan) {
 		LOGPFN(DL1P, LOGL_ERROR, info_meas_ind->fn,
-			"No lchan for MPH INFO MEAS IND (chan_nr=%u)\n", info_meas_ind->chan_nr);
+			"No lchan for MPH INFO MEAS IND (chan_nr=0x%02x)\n", info_meas_ind->chan_nr);
 		return 0;
 	}
 
@@ -746,7 +746,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
 		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan) {
-			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
+			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=0x%02x)\n", chan_nr);
 			return 0;
 		}
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
@@ -875,7 +875,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%u)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=0x%02x)\n", chan_nr);
 		return 0;
 	}
 
@@ -1069,7 +1069,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%d\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=0x%02x\n", chan_nr);
 		return 0;
 	}
 
@@ -1137,7 +1137,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=%u)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=0x%02x)\n", chan_nr);
 		return 0;
 	}
 

@@ -329,8 +329,8 @@ free_msg:
 found_msg:
 	if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
 	 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=%02x link_id=%02x, "
-			"expecting chan_nr=%02x link_id=%02x.\n", chan_nr, link_id,
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
+			"expecting chan_nr=0x%02x link_id=%02x.\n", chan_nr, link_id,
 			trx_chan_desc[chan].chan_nr | tn, trx_chan_desc[chan].link_id);
 		goto free_msg;
 	}
