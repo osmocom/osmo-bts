@@ -357,7 +357,7 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 		cbits = 0x10;
 		break;
 	case cOCTVC1_GSM_SAPI_ENUM_CBCH:
-		cbits = 0xc8; /* Osmocom extension for CBCH via L1SAP */
+		cbits = 0xc8 >> 3; /* Osmocom extension for CBCH via L1SAP */
 		break;
 	case cOCTVC1_GSM_SAPI_ENUM_SACCH:
 		switch (pchan) {
@@ -517,6 +517,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		sapi = cOCTVC1_GSM_SAPI_ENUM_SDCCH;
 	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		sapi = cOCTVC1_GSM_SAPI_ENUM_BCCH;
+	} else if (L1SAP_IS_CHAN_CBCH(chan_nr)) {
+		sapi = cOCTVC1_GSM_SAPI_ENUM_CBCH;
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		sapi = cOCTVC1_GSM_SAPI_ENUM_PCH_AGCH;
 	} else {

@@ -380,6 +380,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		sapi = GsmL1_Sapi_Sdcch;
 	} else if (L1SAP_IS_CHAN_BCCH(chan_nr)) {
 		sapi = GsmL1_Sapi_Bcch;
+	} else if (L1SAP_IS_CHAN_CBCH(chan_nr)) {
+		sapi = GsmL1_Sapi_Cbch;
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		/* The sapi depends on DSP configuration, not
 		 * on the actual SYSTEM INFORMATION 3. */
@@ -697,7 +699,7 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 		cbits = 0x10;
 		break;
 	case GsmL1_Sapi_Cbch:
-		cbits = 0xc8; /* Osmocom extension for CBCH via L1SAP */
+		cbits = 0xc8 >> 3; /* Osmocom extension for CBCH via L1SAP */
 		break;
 	case GsmL1_Sapi_Sacch:
 		switch(pchan) {
