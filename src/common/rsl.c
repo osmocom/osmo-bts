@@ -2671,8 +2671,9 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 	rh = msgb_l2(msg);
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DRSL, LOGL_INFO, "%s(%s) is not active . Dropping message.\n",
-			gsm_lchan_name(lchan), gsm_lchans_name(lchan->state));
+		LOGP(DRSL, LOGL_ERROR, "%s(%s) is not active. Dropping message (len=%u): %s\n",
+			gsm_lchan_name(lchan), gsm_lchans_name(lchan->state),
+			msgb_l2len(msg), msgb_hexdump_l2(msg));
 		msgb_free(msg);
 		return 0;
 	}
