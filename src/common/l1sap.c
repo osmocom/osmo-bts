@@ -58,7 +58,18 @@
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
 {
-	return &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
+	unsigned int tn, ss;
+
+	tn = L1SAP_CHAN2TS(chan_nr);
+	OSMO_ASSERT(tn < ARRAY_SIZE(trx->ts));
+
+	if (L1SAP_IS_CHAN_CBCH(chan_nr))
+		ss = 2; /* CBCH is always on sub-slot 2 */
+	else
+		ss = l1sap_chan2ss(chan_nr);
+	OSMO_ASSERT(ss < ARRAY_SIZE(trx->ts[tn].lchan));
+
+	return &trx->ts[tn].lchan[ss];
 }
 
 static struct gsm_lchan *
