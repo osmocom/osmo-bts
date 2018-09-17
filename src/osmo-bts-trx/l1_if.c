@@ -48,9 +48,11 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE]                = 8,
 	[GSM_PCHAN_CCCH]                = 4,
 	[GSM_PCHAN_CCCH_SDCCH4]         = 5,
+	[GSM_PCHAN_CCCH_SDCCH4_CBCH]    = 5,
 	[GSM_PCHAN_TCH_F]               = 1,
 	[GSM_PCHAN_TCH_H]               = 3,
 	[GSM_PCHAN_SDCCH8_SACCH8C]      = 7,
+	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 7,
 	[GSM_PCHAN_PDCH]                = 13,
 	/* [GSM_PCHAN_TCH_F_PDCH] not needed here, see trx_set_ts_as_pchan() */
 	[GSM_PCHAN_UNKNOWN]             = 0,
@@ -268,7 +270,8 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	trx_sched_reset(&l1h->l1s);
 
 	/* deactivate lchan for CCCH */
-	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
+	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
 		lchan_set_state(&trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_INACTIVE);
 	}
 
@@ -378,7 +381,8 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 		return NM_NACK_RES_NOTAVAIL;
 
 	/* activate lchan for CCCH */
-	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4) {
+	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
 		ts->lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
 		lchan_set_state(&ts->lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
 	}
