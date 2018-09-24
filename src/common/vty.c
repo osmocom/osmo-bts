@@ -464,7 +464,7 @@ DEFUN(cfg_bts_oml_ip,
 
 #define RTP_STR "RTP parameters\n"
 
-DEFUN_HIDDEN(cfg_bts_rtp_bind_ip,
+DEFUN_DEPRECATED(cfg_bts_rtp_bind_ip,
       cfg_bts_rtp_bind_ip_cmd,
       "rtp bind-ip A.B.C.D",
       RTP_STR "RTP local bind IP Address\n" "RTP local bind IP Address\n")
