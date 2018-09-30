@@ -386,7 +386,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		/* The sapi depends on DSP configuration, not
 		 * on the actual SYSTEM INFORMATION 3. */
 		u8BlockNbr = l1sap_fn2ccch_block(u32Fn);
-		if (u8BlockNbr >= 1)
+		if (u8BlockNbr >= num_agch(trx, "PH-DATA-REQ"))
 			sapi = GsmL1_Sapi_Pch;
 		else
 			sapi = GsmL1_Sapi_Agch;
