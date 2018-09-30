@@ -16,7 +16,6 @@ cd "$deps"
 configure_flags="\
   --enable-sanitize \
   --enable-werror \
-  --with-osmo-pcu=$deps/osmo-pcu/include \
   --enable-trx \
   "
 
