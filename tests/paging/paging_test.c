@@ -136,7 +136,7 @@ static void test_is_ccch_for_agch(void)
 
 	printf("Fn:   AGCH: (bs_ag_blks_res=[0:7]\n");
 	for (fn = 0; fn < 102; fn++) {
-
+		uint8_t fn51 = fn % 51;
 		/* Note: the formula that computes the CCCH block number for a
 		 * given frame number is optimized to work on block boarders,
 		 * for frame numbers that do not fall at the beginning of the
@@ -144,12 +144,12 @@ static void test_is_ccch_for_agch(void)
 		 * we only check with frame numbers that mark the beginning
 		 * of a new block. See also L1SAP_FN2CCCHBLOCK() in l1sap.h */
 
-		if (fn % 10 != 2 && fn % 10 != 6)
+		if (fn51 % 10 != 2 && fn51 % 10 != 6)
 			continue;
 
 		printf("%03u: ", fn);
 
-		if (fn % 50 == 2) {
+		if (fn51 == 2) {
 			printf(" . . . . . . . . (BCCH)\n");
 			continue;
 		}
