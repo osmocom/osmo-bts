@@ -29,7 +29,7 @@
 #define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)
 
 /* CCCH block from frame number */
-#define L1SAP_FN2CCCHBLOCK(fn) ((fn % 51) / 5 - 1)
+unsigned int l1sap_fn2ccch_block(uint32_t fn);
 
 /* PTCH layout from frame number */
 #define L1SAP_FN2MACBLOCK(fn) ((fn % 52) / 4)

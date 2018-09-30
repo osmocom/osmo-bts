@@ -55,6 +55,41 @@
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
 
+
+#define CB_FCCH		-1
+#define CB_SCH		-2
+#define CB_BCCH		-3
+#define CB_IDLE		-4
+
+/* according to TS 05.02 Clause 7 Table 3 of 9 an Figure 8a */
+static const int ccch_block_table[51] = {
+	CB_FCCH, CB_SCH,/* 0..1 */
+	CB_BCCH, CB_BCCH, CB_BCCH, CB_BCCH,	/* 2..5: BCCH */
+	0, 0, 0, 0,	/* 6..9: B0 */
+	CB_FCCH, CB_SCH,/* 10..11 */
+	1, 1, 1, 1,	/* 12..15: B1 */
+	2, 2, 2, 2,	/* 16..19: B2 */
+	CB_FCCH, CB_SCH,/* 20..21 */
+	3, 3, 3, 3,	/* 22..25: B3 */
+	4, 4, 4, 4,	/* 26..29: B4 */
+	CB_FCCH, CB_SCH,/* 30..31 */
+	5, 5, 5, 5,	/* 32..35: B5 */
+	6, 6, 6, 6,	/* 36..39: B6 */
+	CB_FCCH, CB_SCH,/* 40..41 */
+	7, 7, 7, 7, 	/* 42..45: B7 */
+	8, 8, 8, 8, 	/* 46..49: B8 */
+	-4		/* 50: Idle */
+};
+
+/* determine the CCCH block number based on the frame number */
+unsigned int l1sap_fn2ccch_block(uint32_t fn)
+{
+	int rc = ccch_block_table[fn%51];
+	/* if FN is negative, we were called for something that's not CCCH! */
+	OSMO_ASSERT(rc >= 0);
+	return rc;
+}
+
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
 {
@@ -273,7 +308,7 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		/* The sapi depends on DSP configuration, not
 		 * on the actual SYSTEM INFORMATION 3. */
-		if (L1SAP_FN2CCCHBLOCK(fn) >= num_agch)
+		if (l1sap_fn2ccch_block(fn) >= num_agch)
 			*chan_type = GSMTAP_CHANNEL_PCH;
 		else
 			*chan_type = GSMTAP_CHANNEL_AGCH;
@@ -686,7 +721,7 @@ int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
 	/* Note: The number of available access grant channels is set by the
 	 * parameter BS_AG_BLKS_RES via system information type 3. This SI is
 	 * transfered to osmo-bts via RSL */
-        return L1SAP_FN2CCCHBLOCK(fn) < num_agch(trx, "PH-RTS-IND");
+        return l1sap_fn2ccch_block(fn) < num_agch(trx, "PH-RTS-IND");
 }
 
 /* PH-RTS-IND prim received from bts model */
