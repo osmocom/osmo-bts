@@ -640,7 +640,8 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	     gsm_lchan_name(lchan), num_ul_meas_subst, num_meas_sub_subst);
 
 	if (num_meas_sub != num_meas_sub_expect) {
-		LOGP(DMEAS, LOGL_ERROR, "%s Incorrect number of SUB measurements detected!\n", gsm_lchan_name(lchan));
+		LOGP(DMEAS, LOGL_ERROR, "%s Incorrect number of SUB measurements detected! (%u vs exp %u)\n",
+		     gsm_lchan_name(lchan), num_meas_sub, num_meas_sub_expect);
 		/* Normally the logic above should make sure that there is
 		 * always the exact amount of SUB measurements taken into
 		 * account. If not then the logic that decides tags the received
