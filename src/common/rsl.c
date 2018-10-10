@@ -1154,8 +1154,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
-	LOGP(DRSL, LOGL_INFO, " chan_nr=0x%02x type=0x%02x mode=0x%02x\n",
-		dch->chan_nr, type, lchan->tch_mode);
+	LOGP(DRSL, LOGL_INFO, "%s: chan_nr=%s type=0x%02x mode=%s\n",
+	     gsm_lchan_name(lchan), rsl_chan_nr_str(dch->chan_nr), type,
+	     gsm48_chan_mode_name(lchan->tch_mode));
 
 	/* Connecting PDCH on dyn TS goes via PCU instead. */
 	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
