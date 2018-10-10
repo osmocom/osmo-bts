@@ -32,6 +32,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/l1sap.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/rsl.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
@@ -554,7 +555,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
 	if (!lchan) {
 		LOGPFN(DL1P, LOGL_ERROR, info_meas_ind->fn,
-			"No lchan for MPH INFO MEAS IND (chan_nr=0x%02x)\n", info_meas_ind->chan_nr);
+			"No lchan for MPH INFO MEAS IND (chan_nr=%s)\n", rsl_chan_nr_str(info_meas_ind->chan_nr));
 		return 0;
 	}
 
@@ -618,8 +619,8 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1C, LOGL_INFO, "activate confirm chan_nr=0x%02x trx=%d\n",
-		info_act_cnf->chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "activate confirm chan_nr=%s trx=%d\n",
+		rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
@@ -643,8 +644,8 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 {
 	struct gsm_lchan *lchan;
 
-	LOGP(DL1C, LOGL_INFO, "deactivate confirm chan_nr=0x%02x trx=%d\n",
-		info_act_cnf->chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "deactivate confirm chan_nr=%s trx=%d\n",
+	     rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
 
 	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
@@ -748,7 +749,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind chan_nr=0x%02x link_id=0x%02xd\n", chan_nr, link_id);
+	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind chan_nr=%s link_id=0x%02xd\n", rsl_chan_nr_str(chan_nr), link_id);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {
@@ -792,7 +793,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	} else if (!(chan_nr & 0x80)) { /* only TCH/F, TCH/H, SDCCH/4 and SDCCH/8 have C5 bit cleared */
 		lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan) {
-			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=0x%02x)\n", chan_nr);
+			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%s)\n",
+			       rsl_chan_nr_str(chan_nr));
 			return 0;
 		}
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
@@ -851,7 +853,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}
 
-	DEBUGPGT(DL1P, &g_time, "Tx PH-DATA.req chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
+	DEBUGPGT(DL1P, &g_time, "Tx PH-DATA.req chan_nr=%s link_id=0x%02x\n", rsl_chan_nr_str(chan_nr), link_id);
 
 	l1sap_down(trx, l1sap);
 
@@ -917,11 +919,11 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx TCH-RTS.ind chan_nr=0x%02x\n", chan_nr);
+	DEBUGPGT(DL1P, &g_time, "Rx TCH-RTS.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=0x%02x)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%s)\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
 
@@ -971,7 +973,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	resp_l1sap->u.tch.fn = fn;
 	resp_l1sap->u.tch.marker = marker;
 
-	DEBUGPGT(DL1P, &g_time, "Tx TCH.req chan_nr=0x%02x\n", chan_nr);
+	DEBUGPGT(DL1P, &g_time, "Tx TCH.req chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 
 	l1sap_down(trx, resp_l1sap);
 
@@ -1073,13 +1075,13 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=0x%02x link_id=0x%02x len=%d\n",
-		 chan_nr, link_id, len);
+	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=%s link_id=0x%02x len=%d\n",
+		 rsl_chan_nr_str(chan_nr), link_id, len);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
-			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=0x%02x\n", chan_nr);
+			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 		if (lchan && lchan->loopback && !L1SAP_IS_PTCCH(fn)) {
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
@@ -1115,7 +1117,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=0x%02x\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
 
@@ -1179,11 +1181,11 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	LOGPGT(DL1P, LOGL_INFO, &g_time, "Rx TCH.ind chan_nr=0x%02x\n", chan_nr);
+	LOGPGT(DL1P, LOGL_INFO, &g_time, "Rx TCH.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
-		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=0x%02x)\n", chan_nr);
+		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=%s)\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
 
@@ -1465,8 +1467,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm48_chan_desc *cd;
 	int rc;
 
-	LOGP(DL1C, LOGL_INFO, "activating channel chan_nr=0x%02x trx=%d\n",
-		chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "activating channel chan_nr=%s trx=%d\n",
+		rsl_chan_nr_str(chan_nr), trx->nr);
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
 	 * need to make sure ew don't crash here */
@@ -1513,8 +1515,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
-	LOGP(DL1C, LOGL_INFO, "deactivating channel chan_nr=0x%02x trx=%d\n",
-		chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "deactivating channel chan_nr=%s trx=%d\n",
+		rsl_chan_nr_str(chan_nr), trx->nr);
 
 	if (lchan->tch.dtx.dl_amr_fsm) {
 		osmo_fsm_inst_free(lchan->tch.dtx.dl_amr_fsm);
@@ -1529,8 +1531,8 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	LOGP(DL1C, LOGL_INFO, "deactivating sacch chan_nr=0x%02x trx=%d\n",
-		chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "deactivating sacch chan_nr=%s trx=%d\n",
+		rsl_chan_nr_str(chan_nr), trx->nr);
 
 	lchan->sacch_deact = 1;
 
@@ -1540,8 +1542,8 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	LOGP(DL1C, LOGL_INFO, "modifying channel chan_nr=0x%02x trx=%d\n",
-		chan_nr, trx->nr);
+	LOGP(DL1C, LOGL_INFO, "modifying channel chan_nr=%s trx=%d\n",
+		rsl_chan_nr_str(chan_nr), trx->nr);
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
 }
