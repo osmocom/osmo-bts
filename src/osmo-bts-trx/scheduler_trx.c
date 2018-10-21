@@ -1434,68 +1434,6 @@ static inline void normalize_timespec(struct timespec *ts)
 	ts->tv_nsec = ts->tv_nsec % 1000000000;
 }
 
-/*! disable the osmocom-wrapped timerfd */
-/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
-static int timer_ofd_disable(struct osmo_fd *ofd)
-{
-	const struct itimerspec its_null = {
-		.it_value = { 0, 0 },
-		.it_interval = { 0, 0 },
-	};
-	return timerfd_settime(ofd->fd, 0, &its_null, NULL);
-}
-
-/*! schedule the osmcoom-wrapped timerfd to occur first at \a first, then periodically at \a interval
- *  \param[in] ofd Osmocom wrapped timerfd
- *  \param[in] first Relative time at which the timer should first execute (NULL = \a interval)
- *  \param[in] interval Time interval at which subsequent timer shall fire
- *  \returns 0 on success; negative on error */
-/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
-static int timer_ofd_schedule(struct osmo_fd *ofd, const struct timespec *first,
-			      const struct timespec *interval)
-{
-	struct itimerspec its;
-
-	if (ofd->fd < 0)
-		return -EINVAL;
-
-	/* first expiration */
-	if (first)
-		its.it_value = *first;
-	else
-		its.it_value = *interval;
-	/* repeating interval */
-	its.it_interval = *interval;
-
-	return timerfd_settime(ofd->fd, 0, &its, NULL);
-}
-
-/*! setup osmocom-wrapped timerfd
- *  \param[inout] ofd Osmocom-wrapped timerfd on which to operate
- *  \param[in] cb Call-back function called when timerfd becomes readable
- *  \param[in] data Opaque data to be passed on to call-back
- *  \returns 0 on success; negative on error
- *
- *  We simply initialize the data structures here, but do not yet
- *  schedule the timer.
- */
-/* FIXME: Use libosmocore after release with Ibeffba7c997252c003723bcd5d14122c4ded2fe7 was made */
-static int timer_ofd_setup(struct osmo_fd *ofd, int (*cb)(struct osmo_fd *, unsigned int), void *data)
-{
-	ofd->cb = cb;
-	ofd->data = data;
-	ofd->when = BSC_FD_READ;
-
-	if (ofd->fd < 0) {
-		ofd->fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-		if (ofd->fd < 0)
-			return ofd->fd;
-
-		osmo_fd_register(ofd);
-	}
-	return 0;
-}
-
 /*! Increment a GSM frame number modulo GSM_HYPERFRAME */
 #define INCREMENT_FN(fn)	(fn) = (((fn) + 1) % GSM_HYPERFRAME)
 
@@ -1557,7 +1495,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	return 0;
 
 no_clock:
-	timer_ofd_disable(&tcs->fn_timer_ofd);
+	osmo_timerfd_disable(&tcs->fn_timer_ofd);
 	transceiver_available = 0;
 
 	bts_shutdown(bts, "No clock from osmo-trx");
@@ -1575,8 +1513,8 @@ static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs
 	trx_sched_fn(bts, tcs->last_fn_timer.fn);
 
 	/* schedule first FN clock timer */
-	timer_ofd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
-	timer_ofd_schedule(&tcs->fn_timer_ofd, NULL, interval);
+	osmo_timerfd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
+	osmo_timerfd_schedule(&tcs->fn_timer_ofd, NULL, interval);
 
 	tcs->last_fn_timer.tv = *tv_now;
 	tcs->last_clk_ind.tv = *tv_now;
@@ -1666,7 +1604,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 		normalize_timespec(&first);
 		LOGP(DL1C, LOGL_NOTICE, "We were %d FN faster than TRX, compensating\n", -elapsed_fn);
 		/* set time to the time our next FN has to be transmitted */
-		timer_ofd_schedule(&tcs->fn_timer_ofd, &first, &interval);
+		osmo_timerfd_schedule(&tcs->fn_timer_ofd, &first, &interval);
 		return 0;
 	}
 
