@@ -4,7 +4,7 @@ The role of the BTS is to handle the GSM radio interface.  When the BTS
 application is starting, the A-bis OML connection is established towards
 the BSC.  Almost all BTS configuration (such as ARFCN, channel
 configuration, transmit power, etc.) will be sent from the BSC to the
-BTS via OML messages.  After OML start-up has competed, the BSC will
+BTS via OML messages.  After OML start-up has completed, the BSC will
 instruct the BTS to establish the RSL connections.
 
 Given that most configuration is downloaded from the BSC into the BTS at
