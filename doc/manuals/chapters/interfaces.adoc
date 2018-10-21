@@ -152,5 +152,5 @@ direct interface by which the PCU can exchange those primitives directly
 with the PHY.
 
 The default PCU socket interface name is `/tmp/pcu_sock`, but this can
-be overridden by the @pcu-socket@ VTY command in the BTS configuration
+be overridden by the `pcu-socket` VTY command in the BTS configuration
 VTY node.
