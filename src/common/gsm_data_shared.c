@@ -622,7 +622,7 @@ uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		 * See osmo-bts-xxx/oml.c:opstart_compl().
 		 */
 		if (lchan_nr == CCCH_LCHAN)
-			chan_nr = 0;
+			lchan_nr = 0;
 		else
 			OSMO_ASSERT(lchan_nr < 4);
 		cbits = 0x04;
