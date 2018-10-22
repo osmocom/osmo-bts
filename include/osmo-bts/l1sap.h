@@ -12,6 +12,7 @@
 #define L1SAP_CHAN2SS_TCHH(chan_nr) ((chan_nr >> 3) & 1)
 #define L1SAP_CHAN2SS_SDCCH4(chan_nr) ((chan_nr >> 3) & 3)
 #define L1SAP_CHAN2SS_SDCCH8(chan_nr) ((chan_nr >> 3) & 7)
+#define L1SAP_CHAN2SS_BCCH(chan_nr) (CCCH_LCHAN)
 
 /* logical channel from chan_nr + link_id */
 #define L1SAP_IS_LINK_SACCH(link_id) ((link_id & 0xC0) == LID_SACCH)
@@ -48,6 +49,8 @@ static const uint8_t fill_frame[GSM_MACBLOCK_LEN] = {
 /* subslot from any chan_nr */
 static inline uint8_t l1sap_chan2ss(uint8_t chan_nr)
 {
+	if (L1SAP_IS_CHAN_BCCH(chan_nr))
+                return L1SAP_CHAN2SS_BCCH(chan_nr);
 	if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
 		return L1SAP_CHAN2SS_SDCCH8(chan_nr);
 	if (L1SAP_IS_CHAN_SDCCH4(chan_nr))
