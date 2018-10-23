@@ -193,10 +193,11 @@ got_msg:
 	/* handle loss detection of SACCH */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
 		/* count and send BFI */
+		LOGP(DMEAS, LOGL_INFO, "PESPIN: tx_data_fn (++) fn=%" PRIu32 " lost_frames=%" PRIu8 " chan_state=%p\n", fn, l1ts->chan_state[chan].lost_frames, &l1ts->chan_state[chan]);
 		if (++(l1ts->chan_state[chan].lost_frames) > 1) {
 			/* TODO: Should we pass old TOA here? Otherwise we risk
 			 * unnecessary decreasing TA */
-
+			LOGP(DMEAS, LOGL_INFO, "PESPIN: Sending bad MEAS RES\n");
 			/* Send uplink measurement information to L2 */
 			l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
 				456, 456, -110, 0);
@@ -350,6 +351,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
 
+	LOGP(DMEAS, LOGL_INFO, "PESPIN: tx_tch_common (++) fn=%" PRIu32 " lost_frames=%" PRIu8 " chan_state=%p\n", fn, l1ts->chan_state[chan].lost_frames, chan_state);
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
 	    && ++(chan_state->lost_frames) > 5) {
@@ -776,7 +778,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received Data, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received Data, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -869,7 +871,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint16_t ber10k;
 	int rc;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received PDTCH bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received PDTCH bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -974,7 +976,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/F, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received TCH/F, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -1155,7 +1157,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (chan_state->ho_rach_detect == 1)
 		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/H, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received TCH/H, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {

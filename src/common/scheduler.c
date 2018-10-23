@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
@@ -369,6 +370,7 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (l2_len)
 		memcpy(msg->l2h, l2, l2_len);
 
+	LOGP(DMEAS, LOGL_INFO, "PESPIN: _sched_compose_ph_data_ind (--) fn=%" PRIu32 " lost_frames=%" PRIu8 "\n", fn, l1ts->chan_state[chan].lost_frames);
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
 		l1ts->chan_state[chan].lost_frames = 0;
 
@@ -398,6 +400,8 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	msg->l2h = msgb_put(msg, tch_len);
 	if (tch_len)
 		memcpy(msg->l2h, tch, tch_len);
+
+	LOGP(DMEAS, LOGL_INFO, "PESPIN: _sched_compose_tch_ind (--) fn=%" PRIu32 " lost_frames=%" PRIu8 "\n", fn, l1ts->chan_state[chan].lost_frames);
 
 	if (l1ts->chan_state[chan].lost_frames)
 		l1ts->chan_state[chan].lost_frames--;
@@ -463,7 +467,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 }
 
 
-/* 
+/*
  * ready-to-send indication (to upper layer)
  */
 
