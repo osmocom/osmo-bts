@@ -30,6 +30,10 @@ case "$bts_model" in
     ./contrib/jenkins_lc15.sh
   ;;
 
+  oc2g)
+    ./contrib/jenkins_oc2g.sh
+  ;;
+
   trx)
     ./contrib/jenkins_bts_trx.sh
   ;;

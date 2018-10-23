@@ -279,6 +279,27 @@ if test "$enable_litecell15" = "yes"; then
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
+AC_MSG_CHECKING([whether to enable NuRAN Wireless OC-2G hardware support])
+AC_ARG_ENABLE(oc2g,
+		AC_HELP_STRING([--enable-oc2g],
+				[enable code for NuRAN Wireless OC-2G bts [default=no]]),
+		[enable_oc2g="yes"],[enable_oc2g="no"])
+AC_ARG_WITH([oc2g], [AS_HELP_STRING([--with-oc2g=INCLUDE_DIR], [Location of the OC-2G API header files])],
+			 [oc2g_incdir="$withval"],[oc2g_incdir="$incdir"])
+AC_SUBST([OC2G_INCDIR], -I$oc2g_incdir)
+AC_MSG_RESULT([$enable_oc2g])
+AM_CONDITIONAL(ENABLE_OC2GBTS, test "x$enable_oc2g" = "xyes")
+if test "$enable_oc2g" = "yes"; then
+	oldCPPFLAGS=$CPPFLAGS
+	CPPFLAGS="$CPPFLAGS $OC2G_INCDIR -I$srcdir/include"
+	AC_CHECK_HEADER([nrw/oc2g/oc2g.h],[],
+			[AC_MSG_ERROR([nrw/oc2g/oc2g.h can not be found in $oc2g_incdir])],
+			[#include <nrw/oc2g/oc2g.h>])
+	PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd)
+        PKG_CHECK_MODULES(LIBGPS, libgps)
+	CPPFLAGS=$oldCPPFLAGS
+fi
+
 # https://www.freedesktop.org/software/systemd/man/daemon.html
 AC_ARG_WITH([systemdsystemunitdir],
      [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],,
@@ -307,6 +328,7 @@ AC_OUTPUT(
     src/osmo-bts-omldummy/Makefile
     src/osmo-bts-sysmo/Makefile
     src/osmo-bts-litecell15/Makefile
+    src/osmo-bts-oc2g/Makefile
     src/osmo-bts-trx/Makefile
     src/osmo-bts-octphy/Makefile
     include/Makefile
