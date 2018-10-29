@@ -69,6 +69,16 @@ enum calib_result {
         CALIB_SUCCESS,
 };
 
+static inline int compat_gps_read(struct gps_data_t *data)
+{
+/* API break in gpsd 6bba8b329fc7687b15863d30471d5af402467802 */
+#if GPSD_API_MAJOR_VERSION >= 7 && GPSD_API_MINOR_VERSION >= 0
+	return gps_read(data, NULL, 0);
+#else
+	return gps_read(data);
+#endif
+}
+
 static int oc2gbts_par_get_uptime(void *ctx, int *ret)
 {
 	char *fpath;
@@ -173,7 +183,7 @@ static int mgr_gps_read(struct osmo_fd *fd, unsigned int what)
 	int rc;
 	struct oc2gbts_mgr_instance *mgr = fd->data;
 
-	rc = gps_read(&mgr->gps.gpsdata);
+	rc = compat_gps_read(&mgr->gps.gpsdata);
 	if (rc == -1) {
 		LOGP(DCALIB, LOGL_ERROR, "gpsd vanished during read.\n");
 		calib_state_reset(mgr, CALIB_FAIL_GPSFIX);
