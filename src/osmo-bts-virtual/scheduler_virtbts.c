@@ -463,7 +463,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (msg_facch) {
 		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
 		msgb_free(msg_tch);
-	} else
+	} else if (msg_tch)
 		tx_to_virt_um(l1t, tn, fn, chan, msg_tch);
 
 send_burst:
