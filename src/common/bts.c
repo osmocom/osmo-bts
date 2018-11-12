@@ -105,11 +105,10 @@ static const struct rate_ctr_group_desc bts_ctrg_desc = {
 	bts_ctr_desc
 };
 
-/* Initialize the BTS (and TRX) data structures, called before config
+/* Initialize the BTS data structures, called before config
  * file reading */
 int bts_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
 	int rc, i;
 	static int initialized = 0;
 	void *tall_rtp_ctx;
@@ -167,26 +166,6 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->gprs.nsvc[0].mo, -1, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 
-	/* initialize bts data structure */
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct trx_power_params *tpp = &trx->power_params;
-		int i;
-
-		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
-			struct gsm_bts_trx_ts *ts = &trx->ts[i];
-			int k;
-
-			for (k = 0; k < ARRAY_SIZE(ts->lchan); k++) {
-				struct gsm_lchan *lchan = &ts->lchan[k];
-				INIT_LLIST_HEAD(&lchan->dl_tch_queue);
-			}
-		}
-		/* Default values for the power adjustments */
-		tpp->ramp.max_initial_pout_mdBm = to_mdB(0);
-		tpp->ramp.step_size_mdB = to_mdB(2);
-		tpp->ramp.step_interval_sec = 1;
-	}
-
 	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
 	 * to the libc malloc all the time */
 	tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
@@ -213,6 +192,36 @@ int bts_init(struct gsm_bts *bts)
 	OSMO_ASSERT(rc == 0);
 
 	return rc;
+}
+
+/* Initialize the TRX data structures, called before config
+ * file reading */
+int bts_trx_init(struct gsm_bts_trx *trx)
+{
+	/* initialize bts data structure */
+	struct trx_power_params *tpp = &trx->power_params;
+	int rc, i;
+
+	for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[i];
+		int k;
+
+		for (k = 0; k < ARRAY_SIZE(ts->lchan); k++) {
+			struct gsm_lchan *lchan = &ts->lchan[k];
+			INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+		}
+	}
+	/* Default values for the power adjustments */
+	tpp->ramp.max_initial_pout_mdBm = to_mdB(0);
+	tpp->ramp.step_size_mdB = to_mdB(2);
+	tpp->ramp.step_interval_sec = 1;
+
+	rc = bts_model_trx_init(trx);
+	if (rc < 0) {
+		llist_del(&trx->list);
+		return rc;
+	}
+	return 0;
 }
 
 static void shutdown_timer_cb(void *data)

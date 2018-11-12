@@ -59,7 +59,6 @@ int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static int rt_prio = -1;
-static int trx_num = 1;
 static char *gsmtap_ip = 0;
 extern int g_vty_port_num;
 
@@ -76,8 +75,6 @@ static void print_help()
 		"  -e 	--log-level	Set a global log-level\n"
 		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
-		"  -t	--trx-num	Set number of TRX (default=%d)\n",
-		trx_num
 		);
 	bts_model_print_help();
 }
@@ -152,9 +149,8 @@ static void handle_options(int argc, char **argv)
 			gsmtap_ip = optarg;
 			break;
 		case 't':
-			trx_num = atoi(optarg);
-			if (trx_num < 1)
-				trx_num = 1;
+			fprintf(stderr, "Parameter -t is deprecated and does nothing, "
+					"TRX num is calculated from VTY\n");
 			break;
 		case '?':
 		case 1:
@@ -228,7 +224,7 @@ int bts_main(int argc, char **argv)
 {
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
-	int rc, i;
+	int rc;
 
 	printf("((*))\n  |\n / \\ OsmoBTS\n");
 
@@ -251,13 +247,7 @@ int bts_main(int argc, char **argv)
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
 	}
-	for (i = 1; i < trx_num; i++) {
-		trx = gsm_bts_trx_alloc(bts);
-		if (!trx) {
-			fprintf(stderr, "Failed to create TRX structure\n");
-			exit(1);
-		}
-	}
+
 	e1inp_vty_init();
 	bts_vty_init(bts, &bts_log_info);
 

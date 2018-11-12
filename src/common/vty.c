@@ -227,12 +227,22 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_trx *trx;
 
-	trx = gsm_bts_trx_num(bts, trx_nr);
+
+	if (trx_nr > bts->num_trx) {
+		vty_out(vty, "%% The next unused TRX number is %u%s",
+			bts->num_trx, VTY_NEWLINE);
+		return CMD_WARNING;
+	} else if (trx_nr == bts->num_trx) {
+		/* allocate a new one */
+		trx = gsm_bts_trx_alloc(bts);
+		if (trx)
+			bts_trx_init(trx);
+	} else
+		trx = gsm_bts_trx_num(bts, trx_nr);
+
 	if (!trx) {
-		vty_out(vty, "Unknown TRX %u. Available TRX are: 0..%u%s",
-			trx_nr, bts->num_trx - 1, VTY_NEWLINE);
-		vty_out(vty, "Hint: Check if commandline option -t matches the"
-			"number of available transceivers!%s", VTY_NEWLINE);
+		vty_out(vty, "%% Unable to allocate TRX %u%s",
+			trx_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 

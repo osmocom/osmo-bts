@@ -519,14 +519,18 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
 	}
-	trx = gsm_bts_trx_alloc(bts);
-	if (!trx) {
-		fprintf(stderr, "Failed to TRX structure\n");
+	if (bts_init(bts) < 0) {
+		fprintf(stderr, "unable to init BTS\n");
 		exit(1);
 	}
 
-	if (bts_init(bts) < 0) {
-		fprintf(stderr, "unable to to open bts\n");
+	trx = gsm_bts_trx_alloc(bts);
+	if (!trx) {
+		fprintf(stderr, "Failed to alloc TRX structure\n");
+		exit(1);
+	}
+	if (bts_trx_init(trx) < 0) {
+		fprintf(stderr, "unable to init TRX\n");
 		exit(1);
 	}
 
@@ -622,6 +626,11 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *o
 }
 
 int bts_model_init(struct gsm_bts *bts)
+{
+	return 0;
+}
+
+int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
 	return 0;
 }

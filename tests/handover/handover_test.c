@@ -75,14 +75,18 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
 	}
-	trx = gsm_bts_trx_alloc(bts);
-	if (!trx) {
-		fprintf(stderr, "Failed to TRX structure\n");
+	if (bts_init(bts) < 0) {
+		fprintf(stderr, "unable to init BTS\n");
 		exit(1);
 	}
 
-	if (bts_init(bts) < 0) {
-		fprintf(stderr, "unable to to open bts\n");
+	trx = gsm_bts_trx_alloc(bts);
+	if (!trx) {
+		fprintf(stderr, "Failed to alloc TRX structure\n");
+		exit(1);
+	}
+	if (bts_trx_init(trx) < 0) {
+		fprintf(stderr, "unable to init TRX\n");
 		exit(1);
 	}
 
@@ -268,6 +272,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg, struct tlv_parsed
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj) { return 0; }
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj, uint8_t adm_state) { return 0; }
 int bts_model_init(struct gsm_bts *bts) { return 0; }
+int bts_model_trx_init(struct gsm_bts_trx *trx) { return 0; }
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx) { return 0; }
 int bts_model_trx_close(struct gsm_bts_trx *trx) { return 0; }
 void trx_get_hlayer1(void) {}

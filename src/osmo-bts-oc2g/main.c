@@ -105,11 +105,6 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(1);
 	}
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		trx->nominal_power = 40;
-		trx->power_params.trx_p_max_out_mdBm = to_mdB(bts->c0->nominal_power);
-	}
-
 	if (stat(OC2GBTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
 		exit(23);
@@ -127,6 +122,13 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts_model_vty_init(bts);
 
+	return 0;
+}
+
+int bts_model_trx_init(struct gsm_bts_trx *trx)
+{
+	trx->nominal_power = 40;
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->bts->c0->nominal_power);
 	return 0;
 }
 

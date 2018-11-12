@@ -198,6 +198,8 @@ void bts_update_status(enum bts_global_status which, int on)
 
 int bts_model_init(struct gsm_bts *bts)
 { return 0; }
+int bts_model_trx_init(struct gsm_bts_trx *trx)
+{ return 0; }
 int bts_model_oml_estab(struct gsm_bts *bts)
 { return 0; }
 void bts_model_abis_close(struct gsm_bts *bts)

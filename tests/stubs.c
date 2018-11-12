@@ -13,6 +13,8 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 { return 0; }
 int bts_model_init(struct gsm_bts *bts)
 { return 0; }
+int bts_model_trx_init(struct gsm_bts_trx *trx)
+{ return 0; }
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 { return 0; }

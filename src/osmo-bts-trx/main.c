@@ -118,6 +118,11 @@ int bts_model_init(struct gsm_bts *bts)
 	return 0;
 }
 
+int bts_model_trx_init(struct gsm_bts_trx *trx)
+{
+	return 0;
+}
+
 void bts_model_phy_link_set_defaults(struct phy_link *plink)
 {
 	plink->u.osmotrx.local_ip = talloc_strdup(plink, "127.0.0.1");

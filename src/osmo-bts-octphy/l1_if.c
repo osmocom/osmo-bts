@@ -792,6 +792,11 @@ int bts_model_init(struct gsm_bts *bts)
 	return 0;
 }
 
+int bts_model_trx_init(struct gsm_bts_trx *trx)
+{
+	return 0;
+}
+
 /***********************************************************************
  * handling of messages coming up from PHY
  ***********************************************************************/
