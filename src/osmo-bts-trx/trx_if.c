@@ -173,7 +173,7 @@ static void trx_ctrl_timer_cb(void *data)
 	OSMO_ASSERT(!llist_empty(&l1h->trx_ctrl_list));
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	LOGP(DTRX, LOGL_NOTICE, "No response from transceiver for %s (CMD %s%s%s)\n",
+	LOGP(DTRX, LOGL_NOTICE, "No satisfactory response from transceiver for %s (CMD %s%s%s)\n",
 		phy_instance_name(l1h->phy_inst),
 		tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 
@@ -437,6 +437,40 @@ static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 	return true;
 }
 
+/* -EINVAL: unrecoverable error, exit BTS
+ * N > 0: try sending originating command again after N seconds
+ * 0: Done with response, get originating command out from send queue
+ */
+static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool critical)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+
+	/* If TRX fails, try again after 1 sec */
+	if (strcmp(rsp->cmd, "POWERON") == 0) {
+		if (rsp->status == 0) {
+			if (pinst->phy_link->state != PHY_LINK_CONNECTED)
+				phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
+		} else {
+			LOGP(DTRX, LOGL_NOTICE,
+			     "transceiver (%s) rejected POWERON command (%d), re-trying in a few seconds\n",
+			     phy_instance_name(pinst), rsp->status);
+			if (pinst->phy_link->state != PHY_LINK_SHUTDOWN)
+				phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
+			return 5;
+		}
+	}
+
+	if (rsp->status) {
+		LOGP(DTRX, critical ? LOGL_FATAL : LOGL_NOTICE,
+		     "transceiver (%s) rejected TRX command with response: '%s%s%s %d'\n",
+		     phy_instance_name(pinst), rsp->cmd, rsp->params[0] != '\0' ? " ":"",
+		     rsp->params, rsp->status);
+		if (critical)
+			return -EINVAL;
+	}
+	return 0;
+}
+
 /*! Get + parse response from TRX ctrl socket */
 static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
@@ -444,7 +478,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	struct phy_instance *pinst = l1h->phy_inst;
 	char buf[1500];
 	struct trx_ctrl_rsp rsp;
-	int len;
+	int len, rc;
 	struct trx_ctrl_msg *tcm;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
@@ -492,13 +526,14 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	}
 
 	/* check for response code */
-	if (rsp.status) {
-		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
-			"transceiver (%s) rejected TRX command "
-			"with response: '%s'\n",
-			phy_instance_name(pinst), buf);
-		if (tcm->critical)
-			goto rsp_error;
+	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm->critical);
+	if (rc == -EINVAL)
+		goto rsp_error;
+
+	/* re-schedule last cmd in rc seconds time */
+	if (rc > 0) {
+		osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
+		return 0;
 	}
 
 	/* remove command from list, save it to last_acked and removed previous last_acked */
@@ -781,7 +816,6 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	}
 	/* FIXME: is there better way to check/report TRX availability? */
 	transceiver_available = 1;
-	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 	return 0;
 
 cleanup:
