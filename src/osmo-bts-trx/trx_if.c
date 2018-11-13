@@ -368,8 +368,13 @@ int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
 }
 
-static int parse_rsp(const char *buf_in, size_t len_in, char *cmdname_out, size_t cmdname_len,
-			char *params_out, size_t params_len, int *status)
+struct trx_ctrl_rsp {
+	char cmd[50];
+	char params[100];
+	int status;
+};
+
+static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp)
 {
 	char *p, *k;
 
@@ -380,18 +385,18 @@ static int parse_rsp(const char *buf_in, size_t len_in, char *cmdname_out, size_
 	if (!(p = strchr(buf_in + 4, ' ')))
 		goto parse_err;
 
-	if (p - buf_in >= cmdname_len) {
-		LOGP(DTRX, LOGL_ERROR, "cmdname buffer too small %lu >= %lu\n",
-			p - buf_in, cmdname_len);
+	if (p - buf_in >= sizeof(rsp->cmd)) {
+		LOGP(DTRX, LOGL_ERROR, "cmd buffer too small %lu >= %lu\n",
+			p - buf_in, sizeof(rsp->cmd));
 		goto parse_err;
 	}
 
-	cmdname_out[0] = '\0';
-	strncat(cmdname_out, buf_in + 4, p - buf_in - 4);
+	rsp->cmd[0] = '\0';
+	strncat(rsp->cmd, buf_in + 4, p - buf_in - 4);
 
 	/* Now comes the status code of the response */
 	p++;
-	if (sscanf(p, "%d", status) != 1)
+	if (sscanf(p, "%d", &rsp->status) != 1)
 		goto parse_err;
 
 	/* Now copy back the parameters */
@@ -401,13 +406,13 @@ static int parse_rsp(const char *buf_in, size_t len_in, char *cmdname_out, size_
 	else
 		k = p + strlen(p);
 
-	if (strlen(k) >= params_len) {
+	if (strlen(k) >= sizeof(rsp->params)) {
 		LOGP(DTRX, LOGL_ERROR, "params buffer too small %lu >= %lu\n",
-			strlen(k), params_len);
+			strlen(k), sizeof(rsp->params));
 		goto parse_err;
 	}
-	params_out[0] = '\0';
-	strcat(params_out, k);
+	rsp->params[0] = '\0';
+	strcat(rsp->params, k);
 	return 0;
 
 parse_err:
@@ -416,15 +421,15 @@ parse_err:
 	return -1;
 }
 
-static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, char *rspname, char* params)
+static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 {
-	if (strcmp(tcm->cmd, rspname))
+	if (strcmp(tcm->cmd, rsp->cmd))
 		return false;
 
 	/* For SETSLOT we also need to check if it's the response for the
 	   specific timeslot. For other commands such as SETRXGAIN, it is
 	   expected that they can return different values */
-	if (strcmp(tcm->cmd, "SETSLOT") == 0 && strcmp(tcm->params, params))
+	if (strcmp(tcm->cmd, "SETSLOT") == 0 && strcmp(tcm->params, rsp->params))
 		return false;
 
 	return true;
@@ -435,8 +440,9 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
 	struct phy_instance *pinst = l1h->phy_inst;
-	char buf[1500], cmdname[50], params[100];
-	int len, resp;
+	char buf[1500];
+	struct trx_ctrl_rsp rsp;
+	int len;
 	struct trx_ctrl_msg *tcm;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
@@ -444,7 +450,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return len;
 	buf[len] = '\0';
 
-	if (parse_rsp(buf, len, cmdname, sizeof(cmdname), params, sizeof(params), &resp) < 0)
+	if (parse_rsp(buf, len, &rsp) < 0)
 		return 0;
 
 	LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
@@ -456,7 +462,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	/* get command for response message */
 	if (llist_empty(&l1h->trx_ctrl_list)) {
 		/* RSP from a retransmission, skip it */
-		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, cmdname, params)) {
+		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
 			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
 			return 0;
@@ -469,9 +475,9 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		list);
 
 	/* check if response matches command */
-	if (!cmd_matches_rsp(tcm, cmdname, params)) {
+	if (!cmd_matches_rsp(tcm, &rsp)) {
 		/* RSP from a retransmission, skip it */
-		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, cmdname, params)) {
+		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
 			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
 			return 0;
@@ -484,7 +490,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	}
 
 	/* check for response code */
-	if (resp) {
+	if (rsp.status) {
 		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 			"transceiver (%s) rejected TRX command "
 			"with response: '%s'\n",
