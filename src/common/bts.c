@@ -322,13 +322,11 @@ int trx_set_available(struct gsm_bts_trx *trx, int avail)
 	LOGP(DSUM, LOGL_INFO, "TRX(%d): Setting available = %d\n",
 		trx->nr, avail);
 	if (avail) {
-		/* FIXME: This needs to be sorted out */
-#if 0
-		oml_mo_state_chg(&trx->mo,  NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
-		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OFF_LINE);
+		int op_state = trx->rsl_link ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
+		oml_mo_state_chg(&trx->mo, op_state, NM_AVSTATE_OK);
+		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
-			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
-#endif
+			oml_mo_state_chg(&trx->ts[tn].mo, op_state, NM_AVSTATE_OK);
 	} else {
 		oml_mo_state_chg(&trx->mo,  NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_NOT_INSTALLED);
