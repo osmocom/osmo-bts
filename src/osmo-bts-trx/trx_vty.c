@@ -32,6 +32,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/core/socket.h>
 
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/command.h>
@@ -65,8 +66,10 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
+		char *sname = osmo_sock_get_name(NULL, pinst->phy_link->u.osmotrx.trx_ofd_clk.fd);
 		l1h = pinst->u.osmotrx.hdl;
-		vty_out(vty, "TRX %d%s", trx->nr, VTY_NEWLINE);
+		vty_out(vty, "TRX %d %s%s", trx->nr, sname, VTY_NEWLINE);
+		talloc_free(sname);
 		vty_out(vty, " %s%s",
 			(l1h->config.poweron) ? "poweron":"poweroff",
 			VTY_NEWLINE);
