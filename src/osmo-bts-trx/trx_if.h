@@ -14,6 +14,7 @@ struct trx_ctrl_msg {
 	int			critical;
 };
 
+void trx_if_init(struct trx_l1h *l1h);
 int trx_if_cmd_poweroff(struct trx_l1h *l1h);
 int trx_if_cmd_poweron(struct trx_l1h *l1h);
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc);

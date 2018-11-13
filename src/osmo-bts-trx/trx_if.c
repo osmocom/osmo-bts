@@ -140,8 +140,6 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
  * TRX ctrl socket
  */
 
-static void trx_ctrl_timer_cb(void *data);
-
 /* send first ctrl message and start timer */
 static void trx_ctrl_send(struct trx_l1h *l1h)
 {
@@ -162,8 +160,6 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 	send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
 
 	/* start timer */
-	l1h->trx_ctrl_timer.cb = trx_ctrl_timer_cb;
-	l1h->trx_ctrl_timer.data = l1h;
 	osmo_timer_schedule(&l1h->trx_ctrl_timer, 2, 0);
 }
 
@@ -182,6 +178,12 @@ static void trx_ctrl_timer_cb(void *data)
 		tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 
 	trx_ctrl_send(l1h);
+}
+
+void trx_if_init(struct trx_l1h *l1h)
+{
+	l1h->trx_ctrl_timer.cb = trx_ctrl_timer_cb;
+	l1h->trx_ctrl_timer.data = l1h;
 }
 
 /*! Send a new TRX control command.

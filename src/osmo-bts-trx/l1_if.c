@@ -58,6 +58,14 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_UNKNOWN]             = 0,
 };
 
+struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst)
+{
+	struct trx_l1h *l1h;
+	l1h = talloc_zero(tall_ctx, struct trx_l1h);
+	l1h->phy_inst = pinst;
+	trx_if_init(l1h);
+	return l1h;
+}
 
 static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 {
