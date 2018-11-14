@@ -80,3 +80,14 @@ debian/osmo-bts-trx-dbg/
 debian/osmo-bts-trx/
 debian/tmp/
 /tests/power/power_test
+
+# manuals
+doc/manuals/*.html
+doc/manuals/*.svg
+doc/manuals/*.pdf
+doc/manuals/*__*.png
+doc/manuals/*.check
+doc/manuals/generated/
+doc/manuals/osmomsc-usermanual.xml
+doc/manuals/common
+doc/manuals/build

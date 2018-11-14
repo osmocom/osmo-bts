@@ -1335,7 +1335,7 @@ There is FSM implementing all the necessary states and transitions for DTX DL.
 [[dtx_dl_fsm]]
 [graphviz]
 ----
-include::dtx.dot[]
+include::{srcdir}/dtx.dot[]
 ----
 
 The idea is that each state corresponds to the particular message type which have to be send to L1 next while state transition happens on incoming events like FACCH or Voice frames. There are 3 different classes of of events driving this FSM:

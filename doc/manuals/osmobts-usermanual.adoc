@@ -4,36 +4,36 @@ OsmoBTS User Manual
 ===================
 Harald Welte <hwelte@sysmocom.de>
 
-include::../common/chapters/preface.adoc[]
+include::./common/chapters/preface.adoc[]
 
-include::chapters/overview.adoc[]
+include::{srcdir}/chapters/overview.adoc[]
 
-include::../common/chapters/abis.adoc[]
+include::./common/chapters/abis.adoc[]
 
-include::chapters/interfaces.adoc[]
+include::{srcdir}/chapters/interfaces.adoc[]
 
-include::chapters/control.adoc[]
+include::{srcdir}/chapters/control.adoc[]
 
-include::../common/chapters/vty.adoc[]
+include::./common/chapters/vty.adoc[]
 
-include::../common/chapters/logging.adoc[]
+include::./common/chapters/logging.adoc[]
 
-include::chapters/configuration.adoc[]
+include::{srcdir}/chapters/configuration.adoc[]
 
-include::chapters/dynamic-timeslots.adoc[]
+include::{srcdir}/chapters/dynamic-timeslots.adoc[]
 
-include::chapters/bts-models.adoc[]
+include::{srcdir}/chapters/bts-models.adoc[]
 
-include::chapters/architecture.adoc[]
+include::{srcdir}/chapters/architecture.adoc[]
 
-include::../common/chapters/trx_if.adoc[]
+include::./common/chapters/trx_if.adoc[]
 
-include::../common/chapters/control_if.adoc[]
+include::./common/chapters/control_if.adoc[]
 
-include::../common/chapters/port_numbers.adoc[]
+include::./common/chapters/port_numbers.adoc[]
 
-include::../common/chapters/bibliography.adoc[]
+include::./common/chapters/bibliography.adoc[]
 
-include::../common/chapters/glossary.adoc[]
+include::./common/chapters/glossary.adoc[]
 
-include::../common/chapters/gfdl.adoc[]
+include::./common/chapters/gfdl.adoc[]

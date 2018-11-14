@@ -64,7 +64,7 @@ established.
 .Overview of A-bis connection establishment
 ["mscgen"]
 ----
-include::abis/abis-startup.msc[]
+include::{srcdir}/abis/abis-startup.msc[]
 ----
 
 === Identities
@@ -77,16 +77,16 @@ parts:
 * The BTS number at the site
 * The TRX number within the BTS
 
-include::abis/ipa.adoc[]
+include::{srcdir}/abis/ipa.adoc[]
 
-include::abis/oml.adoc[]
+include::{srcdir}/abis/oml.adoc[]
 
-include::abis/rsl.adoc[]
+include::{srcdir}/abis/rsl.adoc[]
 
-include::abis/rtp.adoc[]
+include::{srcdir}/abis/rtp.adoc[]
 
-include::../common/chapters/port_numbers.adoc[]
+include::./common/chapters/port_numbers.adoc[]
 
-include::../common/chapters/glossary.adoc[]
+include::./common/chapters/glossary.adoc[]
 
-include::../common/chapters/gfdl.adoc[]
+include::./common/chapters/gfdl.adoc[]
