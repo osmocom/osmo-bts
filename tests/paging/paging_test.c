@@ -116,7 +116,7 @@ static struct gsm_bts_trx *test_is_ccch_for_agch_setup(uint8_t bs_ag_blks_res)
 {
 	static struct gsm_bts_trx trx;
 	static struct gsm_bts bts;
-	struct gsm48_system_information_type_3 si3;
+	struct gsm48_system_information_type_3 si3 = { 0 };
 	si3.control_channel_desc.bs_ag_blks_res = bs_ag_blks_res;
 	trx.bts = &bts;
 	bts.si_valid |= 0x8;
