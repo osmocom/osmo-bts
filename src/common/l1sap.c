@@ -149,7 +149,7 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 /*! limit number of queue entries to %u; drops any surplus messages */
 static void queue_limit_to(const char *prefix, struct llist_head *queue, unsigned int limit)
 {
-	int count = llist_count(queue);
+	unsigned int count = llist_count(queue);
 
 	if (count > limit)
 		LOGP(DL1P, LOGL_NOTICE, "%s: freeing %d queued frames\n", prefix, count-limit);
