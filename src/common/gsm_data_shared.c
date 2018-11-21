@@ -352,30 +352,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	return bts;
 }
 
-/* reset the state of all MO in the BTS */
-void gsm_bts_mo_reset(struct gsm_bts *bts)
-{
-	struct gsm_bts_trx *trx;
-	unsigned int i;
-
-	gsm_abis_mo_reset(&bts->mo);
-	gsm_abis_mo_reset(&bts->site_mgr.mo);
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++)
-		gsm_abis_mo_reset(&bts->gprs.nsvc[i].mo);
-	gsm_abis_mo_reset(&bts->gprs.nse.mo);
-	gsm_abis_mo_reset(&bts->gprs.cell.mo);
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		gsm_abis_mo_reset(&trx->mo);
-		gsm_abis_mo_reset(&trx->bb_transc.mo);
-
-		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
-			struct gsm_bts_trx_ts *ts = &trx->ts[i];
-			gsm_abis_mo_reset(&ts->mo);
-		}
-	}
-}
-
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num)
 {
 	struct gsm_bts_trx *trx;

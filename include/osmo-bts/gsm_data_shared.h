@@ -818,9 +818,6 @@ void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 	     const struct abis_om_obj_inst *obj_inst);
 
-/* reset the state of all MO in the BTS */
-void gsm_bts_mo_reset(struct gsm_bts *bts);
-
 uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 			  uint8_t ts_nr, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
