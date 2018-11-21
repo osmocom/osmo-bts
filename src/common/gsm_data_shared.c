@@ -333,7 +333,7 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default,
 		sizeof(bts->gprs.cell.rlc_cfg));
 
-	/* create our primary TRX */
+	/* create our primary TRX. It will be initialized during bts_init() */
 	bts->c0 = gsm_bts_trx_alloc(bts);
 	if (!bts->c0) {
 		talloc_free(bts);

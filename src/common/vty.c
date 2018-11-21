@@ -233,7 +233,10 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 			bts->num_trx, VTY_NEWLINE);
 		return CMD_WARNING;
 	} else if (trx_nr == bts->num_trx) {
-		/* allocate a new one */
+		/* Allocate a new TRX
+		 * Remark: TRX0 was already created during gsm_bts_alloc() and
+		 * 	   initialized in bts_init(), not here.
+		 */
 		trx = gsm_bts_trx_alloc(bts);
 		if (trx)
 			bts_trx_init(trx);
