@@ -33,8 +33,6 @@
 #include "l1_if.h"
 #include "loops.h"
 
-#define MS_PWR_DBM(arfcn, lvl) ms_pwr_dbm(gsm_arfcn2band(arfcn), lvl)
-
 /*
  * MS Power loop
  */
@@ -42,6 +40,7 @@
 static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
+	enum gsm_band band = trx->bts->band;
 	uint16_t arfcn = trx->arfcn;
 	int8_t new_power;
 
@@ -72,7 +71,7 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 		LOGP(DLOOP, LOGL_INFO, "Keeping MS new_power of trx=%u "
 			"chan_nr=0x%02x at control level %d (%d dBm)\n",
 			trx->nr, chan_nr, new_power,
-			MS_PWR_DBM(arfcn, new_power));
+			ms_pwr_dbm(band, new_power));
 
 		return 0;
 	}
@@ -81,8 +80,8 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 		"control level %d (%d dBm) to %d (%d dBm)\n",
 		(diff > 0) ? "Raising" : "Lowering",
 		trx->nr, chan_nr, lchan->ms_power_ctrl.current,
-		MS_PWR_DBM(arfcn, lchan->ms_power_ctrl.current), new_power,
-		MS_PWR_DBM(arfcn, new_power));
+		ms_pwr_dbm(band, lchan->ms_power_ctrl.current), new_power,
+		ms_pwr_dbm(band, new_power));
 
 	lchan->ms_power_ctrl.current = new_power;
 
@@ -158,7 +157,7 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	LOGP(DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
 		"MS power: %d (%d dBm) of trx=%u chan_nr=0x%02x\n", rssi,
 		pinst->phy_link->u.osmotrx.trx_target_rssi, lchan->ms_power_ctrl.current,
-		MS_PWR_DBM(trx->arfcn, lchan->ms_power_ctrl.current),
+		ms_pwr_dbm(trx->bts->band, lchan->ms_power_ctrl.current),
 		trx->nr, chan_nr);
 	ms_power_diff(lchan, chan_nr, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
 

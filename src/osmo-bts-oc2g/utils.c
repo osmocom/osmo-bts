@@ -82,13 +82,17 @@ int oc2gbts_select_oc2g_band(struct gsm_bts_trx *trx, uint16_t arfcn)
 {
 	enum gsm_band band;
 	struct gsm_bts *bts = trx->bts;
+	int rc;
+
 	if (!bts->auto_band)
 		return band_osmo2oc2g(trx, bts->band);
 
 	/*
 	 * We need to check what will happen now.
 	 */
-	band = gsm_arfcn2band(arfcn);
+	rc = gsm_arfcn2band_rc(arfcn, &band);
+	if (rc) /* wrong ARFCN, give up */
+		return -1;
 
 	/* if we are already on the right band return */
 	if (band == bts->band)

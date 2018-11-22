@@ -398,7 +398,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
-	int oc2g_band;
+	int rc, oc2g_band;
 
 	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
 				    ARRAY_SIZE(trx_rqd_attr))) {
@@ -409,7 +409,13 @@ static int trx_init(struct gsm_bts_trx *trx)
 	}
 
 	/* Update TRX band */
-	trx->bts->band = gsm_arfcn2band(trx->arfcn);
+	rc = gsm_arfcn2band_rc(trx->arfcn, &trx->bts->band);
+	if (rc) {
+		/* FIXME: abort initialization? */
+		LOGP(DL1C, LOGL_ERROR, "Could not pick GSM band "
+			"for ARFCN %u\n", trx->arfcn);
+		trx->bts->band = 0x00;
+	}
 
 	oc2g_band = oc2gbts_select_oc2g_band(trx, trx->arfcn);
 	if (oc2g_band < 0) {
