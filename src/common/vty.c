@@ -259,7 +259,7 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	char buf_casecnvt[256];
+	const char *sapi_buf;
 	int i;
 
 	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
@@ -291,13 +291,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 	for (i = 0; i < 32; i++) {
 		if (gsmtap_sapi_mask & (1 << i)) {
-			osmo_str2lower(buf_casecnvt, get_value_string(gsmtap_sapi_names, i));
-			vty_out(vty, " gsmtap-sapi %s%s", buf_casecnvt, VTY_NEWLINE);
+			sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, i));
+			vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 		}
 	}
 	if (gsmtap_sapi_acch) {
-		osmo_str2lower(buf_casecnvt, get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
-		vty_out(vty, " gsmtap-sapi %s%s", buf_casecnvt, VTY_NEWLINE);
+		sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
+		vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 	}
 	vty_out(vty, " min-qual-rach %.0f%s", bts->min_qual_rach * 10.0f,
 		VTY_NEWLINE);
