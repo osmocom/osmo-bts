@@ -281,7 +281,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	return abis_bts_rsl_sendmsg(nmsg);
 }
 
-/* 
+/*
  * common channel releated messages
  */
 

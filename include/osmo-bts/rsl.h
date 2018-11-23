@@ -44,4 +44,3 @@ void cb_ts_connected(struct gsm_bts_trx_ts *ts);
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);
 
 #endif // _RSL_H */
-

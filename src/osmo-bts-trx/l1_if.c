@@ -396,7 +396,7 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 	}
 
 	slottype = transceiver_chan_types[pchan];
-	
+
 	if (l1h->config.slottype[tn] != slottype
 	 || !l1h->config.slottype_valid[tn]) {
 		l1h->config.slottype[tn] = slottype;

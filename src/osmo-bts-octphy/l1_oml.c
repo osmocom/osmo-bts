@@ -508,7 +508,7 @@ static int set_ciph_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *da
 
 	/* TODO: This state machine should be shared accross BTS models? */
 	switch (lchan->ciph_state) {
-	case LCHAN_CIPH_RX_REQ:	
+	case LCHAN_CIPH_RX_REQ:
 		lchan->ciph_state = LCHAN_CIPH_RX_CONF;
 		break;
 	case LCHAN_CIPH_RX_CONF_TX_REQ:
