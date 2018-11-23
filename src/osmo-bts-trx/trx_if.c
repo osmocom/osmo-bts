@@ -450,6 +450,7 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 		if (rsp->status == 0) {
 			if (pinst->phy_link->state != PHY_LINK_CONNECTED)
 				phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
+			return 0;
 		} else {
 			LOGP(DTRX, LOGL_NOTICE,
 			     "transceiver (%s) rejected POWERON command (%d), re-trying in a few seconds\n",
