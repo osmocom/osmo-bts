@@ -58,6 +58,16 @@ static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_UNKNOWN]             = 0,
 };
 
+static enum gsm_phys_chan_config transceiver_chan_type_2_pchan(uint8_t type)
+{
+	int i;
+	for (i = 0; i < _GSM_PCHAN_MAX; i++) {
+		if (transceiver_chan_types[i] == type)
+			return (enum gsm_phys_chan_config) i;
+	}
+	return GSM_PCHAN_UNKNOWN;
+}
+
 struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst)
 {
 	struct trx_l1h *l1h;
@@ -140,6 +150,36 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 				   LID_SACCH, 0);
 }
 
+static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct gsm_bts_trx *trx = pinst->trx;
+	struct gsm_bts_trx_ts *ts;
+	enum gsm_phys_chan_config pchan;
+
+
+	if (tn >= TRX_NR_TS) {
+		LOGP(DL1C, LOGL_ERROR, "transceiver (%s) SETSLOT invalid param TN\n",
+		     phy_instance_name(pinst));
+		return;
+	}
+
+	if (type > 13) {
+		LOGP(DL1C, LOGL_ERROR, "transceiver (%s) SETSLOT invalid param TS_TYPE\n",
+		     phy_instance_name(pinst));
+		return;
+	}
+
+	pchan = transceiver_chan_type_2_pchan(type);
+
+	ts = &trx->ts[tn];
+	LOGP(DL1C, LOGL_DEBUG, "%s l1if_setslot_cb(as_pchan=%s),"
+	     " calling cb_ts_connected(rc=%d)\n",
+	     gsm_ts_name(ts), gsm_pchan_name(pchan), rc);
+	cb_ts_connected(ts, rc);
+}
+
+
 /*
  * transceiver provisioning
  */
@@ -196,7 +236,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			if (l1h->config.slottype_valid[tn]
 			 && !l1h->config.slottype_sent[tn]) {
 				trx_if_cmd_setslot(l1h, tn,
-					l1h->config.slottype[tn]);
+					l1h->config.slottype[tn], l1if_setslot_cb);
 				l1h->config.slottype_sent[tn] = 1;
 			}
 		}
@@ -775,8 +815,5 @@ void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 	if (rc)
 		cb_ts_connected(ts, rc);
 
-	LOGP(DL1C, LOGL_NOTICE, "%s bts_model_ts_connect(as_pchan=%s) success,"
-	     " calling cb_ts_connected()\n",
-	     gsm_ts_name(ts), gsm_pchan_name(as_pchan));
-	cb_ts_connected(ts, 0);
+	/* cb_ts_connected will be called in l1if_setslot_cb once we receive RSP SETSLOT */
 }

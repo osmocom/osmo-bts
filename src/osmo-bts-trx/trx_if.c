@@ -196,7 +196,7 @@ void trx_if_init(struct trx_l1h *l1h)
  *  The new ocommand will be added to the end of the control command
  *  queue.
  */
-static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
+static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, void *cb, const char *cmd,
 	const char *fmt, ...)
 {
 	struct trx_ctrl_msg *tcm;
@@ -231,6 +231,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		tcm->params_len = 0;
 	}
 	tcm->critical = critical;
+	tcm->cb = cb;
 
 	/* Avoid adding consecutive duplicate messages, eg: two consecutive POWEROFF */
 	if(pending)
@@ -255,7 +256,7 @@ int trx_if_cmd_poweroff(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	if (pinst->num == 0)
-		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
+		return trx_ctrl_cmd(l1h, 1, NULL, "POWEROFF", "");
 	else
 		return 0;
 }
@@ -265,7 +266,7 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	if (pinst->num == 0)
-		return trx_ctrl_cmd(l1h, 1, "POWERON", "");
+		return trx_ctrl_cmd(l1h, 1, NULL, "POWERON", "");
 	else
 		return 0;
 }
@@ -277,7 +278,7 @@ int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 	if (pinst->phy_link->u.osmotrx.use_legacy_setbsic)
 		return 0;
 
-	return trx_ctrl_cmd(l1h, 1, "SETTSC", "%d", tsc);
+	return trx_ctrl_cmd(l1h, 1, NULL, "SETTSC", "%d", tsc);
 }
 
 /*! Send "SETBSIC" command to TRX */
@@ -287,37 +288,37 @@ int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
 	if (!pinst->phy_link->u.osmotrx.use_legacy_setbsic)
 		return 0;
 
-	return trx_ctrl_cmd(l1h, 1, "SETBSIC", "%d", bsic);
+	return trx_ctrl_cmd(l1h, 1, NULL, "SETBSIC", "%d", bsic);
 }
 
 /*! Send "SETRXGAIN" command to TRX */
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETRXGAIN", "%d", db);
+	return trx_ctrl_cmd(l1h, 0, NULL, "SETRXGAIN", "%d", db);
 }
 
 /*! Send "SETPOWER" command to TRX */
 int trx_if_cmd_setpower(struct trx_l1h *l1h, int db)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETPOWER", "%d", db);
+	return trx_ctrl_cmd(l1h, 0, NULL, "SETPOWER", "%d", db);
 }
 
 /*! Send "SETMAXDLY" command to TRX, i.e. maximum delay for RACH bursts */
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETMAXDLY", "%d", dly);
+	return trx_ctrl_cmd(l1h, 0, NULL, "SETMAXDLY", "%d", dly);
 }
 
 /*! Send "SETMAXDLYNB" command to TRX, i.e. maximum delay for normal bursts */
 int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETMAXDLYNB", "%d", dly);
+	return trx_ctrl_cmd(l1h, 0, NULL, "SETMAXDLYNB", "%d", dly);
 }
 
 /*! Send "SETSLOT" command to TRX: Configure Channel Combination for TS */
-int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
+int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb)
 {
-	return trx_ctrl_cmd(l1h, 1, "SETSLOT", "%d %d", tn, type);
+	return trx_ctrl_cmd(l1h, 1, cb, "SETSLOT", "%d %d", tn, type);
 }
 
 /*! Send "RXTUNE" command to TRX: Tune Receiver to given ARFCN */
@@ -336,7 +337,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, 1, "RXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd(l1h, 1, NULL, "RXTUNE", "%d", freq10 * 100);
 }
 
 /*! Send "TXTUNE" command to TRX: Tune Transmitter to given ARFCN */
@@ -355,25 +356,26 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, 1, "TXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd(l1h, 1, NULL, "TXTUNE", "%d", freq10 * 100);
 }
 
 /*! Send "HANDOVER" command to TRX: Enable handover RACH Detection on timeslot/sub-slot */
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 {
-	return trx_ctrl_cmd(l1h, 1, "HANDOVER", "%d %d", tn, ss);
+	return trx_ctrl_cmd(l1h, 1, NULL, "HANDOVER", "%d %d", tn, ss);
 }
 
 /*! Send "NOHANDOVER" command to TRX: Disable handover RACH Detection on timeslot/sub-slot */
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 {
-	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
+	return trx_ctrl_cmd(l1h, 1, NULL, "NOHANDOVER", "%d %d", tn, ss);
 }
 
 struct trx_ctrl_rsp {
 	char cmd[50];
 	char params[100];
 	int status;
+	void *cb;
 };
 
 static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp)
@@ -437,6 +439,30 @@ static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 	return true;
 }
 
+static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_setslot_cb *cb = (trx_if_cmd_setslot_cb*) rsp->cb;
+	struct phy_instance *pinst = l1h->phy_inst;
+	unsigned int tn, ts_type;
+
+	if (rsp->status)
+		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT failed with status %d\n",
+		     phy_instance_name(pinst), rsp->status);
+
+	/* Since message was already validated against CMD we sent, we know format
+	 * of params is: "<TN> <TS_TYPE>" */
+	if (sscanf(rsp->params, "%u %u", &tn, &ts_type) < 2) {
+		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT unable to parse params\n",
+		     phy_instance_name(pinst));
+		return -EINVAL;
+	}
+
+	if (cb)
+		cb(l1h, tn, ts_type, rsp->status);
+
+	return rsp->status == 0 ? 0 : -EINVAL;
+}
+
 /* -EINVAL: unrecoverable error, exit BTS
  * N > 0: try sending originating command again after N seconds
  * 0: Done with response, get originating command out from send queue
@@ -459,6 +485,8 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 				phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
 			return 5;
 		}
+	} else if (strcmp(rsp->cmd, "SETSLOT") == 0) {
+		return trx_ctrl_rx_rsp_setslot(l1h, rsp);
 	}
 
 	if (rsp->status) {
@@ -525,6 +553,8 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			buf, tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 		goto rsp_error;
 	}
+
+	rsp.cb = tcm->cb;
 
 	/* check for response code */
 	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm->critical);
