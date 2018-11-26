@@ -2070,15 +2070,19 @@ static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	       ts->flags & TS_F_PDCH_ACT_PENDING ? "ACT_PENDING " : "",
 	       ts->flags & TS_F_PDCH_DEACT_PENDING ? "DEACT_PENDING " : "");
 
-	cb_ts_connected(ts);
+	cb_ts_connected(ts, 0);
 
 	msgb_free(l1_msg);
 
 	return 0;
 }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 {
-	return ts_connect_as(ts, as_pchan, ts_connect_cb, NULL);
+	int rc;
+
+	rc = ts_connect_as(ts, as_pchan, ts_connect_cb, NULL);
+	if (rc)
+		cb_ts_connected(ts, rc);
 }

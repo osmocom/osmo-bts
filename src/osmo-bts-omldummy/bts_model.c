@@ -211,9 +211,9 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	return -ENOTSUP;
 }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan)
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan)
 {
-	return -ENOTSUP;
+	return;
 }
 
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)

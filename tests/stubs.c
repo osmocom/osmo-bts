@@ -54,6 +54,6 @@ void bts_model_abis_close(struct gsm_bts *bts)
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 { return 0; }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
-{ return 0; }
+{ return; }

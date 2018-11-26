@@ -2157,7 +2157,7 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
  * 1. call bts_model_ts_disconnect() to disconnect TCH/F;
  * 2. cb_ts_disconnected() is called when done;
  * 3. call bts_model_ts_connect() to connect as PDTCH;
- * 4. cb_ts_connected() is called when done;
+ * 4. cb_ts_connected(rc) is called when done;
  * 5. instruct the PCU to enable PDTCH;
  * 6. the PCU will call back with an activation request;
  * 7. l1sap_info_act_cnf() will call ipacc_dyn_pdch_complete() when SAPI
@@ -2171,7 +2171,7 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
  *    deactivations are done;
  * 4. cb_ts_disconnected() is called when done;
  * 5. call bts_model_ts_connect() to connect as TCH/F;
- * 6. cb_ts_connected() is called when done;
+ * 6. cb_ts_connected(rc) is called when done;
  * 7. directly call ipacc_dyn_pdch_complete(), since no further action required
  *    for TCH/F;
  * 8. send a PDCH DEACT ACK.
@@ -2276,7 +2276,8 @@ static void ipacc_dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	if (rc)
 		goto error_nack;
 
-	rc = bts_model_ts_connect(ts, as_pchan);
+	bts_model_ts_connect(ts, as_pchan);
+	return;
 
 error_nack:
 	/* Error? then NACK right now. */
@@ -2322,9 +2323,14 @@ void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	}
 }
 
-static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
+static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 {
-	int rc;
+	if (rc) {
+		LOGP(DRSL, LOGL_NOTICE, "%s PDCH ACT IPA operation failed (%d) in bts model\n",
+		     gsm_lchan_name(ts->lchan), rc);
+		ipacc_dyn_pdch_complete(ts, rc);
+		return;
+	}
 
 	if (ts->flags & TS_F_PDCH_DEACT_PENDING) {
 		if (ts->lchan[0].type != GSM_LCHAN_TCH_F)
@@ -2373,11 +2379,17 @@ static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts)
 	}
 }
 
-static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts)
+static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 {
-	int rc;
 	struct msgb *msg = ts->dyn.pending_chan_activ;
 	ts->dyn.pending_chan_activ = NULL;
+
+	if (rc) {
+		LOGP(DRSL, LOGL_NOTICE, "%s PDCH ACT OSMO operation failed (%d) in bts model\n",
+		     gsm_lchan_name(ts->lchan), rc);
+		ipacc_dyn_pdch_complete(ts, rc);
+		return;
+	}
 
 	if (!msg) {
 		LOGP(DRSL, LOGL_ERROR,
@@ -2395,15 +2407,15 @@ static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts)
 		msgb_free(msg);
 }
 
-void cb_ts_connected(struct gsm_bts_trx_ts *ts)
+void cb_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 {
 	OSMO_ASSERT(ts);
 
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
-		return ipacc_dyn_pdch_ts_connected(ts);
+		return ipacc_dyn_pdch_ts_connected(ts, rc);
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
-		return osmo_dyn_ts_connected(ts);
+		return osmo_dyn_ts_connected(ts, rc);
 	default:
 		return;
 	}

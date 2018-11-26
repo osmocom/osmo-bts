@@ -764,7 +764,7 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	return 0;
 }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 {
 	int rc;
@@ -773,12 +773,10 @@ int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 
 	rc = trx_set_ts_as_pchan(ts, as_pchan);
 	if (rc)
-		return rc;
+		cb_ts_connected(ts, rc);
 
 	LOGP(DL1C, LOGL_NOTICE, "%s bts_model_ts_connect(as_pchan=%s) success,"
 	     " calling cb_ts_connected()\n",
 	     gsm_ts_name(ts), gsm_pchan_name(as_pchan));
-
-	cb_ts_connected(ts);
-	return 0;
+	cb_ts_connected(ts, 0);
 }

@@ -40,7 +40,7 @@ int rsl_tx_ccch_load_ind_rach(struct gsm_bts *bts, uint16_t total,
 int rsl_tx_delete_ind(struct gsm_bts *bts, const uint8_t *ia, uint8_t ia_len);
 
 void cb_ts_disconnected(struct gsm_bts_trx_ts *ts);
-void cb_ts_connected(struct gsm_bts_trx_ts *ts);
+void cb_ts_connected(struct gsm_bts_trx_ts *ts, int rc);
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);
 
 #endif // _RSL_H */

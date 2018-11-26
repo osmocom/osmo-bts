@@ -133,10 +133,9 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	return -ENOTSUP;
 }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan)
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan)
 {
 	LOGP(DSUM, LOGL_NOTICE, "Unimplemented %s\n", __func__);
-	return -ENOTSUP;
 }
 
 int main(int argc, char **argv)

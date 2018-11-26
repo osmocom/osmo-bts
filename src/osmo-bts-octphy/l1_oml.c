@@ -1605,7 +1605,7 @@ static int ts_connect_cb(struct octphy_hdl *fl1, struct msgb *resp, void *data)
 
 	msgb_free(resp);
 
-	cb_ts_connected(ts);
+	cb_ts_connected(ts, 0);
 
 	return 0;
 }
@@ -1805,9 +1805,10 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	return l1if_req_compl(fl1h, msg, ts_disconnect_cb, NULL);
 }
 
-int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
+void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 {
+	int rc;
 	if (as_pchan == GSM_PCHAN_TCH_F_PDCH
 	    || as_pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
 		LOGP(DL1C, LOGL_ERROR,
@@ -1815,8 +1816,10 @@ int bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 		     " expected a specific pchan instead\n",
 		     gsm_ts_and_pchan_name(ts), gsm_pchan_name(as_pchan));
 		exit(1);
-		return -EINVAL;
+		return;
 	}
 
-	return ts_connect_as(ts, as_pchan, ts_connect_cb, NULL);
+	rc = ts_connect_as(ts, as_pchan, ts_connect_cb, NULL);
+	if (rc)
+		cb_ts_connected(ts, rc);
 }
