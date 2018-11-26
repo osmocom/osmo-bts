@@ -189,6 +189,8 @@ void trx_if_init(struct trx_l1h *l1h)
 /*! Send a new TRX control command.
  *  \param[inout] l1h TRX Layer1 handle to which to send command
  *  \param[in] criticial
+ *  \param[in] cb callback function to be called when valid response is
+ *  		  received. Type of cb depends on type of message.
  *  \param[in] cmd zero-terminated string containing command
  *  \param[in] fmt Format string (+ variable list of arguments)
  *  \returns 0 on success; negative on error
@@ -196,7 +198,7 @@ void trx_if_init(struct trx_l1h *l1h)
  *  The new ocommand will be added to the end of the control command
  *  queue.
  */
-static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
+static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const char *cmd,
 	const char *fmt, ...)
 {
 	struct trx_ctrl_msg *tcm;
@@ -231,6 +233,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 		tcm->params_len = 0;
 	}
 	tcm->critical = critical;
+	tcm->cb = cb;
 
 	/* Avoid adding consecutive duplicate messages, eg: two consecutive POWEROFF */
 	if(pending)
@@ -249,6 +252,7 @@ static int trx_ctrl_cmd(struct trx_l1h *l1h, int critical, const char *cmd,
 
 	return 0;
 }
+#define trx_ctrl_cmd(l1h, critical, cmd, fmt, ...) trx_ctrl_cmd_cb(l1h, critical, NULL, cmd, fmt, ##__VA_ARGS__)
 
 /*! Send "POWEROFF" command to TRX */
 int trx_if_cmd_poweroff(struct trx_l1h *l1h)
@@ -315,9 +319,9 @@ int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly)
 }
 
 /*! Send "SETSLOT" command to TRX: Configure Channel Combination for TS */
-int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type)
+int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb)
 {
-	return trx_ctrl_cmd(l1h, 1, "SETSLOT", "%d %d", tn, type);
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "SETSLOT", "%d %d", tn, type);
 }
 
 /*! Send "RXTUNE" command to TRX: Tune Receiver to given ARFCN */
@@ -374,6 +378,7 @@ struct trx_ctrl_rsp {
 	char cmd[50];
 	char params[100];
 	int status;
+	void *cb;
 };
 
 static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp)
@@ -437,6 +442,30 @@ static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 	return true;
 }
 
+static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_setslot_cb *cb = (trx_if_cmd_setslot_cb*) rsp->cb;
+	struct phy_instance *pinst = l1h->phy_inst;
+	unsigned int tn, ts_type;
+
+	if (rsp->status)
+		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT failed with status %d\n",
+		     phy_instance_name(pinst), rsp->status);
+
+	/* Since message was already validated against CMD we sent, we know format
+	 * of params is: "<TN> <TS_TYPE>" */
+	if (sscanf(rsp->params, "%u %u", &tn, &ts_type) < 2) {
+		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT unable to parse params\n",
+		     phy_instance_name(pinst));
+		return -EINVAL;
+	}
+
+	if (cb)
+		cb(l1h, tn, ts_type, rsp->status);
+
+	return rsp->status == 0 ? 0 : -EINVAL;
+}
+
 /* -EINVAL: unrecoverable error, exit BTS
  * N > 0: try sending originating command again after N seconds
  * 0: Done with response, get originating command out from send queue
@@ -459,6 +488,8 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 				phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
 			return 5;
 		}
+	} else if (strcmp(rsp->cmd, "SETSLOT") == 0) {
+		return trx_ctrl_rx_rsp_setslot(l1h, rsp);
 	}
 
 	if (rsp->status) {
@@ -525,6 +556,8 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			buf, tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 		goto rsp_error;
 	}
+
+	rsp.cb = tcm->cb;
 
 	/* check for response code */
 	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm->critical);

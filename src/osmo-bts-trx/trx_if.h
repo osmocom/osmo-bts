@@ -12,7 +12,10 @@ struct trx_ctrl_msg {
 	int			cmd_len;
 	int			params_len;
 	int			critical;
+	void 			*cb;
 };
+
+typedef void trx_if_cmd_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc);
 
 void trx_if_init(struct trx_l1h *l1h);
 int trx_if_cmd_poweroff(struct trx_l1h *l1h);
@@ -23,7 +26,7 @@ int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db);
 int trx_if_cmd_setpower(struct trx_l1h *l1h, int db);
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly);
 int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly);
-int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type);
+int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb);
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
