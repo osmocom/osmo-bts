@@ -1,0 +1,34 @@
+msc {
+	hscale = 2;
+
+	chan [label="Channel"], rc [label="Radio Carrier"], smg [label="Site Manager"], bts [label="BTS"], bsc [label="BSC"];
+
+	bts => bsc  [label="TCP Connect (Port 3003, OML)"];
+	bts box bsc [label="IPA CCM Identification (Port 3003)"];
+	|||;
+	smg => bsc  [label="(Site Mgr) STATE CHG REP (Disabled/NotInstalled)"];
+	bts => bsc  [label="(BTS) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	rc => bsc   [label="(TRANSC) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 0) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 1) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 2) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 3) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 4) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 5) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 6) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	chan => bsc [label="(Ch 7) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	rc => bsc   [label="(RC) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	bts => bsc  [label="(GPRS-NSE) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	bts => bsc  [label="(GPRS-CELL) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	bts => bsc  [label="(GPRS-NSVC0) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	bts => bsc  [label="(GPRS-NSVC1) STATE CHG REP (Disabled/NotInstalled/Locked)"];
+	|||;
+	smg => bsc  [label="(Site Mgr) SW Activate Req"];
+	smg <= bsc  [label="(Site Mgr) SW Activate Req Ack"];
+	smg <= bsc  [label="(Site Mgr) Activate SW"];
+	smg => bsc  [label="(Site Mgr) Activate SW Ack"];
+	smg => bsc  [label="(Site Mgr) STATE CHG REP (Enabled)"];
+	smg => bsc  [label="(Site Mgr) SW Activated Report"];
+	smg <= bsc  [label="(Site Mgr) OPSTART"];
+	smg => bsc  [label="(Site Mgr) OPSTART ACK"];
+}

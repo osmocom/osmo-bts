@@ -1,0 +1,56 @@
+msc {
+	hscale = 2;
+
+	ms [label="MS"], bts [label="BTS"], bsc [label="BSC"], Msc [label="MSC"], mgw [label="MGW"];
+
+	ms => bts	[label="L1 RACH burst"];
+	bts => bsc	[label="RSL CHAN RQD"];
+	bts <= bsc	[label="RSL CHAN ACT"];
+	bts => bsc	[label="RSL CHAN ACT ACK"];
+	bts <= bsc	[label="RSL IMM ASS CMD (RR IMM ASS)"];
+	ms  <= bts	[label="RR IMMEDIATE ASSIGN"];
+	ms  => bts	[label="LAPDm SABM (CM SERVICE REQ)"];
+	ms  <= bts	[label="LAPDm FIXME"];
+	bts => bsc	[label="RSL ESTABLISH IND (CM SERVICE REQ)"];
+	bsc => Msc	[label="CR (BSSAP COMPLETE L3 (CM SERVICE REQ))"];
+	...;
+	ms box Msc	[label="MM Common Procedures (INFO, ID, AUTH, CIPH)"];
+	...;
+	ms  => bts	[label="CC SETUP"];
+	bts => bsc	[label="RSL DATA IND (CC SETUP)"];
+	bsc => Msc	[label="DT1 (DTAP (CC SETUP))"];
+	...;
+	ms box Msc	[label="CC Signalling"];
+	...;
+	bsc <= Msc	[label="BSSAP ASSIGNMENT CMD (TCH)"];
+	bts <= bsc	[label="RSL IPA CRCX", id="1"];
+	bts => bsc	[label="RSL IPA CRCX ACK (IP/Port @ BTS)"];
+	bsc => Msc	[label="FIXME"];
+	Msc => mgw	[label="FIXME"];
+	bts <- mgw	[label="Start RTP + RTCP UDP Flows"];
+
+	bts <= bsc	[label="RSL DATA REQ (RR CHAN MOD MODIFY)"];
+	ms  <= bts	[label="RR CHAN MOD MODIFY"];
+	ms  => bts	[label="RR CHAN MOD MODIFY ACK"];
+	bts => bsc	[label="RSL DATA IND (RR CHAN MOD MODIFY ACK)"];
+	|||;
+	bts <= bsc	[label="RSL MODE MODIFY REQ"];
+	bts => bsc	[label="RSL MODE MODIFY ACK"];
+
+	Msc <= mgw	[label="FIXME"];
+	bsc <= Msc	[label="FIXME"];
+	bts <= bsc	[label="RSL IPA MDCX (IP/Port @ MGW)", id="2"];
+	bts => bsc	[label="RSL IPA MDCX ACK"];
+
+	bts -> mgw	[label="Start RTP + RTCP UDP Flows"];
+	ms box mgw	[label="Active Voice Call"];
+	bts => bsc	[label="RSL MEAS RES"];
+	...;
+
+	bts <= bsc	[label="RSL IPA DLCX"];
+	bts => bsc	[label="RSL IPA DLCX ACK"];
+	bts -x mgw	[label="Stop RTP + RTCP UDP Flows"];
+
+	bts <= bsc	[label="RSL RF CHAN REL"];
+	bts => bsc	[label="RSL RF CHAN REL ACK"];
+}

@@ -1,0 +1,106 @@
+== IPA Multiplex
+
+The ETSI/3GPP specifications for A-bis transport (ETSI/3GPP TS 08.56)
+specify the transmission of RSL and OML messages over a LAPD based
+framing on top of 64kBit/s signalling times slots (B-channels) on E1
+lines.
+
+OsmoBTS does not implement this LAPD based transport, but instead
+implements A-bis over IP in a flavor first observed by ip.access nanoBTS
+products.  The OsmoBTS implementation is a clean-room re-implementation
+based on the observation and dissection of protocol traces.
+
+LAPD as used in E1 signalling channels provides in-order transmission
+and reliable delivery.  This is why TCP was chosen as Layer 4 transport
+protocol on top of IP.  TCP however, is a stream based transport
+protocol, which doesn't preserve the boundaries of messages.
+
+To work around this shortcoming, an additional framing layer called the
+IPA multiplex was introduced between TCP and the RSL and OML messages.
+
+.Protocol Stacking
+[width="30%"]
+|===
+|RSL + OML (this document)
+|IPA (this document)
+|TCP (IETF RFC 793)
+|IP (IETF RFC 791)
+|Ethernet (IEEE 802.3)
+|===
+
+=== IPA Header
+
+Each higher-layer PDU is encapsulated by a three-byte IPA header with
+the following structure:
+
+.IPA Header Structure
+[options="header",cols="10%,15%,15%,60%"]
+|===
+|Offset (Octets)|Length|Name|Description
+|0|2|Length|Length of the variable-length payload section in network
+byte order (excluding the length of the IPA Header)
+|2|1|Stream Identifier|Identifies the stream of the payload
+|3|Variable|Payload|higher-layer PDU (i.e. RSL or OML message)
+|===
+
+=== IPA Stream Identifiers
+
+The IPA Stream Identifier serves to differentiate different streams
+within the multiplex.  In the context of A-bis, it can be seen as
+analogous to the LAPD TEI on classic A-bis over E1.
+
+The following IPA stream identifiers are being used in A-bis/IP:
+
+.IPA Stream Identifiers
+[options="header",width="70%",cols="20%,20%,60%"]
+|===
+|Value (Hex)|Name|Description
+|0x00|RSL|A-bis RSL according to this document, TRX 0
+|0x01|RSL|A-bis RSL according to this document, TRX 1
+|0x0n|RSL|A-bis RSL according to this document, TRX n
+|0xfe|CCM|IPA Connection Management
+|0xff|OML|A-bis OML according to this document
+|===
+
+
+=== IPA Connection Management (CCM)
+
+The IPA Connection Management is a sub-layer underneath the IPA
+multiplex which is used to manage the connection itself.  It supports
+functions like Identity Management and Keep-Alive.
+
+==== Identity Management
+
+When a BTS connects to the BSC, the BSC must identify the connected BTS
+somehow.  In ETSI/3GPP A-bis, the E1 multiplex + signalling timeslot
+number is used for this.  In IP, there is no similar usable identity.
+Hence, the Unit ID is used for this purpose.
+
+.Procedure for IPA peer identification is as follows
+[options="header",cols="20%,80%"]
+|===
+|Direction|Operation
+|BTS -> BSC|BTS connects the TCP connection to be used with IPA
+|BTS <- BSC|BSC requests BTS identity with ID_GET
+|BTS -> BSC|BTS responds BTS Unit ID with ID_RESP
+|BTS <- BSC|BSC responds with ID_ACK, if the Unit ID is known to the BSC
+|===
+
+Following the above peer identification procedure, transfer of
+higher-level messages such as OML or RSL commences.
+
+==== IPA CCM Messages
+
+IPA CCM supports the following messages
+
+.IPA CCM Messages
+[options="header"]
+[cols="10%,15%,75%"]
+|===
+|Value|Name|Purpose
+|0x00|PING|Request a PONG from the peer
+|0x01|PONG|Response to a PING
+|0x04|ID_GET|Request Identity from peer
+|0x05|ID_RESP|Response to ID_GET
+|0x06|ID_ACK|Identity Acknowledged
+|===

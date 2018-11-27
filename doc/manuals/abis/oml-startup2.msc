@@ -1,0 +1,50 @@
+msc {
+	hscale = 2;
+
+	chan [label="Channel"], rc [label="Radio Carrier"], bts [label="BTS"], bsc [label="BSC"];
+
+	bts box bsc [label="OML Connect + Site Manager Init"];
+	...;
+	bts => bsc  [label="(BTS) SW Activate Req"];
+	bts <= bsc  [label="(BTS) SW Activate Req Ack"];
+	bts <= bsc  [label="(BTS) Activate SW"];
+	bts => bsc  [label="(BTS) Activate SW Ack"];
+	bts => bsc  [label="(BTS) STATE CHG REP (Disabled/Dependency)"];
+	bts => bsc  [label="(BTS) SW Activated Report"];
+	|||;
+	rc => bsc   [label="(TRANSC) SW Activate Req"];
+	rc => bsc   [label="(RC) SW Activated Req"];
+	|||;
+	bts <= bsc  [label="(BTS) Set BTS Attributes"];
+	bts => bsc  [label="(BTS) Set BTS Attributes Ack"];
+	bts <= bsc  [label="(BTS) OPSTART"];
+	bts => bsc  [label="(BTS) OPSTART Ack"];
+	|||;
+	bts <= bsc  [label="(BTS) Change Adm State (Unlocked)"];
+	bts => bsc  [label="(BTS) Change Adm State ACK (Unlocked)"];
+	bts => bsc  [label="(BTS) STATE CHG REP (Disabled/Dependency/Unlcoked)"];
+	|||;
+	rc <= bsc   [label="(TRANSC) SW Activate Req Ack"];
+	rc <= bsc   [label="(TRANSC) Activate SW"];
+	rc => bsc   [label="(TRANSC) Activate SW Ack"];
+	rc => bsc   [label="(TRANSC) STATE CHG REP (Disabled/Dependency)"];
+	rc => bsc   [label="(TRANSC) SW Activated Report"];
+
+	chan => bsc [label="(CHAN 0) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 1) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 2) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 3) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 4) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 5) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 6) STATE CHG REP (Disabled/Dependency)"];
+	chan => bsc [label="(CHAN 7) STATE CHG REP (Disabled/Dependency)"];
+	|||;
+	chan => bsc [label="(CHAN 0) SW Activated Report"];
+	chan => bsc [label="(CHAN 1) SW Activated Report"];
+	chan => bsc [label="(CHAN 2) SW Activated Report"];
+	chan => bsc [label="(CHAN 3) SW Activated Report"];
+	chan => bsc [label="(CHAN 4) SW Activated Report"];
+	chan => bsc [label="(CHAN 5) SW Activated Report"];
+	chan => bsc [label="(CHAN 6) SW Activated Report"];
+	chan => bsc [label="(CHAN 7) SW Activated Report"];
+}

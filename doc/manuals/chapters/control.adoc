@@ -1,0 +1,24 @@
+[[control]]
+== Control interface
+
+The actual protocol is described in <<common-control-if>>, the variables
+common to all programs using it are described in <<ctrl_common_vars>>. Here we
+describe variables specific to OsmoBTS. The commands starting with prefix
+"net.btsN." are specific to a certain BTS so N have to be replaced with BTS
+number when issuing command. Similarly the
+TRX-specific commands are additionally prefixed with TRX number e. g.
+"net.bts1.trx2.thermal-attenuation".
+
+
+.Variables available over control interface
+[options="header",width="100%",cols="20%,5%,5%,50%,20%"]
+|===
+|Name|Access|Trap|Value|Comment
+|net.btsN.trxM.thermal-attenuation|RW|No|integer|See <<ther>> for details.
+|===
+
+[[ther]]
+=== thermal-attenuation
+
+Allowed SET value for thermal attenuation is between 0 to 40 dB. Note: the value
+is SET in dB units but GET will return value in mdB units used internally.

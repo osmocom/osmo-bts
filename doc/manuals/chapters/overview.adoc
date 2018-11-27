@@ -1,0 +1,105 @@
+== Overview
+
+=== About this manual
+
+This manual should help you getting started with the OsmoBTS software.
+It will cover aspects of configuring and running OsmoBTS as well as some
+introduction about its internal architecture and external interfaces.
+
+=== About OsmoBTS
+
+OsmoBTS is an implementation of a GSM BTS (Base Transceiver Station).  A
+BTS serves  as the interface between the Um radio interface towards
+phones  and the wired Abis interface towards the BSC (Base Station
+Controller).  It also implements the network side of the Layer 2 of the
+Um radio interface: The LAPDm protocol.
+
+OsmoBTS is licensed as Free and Open Source Software (FOSS) under _GNU
+AGPLv3_ <<gnu-agplv3>>.  It is developed as one GSM network
+infrastructure component part of the overall Osmocom project.
+
+As perhaps the first implementation of a GSM BTS ever in the industry,
+OsmoBTS is implemented in a vendor-independent way and supports a large
+variety of transceiver hardware and physical layer implementations from
+many vendors.
+
+=== Credits
+
+OsmoBTS was originally developed in 2011 by Andreas Eversberg and Harald
+Welte.  It has since been maintained by Harald Welte and Holger Freyther
+at sysmocom.
+
+=== OsmoBTS in the Osmocom GSM network architecture
+
+OsmoBTS can be used in combination with the various other GSM network
+elements developed under the umbrella of the Osmocom project.
+
+Typical configurations either use OsmoBTS with OsmoBSC, or with
+OsmoNITB, as can be seen in the following figures.
+
+[[fig-gsm-classic]]
+.Classic GSM archtiecture using OsmoBTS with OsmoBTS components
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+	MS0 [label="MS"]
+	MS1 [label="MS"]
+	MS2 [label="MS"]
+	MS3 [label="MS"]
+	BTS0 [label="OsmoBTS"]
+	BTS1 [label="OsmoBTS"]
+	BSC [label="OsmoBSC"]
+	MSC [label="MSC/VLR"]
+	HLR [label="HLR/AUC"]
+	MS0->BTS0 [label="Um"]
+	MS1->BTS0 [label="Um"]
+	MS2->BTS1 [label="Um"]
+	MS3->BTS1 [label="Um"]
+	BTS0->BSC [label="Abis"]
+	BTS1->BSC [label="Abis"]
+	BSC->MSC [label="A"]
+	MSC->HLR [label="C"]
+	MSC->EIR [label="F"]
+	MSC->SMSC
+}
+----
+
+
+[[fig-gsm-nitb]]
+.GSM architecture using OsmoBTS + OsmoNITB
+[graphviz]
+----
+digraph G {
+	rankdir=LR;
+	MS0 [label="MS"]
+	MS1 [label="MS"]
+	MS2 [label="MS"]
+	MS3 [label="MS"]
+	BTS0 [label="OsmoBTS"]
+	BTS1 [label="OsmoBTS"]
+	MS0->BTS0 [label="Um"]
+	MS1->BTS0 [label="Um"]
+	MS2->BTS1 [label="Um"]
+	MS3->BTS1 [label="Um"]
+	BTS0->BSC [label="Abis"]
+	BTS1->BSC [label="Abis"]
+	subgraph cluster_nitb {
+		label = "OsmoNITB";
+		BSC
+		MSC [label="MSC/VLR"]
+		HLR [label="HLR/AUC"]
+		BSC->MSC [label="A"]
+		MSC->HLR [label="C"]
+		MSC->EIR [label="F"]
+		MSC->SMSC;
+	}
+}
+----
+
+If intended by the user, it is of course also possible to implement an
+OsmoBTS-compatible Abis-over-IP interface in any third party BSC.  The
+Abis/IP interface and its protocol are documented in the _OsmoBTS
+Abis Protocol Specification_ <<osmobts-abis-spec>>.  However, be advised
+that such a configuration is currently not officially supported by
+Osmocom.

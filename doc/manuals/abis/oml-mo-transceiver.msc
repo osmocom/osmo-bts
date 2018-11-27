@@ -1,0 +1,23 @@
+msc {
+	bts [label="Baseband Transceiver"], bsc [label="BSC"];
+	---		[label="Initial state after establishing OML"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Notinstalled/Locked)"];
+	---		[label="MO requests software activation"];
+	bts => bsc	[label="SW Activate Req"];
+	bts <= bsc	[label="SW Activate Req Ack"];
+	---		[label="BTS instructs BTS to activate software"];
+	bts <= bsc	[label="Activate SW"];
+	bts => bsc	[label="Activate SW Ack"];
+	---		[label="MO reports new state after SW activation"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency)"];
+	bts => bsc	[label="SW Activated Report"];
+	---		[label="BSC requests RSL establishment"];
+	bts <= bsc	[label="IPA RSL Connect"];
+	bts => bsc	[label="IPA RSL Connect ACK"];
+	bts <= bsc	[label="OPSTART"];
+	bts => bsc	[label="OPSTART ACK"];
+	---		[label="As this object is locked, we need to unlock it"];
+	bts <= bsc	[label="Change Adm State (Unlocked)"];
+	bts => bsc	[label="Change Adm State Ack (Unlocked)"];
+	bts => bsc	[label="STATE CHG REP (Disabled/Dependency/Unlocked)"];
+}
