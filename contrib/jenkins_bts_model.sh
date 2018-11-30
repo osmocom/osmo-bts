@@ -1,6 +1,14 @@
 #!/bin/sh
-# this is a dispatcher script which will call the bts-model-specific
-# script based on the bts model specified as command line argument
+# jenkins build helper script for osmo-bts.  This is how we build on jenkins.osmocom.org
+#
+# environment variables:
+# * FIRMWARE_VERSION: which firmware version to build ("master", "femtobts_v2.7", ...)
+# * WITH_MANUALS: build manual PDFs if set to "1"
+# * PUBLISH: upload manuals after building if set to "1" (ignored without WITH_MANUALS = "1")
+#
+# usage: jenkins_bts_model.sh BTS_MODEL
+# * BTS_MODEL: which BTS model specific script to run ("sysmo", "oct", ...)
+#
 
 bts_model="$1"
 

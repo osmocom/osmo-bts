@@ -38,10 +38,23 @@ build_bts() {
     osmo-deps.sh libosmocore
     cd $base
     shift
+
+    # Manuals: build
     conf_flags="$*"
+    if [ "$WITH_MANUALS" = "1" ]; then
+        conf_flags="$conf_flags --enable-manuals"
+        osmo-build-dep.sh osmo-gsm-manuals
+        export PATH="$inst/bin:$PATH"
+    fi
+
     autoreconf --install --force
     ./configure $conf_flags
     $MAKE $PARALLEL_MAKE
     $MAKE check || cat-testlogs.sh
     DISTCHECK_CONFIGURE_FLAGS="$conf_flags" $MAKE distcheck || cat-testlogs.sh
+
+    # Manuals: publish
+    if [ "$WITH_MANUALS" = "1" ] && [ "$PUBLISH" = "1" ]; then
+        $MAKE -C "$base/doc/manuals" publish
+    fi
 }
