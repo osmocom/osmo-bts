@@ -8,7 +8,7 @@ AM_CFLAGS += -DENABLE_OC2GBTS
 
 EXTRA_DIST = misc/oc2gbts_mgr.h misc/oc2gbts_misc.h misc/oc2gbts_par.h misc/oc2gbts_led.h \
 	misc/oc2gbts_temp.h misc/oc2gbts_power.h misc/oc2gbts_clock.h \
-	misc/oc2gbts_bid.h misc/oc2gbts_nl.h \
+	misc/oc2gbts_bid.h misc/oc2gbts_bts.h misc/oc2gbts_nl.h misc/oc2gbts_swd.h \
 	hw_misc.h l1_if.h l1_transp.h oc2gbts.h oml_router.h utils.h
 
 bin_PROGRAMS = osmo-bts-oc2g oc2gbts-mgr oc2gbts-util
