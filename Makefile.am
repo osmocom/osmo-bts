@@ -10,7 +10,7 @@ EXTRA_DIST = \
 	git-version-gen .version \
 	README.md
 
-DISTCHECK_CONFIGURE_FLAGS = \
+AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
 
 @RELMAKE@
