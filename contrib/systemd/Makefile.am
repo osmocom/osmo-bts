@@ -1,5 +1,16 @@
+EXTRA_DIST = \
+  lc15bts-mgr.service \
+  oc2gbts-mgr.service \
+  osmo-bts-lc15.service \
+  osmo-bts-oc2g.service \
+  osmo-bts-sysmo.service \
+  osmo-bts-trx.service \
+  osmo-bts-virtual.service \
+  sysmobts-mgr.service
+
 if HAVE_SYSTEMD
 SYSTEMD_SERVICES = osmo-bts-virtual.service
+
 
 if ENABLE_SYSMOBTS
 SYSTEMD_SERVICES += osmo-bts-sysmo.service sysmobts-mgr.service
@@ -13,6 +24,5 @@ if ENABLE_LC15BTS
 SYSTEMD_SERVICES += osmo-bts-lc15.service lc15bts-mgr.service
 endif
 
-EXTRA_DIST = $(SYSTEMD_SERVICES)
 systemdsystemunit_DATA = $(SYSTEMD_SERVICES)
 endif # HAVE_SYSTEMD
