@@ -2204,6 +2204,12 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 		     "%s Request to PDCH %s, but lchan is still in state %s\n",
 		     gsm_ts_and_pchan_name(ts), pdch_act? "ACT" : "DEACT",
 		     gsm_lchans_name(lchan->state));
+		/* TCH takes preference over PDCH so allow forcing PDCH DEACT,
+		 * but forbid forcing PDCH ACT if lchan still active */
+		if (pdch_act) {
+			rsl_tx_dyn_pdch_nack(lchan, pdch_act, RSL_ERR_NORMAL_UNSPEC);
+			return;
+		}
 	}
 
 	ts->flags |= pdch_act? TS_F_PDCH_ACT_PENDING
