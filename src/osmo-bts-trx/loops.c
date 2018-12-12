@@ -37,6 +37,11 @@
  * MS Power loop
  */
 
+/*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
+ *  \param lchan logical channel for which to compute (and in which to store) new power value.
+ *  \param[in] chan_nr RSL channel number of the channel, only used for logging purpose.
+ *  \param[in] diff input delta value (in dB)
+ *  \returns 0 in all cases */
 static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
@@ -44,14 +49,17 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 	uint16_t arfcn = trx->arfcn;
 	int8_t new_power;
 
+	/* compute new target MS output power level based on current value subtracted by 'diff/2' */
 	new_power = lchan->ms_power_ctrl.current - (diff >> 1);
 
 	if (diff == 0)
 		return 0;
 
+	/* ms transmit power level cannot become negative */
 	if (new_power < 0)
 		new_power = 0;
 
+	/* saturate at the maximum possible power level for the given band */
 	// FIXME: to go above 1W, we need to know classmark of MS
 	if (arfcn >= 512 && arfcn <= 885) {
 		if (new_power > 15)
@@ -61,6 +69,8 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 			new_power = 19;
 	}
 
+	/* don't ever change more than MS_{LOWER,RAISE}_MAX during one loop iteration, i.e.
+	 * reduce the speed at which the MS transmit power can change */
 	/* a higher value means a lower level (and vice versa) */
 	if (new_power > lchan->ms_power_ctrl.current + MS_LOWER_MAX)
 		new_power = lchan->ms_power_ctrl.current + MS_LOWER_MAX;
@@ -83,11 +93,16 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 		ms_pwr_dbm(band, lchan->ms_power_ctrl.current), new_power,
 		ms_pwr_dbm(band, new_power));
 
+	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power;
 
 	return 0;
 }
 
+/*! Input a new RSSI value into the MS power control loop for the given logical channel.
+ *  \param chan_state L1 channel state of the logical channel.
+ *  \param rssi Received Signal Strength Indication (in dBm)
+ *  \return 0 in all cases */
 static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 {
 	/* ignore inserted dummy frames, treat as lost frames */
@@ -110,6 +125,10 @@ static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 	return 0;
 }
 
+/*! Process a single clock tick of the MS power control loop.
+ *  \param lchan Logical channel to which the clock tick applies
+ *  \param[in] chan_nr RSL channel number (for logging purpose)
+ *  \returns 0 in all cases */
 static int ms_power_clock(struct gsm_lchan *lchan,
 	uint8_t chan_nr, struct l1sched_chan_state *chan_state)
 {
@@ -213,6 +232,14 @@ int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 	return 0;
 }
 
+/*! Process a SACCH event as input to the MS power control and TA loop.  Function
+ *  is called once every uplink SACCH block is received.
+ * \param l1t L1 TRX instance on which we operate
+ * \param chan_nr RSL channel number on which we operate
+ * \param chan_state L1 scheduler channel state of the channel on which we operate
+ * \param[in] rssi Receive Signal Strength Indication
+ * \param[in] toa256 Time of Arrival in 1/256 symbol periods
+ * \returns 0 in all cases */
 int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa256)
 {
@@ -220,15 +247,18 @@ int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 					.lchan[l1sap_chan2ss(chan_nr)];
 	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
+	/* if MS power control loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_val(chan_state, rssi);
 
+	/* if TA loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
 		ta_val(lchan, chan_nr, chan_state, toa256);
 
 	return 0;
 }
 
+/*! Called once every downlink SACCH block needs to be sent. */
 int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state)
 {
