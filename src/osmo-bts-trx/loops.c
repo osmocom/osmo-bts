@@ -40,9 +40,8 @@
 /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
  *  \param lchan logical channel for which to compute (and in which to store) new power value.
  *  \param[in] chan_nr RSL channel number of the channel, only used for logging purpose.
- *  \param[in] diff input delta value (in dB)
- *  \returns 0 in all cases */
-static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
+ *  \param[in] diff input delta value (in dB) */
+static void ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	enum gsm_band band = trx->bts->band;
@@ -53,7 +52,7 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 	new_power = lchan->ms_power_ctrl.current - (diff >> 1);
 
 	if (diff == 0)
-		return 0;
+		return;
 
 	/* ms transmit power level cannot become negative */
 	if (new_power < 0)
@@ -83,7 +82,7 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 			trx->nr, chan_nr, new_power,
 			ms_pwr_dbm(band, new_power));
 
-		return 0;
+		return;
 	}
 
 	LOGP(DLOOP, LOGL_INFO, "%s MS new_power of trx=%u chan_nr=0x%02x from "
@@ -96,18 +95,17 @@ static int ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power;
 
-	return 0;
+	return;
 }
 
 /*! Input a new RSSI value into the MS power control loop for the given logical channel.
  *  \param chan_state L1 channel state of the logical channel.
- *  \param rssi Received Signal Strength Indication (in dBm)
- *  \return 0 in all cases */
-static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
+ *  \param rssi Received Signal Strength Indication (in dBm) */
+static void ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 {
 	/* ignore inserted dummy frames, treat as lost frames */
 	if (rssi < -127)
-		return 0;
+		return;
 
 	LOGP(DLOOP, LOGL_DEBUG, "Got RSSI value of %d\n", rssi);
 
@@ -118,18 +116,15 @@ static int ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 	/* store and process RSSI */
 	if (chan_state->meas.rssi_valid_count
 					== ARRAY_SIZE(chan_state->meas.rssi))
-		return 0;
+		return;
 	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
 	chan_state->meas.rssi_valid_count++;
-
-	return 0;
 }
 
 /*! Process a single clock tick of the MS power control loop.
  *  \param lchan Logical channel to which the clock tick applies
- *  \param[in] chan_nr RSL channel number (for logging purpose)
- *  \returns 0 in all cases */
-static int ms_power_clock(struct gsm_lchan *lchan,
+ *  \param[in] chan_nr RSL channel number (for logging purpose) */
+static void ms_power_clock(struct gsm_lchan *lchan,
 	uint8_t chan_nr, struct l1sched_chan_state *chan_state)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
@@ -140,21 +135,22 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	/* skip every second clock, to prevent oscillating due to roundtrip
 	 * delay */
 	if (!(chan_state->meas.clock & 1))
-		return 0;
+		return;
 
 	LOGP(DLOOP, LOGL_DEBUG, "Got SACCH master clock at RSSI count %d\n",
 		chan_state->meas.rssi_count);
 
 	/* wait for initial burst */
 	if (!chan_state->meas.rssi_got_burst)
-		return 0;
+		return;
 
 	/* if no burst was received from MS at clock */
 	if (chan_state->meas.rssi_count == 0) {
 		LOGP(DLOOP, LOGL_NOTICE, "LOST SACCH frame of trx=%u "
 			"chan_nr=0x%02x, so we raise MS power\n",
 			trx->nr, chan_nr);
-		return ms_power_diff(lchan, chan_nr, MS_RAISE_MAX);
+		ms_power_diff(lchan, chan_nr, MS_RAISE_MAX);
+		return;
 	}
 
 	/* reset total counter */
@@ -163,7 +159,7 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 	/* check the minimum level received after MS acknowledged the ordered
 	 * power level */
 	if (chan_state->meas.rssi_valid_count == 0)
-		return 0;
+		return;
 	for (rssi = 999, i = 0; i < chan_state->meas.rssi_valid_count; i++) {
 		if (rssi > chan_state->meas.rssi[i])
 			rssi = chan_state->meas.rssi[i];
@@ -179,8 +175,6 @@ static int ms_power_clock(struct gsm_lchan *lchan,
 		ms_pwr_dbm(trx->bts->band, lchan->ms_power_ctrl.current),
 		trx->nr, chan_nr);
 	ms_power_diff(lchan, chan_nr, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
-
-	return 0;
 }
 
 
@@ -191,19 +185,19 @@ static int ms_power_clock(struct gsm_lchan *lchan,
  * Timing Advance loop
  */
 
-int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
+void ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state, int16_t toa256)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	/* check if the current L1 header acks to the current ordered TA */
 	if (lchan->meas.l1_info[1] != lchan->rqd_ta)
-		return 0;
+		return;
 
 	/* sum measurement */
 	chan_state->meas.toa256_sum += toa256;
 	if (++(chan_state->meas.toa_num) < 16)
-		return 0;
+		return;
 
 	/* complete set */
 	toa256 = chan_state->meas.toa256_sum / chan_state->meas.toa_num;
@@ -228,8 +222,6 @@ int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 
 	chan_state->meas.toa_num = 0;
 	chan_state->meas.toa256_sum = 0;
-
-	return 0;
 }
 
 /*! Process a SACCH event as input to the MS power control and TA loop.  Function
@@ -238,9 +230,8 @@ int ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
  * \param chan_nr RSL channel number on which we operate
  * \param chan_state L1 scheduler channel state of the channel on which we operate
  * \param[in] rssi Receive Signal Strength Indication
- * \param[in] toa256 Time of Arrival in 1/256 symbol periods
- * \returns 0 in all cases */
-int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
+ * \param[in] toa256 Time of Arrival in 1/256 symbol periods */
+void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa256)
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
@@ -254,12 +245,10 @@ int trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	/* if TA loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
 		ta_val(lchan, chan_nr, chan_state, toa256);
-
-	return 0;
 }
 
 /*! Called once every downlink SACCH block needs to be sent. */
-int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
+void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state)
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
@@ -271,11 +260,9 @@ int trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 
 	/* count the number of SACCH clocks */
 	chan_state->meas.clock++;
-
-	return 0;
 }
 
-int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
+void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state, float ber)
 {
 	struct gsm_bts_trx *trx = l1t->trx;
@@ -284,11 +271,11 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 
 	/* check if loop is enabled */
 	if (!chan_state->amr_loop)
-		return 0;
+		return;
 
 	/* wait for MS to use the requested codec */
 	if (chan_state->ul_ft != chan_state->dl_cmr)
-		return 0;
+		return;
 
 	/* count bit errors */
 	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
@@ -301,7 +288,7 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 
 	/* count frames */
 	if (chan_state->ber_num < 48)
-		return 0;
+		return;
 
 	/* calculate average (reuse ber variable) */
 	ber = chan_state->ber_sum / chan_state->ber_num;
@@ -325,8 +312,7 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 				chan_state->dl_cmr - 1, trx->nr, chan_nr);
 			chan_state->dl_cmr--;
 		}
-
-		return 0;
+		return;
 	}
 
 	/* upgrade */
@@ -342,18 +328,15 @@ int trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 			chan_state->dl_cmr++;
 		}
 
-		return 0;
+		return;
 	}
-
-	return 0;
 }
 
-int trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
+void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
 {
 	if (chan_state->amr_loop && !loop) {
 		chan_state->amr_loop = 0;
-
-		return 0;
+		return;
 	}
 
 	if (!chan_state->amr_loop && loop) {
@@ -363,8 +346,6 @@ int trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
 		chan_state->ber_num = 0;
 		chan_state->ber_sum = 0;
 
-		return 0;
+		return;
 	}
-
-	return 0;
 }
