@@ -78,19 +78,15 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 	if (lchan->ms_power_ctrl.current == new_power) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
 			new_power, ms_pwr_dbm(band, new_power));
+	} else {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
+			(diff > 0) ? "Raising" : "Lowering",
+			lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
+			new_power, ms_pwr_dbm(band, new_power));
 
-		return;
+		/* store the resulting new MS power level in the lchan */
+		lchan->ms_power_ctrl.current = new_power;
 	}
-
-	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
-		(diff > 0) ? "Raising" : "Lowering",
-		lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
-		new_power, ms_pwr_dbm(band, new_power));
-
-	/* store the resulting new MS power level in the lchan */
-	lchan->ms_power_ctrl.current = new_power;
-
-	return;
 }
 
 /*! Input a new RSSI value into the MS power control loop for the given logical channel.
@@ -110,8 +106,7 @@ static void ms_power_val(struct gsm_lchan *lchan, struct l1sched_chan_state *cha
 	chan_state->meas.rssi_got_burst = 1;
 
 	/* store and process RSSI */
-	if (chan_state->meas.rssi_valid_count
-					== ARRAY_SIZE(chan_state->meas.rssi))
+	if (chan_state->meas.rssi_valid_count == ARRAY_SIZE(chan_state->meas.rssi))
 		return;
 	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
 	chan_state->meas.rssi_valid_count++;
@@ -293,11 +288,7 @@ void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 				chan_state->dl_cmr - 1);
 			chan_state->dl_cmr--;
 		}
-		return;
-	}
-
-	/* upgrade */
-	if (chan_state->dl_cmr < chan_state->codecs - 1) {
+	} else if (chan_state->dl_cmr < chan_state->codecs - 1) {
 		/* degrade, if ber is above threshold  FIXME: C/I*/
 		if (ber <
 		    lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr].threshold
@@ -307,8 +298,6 @@ void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 				chan_state->dl_cmr + 1);
 			chan_state->dl_cmr++;
 		}
-
-		return;
 	}
 }
 
