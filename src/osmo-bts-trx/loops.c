@@ -39,9 +39,8 @@
 
 /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
  *  \param lchan logical channel for which to compute (and in which to store) new power value.
- *  \param[in] chan_nr RSL channel number of the channel, only used for logging purpose.
  *  \param[in] diff input delta value (in dB) */
-static void ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
+static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	enum gsm_band band = trx->bts->band;
@@ -77,20 +76,16 @@ static void ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 		new_power = lchan->ms_power_ctrl.current - MS_RAISE_MAX;
 
 	if (lchan->ms_power_ctrl.current == new_power) {
-		LOGP(DLOOP, LOGL_INFO, "Keeping MS new_power of trx=%u "
-			"chan_nr=0x%02x at control level %d (%d dBm)\n",
-			trx->nr, chan_nr, new_power,
-			ms_pwr_dbm(band, new_power));
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
+			new_power, ms_pwr_dbm(band, new_power));
 
 		return;
 	}
 
-	LOGP(DLOOP, LOGL_INFO, "%s MS new_power of trx=%u chan_nr=0x%02x from "
-		"control level %d (%d dBm) to %d (%d dBm)\n",
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
 		(diff > 0) ? "Raising" : "Lowering",
-		trx->nr, chan_nr, lchan->ms_power_ctrl.current,
-		ms_pwr_dbm(band, lchan->ms_power_ctrl.current), new_power,
-		ms_pwr_dbm(band, new_power));
+		lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
+		new_power, ms_pwr_dbm(band, new_power));
 
 	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power;
@@ -99,15 +94,16 @@ static void ms_power_diff(struct gsm_lchan *lchan, uint8_t chan_nr, int8_t diff)
 }
 
 /*! Input a new RSSI value into the MS power control loop for the given logical channel.
+ *  \param lchan logical channel
  *  \param chan_state L1 channel state of the logical channel.
  *  \param rssi Received Signal Strength Indication (in dBm) */
-static void ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
+static void ms_power_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int8_t rssi)
 {
 	/* ignore inserted dummy frames, treat as lost frames */
 	if (rssi < -127)
 		return;
 
-	LOGP(DLOOP, LOGL_DEBUG, "Got RSSI value of %d\n", rssi);
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Got RSSI value of %d\n", rssi);
 
 	chan_state->meas.rssi_count++;
 
@@ -122,10 +118,8 @@ static void ms_power_val(struct l1sched_chan_state *chan_state, int8_t rssi)
 }
 
 /*! Process a single clock tick of the MS power control loop.
- *  \param lchan Logical channel to which the clock tick applies
- *  \param[in] chan_nr RSL channel number (for logging purpose) */
-static void ms_power_clock(struct gsm_lchan *lchan,
-	uint8_t chan_nr, struct l1sched_chan_state *chan_state)
+ *  \param lchan Logical channel to which the clock tick applies */
+static void ms_power_clock(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -137,7 +131,7 @@ static void ms_power_clock(struct gsm_lchan *lchan,
 	if (!(chan_state->meas.clock & 1))
 		return;
 
-	LOGP(DLOOP, LOGL_DEBUG, "Got SACCH master clock at RSSI count %d\n",
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Got SACCH master clock at RSSI count %d\n",
 		chan_state->meas.rssi_count);
 
 	/* wait for initial burst */
@@ -146,10 +140,8 @@ static void ms_power_clock(struct gsm_lchan *lchan,
 
 	/* if no burst was received from MS at clock */
 	if (chan_state->meas.rssi_count == 0) {
-		LOGP(DLOOP, LOGL_NOTICE, "LOST SACCH frame of trx=%u "
-			"chan_nr=0x%02x, so we raise MS power\n",
-			trx->nr, chan_nr);
-		ms_power_diff(lchan, chan_nr, MS_RAISE_MAX);
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE, "LOST SACCH frame, so we raise MS power\n");
+		ms_power_diff(lchan, MS_RAISE_MAX);
 		return;
 	}
 
@@ -169,12 +161,11 @@ static void ms_power_clock(struct gsm_lchan *lchan,
 	chan_state->meas.rssi_valid_count = 0;
 
 	/* change RSSI */
-	LOGP(DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
-		"MS power: %d (%d dBm) of trx=%u chan_nr=0x%02x\n", rssi,
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
+		"MS power: %d (%d dBm)\n", rssi,
 		pinst->phy_link->u.osmotrx.trx_target_rssi, lchan->ms_power_ctrl.current,
-		ms_pwr_dbm(trx->bts->band, lchan->ms_power_ctrl.current),
-		trx->nr, chan_nr);
-	ms_power_diff(lchan, chan_nr, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
+		ms_pwr_dbm(trx->bts->band, lchan->ms_power_ctrl.current));
+	ms_power_diff(lchan, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
 }
 
 
@@ -185,11 +176,8 @@ static void ms_power_clock(struct gsm_lchan *lchan,
  * Timing Advance loop
  */
 
-void ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int16_t toa256)
+void ta_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int16_t toa256)
 {
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-
 	/* check if the current L1 header acks to the current ordered TA */
 	if (lchan->meas.l1_info[1] != lchan->rqd_ta)
 		return;
@@ -204,21 +192,16 @@ void ta_val(struct gsm_lchan *lchan, uint8_t chan_nr,
 
 	/* check for change of TOA */
 	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > 0) {
-		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
-			"early (%d), now lowering TA from %d to %d\n",
-			trx->nr, chan_nr, toa256, lchan->rqd_ta,
-			lchan->rqd_ta - 1);
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is too early (%d), now lowering TA from %d to %d\n",
+			toa256, lchan->rqd_ta, lchan->rqd_ta - 1);
 		lchan->rqd_ta--;
 	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < 63) {
-		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is too "
-			"late (%d), now raising TA from %d to %d\n",
-			trx->nr, chan_nr, toa256, lchan->rqd_ta,
-			lchan->rqd_ta + 1);
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is too late (%d), now raising TA from %d to %d\n",
+			toa256, lchan->rqd_ta, lchan->rqd_ta + 1);
 		lchan->rqd_ta++;
 	} else
-		LOGP(DLOOP, LOGL_INFO, "TOA of trx=%u chan_nr=0x%02x is "
-			"correct (%d), keeping current TA of %d\n",
-			trx->nr, chan_nr, toa256, lchan->rqd_ta);
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is correct (%d), keeping current TA of %d\n",
+			toa256, lchan->rqd_ta);
 
 	chan_state->meas.toa_num = 0;
 	chan_state->meas.toa256_sum = 0;
@@ -240,11 +223,11 @@ void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 
 	/* if MS power control loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
-		ms_power_val(chan_state, rssi);
+		ms_power_val(lchan, chan_state, rssi);
 
 	/* if TA loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
-		ta_val(lchan, chan_nr, chan_state, toa256);
+		ta_val(lchan, chan_state, toa256);
 }
 
 /*! Called once every downlink SACCH block needs to be sent. */
@@ -256,7 +239,7 @@ void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
 	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
-		ms_power_clock(lchan, chan_nr, chan_state);
+		ms_power_clock(lchan, chan_state);
 
 	/* count the number of SACCH clocks */
 	chan_state->meas.clock++;
@@ -297,19 +280,17 @@ void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	chan_state->ber_num = 0;
 	chan_state->ber_sum = 0;
 
-	LOGP(DLOOP, LOGL_DEBUG, "Current bit error rate (BER) %.6f "
-		"codec id %d of trx=%u chan_nr=0x%02x\n", ber,
-		chan_state->ul_ft, trx->nr, chan_nr);
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Current bit error rate (BER) %.6f "
+		"codec id %d\n", ber, chan_state->ul_ft);
 
 	/* degrade */
 	if (chan_state->dl_cmr > 0) {
 		/* degrade, if ber is above threshold FIXME: C/I */
 		if (ber >
 		   lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr-1].threshold) {
-			LOGP(DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
-				"from codec id %d to %d of trx=%u "
-				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr - 1, trx->nr, chan_nr);
+			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
+				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
+				chan_state->dl_cmr - 1);
 			chan_state->dl_cmr--;
 		}
 		return;
@@ -321,10 +302,9 @@ void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 		if (ber <
 		    lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr].threshold
 		  - lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr].hysteresis) {
-			LOGP(DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
-				"from codec id %d to %d of trx=%u "
-				"chan_nr=0x%02x\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr + 1, trx->nr, chan_nr);
+			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
+				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
+				chan_state->dl_cmr + 1);
 			chan_state->dl_cmr++;
 		}
 

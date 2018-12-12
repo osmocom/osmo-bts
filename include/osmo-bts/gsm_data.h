@@ -24,6 +24,8 @@
 #define GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT 41
 #define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
 
+#define LOGPLCHAN(lchan, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_lchan_name(lchan), ## args)
+
 struct gsm_network {
 	struct llist_head bts_list;
 	unsigned int num_bts;
