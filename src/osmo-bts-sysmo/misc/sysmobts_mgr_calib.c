@@ -86,14 +86,14 @@ static void mgr_gps_close(struct sysmobts_mgr_instance *mgr)
 	osmo_timer_del(&mgr->calib.fix_timeout);
 
 	osmo_fd_unregister(&mgr->calib.gpsfd);
-	gps_close(&mgr->calib.gpsdata);
-	memset(&mgr->calib.gpsdata, 0, sizeof(mgr->calib.gpsdata));
+	gps_close(mgr->calib.gpsdata);
+	memset(mgr->calib.gpsdata, 0, sizeof(*(mgr->calib.gpsdata)));
 	mgr->calib.gps_open = 0;
 }
 
 static void mgr_gps_checkfix(struct sysmobts_mgr_instance *mgr)
 {
-	struct gps_data_t *data = &mgr->calib.gpsdata;
+	struct gps_data_t *data = mgr->calib.gpsdata;
 
 	/* No 2D fix yet */
 	if (data->fix.mode < MODE_2D) {
@@ -119,7 +119,7 @@ static int mgr_gps_read(struct osmo_fd *fd, unsigned int what)
 {
 	int rc;
 	struct sysmobts_mgr_instance *mgr = fd->data;
-	rc = compat_gps_read(&mgr->calib.gpsdata);
+	rc = compat_gps_read(mgr->calib.gpsdata);
 	if (rc == -1) {
 		LOGP(DCALIB, LOGL_ERROR, "gpsd vanished during read.\n");
 		calib_state_reset(mgr, CALIB_FAIL_GPS);
@@ -143,7 +143,8 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 {
 	int rc;
 
-	rc = gps_open("localhost", DEFAULT_GPSD_PORT, &mgr->calib.gpsdata);
+	mgr->calib.gpsdata = &mgr->calib.gpsdata_buf;
+	rc = gps_open("localhost", DEFAULT_GPSD_PORT, mgr->calib.gpsdata);
 	if (rc != 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to connect to GPS %d\n", rc);
 		calib_state_reset(mgr, CALIB_FAIL_GPS);
@@ -151,12 +152,12 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 	}
 
 	mgr->calib.gps_open = 1;
-	gps_stream(&mgr->calib.gpsdata, WATCH_ENABLE, NULL);
+	gps_stream(mgr->calib.gpsdata, WATCH_ENABLE, NULL);
 
 	mgr->calib.gpsfd.data = mgr;
 	mgr->calib.gpsfd.cb = mgr_gps_read;
 	mgr->calib.gpsfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
-	mgr->calib.gpsfd.fd = mgr->calib.gpsdata.gps_fd;
+	mgr->calib.gpsfd.fd = mgr->calib.gpsdata->gps_fd;
 	if (osmo_fd_register(&mgr->calib.gpsfd) < 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
 		calib_state_reset(mgr, CALIB_FAIL_GPS);

@@ -96,7 +96,8 @@ struct sysmobts_mgr_instance {
 		/* gps structure to see if there is a fix */
 		int gps_open;
 		struct osmo_fd gpsfd;
-		struct gps_data_t gpsdata;
+		struct gps_data_t *gpsdata;
+		struct gps_data_t gpsdata_buf;
 		struct osmo_timer_list fix_timeout;
 
 		/* Loop/Re-try control */
