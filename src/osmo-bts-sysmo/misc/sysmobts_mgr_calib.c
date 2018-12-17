@@ -59,8 +59,10 @@ enum calib_result {
 
 static inline int compat_gps_read(struct gps_data_t *data)
 {
+#if USE_GPSD2_API
+	return gps_poll(data);
 /* API break in gpsd 6bba8b329fc7687b15863d30471d5af402467802 */
-#if GPSD_API_MAJOR_VERSION >= 7 && GPSD_API_MINOR_VERSION >= 0
+#elif GPSD_API_MAJOR_VERSION >= 7 && GPSD_API_MINOR_VERSION >= 0
 	return gps_read(data, NULL, 0);
 #else
 	return gps_read(data);
@@ -87,7 +89,9 @@ static void mgr_gps_close(struct sysmobts_mgr_instance *mgr)
 
 	osmo_fd_unregister(&mgr->calib.gpsfd);
 	gps_close(mgr->calib.gpsdata);
+#if !USE_GPSD2_API
 	memset(mgr->calib.gpsdata, 0, sizeof(*(mgr->calib.gpsdata)));
+#endif
 	mgr->calib.gps_open = 0;
 }
 
@@ -143,8 +147,13 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 {
 	int rc;
 
+#if USE_GPSD2_API
+	mgr->calib.gpsdata = gps_open("localhost", DEFAULT_GPSD_PORT);
+	rc = mgr->calib.gpsdata ? 0 : -1;
+#else
 	mgr->calib.gpsdata = &mgr->calib.gpsdata_buf;
 	rc = gps_open("localhost", DEFAULT_GPSD_PORT, mgr->calib.gpsdata);
+#endif
 	if (rc != 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to connect to GPS %d\n", rc);
 		calib_state_reset(mgr, CALIB_FAIL_GPS);
@@ -152,8 +161,12 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 	}
 
 	mgr->calib.gps_open = 1;
-	gps_stream(mgr->calib.gpsdata, WATCH_ENABLE, NULL);
 
+#if USE_GPSD2_API
+	gps_query(mgr->calib.gpsdata, "w+x");
+#else
+	gps_stream(mgr->calib.gpsdata, WATCH_ENABLE, NULL);
+#endif
 	mgr->calib.gpsfd.data = mgr;
 	mgr->calib.gpsfd.cb = mgr_gps_read;
 	mgr->calib.gpsfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
