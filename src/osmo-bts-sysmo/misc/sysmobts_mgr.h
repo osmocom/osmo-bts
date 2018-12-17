@@ -9,6 +9,10 @@
 
 #include <gps.h>
 
+#if !defined(GPSD_API_MAJOR_VERSION) || GPSD_API_MAJOR_VERSION < 5
+#define USE_GPSD2_API 1
+#endif
+
 #include <stdint.h>
 
 enum {
@@ -97,7 +101,9 @@ struct sysmobts_mgr_instance {
 		int gps_open;
 		struct osmo_fd gpsfd;
 		struct gps_data_t *gpsdata;
+#if !USE_GPSD2_API
 		struct gps_data_t gpsdata_buf;
+#endif
 		struct osmo_timer_list fix_timeout;
 
 		/* Loop/Re-try control */
