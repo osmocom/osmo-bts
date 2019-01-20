@@ -1,3 +1,237 @@
+osmo-bts (1.0.0) unstable; urgency=medium
+
+  [ Stefan Sperling ]
+  * let osmo-bts log a special notice if OML connection is closed early
+  * log reception of PCU_IF_MSG_PAG_REQ messages from osmo-pcu
+  * update sysinfo copies in all lchans upon SACCH FILL
+  * preserve lchan-specific SI overrides on SACCH FILL
+  * fix timespec subtraction in compute_elapsed_us()
+  * fix conditions for sending fill frames during RTS IND
+  * send TCH/F fill frames in DTX mode (WIP)
+  * Revert "send TCH/F fill frames in DTX mode (WIP)"
+  * prevent potential NULL dereference in virtbts's tx_tchh_fn
+  * properly initialize si3 in test_is_ccch_for_agch_setup()
+  * add missing check of osmo_wqueue_enqueue() return value
+
+  [ Harald Welte ]
+  * scheduler_trx: Add reminders to use libosmocore functions
+  * cosmetic: it's n_r in check_for_first_ciphrd(), not n_s
+  * Add min/max/std-dev measurement reporting for TOA256
+  * debian/rules: Don't overwrite .tarball-version
+  * CBCH: Fix rejecting SMS-CB related RSL messages
+  * [sysmo,lc15]: Consider CBCH channel combinations in chan_nr_by_sapi()
+  * CBCH: Move processing via L1SAP
+  * CBCH: Implement CBCH support for osmo-bts-{trx,virtual}
+  * CBCH: Use llist_first_entry_or_null() instead of reinventing it
+  * l1sap/scheduler: Consistently print chan_nr as hex number
+  * CBCH: Fix CBCH via L1SAP for osmo-bts-{sysmo,octphy,litecell15}
+  * get_lchan_by_chan_nr(): Fix resolution of CBCH
+  * CBCH: Add FIXME comments on queue overflow/underflow handling
+  * CBCH: sprinkle some OMSO_ASSERT() and guard against talloc failure
+  * CBCH: Fix CBCH implementation for osmo-bts-trx
+  * CBCH: Some more scheduler_mframe cleanup
+  * ensure all config file examples are well-formed
+  * lc15bts_mgr_vty: Ensure writing well-formed config files
+  * paging_test: Fix AGCH/PCH split test for second half of 102 multiframe
+  * Fix computing CCCH block number from frame number
+  * sysmo, virtual: properly handle BS-AG-BLKS-RES as received from BSC
+  * scheduler_trx.c: Switch to osmo_timerfd() of libosmocore >= 0.12.0
+  * initial checkin of manuals to public repo
+  * Add link to Asciidoc source code of manual
+  * spelling: message discriminator, not descriminator
+  * osmobts-abis: Add Revision log regarding dynamic cannels
+  * Documentation on AMR RTP in case of DTX
+  * rtp-amr.adoc: TCH/AFS Uplink
+  * rtp-amr.adoc: TCH/AFS Downlink: Inhibiting
+  * rtp-amr: TCH/AHS Uplink: FACCH/H During DTX
+  * rtp-amr.adoc: New TCH/AHS downlink chapters
+  * rtp-amr.adoc: Fixes to Message Sequence Charts
+  * update osmo-bts-virtual documentation, now that code is merged
+  * vty-ref: Update URI of docbook 5.0 schema
+  * osmo-bts-trx/loops.c: Add comments documenting TA + MS power control loop
+  * osmo-bts-trx/loops.[ch]: Make functions "void" if they always return 0
+  * osmo-bts-trx/loops.c: Use lchan name based logging
+  * osmo-bts-trx/loops.c: Make code control flow more readable
+
+  [ Philipp Maier ]
+  * rtp: make port range configurable, assign correct port numbers
+  * octphy: add support for 16x oversampling mode
+  * cosmetic: separate measurement testcase definitions
+  * cosmetic: unify measurement sample handling in one function
+  * measurement: make sure state is reset on chan act.
+  * measurement: make sure measurement interval end is detected
+  * measurement: fix measurement interval end detection
+  * osmo_mcast_sock: make sure SO_REUSEADDR is applied
+  * cosmetic: fix sourcecode formatting
+  * cosmetic: remove wrong comment
+  * measurement: add unit tests for is_meas_complete()
+  * measurement: fix sub frame table for TCH/H, SS1
+  * measurement: add unit tests for ts45008_83_is_sub()
+  * measurement: fix is_meas_overdue() and increase testcoverage
+  * cosmetic: rename *_meas_rep_fn10* to *_meas_rep_fn10*_by_*s
+  * cosmetic: test_is_meas_overdue() does not test is_meas_complete()
+  * measurement: substitue missing measurements
+  * measurement: add SUB measurements in test_lchan_meas_process_measurement
+  * paging: add unit-test to check different bs_ag_blks_res settings
+  * measurement: display fn_mod when measuremnet is added
+  * cosmetic: fix typo in comment
+  * measurement: remove missed interval end detection
+  * measurement: fix unit-test test_lchan_meas_process_measurement
+
+  [ Pau Espin Pedrol ]
+  * bts.c: Log name of RR msg type instead of value
+  * bts.c: Add missing include for gsm48_rr_msg_name
+  * bts_agch_enqueue: Decrease queue len hard_limit from 1000 to 100
+  * compact AGCH queue: Drop too msg diff than IMM_ASS_REJ
+  * Send DELETE_IND when dropping Imm Assign pending message
+  * lc15: Use correct type for hLayer1 field
+  * lc15: Fix incorrect cast of hLayer1
+  * pcu_sock: Log event pcu_sock created
+  * l1_if.c: Move decl of vars used in conditional macro
+  * sysmo: vty: Add missing include for lchan_deactivate
+  * sysmo: Fix memcmp in RF-MUTE.req for superfemto < 3.6.0
+  * sysmo: l1if_mute_rf: Declare vars inside ifdef section
+  * sysmo: l1_if.c: Avoid decl of unused vars and funcs with femtobts_v2.7 build
+  * sysmo: calib_file.c: Avoid decl of unused vars and funcs with femtobts_v2.7 build
+  * jenkins_*.sh: add --enable-werror to configure flags
+  * doc: Move calypsoBTS example into trx subdir
+  * build: Install example cfg files
+  * debian: Package installed example doc files
+  * Remove unneeded direct libortp dependency
+  * debian: Make osmo-bts-* packages conflict with old osmo-bts package
+  * debian: Create dbg package for osm-bts-virtual
+  * rsl: Use value_string to print encryption algo name
+  * l1sap: add_l1sap_header: Compact msgb_push ret assignment
+  * sched: Log RX->RTP packet like we do in add_l1sap_header
+  * scheduler: Log error on fn jump
+  * trx: scheduler: Keep RTP clock up to date while in DTXu pause
+  * Move systemd service to contrib/systemd
+  * Install systemd services with autotools
+  * Install sample cfg file to /etc/osmocom
+  * doc/examples/Makefile: Install bts-mgr cfg files used by systemd services
+  * lc15: vty: Add missing include for lchan_deactivate
+  * lc15: fsync requires fd instead of file stream
+  * lc15: rewrite and refactor code to print hwversion description
+  * lc15: led_sleep_cb: pass correct ptr to llist_move_tail
+  * abis: inp_s_cbfn: Improve logging signal related information
+  * lchan_meas_check_compute: Log value during incorrect num of SUB measurementes detected
+  * l1sap: Log name of chan_nr instead of hex value
+  * rsl_rx_chan-activ: Improve logging information
+  * gsm_pchan2chan_nr: Fix conversion of CCCH_LCHAN
+  * Convert lchan CCCH_LCHAN to chan_nr BCCH and viceversa
+  * {oc2g,sysmo}-mgr-calib: Fix build against gpsd >= 3.18
+  * bts: Allocate TRX for BTS dynamically, deprecate -t
+  * bts-trx: trx_if: Use struct to store CTRL msg parsed responses
+  * bts-trx: setup timer once at creation time
+  * common: Implement OML for trx_set_available(1)
+  * bts-trx: Allow re-try without exit if POWERON fails in osmo-trx
+  * bts: Fix TRX0 param initialization
+  * rsl: Log lchan state during dynts PDCH->TCH
+  * rsl: Avoid sending ipa PDCH DEACT NACK followed by ACK
+  * bts-trx: early return on POWERON success
+  * cosmetic: fix whitespace
+  * bts_model: Allow TS connect to be processed asynchronously
+  * OsmoBTS/chapters/configuration.adoc: Add bts index in example
+  * OsmoBTS: Update osmotrx ip to diff between local and remote
+  * rtp-amr: Describe requirement to recieve all PH-DATA.ind events
+  * rtp-amr: Fix typo and trailing whitespace
+  * Allow easily disabling GFDL references
+  * OsmoBTS: bts-models: Add Lime Microsystems devices as supported osmo-trx
+  * Introduce chapter trx_if.adoc and add it to OsmoTRX and OsmoBTS
+  * bts: Fix typo
+  * oc2g: Fix headers missing during make distcheck
+  * bts-trx: (n)ack PDCH DEACT only after TRX answered SETSLOT
+  * sysmobts_mgr: Prepare code for gpsd < 2.96 support
+  * sysmobts_mgr: Add support for gpsd < 2.96
+  * rsl: Send PDCH ACT NACK if TCH chan is still active
+
+  [ Vadim Yanitskiy ]
+  * Clarify frame loss counter for l1sched_chan_state
+  * osmo-bts-trx/l1_if.c: cosmetic: fix typo in debug msg
+  * common/rsl.c: tweak log message in lapdm_rll_tx_cb()
+  * contrib/jenkins_*.sh: drop rudimentary '--with-osmo-pcu'
+  * common/pcu_sock.c: cosmetic: explicitly address lchan
+  * common/scheduler.c: track TDMA frame loss per logical channels
+  * common/vty.c: fix deprecated osmo_str2lower() usage
+  * Fix deprecated gsm_arfcn2band(), use gsm_arfcn2band_rc()
+
+  [ Neels Hofmeyr ]
+  * cosmetic: abis.c: typo "exixt"
+  * fix ip.access dyn TS for osmo-bts-trx
+  * fix RSL Chan Mode Modif for dyn TS
+  * vty: mark 'rtp bind-ip' deprecated, not hidden
+  * Importing history from osmo-gsm-manuals
+  * OsmoBTS: typo x2 ('Objects Classes' -> 'Object Classes')
+  * OsmoBTS: fix typos, streamline language style
+  * OsmoBTS: s/content of this attribute/this attribute/
+  * OsmoBTS: explain IEs marked 'ignored' *and* 'Received'
+  * abis/oml.doc: remove duplicate sentence part
+  * OsmoBTS: typos
+  * OsmoBTS: wording tweak
+  * OsmoBTS: hardware support: remove dup, tweak wording
+  * Document dynamic channels on Abis, both IPA and Osmocom style
+  * OsmoBTS/abis/rsl: fix subtitle for ladder diagram of osmo dyn switchover
+  * OsmoBTS/abis/dyn_ts_osmocom_style.msc: adjust PDCH Act ack
+  * OsmoBTS/abis/rsl.adoc: fix missing section header
+  * OsmoBTS/chapters/dynamic-timeslots.adoc: Remove obsolete links
+  * osmobts-usermanual.adoc: fix link to abis.adoc chapter
+  * OsmoBTS/chapters/configuration.adoc: fix index numbering
+  * OsmoBTS/abis/rsl: cosmetic: 'IPA style'
+  * OsmoBTS/abis/rsl: add missing info for Osmocom Dyn Channels
+  * make clean: also remove generated image files
+  * add 'make check' target
+  * OsmoBTS/abis/rsl: combine separate dyn ts sections
+  * fix 'make clean': shell glob, ignore failure
+  * OsmoBTS/abis/rsl: split dyn TS ladder diagrams to fit on page
+  * fix build: abis: re-add dependencies
+  * dynamic timeslots: add BSC level config instructions
+  * refactor Makefile build rules, don't use the FORCE
+
+  [ Keith Whyte ]
+  * log: add error log for RSL Chan Mode Modif
+  * fix handling of odd pchans in bts_supports_cm()
+
+  [ Omar Ramadan ]
+  * Add OC-2G BTS sources
+
+  [ Max ]
+  * osmo-bts-trx: print TRX socket addresses in 'show transceiver'
+  * Fix type mismatch
+  * Drop unused function
+  * Add OsmoBTS control interface description
+  * Move RTP AMR doc to top level
+  * Add DTX implementation details to RTP AMR
+  * Sync DTX FSM with OsmoBTS code
+
+  [ Holger Hans Peter Freyther ]
+  * OsmoBTS: Fix the author name and mail address
+
+  [ Jonathan Brielmaier ]
+  * fix various typos across all manuals
+
+  [ Daniel Willmann ]
+  * Add section about configuring power-ramping
+  * OsmoBTS: Print VTY command in fixed-width font
+  * OsmoBTS: Fix typo
+
+  [ Alexander Couzens ]
+  * OsmoBTS: add vty reference documentation
+  * OsmoBTS: generate osmobts-abis.pdf again
+
+  [ Ivaylo Kostov ]
+  * BSC,BTS: add diagrams of PCU-BTS-NITB-SGSN relationships
+
+  [ Philipp ]
+  * Describe how to run multiple instances of osmo-nitb and osmo-bts
+
+  [ Oliver Smith ]
+  * build manuals moved here from osmo-gsm-manuals.git
+  * Fix DISTCHECK_CONFIGURE_FLAGS override
+  * contrib/jenkins_*.sh: build and publish manuals
+  * contrib: fix makedistcheck with disabled systemd
+
+ -- Harald Welte <laforge@gnumonks.org>  Sun, 20 Jan 2019 21:13:37 +0100
+
 osmo-bts (0.8.1) unstable; urgency=medium
 
   [ Neels Hofmeyr ]
