@@ -1463,8 +1463,8 @@ DEFUN(cfg_phy_inst, cfg_phy_inst_cmd,
 }
 
 DEFUN(cfg_phy_no_inst, cfg_phy_no_inst_cmd,
-	"no instance <0-255>"
-	NO_STR "Select a PHY instance to remove\n", "PHY Instance number\n")
+	"no instance <0-255>",
+	NO_STR "Select a PHY instance to remove\n" "PHY Instance number\n")
 {
 	int inst_nr = atoi(argv[0]);
 	struct phy_link *plink = vty->index;
