@@ -846,7 +846,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len,
 					  *rssi_sum / *rssi_num,
-					  4 * (*toa256_sum) / *toa_num, 0, ber10k,
+					  *toa256_sum / *toa_num, 0, ber10k,
 					  PRES_INFO_UNKNOWN);
 }
 
@@ -947,7 +947,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	}
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
-		l2, rc, *rssi_sum / *rssi_num, 4 * (*toa256_sum) / *toa_num, 0,
+		l2, rc, *rssi_sum / *rssi_num, *toa256_sum / *toa_num, 0,
 					  ber10k, PRES_INFO_BOTH);
 }
 
@@ -1071,7 +1071,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (rc == GSM_MACBLOCK_LEN) {
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		_sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi, 4 * toa256, 0,
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi, toa256, 0,
 					   ber10k, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
@@ -1263,7 +1263,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		_sched_compose_ph_data_ind(l1t, tn,
 			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi, toa256/64, 0,
+			tch_data + amr, GSM_MACBLOCK_LEN, rssi, toa256, 0,
 					   ber10k, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
