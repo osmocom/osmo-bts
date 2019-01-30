@@ -24,5 +24,9 @@ if ENABLE_LC15BTS
 SYSTEMD_SERVICES += osmo-bts-lc15.service lc15bts-mgr.service
 endif
 
+if ENABLE_OC2GBTS
+SYSTEMD_SERVICES += osmo-bts-oc2g.service oc2gbts-mgr.service
+endif
+
 systemdsystemunit_DATA = $(SYSTEMD_SERVICES)
 endif # HAVE_SYSTEMD
