@@ -42,5 +42,14 @@ EXTRA_DIST += $(doc_lc15_DATA)
 OSMOCONF_FILES += litecell15/osmo-bts-lc15.cfg litecell15/lc15bts-mgr.cfg
 endif
 
+if ENABLE_OC2GBTS
+doc_oc2gdir = $(docdir)/examples/osmo-bts-oc2g
+doc_oc2g_DATA = \
+        oc2g/osmo-bts-oc2g.cfg \
+        oc2g/oc2gbts-mgr.cfg
+EXTRA_DIST += $(doc_oc2g_DATA)
+OSMOCONF_FILES += oc2g/osmo-bts-oc2g.cfg oc2g/oc2gbts-mgr.cfg
+endif
+
 osmoconfdir = $(sysconfdir)/osmocom
 osmoconf_DATA = $(OSMOCONF_FILES)
