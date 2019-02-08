@@ -38,6 +38,7 @@ void gsm_abis_mo_reset(struct gsm_abis_mo *mo)
 {
 	mo->nm_state.operational = NM_OPSTATE_NULL;
 	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
+	mo->nm_state.administrative = NM_STATE_LOCKED;
 }
 
 static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
@@ -222,10 +223,12 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
-	trx->mo.nm_state.administrative = NM_STATE_UNLOCKED;
 
 	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
 		    bts->nr, trx->nr, 0xff);
+	/* FIXME: Why would the TRX come up unlocked? */
+	trx->mo.nm_state.administrative = NM_STATE_UNLOCKED;
+
 	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
 		    bts->nr, trx->nr, 0xff);
 
