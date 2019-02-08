@@ -425,26 +425,19 @@ int oml_mo_opstart_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
  * contained in 'msg'. ACK is sent if cause == 0; NACK otherwise */
 int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 {
-	struct abis_om_hdr *old_oh = msgb_l2(old_msg);
-	struct abis_om_fom_hdr *old_foh = msgb_l3(old_msg);
 	struct msgb *msg;
 	struct abis_om_fom_hdr *foh;
-	int is_manuf = 0;
 
-	msg = oml_msgb_alloc();
+	msg = msgb_copy(old_msg, "OML_fom_ack_nack");
 	if (!msg)
 		return -ENOMEM;
 
-	/* make sure to respond with MANUF if request was MANUF */
-	if (old_oh->mdisc == ABIS_OM_MDISC_MANUF)
-		is_manuf = 1;
+	/* remove any l2/l1 that may be present in copy */
+	msgb_pull_to_l2(msg);
 
 	msg->trx = old_msg->trx;
 
-	/* copy over old FOM-Header and later only change the msg_type */
-	msg->l3h = msgb_push(msg, sizeof(*foh));
 	foh = (struct abis_om_fom_hdr *) msg->l3h;
-	memcpy(foh, old_foh, sizeof(*foh));
 
 	/* alter message type */
 	if (cause) {
@@ -453,12 +446,16 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 		foh->msg_type += 2; /* nack */
 		/* add cause */
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
+		/* update the length as we just made the message larger */
+		struct abis_om_hdr *omh = (struct abis_om_hdr *) msgb_l2(msg);
+		omh->length = msgb_l3len(msg);
 	} else {
 		LOGP(DOML, LOGL_DEBUG, "Sending FOM ACK.\n");
 		foh->msg_type++; /* ack */
 	}
 
-	return oml_send_msg(msg, is_manuf);
+	/* we cannot use oml_send_msg() as we already have the OML header */
+	return abis_oml_sendmsg(msg);
 }
 
 /*
