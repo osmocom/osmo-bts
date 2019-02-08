@@ -102,6 +102,7 @@ void oml_fail_rep(uint16_t cause_value, const char *fmt, ...)
 	talloc_free(rep);
 }
 
+/* Push OM header in front of msgb and send it */
 int oml_send_msg(struct msgb *msg, int is_manuf)
 {
 	struct abis_om_hdr *omh;
@@ -363,6 +364,8 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 	return rc;
 }
 
+/* Send an ACK or NACK response from 'mo' to BSC, deriving message
+ * type from 'orig_msg_type'. ACK is sent if cause == 0; NACK otherwise */
 int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 			uint8_t cause)
 {
@@ -417,6 +420,9 @@ int oml_mo_opstart_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, nack_cause);
 }
 
+/* Send an ACK or NACK response for 'msg' to BSC, deriving message
+ * type, obj class, obj inst from 'msg' and copying all attributes
+ * contained in 'msg'. ACK is sent if cause == 0; NACK otherwise */
 int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 {
 	struct abis_om_hdr *old_oh = msgb_l2(old_msg);
