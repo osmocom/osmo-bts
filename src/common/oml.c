@@ -1087,6 +1087,7 @@ static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct
 
 static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 {
+	struct abis_om_hdr *oh = msgb_l2(msg);
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts_trx *trx;
 	const struct gsm_abis_mo *mo = &bts->mo;
@@ -1098,6 +1099,13 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 			mo = &trx->mo;
 		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "Formatted O&M message too short");
 		return -EIO;
+	}
+
+	if (msgb_l3len(msg) > oh->length) {
+		LOGP(DOML, LOGL_NOTICE, "OML message with %u extraneous bytes at end: %s\n",
+			msgb_l3len(msg) - oh->length, msgb_hexdump(msg));
+		/* remove extra bytes at end */
+		msgb_l3trim(msg, oh->length);
 	}
 
 	if (report_bts_number_incorrect(bts, foh, true))
@@ -1383,6 +1391,13 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		return -EINVAL;
 	}
 
+	if (msgb_l3len(msg) > oh->length + 1 + oh->data[0]) {
+		LOGP(DOML, LOGL_NOTICE, "OML message with %u extraneous bytes at end: %s\n",
+			msgb_l3len(msg) - oh->length, msgb_hexdump(msg));
+		/* remove extra bytes at end */
+		msgb_l3trim(msg, oh->length);
+	}
+
 	msg->l3h = oh->data + 1 + idstrlen;
 	foh = (struct abis_om_fom_hdr *) msg->l3h;
 
@@ -1436,6 +1451,14 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY || oh->sequence != 0) {
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
 					 "Unsupported segmented O&M message\n");
+		msgb_free(msg);
+		return -EIO;
+	}
+
+	if (msgb_l3len(msg) < oh->length) {
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "Short OML message: %u < %u\n",
+					 msgb_l3len(msg), oh->length);
 		msgb_free(msg);
 		return -EIO;
 	}
