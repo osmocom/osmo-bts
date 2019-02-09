@@ -558,7 +558,6 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	if (!TLVP_PRES_LEN(&tp, NM_ATT_LIST_REQ_ATTR, 1)) {
-		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes message without Attribute List?!\n");
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
@@ -1074,9 +1073,6 @@ static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct
 		"Unexpected BTS %d in manufacturer O&M %s (exp. 0 or 0xFF)";
 
 	if (foh->obj_inst.bts_nr != 0 && foh->obj_inst.bts_nr != 0xff) {
-		LOGP(DOML, LOGL_ERROR, form, foh->obj_inst.bts_nr, get_value_string(abis_nm_msgtype_names,
-										    foh->msg_type));
-		LOGPC(DOML, LOGL_ERROR, "\n");
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx)
 			mo = &trx->mo;
@@ -1139,8 +1135,6 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		ret = oml_rx_get_attr(bts, msg);
 		break;
 	default:
-		LOGP(DOML, LOGL_INFO, "unknown Formatted O&M msg_type 0x%02x\n",
-			foh->msg_type);
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx) {
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
