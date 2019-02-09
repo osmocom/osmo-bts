@@ -1078,12 +1078,8 @@ static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct
 										    foh->msg_type));
 		LOGPC(DOML, LOGL_ERROR, "\n");
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		if (trx) {
-			trx->mo.obj_inst.bts_nr = 0;
-			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
-			trx->mo.obj_inst.ts_nr = 0xff;
+		if (trx)
 			mo = &trx->mo;
-		}
 		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, form, foh->obj_inst.bts_nr,
 					 get_value_string(abis_nm_msgtype_names, foh->msg_type));
 
@@ -1103,9 +1099,6 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx) {
-			trx->mo.obj_inst.bts_nr = 0;
-			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
-			trx->mo.obj_inst.ts_nr = 0xff;
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
 						 "Formatted O&M message too short");
 		}
@@ -1150,9 +1143,6 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 			foh->msg_type);
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx) {
-			trx->mo.obj_inst.bts_nr = 0;
-			trx->mo.obj_inst.trx_nr = foh->obj_inst.trx_nr;
-			trx->mo.obj_inst.ts_nr = 0xff;
 			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
 						 "unknown Formatted O&M "
 						 "msg_type 0x%02x",
