@@ -1378,12 +1378,14 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	int ret;
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
-		LOGP(DOML, LOGL_NOTICE, "Manufacturer O&M message too short\n");
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "Manufacturer O&M message too short\n");
 		return -EIO;
 	}
 
 	if (strncmp((char *)&oh->data[1], abis_nm_ipa_magic, idstrlen)) {
-		LOGP(DOML, LOGL_ERROR, "Manufacturer OML message != ipaccess not supported\n");
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "Manufacturer OML message != ipaccess not supported\n");
 		return -EINVAL;
 	}
 
@@ -1411,8 +1413,15 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		ret = oml_ipa_set_attr(bts, msg);
 		break;
 	default:
-		LOGP(DOML, LOGL_INFO, "Manufacturer Formatted O&M msg_type 0x%02x\n",
-			foh->msg_type);
+		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+		if (trx) {
+			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "unknown Manufacturer O&M msg_type 0x%02x",
+						 foh->msg_type);
+		} else
+			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						 "unknown Manufacturer O&M msg_type 0x%02x",
+						 foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
@@ -1426,7 +1435,8 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	int ret = 0;
 
 	if (msgb_l2len(msg) < 1) {
-		LOGP(DOML, LOGL_NOTICE, "OML message too short\n");
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "OML message too short\n");
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -1435,7 +1445,8 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	switch (oh->mdisc) {
 	case ABIS_OM_MDISC_FOM:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
-			LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
+			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						"Formatted O&M message too short\n");
 			ret = -EIO;
 			break;
 		}
@@ -1443,15 +1454,16 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	case ABIS_OM_MDISC_MANUF:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
-			LOGP(DOML, LOGL_NOTICE, "Manufacturer O&M message too short\n");
+			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+						"Manufacturer O&M message too short\n");
 			ret = -EIO;
 			break;
 		}
 		ret = down_mom(bts, msg);
 		break;
 	default:
-		LOGP(DOML, LOGL_NOTICE, "unknown OML msg_discr 0x%02x\n",
-			oh->mdisc);
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "unknown O&M msg_disc 0x%02x\n", oh->mdisc);
 		ret = -EINVAL;
 	}
 
