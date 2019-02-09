@@ -1089,6 +1089,7 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts_trx *trx;
+	struct gsm_abis_mo *mo = &bts->mo;
 	int ret;
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
@@ -1136,16 +1137,10 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	default:
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		if (trx) {
-			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "unknown Formatted O&M "
-						 "msg_type 0x%02x",
-						 foh->msg_type);
-		} else
-			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "unknown Formatted O&M "
-						 "msg_type 0x%02x",
-						 foh->msg_type);
+		if (trx)
+			mo = &trx->mo;
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "unknown Formatted O&M "
+					 "msg_type 0x%02x", foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
@@ -1371,6 +1366,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_hdr *oh = msgb_l2(msg);
+	struct gsm_abis_mo *mo = &bts->mo;
 	struct abis_om_fom_hdr *foh;
 	struct gsm_bts_trx *trx;
 	uint8_t idstrlen = oh->data[0];
@@ -1414,14 +1410,10 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	default:
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		if (trx) {
-			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "unknown Manufacturer O&M msg_type 0x%02x",
-						 foh->msg_type);
-		} else
-			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "unknown Manufacturer O&M msg_type 0x%02x",
-						 foh->msg_type);
+		if (trx)
+			mo = &trx->mo;
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "unknown Manufacturer O&M "
+					 "msg_type 0x%02x", foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
