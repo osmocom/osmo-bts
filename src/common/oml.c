@@ -993,6 +993,54 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);
 }
 
+/* return a list of mandatory attributes for given object class */
+static unsigned int get_mand_attr_for_obj_class(uint8_t obj_class, const uint8_t **attr)
+{
+	static const uint8_t bts_mand_attr[] = { NM_ATT_BCCH_ARFCN, NM_ATT_BSIC };
+	static const uint8_t trx_mand_attr[] = { NM_ATT_ARFCN_LIST, NM_ATT_RF_MAXPOWR_R };
+	static const uint8_t ts_mand_attr[] = { NM_ATT_CHAN_COMB };
+	static const uint8_t nse_mand_attr[] = { NM_ATT_IPACC_NSEI };
+	static const uint8_t cell_mand_attr[] = { NM_ATT_IPACC_BVCI, NM_ATT_IPACC_RAC };
+	static const uint8_t nsvc_mand_attr[] = { NM_ATT_IPACC_NSVCI, NM_ATT_IPACC_NS_LINK_CFG };
+
+	switch (obj_class) {
+	case NM_OC_BTS:
+		*attr = bts_mand_attr;
+		return sizeof(bts_mand_attr);
+	case NM_OC_RADIO_CARRIER:
+		*attr = trx_mand_attr;
+		return sizeof(trx_mand_attr);
+	case NM_OC_CHANNEL:
+		*attr = ts_mand_attr;
+		return sizeof(ts_mand_attr);
+	case NM_OC_GPRS_NSE:
+		*attr = nse_mand_attr;
+		return sizeof(nse_mand_attr);
+	case NM_OC_GPRS_CELL:
+		*attr = cell_mand_attr;
+		return sizeof(cell_mand_attr);
+	case NM_OC_GPRS_NSVC:
+		*attr = nsvc_mand_attr;
+		return sizeof(nsvc_mand_attr);
+	default:
+		return 0;
+	}
+}
+
+/* Verify if a given OML MO has the minimal attributes set to enable it */
+static bool oml_mo_has_minimal_attributes(const struct gsm_abis_mo *mo)
+{
+	unsigned int i;
+	const uint8_t *mand_attr = NULL;
+	unsigned int num_mand_attr = get_mand_attr_for_obj_class(mo->obj_class, &mand_attr);
+
+	for (i = 0; i < num_mand_attr; i++) {
+		if (!mo->nm_attr || !TLVP_PRESENT(mo->nm_attr, mand_attr[i]))
+			return false;
+	}
+	return true;
+}
+
 /* 8.9.2 Opstart has been received */
 static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 {
@@ -1015,7 +1063,11 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 		return oml_mo_opstart_ack(mo);
 	}
 
-	/* Step 3: Ask BTS driver to apply the opstart */
+	/* Step 3: Check if all mandatory minimum attributes have been set */
+	if (!oml_mo_has_minimal_attributes(mo))
+		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
+
+	/* Step 4: Ask BTS driver to apply the opstart */
 	return bts_model_opstart(bts, mo, obj);
 }
 
