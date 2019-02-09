@@ -1093,12 +1093,10 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 	int ret;
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
-		LOGP(DOML, LOGL_NOTICE, "Formatted O&M message too short\n");
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		if (trx) {
-			oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
-						 "Formatted O&M message too short");
-		}
+		if (trx)
+			mo = &trx->mo;
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "Formatted O&M message too short");
 		return -EIO;
 	}
 
