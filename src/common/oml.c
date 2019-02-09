@@ -1424,13 +1424,21 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	struct abis_om_hdr *oh = msgb_l2(msg);
 	int ret = 0;
 
-	if (msgb_l2len(msg) < 1) {
+	if (msgb_l2len(msg) < sizeof(*oh)) {
 		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
 					 "OML message too short\n");
 		msgb_free(msg);
 		return -EIO;
 	}
 	msg->l3h = (unsigned char *)oh + sizeof(*oh);
+
+	/* We don't implement de-segmentation of segmented OML messages */
+	if (oh->placement != ABIS_OM_PLACEMENT_ONLY || oh->sequence != 0) {
+		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+					 "Unsupported segmented O&M message\n");
+		msgb_free(msg);
+		return -EIO;
+	}
 
 	switch (oh->mdisc) {
 	case ABIS_OM_MDISC_FOM:
