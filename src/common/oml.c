@@ -67,7 +67,7 @@ struct msgb *oml_msgb_alloc(void)
 }
 
 /* 3GPP TS 12.21 § 8.8.2 */
-static int oml_tx_failure_event_rep(struct gsm_abis_mo *mo, uint16_t cause_value,
+static int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 				    const char *fmt, ...)
 {
 	struct msgb *nmsg;
@@ -129,7 +129,7 @@ int oml_send_msg(struct msgb *msg, int is_manuf)
 	return abis_oml_sendmsg(msg);
 }
 
-int oml_mo_send_msg(struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_type)
+int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_type)
 {
 	struct abis_om_fom_hdr *foh;
 
@@ -307,7 +307,7 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 }
 
 /* 8.8.1 sending State Changed Event Report */
-int oml_tx_state_changed(struct gsm_abis_mo *mo)
+int oml_tx_state_changed(const struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
 
@@ -366,7 +366,7 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 
 /* Send an ACK or NACK response from 'mo' to BSC, deriving message
  * type from 'orig_msg_type'. ACK is sent if cause == 0; NACK otherwise */
-int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
+int oml_mo_fom_ack_nack(const struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 			uint8_t cause)
 {
 	struct msgb *msg;
@@ -386,7 +386,7 @@ int oml_mo_fom_ack_nack(struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 	return oml_mo_send_msg(mo, msg, new_msg_type);
 }
 
-int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
+int oml_mo_statechg_ack(const struct gsm_abis_mo *mo)
 {
 	struct msgb *msg;
 	int rc = 0;
@@ -405,17 +405,17 @@ int oml_mo_statechg_ack(struct gsm_abis_mo *mo)
 	return oml_tx_state_changed(mo);
 }
 
-int oml_mo_statechg_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
+int oml_mo_statechg_nack(const struct gsm_abis_mo *mo, uint8_t nack_cause)
 {
 	return oml_mo_fom_ack_nack(mo, NM_MT_CHG_ADM_STATE, nack_cause);
 }
 
-int oml_mo_opstart_ack(struct gsm_abis_mo *mo)
+int oml_mo_opstart_ack(const struct gsm_abis_mo *mo)
 {
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, 0);
 }
 
-int oml_mo_opstart_nack(struct gsm_abis_mo *mo, uint8_t nack_cause)
+int oml_mo_opstart_nack(const struct gsm_abis_mo *mo, uint8_t nack_cause)
 {
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, nack_cause);
 }
@@ -463,7 +463,7 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
  */
 
 /* 8.3.7 sending SW Activated Report */
-int oml_mo_tx_sw_act_rep(struct gsm_abis_mo *mo)
+int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
 
@@ -1067,7 +1067,7 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct abis_om_fom_hdr *foh, bool is_formatted)
 {
 	struct gsm_bts_trx *trx;
-	struct gsm_abis_mo *mo = &bts->mo;
+	const struct gsm_abis_mo *mo = &bts->mo;
 	const char *form = is_formatted ?
 		"Unexpected BTS %d in formatted O&M %s (exp. 0 or 0xFF)" :
 		"Unexpected BTS %d in manufacturer O&M %s (exp. 0 or 0xFF)";
@@ -1089,7 +1089,7 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts_trx *trx;
-	struct gsm_abis_mo *mo = &bts->mo;
+	const struct gsm_abis_mo *mo = &bts->mo;
 	int ret;
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
@@ -1268,7 +1268,7 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr(struct gsm_bts *bts, struct gsm_abis_mo *mo,
+static int oml_ipa_mo_set_attr(struct gsm_bts *bts, const struct gsm_abis_mo *mo,
 				void *obj, struct tlv_parsed *tp)
 {
 	int rc;
@@ -1293,7 +1293,7 @@ static int oml_ipa_mo_set_attr(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
-	struct gsm_abis_mo *mo;
+	const struct gsm_abis_mo *mo;
 	struct tlv_parsed tp;
 	void *obj;
 	int rc;
@@ -1364,7 +1364,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_hdr *oh = msgb_l2(msg);
-	struct gsm_abis_mo *mo = &bts->mo;
+	const struct gsm_abis_mo *mo = &bts->mo;
 	struct abis_om_fom_hdr *foh;
 	struct gsm_bts_trx *trx;
 	uint8_t idstrlen = oh->data[0];
