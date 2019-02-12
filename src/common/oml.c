@@ -1102,10 +1102,17 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	if (msgb_l3len(msg) > oh->length) {
-		LOGP(DOML, LOGL_NOTICE, "OML message with %u extraneous bytes at end: %s\n",
-			msgb_l3len(msg) - oh->length, msgb_hexdump(msg));
-		/* remove extra bytes at end */
-		msgb_l3trim(msg, oh->length);
+		if (oh->mdisc == ABIS_OM_MDISC_FOM && oh->data[0] == NM_MT_GET_ATTR &&
+		    msgb_l3len(msg) == oh->length + 3) {
+			/* work-around a bug present in OsmoBSC before February 2019 */
+			DEBUGP(DOML, "GET ATTR with off-by-3 length: Fixing up for OS#3799\n");
+			oh->length += 3;
+		} else {
+			LOGP(DOML, LOGL_NOTICE, "OML message with %u extraneous bytes at end: %s\n",
+				msgb_l3len(msg) - oh->length, msgb_hexdump(msg));
+			/* remove extra bytes at end */
+			msgb_l3trim(msg, oh->length);
+		}
 	}
 
 	if (report_bts_number_incorrect(bts, foh, true))
