@@ -226,8 +226,6 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
 		    bts->nr, trx->nr, 0xff);
-	/* FIXME: Why would the TRX come up unlocked? */
-	trx->mo.nm_state.administrative = NM_STATE_UNLOCKED;
 
 	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
 		    bts->nr, trx->nr, 0xff);
