@@ -1308,8 +1308,8 @@ static int oml_ipa_mo_set_attr(struct gsm_bts *bts, const struct gsm_abis_mo *mo
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
-	const struct gsm_abis_mo *mo;
-	struct tlv_parsed tp;
+	struct gsm_abis_mo *mo;
+	struct tlv_parsed tp, *tp_merged;
 	void *obj;
 	int rc;
 
@@ -1334,6 +1334,14 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
 	rc = oml_ipa_mo_set_attr(bts, mo, obj, &tp);
+	if (rc == 0) {
+		/* Success: replace old MO attributes with new */
+		/* merge existing MO attributes with new attributes */
+		tp_merged = osmo_tlvp_copy(mo->nm_attr, bts);
+		osmo_tlvp_merge(tp_merged, &tp);
+		talloc_free(mo->nm_attr);
+		mo->nm_attr = tp_merged;
+	}
 
 	return oml_fom_ack_nack(msg, rc);
 }
