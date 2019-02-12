@@ -1494,13 +1494,25 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	return 0;
 }
 
-int l1if_reset(struct oc2gl1_hdl *hdl)
+/* FIXME: This delays the TRX initalization by 5 sec in order to avoid the
+ * occurrence of a race condition in the OML bringup. This a work around and
+ * should be fixed properly. See also OS#3782, OS#2470 and OS#2469 */
+void l1if_reset_cb(void *arg)
 {
+	struct oc2gl1_hdl *hdl = arg;
 	struct msgb *msg = sysp_msgb_alloc();
 	Oc2g_Prim_t *sysp = msgb_sysprim(msg);
 	sysp->id = Oc2g_PrimId_Layer1ResetReq;
 
-	return l1if_req_compl(hdl, msg, reset_compl_cb, NULL);
+	l1if_req_compl(hdl, msg, reset_compl_cb, NULL);
+}
+
+int l1if_reset(struct oc2gl1_hdl *hdl)
+{
+	static struct osmo_timer_list T_l1if_reset;
+	osmo_timer_setup(&T_l1if_reset, l1if_reset_cb, hdl);
+	osmo_timer_schedule(&T_l1if_reset, 5, 0);
+	return 0;
 }
 
 /* set the trace flags within the DSP */
