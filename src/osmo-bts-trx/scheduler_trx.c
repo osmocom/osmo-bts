@@ -974,7 +974,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return 0;
 	}
 	ber10k = compute_ber10k(n_bits_total, n_errors);
-	return _sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 3) % GSM_HYPERFRAME, chan,
+	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan,
 		l2, rc, *rssi_sum / *rssi_num, *toa256_sum / *toa_num, 0,
 					  ber10k, PRES_INFO_BOTH);
 }
