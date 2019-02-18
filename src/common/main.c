@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <osmocom/core/stats.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
@@ -236,6 +237,7 @@ int bts_main(int argc, char **argv)
 	bts_vty_info.tall_ctx = tall_bts_ctx;
 
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
+	osmo_stats_init(tall_bts_ctx);
 	vty_init(&bts_vty_info);
 	ctrl_vty_init(tall_bts_ctx);
 	rate_ctr_init(tall_bts_ctx);

@@ -31,6 +31,7 @@
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/vty/stats.h>
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/misc.h>
@@ -1598,6 +1599,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 
 	logging_vty_add_cmds(cat);
 	osmo_talloc_vty_add_cmds();
+	osmo_stats_vty_add_cmds();
 
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
