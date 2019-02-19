@@ -43,5 +43,6 @@ enum oc2gbts_gsm_band {
 void oc2gbts_rev_get(char *rev_maj, char *rev_min);
 int oc2gbts_model_get(void);
 int oc2gbts_option_get(enum oc2gbts_option_type type);
+const char* get_hwversion_desc();
 
 #endif
