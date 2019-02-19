@@ -77,11 +77,13 @@ static const struct value_string oc2g_pedestal_mode_strs[] = {
 	{ 0, NULL }
 };
 
+/*
 static const struct value_string oc2g_led_mode_strs[] = {
 	{ OC2G_LED_CONTROL_BTS, "bts" },
 	{ OC2G_LED_CONTROL_EXT, "external" },
 	{ 0, NULL }
 };
+*/
 
 static const struct value_string oc2g_auto_adj_pwr_strs[] = {
 	{ OC2G_TX_PWR_ADJ_NONE, "none" },
@@ -455,7 +457,7 @@ DEFUN(trigger_ho_cause, trigger_ho_cause_cmd, "HIDDEN", TRX_STR)
 	struct gsm_lchan *lchan;
 	int trx_nr, ts_nr, lchan_nr;
 	uint8_t ho_cause;
-	uint8_t old_ho_cause;
+	/* uint8_t old_ho_cause; */
 
 	/* get BTS pointer */
 	bts = gsm_bts_num(net, 0);
@@ -519,6 +521,7 @@ DEFUN(trigger_ho_cause, trigger_ho_cause_cmd, "HIDDEN", TRX_STR)
 	/ * restore HO cause * /
 	lchan->meas_preproc.rec_ho_causes = old_ho_cause;
 	*/
+	(void)lchan; /* to use lchan and avoid compilation warning */
 
 	return CMD_SUCCESS;
 }
@@ -728,5 +731,5 @@ int bts_model_ctrl_cmds_install(struct gsm_bts *bts)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_oc2g_oml_ceased);
 	*/
 
-	return 0;
+	return rc;
 }
