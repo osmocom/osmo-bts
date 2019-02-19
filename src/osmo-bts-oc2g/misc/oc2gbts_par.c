@@ -151,7 +151,7 @@ int oc2gbts_par_set_int(enum oc2gbts_par par, int val)
 		fclose(fp);
 		return -EIO;
 	}
-	fsync(fp);
+	fsync(fileno(fp));
 	fclose(fp);
 	return 0;
 }
@@ -201,7 +201,7 @@ int oc2gbts_par_set_buf(enum oc2gbts_par par, const uint8_t *buf,
 
         rc = fwrite(buf, 1, size, fp);
 
-        fsync(fp);
+        fsync(fileno(fp));
         fclose(fp);
 
         return rc;
@@ -242,7 +242,7 @@ int oc2gbts_par_set_gps_fix(void *ctx, time_t val)
 		fclose(fp);
 		return -EIO;
 	}
-	fsync(fp);
+	fsync(fileno(fp));
 	fclose(fp);
 
 	return 0;
