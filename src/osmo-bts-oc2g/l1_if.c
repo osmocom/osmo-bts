@@ -1745,7 +1745,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		return -EIO;
 	}
 
-	/* initialize DSP heart beat alive timer * /
+	/ * initialize DSP heart beat alive timer * /
 	fl1h->hw_alive.dsp_alive_timer.cb = dsp_alive_timer_cb;
 	fl1h->hw_alive.dsp_alive_timer.data = fl1h;
 	fl1h->hw_alive.dsp_alive_cnt = 0;

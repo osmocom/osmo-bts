@@ -94,9 +94,9 @@ int bts_model_init(struct gsm_bts *bts)
 
 	/* TODO(oramadan) MERGE
 	bts->oc2g.led_ctrl_mode = OC2G_BTS_LED_CTRL_MODE_DEFAULT;
-	/* RTP drift threshold default * /
-	bts->oc2g.rtp_drift_thres_ms = OC2G_BTS_RTP_DRIFT_THRES_DEFAULT;
 	*/
+	/* RTP drift threshold default */
+	/* bts->oc2g.rtp_drift_thres_ms = OC2G_BTS_RTP_DRIFT_THRES_DEFAULT; */
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {

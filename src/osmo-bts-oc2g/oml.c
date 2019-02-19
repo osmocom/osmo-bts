@@ -354,19 +354,21 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	if (trx->mo.nm_state.administrative == NM_STATE_LOCKED)
 		trx_rf_lock(trx, 1, trx_mute_on_init_cb);
 
-	/* apply initial values for Tx power backoff for 8-PSK * /
-	trx->max_power_backoff_8psk = fl1h->phy_inst->u.oc2g.tx_pwr_red_8psk;
+	/* apply initial values for Tx power backoff for 8-PSK */
+	/*trx->max_power_backoff_8psk = fl1h->phy_inst->u.oc2g.tx_pwr_red_8psk;
 	l1if_set_txpower_backoff_8psk(fl1h, fl1h->phy_inst->u.oc2g.tx_pwr_red_8psk);
 	LOGP(DL1C, LOGL_INFO, "%s Applied initial 8-PSK Tx power backoff of %d dB\n",
 			gsm_trx_name(fl1h->phy_inst->trx),
 			fl1h->phy_inst->u.oc2g.tx_pwr_red_8psk);
+	*/
 
-	/* apply initial values for Tx C0 idle slot power reduction * /
-	trx->c0_idle_power_red = fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red;
+	/* apply initial values for Tx C0 idle slot power reduction */
+	/*trx->c0_idle_power_red = fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red;
 	l1if_set_txpower_c0_idle_pwr_red(fl1h, fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red);
 	LOGP(DL1C, LOGL_INFO, "%s Applied initial C0 idle slot power reduction of %d dB\n",
 			gsm_trx_name(fl1h->phy_inst->trx),
-			fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red); */
+			fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red);
+	*/
 
 	/* Begin to ramp up the power */
 	power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);

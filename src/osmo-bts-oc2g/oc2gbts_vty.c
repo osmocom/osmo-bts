@@ -507,16 +507,16 @@ DEFUN(trigger_ho_cause, trigger_ho_cause_cmd, "HIDDEN", TRX_STR)
 		return CMD_WARNING;
 	}
 	/* TODO(oramadan) MERGE
-	/* store recorded HO causes * /
+	/ * store recorded HO causes * /
 	old_ho_cause = lchan->meas_preproc.rec_ho_causes;
 
-	/* Apply new HO causes * /
+	/ * Apply new HO causes * /
 	lchan->meas_preproc.rec_ho_causes = 1 << (ho_cause - 1);
 
-	/* Send measuremnt report to BSC * /
+	/ * Send measuremnt report to BSC * /
 	rsl_tx_preproc_meas_res(lchan);
 
-	/* restore HO cause * /
+	/ * restore HO cause * /
 	lchan->meas_preproc.rec_ho_causes = old_ho_cause;
 	*/
 
@@ -673,7 +673,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 }
 
 /* TODO(oramadan) MERGE
-/* OC2G BTS control interface * /
+/ * OC2G BTS control interface * /
 CTRL_CMD_DEFINE_WO_NOVRF(oc2g_oml_alert, "oc2g-oml-alert");
 static int set_oc2g_oml_alert(struct ctrl_cmd *cmd, void *data)
 {
@@ -688,10 +688,10 @@ static int set_oc2g_oml_alert(struct ctrl_cmd *cmd, void *data)
 	memcpy(alarm_sig_data.spare, &cause, sizeof(int));
 	LOGP(DLCTRL, LOGL_NOTICE, "BTS received MGR alarm cause=%d, text=%s\n", cause, alarm_sig_data.add_text);
 
-	/* dispatch OML alarm signal * /
+	/ * dispatch OML alarm signal * /
 	osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_MGR_ALARM, &alarm_sig_data);
 
-	/* return with same alarm cause to MGR rather than OK string* /
+	/ * return with same alarm cause to MGR rather than OK string* /
 	cmd->reply = talloc_asprintf(cmd, "%d", cause);
 	return CTRL_CMD_REPLY;
 }
@@ -709,11 +709,10 @@ static int set_oc2g_oml_ceased(struct ctrl_cmd *cmd, void *data)
 	memcpy(alarm_sig_data.spare, &cause, sizeof(int));
 	LOGP(DLCTRL, LOGL_NOTICE, "BTS received MGR ceased alarm cause=%d, text=%s\n", cause, alarm_sig_data.add_text);
 
-	/* dispatch OML alarm signal * /
+	/ * dispatch OML alarm signal * /
 	osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_MGR_CEASED_ALARM, &alarm_sig_data);
-	*/
 
-	/* return with same alarm cause to MGR rather than OK string* /
+	/ * return with same alarm cause to MGR rather than OK string* /
 	cmd->reply = talloc_asprintf(cmd, "%d", cause);
 	return CTRL_CMD_REPLY;
 }
