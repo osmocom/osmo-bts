@@ -1266,7 +1266,6 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	GsmL1_Status_t status;
 	int on = 0;
 	unsigned int i;
-	struct gsm_bts *bts = trx->bts;
 
 	if (sysp->id == Oc2g_PrimId_ActivateRfCnf)
 		on = 1;

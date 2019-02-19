@@ -83,7 +83,6 @@ unsigned int dsp_trace = 0x00000000;
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
 	struct stat st;
 	static struct osmo_fd accept_fd, read_fd;
 	int rc;

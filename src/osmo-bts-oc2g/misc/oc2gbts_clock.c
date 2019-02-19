@@ -100,8 +100,6 @@ static int sysfs_write_str(int fd, const char *str)
 
 int oc2gbts_clock_err_open(void)
 {
-	int rc;
-	int fault;
 
 	if (clkerr_fd_err < 0) {
 		clkerr_fd_err = open(CLKERR_ERR_SYSFS, O_RDONLY);
