@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "oc2gbts_bid.h"
 
@@ -106,7 +107,6 @@ void oc2gbts_rev_get(char *rev_maj, char *rev_min)
 
 const char* get_hwversion_desc()
 {
-        int rev;
         int model;
         size_t len;
         static char model_name[64] = {0, };
@@ -114,14 +114,9 @@ const char* get_hwversion_desc()
 
         char rev_maj = 0, rev_min = 0;
 
-        int rc = 0;
         oc2gbts_rev_get(&rev_maj, &rev_min);
-        if (rc < 0)
-                return rc;
-        if (rev >= 0) {
-                len += snprintf(model_name + len, sizeof(model_name) - len,
-                                " Rev %d.%d", (uint8_t)rev_maj, (uint8_t)rev_min);
-        }
+        len += snprintf(model_name + len, sizeof(model_name) - len,
+                        " Rev %" PRIu8 ".%" PRIu8, (uint8_t)rev_maj, (uint8_t)rev_min);
 
         model = oc2gbts_model_get();
         if (model >= 0) {
