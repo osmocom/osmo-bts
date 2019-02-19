@@ -245,18 +245,6 @@ static void send_ctrl_cmd(struct oc2gbts_mgr_instance *mgr, struct msgb *msg)
 	ipa_client_conn_send(mgr->oc2gbts_ctrl.bts_conn, msg);
 }
 
-static void send_set_ctrl_cmd_int(struct oc2gbts_mgr_instance *mgr, const char *key, const int val)
-{
-	struct msgb *msg;
-	int ret;
-
-	msg = msgb_alloc_headroom(1024, 128, "CTRL SET");
-	ret = snprintf((char *) msg->data, 4096, "SET %u %s %d",
-			mgr->oc2gbts_ctrl.last_seqno++, key, val);
-	msg->l2h = msgb_put(msg, ret);
-	return send_ctrl_cmd(mgr, msg);
-}
-
 static void send_set_ctrl_cmd(struct oc2gbts_mgr_instance *mgr, const char *key, const int val, const char *text)
 {
 	struct msgb *msg;
