@@ -150,7 +150,7 @@ static void led_sleep_cb(void *_data) {
 			/* Delete current timer */
 			osmo_timer_del(&led_list->led_timer.timer);
 			/* Rotate the timer list */
-			 llist_move_tail(led_list, &mgr->oc2gbts_leds.list);
+			 llist_move_tail(&led_list->list, &mgr->oc2gbts_leds.list);
 			break;
 		}
 	}
