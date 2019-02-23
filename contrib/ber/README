@@ -1,0 +1,26 @@
+BER testing tool
+----------------
+
+* Check all configs (MSC/BSC/BTS) for proper codec support
+  - FR enabled
+  - EFR enabled
+  - AMR 12.2 enabled (and all other modes disabled !)
+  - Use `amr-payload octet-aligned` in BSC config
+
+* Check BTS config
+  - Disable jitter buffer : `bts N / rtp jitter-buffer 0`
+
+* Check BSC config
+  - Disable radio timeout : `network / bts n / radio-link-timeout infinite`
+
+* Start BER testing tool
+  - `./rtp_ber 4000`
+
+* On the MSC CLI, start a silent-call, then request GSM to test loop
+  - `subscriber imsi <XXX> silent-call start tch/f speech-amr`
+  - `subscriber imsi <XXX> ms-test close-loop b`
+
+  Don't forget to terminate the loop and terminate the silent call !
+
+  - `subscriber imsi <XXX> ms-test open-loop`
+  - `subscriber imsi <XXX> silent-call stop`
