@@ -1,1 +1,1 @@
-SUBDIRS = systemd
+SUBDIRS = systemd ber

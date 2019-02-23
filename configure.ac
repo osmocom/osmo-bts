@@ -449,6 +449,7 @@ AC_OUTPUT(
     doc/examples/Makefile
     doc/manuals/Makefile
     contrib/Makefile
+    contrib/ber/Makefile
     contrib/systemd/Makefile
     contrib/osmo-bts.spec
     Makefile)
