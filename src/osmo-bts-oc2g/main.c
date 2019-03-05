@@ -126,7 +126,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
-	trx->nominal_power = 40;
+	trx->nominal_power = 25;
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->bts->c0->nominal_power);
 	return 0;
 }

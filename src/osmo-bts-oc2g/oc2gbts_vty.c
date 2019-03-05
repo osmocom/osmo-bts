@@ -328,15 +328,15 @@ DEFUN(no_loopback, no_loopback_cmd,
 }
 
 DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
-       "nominal-tx-power <0-40>",
+       "nominal-tx-power <0-25>",
        "Set the nominal transmit output power in dBm\n"
        "Nominal transmit output power level in dBm\n")
 {
 	int nominal_power = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
 
-	if (( nominal_power >  40 ) ||  ( nominal_power < 0 )) {
-		vty_out(vty, "Nominal Tx power level must be between 0 and 40 dBm (%d) %s",
+	if (( nominal_power > 25 ) ||  ( nominal_power < 0 )) {
+		vty_out(vty, "Nominal Tx power level must be between 0 and 25 dBm (%d) %s",
 		nominal_power, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
