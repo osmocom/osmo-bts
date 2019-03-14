@@ -3,7 +3,6 @@
 
 #include <osmocom/core/utils.h>
 
-#define FACTORY_ROM_PATH	"/mnt/rom/factory"
 #define USER_ROM_PATH		"/mnt/storage/var/run/lc15bts-mgr"
 
 enum lc15bts_par {
