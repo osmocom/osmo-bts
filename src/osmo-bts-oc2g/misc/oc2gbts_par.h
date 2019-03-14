@@ -3,7 +3,6 @@
 
 #include <osmocom/core/utils.h>
 
-#define FACTORY_ROM_PATH	"/mnt/rom/factory"
 #define USER_ROM_PATH		"/var/run/oc2gbts-mgr"
 #define UPTIME_TMP_PATH		"/tmp/uptime"
 
