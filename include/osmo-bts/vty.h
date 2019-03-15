@@ -27,6 +27,8 @@ int bts_vty_is_config_node(struct vty *vty, int node);
 
 int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat);
 
+struct gsm_network *gsmnet_from_vty(struct vty *v);
+
 extern struct vty_app_info bts_vty_info;
 
 #endif
