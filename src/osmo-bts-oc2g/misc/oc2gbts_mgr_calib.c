@@ -134,7 +134,7 @@ static int oc2gbts_par_set_uptime(void *ctx, int val)
 		fclose(fp);
 		return -EIO;
 	}
-	fsync(fp);
+	fsync(fileno(fp));
 	fclose(fp);
 
 	return 0;
