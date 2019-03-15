@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 
 	tall_mgr_ctx = talloc_named_const(NULL, 1, "bts manager");
 	tall_msgb_ctx = talloc_named_const(tall_mgr_ctx, 1, "msgb");
-	msgb_set_talloc_ctx(tall_msgb_ctx);
+	msgb_talloc_ctx_init(tall_msgb_ctx, 0);
 
 	mgr_log_init();
 
