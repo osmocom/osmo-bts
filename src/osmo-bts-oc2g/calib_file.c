@@ -34,6 +34,7 @@
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
+#include <osmo-bts/bts.h>
 
 #include <nrw/oc2g/oc2g.h>
 #include <nrw/oc2g/gsml1const.h>
@@ -133,16 +134,8 @@ static int calib_file_open(struct oc2gl1_hdl *fl1h,
 	st->fp = fopen(fname, "rb");
 	if (!st->fp) {
 		LOGP(DL1C, LOGL_NOTICE, "Failed to open '%s' for calibration data.\n", fname);
-
-		/* TODO (oramadan): Fix OML alarms
-		   if( fl1h->phy_inst->trx ){
-			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
-
-			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
-			alarm_sig_data.add_text = (char*)&fname[0];
-			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_OPEN_CALIB_ALARM, &alarm_sig_data);
-		}
-		*/
+		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
+					 "Failed to open '%s' for calibration data", fname);
 		return -1;
 	}
 	return 0;
@@ -228,17 +221,8 @@ static int calib_file_send(struct oc2gl1_hdl *fl1h,
 	rc = calib_verify(fl1h, desc);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_NOTICE,"Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
-
-		/* TODO (oramadan): Fix OML alarms
-		if (fl1h->phy_inst->trx) {
-			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
-
-			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
-			alarm_sig_data.add_text = (char*)&desc->fname[0];
-			memcpy(alarm_sig_data.spare, &rc, sizeof(int));
-			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_FAIL_VERIFY_CALIB_ALARM, &alarm_sig_data);
-		}
-		*/
+		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
+					 "Verify L1 calibration table %s -> failed (%d)", desc->fname, rc);
 
 		st->last_file_idx = get_next_calib_file_idx(fl1h, st->last_file_idx);
 
@@ -294,15 +278,8 @@ int calib_load(struct oc2gl1_hdl *fl1h)
 
 	if (!calib_path) {
 		LOGP(DL1C, LOGL_NOTICE, "Calibration file path not specified\n");
-
-		/* TODO (oramadan): Fix OML alarms
-		if( fl1h->phy_inst->trx ){
-			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
-
-			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
-			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_NO_CALIB_PATH_ALARM, &alarm_sig_data);
-		}
-		*/
+		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
+					 "Calibration file path not specified");
 		return -1;
 	}
 
