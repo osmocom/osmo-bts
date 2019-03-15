@@ -878,46 +878,37 @@ int oc2gbts_mgr_vty_init(void)
 
 	install_node(&mgr_node, config_write_mgr);
 	install_element(CONFIG_NODE, &cfg_mgr_cmd);
-	vty_install_default(MGR_NODE);
 
 	/* install the limit nodes */
 	install_node(&limit_supply_temp_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_supply_temp_cmd);
-	vty_install_default(LIMIT_SUPPLY_TEMP_NODE);
 
 	install_node(&limit_soc_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_soc_temp_cmd);
-	vty_install_default(LIMIT_SOC_NODE);
 
 	install_node(&limit_fpga_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_fpga_temp_cmd);
-	vty_install_default(LIMIT_FPGA_NODE);
 
 	if (oc2gbts_option_get(OC2GBTS_OPTION_RMS_FWD) ||
 			oc2gbts_option_get(OC2GBTS_OPTION_RMS_REFL)) {
 		install_node(&limit_rmsdet_node, config_write_dummy);
 		install_element(MGR_NODE, &cfg_limit_rmsdet_temp_cmd);
-		vty_install_default(LIMIT_RMSDET_NODE);
 	}
 
 	install_node(&limit_ocxo_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_ocxo_temp_cmd);
-	vty_install_default(LIMIT_OCXO_NODE);
 
 	install_node(&limit_tx_temp_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_tx_temp_cmd);
-	vty_install_default(LIMIT_TX_TEMP_NODE);
 
 	if (oc2gbts_option_get(OC2GBTS_OPTION_PA_TEMP)) {
 		install_node(&limit_pa_temp_node, config_write_dummy);
 		install_element(MGR_NODE, &cfg_limit_pa_temp_cmd);
-		vty_install_default(LIMIT_PA_TEMP_NODE);
 	}
 
 	install_node(&limit_supply_volt_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_supply_volt_cmd);
 	register_limit(LIMIT_SUPPLY_VOLT_NODE, MGR_LIMIT_TYPE_VOLT);
-	vty_install_default(LIMIT_SUPPLY_VOLT_NODE);
 
 	if (oc2gbts_option_get(OC2GBTS_OPTION_PA) &&
 			oc2gbts_option_get(OC2GBTS_OPTION_RMS_FWD) &&
@@ -925,23 +916,19 @@ int oc2gbts_mgr_vty_init(void)
 		install_node(&limit_vswr_node, config_write_dummy);
 		install_element(MGR_NODE, &cfg_limit_vswr_cmd);
 		register_limit(LIMIT_VSWR_NODE, MGR_LIMIT_TYPE_VSWR);
-		vty_install_default(LIMIT_VSWR_NODE);
 	}
 
 	install_node(&limit_supply_pwr_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_supply_pwr_cmd);
 	register_limit(LIMIT_SUPPLY_PWR_NODE, MGR_LIMIT_TYPE_PWR);
-	vty_install_default(LIMIT_SUPPLY_PWR_NODE);
 
 	if (oc2gbts_option_get(OC2GBTS_OPTION_PA)) {
 		install_node(&limit_pa_pwr_node, config_write_dummy);
 		install_element(MGR_NODE, &cfg_limit_pa_pwr_cmd);
-		vty_install_default(LIMIT_PA_PWR_NODE);
 	}
 
 	install_node(&limit_gps_fix_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_limit_gps_fix_cmd);
-	vty_install_default(LIMIT_GPS_FIX_NODE);
 
 	/* install the normal node */
 	install_node(&act_norm_node, config_write_dummy);
@@ -952,12 +939,10 @@ int oc2gbts_mgr_vty_init(void)
 	install_node(&act_warn_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_warn_cmd);
 	register_action(ACT_WARN_NODE);
-	vty_install_default(ACT_WARN_NODE);
 
 	install_node(&act_crit_node, config_write_dummy);
 	install_element(MGR_NODE, &cfg_action_critical_cmd);
 	register_action(ACT_CRIT_NODE);
-	vty_install_default(ACT_CRIT_NODE);
 
 	/* install LED pattern command for debugging purpose */
 	install_element_ve(&set_led_pattern_cmd);
