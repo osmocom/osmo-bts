@@ -43,6 +43,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/oml.h>
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
 
@@ -577,7 +578,7 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 	case PCU_VERSION:
 		LOGP(DPCU, LOGL_INFO, "OsmoPCU version %s connected\n",
 		     txt->text);
-		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_PCU_VERS, txt->text);
+		oml_tx_failure_event_rep(&bts->gprs.cell.mo, OSMO_EVT_PCU_VERS, txt->text);
 		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
 
 		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13))
@@ -586,7 +587,7 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 		LOGP(DPCU, LOGL_INFO, "SI13 is not available on PCU connection\n");
 		break;
 	case PCU_OML_ALERT:
-		osmo_signal_dispatch(SS_FAIL, OSMO_EVT_EXT_ALARM, txt->text);
+		oml_tx_failure_event_rep(&bts->gprs.cell.mo, OSMO_EVT_EXT_ALARM, txt->text);
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Unknown TXT_IND type %u received\n",
@@ -713,7 +714,9 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	bts = llist_entry(state->net->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket has LOST connection\n");
-	osmo_signal_dispatch(SS_FAIL, OSMO_EVT_PCU_VERS, NULL);
+	oml_tx_failure_event_rep(&bts->gprs.cell.mo, OSMO_EVT_PCU_VERS,
+				 "PCU socket has LOST connection");
+
 	bts->pcu_version[0] = '\0';
 
 	close(bfd->fd);

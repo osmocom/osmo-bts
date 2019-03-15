@@ -5,7 +5,6 @@
 
 enum sig_subsys {
 	SS_GLOBAL,
-	SS_FAIL,
 };
 
 enum signals_global {

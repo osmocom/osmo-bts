@@ -1493,23 +1493,11 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	return ret;
 }
 
-static int handle_fail_sig(unsigned int subsys, unsigned int signal, void *handle,
-			   void *signal_data)
-{
-	if (signal_data)
-		oml_tx_failure_event_rep(handle, signal, "%s", signal_data);
-	else
-		oml_tx_failure_event_rep(handle, signal, "");
-
-	return 0;
-}
-
 int oml_init(struct gsm_abis_mo *mo)
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef_ipa);
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef);
-	osmo_signal_register_handler(SS_FAIL, handle_fail_sig, mo);
 
 	return 0;
 }

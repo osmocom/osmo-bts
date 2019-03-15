@@ -34,6 +34,8 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts.h>
 
+static struct gsm_bts *g_bts;
+
 CTRL_CMD_DEFINE(therm_att, "thermal-attenuation");
 static int get_therm_att(struct ctrl_cmd *cmd, void *data)
 {
@@ -75,7 +77,7 @@ CTRL_CMD_DEFINE_WO_NOVRF(oml_alert, "oml-alert");
 static int set_oml_alert(struct ctrl_cmd *cmd, void *data)
 {
 	/* Note: we expect signal dispatch to be synchronous */
-	osmo_signal_dispatch(SS_FAIL, OSMO_EVT_EXT_ALARM, cmd->value);
+	oml_tx_failure_event_rep(&g_bts->mo, OSMO_EVT_EXT_ALARM, cmd->value);
 
 	cmd->reply = "OK";
 
@@ -88,6 +90,7 @@ int bts_ctrl_cmds_install(struct gsm_bts *bts)
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_therm_att);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_oml_alert);
+	g_bts = bts;
 
 	return rc;
 }
