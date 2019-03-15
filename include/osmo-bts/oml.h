@@ -45,8 +45,6 @@ int oml_set_lchan_t200(struct gsm_lchan *lchan);
 extern const unsigned int oml_default_t200_ms[7];
 
 /* Transmit failure event report */
-void oml_fail_rep(uint16_t cause_value, const char *fmt, ...);
-
 int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 			     const char *fmt, ...);
 

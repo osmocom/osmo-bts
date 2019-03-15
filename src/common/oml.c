@@ -87,21 +87,6 @@ int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 	return oml_mo_send_msg(mo, nmsg, NM_MT_FAILURE_EVENT_REP);
 }
 
-void oml_fail_rep(uint16_t cause_value, const char *fmt, ...)
-{
-	va_list ap;
-	char *rep;
-
-	va_start(ap, fmt);
-	rep = talloc_asprintf(tall_bts_ctx, fmt, ap);
-	va_end(ap);
-
-	osmo_signal_dispatch(SS_FAIL, cause_value, rep);
-	/* signal dispatch is synchronous so all the signal handlers are
-	   finished already: we're free to free */
-	talloc_free(rep);
-}
-
 /* Push OM header in front of msgb and send it */
 int oml_send_msg(struct msgb *msg, int is_manuf)
 {

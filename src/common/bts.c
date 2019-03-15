@@ -309,10 +309,13 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 		rc = rsl_tx_rf_res(trx);
 	else
 		rc = bts_model_trx_deact_rf(trx);
-	if (rc < 0)
-		oml_fail_rep(OSMO_EVT_MAJ_RSL_FAIL,
-			     link ? "Failed to establish RSL link (%d)" :
-			     "Failed to deactivate RF (%d)", rc);
+	if (rc < 0) {
+		oml_tx_failure_event_rep(&trx->bb_transc.mo, OSMO_EVT_MAJ_RSL_FAIL,
+					 link ?
+					 "Failed to establish RSL link (%d)" :
+					 "Failed to deactivate RF (%d)", rc);
+	}
+
 	return 0;
 }
 
