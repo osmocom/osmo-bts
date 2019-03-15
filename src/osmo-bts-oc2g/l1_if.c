@@ -54,6 +54,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
+#include <osmo-bts/cbch.h>
 
 #include <nrw/oc2g/oc2g.h>
 #include <nrw/oc2g/gsml1prim.h>
