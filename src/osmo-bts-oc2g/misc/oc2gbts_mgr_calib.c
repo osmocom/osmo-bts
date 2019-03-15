@@ -87,7 +87,7 @@ static int oc2gbts_par_get_uptime(void *ctx, int *ret)
 
 	fpath = talloc_asprintf(ctx, "%s", UPTIME_TMP_PATH);
 	if (!fpath)
-		return NULL;
+		return -EINVAL;
 
 	fp = fopen(fpath, "r");
 	if (!fp)
@@ -117,7 +117,7 @@ static int oc2gbts_par_set_uptime(void *ctx, int val)
 
 	fpath = talloc_asprintf(ctx, "%s", UPTIME_TMP_PATH);
 	if (!fpath)
-		return NULL;
+		return -EINVAL;
 
 	fp = fopen(fpath, "w");
 	if (!fp)
