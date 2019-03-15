@@ -67,8 +67,8 @@ struct msgb *oml_msgb_alloc(void)
 }
 
 /* 3GPP TS 12.21 § 8.8.2 */
-static int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
-				    const char *fmt, ...)
+int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
+			     const char *fmt, ...)
 {
 	struct msgb *nmsg;
 	va_list ap;
