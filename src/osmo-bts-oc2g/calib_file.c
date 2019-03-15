@@ -133,7 +133,7 @@ static int calib_file_open(struct oc2gl1_hdl *fl1h,
 
 	st->fp = fopen(fname, "rb");
 	if (!st->fp) {
-		LOGP(DL1C, LOGL_NOTICE, "Failed to open '%s' for calibration data.\n", fname);
+		LOGP(DL1C, LOGL_FATAL, "Failed to open '%s' for calibration data.\n", fname);
 		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
 					 "Failed to open '%s' for calibration data", fname);
 		return -1;
@@ -220,7 +220,7 @@ static int calib_file_send(struct oc2gl1_hdl *fl1h,
 
 	rc = calib_verify(fl1h, desc);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_NOTICE,"Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
+		LOGP(DL1C, LOGL_FATAL, "Verify L1 calibration table %s -> failed (%d)\n", desc->fname, rc);
 		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
 					 "Verify L1 calibration table %s -> failed (%d)", desc->fname, rc);
 
@@ -277,7 +277,7 @@ int calib_load(struct oc2gl1_hdl *fl1h)
 	char *calib_path = fl1h->phy_inst->u.oc2g.calib_path;
 
 	if (!calib_path) {
-		LOGP(DL1C, LOGL_NOTICE, "Calibration file path not specified\n");
+		LOGP(DL1C, LOGL_FATAL, "Calibration file path not specified\n");
 		oml_tx_failure_event_rep(&fl1h->phy_inst->trx->mo, OSMO_EVT_WARN_SW_WARN,
 					 "Calibration file path not specified");
 		return -1;
