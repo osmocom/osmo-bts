@@ -261,9 +261,9 @@ static const struct log_info mgr_log_info = {
 	.num_cat = ARRAY_SIZE(mgr_log_info_cat),
 };
 
-static int mgr_log_init(void)
+static int mgr_log_init(void *ctx)
 {
-	osmo_init_logging(&mgr_log_info);
+	osmo_init_logging2(ctx, &mgr_log_info);
 	return 0;
 }
 
@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 	tall_msgb_ctx = talloc_named_const(tall_mgr_ctx, 1, "msgb");
 	msgb_talloc_ctx_init(tall_msgb_ctx, 0);
 
-	mgr_log_init();
+	mgr_log_init(tall_mgr_ctx);
 
 	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);
