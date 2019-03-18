@@ -570,7 +570,7 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 }
 
 /* See Table 10.5.25 of GSM04.08 */
-uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
+static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 			  uint8_t ts_nr, uint8_t lchan_nr)
 {
 	uint8_t cbits, chan_nr;
