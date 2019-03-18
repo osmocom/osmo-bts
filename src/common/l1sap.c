@@ -1388,7 +1388,7 @@ static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 
 /* pcu (socket interface) sends us a data request primitive */
 int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len)
+	uint16_t arfcn, uint8_t block_nr, const uint8_t *data, uint8_t len)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;

@@ -466,7 +466,7 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 }
 
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
-	struct gsm_pcu_if_data *data_req)
+	const struct gsm_pcu_if_data *data_req)
 {
 	uint8_t is_ptcch;
 	struct gsm_bts_trx *trx;
@@ -538,7 +538,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 }
 
 static int pcu_rx_pag_req(struct gsm_bts *bts, uint8_t msg_type,
-	struct gsm_pcu_if_pag_req *pag_req)
+	const struct gsm_pcu_if_pag_req *pag_req)
 {
 	int rc = 0;
 
@@ -598,7 +598,7 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 }
 
 static int pcu_rx_act_req(struct gsm_bts *bts,
-	struct gsm_pcu_if_act_req *act_req)
+	const struct gsm_pcu_if_act_req *act_req)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;

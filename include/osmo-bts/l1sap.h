@@ -71,7 +71,7 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
 /* pcu (socket interface) sends us a data request primitive */
 int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
-	uint16_t arfcn, uint8_t block_nr, uint8_t *data, uint8_t len);
+	uint16_t arfcn, uint8_t block_nr, const uint8_t *data, uint8_t len);
 
 /* call-back function for incoming RTP */
 void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
