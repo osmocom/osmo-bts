@@ -192,9 +192,6 @@ static void signal_handler(int signal)
 	case SIGABRT:
 	case SIGUSR1:
 	case SIGUSR2:
-		oml_fail_rep(OSMO_EVT_CRIT_PROC_STOP,
-			     "BTS: signal %d (%s) received", signal,
-			     strsignal(signal));
 		talloc_report_full(tall_bts_ctx, stderr);
 		break;
 	default:
