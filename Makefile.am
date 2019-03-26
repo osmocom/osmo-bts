@@ -5,8 +5,7 @@ SUBDIRS = include src tests doc contrib
 
 # package the contrib and doc
 EXTRA_DIST = \
-	contrib/dump_docs.py contrib/screenrc-l1fwd \
-	contrib/l1fwd.init contrib/screenrc-sysmobts contrib/respawn.sh \
+	contrib/dump_docs.py \
 	git-version-gen .version \
 	README.md
 
