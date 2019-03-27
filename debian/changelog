@@ -1,3 +1,12 @@
+osmo-bts (1.0.1) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * rsl.c: Add missing #include of gsm0808.h
+
+  [ Oliver Smith ]
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 27 Mar 2019 14:19:45 +0100
+
 osmo-bts (1.0.0) unstable; urgency=medium
 
   [ Stefan Sperling ]
