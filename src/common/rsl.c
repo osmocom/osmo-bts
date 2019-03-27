@@ -33,6 +33,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/gsm/lapdm.h>
+#include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
