@@ -36,6 +36,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
+#include <osmocom/gsm/tlv.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipaccess.h>
 
@@ -94,9 +95,8 @@ int oml_send_msg(struct msgb *msg, int is_manuf)
 
 	if (is_manuf) {
 		/* length byte, string + 0 termination */
-		uint8_t *manuf = msgb_push(msg, 1 + sizeof(abis_nm_ipa_magic));
-		manuf[0] = strlen(abis_nm_ipa_magic)+1;
-		memcpy(manuf+1, abis_nm_ipa_magic, strlen(abis_nm_ipa_magic));
+		uint8_t *manuf = msgb_push(msg, LV_GROSS_LEN(sizeof(abis_nm_ipa_magic)));
+		lv_put(manuf, sizeof(abis_nm_ipa_magic), (const uint8_t *) abis_nm_ipa_magic);
 	}
 
 	/* Push the main OML header and send it off */
