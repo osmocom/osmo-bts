@@ -11,7 +11,8 @@ Build-Depends: debhelper (>= 9),
                libosmocore-dev,
                libosmo-abis-dev,
                libgps-dev,
-               txt2man
+               txt2man,
+               osmo-gsm-manuals-dev
 Standards-Version: 3.9.8
 Vcs-Browser: http://git.osmocom.org/osmo-bts/
 Vcs-Git: git://git.osmocom.org/osmo-bts
@@ -48,3 +49,12 @@ Priority: extra
 Depends: osmo-bts-virtual (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the osmo-bts-virtual
  Make debugging possible
+
+Package: osmo-bts-doc
+Architecture: all
+Section: doc
+Priority: optional
+Depends: ${misc:Depends}
+Description: ${misc:Package} PDF documentation
+ Various manuals: user manual, VTY reference manual and/or
+ protocol/interface manuals.
