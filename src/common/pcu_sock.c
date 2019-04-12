@@ -790,14 +790,17 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 		goto close;
 
 	if (rc < 0) {
-		if (errno == EAGAIN)
+		if (errno == EAGAIN) {
+			msgb_free(msg);
 			return 0;
+		}
 		goto close;
 	}
 
 	if (rc < sizeof(*pcu_prim)) {
 		LOGP(DPCU, LOGL_ERROR, "Received %d bytes on PCU Socket, but primitive size "
 			"is %lu, discarding\n", rc, sizeof(*pcu_prim));
+		msgb_free(msg);
 		return 0;
 	}
 
