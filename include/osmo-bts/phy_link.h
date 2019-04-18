@@ -166,7 +166,7 @@ const char *phy_instance_name(struct phy_instance *pinst);
 
 void phy_user_statechg_notif(struct phy_instance *pinst, enum phy_link_state link_state);
 
-static inline struct phy_instance *trx_phy_instance(struct gsm_bts_trx *trx)
+static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *trx)
 {
 	OSMO_ASSERT(trx);
 	return trx->role_bts.l1h;

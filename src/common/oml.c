@@ -155,7 +155,7 @@ static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
 	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, _NUM_BTS_FEAT/8 + 1, bts->_features_data);
 }
 
-static inline void add_trx_attr(struct msgb *msg, struct gsm_bts_trx *trx)
+static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
 {
 	const struct phy_instance *pinst = trx_phy_instance(trx);
 
@@ -191,7 +191,7 @@ static inline int cleanup_attr_msg(uint8_t *out, int out_offset, struct msgb *ms
 	return len + out_offset + 1;
 }
 
-static inline int handle_attrs_trx(uint8_t *out, struct gsm_bts_trx *trx, const uint8_t *attr, uint16_t attr_len)
+static inline int handle_attrs_trx(uint8_t *out, const struct gsm_bts_trx *trx, const uint8_t *attr, uint16_t attr_len)
 {
 	uint16_t i, attr_out_index = 1; /* byte 0 is reserved for unsupported attributes counter */
 	struct msgb *attr_buf = oml_msgb_alloc();
