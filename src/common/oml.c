@@ -275,7 +275,7 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
 		     get_value_string(abis_nm_obj_class_names, foh->obj_class));
-		len = -NM_NACK_RES_NOTIMPL;
+		len = -NM_NACK_OBJCLASS_NOTSUPP;
 	}
 
 	if (len < 0) {
