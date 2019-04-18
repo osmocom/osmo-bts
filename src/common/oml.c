@@ -252,29 +252,29 @@ static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, cons
 }
 
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
-static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *foh, const uint8_t *attr,
-			    uint16_t attr_len)
+static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
+			    const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
 	uint8_t resp[MAX_VERSION_LENGTH * attr_len * 2]; /* heuristic for Attribute Response Info space requirements */
 	int len;
 
 	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n",
-	     get_value_string(abis_nm_obj_class_names, foh->obj_class));
+	     get_value_string(abis_nm_obj_class_names, mo->obj_class));
 
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
 
-	switch (foh->obj_class) {
+	switch (mo->obj_class) {
 	case NM_OC_BTS:
-		len = handle_attrs_bts(resp, bts, attr, attr_len);
+		len = handle_attrs_bts(resp, mo->bts, attr, attr_len);
 		break;
 	case NM_OC_BASEB_TRANSC:
-		len = handle_attrs_trx(resp, gsm_bts_trx_num(bts, foh->obj_inst.trx_nr), attr, attr_len);
+		len = handle_attrs_trx(resp, gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr), attr, attr_len);
 		break;
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
-		     get_value_string(abis_nm_obj_class_names, foh->obj_class));
+		     get_value_string(abis_nm_obj_class_names, mo->obj_class));
 		len = -NM_NACK_OBJCLASS_NOTSUPP;
 	}
 
@@ -287,7 +287,7 @@ static int oml_tx_attr_resp(struct gsm_bts *bts, const struct abis_om_fom_hdr *f
 	/* §9.4.64 Get Attribute Response Info */
 	msgb_tl16v_put(nmsg, NM_ATT_GET_ARI, len, resp);
 
-	len = oml_mo_send_msg(&bts->mo, nmsg, NM_MT_GET_ATTR_RESP);
+	len = oml_mo_send_msg(mo, nmsg, NM_MT_GET_ATTR_RESP);
 	return (len < 0) ? -NM_NACK_CANT_PERFORM : len;
 }
 
@@ -527,6 +527,7 @@ int oml_set_lchan_t200(struct gsm_lchan *lchan)
 static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	const struct gsm_abis_mo *mo;
 	struct tlv_parsed tp;
 	int rc;
 
@@ -536,18 +537,26 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	abis_nm_debugp_foh(DOML, foh);
 	DEBUGPC(DOML, "Rx GET ATTR\n");
 
+	/* Determine which OML object is addressed */
+	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+	if (!mo) {
+		LOGP(DOML, LOGL_ERROR, "%s Get Attributes for unknown Object Instance\n",
+		     abis_nm_dump_foh(foh));
+		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+	}
+
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute parsing failure");
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute parsing failure");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
 	if (!TLVP_PRES_LEN(&tp, NM_ATT_LIST_REQ_ATTR, 1)) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
+		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	rc = oml_tx_attr_resp(bts, foh, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
+	rc = oml_tx_attr_resp(mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "responding to O&M Get Attributes message with NACK 0%x\n", -rc);
 		return oml_fom_ack_nack(msg, -rc);
