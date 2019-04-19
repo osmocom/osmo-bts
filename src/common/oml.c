@@ -145,11 +145,26 @@ char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
 
 static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 {
-	abis_nm_put_sw_file(msg, "osmobts", PACKAGE_VERSION, true);
-	abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT), btsvariant2str(bts->variant), true);
+	uint16_t total_len = 0;
+	uint8_t *len;
 
-	if (strlen(bts->sub_model))
-		abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL), bts->sub_model, true);
+	/* Put NM_ATT_SW_CONFIG as per 9.4.61 "SW Configuration". */
+	msgb_v_put(msg, NM_ATT_SW_CONFIG);
+
+	/* We don't know the length yet, so we update it later. */
+	len = msgb_put(msg, 2);
+
+	total_len += abis_nm_put_sw_file(msg, "osmobts", PACKAGE_VERSION, true);
+	total_len += abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT),
+					 btsvariant2str(bts->variant), true);
+
+	if (strlen(bts->sub_model)) {
+		total_len += abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL),
+						 bts->sub_model, true);
+	}
+
+	/* Finally, update the length */
+	osmo_store16be(total_len, len);
 }
 
 /* Add BTS features as 3GPP TS 52.021 §9.4.30 Manufacturer Id */
@@ -161,9 +176,21 @@ static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
 static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
 {
 	const struct phy_instance *pinst = trx_phy_instance(trx);
+	const char *phy_version;
+	uint16_t total_len;
+	uint8_t *len;
 
-	abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), pinst && strlen(pinst->version) ? pinst->version : "Unknown",
-			    true);
+	/* Put NM_ATT_SW_CONFIG as per 9.4.61 "SW Configuration". */
+	msgb_v_put(msg, NM_ATT_SW_CONFIG);
+
+	/* We don't know the length yet, so we update it later. */
+	len = msgb_put(msg, 2);
+
+	phy_version = pinst && strlen(pinst->version) ? pinst->version : "Unknown";
+	total_len = abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), phy_version, true);
+
+	/* Finally, update the length */
+	osmo_store16be(total_len, len);
 }
 
 /* Handle a list of attributes requested by the BSC, compose
