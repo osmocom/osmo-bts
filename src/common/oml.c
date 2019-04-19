@@ -166,92 +166,79 @@ static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
 			    true);
 }
 
-/* The number of attributes in §9.4.26 List of Required Attributes is 2 bytes,
-   but the Count of not-reported attributes from §9.4.64 is 1 byte */
-static inline uint8_t pack_num_unreported_attr(uint16_t attrs)
+/* Handle a list of attributes requested by the BSC, compose
+ * TRX-specific Get Attribute Response IE as per 9.4.64. */
+static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_trx *trx,
+				   const uint8_t *attr, uint16_t attr_len)
 {
-	if (attrs > 255) {
-		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes, Count of not-reported attributes is too big: %u\n",
-		     attrs);
-		return 255;
+	uint8_t num_unsupported = 0;
+	uint8_t *buf;
+	int i;
+
+	if (!trx) {
+		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes for unknown TRX\n");
+		return -NM_NACK_TRXNR_UNKN;
 	}
-	return attrs; /* Return number of unhandled attributes */
-}
-
-/* copy all the attributes accumulated in msg to out and return the total length of out buffer */
-static inline int cleanup_attr_msg(uint8_t *out, int out_offset, struct msgb *msg)
-{
-	int len = 0;
-
-	out[0] = pack_num_unreported_attr(out_offset - 1);
-
-	if (msg) {
-		memcpy(out + out_offset, msgb_data(msg), msg->len);
-		len = msg->len;
-		msgb_free(msg);
-	}
-
-	return len + out_offset;
-}
-
-static inline int handle_attrs_trx(uint8_t *out, const struct gsm_bts_trx *trx, const uint8_t *attr, uint16_t attr_len)
-{
-	uint16_t i, attr_out_index = 1; /* byte 0 is reserved for unsupported attributes counter */
-	struct msgb *attr_buf = oml_msgb_alloc();
-
-	if (!attr_buf)
-		return -NM_NACK_CANT_PERFORM;
 
 	for (i = 0; i < attr_len; i++) {
-		bool processed = false;
 		switch (attr[i]) {
 		case NM_ATT_SW_CONFIG:
-			if (trx) {
-				add_trx_attr(attr_buf, trx);
-				processed = true;
-			} else
-				LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unhandled due to missing TRX.\n",
-				     i, get_value_string(abis_nm_att_names, attr[i]));
+			add_trx_attr(out_msg, trx);
 			break;
 		default:
 			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by TRX.\n", i,
 			     get_value_string(abis_nm_att_names, attr[i]));
-		}
-		/* assemble values of supported attributes and list of unsupported ones */
-		if (!processed) {
-			out[attr_out_index] = attr[i];
-			attr_out_index++;
+			/* Push this tag to the list of unsupported attributes */
+			buf = msgb_push(out_msg, 1);
+			*buf = attr[i];
+			num_unsupported++;
 		}
 	}
 
-	return cleanup_attr_msg(out, attr_out_index, attr_buf);
+	/* Push the amount of unsupported attributes */
+	buf = msgb_push(out_msg, 1);
+	*buf = num_unsupported;
+
+	return 0;
 }
 
-static inline int handle_attrs_bts(uint8_t *out, const struct gsm_bts *bts, const uint8_t *attr, uint16_t attr_len)
+/* Handle a list of attributes requested by the BSC, compose
+ * BTS-specific Get Attribute Response IE as per 9.4.64. */
+static inline int handle_attrs_bts(struct msgb *out_msg, const struct gsm_bts *bts,
+				   const uint8_t *attr, uint16_t attr_len)
 {
-	uint16_t i, attr_out_index = 1; /* byte 0 is reserved for unsupported attributes counter */
-	struct msgb *attr_buf = oml_msgb_alloc();
+	uint8_t num_unsupported = 0;
+	uint8_t *buf;
+	int i;
 
-	if (!attr_buf)
-		return -NM_NACK_CANT_PERFORM;
+	if (!bts) {
+		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes for unknown BTS\n");
+		return -NM_NACK_BTSNR_UNKN;
+	}
 
 	for (i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
 		case NM_ATT_SW_CONFIG:
-			add_bts_attrs(attr_buf, bts);
+			add_bts_attrs(out_msg, bts);
 			break;
 		case NM_ATT_MANUF_ID:
-			add_bts_feat(attr_buf, bts);
+			add_bts_feat(out_msg, bts);
 			break;
 		default:
 			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS.\n", i,
 			     get_value_string(abis_nm_att_names, attr[i]));
-			out[attr_out_index] = attr[i]; /* assemble values of supported attributes and list of unsupported ones */
-			attr_out_index++;
+			/* Push this tag to the list of unsupported attributes */
+			buf = msgb_push(out_msg, 1);
+			*buf = attr[i];
+			num_unsupported++;
 		}
 	}
 
-	return cleanup_attr_msg(out, attr_out_index, attr_buf);
+	/* Push the amount of unsupported attributes */
+	buf = msgb_push(out_msg, 1);
+	*buf = num_unsupported;
+
+	return 0;
 }
 
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
@@ -259,8 +246,7 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
-	uint8_t resp[MAX_VERSION_LENGTH * attr_len * 2]; /* heuristic for Attribute Response Info space requirements */
-	int len;
+	int rc;
 
 	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n",
 	     get_value_string(abis_nm_obj_class_names, mo->obj_class));
@@ -270,28 +256,28 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 
 	switch (mo->obj_class) {
 	case NM_OC_BTS:
-		len = handle_attrs_bts(resp, mo->bts, attr, attr_len);
+		rc = handle_attrs_bts(nmsg, mo->bts, attr, attr_len);
 		break;
 	case NM_OC_BASEB_TRANSC:
-		len = handle_attrs_trx(resp, gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr), attr, attr_len);
+		rc = handle_attrs_trx(nmsg, gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr), attr, attr_len);
 		break;
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
 		     get_value_string(abis_nm_obj_class_names, mo->obj_class));
-		len = -NM_NACK_OBJCLASS_NOTSUPP;
+		rc = -NM_NACK_OBJCLASS_NOTSUPP;
 	}
 
-	if (len < 0) {
-		LOGP(DOML, LOGL_ERROR, "Tx Get Attribute Response FAILED with %d\n", len);
+	if (rc < 0) {
+		LOGP(DOML, LOGL_ERROR, "Tx Get Attribute Response FAILED with rc=%d\n", rc);
 		msgb_free(nmsg);
-		return len;
+		return rc;
 	}
 
-	/* §9.4.64 Get Attribute Response Info */
-	msgb_tl16v_put(nmsg, NM_ATT_GET_ARI, len, resp);
+	/* Push Get Attribute Response Info TL (actually TV where V is L) */
+	msgb_tv16_push(nmsg, NM_ATT_GET_ARI, msgb_length(nmsg));
 
-	len = oml_mo_send_msg(mo, nmsg, NM_MT_GET_ATTR_RESP);
-	return (len < 0) ? -NM_NACK_CANT_PERFORM : len;
+	rc = oml_mo_send_msg(mo, nmsg, NM_MT_GET_ATTR_RESP);
+	return (rc < 0) ? -NM_NACK_CANT_PERFORM : rc;
 }
 
 /* 8.8.1 sending State Changed Event Report */
