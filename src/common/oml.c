@@ -188,7 +188,7 @@ static inline int cleanup_attr_msg(uint8_t *out, int out_offset, struct msgb *ms
 		msgb_free(msg);
 	}
 
-	return len + out_offset + 1;
+	return len + out_offset;
 }
 
 static inline int handle_attrs_trx(uint8_t *out, const struct gsm_bts_trx *trx, const uint8_t *attr, uint16_t attr_len)
