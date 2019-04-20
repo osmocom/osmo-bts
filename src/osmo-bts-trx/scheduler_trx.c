@@ -22,6 +22,7 @@
  */
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
@@ -709,71 +710,151 @@ send_burst:
  * RX on uplink (indication to upper layer)
  */
 
+/* 3GPP TS 05.02, section 5.2.7 */
+#define RACH_EXT_TAIL_LEN	8
+#define RACH_SYNCH_SEQ_LEN	41
+
+enum rach_synch_seq_t {
+	RACH_SYNCH_SEQ_UNKNOWN = -1,
+	RACH_SYNCH_SEQ_TS0, /* GSM, GMSK (default) */
+	RACH_SYNCH_SEQ_TS1, /* EGPRS, 8-PSK */
+	RACH_SYNCH_SEQ_TS2, /* EGPRS, GMSK */
+	RACH_SYNCH_SEQ_NUM
+};
+
+static struct value_string rach_synch_seq_names[] = {
+	{ RACH_SYNCH_SEQ_UNKNOWN,	"UNKNOWN" },
+	{ RACH_SYNCH_SEQ_TS0,		"TS0: GSM, GMSK" },
+	{ RACH_SYNCH_SEQ_TS1,		"TS1: EGPRS, 8-PSK" },
+	{ RACH_SYNCH_SEQ_TS2,		"TS2: EGPRS, GMSK" },
+	{ 0, NULL },
+};
+
+static enum rach_synch_seq_t rach_get_synch_seq(sbit_t *bits, int *best_score)
+{
+	sbit_t *synch_seq_burst = bits + RACH_EXT_TAIL_LEN;
+	enum rach_synch_seq_t seq = RACH_SYNCH_SEQ_TS0;
+	int score[RACH_SYNCH_SEQ_NUM] = { 0 };
+	int max_score = INT_MIN;
+	int i, j;
+
+	/* 3GPP TS 05.02, section 5.2.7 "Access burst (AB)", synch. sequence bits */
+	static const char synch_seq_ref[RACH_SYNCH_SEQ_NUM][RACH_SYNCH_SEQ_LEN] = {
+		[RACH_SYNCH_SEQ_TS0] = "01001011011111111001100110101010001111000",
+		[RACH_SYNCH_SEQ_TS1] = "01010100111110001000011000101111001001101",
+		[RACH_SYNCH_SEQ_TS2] = "11101111001001110101011000001101101110111",
+	};
+
+	/* Get a multiplier for j-th bit of i-th synch. sequence */
+#define RACH_SYNCH_SEQ_MULT \
+	(synch_seq_ref[i][j] == '1' ? -1 : 1)
+
+	/* For each synch. sequence, count the bit match score. Since we deal with
+	 * soft-bits (-127...127), we sum the absolute values of matching ones,
+	 * and subtract the absolute values of different ones, so the resulting
+	 * score is more accurate than it could be with hard-bits. */
+	for (i = 0; i < RACH_SYNCH_SEQ_NUM; i++) {
+		for (j = 0; j < RACH_SYNCH_SEQ_LEN; j++)
+			score[i] += RACH_SYNCH_SEQ_MULT * synch_seq_burst[j];
+
+		/* Keep the maximum value updated */
+		if (score[i] > max_score) {
+			max_score = score[i];
+			seq = i;
+		}
+	}
+
+	/* Calculate an approximate level of our confidence */
+	if (best_score != NULL)
+		*best_score = max_score;
+
+	/* At least 1/3 of a synch. sequence shall match */
+	if (max_score < (127 * RACH_SYNCH_SEQ_LEN / 3))
+		return RACH_SYNCH_SEQ_UNKNOWN;
+
+	return seq;
+}
+
 int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
 	int8_t rssi, int16_t toa256)
 {
-	uint8_t chan_nr;
 	struct osmo_phsap_prim l1sap;
 	int n_errors, n_bits_total;
-	bool is_11bit = true;
 	uint16_t ra11;
 	uint8_t ra;
-	int rc = 1;
+	int rc;
 
-	chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	/* It would be great if the transceiver were doing some kind of tagging,
+	 * whether it is extended (11-bit) RACH or not. We would not need to guess
+	 * it here. For now, let's try to correlate the synch. sequence of a received
+	 * Access Burst with the known ones (3GPP TS 05.02, section 5.2.7), and
+	 * fall-back to the default TS0 if it fails. This would save some CPU
+	 * power, and what is more important - prevent possible collisions. */
+	enum rach_synch_seq_t synch_seq = RACH_SYNCH_SEQ_TS0;
+	int best_score = 127 * RACH_SYNCH_SEQ_LEN;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received RACH toa=%d\n", toa256);
+	/* Handover RACH cannot be extended (11-bit) */
+	if (chan == TRXC_RACH)
+		synch_seq = rach_get_synch_seq(bits, &best_score);
 
-	if (chan == TRXC_RACH) /* Attempt to decode as extended (11-bit) RACH first */
-		rc = gsm0503_rach_ext_decode_ber(&ra11, bits + 8 + 41,
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
+	       "Received RACH (%s; match=%.1f%%) toa=%d\n",
+	       get_value_string(rach_synch_seq_names, synch_seq),
+	       best_score * 100.0 / (127 * RACH_SYNCH_SEQ_LEN),
+	       toa256);
+
+	/* Compose a new L1SAP primitive */
+	memset(&l1sap, 0x00, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION, NULL);
+	l1sap.u.rach_ind.chan_nr = trx_chan_desc[chan].chan_nr | tn;
+	l1sap.u.rach_ind.acc_delay = (toa256 >= 0) ? toa256 / 256 : 0;
+	l1sap.u.rach_ind.acc_delay_256bits = toa256;
+	l1sap.u.rach_ind.rssi = rssi;
+	l1sap.u.rach_ind.fn = fn;
+
+	/* Decode RACH depending on its synch. sequence */
+	switch (synch_seq) {
+	case RACH_SYNCH_SEQ_TS1:
+	case RACH_SYNCH_SEQ_TS2:
+		rc = gsm0503_rach_ext_decode_ber(&ra11, bits + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 						 l1t->trx->bts->bsic, &n_errors, &n_bits_total);
-	if (rc) {
-		/* Indicate non-extended RACH */
-		is_11bit = false;
-
-		/* Fall-back to the normal RACH decoding */
-		rc = gsm0503_rach_decode_ber(&ra, bits + 8 + 41,
-			l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad AB frame\n");
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad Access Burst\n");
 			return 0;
 		}
-	}
 
-	/* compose primitive */
-	/* generate prim */
-	memset(&l1sap, 0, sizeof(l1sap));
-	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION,
-		NULL);
-	l1sap.u.rach_ind.chan_nr = chan_nr;
-	l1sap.u.rach_ind.acc_delay = (toa256 >= 0) ? toa256/256 : 0;
-	l1sap.u.rach_ind.fn = fn;
-	l1sap.u.rach_ind.rssi = rssi;
-	l1sap.u.rach_ind.ber10k = compute_ber10k(n_bits_total, n_errors);
-	l1sap.u.rach_ind.acc_delay_256bits = toa256;
+		if (synch_seq == RACH_SYNCH_SEQ_TS1)
+			l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_1;
+		else
+			l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_2;
 
-	if (is_11bit) {
 		l1sap.u.rach_ind.is_11bit = 1;
 		l1sap.u.rach_ind.ra = ra11;
-		l1sap.u.rach_ind.burst_type = BSIC2BCC(l1t->trx->bts->bsic);
-		switch (l1sap.u.rach_ind.burst_type) {
-		case GSM_L1_BURST_TYPE_ACCESS_0:
-		case GSM_L1_BURST_TYPE_ACCESS_1:
-		case GSM_L1_BURST_TYPE_ACCESS_2:
-			break;
-		default:
-			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
-			       "Received RACH frame with unexpected TSC %u, "
-			       "forcing default %u\n", l1sap.u.rach_ind.burst_type,
-			       GSM_L1_BURST_TYPE_ACCESS_0);
-			l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+		break;
+
+	case RACH_SYNCH_SEQ_TS0:
+	default:
+		/* Fall-back to the default TS0 if needed */
+		if (synch_seq != RACH_SYNCH_SEQ_TS0) {
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Falling-back to the default TS0\n");
+			synch_seq = RACH_SYNCH_SEQ_TS0;
 		}
-	} else {
+
+		rc = gsm0503_rach_decode_ber(&ra, bits + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
+					     l1t->trx->bts->bsic, &n_errors, &n_bits_total);
+		if (rc) {
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad Access Burst\n");
+			return 0;
+		}
+
+		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
 		l1sap.u.rach_ind.is_11bit = 0;
 		l1sap.u.rach_ind.ra = ra;
-		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+		break;
 	}
+
+	l1sap.u.rach_ind.ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* forward primitive */
 	l1sap_up(l1t->trx, &l1sap);
