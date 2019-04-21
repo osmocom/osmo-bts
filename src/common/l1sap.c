@@ -1276,7 +1276,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	struct gsm_bts *bts = trx->bts;
 	struct lapdm_channel *lc;
 
-	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind");
+	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind\n");
 
 	/* check for handover access burst on dedicated channels */
 	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
