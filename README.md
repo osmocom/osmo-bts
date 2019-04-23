@@ -121,5 +121,4 @@ osmo-bts-octphy
 osmo-bts-trx
 ------------
 
- * TCH/F_PDCH cannel not working as voice (https://osmocom.org/issues/1865)
  * No BER value delivered to OsmoPCU (https://osmocom.org/issues/1855)
