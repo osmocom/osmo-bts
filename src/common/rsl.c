@@ -1604,7 +1604,7 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
 
 		lapdm_ui_prefix_lchan(lchan, TLVP_VAL(&tp, RSL_IE_L3_INFO), osmo_si, len);
-		if (memcmp(GSM_BTS_SI(bts, osmo_si), TLVP_VAL(&tp, RSL_IE_L3_INFO), sizeof(sysinfo_buf_t) != 0))
+		if (memcmp(GSM_BTS_SI(bts, osmo_si), TLVP_VAL(&tp, RSL_IE_L3_INFO), sizeof(sysinfo_buf_t)) != 0)
 			lchan->si.overridden |= (1 << osmo_si);
 		else
 			lchan->si.overridden &= ~(1 << osmo_si);
