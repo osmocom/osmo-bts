@@ -1627,33 +1627,33 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
  */
 static void rsl_add_rtp_stats(struct gsm_lchan *lchan, struct msgb *msg)
 {
-	struct ipa_stats {
-		uint32_t packets_sent;
-		uint32_t octets_sent;
-		uint32_t packets_recv;
-		uint32_t octets_recv;
-		uint32_t packets_lost;
-		uint32_t arrival_jitter;
-		uint32_t avg_tx_delay;
-	} __attribute__((packed));
+	uint32_t packets_sent, octets_sent;
+	uint32_t packets_recv, octets_recv;
+	uint32_t packets_lost;
+	uint32_t arrival_jitter;
 
-	struct ipa_stats stats;
+	msgb_tv_put(msg, RSL_IE_IPAC_CONN_STAT, sizeof(uint32_t) * 7);
 
-	memset(&stats, 0, sizeof(stats));
-
-	if (lchan->abis_ip.rtp_socket)
+	if (lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_stats(lchan->abis_ip.rtp_socket,
-					&stats.packets_sent, &stats.octets_sent,
-					&stats.packets_recv, &stats.octets_recv,
-					&stats.packets_lost, &stats.arrival_jitter);
-	/* convert to network byte order */
-	stats.packets_sent = htonl(stats.packets_sent);
-	stats.octets_sent = htonl(stats.octets_sent);
-	stats.packets_recv = htonl(stats.packets_recv);
-	stats.octets_recv = htonl(stats.octets_recv);
-	stats.packets_lost = htonl(stats.packets_lost);
+				      &packets_sent, &octets_sent,
+				      &packets_recv, &octets_recv,
+				      &packets_lost, &arrival_jitter);
 
-	msgb_tlv_put(msg, RSL_IE_IPAC_CONN_STAT, sizeof(stats), (uint8_t *) &stats);
+		/* msgb_put_u32() uses osmo_store32be(),
+		 * so we don't need to call htonl(). */
+		msgb_put_u32(msg, packets_sent);
+		msgb_put_u32(msg, octets_sent);
+		msgb_put_u32(msg, packets_recv);
+		msgb_put_u32(msg, octets_recv);
+		msgb_put_u32(msg, packets_lost);
+		msgb_put_u32(msg, arrival_jitter);
+		/* FIXME: AVG Tx delay is always 0 */
+		msgb_put_u32(msg, 0);
+	} else {
+		msgb_put(msg, sizeof(uint32_t) * 7);
+		memset(msg->tail, 0x00, sizeof(uint32_t) * 7);
+	}
 }
 
 int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
