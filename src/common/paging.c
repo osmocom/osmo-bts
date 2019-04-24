@@ -302,7 +302,9 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 				uint8_t cneed2, const uint8_t *identity3_lv)
 {
 	struct gsm48_paging2 *pt2 = (struct gsm48_paging2 *) out_buf;
+	uint32_t tmsi;
 	uint8_t *cur;
+	int rc;
 
 	memset(out_buf, 0, sizeof(*pt2));
 
@@ -311,8 +313,12 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 	pt2->pag_mode = GSM48_PM_NORMAL;
 	pt2->cneed1 = cneed1;
 	pt2->cneed2 = cneed2;
-	tmsi_mi_to_uint(&pt2->tmsi1, tmsi1_lv);
-	tmsi_mi_to_uint(&pt2->tmsi2, tmsi2_lv);
+	rc = tmsi_mi_to_uint(&tmsi, tmsi1_lv);
+	if (rc == 0)
+		pt2->tmsi1 = tmsi;
+	rc = tmsi_mi_to_uint(&tmsi, tmsi2_lv);
+	if (rc == 0)
+		pt2->tmsi2 = tmsi;
 	cur = out_buf + sizeof(*pt2);
 
 	if (identity3_lv)
@@ -329,6 +335,8 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv, uint8_t
 				const uint8_t *tmsi4_lv, uint8_t cneed4)
 {
 	struct gsm48_paging3 *pt3 = (struct gsm48_paging3 *) out_buf;
+	uint32_t tmsi;
+	int rc;
 
 	memset(out_buf, 0, sizeof(*pt3));
 
@@ -337,10 +345,18 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv, uint8_t
 	pt3->pag_mode = GSM48_PM_NORMAL;
 	pt3->cneed1 = cneed1;
 	pt3->cneed2 = cneed2;
-	tmsi_mi_to_uint(&pt3->tmsi1, tmsi1_lv);
-	tmsi_mi_to_uint(&pt3->tmsi2, tmsi2_lv);
-	tmsi_mi_to_uint(&pt3->tmsi3, tmsi3_lv);
-	tmsi_mi_to_uint(&pt3->tmsi4, tmsi4_lv);
+	rc = tmsi_mi_to_uint(&tmsi, tmsi1_lv);
+	if (rc == 0)
+		pt3->tmsi1 = tmsi;
+	rc = tmsi_mi_to_uint(&tmsi, tmsi2_lv);
+	if (rc == 0)
+		pt3->tmsi2 = tmsi;
+	rc = tmsi_mi_to_uint(&tmsi, tmsi3_lv);
+	if (rc == 0)
+		pt3->tmsi3 = tmsi;
+	rc = tmsi_mi_to_uint(&tmsi, tmsi4_lv);
+	if (rc == 0)
+		pt3->tmsi4 = tmsi;
 
 	/* The structure definition in libosmocore is wrong. It includes as last
 	 * byte some invalid definition of chneed3/chneed4, so we must do this by hand
