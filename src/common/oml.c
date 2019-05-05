@@ -590,8 +590,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is not supported",
 						 arfcn);
-			/* FIXME: use proper format specifier for uint16_t */
-			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %d is not supported.\n", arfcn);
+			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %u is not supported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 	}
