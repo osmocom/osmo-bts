@@ -1411,8 +1411,8 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
 	}
 
-	/* FIXME: fix missing \n */
-	DEBUGPFOH(DOML, foh, "Rx IPACCESS(0x%02x): ", foh->msg_type);
+	DEBUGPFOH(DOML, foh, "Rx IPACCESS(0x%02x): %s\n", foh->msg_type,
+		  osmo_hexdump(foh->data, oh->length - sizeof(*foh)));
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT:
