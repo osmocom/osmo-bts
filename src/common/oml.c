@@ -49,6 +49,9 @@
 #include <osmo-bts/signal.h>
 #include <osmo-bts/phy_link.h>
 
+#define LOGPFOH(ss, lvl, foh, fmt, args ...) LOGP(ss, lvl, "%s: " fmt, abis_nm_dump_foh(foh), ## args)
+#define DEBUGPFOH(ss, foh, fmt, args ...) LOGPFOH(ss, LOGL_DEBUG, foh, fmt, ## args)
+
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg);
 
 static struct tlv_definition abis_nm_att_tlvdef_ipa_local = {};
@@ -534,14 +537,12 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (!foh || !bts)
 		return -EINVAL;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx GET ATTR\n");
+	DEBUGPFOH(DOML, foh, "Rx GET ATTR\n");
 
 	/* Determine which OML object is addressed */
 	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
 	if (!mo) {
-		LOGP(DOML, LOGL_ERROR, "%s Get Attributes for unknown Object Instance\n",
-		     abis_nm_dump_foh(foh));
+		LOGPFOH(DOML, LOGL_ERROR, foh, "Get Attributes for unknown Object Instance\n");
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 	}
 
@@ -558,7 +559,7 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	rc = oml_tx_attr_resp(mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "responding to O&M Get Attributes message with NACK 0%x\n", -rc);
+		LOGPFOH(DOML, LOGL_ERROR, foh, "Responding to O&M Get Attributes message with NACK 0%x\n", -rc);
 		return oml_fom_ack_nack(msg, -rc);
 	}
 
@@ -573,8 +574,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	int rc, i;
 	const uint8_t *payload;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx SET BTS ATTR\n");
+	DEBUGPFOH(DOML, foh, "Rx SET BTS ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
@@ -590,7 +590,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is not supported",
 						 arfcn);
-			LOGP(DOML, LOGL_NOTICE, "Given ARFCN %d is not supported.\n", arfcn);
+			/* FIXME: use proper format specifier for uint16_t */
+			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %d is not supported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 	}
@@ -637,8 +638,8 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 		switch (val[0]) {
 		case 0xFF: /* Osmocom specific Extension of TS 12.21 */
-			LOGP(DOML, LOGL_NOTICE, "WARNING: Radio Link Timeout "
-			     "explicitly disabled, only use this for lab testing!\n");
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "WARNING: Radio Link Timeout "
+				"explicitly disabled, only use this for lab testing!\n");
 			bts->radio_link_timeout = -1;
 			break;
 		case 0x01: /* Based on uplink SACCH (radio link timeout) */
@@ -650,7 +651,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			/* fall-through */
 		case 0x02: /* Based on RXLEV/RXQUAL measurements */
 		default:
-			LOGP(DOML, LOGL_NOTICE, "Given Conn. Failure Criterion "
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given Conn. Failure Criterion "
 				"not supported. Please use criterion 0x01 with "
 				"RADIO_LINK_TIMEOUT value of 4..64\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
@@ -664,15 +665,15 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
 #if 0
 			bts->t200_ms[i] = t200_ms;
-			DEBUGP(DOML, "T200[%u]: OML=%u, mult=%u => %u ms\n",
-				i, payload[i], abis_nm_t200_mult[i],
-				bts->t200_ms[i]);
+			DEBUGPFOH(DOML, foh, "T200[%u]: OML=%u, mult=%u => %u ms\n",
+				  i, payload[i], abis_nm_t200_mult[i],
+				  bts->t200_ms[i]);
 #else
 			/* we'd rather use the 1s/2s (long) defaults by
 			 * libosmocore, as we appear to have some bug(s)
 			 * related to handling T200 expiration in
 			 * libosmogsm lapd(m) code? */
-			LOGP(DOML, LOGL_NOTICE, "Ignoring T200[%u] (%u ms) "
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "Ignoring T200[%u] (%u ms) "
 				"as sent by BSC due to suspected LAPDm bug!\n",
 				i, t200_ms);
 #endif
@@ -713,8 +714,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BTS_AIR_TIMER, 1)) {
 		uint8_t t3105 = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER);
 		if (t3105 == 0) {
-			LOGP(DOML, LOGL_NOTICE,
-				"T3105 must have a value != 0.\n");
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "T3105 must have a value != 0.\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
 		bts->t3105_ms = t3105 * 10;
@@ -743,8 +743,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct tlv_parsed tp, *tp_merged;
 	int rc;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx SET RADIO CARRIER ATTR\n");
+	DEBUGPFOH(DOML, foh, "Rx SET RADIO CARRIER ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
@@ -774,8 +773,8 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* 9.4.47 RF Max Power Reduction */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_RF_MAXPOWR_R, 1)) {
 		trx->max_power_red = *TLVP_VAL(&tp, NM_ATT_RF_MAXPOWR_R) * 2;
-		LOGP(DOML, LOGL_INFO, "Set RF Max Power Reduction = %d dBm\n",
-		     trx->max_power_red);
+		LOGPFOH(DOML, LOGL_INFO, foh, "Set RF Max Power Reduction to "
+			"%d dBm\n", trx->max_power_red);
 	}
 	/* 9.4.5 ARFCN List */
 #if 0
@@ -792,7 +791,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 			if (arfcn > 1024)
 				return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 			trx->arfcn_list[i] = arfcn;
-			LOGP(DOML, LOGL_INFO, " ARFCN list = %d\n", trx->arfcn_list[i]);
+			LOGPFOH(DOML, LOGL_INFO, foh, " ARFCN list = %d\n", trx->arfcn_list[i]);
 		}
 		trx->arfcn_num = length;
 	} else
@@ -804,7 +803,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		uint16_t length = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST);
 		uint16_t arfcn;
 		if (length != 2) {
-			LOGP(DOML, LOGL_ERROR, "Expecting only one ARFCN, "
+			LOGPFOH(DOML, LOGL_ERROR, foh, "Expecting only one ARFCN, "
 				"because hopping not supported\n");
 			return oml_fom_ack_nack(msg, NM_NACK_MSGINCONSIST_PHYSCFG);
 		}
@@ -816,8 +815,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 						 OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is unsupported",
 						 arfcn);
-			LOGP(DOML, LOGL_NOTICE,
-			     "Given ARFCN %u is unsupported.\n", arfcn);
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given ARFCN %u is unsupported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 		trx->arfcn = arfcn;
@@ -915,8 +913,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	struct tlv_parsed tp, *tp_merged;
 	int rc;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx SET CHAN ATTR\n");
+	DEBUGPFOH(DOML, foh, "Rx SET CHAN ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
@@ -929,13 +926,13 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* 9.4.21 HSN... */
 	/* 9.4.27 MAIO */
 	if (TLVP_PRESENT(&tp, NM_ATT_HSN) || TLVP_PRESENT(&tp, NM_ATT_MAIO)) {
-		LOGP(DOML, LOGL_NOTICE, "SET CHAN ATTR: Frequency hopping not supported.\n");
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "SET CHAN ATTR: Frequency hopping not supported.\n");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
 	/* 9.4.52 Starting Time */
 	if (TLVP_PRESENT(&tp, NM_ATT_START_TIME)) {
-		LOGP(DOML, LOGL_NOTICE, "SET CHAN ATTR: Starting time not supported.\n");
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "SET CHAN ATTR: Starting time not supported.\n");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
@@ -946,7 +943,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* Call into BTS driver to check attribute values */
 	rc = bts_model_check_oml(bts, foh->msg_type, ts->mo.nm_attr, tp_merged, ts);
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "SET CHAN ATTR: invalid attribute value, rc=%d\n", rc);
+		LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: invalid attribute value, rc=%d\n", rc);
 		talloc_free(tp_merged);
 		/* Send NACK */
 		return oml_fom_ack_nack(msg, -rc);
@@ -962,9 +959,9 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		ts->pchan = abis_nm_pchan4chcomb(comb);
 		rc = conf_lchans(ts);
 		if (rc < 0) {
-			LOGP(DOML, LOGL_ERROR, "SET CHAN ATTR: invalid Chan Comb 0x%x"
-			     " (pchan=%s, conf_lchans()->%d)\n",
-			     comb, gsm_pchan_name(ts->pchan), rc);
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: invalid Chan Comb 0x%x"
+				" (pchan=%s, conf_lchans()->%d)\n",
+				comb, gsm_pchan_name(ts->pchan), rc);
 			talloc_free(tp_merged);
 			/* Send NACK */
 			return oml_fom_ack_nack(msg, -rc);
@@ -980,7 +977,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc = BSIC2BCC(bts->bsic);
 	}
-	LOGP(DOML, LOGL_INFO, "%s SET CHAN ATTR (TSC=%u pchan=%s)\n",
+	LOGPFOH(DOML, LOGL_INFO, foh, "%s SET CHAN ATTR (TSC=%u pchan=%s)\n",
 		gsm_abis_mo_name(&ts->mo), ts->tsc, gsm_pchan_name(ts->pchan));
 
 	/* call into BTS driver to apply new attributes to hardware */
@@ -994,8 +991,7 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 	struct gsm_abis_mo *mo;
 	void *obj;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx OPSTART\n");
+	DEBUGPFOH(DOML, foh, "Rx OPSTART\n");
 
 	/* Step 1: Resolve MO by obj_class/obj_inst */
 	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
@@ -1005,7 +1001,7 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 
 	/* Step 2: Do some global dependency/consistency checking */
 	if (mo->nm_state.operational == NM_OPSTATE_ENABLED) {
-		DEBUGP(DOML, "... automatic ACK, OP state already was Enabled\n");
+		DEBUGPFOH(DOML, foh, "... automatic ACK, OP state already was Enabled\n");
 		return oml_mo_opstart_ack(mo);
 	}
 
@@ -1022,17 +1018,16 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	void *obj;
 	int rc;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx CHG ADM STATE\n");
+	DEBUGPFOH(DOML, foh, "Rx CHG ADM STATE\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "Rx CHG ADM STATE: error during TLV parse\n");
+		LOGPFOH(DOML, LOGL_ERROR, foh, "Rx CHG ADM STATE: error during TLV parse\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
-		LOGP(DOML, LOGL_ERROR, "Rx CHG ADM STATE: no ADM state attribute\n");
+		LOGPFOH(DOML, LOGL_ERROR, foh, "Rx CHG ADM STATE: no ADM state attribute\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -1046,9 +1041,8 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 
 	/* Step 2: Do some global dependency/consistency checking */
 	if (mo->nm_state.administrative == adm_state)
-		LOGP(DOML, LOGL_NOTICE,
-		     "ADM state already was %s\n",
-		     get_value_string(abis_nm_adm_state_names, adm_state));
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "ADM state already was %s\n",
+			get_value_string(abis_nm_adm_state_names, adm_state));
 
 	/* Step 3: Ask BTS driver to apply the state chg */
 	return bts_model_chg_adm_state(bts, mo, obj, adm_state);
@@ -1099,10 +1093,10 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		if (oh->mdisc == ABIS_OM_MDISC_FOM && oh->data[0] == NM_MT_GET_ATTR &&
 		    msgb_l3len(msg) == oh->length + 3) {
 			/* work-around a bug present in OsmoBSC before February 2019 */
-			DEBUGP(DOML, "GET ATTR with off-by-3 length: Fixing up for OS#3799\n");
+			DEBUGPFOH(DOML, foh, "GET ATTR with off-by-3 length: Fixing up for OS#3799\n");
 			oh->length += 3;
 		} else {
-			LOGP(DOML, LOGL_NOTICE, "OML message with %u extraneous bytes at end: %s\n",
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "OML message with %u extraneous bytes at end: %s\n",
 				msgb_l3len(msg) - oh->length, msgb_hexdump(msg));
 			/* remove extra bytes at end */
 			msgb_l3trim(msg, oh->length);
@@ -1307,8 +1301,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	void *obj;
 	int rc;
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx IPA SET ATTR\n");
+	DEBUGPFOH(DOML, foh, "Rx IPA SET ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
@@ -1415,12 +1408,12 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 
 	ret = oml_tlv_parse(&tp, foh->data, oh->length - sizeof(*foh));
 	if (ret < 0) {
-		LOGP(DOML, LOGL_ERROR, "TLV parse error %d\n", ret);
+		LOGPFOH(DOML, LOGL_ERROR, foh, "TLV parse error %d\n", ret);
 		return oml_fom_ack_nack(msg, NM_NACK_BTSNR_UNKN);
 	}
 
-	abis_nm_debugp_foh(DOML, foh);
-	DEBUGPC(DOML, "Rx IPACCESS(0x%02x): ", foh->msg_type);
+	/* FIXME: fix missing \n */
+	DEBUGPFOH(DOML, foh, "Rx IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT:
