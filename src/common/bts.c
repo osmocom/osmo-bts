@@ -122,6 +122,10 @@ int bts_init(struct gsm_bts *bts)
 	bts->agch_queue.length = 0;
 
 	bts->ctrs = rate_ctr_group_alloc(bts, &bts_ctrg_desc, bts->nr);
+	if (!bts->ctrs) {
+		llist_del(&bts->list);
+		return -1;
+	}
 
 	/* enable management with default levels,
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
