@@ -76,6 +76,7 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(23);
 	}
 
+	gsm_bts_set_feature(bts, BTS_FEAT_CBCH);
 	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
 	gsm_bts_set_feature(bts, BTS_FEAT_EGPRS);
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
