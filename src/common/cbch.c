@@ -1,6 +1,6 @@
 /* Cell Broadcast routines */
 
-/* (C) 2014 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2014,2018-2019 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -31,6 +31,7 @@
 struct smscb_msg {
 	struct llist_head list;		/* list in smscb_state.queue */
 
+	bool is_schedule;		/* is this a schedule message? */
 	uint8_t msg[GSM412_MSG_LEN];	/* message buffer */
 	uint8_t next_seg;		/* next segment number */
 	uint8_t num_segs;		/* total number of segments */
@@ -78,7 +79,11 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 	memcpy(out, &msg->msg[msg->next_seg * GSM412_BLOCK_LEN], to_copy);
 
 	/* set + increment sequence number */
-	block_type->seq_nr = msg->next_seg++;
+	if (msg->next_seg == 0 && msg->is_schedule) {
+		block_type->seq_nr = 8;	/* first schedule block */
+		msg->next_seg++;
+	} else
+		block_type->seq_nr = msg->next_seg++;
 
 	/* determine if this is the last block */
 	if (block_type->seq_nr + 1 == msg->num_segs)
@@ -125,6 +130,9 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	memset(scm->msg, GSM_MACBLOCK_PADDING, sizeof(scm->msg));
 	/* next segment is first segment */
 	scm->next_seg = 0;
+
+	if (cmd_type.command == RSL_CB_CMD_TYPE_SCHEDULE)
+		scm->is_schedule = true;
 
 	switch (cmd_type.command) {
 	case RSL_CB_CMD_TYPE_NORMAL:
