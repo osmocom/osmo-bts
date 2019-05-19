@@ -2559,6 +2559,14 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 		return rsl_reject_unknown_lchan(msg);
 	}
 
+	if (lchan->state != LCHAN_S_ACTIVE) {
+		LOGPLCHAN(lchan, DRLL, LOGL_NOTICE, "Rx RLL %s for lchan which isn't active\n",
+			rsl_msg_name(rh->c.msg_type));
+		rsl_tx_error_report(trx, RSL_ERR_MSG_SEQ, &rh->chan_nr, &rh->link_id, msg);
+		msgb_free(msg);
+		return -1;
+	}
+
 	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
 		rsl_msg_name(rh->c.msg_type));
 
