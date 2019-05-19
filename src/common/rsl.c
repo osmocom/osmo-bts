@@ -1133,7 +1133,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			lapdm_ui_prefix_lchan(lchan, cur, osmo_si, si_len);
 
 			cur += si_len;
-			if (cur >= val + tot_len) {
+			if (cur > val + tot_len) {
 				LOGP(DRSL, LOGL_ERROR, "Error parsing SACCH INFO IE\n");
 				rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr,
 						    NULL, msg);
