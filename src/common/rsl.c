@@ -2523,7 +2523,9 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 {
 	struct abis_rsl_rll_hdr *rh = msgb_l2(msg);
+	struct abis_rsl_rll_hdr rh2;
 	struct gsm_lchan *lchan;
+	int rc;
 
 	if (msgb_l2len(msg) < sizeof(*rh)) {
 		LOGP(DRSL, LOGL_NOTICE, "RSL Radio Link Layer message too short\n");
@@ -2546,9 +2548,14 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
 		rsl_msg_name(rh->c.msg_type));
 
+	/* make copy of RLL header, as the message will be free'd in case of erroneous return */
+	rh2 = *rh;
 	/* exception: RLL messages are _NOT_ freed as they are now
 	 * owned by LAPDm which might have queued them */
-	return lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+	rc = lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+	if (rc < 0)
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &rh2.chan_nr, &rh2.link_id, NULL);
+	return rc;
 }
 
 static inline int rsl_link_id_is_sacch(uint8_t link_id)
@@ -2823,10 +2830,12 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	case RSL_MT_NOT_CMD:
 		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL cchan msg_type %s\n",
 			rsl_msg_name(cch->c.msg_type));
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &cch->chan_nr, NULL, msg);
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "undefined RSL cchan msg_type 0x%02x\n",
 			cch->c.msg_type);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &cch->chan_nr, NULL, msg);
 		ret = -EINVAL;
 		break;
 	}
@@ -2898,10 +2907,12 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	case RSL_MT_TFO_MOD_REQ:
 		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL dchan msg_type %s\n",
 			rsl_msg_name(dch->c.msg_type));
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &dch->chan_nr, NULL, msg);
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "undefined RSL dchan msg_type 0x%02x\n",
 			dch->c.msg_type);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &dch->chan_nr, NULL, msg);
 		ret = -EINVAL;
 	}
 
@@ -2931,6 +2942,7 @@ static int rsl_rx_trx(struct gsm_bts_trx *trx, struct msgb *msg)
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "undefined RSL TRX msg_type 0x%02x\n",
 			th->msg_type);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, NULL, NULL, msg);
 		ret = -EINVAL;
 	}
 
@@ -2977,6 +2989,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unsupported RSL ip.access msg_type 0x%02x\n",
 			dch->c.msg_type);
+		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &dch->chan_nr, NULL, msg);
 		ret = -EINVAL;
 	}
 
