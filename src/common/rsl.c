@@ -291,6 +291,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 /* 8.5.1 BCCH INFOrmation is received */
 static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 {
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct gsm_bts *bts = trx->bts;
 	struct tlv_parsed tp;
 	uint8_t rsl_si, count;
@@ -301,16 +302,16 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
 
 	rsl_si = *TLVP_VAL(&tp, RSL_IE_SYSINFO_TYPE);
 	if (OSMO_IN_ARRAY(rsl_si, rsl_sacch_sitypes))
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 
 	osmo_si = osmo_rsl2sitype(rsl_si);
 	if (osmo_si == SYSINFO_TYPE_NONE) {
 		LOGP(DRSL, LOGL_NOTICE, " Rx RSL SI 0x%02x not supported.\n", rsl_si);
-		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 	}
 	/* 9.3.39 Full BCCH Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_FULL_BCCH_INFO)) {
@@ -341,13 +342,13 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			if (bts->si2q_index > bts->si2q_count) {
 				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with index %u > count %u\n",
 				     bts->si2q_index, bts->si2q_count);
-				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 			}
 
 			if (bts->si2q_index > SI2Q_MAX_NUM || bts->si2q_count > SI2Q_MAX_NUM) {
 				LOGP(DRSL, LOGL_ERROR, " Rx RSL SI2quater with impossible parameters: index %u, count %u"
 				     "should be <= %u\n", bts->si2q_index, bts->si2q_count, SI2Q_MAX_NUM);
-				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+				return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 			}
 
 			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
@@ -447,6 +448,7 @@ int rsl_tx_delete_ind(struct gsm_bts *bts, const uint8_t *ia, uint8_t ia_len)
 /* 8.5.5 PAGING COMMAND */
 static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 {
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_bts *bts = trx->bts;
 	uint8_t chan_needed = 0, paging_group;
@@ -457,7 +459,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_PAGING_GROUP) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_MS_IDENTITY))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
 
 	paging_group = *TLVP_VAL(&tp, RSL_IE_PAGING_GROUP);
 	identity_lv = TLVP_VAL(&tp, RSL_IE_MS_IDENTITY)-1;
@@ -482,6 +484,7 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 /* 8.5.8 SMS BROADCAST COMMAND */
 static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 {
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct rsl_ie_cb_cmd_type *cb_cmd_type;
 
@@ -489,7 +492,7 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_CB_CMD_TYPE) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
 
 	cb_cmd_type = (struct rsl_ie_cb_cmd_type *)
 					TLVP_VAL(&tp, RSL_IE_CB_CMD_TYPE);
@@ -617,12 +620,13 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 /* 8.5.6 IMMEDIATE ASSIGN COMMAND is received */
 static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 {
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO))
-		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
 
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_AGCH_RCVD);
 
@@ -2475,6 +2479,8 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
 	struct abis_rsl_dchan_hdr *dch;
+	struct abis_rsl_cchan_hdr *cch;
+	struct abis_rsl_rll_hdr *rllh;
 	int rc;
 
 	/* Handle GSM 08.58 7 Error Handling for the given input. This method will
@@ -2483,6 +2489,8 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 
 	/* TS 48.058 Section 7 explains how to do error handling */
 	switch (rh->msg_discr & 0xfe) {
+	case ABIS_RSL_MDISC_IPACCESS:
+		/* fall-through */
 	case ABIS_RSL_MDISC_DED_CHAN:
 		dch = msgb_l2(msg);
 		switch (dch->c.msg_type) {
@@ -2495,17 +2503,23 @@ static int rsl_reject_unknown_lchan(struct msgb *msg)
 						     RSL_ERR_MAND_IE_ERROR, NULL);
 			break;
 		default:
-			rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, NULL, NULL, msg);
+			rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr,
+						 NULL, msg);
 			break;
 		}
 		break;
 	case ABIS_RSL_MDISC_RLL:
-		/* fall-through */
+		rllh = msgb_l2(msg);
+		/* ERROR REPORT */
+		rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR,
+					 &rllh->chan_nr, &rllh->link_id, msg);
+		break;
 	case ABIS_RSL_MDISC_COM_CHAN:
-		/* fall-through */
+		cch = msgb_l2(msg);
+		/* ERROR REPORT */
+		rc = rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
+		break;
 	case ABIS_RSL_MDISC_TRX:
-		/* fall-through */
-	case ABIS_RSL_MDISC_IPACCESS:
 		/* fall-through */
 	default:
 		/* ERROR REPORT */
