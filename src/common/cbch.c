@@ -116,6 +116,14 @@ static const uint8_t last_block_rsl2um[4] = {
 	[RSL_CB_CMD_LASTBLOCK_3]	= 3,
 };
 
+static const struct value_string rsl_cb_cmd_names[] = {
+	{ RSL_CB_CMD_TYPE_NORMAL,	"NORMAL" },
+	{ RSL_CB_CMD_TYPE_SCHEDULE,	"SCHEDULE" },
+	{ RSL_CB_CMD_TYPE_DEFAULT,	"DEFAULT" },
+	{ RSL_CB_CMD_TYPE_NULL,		"NULL" },
+	{ 0, NULL }
+};
+
 
 /* incoming SMS broadcast command from RSL */
 int bts_process_smscb_cmd(struct gsm_bts *bts,
@@ -141,13 +149,17 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	if (cmd_type.command == RSL_CB_CMD_TYPE_SCHEDULE)
 		scm->is_schedule = true;
 
+	scm->num_segs = last_block_rsl2um[cmd_type.last_block&3];
+	memcpy(scm->msg, msg, msg_len);
+
+	LOGP(DLSMS, LOGL_INFO, "RSL SMSCB COMMAND (type=%s, num_blocks=%u)\n",
+		get_value_string(rsl_cb_cmd_names, cmd_type.command), scm->num_segs);
+
 	switch (cmd_type.command) {
 	case RSL_CB_CMD_TYPE_NORMAL:
 	case RSL_CB_CMD_TYPE_SCHEDULE:
 	case RSL_CB_CMD_TYPE_NULL:
-		scm->num_segs = last_block_rsl2um[cmd_type.last_block&3];
-		memcpy(scm->msg, msg, msg_len);
-		/* def_bcast is ignored */
+		/* def_bcast is ignored as per Section 9.3.41 of 3GPP TS 48.058 */
 		break;
 	case RSL_CB_CMD_TYPE_DEFAULT:
 		/* use def_bcast, ignore command  */
