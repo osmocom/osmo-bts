@@ -172,6 +172,6 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 		lchan->si.last = tmp;
 		return GSM_LCHAN_SI(lchan, tmp);
 	}
-	LOGP(DL1P, LOGL_NOTICE, "%s SACCH no SI available\n", gsm_lchan_name(lchan));
+	LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "SACCH no SI available\n");
 	return NULL;
 }

@@ -203,8 +203,8 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 
 	rc = osmo_amr_rtp_dec(rtp_pl, rtp_pl_len, &cmr, &cmi, &ft, &bfi, &sti);
 	if (rc < 0) {
-		LOGP(DRTP, LOGL_ERROR, "failed to decode AMR RTP (length %zu, "
-		     "%p)\n", rtp_pl_len, rtp_pl);
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "failed to decode AMR RTP (length %zu, "
+			  "%p)\n", rtp_pl_len, rtp_pl);
 		return rc;
 	}
 
@@ -274,7 +274,7 @@ int dtx_dl_amr_fsm_step(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 	}
 
 	if (ft != AMR_NO_DATA) {
-		LOGP(DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "unsupported AMR FT 0x%02x\n", ft);
 		return -ENOTSUP;
 	}
 
@@ -505,9 +505,9 @@ uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 		return lchan->tch.dtx.len + 1;
 	}
 
-	LOGP(DL1C, LOGL_DEBUG, "Have to send %s frame on TCH but SID buffer "
-	     "is empty - sent nothing\n",
-	     get_value_string(gsm48_chan_mode_names, lchan->tch_mode));
+	LOGPLCHAN(lchan, DL1C, LOGL_DEBUG, "Have to send %s frame on TCH but SID buffer "
+		  "is empty - sent nothing\n",
+		  get_value_string(gsm48_chan_mode_names, lchan->tch_mode));
 
 	return 0;
 }

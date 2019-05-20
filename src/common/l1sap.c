@@ -114,9 +114,8 @@ get_active_lchan_by_chan_nr(struct gsm_bts_trx *trx, unsigned int chan_nr)
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
 	if (lchan && lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DL1P, LOGL_NOTICE, "%s: assuming active lchan, but "
-		     "state is %s\n", gsm_lchan_name(lchan),
-		     gsm_lchans_name(lchan->state));
+		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "assuming active lchan, but state is %s\n",
+			  gsm_lchans_name(lchan->state));
 		return NULL;
 	}
 	return lchan;
@@ -139,9 +138,9 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 		r -= r % GSM_RTP_DURATION;
 
 		if (r != GSM_RTP_DURATION)
-			LOGP(DRTP, LOGL_ERROR, "RTP clock out of sync with lower layer:"
-				" %"PRIu32" vs %d (%"PRIu32"->%"PRIu32")\n",
-				r, GSM_RTP_DURATION, lchan->tch.last_fn, fn);
+			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "RTP clock out of sync with lower layer:"
+				  " %"PRIu32" vs %d (%"PRIu32"->%"PRIu32")\n",
+				  r, GSM_RTP_DURATION, lchan->tch.last_fn, fn);
 	}
 	return GSM_RTP_DURATION;
 }
@@ -183,8 +182,7 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 {
 	struct osmo_phsap_prim *l1sap;
 
-	LOGP(DL1P, LOGL_DEBUG, "%s Rx -> RTP: %s\n",
-	     gsm_lchan_name(lchan), osmo_hexdump(rmsg->data, rmsg->len));
+	LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "Rx -> RTP: %s\n", osmo_hexdump(rmsg->data, rmsg->len));
 
 	rmsg->l2h = rmsg->data;
 	rmsg->l1h = msgb_push(rmsg, sizeof(*l1sap));
@@ -530,8 +528,8 @@ static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool se
 		return;
 
 	if (data + 63 > 255) { /* According to 3GPP TS 48.058 §9.3.37 Timing Offset field cannot exceed 255 */
-		LOGP(DL1P, LOGL_ERROR, "Attempting to set invalid Timing Offset value %d (MS TO = %u)!\n",
-		     data, set_ms_to);
+		LOGPLCHAN(lchan, DL1P, LOGL_ERROR, "Attempting to set invalid Timing Offset value "
+			  "%d (MS TO = %u)!\n", data, set_ms_to);
 		return;
 	}
 
@@ -617,12 +615,10 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
 	struct info_act_cnf_param *info_act_cnf)
 {
-	struct gsm_lchan *lchan;
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
-	LOGP(DL1C, LOGL_INFO, "activate confirm chan_nr=%s trx=%d\n",
-		rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
-
-	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activate confirm chan_nr=%s trx=%d\n",
+		  rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
 
 	rsl_tx_chan_act_acknack(lchan, info_act_cnf->cause);
 
@@ -642,12 +638,10 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap,
 	struct info_act_cnf_param *info_act_cnf)
 {
-	struct gsm_lchan *lchan;
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
 
-	LOGP(DL1C, LOGL_INFO, "deactivate confirm chan_nr=%s trx=%d\n",
-	     rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
-
-	lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivate confirm chan_nr=%s trx=%d\n",
+		  rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
 
 	rsl_tx_rf_rel_ack(lchan);
 
@@ -894,9 +888,9 @@ static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 	 * don't support it. */
 	if(lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
 		!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
-		LOGP(DL1P, LOGL_NOTICE,
-			"%s RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
-			gsm_lchan_name(lchan), osmo_hexdump(resp_msg->data, resp_msg->len));
+		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE,
+			  "RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
+			  osmo_hexdump(resp_msg->data, resp_msg->len));
 		return false;
 	}
 	return true;
@@ -1469,8 +1463,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm48_chan_desc *cd;
 	int rc;
 
-	LOGP(DL1C, LOGL_INFO, "activating channel chan_nr=%s trx=%d\n",
-		rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activating channel chan_nr=%s trx=%d\n",
+		  rsl_chan_nr_str(chan_nr), trx->nr);
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
 	 * need to make sure ew don't crash here */
@@ -1483,8 +1477,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		 * one one TRX, so we need to make sure not to activate
 		 * channels with a different TSC!! */
 		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
-			LOGP(DL1C, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
-				cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
+			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
+				  cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
 			return -RSL_ERR_SERV_OPT_UNIMPL;
 		}
 	}
@@ -1517,8 +1511,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
-	LOGP(DL1C, LOGL_INFO, "deactivating channel chan_nr=%s trx=%d\n",
-		rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivating channel chan_nr=%s trx=%d\n",
+		  rsl_chan_nr_str(chan_nr), trx->nr);
 
 	if (lchan->tch.dtx.dl_amr_fsm) {
 		osmo_fsm_inst_free(lchan->tch.dtx.dl_amr_fsm);
@@ -1533,8 +1527,8 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	LOGP(DL1C, LOGL_INFO, "deactivating sacch chan_nr=%s trx=%d\n",
-		rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivating sacch chan_nr=%s trx=%d\n",
+		  rsl_chan_nr_str(chan_nr), trx->nr);
 
 	lchan->sacch_deact = 1;
 
