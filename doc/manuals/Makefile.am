@@ -20,6 +20,5 @@ if BUILD_MANUALS
   VTY_REFERENCE = osmobts-vty-reference.xml
   include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
 
-  OSMO_REPOSITORY = osmo-bts
   include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.common.inc
 endif
