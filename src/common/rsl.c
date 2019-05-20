@@ -487,6 +487,7 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct rsl_ie_cb_cmd_type *cb_cmd_type;
+	int rc;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -497,9 +498,12 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	cb_cmd_type = (struct rsl_ie_cb_cmd_type *)
 					TLVP_VAL(&tp, RSL_IE_CB_CMD_TYPE);
 
-	return bts_process_smscb_cmd(trx->bts, *cb_cmd_type,
-				     TLVP_LEN(&tp, RSL_IE_SMSCB_MSG),
-				     TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
+	rc = bts_process_smscb_cmd(trx->bts, *cb_cmd_type, TLVP_LEN(&tp, RSL_IE_SMSCB_MSG),
+				   TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
+	if (rc < 0)
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
+
+	return 0;
 }
 
 /*! Prefix a given SACCH frame with a L2/LAPDm UI header and store it in given output buffer.

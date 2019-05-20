@@ -182,6 +182,9 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 			talloc_free(scm);
 		}
 		break;
+	default:
+		talloc_free(scm);
+		return -EINVAL;
 	}
 
 	return 0;
