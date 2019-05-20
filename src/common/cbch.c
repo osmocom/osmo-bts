@@ -28,15 +28,16 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/logging.h>
 
+/* internal representation of one SMS-CB message (e.g. in the pending queue */
 struct smscb_msg {
 	struct llist_head list;		/* list in smscb_state.queue */
 
 	bool is_schedule;		/* is this a schedule message? */
 	uint8_t msg[GSM412_MSG_LEN];	/* message buffer */
-	uint8_t next_seg;		/* next segment number */
 	uint8_t num_segs;		/* total number of segments */
 };
 
+/* construct a SMSCB NULL block in the user-provided output buffer at 'out' */
 static int get_smscb_null_block(uint8_t *out)
 {
 	struct gsm412_block_type *block_type = (struct gsm412_block_type *) out;
@@ -51,17 +52,26 @@ static int get_smscb_null_block(uint8_t *out)
 }
 
 /* get the next block of the current CB message */
-static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
+static int get_smscb_block(struct gsm_bts *bts, uint8_t *out, uint8_t block_nr,
+			   const struct gsm_time *g_time)
 {
 	int to_copy;
 	struct gsm412_block_type *block_type;
 	struct smscb_msg *msg = bts->smscb_state.cur_msg;
 
 	if (!msg) {
-		/* No message: Send NULL mesage */
+		/* No message: Send NULL block */
+		DEBUGPGT(DLSMS, g_time, "No cur_msg; requesting NULL block\n");
 		return get_smscb_null_block(out);
 	}
-	OSMO_ASSERT(msg->next_seg < 4);
+	OSMO_ASSERT(block_nr < 4);
+
+	if (block_nr >= msg->num_segs) {
+		/* Higher block number than this message has blocks: Send NULL block */
+		DEBUGPGT(DLSMS, g_time, "cur_msg has only %u blocks; requesting NULL block\n",
+			 msg->num_segs);
+		return get_smscb_null_block(out);
+	}
 
 	block_type = (struct gsm412_block_type *) out++;
 
@@ -70,29 +80,28 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out)
 	block_type->lpd = 1;
 
 	/* determine how much data to copy */
-	to_copy = GSM412_MSG_LEN - (msg->next_seg * GSM412_BLOCK_LEN);
+	to_copy = GSM412_MSG_LEN - (block_nr * GSM412_BLOCK_LEN);
 	if (to_copy > GSM412_BLOCK_LEN)
-		to_copy = GSM412_BLOCK_LEN;
+	to_copy = GSM412_BLOCK_LEN;
 	OSMO_ASSERT(to_copy >= 0);
 
 	/* copy data and increment index */
-	memcpy(out, &msg->msg[msg->next_seg * GSM412_BLOCK_LEN], to_copy);
+	memcpy(out, &msg->msg[block_nr * GSM412_BLOCK_LEN], to_copy);
 
 	/* set + increment sequence number */
-	if (msg->next_seg == 0 && msg->is_schedule) {
+	if (block_nr == 0 && msg->is_schedule)
 		block_type->seq_nr = 8;	/* first schedule block */
-		msg->next_seg++;
-	} else
-		block_type->seq_nr = msg->next_seg++;
+	else
+		block_type->seq_nr = block_nr;
 
 	/* determine if this is the last block */
-	if (block_type->seq_nr + 1 == msg->num_segs)
+	if (block_nr + 1 == msg->num_segs)
 		block_type->lb = 1;
 	else
 		block_type->lb = 0;
 
-	if (block_type->lb == 1) {
-		/* remove/release the message memory */
+	if (block_nr == 4) {
+		/* delete any fully-transmitted normal message (or superseded default) */
 		talloc_free(bts->smscb_state.cur_msg);
 		bts->smscb_state.cur_msg = NULL;
 	}
@@ -128,8 +137,6 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 
 	/* initialize entire message with default padding */
 	memset(scm->msg, GSM_MACBLOCK_PADDING, sizeof(scm->msg));
-	/* next segment is first segment */
-	scm->next_seg = 0;
 
 	if (cmd_type.command == RSL_CB_CMD_TYPE_SCHEDULE)
 		scm->is_schedule = true;
@@ -165,7 +172,6 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 	}
 
 	llist_del(&msg->list);
-
 	return msg;
 }
 
@@ -191,10 +197,10 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 	case 0:
 		/* select a new SMSCB message */
 		bts->smscb_state.cur_msg = select_next_smscb(bts);
-		rc = get_smscb_block(bts, outbuf);
+		rc = get_smscb_block(bts, outbuf, tb, g_time);
 		break;
 	case 1: case 2: case 3:
-		rc = get_smscb_block(bts, outbuf);
+		rc = get_smscb_block(bts, outbuf, tb, g_time);
 		break;
 	case 4: case 5: case 6: case 7:
 		/* always send NULL frame in extended CBCH for now */
