@@ -101,9 +101,14 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out, uint8_t block_nr,
 		block_type->lb = 0;
 
 	if (block_nr == 4) {
-		/* delete any fully-transmitted normal message (or superseded default) */
-		talloc_free(bts->smscb_state.cur_msg);
-		bts->smscb_state.cur_msg = NULL;
+		if (msg != bts->smscb_state.default_msg) {
+			DEBUGPGT(DLSMS, g_time, "deleting fully-transmitted message %p\n", msg);
+			/* delete any fully-transmitted normal message (or superseded default) */
+			talloc_free(bts->smscb_state.cur_msg);
+			bts->smscb_state.cur_msg = NULL;
+		} else {
+			DEBUGPGT(DLSMS, g_time, "keeping fully-transmitted default message %p\n", msg);
+		}
 	}
 
 	return block_type->lb;
@@ -160,15 +165,24 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	case RSL_CB_CMD_TYPE_SCHEDULE:
 	case RSL_CB_CMD_TYPE_NULL:
 		/* def_bcast is ignored as per Section 9.3.41 of 3GPP TS 48.058 */
+		llist_add_tail(&scm->list, &bts->smscb_state.queue);
+		/* FIXME: limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
 		break;
 	case RSL_CB_CMD_TYPE_DEFAULT:
-		/* use def_bcast, ignore command  */
-		/* def_bcast == 0: normal mess */
+		/* old default msg will be free'd in get_smscb_block() if it is currently in transit
+		 * and we set a new default_msg here */
+		if (bts->smscb_state.cur_msg && bts->smscb_state.cur_msg == bts->smscb_state.default_msg)
+			talloc_free(bts->smscb_state.cur_msg);
+		if (cmd_type.def_bcast == RSL_CB_CMD_DEFBCAST_NORMAL)
+			/* def_bcast == 0: normal message */
+			bts->smscb_state.default_msg = scm;
+		else {
+			/* def_bcast == 1: NULL message */
+			bts->smscb_state.default_msg = NULL;
+			talloc_free(scm);
+		}
 		break;
 	}
-
-	llist_add_tail(&scm->list, &bts->smscb_state.queue);
-	/* FIXME: limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
 
 	return 0;
 }
@@ -178,13 +192,23 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 	struct smscb_msg *msg;
 
 	msg = llist_first_entry_or_null(&bts->smscb_state.queue, struct smscb_msg, list);
-	if (!msg) {
-		/* FIXME: send CBCH LOAD Information (underflow) via RSL */
-		return NULL;
+	if (msg) {
+		llist_del(&msg->list);
+		DEBUGP(DLSMS, "%s: Dequeued msg\n", __func__);
+		return msg;
 	}
 
-	llist_del(&msg->list);
-	return msg;
+	/* FIXME: send CBCH LOAD Information (underflow) via RSL */
+
+	/* choose the default message, if any */
+	msg = bts->smscb_state.default_msg;
+	if (msg) {
+		DEBUGP(DLSMS, "%s: Using default msg\n", __func__);
+		return msg;
+	}
+
+	DEBUGP(DLSMS, "%s: No queued msg nor default\n", __func__);
+	return NULL;
 }
 
 /* call-back from bts model specific code when it wants to obtain a CBCH

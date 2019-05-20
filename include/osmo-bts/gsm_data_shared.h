@@ -737,6 +737,7 @@ struct gsm_bts {
 	struct {
 		struct llist_head queue;	/* list of struct smscb_msg */
 		struct smscb_msg *cur_msg;	/* current SMS-CB */
+		struct smscb_msg *default_msg;	/* default broadcast message; NULL if none */
 	} smscb_state;
 
 	float min_qual_rach;	/* minimum quality for RACH bursts */
