@@ -541,6 +541,7 @@ struct gprs_rlc_cfg {
 
 struct bts_smscb_state {
 	struct llist_head queue; /* list of struct smscb_msg */
+	int queue_len;
 	struct smscb_msg *cur_msg; /* current SMS-CB */
 	struct smscb_msg *default_msg; /* default broadcast message; NULL if none */
 };

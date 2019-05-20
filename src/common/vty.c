@@ -803,17 +803,6 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 		abis_nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
-static unsigned int llist_length(struct llist_head *list)
-{
-	unsigned int len = 0;
-	struct llist_head *pos;
-
-	llist_for_each(pos, list)
-		len++;
-
-	return len;
-}
-
 static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
 {
 	unsigned int i;
@@ -865,10 +854,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
 		bts->agch_queue.pch_msgs,
 		VTY_NEWLINE);
-	vty_out(vty, "  CBCH backlog queue length (BASIC): %u%s",
-		llist_length(&bts->smscb_basic.queue), VTY_NEWLINE);
+	vty_out(vty, "  CBCH backlog queue length (BASIC): %d%s",
+		bts->smscb_basic.queue_len, VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length (EXTENDED): %u%s",
-		llist_length(&bts->smscb_extended.queue), VTY_NEWLINE);
+		bts->smscb_extended.queue_len, VTY_NEWLINE);
 	vty_out(vty, "  Paging: queue length %d, buffer space %d%s",
 		paging_queue_length(bts->paging_state), paging_buffer_space(bts->paging_state),
 		VTY_NEWLINE);
