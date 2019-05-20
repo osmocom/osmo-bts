@@ -539,6 +539,12 @@ struct gprs_rlc_cfg {
 	uint8_t initial_mcs;
 };
 
+struct bts_smscb_state {
+	struct llist_head queue; /* list of struct smscb_msg */
+	struct smscb_msg *cur_msg; /* current SMS-CB */
+	struct smscb_msg *default_msg; /* default broadcast message; NULL if none */
+};
+
 /* The amount of time within which a sudden disconnect of a newly established
  * OML connection will cause a special warning to be logged. */
 #define OSMO_BTS_OML_CONN_EARLY_DISCONNECT 10	 /* in seconds */
@@ -734,11 +740,9 @@ struct gsm_bts {
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
 
-	struct {
-		struct llist_head queue;	/* list of struct smscb_msg */
-		struct smscb_msg *cur_msg;	/* current SMS-CB */
-		struct smscb_msg *default_msg;	/* default broadcast message; NULL if none */
-	} smscb_state;
+	/* State for SMSCB (Cell Broadcast) for BASIC and EXTENDED channel */
+	struct bts_smscb_state smscb_basic;
+	struct bts_smscb_state smscb_extended;
 
 	float min_qual_rach;	/* minimum quality for RACH bursts */
 	float min_qual_norm;	/* minimum quality for normal daata */

@@ -487,6 +487,7 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct rsl_ie_cb_cmd_type *cb_cmd_type;
+	bool extended_cbch = false;
 	int rc;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
@@ -495,11 +496,16 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	    !TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
 
+	if (TLVP_PRESENT(&tp, RSL_IE_SMSCB_CHAN_INDICATOR)) {
+		if ((*TLVP_VAL(&tp, RSL_IE_SMSCB_CHAN_INDICATOR) & 0x0f) == 0x01)
+			extended_cbch = true;
+	}
+
 	cb_cmd_type = (struct rsl_ie_cb_cmd_type *)
 					TLVP_VAL(&tp, RSL_IE_CB_CMD_TYPE);
 
-	rc = bts_process_smscb_cmd(trx->bts, *cb_cmd_type, TLVP_LEN(&tp, RSL_IE_SMSCB_MSG),
-				   TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
+	rc = bts_process_smscb_cmd(trx->bts, *cb_cmd_type, extended_cbch,
+				   TLVP_LEN(&tp, RSL_IE_SMSCB_MSG), TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
 	if (rc < 0)
 		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 

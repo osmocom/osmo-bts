@@ -865,8 +865,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
 		bts->agch_queue.pch_msgs,
 		VTY_NEWLINE);
-	vty_out(vty, "  CBCH backlog queue length: %u%s",
-		llist_length(&bts->smscb_state.queue), VTY_NEWLINE);
+	vty_out(vty, "  CBCH backlog queue length (BASIC): %u%s",
+		llist_length(&bts->smscb_basic.queue), VTY_NEWLINE);
+	vty_out(vty, "  CBCH backlog queue length (EXTENDED): %u%s",
+		llist_length(&bts->smscb_extended.queue), VTY_NEWLINE);
 	vty_out(vty, "  Paging: queue length %d, buffer space %d%s",
 		paging_queue_length(bts->paging_state), paging_buffer_space(bts->paging_state),
 		VTY_NEWLINE);

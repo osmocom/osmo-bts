@@ -190,7 +190,8 @@ int bts_init(struct gsm_bts *bts)
 		initialized = 1;
 	}
 
-	INIT_LLIST_HEAD(&bts->smscb_state.queue);
+	INIT_LLIST_HEAD(&bts->smscb_basic.queue);
+	INIT_LLIST_HEAD(&bts->smscb_extended.queue);
 	INIT_LLIST_HEAD(&bts->oml_queue);
 
 	/* register DTX DL FSM */

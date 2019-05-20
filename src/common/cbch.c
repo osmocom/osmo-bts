@@ -37,6 +37,17 @@ struct smscb_msg {
 	uint8_t num_segs;		/* total number of segments */
 };
 
+/* determine SMSCB state by tb number */
+static struct bts_smscb_state *bts_smscb_state(struct gsm_bts *bts, uint8_t tb)
+{
+	if (tb < 4)
+		return &bts->smscb_basic;
+	else if (tb < 8)
+		return &bts->smscb_extended;
+	else
+		OSMO_ASSERT(0);
+}
+
 /* construct a SMSCB NULL block in the user-provided output buffer at 'out' */
 static int get_smscb_null_block(uint8_t *out)
 {
@@ -52,12 +63,12 @@ static int get_smscb_null_block(uint8_t *out)
 }
 
 /* get the next block of the current CB message */
-static int get_smscb_block(struct gsm_bts *bts, uint8_t *out, uint8_t block_nr,
+static int get_smscb_block(struct bts_smscb_state *bts_ss, uint8_t *out, uint8_t block_nr,
 			   const struct gsm_time *g_time)
 {
 	int to_copy;
 	struct gsm412_block_type *block_type;
-	struct smscb_msg *msg = bts->smscb_state.cur_msg;
+	struct smscb_msg *msg = bts_ss->cur_msg;
 
 	if (!msg) {
 		/* No message: Send NULL block */
@@ -101,11 +112,11 @@ static int get_smscb_block(struct gsm_bts *bts, uint8_t *out, uint8_t block_nr,
 		block_type->lb = 0;
 
 	if (block_nr == 4) {
-		if (msg != bts->smscb_state.default_msg) {
+		if (msg != bts_ss->default_msg) {
 			DEBUGPGT(DLSMS, g_time, "deleting fully-transmitted message %p\n", msg);
 			/* delete any fully-transmitted normal message (or superseded default) */
-			talloc_free(bts->smscb_state.cur_msg);
-			bts->smscb_state.cur_msg = NULL;
+			talloc_free(bts_ss->cur_msg);
+			bts_ss->cur_msg = NULL;
 		} else {
 			DEBUGPGT(DLSMS, g_time, "keeping fully-transmitted default message %p\n", msg);
 		}
@@ -131,11 +142,16 @@ static const struct value_string rsl_cb_cmd_names[] = {
 
 
 /* incoming SMS broadcast command from RSL */
-int bts_process_smscb_cmd(struct gsm_bts *bts,
-			  struct rsl_ie_cb_cmd_type cmd_type,
-			  uint8_t msg_len, const uint8_t *msg)
+int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_type,
+			  bool extended_cbch, uint8_t msg_len, const uint8_t *msg)
 {
 	struct smscb_msg *scm;
+	struct bts_smscb_state *bts_ss;
+
+	if (extended_cbch)
+		bts_ss = &bts->smscb_extended;
+	else
+		bts_ss = &bts->smscb_basic;
 
 	if (msg_len > sizeof(scm->msg)) {
 		LOGP(DLSMS, LOGL_ERROR,
@@ -157,7 +173,8 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	scm->num_segs = last_block_rsl2um[cmd_type.last_block&3];
 	memcpy(scm->msg, msg, msg_len);
 
-	LOGP(DLSMS, LOGL_INFO, "RSL SMSCB COMMAND (type=%s, num_blocks=%u)\n",
+	LOGP(DLSMS, LOGL_INFO, "RSL SMSCB COMMAND (chan=%s, type=%s, num_blocks=%u)\n",
+		extended_cbch ? "EXTENDED" : "BASIC",
 		get_value_string(rsl_cb_cmd_names, cmd_type.command), scm->num_segs);
 
 	switch (cmd_type.command) {
@@ -165,20 +182,20 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	case RSL_CB_CMD_TYPE_SCHEDULE:
 	case RSL_CB_CMD_TYPE_NULL:
 		/* def_bcast is ignored as per Section 9.3.41 of 3GPP TS 48.058 */
-		llist_add_tail(&scm->list, &bts->smscb_state.queue);
+		llist_add_tail(&scm->list, &bts_ss->queue);
 		/* FIXME: limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
 		break;
 	case RSL_CB_CMD_TYPE_DEFAULT:
 		/* old default msg will be free'd in get_smscb_block() if it is currently in transit
 		 * and we set a new default_msg here */
-		if (bts->smscb_state.cur_msg && bts->smscb_state.cur_msg == bts->smscb_state.default_msg)
-			talloc_free(bts->smscb_state.cur_msg);
+		if (bts_ss->cur_msg && bts_ss->cur_msg == bts_ss->default_msg)
+			talloc_free(bts_ss->cur_msg);
 		if (cmd_type.def_bcast == RSL_CB_CMD_DEFBCAST_NORMAL)
 			/* def_bcast == 0: normal message */
-			bts->smscb_state.default_msg = scm;
+			bts_ss->default_msg = scm;
 		else {
 			/* def_bcast == 1: NULL message */
-			bts->smscb_state.default_msg = NULL;
+			bts_ss->default_msg = NULL;
 			talloc_free(scm);
 		}
 		break;
@@ -190,11 +207,12 @@ int bts_process_smscb_cmd(struct gsm_bts *bts,
 	return 0;
 }
 
-static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
+static struct smscb_msg *select_next_smscb(struct gsm_bts *bts, uint8_t tb)
 {
+	struct bts_smscb_state *bts_ss = bts_smscb_state(bts, tb);
 	struct smscb_msg *msg;
 
-	msg = llist_first_entry_or_null(&bts->smscb_state.queue, struct smscb_msg, list);
+	msg = llist_first_entry_or_null(&bts_ss->queue, struct smscb_msg, list);
 	if (msg) {
 		llist_del(&msg->list);
 		DEBUGP(DLSMS, "%s: Dequeued msg\n", __func__);
@@ -204,7 +222,7 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 	/* FIXME: send CBCH LOAD Information (underflow) via RSL */
 
 	/* choose the default message, if any */
-	msg = bts->smscb_state.default_msg;
+	msg = bts_ss->default_msg;
 	if (msg) {
 		DEBUGP(DLSMS, "%s: Using default msg\n", __func__);
 		return msg;
@@ -219,9 +237,13 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts)
 int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 {
 	uint32_t fn = gsm_gsmtime2fn(g_time);
+	struct bts_smscb_state *bts_ss;
 	/* According to 05.02 Section 6.5.4 */
 	uint32_t tb = (fn / 51) % 8;
+	uint8_t block_nr = tb % 4;
 	int rc = 0;
+
+	bts_ss = bts_smscb_state(bts, tb);
 
 	/* The multiframes used for the basic cell broadcast channel
 	 * shall be those in * which TB = 0,1,2 and 3. The multiframes
@@ -234,16 +256,14 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 
 	switch (tb) {
 	case 0:
+	case 4:
 		/* select a new SMSCB message */
-		bts->smscb_state.cur_msg = select_next_smscb(bts);
-		rc = get_smscb_block(bts, outbuf, tb, g_time);
+		bts_ss->cur_msg = select_next_smscb(bts, tb);
+		rc = get_smscb_block(bts_ss, outbuf, block_nr, g_time);
 		break;
 	case 1: case 2: case 3:
-		rc = get_smscb_block(bts, outbuf, tb, g_time);
-		break;
-	case 4: case 5: case 6: case 7:
-		/* always send NULL frame in extended CBCH for now */
-		rc = get_smscb_null_block(outbuf);
+	case 5: case 6: case 7:
+		rc = get_smscb_block(bts_ss, outbuf, block_nr, g_time);
 		break;
 	}
 
