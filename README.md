@@ -20,7 +20,7 @@ Several kinds of BTS hardware are supported:
  * sysmocom sysmoBTS
  * Octasic octphy
  * Nutaq litecell 1.5
- * software-defined radio based osmo-bts-trx (e.g. USRP B210, UmTRX)
+ * software-defined radio based osmo-bts-trx (e.g. USRP B210, UmTRX, LimeSDR)
 
 Homepage
 --------
