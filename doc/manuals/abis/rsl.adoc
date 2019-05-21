@@ -48,6 +48,7 @@ Specific additions and limitations apply, see the linked sections.
 | 8.5.5  | <<PAGING_COMMAND>> | PAGING COMMAND | <- | Received
 | 8.5.6  | - | IMMEDIATE ASSIGN COMMAND | <- | Received
 | 8.5.8  | <<SMS_BROADCAST_COMMAND>> | SMS BROADCAST COMMAND | <- | Received
+| 8.5.9  | - | CBCH LOAD INDICATION | -> | Sent
 5+<| *TRX MANAGEMENT MESSAGES*
 | 8.6.1  | <<RF_RESOURCE_INDICATION>> | RF RESOURCE INDICATION | -> | Sent
 | 8.6.2  | <<SACCH_FILLING>> | SACCH FILLING | <- | Received
@@ -106,7 +107,6 @@ Specific additions and limitations apply, see the linked sections.
 2+<| *COMMON CHANNEL MANAGEMENT MESSAGES*
 | 8.5.4  | DELETE INDICATION
 | 8.5.7  | SMS BROADCAST REQUEST
-| 8.5.9  | CBCH LOAD INDICATION
 | 8.5.10 | NOTIFICATION COMMAND
 2+<| *TRX MANAGEMENT MESSAGES*
 | 8.6.3  | OVERLOAD
