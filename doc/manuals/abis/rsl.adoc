@@ -47,7 +47,7 @@ Specific additions and limitations apply, see the linked sections.
 | 8.5.3  | <<CHANNEL_REQUIRED>> | CHANNEL REQUIRED | -> | Sent
 | 8.5.5  | <<PAGING_COMMAND>> | PAGING COMMAND | <- | Received
 | 8.5.6  | - | IMMEDIATE ASSIGN COMMAND | <- | Received
-| 8.5.8  | <<SMS_BROADCAST_COMMAND>> | SMS BROADCAST COMMAND | <- | Received
+| 8.5.8  | - | SMS BROADCAST COMMAND | <- | Received
 | 8.5.9  | - | CBCH LOAD INDICATION | -> | Sent
 5+<| *TRX MANAGEMENT MESSAGES*
 | 8.6.1  | <<RF_RESOURCE_INDICATION>> | RF RESOURCE INDICATION | -> | Sent
@@ -237,18 +237,6 @@ Conforms to 3GPP TS 08.58 § 8.5.5, with these limitations:
 
 NOTE: If adding the identity to the paging queue fails, the BSC is not notified
 in any way.
-
-[[SMS_BROADCAST_COMMAND]]
-=== SMS Broadcast Command
-
-Conforms to 3GPP TS 08.58 § 8.5.8, with these limitations:
-
-._Broadcast Command_ message IE details
-[options="header",cols="10%,30%,60%"]
-|===
-| TS 08.58 § | IE Name | Handling
-| 9.3.44 | SMSCB Channel Indicator | _ignored_
-|===
 
 
 [[RF_RESOURCE_INDICATION]]
