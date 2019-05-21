@@ -71,6 +71,14 @@ static struct bts_smscb_state *bts_smscb_state(struct gsm_bts *bts, uint8_t tb)
 		OSMO_ASSERT(0);
 }
 
+static const char *tb_to_chan_str(uint8_t tb)
+{
+	if (tb < 4)
+		return "CBCH-BASIC";
+	else
+		return "CBCH-EXTENDED";
+}
+
 /* construct a SMSCB NULL block in the user-provided output buffer at 'out' */
 static int get_smscb_null_block(uint8_t *out)
 {
@@ -86,24 +94,26 @@ static int get_smscb_null_block(uint8_t *out)
 }
 
 /* get the next block of the current CB message */
-static int get_smscb_block(struct bts_smscb_state *bts_ss, uint8_t *out, uint8_t block_nr,
+static int get_smscb_block(struct bts_smscb_state *bts_ss, uint8_t *out, uint8_t tb,
 			   const struct gsm_time *g_time)
 {
 	int to_copy;
 	struct gsm412_block_type *block_type;
 	struct smscb_msg *msg = bts_ss->cur_msg;
+	uint8_t block_nr = tb % 4;
+	const char *chan_name = tb_to_chan_str(tb);
 
 	if (!msg) {
 		/* No message: Send NULL block */
-		DEBUGPGT(DLSMS, g_time, "No cur_msg; requesting NULL block\n");
+		DEBUGPGT(DLSMS, g_time, "%s: No cur_msg; requesting NULL block\n", chan_name);
 		return get_smscb_null_block(out);
 	}
 	OSMO_ASSERT(block_nr < 4);
 
 	if (block_nr >= msg->num_segs) {
 		/* Higher block number than this message has blocks: Send NULL block */
-		DEBUGPGT(DLSMS, g_time, "cur_msg has only %u blocks; requesting NULL block\n",
-			 msg->num_segs);
+		DEBUGPGT(DLSMS, g_time, "%s: cur_msg has only %u blocks; requesting NULL block\n",
+			 chan_name, msg->num_segs);
 		return get_smscb_null_block(out);
 	}
 
@@ -136,12 +146,14 @@ static int get_smscb_block(struct bts_smscb_state *bts_ss, uint8_t *out, uint8_t
 
 	if (block_nr == 4) {
 		if (msg != bts_ss->default_msg) {
-			DEBUGPGT(DLSMS, g_time, "deleting fully-transmitted message %p\n", msg);
+			DEBUGPGT(DLSMS, g_time, "%s: deleting fully-transmitted message %p\n",
+				 chan_name, msg);
 			/* delete any fully-transmitted normal message (or superseded default) */
 			talloc_free(bts_ss->cur_msg);
 			bts_ss->cur_msg = NULL;
 		} else {
-			DEBUGPGT(DLSMS, g_time, "keeping fully-transmitted default message %p\n", msg);
+			DEBUGPGT(DLSMS, g_time, "%s: keeping fully-transmitted default message %p\n",
+				 chan_name, msg);
 		}
 	}
 
@@ -170,16 +182,19 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 {
 	struct smscb_msg *scm;
 	struct bts_smscb_state *bts_ss;
+	const char *chan_name;
 
-	if (extended_cbch)
+	if (extended_cbch) {
+		chan_name = tb_to_chan_str(4);
 		bts_ss = &bts->smscb_extended;
-	else
+	} else {
+		chan_name = tb_to_chan_str(0);
 		bts_ss = &bts->smscb_basic;
+	}
 
 	if (msg_len > sizeof(scm->msg)) {
-		LOGP(DLSMS, LOGL_ERROR,
-		     "Cannot process SMSCB of %u bytes (max %zu)\n",
-		     msg_len, sizeof(scm->msg));
+		LOGP(DLSMS, LOGL_ERROR, "%s: Cannot process SMSCB of %u bytes (max %zu)\n",
+		     chan_name, msg_len, sizeof(scm->msg));
 		return -EINVAL;
 	}
 
@@ -197,8 +212,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 	memcpy(scm->msg, msg, msg_len);
 
 	LOGP(DLSMS, LOGL_INFO, "RSL SMSCB COMMAND (chan=%s, type=%s, num_blocks=%u)\n",
-		extended_cbch ? "EXTENDED" : "BASIC",
-		get_value_string(rsl_cb_cmd_names, cmd_type.command), scm->num_segs);
+		chan_name, get_value_string(rsl_cb_cmd_names, cmd_type.command), scm->num_segs);
 
 	switch (cmd_type.command) {
 	case RSL_CB_CMD_TYPE_NORMAL:
@@ -207,6 +221,8 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 		/* def_bcast is ignored as per Section 9.3.41 of 3GPP TS 48.058 */
 		/* limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
 		if (bts_ss->queue_len >= bts->smscb_queue_max_len) {
+			LOGP(DLSMS, LOGL_NOTICE, "RSL SMSCB COMMAND (chan=%s, type=%s): OVERFLOW\n",
+			     chan_name, get_value_string(rsl_cb_cmd_names, cmd_type.command));
 			rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_RCVD_DROPPED);
 			talloc_free(scm);
 			break;
@@ -241,6 +257,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 static struct smscb_msg *select_next_smscb(struct gsm_bts *bts, uint8_t tb)
 {
 	struct bts_smscb_state *bts_ss = bts_smscb_state(bts, tb);
+	const char *chan_name = tb_to_chan_str(tb);
 	struct smscb_msg *msg;
 
 	msg = llist_first_entry_or_null(&bts_ss->queue, struct smscb_msg, list);
@@ -248,7 +265,7 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts, uint8_t tb)
 		llist_del(&msg->list);
 		bts_ss->queue_len--;
 		check_and_send_cbch_load(bts, bts_ss);
-		DEBUGP(DLSMS, "%s: Dequeued msg\n", __func__);
+		DEBUGP(DLSMS, "%s: %s: Dequeued msg\n", __func__, chan_name);
 		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_SINGLE);
 		return msg;
 	}
@@ -259,12 +276,12 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts, uint8_t tb)
 	/* choose the default message, if any */
 	msg = bts_ss->default_msg;
 	if (msg) {
-		DEBUGP(DLSMS, "%s: Using default msg\n", __func__);
+		DEBUGP(DLSMS, "%s: %s: Using default msg\n", __func__, chan_name);
 		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_DEFAULT);
 		return msg;
 	}
 
-	DEBUGP(DLSMS, "%s: No queued msg nor default\n", __func__);
+	DEBUGP(DLSMS, "%s: %s: No queued msg nor default\n", __func__, chan_name);
 	rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_NULL);
 	return NULL;
 }
@@ -277,7 +294,6 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 	struct bts_smscb_state *bts_ss;
 	/* According to 05.02 Section 6.5.4 */
 	uint32_t tb = (fn / 51) % 8;
-	uint8_t block_nr = tb % 4;
 	int rc = 0;
 
 	bts_ss = bts_smscb_state(bts, tb);
@@ -296,11 +312,11 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 	case 4:
 		/* select a new SMSCB message */
 		bts_ss->cur_msg = select_next_smscb(bts, tb);
-		rc = get_smscb_block(bts_ss, outbuf, block_nr, g_time);
+		rc = get_smscb_block(bts_ss, outbuf, tb, g_time);
 		break;
 	case 1: case 2: case 3:
 	case 5: case 6: case 7:
-		rc = get_smscb_block(bts_ss, outbuf, block_nr, g_time);
+		rc = get_smscb_block(bts_ss, outbuf, tb, g_time);
 		break;
 	}
 
