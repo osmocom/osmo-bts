@@ -542,6 +542,7 @@ struct gprs_rlc_cfg {
 struct bts_smscb_state {
 	struct llist_head queue; /* list of struct smscb_msg */
 	int queue_len;
+	struct rate_ctr_group *ctrs;
 	struct smscb_msg *cur_msg; /* current SMS-CB */
 	struct smscb_msg *default_msg; /* default broadcast message; NULL if none */
 };
@@ -744,6 +745,9 @@ struct gsm_bts {
 	/* State for SMSCB (Cell Broadcast) for BASIC and EXTENDED channel */
 	struct bts_smscb_state smscb_basic;
 	struct bts_smscb_state smscb_extended;
+	int smscb_queue_tgt_len; /* ideal/target queue length */
+	int smscb_queue_max_len; /* maximum queue length */
+	int smscb_queue_hyst; /* hysteresis for CBCH laod indications */
 
 	float min_qual_rach;	/* minimum quality for RACH bursts */
 	float min_qual_norm;	/* minimum quality for normal daata */

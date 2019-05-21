@@ -310,6 +310,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, " pcu-socket %s%s", bts->pcu.sock_path, VTY_NEWLINE);
 	if (bts->supp_meas_toa256)
 		vty_out(vty, " supp-meas-info toa256%s", VTY_NEWLINE);
+	vty_out(vty, " smscb queue-max-length %d%s", bts->smscb_queue_max_len, VTY_NEWLINE);
+	vty_out(vty, " smscb queue-target-length %d%s", bts->smscb_queue_tgt_len, VTY_NEWLINE);
+	vty_out(vty, " smscb queue-hysteresis %d%s", bts->smscb_queue_hyst, VTY_NEWLINE);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -687,6 +690,33 @@ DEFUN(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_smscb_max_qlen, cfg_bts_smscb_max_qlen_cmd,
+	"smscb queue-max-length <1-60>",
+	"Maximum queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 15)")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->smscb_queue_max_len = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_smscb_tgt_qlen, cfg_bts_smscb_tgt_qlen_cmd,
+	"smscb queue-target-length <1-30>",
+	"Target queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->smscb_queue_tgt_len = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_smscb_qhyst, cfg_bts_smscb_qhyst_cmd,
+	"smscb queue-hysteresis <0-30>",
+	"Hysteresis for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->smscb_queue_hyst = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 
 #define DB_DBM_STR 							\
 	"Unit is dB (decibels)\n"					\
@@ -854,6 +884,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->agch_queue.rejected_msgs, bts->agch_queue.agch_msgs,
 		bts->agch_queue.pch_msgs,
 		VTY_NEWLINE);
+	vty_out(vty, "  CBCH queue target: %d, hysteresis: %d, maximum: %d%s",
+		bts->smscb_queue_tgt_len, bts->smscb_queue_max_len, bts->smscb_queue_hyst, VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length (BASIC): %d%s",
 		bts->smscb_basic.queue_len, VTY_NEWLINE);
 	vty_out(vty, "  CBCH backlog queue length (EXTENDED): %u%s",
@@ -1614,6 +1646,9 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
 	install_element(BTS_NODE, &cfg_bts_supp_meas_toa256_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_supp_meas_toa256_cmd);
+	install_element(BTS_NODE, &cfg_bts_smscb_max_qlen_cmd);
+	install_element(BTS_NODE, &cfg_bts_smscb_tgt_qlen_cmd);
+	install_element(BTS_NODE, &cfg_bts_smscb_qhyst_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);

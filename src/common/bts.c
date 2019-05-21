@@ -49,6 +49,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
+#include <osmo-bts/cbch.h>
 
 #define MIN_QUAL_RACH    5.0f   /* at least  5 dB C/I */
 #define MIN_QUAL_NORM   -0.5f   /* at least -1 dB C/I */
@@ -103,6 +104,22 @@ static const struct rate_ctr_group_desc bts_ctrg_desc = {
 	OSMO_STATS_CLASS_GLOBAL,
 	ARRAY_SIZE(bts_ctr_desc),
 	bts_ctr_desc
+};
+
+static const struct rate_ctr_desc cbch_ctr_desc[] = {
+	[CBCH_CTR_RCVD_QUEUED] =	{"cbch:rcvd_queued", "Received + queued CBCH messages (Abis)" },
+	[CBCH_CTR_RCVD_DROPPED] =	{"cbch:rcvd_dropped", "Received + dropped CBCH messages (Abis)" },
+
+	[CBCH_CTR_SENT_SINGLE] =	{"cbch:sent_single", "Sent single CBCH messages (Um)" },
+	[CBCH_CTR_SENT_DEFAULT] =	{"cbch:sent_default", "Sent default CBCH messages (Um)" },
+	[CBCH_CTR_SENT_NULL] =		{"cbch:sent_null", "Sent NULL CBCH messages (Um)" },
+};
+static const struct rate_ctr_group_desc cbch_ctrg_desc = {
+	"cbch",
+	"cell broadcast channel",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(cbch_ctr_desc),
+	cbch_ctr_desc
 };
 
 /* Initialize the BTS data structures, called before config
@@ -191,7 +208,15 @@ int bts_init(struct gsm_bts *bts)
 	}
 
 	INIT_LLIST_HEAD(&bts->smscb_basic.queue);
+	bts->smscb_basic.ctrs = rate_ctr_group_alloc(bts, &cbch_ctrg_desc, 0);
+	OSMO_ASSERT(bts->smscb_basic.ctrs);
 	INIT_LLIST_HEAD(&bts->smscb_extended.queue);
+	bts->smscb_extended.ctrs = rate_ctr_group_alloc(bts, &cbch_ctrg_desc, 1);
+	OSMO_ASSERT(bts->smscb_extended.ctrs);
+	bts->smscb_queue_max_len = 15;
+	bts->smscb_queue_tgt_len = 2;
+	bts->smscb_queue_hyst = 2;
+
 	INIT_LLIST_HEAD(&bts->oml_queue);
 
 	/* register DTX DL FSM */

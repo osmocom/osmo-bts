@@ -26,6 +26,7 @@
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/cbch.h>
+#include <osmo-bts/rsl.h>
 #include <osmo-bts/logging.h>
 
 /* internal representation of one SMS-CB message (e.g. in the pending queue */
@@ -36,6 +37,28 @@ struct smscb_msg {
 	uint8_t msg[GSM412_MSG_LEN];	/* message buffer */
 	uint8_t num_segs;		/* total number of segments */
 };
+
+/* determine if current queue length differes more than permitted hysteresis from target
+ * queue length. If it does, send CBCH LOAD IND */
+static void check_and_send_cbch_load(struct gsm_bts *bts, struct bts_smscb_state *bts_ss)
+{
+	int delta = bts_ss->queue_len - bts->smscb_queue_tgt_len;
+	bool extended_cbch = false;
+
+	if (bts_ss == &bts->smscb_extended)
+		extended_cbch = true;
+
+	if (abs(delta) < bts->smscb_queue_hyst)
+		return;
+
+	if (delta < 0) {
+		/* Underrun */
+		rsl_tx_cbch_load_indication(bts, extended_cbch, false, OSMO_MIN(15, -delta));
+	} else {
+		/* Overrun */
+		rsl_tx_cbch_load_indication(bts, extended_cbch, true, OSMO_MIN(15, delta));
+	}
+}
 
 /* determine SMSCB state by tb number */
 static struct bts_smscb_state *bts_smscb_state(struct gsm_bts *bts, uint8_t tb)
@@ -182,9 +205,16 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 	case RSL_CB_CMD_TYPE_SCHEDULE:
 	case RSL_CB_CMD_TYPE_NULL:
 		/* def_bcast is ignored as per Section 9.3.41 of 3GPP TS 48.058 */
+		/* limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
+		if (bts_ss->queue_len >= bts->smscb_queue_max_len) {
+			rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_RCVD_DROPPED);
+			talloc_free(scm);
+			break;
+		}
 		llist_add_tail(&scm->list, &bts_ss->queue);
 		bts_ss->queue_len++;
-		/* FIXME: limit queue size and optionally send CBCH LOAD Information (overflow) via RSL */
+		check_and_send_cbch_load(bts, bts_ss);
+		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_RCVD_QUEUED);
 		break;
 	case RSL_CB_CMD_TYPE_DEFAULT:
 		/* old default msg will be free'd in get_smscb_block() if it is currently in transit
@@ -217,20 +247,25 @@ static struct smscb_msg *select_next_smscb(struct gsm_bts *bts, uint8_t tb)
 	if (msg) {
 		llist_del(&msg->list);
 		bts_ss->queue_len--;
+		check_and_send_cbch_load(bts, bts_ss);
 		DEBUGP(DLSMS, "%s: Dequeued msg\n", __func__);
+		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_SINGLE);
 		return msg;
 	}
 
-	/* FIXME: send CBCH LOAD Information (underflow) via RSL */
+	/* send CBCH LOAD Information (underflow) via RSL */
+	check_and_send_cbch_load(bts, bts_ss);
 
 	/* choose the default message, if any */
 	msg = bts_ss->default_msg;
 	if (msg) {
 		DEBUGP(DLSMS, "%s: Using default msg\n", __func__);
+		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_DEFAULT);
 		return msg;
 	}
 
 	DEBUGP(DLSMS, "%s: No queued msg nor default\n", __func__);
+	rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_SENT_NULL);
 	return NULL;
 }
 

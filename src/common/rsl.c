@@ -1636,6 +1636,32 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 	return 0;
 }
 
+/* 8.5.8 CBCH Load Information */
+int rsl_tx_cbch_load_indication(struct gsm_bts *bts, bool ext_cbch, bool overflow, uint8_t amount)
+{
+	struct gsm_lchan *lchan = gsm_bts_get_cbch(bts);
+	struct msgb *msg;
+	uint8_t load_info;
+
+	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
+	if (!msg)
+		return -ENOMEM;
+
+	/* 9.3.1 Channel Number */
+	rsl_cch_push_hdr(msg, RSL_MT_CBCH_LOAD_IND, gsm_lchan2chan_nr(lchan));
+
+	/* 9.3.43 CBCH Load Information */
+	load_info = ((overflow & 1) << 7) | (amount & 0x0F);
+	msgb_tv_put(msg, RSL_IE_CBCH_LOAD_INFO, load_info);
+	/* 9.3.44 SMSCB Channel Indicator */
+	if (ext_cbch)
+		msgb_tv_put(msg, RSL_IE_SMSCB_CHAN_INDICATOR, 0x01);
+
+	msg->trx = bts->c0;
+
+	return abis_bts_rsl_sendmsg(msg);
+}
+
 /*
  * ip.access related messages
  */

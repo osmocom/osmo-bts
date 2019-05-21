@@ -43,4 +43,6 @@ void cb_ts_disconnected(struct gsm_bts_trx_ts *ts);
 void cb_ts_connected(struct gsm_bts_trx_ts *ts, int rc);
 void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);
 
+int rsl_tx_cbch_load_indication(struct gsm_bts *bts, bool ext_cbch, bool overflow, uint8_t amount);
+
 #endif // _RSL_H */

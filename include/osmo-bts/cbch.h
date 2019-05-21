@@ -6,6 +6,14 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts.h>
 
+enum {
+	CBCH_CTR_RCVD_QUEUED,
+	CBCH_CTR_RCVD_DROPPED,
+	CBCH_CTR_SENT_SINGLE,
+	CBCH_CTR_SENT_DEFAULT,
+	CBCH_CTR_SENT_NULL,
+};
+
 /* incoming SMS broadcast command from RSL */
 int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_type,
 			  bool extended_cbch, uint8_t msg_len, const uint8_t *msg);
