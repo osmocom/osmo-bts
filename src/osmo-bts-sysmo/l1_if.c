@@ -1883,7 +1883,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 			LOGP(DL1C, LOGL_NOTICE, "Cannot determine nominal "
 			     "transmit power. Assuming 23dBm.\n");
 		}
-		bts->c0->nominal_power = rc;
+		bts->c0->nominal_power = rc / 1000;
 	}
 
 	hdl = pinst->u.sysmobts.hdl;
