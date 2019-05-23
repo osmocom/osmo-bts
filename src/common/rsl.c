@@ -1554,18 +1554,33 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 /* 8.4.15 MS POWER CONTROL */
 static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 {
+	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct tlv_parsed tp;
+	uint8_t pwr;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
-	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
-		uint8_t pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-		lchan->ms_power_ctrl.fixed = 1;
-		lchan->ms_power_ctrl.current = pwr;
 
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "forcing power to %d\n", lchan->ms_power_ctrl.current);
-		bts_model_adjst_ms_pwr(lchan);
+	/* 9.3.13 MS Power (M) */
+	if (!TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1))
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
+
+	pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
+	lchan->ms_power_ctrl.current = pwr;
+
+	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "forcing power to %d\n", lchan->ms_power_ctrl.current);
+
+	/* 9.3.31 MS Power Parameters (O) */
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
+		lchan->ms_power_ctrl.fixed = 0;
+	else {
+		/* Spec explicitly states BTS should only perform
+		* autonomous MS power control loop in BTS if 'MS Power
+		* Parameters' IE is present! */
+		lchan->ms_power_ctrl.fixed = 1;
 	}
+
+	bts_model_adjst_ms_pwr(lchan);
 
 	return 0;
 }
