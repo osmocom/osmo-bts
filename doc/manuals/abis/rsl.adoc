@@ -45,6 +45,7 @@ Specific additions and limitations apply, see the linked sections.
 | 8.5.1  | <<BCCH_INFORMATION>> | BCCH INFORMATION | <- | Received
 | 8.5.2  | - | CCCH LOAD INDICATION | -> | Sent
 | 8.5.3  | <<CHANNEL_REQUIRED>> | CHANNEL REQUIRED | -> | Sent
+| 8.5.4  | - | DELETE INDICATION | -> | Sent
 | 8.5.5  | <<PAGING_COMMAND>> | PAGING COMMAND | <- | Received
 | 8.5.6  | - | IMMEDIATE ASSIGN COMMAND | <- | Received
 | 8.5.8  | - | SMS BROADCAST COMMAND | <- | Received
@@ -105,7 +106,6 @@ Specific additions and limitations apply, see the linked sections.
 | 8.4.30 | TFO REPORT
 | 8.4.31 | TFO MODIFICATION REQUEST
 2+<| *COMMON CHANNEL MANAGEMENT MESSAGES*
-| 8.5.4  | DELETE INDICATION
 | 8.5.7  | SMS BROADCAST REQUEST
 | 8.5.10 | NOTIFICATION COMMAND
 2+<| *TRX MANAGEMENT MESSAGES*
