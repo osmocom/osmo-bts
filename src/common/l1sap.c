@@ -484,10 +484,7 @@ static unsigned int calc_exprd_rach_frames(struct gsm_bts *bts, uint32_t fn)
 			rach_frames_expired = 1;
 	}
 
-	/* Each Frame has room for 4 RACH slots, since RACH
-	 * slots are short enough to fit into a single radio
-	 * burst, so we need to multiply the final result by 4 */
-	return rach_frames_expired * 4;
+	return rach_frames_expired;
 }
 
 /* time information received from bts model */
