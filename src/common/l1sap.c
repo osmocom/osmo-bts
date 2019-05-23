@@ -493,6 +493,7 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 			       struct info_time_ind_param *info_time_ind)
 {
 	int frames_expired;
+	int i;
 
 	DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
 
@@ -513,8 +514,10 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 
 	/* increment number of RACH slots that have passed by since the
 	 * last time indication */
-	bts->load.rach.total +=
-	    calc_exprd_rach_frames(bts, info_time_ind->fn) * frames_expired;
+	for (i = 0; i < frames_expired; i++) {
+		uint32_t fn = (info_time_ind->fn + GSM_HYPERFRAME - i) % GSM_HYPERFRAME;
+		bts->load.rach.total += calc_exprd_rach_frames(bts, fn);
+	}
 
 	return 0;
 }
