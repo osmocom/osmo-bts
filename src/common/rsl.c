@@ -1585,6 +1585,47 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	return 0;
 }
 
+/* See TS 48.058 Section 9.3.4 */
+static int bs_power_attenuation_dB(uint8_t bs_power)
+{
+	/* the lower nibble contains the number of 2dB steps that the BS power is reduced compared
+	 * to its nominal transmit power */
+	return - ((bs_power & 0xF) *2);
+}
+
+/* 8.4.16 BS POWER CONTROL */
+static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
+	struct gsm_lchan *lchan = msg->lchan;
+	struct tlv_parsed tp;
+	uint8_t new_bs_power;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	/* 9.3.4 BS Power (M) */
+	if (!TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
+		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
+
+	new_bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "BS POWER CONTROL Attenuation %d -> %d dB\n",
+		  bs_power_attenuation_dB(lchan->bs_power), bs_power_attenuation_dB(new_bs_power));
+
+	lchan->bs_power = new_bs_power;
+
+	/* 9.3.31 MS Power Parameters (O) */
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
+		/* Spec explicitly states BTS should perform autonomous
+		 * BS power control loop in BTS if 'BS Power Parameters'
+		 * IE is present!  WE don't support that. */
+		return rsl_tx_error_report(msg->trx, RSL_ERR_OPT_IE_ERROR, &dch->chan_nr, NULL, msg);
+	}
+
+	return 0;
+}
+
+
 /* 8.4.20 SACCH INFO MODify */
 static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 {
@@ -2925,6 +2966,9 @@ static int rsl_rx_dchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		break;
 	case RSL_MT_MS_POWER_CONTROL:
 		ret = rsl_rx_ms_pwr_ctrl(msg);
+		break;
+	case RSL_MT_BS_POWER_CONTROL:
+		ret = rsl_rx_bs_pwr_ctrl(msg);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT:
 	case RSL_MT_IPAC_PDCH_DEACT:
