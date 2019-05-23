@@ -32,6 +32,7 @@ static void reset_load_counters(struct gsm_bts *bts)
 {
 	/* re-set the counters */
 	bts->load.ccch.pch_used = bts->load.ccch.pch_total = 0;
+	bts->load.rach.busy = bts->load.rach.access = bts->load.rach.total = 0;
 }
 
 static void load_timer_cb(void *data)
