@@ -151,24 +151,16 @@ void bts_update_status(enum bts_global_status which, int on)
 {
 	static uint64_t states = 0;
 	uint64_t old_states = states;
-	int led_rf_active_on;
 
 	if (on)
 		states |= (1ULL << which);
 	else
 		states &= ~(1ULL << which);
 
-	led_rf_active_on =
-		(states & (1ULL << BTS_STATUS_RF_ACTIVE)) &&
-		!(states & (1ULL << BTS_STATUS_RF_MUTE));
-
 	LOGP(DL1C, LOGL_INFO,
-	     "Set global status #%d to %d (%04llx -> %04llx), LEDs: ACT %d\n",
+	     "Set global status #%d to %d (%04llx -> %04llx)\n",
 	     which, on,
-	     (long long)old_states, (long long)states,
-	     led_rf_active_on);
-
-	oc2gbts_led_set(led_rf_active_on ? LED_GREEN : LED_OFF);
+	     (long long)old_states, (long long)states);
 }
 
 void bts_model_print_help()
