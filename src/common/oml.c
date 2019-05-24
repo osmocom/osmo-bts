@@ -70,6 +70,16 @@ struct msgb *oml_msgb_alloc(void)
 	return msgb_alloc_headroom(1024, 128, "OML");
 }
 
+/* FIXME: move to gsm_data_shared */
+static char mo_buf[128];
+char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
+{
+	snprintf(mo_buf, sizeof(mo_buf), "OC=%s INST=(%02x,%02x,%02x)",
+		 get_value_string(abis_nm_obj_class_names, mo->obj_class),
+		 mo->obj_inst.bts_nr, mo->obj_inst.trx_nr, mo->obj_inst.ts_nr);
+	return mo_buf;
+}
+
 /* 3GPP TS 12.21 § 8.8.2 */
 int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 			     const char *fmt, ...)
@@ -77,7 +87,8 @@ int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 	struct msgb *nmsg;
 	va_list ap;
 
-	LOGP(DOML, LOGL_NOTICE, "Sending %s to BSC: ", get_value_string(abis_mm_event_cause_names, cause_value));
+	LOGP(DOML, LOGL_NOTICE, "%s: Sending %s to BSC: ", gsm_abis_mo_name(mo),
+		get_value_string(abis_mm_event_cause_names, cause_value));
 	va_start(ap, fmt);
 	osmo_vlogp(DOML, LOGL_NOTICE, __FILE__, __LINE__, 1, fmt, ap);
 	nmsg = abis_nm_fail_evt_vrep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
@@ -131,16 +142,6 @@ int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_
 	msg->trx = mo->bts->c0;
 
 	return oml_send_msg(msg, 0);
-}
-
-/* FIXME: move to gsm_data_shared */
-static char mo_buf[128];
-char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
-{
-	snprintf(mo_buf, sizeof(mo_buf), "OC=%s INST=(%02x,%02x,%02x)",
-		 get_value_string(abis_nm_obj_class_names, mo->obj_class),
-		 mo->obj_inst.bts_nr, mo->obj_inst.trx_nr, mo->obj_inst.ts_nr);
-	return mo_buf;
 }
 
 static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
@@ -203,7 +204,7 @@ static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_tr
 	int i;
 
 	if (!trx) {
-		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes for unknown TRX\n");
+		LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes for unknown TRX\n", gsm_trx_name(trx));
 		return -NM_NACK_TRXNR_UNKN;
 	}
 
@@ -213,8 +214,8 @@ static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_tr
 			add_trx_attr(out_msg, trx);
 			break;
 		default:
-			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by TRX.\n", i,
-			     get_value_string(abis_nm_att_names, attr[i]));
+			LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes [%u], %s is unsupported by TRX.\n",
+			     gsm_trx_name(trx), i, get_value_string(abis_nm_att_names, attr[i]));
 			/* Push this tag to the list of unsupported attributes */
 			buf = msgb_push(out_msg, 1);
 			*buf = attr[i];
@@ -273,10 +274,10 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
+	const char *mo_name = gsm_abis_mo_name(mo);
 	int rc;
 
-	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n",
-	     get_value_string(abis_nm_obj_class_names, mo->obj_class));
+	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n", mo_name);
 
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
@@ -289,13 +290,14 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 		rc = handle_attrs_trx(nmsg, gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr), attr, attr_len);
 		break;
 	default:
-		LOGP(DOML, LOGL_ERROR, "Unsupported MO class %s in Get Attribute Response\n",
-		     get_value_string(abis_nm_obj_class_names, mo->obj_class));
+		LOGP(DOML, LOGL_ERROR, "%s: Unsupported MO class in Get Attribute Response\n",
+		     mo_name);
 		rc = -NM_NACK_OBJCLASS_NOTSUPP;
 	}
 
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "Tx Get Attribute Response FAILED with rc=%d\n", rc);
+		LOGP(DOML, LOGL_ERROR, "%s: Tx Get Attribute Response FAILED with rc=%d\n",
+		     mo_name, rc);
 		msgb_free(nmsg);
 		return rc;
 	}
@@ -442,7 +444,7 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 
 	/* alter message type */
 	if (cause) {
-		LOGP(DOML, LOGL_NOTICE, "Sending FOM NACK with cause %s.\n",
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "Sending FOM NACK with cause %s.\n",
 			abis_nm_nack_cause_name(cause));
 		foh->msg_type += 2; /* nack */
 		/* add cause */
@@ -451,7 +453,7 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 		struct abis_om_hdr *omh = (struct abis_om_hdr *) msgb_l2(msg);
 		omh->length = msgb_l3len(msg);
 	} else {
-		LOGP(DOML, LOGL_DEBUG, "Sending FOM ACK.\n");
+		LOGPFOH(DOML, LOGL_DEBUG, foh, "Sending FOM ACK.\n");
 		foh->msg_type++; /* ack */
 	}
 
@@ -561,18 +563,18 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
 		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute parsing failure");
-		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+		return oml_mo_fom_ack_nack(mo, NM_MT_GET_ATTR, NM_NACK_INCORR_STRUCT);
 	}
 
 	if (!TLVP_PRES_LEN(&tp, NM_ATT_LIST_REQ_ATTR, 1)) {
 		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
-		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
+		return oml_mo_fom_ack_nack(mo, NM_MT_GET_ATTR, NM_NACK_INCORR_STRUCT);
 	}
 
 	rc = oml_tx_attr_resp(mo, TLVP_VAL(&tp, NM_ATT_LIST_REQ_ATTR), TLVP_LEN(&tp, NM_ATT_LIST_REQ_ATTR));
 	if (rc < 0) {
 		LOGPFOH(DOML, LOGL_ERROR, foh, "Responding to O&M Get Attributes message with NACK 0%x\n", -rc);
-		return oml_fom_ack_nack(msg, -rc);
+		return oml_mo_fom_ack_nack(mo, NM_MT_GET_ATTR,  -rc);
 	}
 
 	return 0;
@@ -1350,6 +1352,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
 	uint16_t port = IPA_TCP_PORT_RSL;
 	uint32_t ip = get_signlink_remote_ip(oml_link);
+	const char *trx_name = gsm_trx_name(trx);
 	struct in_addr in;
 	int rc;
 
@@ -1366,16 +1369,16 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 
 	in.s_addr = htonl(ip);
-	LOGP(DOML, LOGL_INFO, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
-		inet_ntoa(in), port, stream_id);
+	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
+		trx_name, inet_ntoa(in), port, stream_id);
 
 	if (trx->bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
-		LOGP(DOML, LOGL_NOTICE, "Not connecting RSL in OML-DUMMY!\n");
+		LOGP(DOML, LOGL_NOTICE, "%s: Not connecting RSL in OML-DUMMY!\n", trx_name);
 	} else
 		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port, trx->nr);
 	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "Error in abis_open(RSL): %d\n", rc);
+		LOGP(DOML, LOGL_ERROR, "%s: Error in abis_open(RSL): %d\n", trx_name, rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
 	}
 
