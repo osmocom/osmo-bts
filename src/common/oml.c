@@ -141,6 +141,8 @@ int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_
 	/* FIXME: This assumption may not always be correct */
 	msg->trx = mo->bts->c0;
 
+	DEBUGPFOH(DOML, foh, "Tx %s\n", get_value_string(abis_nm_msgtype_names, foh->msg_type));
+
 	return oml_send_msg(msg, 0);
 }
 
@@ -277,8 +279,6 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 	const char *mo_name = gsm_abis_mo_name(mo);
 	int rc;
 
-	LOGP(DOML, LOGL_INFO, "%s Tx Get Attribute Response\n", mo_name);
-
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
 
@@ -313,8 +313,6 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 int oml_tx_state_changed(const struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
-
-	LOGP(DOML, LOGL_INFO, "%s Tx STATE CHG REP\n", gsm_abis_mo_name(mo));
 
 	nmsg = oml_msgb_alloc();
 	if (!nmsg)
@@ -469,8 +467,6 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
-
-	LOGP(DOML, LOGL_INFO, "%s Tx SW ACT REP\n", gsm_abis_mo_name(mo));
 
 	nmsg = oml_msgb_alloc();
 	if (!nmsg)
