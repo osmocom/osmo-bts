@@ -51,6 +51,25 @@
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/l1sap.h>
 
+static int write_status_file(char *status_file, char *status_str)
+{
+	FILE *outf;
+	char tmp[PATH_MAX+1];
+
+	snprintf(tmp, sizeof(tmp)-1, "/var/run/osmo-bts/%s", status_file);
+	tmp[PATH_MAX-1] = '\0';
+
+	outf = fopen(tmp, "w");
+	if (!outf)
+		return -1;
+
+	fprintf(outf, "%s\n", status_str);
+
+	fclose(outf);
+
+	return 0;
+}
+
 /*NTQD: Change how rx_nr is handle in multi-trx*/
 #define LC15BTS_RF_LOCK_PATH	"/var/lock/bts_rf_lock"
 
@@ -116,6 +135,9 @@ void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 
 int bts_model_oml_estab(struct gsm_bts *bts)
 {
+	/* update status file */
+	write_status_file("state", "");
+
 	return 0;
 }
 
@@ -123,24 +145,16 @@ void bts_update_status(enum bts_global_status which, int on)
 {
 	static uint64_t states = 0;
 	uint64_t old_states = states;
-	int led_rf_active_on;
 
 	if (on)
 		states |= (1ULL << which);
 	else
 		states &= ~(1ULL << which);
 
-	led_rf_active_on =
-		(states & (1ULL << BTS_STATUS_RF_ACTIVE)) &&
-		!(states & (1ULL << BTS_STATUS_RF_MUTE));
-
 	LOGP(DL1C, LOGL_INFO,
-	     "Set global status #%d to %d (%04llx -> %04llx), LEDs: ACT %d\n",
+	     "Set global status #%d to %d (%04llx -> %04llx)",
 	     which, on,
-	     (long long)old_states, (long long)states,
-	     led_rf_active_on);
-
-	lc15bts_led_set(led_rf_active_on ? LED_GREEN : LED_OFF);
+	     (long long)old_states, (long long)states);
 }
 
 void bts_model_print_help()
@@ -197,11 +211,17 @@ int bts_model_handle_options(int argc, char **argv)
 
 void bts_model_abis_close(struct gsm_bts *bts)
 {
+	/* write to status file */
+	write_status_file("state", "ABIS DOWN");
+
 	/* for now, we simply terminate the program and re-spawn */
 	bts_shutdown(bts, "Abis close");
 }
 
 int main(int argc, char **argv)
 {
+	/* create status file with initial state */
+	write_status_file("state", "ABIS DOWN");
+
 	return bts_main(argc, argv);
 }
