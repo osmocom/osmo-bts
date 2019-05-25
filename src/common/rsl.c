@@ -471,8 +471,8 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	if (rc < 0) {
 		/* FIXME: notfiy the BSC on other errors? */
 		if (rc == -ENOSPC) {
-			oml_tx_failure_event_rep(&trx->bts->mo, OSMO_EVT_MIN_PAG_TAB_FULL,
-						 "BTS paging table is full");
+			oml_tx_failure_event_rep(&trx->bts->mo, NM_SEVER_WARNING,
+						 OSMO_EVT_MIN_PAG_TAB_FULL, "BTS paging table is full");
 		}
 	}
 
@@ -2013,7 +2013,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		if (!lchan->abis_ip.rtp_socket) {
 			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to create RTP/RTCP sockets\n");
 			oml_tx_failure_event_rep(&lchan->ts->trx->mo,
-						 OSMO_EVT_CRIT_RTP_TOUT,
+						 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
 						 "%s IPAC Failed to create RTP/RTCP sockets",
 						 gsm_lchan_name(lchan));
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
@@ -2050,7 +2050,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		if (rc < 0) {
 			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to bind RTP/RTCP sockets\n");
 			oml_tx_failure_event_rep(&lchan->ts->trx->mo,
-						 OSMO_EVT_CRIT_RTP_TOUT,
+						 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
 						 "%s IPAC Failed to bind RTP/RTCP sockets",
 						 gsm_lchan_name(lchan));
 			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);

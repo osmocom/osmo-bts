@@ -77,7 +77,7 @@ CTRL_CMD_DEFINE_WO_NOVRF(oml_alert, "oml-alert");
 static int set_oml_alert(struct ctrl_cmd *cmd, void *data)
 {
 	/* Note: we expect signal dispatch to be synchronous */
-	oml_tx_failure_event_rep(&g_bts->mo, OSMO_EVT_EXT_ALARM, cmd->value);
+	oml_tx_failure_event_rep(&g_bts->mo, NM_SEVER_INDETERMINATE, OSMO_EVT_EXT_ALARM, cmd->value);
 
 	cmd->reply = "OK";
 

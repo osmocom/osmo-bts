@@ -1358,7 +1358,7 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown prim %d op %d\n",
 			l1sap->oph.primitive, l1sap->oph.operation);
-		oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&trx->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "unknown prim %d op %d",
 					 l1sap->oph.primitive,
 					 l1sap->oph.operation);

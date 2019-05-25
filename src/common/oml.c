@@ -81,8 +81,8 @@ char *gsm_abis_mo_name(const struct gsm_abis_mo *mo)
 }
 
 /* 3GPP TS 12.21 § 8.8.2 */
-int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
-			     const char *fmt, ...)
+int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, enum abis_nm_severity severity,
+			     uint16_t cause_value, const char *fmt, ...)
 {
 	struct msgb *nmsg;
 	va_list ap;
@@ -91,7 +91,7 @@ int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, uint16_t cause_value,
 		get_value_string(abis_mm_event_cause_names, cause_value));
 	va_start(ap, fmt);
 	osmo_vlogp(DOML, LOGL_NOTICE, __FILE__, __LINE__, 1, fmt, ap);
-	nmsg = abis_nm_fail_evt_vrep(NM_EVT_PROC_FAIL, NM_SEVER_CRITICAL,
+	nmsg = abis_nm_fail_evt_vrep(NM_EVT_PROC_FAIL, severity,
 				     NM_PCAUSE_T_MANUF, cause_value, fmt, ap);
 	va_end(ap);
 	LOGPC(DOML, LOGL_NOTICE, "\n");
@@ -558,12 +558,14 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute parsing failure");
+		oml_tx_failure_event_rep(mo, NM_SEVER_MINOR, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "Get Attribute parsing failure");
 		return oml_mo_fom_ack_nack(mo, NM_MT_GET_ATTR, NM_NACK_INCORR_STRUCT);
 	}
 
 	if (!TLVP_PRES_LEN(&tp, NM_ATT_LIST_REQ_ATTR, 1)) {
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR, "Get Attribute without Attribute List");
+		oml_tx_failure_event_rep(mo, NM_SEVER_MINOR, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "Get Attribute without Attribute List");
 		return oml_mo_fom_ack_nack(mo, NM_MT_GET_ATTR, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -588,7 +590,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for Attribute not supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
@@ -597,7 +599,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2)) {
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 		if (arfcn > 1024) {
-			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_WARN_SW_WARN,
+			oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is not supported",
 						 arfcn);
 			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %u is not supported.\n", arfcn);
@@ -606,7 +608,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 	/* 9.4.52 Starting Time */
 	if (TLVP_PRESENT(&tp, NM_ATT_START_TIME)) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "NM_ATT_START_TIME Attribute not "
 					 "supported");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
@@ -756,7 +758,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		oml_tx_failure_event_rep(&trx->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
+		oml_tx_failure_event_rep(&trx->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for Set Radio Attribute not"
 					 " supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
@@ -820,10 +822,8 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		arfcn = ntohs(_value);
 		value += 2;
 		if (arfcn > 1024) {
-			oml_tx_failure_event_rep(&trx->bts->mo,
-						 OSMO_EVT_WARN_SW_WARN,
-						 "Given ARFCN %u is unsupported",
-						 arfcn);
+			oml_tx_failure_event_rep(&trx->bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
+						 "Given ARFCN %u is unsupported", arfcn);
 			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given ARFCN %u is unsupported.\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
@@ -926,9 +926,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		oml_tx_failure_event_rep(&ts->mo, OSMO_EVT_MAJ_UNSUP_ATTR,
-					 "New value for Set Channel Attribute "
-					 "not supported");
+		oml_tx_failure_event_rep(&ts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for Set Channel Attribute not supported");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -1073,7 +1072,8 @@ static inline bool report_bts_number_incorrect(struct gsm_bts *bts, const struct
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx)
 			mo = &trx->mo;
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, form, foh->obj_inst.bts_nr,
+		oml_tx_failure_event_rep(mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG, form,
+					 foh->obj_inst.bts_nr,
 					 get_value_string(abis_nm_msgtype_names, foh->msg_type));
 
 		return true;
@@ -1094,7 +1094,8 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx)
 			mo = &trx->mo;
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "Formatted O&M message too short");
+		oml_tx_failure_event_rep(mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
+					 "Formatted O&M message too short");
 		return -EIO;
 	}
 
@@ -1149,8 +1150,8 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx)
 			mo = &trx->mo;
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "unknown Formatted O&M "
-					 "msg_type 0x%02x", foh->msg_type);
+		oml_tx_failure_event_rep(mo, NM_SEVER_MINOR, OSMO_EVT_MAJ_UKWN_MSG,
+					 "unknown Formatted O&M msg_type 0x%02x", foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
@@ -1317,9 +1318,8 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 		mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
 		if (!mo)
 			return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UNSUP_ATTR,
-					 "New value for IPAC Set Attribute not "
-					 "supported\n");
+		oml_tx_failure_event_rep(mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
+					 "New value for IPAC Set Attribute not supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
@@ -1392,13 +1392,13 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 	int ret;
 
 	if (msgb_l2len(msg) < sizeof(*foh)) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "Manufacturer O&M message too short\n");
 		return -EIO;
 	}
 
 	if (strncmp((char *)&oh->data[1], abis_nm_ipa_magic, idstrlen)) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "Manufacturer OML message != ipaccess not supported\n");
 		return -EINVAL;
 	}
@@ -1437,8 +1437,8 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 		if (trx)
 			mo = &trx->mo;
-		oml_tx_failure_event_rep(mo, OSMO_EVT_MAJ_UKWN_MSG, "unknown Manufacturer O&M "
-					 "msg_type 0x%02x", foh->msg_type);
+		oml_tx_failure_event_rep(mo, NM_SEVER_MINOR, OSMO_EVT_MAJ_UKWN_MSG,
+					 "unknown Manufacturer O&M msg_type 0x%02x", foh->msg_type);
 		ret = oml_fom_ack_nack(msg, NM_NACK_MSGTYPE_INVAL);
 	}
 
@@ -1452,7 +1452,7 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	int ret = 0;
 
 	if (msgb_l2len(msg) < sizeof(*oh)) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "OML message too short\n");
 		msgb_free(msg);
 		return -EIO;
@@ -1461,14 +1461,14 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 
 	/* We don't implement de-segmentation of segmented OML messages */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY || oh->sequence != 0) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "Unsupported segmented O&M message\n");
 		msgb_free(msg);
 		return -EIO;
 	}
 
 	if (msgb_l3len(msg) < oh->length) {
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "Short OML message: %u < %u\n",
 					 msgb_l3len(msg), oh->length);
 		msgb_free(msg);
@@ -1478,7 +1478,7 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	switch (oh->mdisc) {
 	case ABIS_OM_MDISC_FOM:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
-			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+			oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 						"Formatted O&M message too short\n");
 			ret = -EIO;
 			break;
@@ -1487,7 +1487,7 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	case ABIS_OM_MDISC_MANUF:
 		if (msgb_l2len(msg) < sizeof(*oh)) {
-			oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+			oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
 						"Manufacturer O&M message too short\n");
 			ret = -EIO;
 			break;
@@ -1495,7 +1495,7 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 		ret = down_mom(bts, msg);
 		break;
 	default:
-		oml_tx_failure_event_rep(&bts->mo, OSMO_EVT_MAJ_UKWN_MSG,
+		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MINOR, OSMO_EVT_MAJ_UKWN_MSG,
 					 "unknown O&M msg_disc 0x%02x\n", oh->mdisc);
 		ret = -EINVAL;
 	}
