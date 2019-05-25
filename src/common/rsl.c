@@ -2608,8 +2608,8 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	lchan = lchan_lookup(trx, rh->chan_nr, "RSL rx RLL: ");
 	if (!lchan) {
-		LOGPLCHAN(lchan, DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
-			  rsl_msg_name(rh->c.msg_type));
+		LOGP(DRLL, LOGL_NOTICE, "Rx RLL %s for unknown lchan\n",
+		     rsl_msg_name(rh->c.msg_type));
 		return rsl_reject_unknown_lchan(msg);
 	}
 
