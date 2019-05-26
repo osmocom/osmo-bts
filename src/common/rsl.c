@@ -2642,7 +2642,17 @@ static inline int rsl_link_id_is_sacch(uint8_t link_id)
 		return 0;
 }
 
-static int rslms_get_meas_msg_type(struct msgb *msg, bool rllh_link_id_is_sacch)
+static int rslms_get_rll_msg_type(struct msgb *msg)
+{
+	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
+
+	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL)
+		return -1;
+
+	return rh->msg_type;
+}
+
+static int rslms_get_rr_msg_type(struct msgb *msg, bool rllh_link_id_is_sacch)
 {
 	struct abis_rsl_common_hdr *rh = msgb_l2(msg);
 	struct abis_rsl_rll_hdr *rllh;
@@ -2651,8 +2661,6 @@ static int rslms_get_meas_msg_type(struct msgb *msg, bool rllh_link_id_is_sacch)
 	if ((rh->msg_discr & 0xfe) != ABIS_RSL_MDISC_RLL)
 		return -1;
 
-	if (rh->msg_type != RSL_MT_UNIT_DATA_IND)
-		return -2;
 
 	rllh = msgb_l2(msg);
 	if (rsl_link_id_is_sacch(rllh->link_id) != rllh_link_id_is_sacch)
@@ -2665,23 +2673,39 @@ static int rslms_get_meas_msg_type(struct msgb *msg, bool rllh_link_id_is_sacch)
 	return gh->msg_type;
 }
 
-static int rslms_is_meas_rep(struct msgb *msg)
+static bool rslms_is_meas_rep(struct msgb *msg)
 {
-	switch (rslms_get_meas_msg_type(msg, 1)) {
+	int rll_msg_type = rslms_get_rll_msg_type(msg);
+	int rr_msg_type;
+
+	if (rll_msg_type != RSL_MT_UNIT_DATA_IND)
+		return false;
+
+	rr_msg_type = rslms_get_rr_msg_type(msg, 1);
+
+	switch (rr_msg_type) {
 	case GSM48_MT_RR_MEAS_REP:
 	case GSM48_MT_RR_EXT_MEAS_REP:
-		return 1;
+		return true;
 	}
 
 	/* FIXME: this does not cover the Bter frame format and the associated
 	 * short RR protocol descriptor for ENHANCED MEASUREMENT REPORT */
 
-	return 0;
+	return false;
 }
 
-static int rslms_is_gprs_susp_req(struct msgb *msg)
+static bool rslms_is_gprs_susp_req(struct msgb *msg)
 {
-	return rslms_get_meas_msg_type(msg, 0) == GSM48_MT_RR_GPRS_SUSP_REQ;
+	int rll_msg_type = rslms_get_rll_msg_type(msg);
+	int rr_msg_type;
+
+	if (rll_msg_type != RSL_MT_DATA_IND)
+		return false;
+
+	rr_msg_type = rslms_get_rr_msg_type(msg, false);
+
+	return rr_msg_type == GSM48_MT_RR_GPRS_SUSP_REQ;
 }
 
 /* TS 44.018 9.1.13b GPRS suspension request */
