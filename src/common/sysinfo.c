@@ -1,4 +1,4 @@
-/* (C) 2011 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2019 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -24,6 +24,7 @@
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/pcu_if.h>
 
 /* properly increment SI2q index and return SI2q data for scheduling */
 static inline uint8_t *get_si2q_inc_index(struct gsm_bts *bts)
@@ -174,4 +175,37 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 	}
 	LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "SACCH no SI available\n");
 	return NULL;
+}
+
+/* re-generate SI3 restoctets with GPRS indicator depending on the PCU socket connection state */
+void regenerate_si3_restoctets(struct gsm_bts *bts)
+{
+	uint8_t *si3_buf = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
+	size_t si3_size = offsetof(struct gsm48_system_information_type_3, rest_octets);
+	struct osmo_gsm48_si_ro_info si3ro_tmp;
+
+	/* If BSC has never set SI3, there's nothing to patch */
+	if (!GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_3))
+		return;
+
+	/* If SI3 from BSC doesn't have a GPRS indicator, we won't have anything to patch */
+	if (!bts->si3_ro_decoded.gprs_ind.present)
+		return;
+
+	/* Create a temporary copy and patch that, if no PCU is around */
+	si3ro_tmp = bts->si3_ro_decoded;
+	if (!pcu_connected()) {
+		if (!bts->si3_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Disabling GPRS Indicator in SI3 (No PCU connected)\n");
+		bts->si3_gprs_ind_disabled = true;
+		si3ro_tmp.gprs_ind.present = 0;
+	} else {
+		if (bts->si3_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Enabling GPRS Indicator in SI3 (PCU connected)\n");
+		bts->si3_gprs_ind_disabled = false;
+		si3ro_tmp.gprs_ind.present = 1; /* is a no-op as we copy from bts->si3_ro_decoded */
+	}
+
+	/* re-generate the binary SI3 rest octets */
+	osmo_gsm48_rest_octets_si3_encode(si3_buf + si3_size, &si3ro_tmp);
 }

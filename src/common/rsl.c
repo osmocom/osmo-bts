@@ -1,7 +1,7 @@
 /* GSM TS 08.58 RSL, BTS Side */
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2011-2017 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2011-2019 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -360,12 +360,18 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		bts->si_valid |= (1 << osmo_si);
 
-		if (SYSINFO_TYPE_3 == osmo_si && trx->nr == 0 &&
-		    num_agch(trx, "RSL") != 1) {
-			lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
-			/* will be reactivated by sapi_deactivate_cb() */
-			trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
-				LCHAN_REL_ACT_REACT;
+		if (SYSINFO_TYPE_3 == osmo_si) {
+			if (trx->nr == 0 && num_agch(trx, "RSL") != 1) {
+				lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
+				/* will be reactivated by sapi_deactivate_cb() */
+				trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+					LCHAN_REL_ACT_REACT;
+			}
+			/* decode original SI3 Rest Octets as sent by BSC */
+			osmo_gsm48_rest_octets_si3_decode(&bts->si3_ro_decoded, GSM_BTS_SI(bts, osmo_si));
+			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
+			 * after PCU connects */
+			regenerate_si3_restoctets(bts);
 		}
 
 		if (SYSINFO_TYPE_13 == osmo_si)
@@ -387,6 +393,8 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			get_value_string(osmo_sitype_strs, osmo_si));
 		if (SYSINFO_TYPE_13 == osmo_si)
 			pcu_tx_si13(trx->bts, false);
+		if (SYSINFO_TYPE_3 == osmo_si)
+			memset(&bts->si3_ro_decoded, 0, sizeof(bts->si3_ro_decoded));
 	}
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 

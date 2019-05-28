@@ -15,6 +15,7 @@
 #include <osmocom/gsm/rxlev_stat.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <osmocom/gsm/meas_rep.h>
+#include <osmocom/gsm/gsm48_rest_octets.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -620,6 +621,10 @@ struct gsm_bts {
 	/* offsets used while generating SI2quater */
 	size_t e_offset;
 	size_t u_offset;
+	/* decoded SI3 rest octets - *unmodified* as received from BSC */
+	struct osmo_gsm48_si_ro_info si3_ro_decoded;
+	/* is SI3 GPRS Indicator currently disabled due to lack of PCU connection? */
+	bool si3_gprs_ind_disabled;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
