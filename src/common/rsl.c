@@ -1090,9 +1090,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		memset(&lchan->encr, 0, sizeof(lchan->encr));
 
 	/* 9.3.9 Handover Reference */
-	if ((type == RSL_ACT_INTER_ASYNC ||
-	     type == RSL_ACT_INTER_SYNC) &&
-	    TLVP_PRES_LEN(&tp, RSL_IE_HANDO_REF, 1)) {
+	if ((type == RSL_ACT_INTER_ASYNC || type == RSL_ACT_INTER_SYNC)) {
+		/* According to 8.4.1, the Handover Reference element is included
+		 * if activation type is handover. Assuming it's mandatory. */
+		if (!TLVP_PRES_LEN(&tp, RSL_IE_HANDO_REF, 1)) {
+			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Missing Handover Reference IE\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+		}
 		lchan->ho.active = HANDOVER_ENABLED;
 		lchan->ho.ref = *TLVP_VAL(&tp, RSL_IE_HANDO_REF);
 	}
