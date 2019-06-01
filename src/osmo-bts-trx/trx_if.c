@@ -688,8 +688,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
 		send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
 	} else
-		LOGP(DTRX, LOGL_DEBUG, "Ignoring TX data, transceiver "
-			"offline.\n");
+		LOGP(DTRX, LOGL_ERROR, "Ignoring TX data, transceiver offline.\n");
 
 	return 0;
 }
