@@ -59,7 +59,6 @@ struct trx_l1h {
 
 	/* transceiver config */
 	struct trx_config	config;
-	uint8_t			ho_rach_detect[TRX_NR_TS][TS_MAX_LCHAN];
 
 	struct l1sched_trx	l1s;
 };
