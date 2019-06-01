@@ -5,6 +5,15 @@
 
 #include <osmo-bts/gsm_data.h>
 
+/* Whether a logical channel must be activated automatically */
+#define TRX_CHAN_FLAG_AUTO_ACTIVE	(1 << 0)
+/* Whether a logical channel belongs to PDCH (packet switched data) */
+#define TRX_CHAN_FLAG_PDCH		(1 << 1)
+
+/* FIXME: we should actually activate 'auto-active' channels */
+#define TRX_CHAN_IS_ACTIVE(state, chan) \
+	(trx_chan_desc[chan].flags & TRX_CHAN_FLAG_AUTO_ACTIVE || (state)->active)
+
 /* These types define the different channels on a multiframe.
  * Each channel has queues and can be activated individually.
  */
@@ -50,8 +59,6 @@ enum trx_chan_type {
 	TRXC_CBCH,
 	_TRX_CHAN_MAX
 };
-
-extern const struct value_string trx_chan_type_names[];
 
 #define GSM_BURST_LEN		148
 #define GPRS_BURST_LEN		GSM_BURST_LEN

@@ -29,6 +29,8 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/a5.h>
 
 #include <osmo-bts/gsm_data.h>
@@ -111,95 +113,448 @@ const ubit_t _sched_sch_train[64] = {
 	0,0,1,0,1,1,0,1,0,1,0,0,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,1,1,0,1,1,
 };
 
-/*
- * subchannel description structure
- */
-
+/* Logical channel (TRXC_*) description */
 const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
-  /*   	is_pdch	chan_type	chan_nr	link_id		name		rts_fn		dl_fn		ul_fn	auto_active */
-      {	0,	TRXC_IDLE,	0,	LID_DEDIC,	"IDLE",		NULL,		tx_idle_fn,	NULL,		1 },
-      {	0,	TRXC_FCCH,	0,	LID_DEDIC,	"FCCH",		NULL,		tx_fcch_fn,	NULL,		1 },
-      {	0,	TRXC_SCH,	0,	LID_DEDIC,	"SCH",		NULL,		tx_sch_fn,	NULL,		1 },
-      {	0,	TRXC_BCCH,	0x80,	LID_DEDIC,	"BCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-      {	0,	TRXC_RACH,	0x88,	LID_DEDIC,	"RACH",		NULL,		NULL,		rx_rach_fn,	1 },
-      {	0,	TRXC_CCCH,	0x90,	LID_DEDIC,	"CCCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-      {	0,	TRXC_TCHF,	0x08,	LID_DEDIC,	"TCH/F",	rts_tchf_fn,	tx_tchf_fn,	rx_tchf_fn,	0 },
-      {	0,	TRXC_TCHH_0,	0x10,	LID_DEDIC,	"TCH/H(0)",	rts_tchh_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
-      {	0,	TRXC_TCHH_1,	0x18,	LID_DEDIC,	"TCH/H(1)",	rts_tchh_fn,	tx_tchh_fn,	rx_tchh_fn,	0 },
-      {	0,	TRXC_SDCCH4_0,	0x20,	LID_DEDIC,	"SDCCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH4_1,	0x28,	LID_DEDIC,	"SDCCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH4_2,	0x30,	LID_DEDIC,	"SDCCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH4_3,	0x38,	LID_DEDIC,	"SDCCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_0,	0x40,	LID_DEDIC,	"SDCCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_1,	0x48,	LID_DEDIC,	"SDCCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_2,	0x50,	LID_DEDIC,	"SDCCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_3,	0x58,	LID_DEDIC,	"SDCCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_4,	0x60,	LID_DEDIC,	"SDCCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_5,	0x68,	LID_DEDIC,	"SDCCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_6,	0x70,	LID_DEDIC,	"SDCCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SDCCH8_7,	0x78,	LID_DEDIC,	"SDCCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCHTF,	0x08,	LID_SACCH,	"SACCH/TF",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCHTH_0,	0x10,	LID_SACCH,	"SACCH/TH(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCHTH_1,	0x18,	LID_SACCH,	"SACCH/TH(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH4_0, 	0x20,	LID_SACCH,	"SACCH/4(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH4_1,	0x28,	LID_SACCH,	"SACCH/4(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH4_2,	0x30,	LID_SACCH,	"SACCH/4(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH4_3,	0x38,	LID_SACCH,	"SACCH/4(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_0,	0x40,	LID_SACCH,	"SACCH/8(0)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_1,	0x48,	LID_SACCH,	"SACCH/8(1)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_2,	0x50,	LID_SACCH,	"SACCH/8(2)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_3,	0x58,	LID_SACCH,	"SACCH/8(3)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_4,	0x60,	LID_SACCH,	"SACCH/8(4)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_5,	0x68,	LID_SACCH,	"SACCH/8(5)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_6,	0x70,	LID_SACCH,	"SACCH/8(6)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_SACCH8_7,	0x78,	LID_SACCH,	"SACCH/8(7)",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	1,	TRXC_PDTCH,	0xc0,	LID_DEDIC,	"PDTCH",	rts_data_fn,	tx_pdtch_fn,	rx_pdtch_fn,	0 },
-      {	1,	TRXC_PTCCH,	0xc0,	LID_DEDIC,	"PTCCH",	rts_data_fn,	tx_data_fn,	rx_data_fn,	0 },
-      {	0,	TRXC_CBCH,	0xc8,	LID_DEDIC,	"CBCH",		rts_data_fn,	tx_data_fn,	NULL,		1 },
-};
+	[TRXC_IDLE] = {
+		.name = "IDLE",
+		.desc = "Idle channel",
 
-const struct value_string trx_chan_type_names[] = {
-	OSMO_VALUE_STRING(TRXC_IDLE),
-	OSMO_VALUE_STRING(TRXC_FCCH),
-	OSMO_VALUE_STRING(TRXC_SCH),
-	OSMO_VALUE_STRING(TRXC_BCCH),
-	OSMO_VALUE_STRING(TRXC_RACH),
-	OSMO_VALUE_STRING(TRXC_CCCH),
-	OSMO_VALUE_STRING(TRXC_TCHF),
-	OSMO_VALUE_STRING(TRXC_TCHH_0),
-	OSMO_VALUE_STRING(TRXC_TCHH_1),
-	OSMO_VALUE_STRING(TRXC_SDCCH4_0),
-	OSMO_VALUE_STRING(TRXC_SDCCH4_1),
-	OSMO_VALUE_STRING(TRXC_SDCCH4_2),
-	OSMO_VALUE_STRING(TRXC_SDCCH4_3),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_0),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_1),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_2),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_3),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_4),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_5),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_6),
-	OSMO_VALUE_STRING(TRXC_SDCCH8_7),
-	OSMO_VALUE_STRING(TRXC_SACCHTF),
-	OSMO_VALUE_STRING(TRXC_SACCHTH_0),
-	OSMO_VALUE_STRING(TRXC_SACCHTH_1),
-	OSMO_VALUE_STRING(TRXC_SACCH4_0),
-	OSMO_VALUE_STRING(TRXC_SACCH4_1),
-	OSMO_VALUE_STRING(TRXC_SACCH4_2),
-	OSMO_VALUE_STRING(TRXC_SACCH4_3),
-	OSMO_VALUE_STRING(TRXC_SACCH8_0),
-	OSMO_VALUE_STRING(TRXC_SACCH8_1),
-	OSMO_VALUE_STRING(TRXC_SACCH8_2),
-	OSMO_VALUE_STRING(TRXC_SACCH8_3),
-	OSMO_VALUE_STRING(TRXC_SACCH8_4),
-	OSMO_VALUE_STRING(TRXC_SACCH8_5),
-	OSMO_VALUE_STRING(TRXC_SACCH8_6),
-	OSMO_VALUE_STRING(TRXC_SACCH8_7),
-	OSMO_VALUE_STRING(TRXC_PDTCH),
-	OSMO_VALUE_STRING(TRXC_PTCCH),
-	OSMO_VALUE_STRING(TRXC_CBCH),
-	OSMO_VALUE_STRING(_TRX_CHAN_MAX),
- 	{ 0, NULL }
+		/* On C0, BTS needs to ensure discontinuous burst transmission.
+		 * Therefore we need to send dummy bursts on IDLE slots. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.dl_fn = tx_idle_fn,
+	},
+	[TRXC_FCCH] = {
+		.name = "FCCH", /* 3GPP TS 05.02, section 3.3.2.1 */
+		.desc = "Frequency correction channel",
+
+		/* Tx only, frequency correction bursts */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.dl_fn = tx_fcch_fn,
+	},
+	[TRXC_SCH] = {
+		.name = "SCH", /* 3GPP TS 05.02, section 3.3.2.2 */
+		.desc = "Synchronization channel",
+
+		/* Tx only, synchronization bursts */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.dl_fn = tx_sch_fn,
+	},
+	[TRXC_BCCH] = {
+		.name = "BCCH", /* 3GPP TS 05.02, section 3.3.2.3 */
+		.desc = "Broadcast control channel",
+		.chan_nr = RSL_CHAN_BCCH,
+
+		/* Tx only, xCCH convolutional coding (3GPP TS 05.03, section 4.4),
+		 * regular interleaving (3GPP TS 05.02, clause 7, table 3):
+		 * a L2 frame is interleaved over 4 consecutive bursts. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+	},
+	[TRXC_RACH] = {
+		.name = "RACH", /* 3GPP TS 05.02, section 3.3.3.1 */
+		.desc = "Random access channel",
+		.chan_nr = RSL_CHAN_RACH,
+
+		/* Rx only, RACH convolutional coding (3GPP TS 05.03, section 4.6). */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.ul_fn = rx_rach_fn,
+	},
+	[TRXC_CCCH] = {
+		.name = "CCCH", /* 3GPP TS 05.02, section 3.3.3.1 */
+		.desc = "Common control channel",
+		.chan_nr = RSL_CHAN_PCH_AGCH,
+
+		/* Tx only, xCCH convolutional coding (3GPP TS 05.03, section 4.4),
+		 * regular interleaving (3GPP TS 05.02, clause 7, table 3):
+		 * a L2 frame is interleaved over 4 consecutive bursts. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+	},
+	[TRXC_TCHF] = {
+		.name = "TCH/F", /* 3GPP TS 05.02, section 3.2 */
+		.desc = "Full Rate traffic channel",
+		.chan_nr = RSL_CHAN_Bm_ACCHs,
+		.link_id = LID_DEDIC,
+
+		/* Rx and Tx, multiple convolutional coding types (3GPP TS 05.03,
+		 * chapter 3), block diagonal interleaving (3GPP TS 05.02, clause 7):
+		 *
+		 *   - a traffic frame is interleaved over 8 consecutive bursts
+		 *     using the even numbered bits of the first 4 bursts
+		 *     and odd numbered bits of the last 4 bursts;
+		 *   - a FACCH/F frame 'steals' (replaces) one traffic frame,
+		 *     interleaving is done in the same way. */
+		.rts_fn = rts_tchf_fn,
+		.dl_fn = tx_tchf_fn,
+		.ul_fn = rx_tchf_fn,
+	},
+	[TRXC_TCHH_0] = {
+		.name = "TCH/H(0)", /* 3GPP TS 05.02, section 3.2 */
+		.desc = "Half Rate traffic channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_Lm_ACCHs + (0 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Rx and Tx, multiple convolutional coding types (3GPP TS 05.03,
+		 * chapter 3), block diagonal interleaving (3GPP TS 05.02, clause 7):
+		 *
+		 *   - a traffic frame is interleaved over 6 consecutive bursts
+		 *     using the even numbered bits of the first 2 bursts,
+		 *     all bits of the middle two 2 bursts,
+		 *     and odd numbered bits of the last 2 bursts;
+		 *   - a FACCH/H frame 'steals' (replaces) two traffic frames,
+		 *     interleaving is done over 4 consecutive bursts,
+		 *     the same as given for a TCH/FS. */
+		.rts_fn = rts_tchh_fn,
+		.dl_fn = tx_tchh_fn,
+		.ul_fn = rx_tchh_fn,
+	},
+	[TRXC_TCHH_1] = {
+		.name = "TCH/H(1)", /* 3GPP TS 05.02, section 3.2 */
+		.desc = "Half Rate traffic channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_Lm_ACCHs + (1 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_TCHH_0, see above. */
+		.rts_fn = rts_tchh_fn,
+		.dl_fn = tx_tchh_fn,
+		.ul_fn = rx_tchh_fn,
+	},
+	[TRXC_SDCCH4_0] = {
+		.name = "SDCCH/4(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (0 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH4_1] = {
+		.name = "SDCCH/4(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (1 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH4_2] = {
+		.name = "SDCCH/4(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 2)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (2 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH4_3] = {
+		.name = "SDCCH/4(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 3)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (3 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_0] = {
+		.name = "SDCCH/8(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (0 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_1] = {
+		.name = "SDCCH/8(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (1 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_2] = {
+		.name = "SDCCH/8(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 2)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (2 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_3] = {
+		.name = "SDCCH/8(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 3)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (3 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_4] = {
+		.name = "SDCCH/8(4)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 4)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (4 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_5] = {
+		.name = "SDCCH/8(5)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 5)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (5 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_6] = {
+		.name = "SDCCH/8(6)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 6)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (6 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SDCCH8_7] = {
+		.name = "SDCCH/8(7)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Stand-alone dedicated control channel (sub-channel 7)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (7 << 3),
+		.link_id = LID_DEDIC,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCHTF] = {
+		.name = "SACCH/TF", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow TCH/F associated control channel",
+		.chan_nr = RSL_CHAN_Bm_ACCHs,
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCHTH_0] = {
+		.name = "SACCH/TH(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow TCH/H associated control channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_Lm_ACCHs + (0 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCHTH_1] = {
+		.name = "SACCH/TH(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow TCH/H associated control channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_Lm_ACCHs + (1 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH4_0] = {
+		.name = "SACCH/4(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/4 associated control channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (0 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH4_1] = {
+		.name = "SACCH/4(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/4 associated control channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (1 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH4_2] = {
+		.name = "SACCH/4(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/4 associated control channel (sub-channel 2)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (2 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH4_3] = {
+		.name = "SACCH/4(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/4 associated control channel (sub-channel 3)",
+		.chan_nr = RSL_CHAN_SDCCH4_ACCH + (3 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH4_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_0] = {
+		.name = "SACCH/8(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 0)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (0 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_1] = {
+		.name = "SACCH/8(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 1)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (1 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_2] = {
+		.name = "SACCH/8(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 2)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (2 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_3] = {
+		.name = "SACCH/8(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 3)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (3 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_4] = {
+		.name = "SACCH/8(4)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 4)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (4 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_5] = {
+		.name = "SACCH/8(5)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 5)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (5 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_6] = {
+		.name = "SACCH/8(6)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 6)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (6 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_SACCH8_7] = {
+		.name = "SACCH/8(7)", /* 3GPP TS 05.02, section 3.3.4.1 */
+		.desc = "Slow SDCCH/8 associated control channel (sub-channel 7)",
+		.chan_nr = RSL_CHAN_SDCCH8_ACCH + (7 << 3),
+		.link_id = LID_SACCH,
+
+		/* Same as for TRXC_BCCH and TRXC_SDCCH8_* (xCCH), see above. */
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_PDTCH] = {
+		.name = "PDTCH", /* 3GPP TS 05.02, sections 3.2.4, 3.3.2.4 */
+		.desc = "Packet data traffic & control channel",
+		.chan_nr = RSL_CHAN_OSMO_PDCH,
+
+		/* Rx and Tx, multiple coding schemes: CS-2..4 and MCS-1..9 (3GPP TS
+		 * 05.03, chapter 5), regular interleaving as specified for xCCH.
+		 * NOTE: the burst buffer is three times bigger because the
+		 * payload of EDGE bursts is three times longer. */
+		.flags = TRX_CHAN_FLAG_PDCH,
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_pdtch_fn,
+		.ul_fn = rx_pdtch_fn,
+	},
+	[TRXC_PTCCH] = {
+		.name = "PTCCH", /* 3GPP TS 05.02, section 3.3.4.2 */
+		.desc = "Packet Timing advance control channel",
+		.chan_nr = RSL_CHAN_OSMO_PDCH,
+
+		/* Same as for TRXC_BCCH (xCCH), see above. */
+		.flags = TRX_CHAN_FLAG_PDCH,
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+		.ul_fn = rx_data_fn,
+	},
+	[TRXC_CBCH] = {
+		/* TODO: distinguish CBCH on SDCCH/4 and SDCCH/8 */
+		.name = "CBCH", /* 3GPP TS 05.02, section 3.3.5 */
+		.desc = "Cell Broadcast channel",
+		.chan_nr = RSL_CHAN_OSMO_CBCH4,
+
+		/* Tx only, same as for TRXC_BCCH (xCCH), see above. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
+		.rts_fn = rts_data_fn,
+		.dl_fn = tx_data_fn,
+	},
 };
 
 /*
@@ -311,7 +666,7 @@ free_msg:
 			     "type %s is already disabled. If this happens in "
 			     "conjunction with PCU, increase 'rts-advance' by 5.\n",
 			     prim_fn, get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
-			     get_value_string(trx_chan_type_names, chan));
+			     trx_chan_desc[chan].name);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);
@@ -608,10 +963,10 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		struct l1sched_chan_state *chan_state;
 		chan_state = &l1ts->chan_state[i];
-		/* skip if pchan type does not match pdch flag */
-		if ((trx_sched_multiframes[l1ts->mf_index].pchan
-							== GSM_PCHAN_PDCH)
-						!= trx_chan_desc[i].pdch)
+		/* Skip if pchan type does not match pdch flag.
+		 * FIXME: Is it possible at all? Clarify if so. */
+		if ((trx_sched_multiframes[l1ts->mf_index].pchan == GSM_PCHAN_PDCH)
+		    && !(trx_chan_desc[i].flags & TRX_CHAN_FLAG_PDCH))
 			continue;
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == link_id) {
@@ -727,7 +1082,7 @@ int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
 	/* look for all matching chan_nr */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		/* skip if pchan type */
-		if (trx_chan_desc[i].pdch)
+		if (trx_chan_desc[i].flags & TRX_CHAN_FLAG_PDCH)
 			continue;
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)) {
 			chan_state = &l1ts->chan_state[i];
@@ -782,8 +1137,7 @@ int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
 		return 0;
 
 	/* check if channel is active */
-	if (!trx_chan_desc[chan].auto_active
-	 && !l1ts->chan_state[chan].active)
+	if (!TRX_CHAN_IS_ACTIVE(&l1ts->chan_state[chan], chan))
 	 	return -EINVAL;
 
 	return func(l1t, tn, fn, frame->dl_chan);
@@ -816,7 +1170,7 @@ const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
 	l1cs = &l1ts->chan_state[chan];
 
 	/* check if channel is active */
-	if (!trx_chan_desc[chan].auto_active && !l1cs->active) {
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan)) {
 		if (nbits)
 			*nbits = GSM_BURST_LEN;
 		goto no_data;
@@ -984,7 +1338,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	func = trx_chan_desc[chan].ul_fn;
 
 	/* check if channel is active */
-	if (!trx_chan_desc[chan].auto_active && !l1cs->active)
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
 		return -EINVAL;
 
 	/* omit bursts which have no handler, like IDLE bursts */

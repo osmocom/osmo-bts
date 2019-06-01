@@ -19,24 +19,22 @@ typedef int trx_sched_ul_func(struct l1sched_trx *l1t, uint8_t tn,
 			      int8_t rssi, int16_t toa256);
 
 struct trx_chan_desc {
-	/*! \brief Is this on a PDCH (PS) ? */
-	int			pdch;
-	/*! \brief TRX Channel Type */
-	enum trx_chan_type	chan;
+	/*! \brief Human-readable name */
+	const char		*name;
+	/*! \brief Human-readable description */
+	const char		*desc;
 	/*! \brief Channel Number (like in RSL) */
 	uint8_t			chan_nr;
 	/*! \brief Link ID (like in RSL) */
 	uint8_t			link_id;
-	/*! \brief Human-readable name */
-	const char		*name;
 	/*! \brief function to call when we want to generate RTS.req to L2 */
 	trx_sched_rts_func	*rts_fn;
 	/*! \brief function to call when DATA.req received from L2 */
 	trx_sched_dl_func	*dl_fn;
 	/*! \brief function to call when burst received from PHY */
 	trx_sched_ul_func	*ul_fn;
-	/*! \brief is this channel automatically active at start? */
-	int			auto_active;
+	/*! \brief channel flags, see TRX_CHAN_FLAG_* */
+	uint8_t			flags;
 };
 extern const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX];
 
