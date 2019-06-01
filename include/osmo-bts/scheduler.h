@@ -122,7 +122,7 @@ struct l1sched_chan_state {
 	} meas;
 
 	/* handover */
-	uint8_t			ho_rach_detect;	/* if rach detection is on */
+	bool			ho_rach_detect;	/* if rach detection is on */
 };
 
 struct l1sched_ts {
