@@ -476,16 +476,16 @@ int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
-/* The defaults below correspond to the libosmocore default of 1s for
- * DCCH and 2s for ACCH. The BSC should override this via OML anyway. */
+/* The defaults below correspond to various sources/recommendations that could be found online.
+ * The BSC should override this via OML anyway. */
 const unsigned int oml_default_t200_ms[7] = {
-	[T200_SDCCH]		= 1000,
-	[T200_FACCH_F]		= 1000,
-	[T200_FACCH_H]		= 1000,
-	[T200_SACCH_TCH_SAPI0]	= 2000,
-	[T200_SACCH_SDCCH]	= 2000,
-	[T200_SDCCH_SAPI3]	= 1000,
-	[T200_SACCH_TCH_SAPI3]	= 2000,
+	[T200_SDCCH]		=  220,
+	[T200_SDCCH_SAPI3]	=  450,
+	[T200_SACCH_SDCCH]	=  900,
+	[T200_FACCH_F]		=  250,
+	[T200_FACCH_H]		=  250,
+	[T200_SACCH_TCH_SAPI0]	= 1500,
+	[T200_SACCH_TCH_SAPI3]	= 1500,
 };
 
 static void dl_set_t200(struct gsm_bts *bts, struct lapdm_datalink *dl, unsigned int t200_msec)
