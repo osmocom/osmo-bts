@@ -488,8 +488,15 @@ const unsigned int oml_default_t200_ms[7] = {
 	[T200_SACCH_TCH_SAPI3]	= 2000,
 };
 
-static void dl_set_t200(struct lapdm_datalink *dl, unsigned int t200_msec)
+static void dl_set_t200(struct gsm_bts *bts, struct lapdm_datalink *dl, unsigned int t200_msec)
 {
+	int32_t fn_advance = bts_get_avg_fn_advance(bts);
+	int32_t fn_advance_us = fn_advance * 4615; /* 4.615 ms per frame */
+
+	/* we have to compensate for the "RTS advance" due to the asynchronous interface between
+	 * the BTS (LAPDm) and the PHY/L1 (OsmoTRX or DSP in case of osmo-bts-{sysmo,lc15,oc2g,octphy} */
+	t200_msec += fn_advance_us / 1000;
+
 	dl->dl.t200_sec = t200_msec / 1000;
 	dl->dl.t200_usec = (t200_msec % 1000) * 1000;
 }
@@ -528,10 +535,10 @@ int oml_set_lchan_t200(struct gsm_lchan *lchan)
 	LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG, "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
 		  t200_dcch, t200_dcch_sapi3, t200_acch, t200_acch_sapi3);
 
-	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI0], t200_dcch);
-	dl_set_t200(&lc->lapdm_dcch.datalink[DL_SAPI3], t200_dcch_sapi3);
-	dl_set_t200(&lc->lapdm_acch.datalink[DL_SAPI0], t200_acch);
-	dl_set_t200(&lc->lapdm_acch.datalink[DL_SAPI3], t200_acch_sapi3);
+	dl_set_t200(bts, &lc->lapdm_dcch.datalink[DL_SAPI0], t200_dcch);
+	dl_set_t200(bts, &lc->lapdm_dcch.datalink[DL_SAPI3], t200_dcch_sapi3);
+	dl_set_t200(bts, &lc->lapdm_acch.datalink[DL_SAPI0], t200_acch);
+	dl_set_t200(bts, &lc->lapdm_acch.datalink[DL_SAPI3], t200_acch_sapi3);
 
 	return 0;
 }
@@ -674,20 +681,10 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
 		for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++) {
 			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
-#if 0
 			bts->t200_ms[i] = t200_ms;
 			DEBUGPFOH(DOML, foh, "T200[%u]: OML=%u, mult=%u => %u ms\n",
-				  i, payload[i], abis_nm_t200_mult[i],
+				  i, payload[i], abis_nm_t200_ms[i],
 				  bts->t200_ms[i]);
-#else
-			/* we'd rather use the 1s/2s (long) defaults by
-			 * libosmocore, as we appear to have some bug(s)
-			 * related to handling T200 expiration in
-			 * libosmogsm lapd(m) code? */
-			LOGPFOH(DOML, LOGL_NOTICE, foh, "Ignoring T200[%u] (%u ms) "
-				"as sent by BSC due to suspected LAPDm bug!\n",
-				i, t200_ms);
-#endif
 		}
 	}
 
