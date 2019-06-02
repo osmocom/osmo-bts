@@ -744,6 +744,11 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 {
 	enum gsm_bts_features feature = _NUM_BTS_FEAT;
 
+	/* We assume that signalling support is mandatory,
+	 * there is no BTS_FEAT_* definition to check that. */
+	if (cm == GSM48_CMODE_SIGN)
+		return 1;
+
 	/* Before the requested pchan/cm combination can be checked, we need to
 	 * convert it to a feature identifier we can check */
 	switch (pchan) {
