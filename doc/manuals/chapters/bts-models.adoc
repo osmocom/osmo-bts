@@ -245,10 +245,53 @@ local (OsmoBTS) or remote (OsmoTRX) side of the UDP flows.
 Set the number of frames to be transmitted to transceiver in advance of
 current GSM frame number.
 
+GSM is a TDMA (time division multiple access) system on the radio
+interface.  OsmoTRX is the "clock master" of that in the Osmocom
+implementation. It informs OsmoBTS of the current GSM frame
+number.  However, as there is non-zero delays (UDP packet trnsmission
+delay, operating system scheduler delay on both OsmoTRX and OsmoBTS
+side, ...), OsmoBTS must compensate for that delay by "advancing"
+the clock a certain amount of time.
+
+In other words, if OsmoTRX informs us that the current frame number is N,
+we advance it by `fn-advance` and transmit burst data for
+`N + fn-advance` towards OsmoTRX.
+
+The fn-advance should be kept as low as possible to avoid additional
+delays to the user voice plane as well as to improve the performance
+of the control plane (LAPDm) as well as GPRS.
+
+However, fn-advance must be kept sufficiently high to ensure no
+underruns on the OsmoTRX side.
+
+The detailed value will depend on your underlying computer systems,
+operating system and related tuning parameters.  Running OsmoTRX
+on a remote host will inevitably require a higher fn-advance then
+running it on the same machine, where the UDP packetes are just passed
+over the loopback device.
+
+The default value for `fn-advance` is 20 (corresponding to 92
+milliseconds).
+
 ===== `osmotrx rts-advance <0-30>`
 
-Set the number of frames to be requested from PCU in advance of current
-frame number.  Do not change this unless you have a good reason!
+Set the number of frames to be requested from L1SAP in advance of current
+frame number and fn-advance.
+
+The value specified as `rts-advance` is added to the current GSM frame
+number as reported by OsmoTRX *and* the `osmotrx fn-advance` in order
+to generate the PH-RTS.ind (ready to send indications) across the L1SAP
+interface inside osmo-bts.  This will trigger the Layer 2 (LAPDm for
+the ocntrol plane, RTP for the voice plane, and OsmoPCU for GPRS) to
+generate a MAC block and input it into the osmo-bts-trx TDMA scheduler.
+
+If OsmoTRX reported N as the current frame number, the actual frame number
+reported on L1SAP to higher layes will be computed as follows:
+
+  N + fn-advance + rts-advance
+
+The default value of `rts-advance` is 5 (corresponding to 23 milliseconds).
+Do not change this unless you have a good reason!
 
 ===== `osmotrx rx-gain <0-50>`
 
