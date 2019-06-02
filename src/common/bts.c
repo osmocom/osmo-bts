@@ -223,6 +223,11 @@ int bts_init(struct gsm_bts *bts)
 	rc = osmo_fsm_register(&dtx_dl_amr_fsm);
 	OSMO_ASSERT(rc == 0);
 
+	bts->fn_stats.min = INT32_MAX;
+	bts->fn_stats.max = INT32_MIN;
+	bts->fn_stats.avg_count = 0;
+	bts->fn_stats.avg_window = 256;
+
 	return rc;
 }
 

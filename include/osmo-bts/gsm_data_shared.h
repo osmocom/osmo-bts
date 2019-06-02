@@ -738,6 +738,14 @@ struct gsm_bts {
 		uint8_t tc4_ctr;
 	} si;
 	struct gsm_time gsm_time;
+	/* frame number statistics (FN in PH-RTS.ind vs. PH-DATA.ind */
+	struct {
+		int32_t min;		/* minimum observed */
+		int32_t max;		/* maximum observed */
+		int32_t avg256;		/* accumulator */
+		uint32_t avg_count;	/* number of samples accumulated in avg256 */
+		uint32_t avg_window;	/* number of averages in avg_count */
+	} fn_stats;
 	/* Radio Link Timeout counter. -1 disables timeout for
 	 * lab/measurement purpose */
 	int radio_link_timeout;

@@ -719,6 +719,33 @@ int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
         return l1sap_fn2ccch_block(fn) < num_agch(trx, "PH-RTS-IND");
 }
 
+/* return the measured average of frame numbers that the RTS clock is running in advance */
+int32_t bts_get_avg_fn_advance(struct gsm_bts *bts)
+{
+	if (bts->fn_stats.avg_count == 0)
+		return 0;
+	return bts->fn_stats.avg256 / bts->fn_stats.avg_count;
+}
+
+static void l1sap_update_fnstats(struct gsm_bts *bts, uint32_t rts_fn)
+{
+	int32_t delta = (rts_fn + GSM_HYPERFRAME - bts->gsm_time.fn) % GSM_HYPERFRAME;
+
+	if (delta < bts->fn_stats.min)
+		bts->fn_stats.min = delta;
+	if (delta > bts->fn_stats.max)
+		bts->fn_stats.max = delta;
+
+	if (bts->fn_stats.avg_count > bts->fn_stats.avg_window) {
+		/* reset and start old average and new sample */
+		bts->fn_stats.avg256 = (bts->fn_stats.avg256 / bts->fn_stats.avg_count) + delta;
+		bts->fn_stats.avg_count = 2;
+	} else {
+		bts->fn_stats.avg256 += delta;
+		bts->fn_stats.avg_count++;
+	}
+}
+
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -744,6 +771,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	gsm_fn2gsmtime(&g_time, fn);
 
 	DEBUGPGT(DL1P, &g_time, "Rx PH-RTS.ind chan_nr=%s link_id=0x%02xd\n", rsl_chan_nr_str(chan_nr), link_id);
+
+	l1sap_update_fnstats(trx->bts, fn);
 
 	/* reuse PH-RTS.ind for PH-DATA.req */
 	if (!msg) {

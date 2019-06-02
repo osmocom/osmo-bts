@@ -895,6 +895,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  OML Link state: %s.%s",
 		bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
+	vty_out(vty, "  PH-RTS.ind FN advance average: %d, min: %d, max: %d%s",
+		bts_get_avg_fn_advance(bts), bts->fn_stats.min, bts->fn_stats.max, VTY_NEWLINE);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
