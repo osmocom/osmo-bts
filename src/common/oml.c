@@ -488,61 +488,6 @@ const unsigned int oml_default_t200_ms[7] = {
 	[T200_SACCH_TCH_SAPI3]	= 1500,
 };
 
-static void dl_set_t200(struct gsm_bts *bts, struct lapdm_datalink *dl, unsigned int t200_msec)
-{
-	int32_t fn_advance = bts_get_avg_fn_advance(bts);
-	int32_t fn_advance_us = fn_advance * 4615; /* 4.615 ms per frame */
-
-	/* we have to compensate for the "RTS advance" due to the asynchronous interface between
-	 * the BTS (LAPDm) and the PHY/L1 (OsmoTRX or DSP in case of osmo-bts-{sysmo,lc15,oc2g,octphy} */
-	t200_msec += fn_advance_us / 1000;
-
-	dl->dl.t200_sec = t200_msec / 1000;
-	dl->dl.t200_usec = (t200_msec % 1000) * 1000;
-}
-
-/* Configure LAPDm T200 timers for this lchan according to OML */
-int oml_set_lchan_t200(struct gsm_lchan *lchan)
-{
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct lapdm_channel *lc = &lchan->lapdm_ch;
-	unsigned int t200_dcch, t200_dcch_sapi3, t200_acch, t200_acch_sapi3;
-
-	/* set T200 for main and associated channel */
-	switch (lchan->type) {
-	case GSM_LCHAN_SDCCH:
-		t200_dcch = bts->t200_ms[T200_SDCCH];
-		t200_dcch_sapi3 = bts->t200_ms[T200_SDCCH_SAPI3];
-		t200_acch = bts->t200_ms[T200_SACCH_SDCCH];
-		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_SDCCH];
-		break;
-	case GSM_LCHAN_TCH_F:
-		t200_dcch = bts->t200_ms[T200_FACCH_F];
-		t200_dcch_sapi3 = bts->t200_ms[T200_FACCH_F];
-		t200_acch = bts->t200_ms[T200_SACCH_TCH_SAPI0];
-		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_TCH_SAPI3];
-		break;
-	case GSM_LCHAN_TCH_H:
-		t200_dcch = bts->t200_ms[T200_FACCH_H];
-		t200_dcch_sapi3 = bts->t200_ms[T200_FACCH_H];
-		t200_acch = bts->t200_ms[T200_SACCH_TCH_SAPI0];
-		t200_acch_sapi3 = bts->t200_ms[T200_SACCH_TCH_SAPI3];
-		break;
-	default:
-		return -1;
-	}
-
-	LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG, "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
-		  t200_dcch, t200_dcch_sapi3, t200_acch, t200_acch_sapi3);
-
-	dl_set_t200(bts, &lc->lapdm_dcch.datalink[DL_SAPI0], t200_dcch);
-	dl_set_t200(bts, &lc->lapdm_dcch.datalink[DL_SAPI3], t200_dcch_sapi3);
-	dl_set_t200(bts, &lc->lapdm_acch.datalink[DL_SAPI0], t200_acch);
-	dl_set_t200(bts, &lc->lapdm_acch.datalink[DL_SAPI3], t200_acch_sapi3);
-
-	return 0;
-}
-
 /* 3GPP TS 52.021 §8.11.1 Get Attributes has been received */
 static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 {

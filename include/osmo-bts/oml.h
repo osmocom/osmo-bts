@@ -40,8 +40,6 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause);
 int oml_mo_fom_ack_nack(const struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 			uint8_t cause);
 
-/* Configure LAPDm T200 timers for this lchan according to OML */
-int oml_set_lchan_t200(struct gsm_lchan *lchan);
 extern const unsigned int oml_default_t200_ms[7];
 
 /* Transmit failure event report */
