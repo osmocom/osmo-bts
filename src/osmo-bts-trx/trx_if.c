@@ -155,7 +155,7 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 	len = snprintf(buf, sizeof(buf), "CMD %s%s%s", tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 	OSMO_ASSERT(len < sizeof(buf));
 
-	LOGP(DTRX, LOGL_DEBUG, "Sending control '%s' to %s\n", buf, phy_instance_name(l1h->phy_inst));
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Sending control '%s'\n", buf);
 	/* send command */
 	send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
 
@@ -173,8 +173,7 @@ static void trx_ctrl_timer_cb(void *data)
 	OSMO_ASSERT(!llist_empty(&l1h->trx_ctrl_list));
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	LOGP(DTRX, LOGL_NOTICE, "No satisfactory response from transceiver for %s (CMD %s%s%s)\n",
-		phy_instance_name(l1h->phy_inst),
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "No satisfactory response from transceiver(CMD %s%s%s)\n",
 		tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 
 	trx_ctrl_send(l1h);
@@ -208,8 +207,8 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 
 	if (!transceiver_available &&
 	    !(!strcmp(cmd, "POWEROFF") || !strcmp(cmd, "POWERON"))) {
-		LOGP(DTRX, LOGL_ERROR, "CTRL %s ignored: No clock from "
-		     "transceiver, please fix!\n", cmd);
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "CTRL %s ignored: No clock from "
+			"transceiver, please fix!\n", cmd);
 		return -EIO;
 	}
 
@@ -241,7 +240,7 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 
 	if (!pending ||
 	    !(strcmp(tcm->cmd, prev->cmd) == 0 && strcmp(tcm->params, prev->params) == 0)) {
-		LOGP(DTRX, LOGL_INFO, "Enqueuing TRX control command 'CMD %s%s%s'\n",
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Enqueuing TRX control command 'CMD %s%s%s'\n",
 			tcm->cmd, tcm->params_len ? " ":"", tcm->params);
 		llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
 	}
@@ -449,14 +448,13 @@ static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp
 	unsigned int tn, ts_type;
 
 	if (rsp->status)
-		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT failed with status %d\n",
-		     phy_instance_name(pinst), rsp->status);
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETSLOT failed with status %d\n",
+			rsp->status);
 
 	/* Since message was already validated against CMD we sent, we know format
 	 * of params is: "<TN> <TS_TYPE>" */
 	if (sscanf(rsp->params, "%u %u", &tn, &ts_type) < 2) {
-		LOGP(DTRX, LOGL_ERROR, "transceiver (%s) SETSLOT unable to parse params\n",
-		     phy_instance_name(pinst));
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETSLOT unable to parse params\n");
 		return -EINVAL;
 	}
 
@@ -481,9 +479,9 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 				phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
 			return 0;
 		} else {
-			LOGP(DTRX, LOGL_NOTICE,
-			     "transceiver (%s) rejected POWERON command (%d), re-trying in a few seconds\n",
-			     phy_instance_name(pinst), rsp->status);
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+				"transceiver rejected POWERON command (%d), re-trying in a few seconds\n",
+				rsp->status);
 			if (pinst->phy_link->state != PHY_LINK_SHUTDOWN)
 				phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
 			return 5;
@@ -493,10 +491,10 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 	}
 
 	if (rsp->status) {
-		LOGP(DTRX, critical ? LOGL_FATAL : LOGL_NOTICE,
-		     "transceiver (%s) rejected TRX command with response: '%s%s%s %d'\n",
-		     phy_instance_name(pinst), rsp->cmd, rsp->params[0] != '\0' ? " ":"",
-		     rsp->params, rsp->status);
+		LOGPPHI(l1h->phy_inst, DTRX, critical ? LOGL_FATAL : LOGL_NOTICE,
+			"transceiver rejected TRX command with response: '%s%s%s %d'\n",
+			rsp->cmd, rsp->params[0] != '\0' ? " ":"",
+			rsp->params, rsp->status);
 		if (critical)
 			return -EINVAL;
 	}
@@ -521,7 +519,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (parse_rsp(buf, len, &rsp) < 0)
 		return 0;
 
-	LOGP(DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
 	/* abort timer and send next message, if any */
 	if (osmo_timer_pending(&l1h->trx_ctrl_timer))
@@ -531,12 +529,11 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (llist_empty(&l1h->trx_ctrl_list)) {
 		/* RSP from a retransmission, skip it */
 		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
-			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
 			return 0;
 		}
-		LOGP(DTRX, LOGL_NOTICE, "Response message without "
-			"command\n");
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Response message without command\n");
 		return -EINVAL;
 	}
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
@@ -546,11 +543,11 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (!cmd_matches_rsp(tcm, &rsp)) {
 		/* RSP from a retransmission, skip it */
 		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
-			LOGP(DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
 			return 0;
 		}
-		LOGP(DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
+		LOGPPHI(l1h->phy_inst, DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 			"Response message '%s' does not match command "
 			"message 'CMD %s%s%s'\n",
 			buf, tcm->cmd, tcm->params_len ? " ":"", tcm->params);
@@ -609,7 +606,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		burst_len = EGPRS_BURST_LEN;
 	/* Accept bursts ending with 2 bytes of padding (OpenBTS compatible trx) or without them: */
 	} else if (len != GSM_BURST_LEN + 10 && len != GSM_BURST_LEN + 8) {
-		LOGP(DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
 			"'%d'\n", len);
 		return -EINVAL;
 	}
@@ -627,15 +624,15 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	}
 
 	if (tn >= 8) {
-		LOGP(DTRX, LOGL_ERROR, "Illegal TS %d\n", tn);
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Illegal TS %d\n", tn);
 		return -EINVAL;
 	}
 	if (fn >= GSM_HYPERFRAME) {
-		LOGP(DTRX, LOGL_ERROR, "Illegal FN %u\n", fn);
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Illegal FN %u\n", fn);
 		return -EINVAL;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa256=%d\n",
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa256=%d\n",
 		tn, fn, rssi, toa256);
 
 #ifdef TOA_RSSI_DEBUG
@@ -667,11 +664,11 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	uint8_t buf[TRX_MAX_BURST_LEN];
 
 	if ((nbits != GSM_BURST_LEN) && (nbits != EGPRS_BURST_LEN)) {
-		LOGP(DTRX, LOGL_ERROR, "Tx burst length %u invalid\n", nbits);
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %u invalid\n", nbits);
 		return -1;
 	}
 
-	LOGP(DTRX, LOGL_DEBUG, "TX burst tn=%u fn=%u pwr=%u\n", tn, fn, pwr);
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "TX burst tn=%u fn=%u pwr=%u\n", tn, fn, pwr);
 
 	buf[0] = tn;
 	buf[1] = (fn >> 24) & 0xff;
@@ -688,7 +685,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
 		send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
 	} else
-		LOGP(DTRX, LOGL_ERROR, "Ignoring TX data, transceiver offline.\n");
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Ignoring TX data, transceiver offline.\n");
 
 	return 0;
 }
@@ -716,9 +713,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 /*! close the TRX for given handle (data + control socket) */
 void trx_if_close(struct trx_l1h *l1h)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	LOGP(DTRX, LOGL_NOTICE, "Close transceiver for %s\n",
-		phy_instance_name(pinst));
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Close transceiver\n");
 
 	trx_if_flush(l1h);
 
@@ -749,8 +744,7 @@ static int trx_if_open(struct trx_l1h *l1h)
 	struct phy_link *plink = pinst->phy_link;
 	int rc;
 
-	LOGP(DTRX, LOGL_NOTICE, "Open transceiver for %s\n",
-		phy_instance_name(pinst));
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Open transceiver\n");
 
 	/* initialize ctrl queue */
 	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
@@ -806,15 +800,13 @@ static int trx_phy_inst_open(struct phy_instance *pinst)
 
 	rc = trx_sched_init(&l1h->l1s, pinst->trx);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot initialize scheduler for phy "
-		     "instance %d\n", pinst->num);
+		LOGPPHI(l1h->phy_inst, DL1C, LOGL_FATAL, "Cannot initialize scheduler\n");
 		return -EIO;
 	}
 
 	rc = trx_if_open(l1h);
 	if (rc < 0) {
-		LOGP(DL1C, LOGL_FATAL, "Cannot open TRX interface for phy "
-		     "instance %d\n", pinst->num);
+		LOGPPHI(l1h->phy_inst, DL1C, LOGL_FATAL, "Cannot open TRX interface\n");
 		trx_phy_inst_close(pinst);
 		return -EIO;
 	}

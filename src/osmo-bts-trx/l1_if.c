@@ -159,20 +159,20 @@ static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int r
 	enum gsm_phys_chan_config pchan;
 
 	if (tn >= TRX_NR_TS) {
-		LOGP(DL1C, LOGL_ERROR, "transceiver (%s) SETSLOT invalid param TN (%" PRIu8 ")\n",
-		     phy_instance_name(pinst), tn);
+		LOGPPHI(pinst, DL1C, LOGL_ERROR, "transceiver SETSLOT invalid param TN (%" PRIu8 ")\n",
+			tn);
 		return;
 	}
 
 	pchan = transceiver_chan_type_2_pchan(type);
 	if (pchan == GSM_PCHAN_UNKNOWN) {
-		LOGP(DL1C, LOGL_ERROR, "transceiver (%s) SETSLOT invalid param TS_TYPE (%" PRIu8 ")\n",
-		     phy_instance_name(pinst), type);
+		LOGPPHI(pinst, DL1C, LOGL_ERROR, "transceiver SETSLOT invalid param TS_TYPE (%" PRIu8 ")\n",
+			type);
 		return;
 	}
 
 	ts = &trx->ts[tn];
-	LOGP(DL1C, LOGL_DEBUG, "%s l1if_setslot_cb(as_pchan=%s),"
+	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "%s l1if_setslot_cb(as_pchan=%s),"
 	     " calling cb_ts_connected(rc=%d)\n",
 	     gsm_ts_name(ts), gsm_pchan_name(pchan), rc);
 	cb_ts_connected(ts, rc);
