@@ -1195,7 +1195,7 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 
 	if (ra_ind->LchId.bySubChannelNb == cOCTVC1_GSM_ID_SUB_CHANNEL_NB_ENUM_ALL &&
 	    ra_ind->LchId.bySAPI == cOCTVC1_GSM_SAPI_ENUM_RACH) {
-		rach_ind_param.chan_nr = 0x88;
+		rach_ind_param.chan_nr = RSL_CHAN_RACH;
 	} else {
 		struct gsm_lchan *lchan = get_lchan_by_lchid(trx, &ra_ind->LchId);
 		rach_ind_param.chan_nr = gsm_lchan2chan_nr(lchan);

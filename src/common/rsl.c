@@ -883,7 +883,7 @@ int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
 	/* 9.3.17 Access Delay */
 	msgb_tv_put(nmsg, RSL_IE_ACCESS_DELAY, acc_delay);
 
-	rsl_cch_push_hdr(nmsg, RSL_MT_CHAN_RQD, 0x88); // FIXME
+	rsl_cch_push_hdr(nmsg, RSL_MT_CHAN_RQD, RSL_CHAN_RACH); // FIXME
 	nmsg->trx = trx;
 
 	return abis_bts_rsl_sendmsg(nmsg);

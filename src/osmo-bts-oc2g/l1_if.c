@@ -1091,7 +1091,7 @@ static int handle_ph_ra_ind(struct oc2gl1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	if (!lchan || lchan->ts->pchan == GSM_PCHAN_CCCH ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
 	    lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
-		rach_ind_param.chan_nr = 0x88;
+		rach_ind_param.chan_nr = RSL_CHAN_RACH;
 	else
 		rach_ind_param.chan_nr = gsm_lchan2chan_nr(lchan);
 
