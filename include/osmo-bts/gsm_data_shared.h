@@ -557,9 +557,6 @@ struct gsm_bts {
 	/* list header in net->bts_list */
 	struct llist_head list;
 
-	/* Geographical location of the BTS */
-	struct llist_head loc_list;
-
 	/* number of ths BTS in network */
 	uint8_t nr;
 	/* human readable name / description */
