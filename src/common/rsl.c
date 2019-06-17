@@ -1116,6 +1116,14 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* 9.3.32 BS Power Parameters */
 	/* 9.3.31 MS Power Parameters */
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
+		lchan->ms_power_ctrl.fixed = 0;
+	else {
+		/* Spec explicitly states BTS should only perform
+		* autonomous MS power control loop in BTS if 'MS Power
+		* Parameters' IE is present! */
+		lchan->ms_power_ctrl.fixed = 1;
+	}
 	/* 9.3.16 Physical Context */
 
 	/* 9.3.29 SACCH Information */
