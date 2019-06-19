@@ -6,6 +6,7 @@ EXTRA_DIST = dtx.dot \
     osmobts-vty-reference.xml \
     rtp-amr.adoc \
     rtp-amr-docinfo.xml \
+    regen_doc.sh \
     abis \
     chapters \
     vty
