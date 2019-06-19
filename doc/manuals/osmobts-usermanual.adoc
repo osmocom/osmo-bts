@@ -14,6 +14,10 @@ include::{srcdir}/chapters/interfaces.adoc[]
 
 include::{srcdir}/chapters/control.adoc[]
 
+include::./common/chapters/counters-overview.adoc[]
+
+include::{srcdir}/chapters/counters.adoc[]
+
 include::./common/chapters/vty.adoc[]
 
 include::./common/chapters/logging.adoc[]
