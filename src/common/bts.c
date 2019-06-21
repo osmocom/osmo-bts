@@ -405,6 +405,7 @@ static int t200_by_lchan(int *t200_ms_dcch, int *t200_ms_acch, struct gsm_lchan 
 		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_FACCH_H] + fn_advance_ms;
 		break;
 	default:
+		/* Channels such as CCCH don't use lapdm DL, and hence no T200 is needed */
 		return -1;
 	}
 	return 0;
@@ -415,14 +416,16 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 	struct lapdm_channel *lc = &lchan->lapdm_ch;
 	int t200_ms_dcch[_NR_DL_SAPI], t200_ms_acch[_NR_DL_SAPI];
 
-	t200_by_lchan(t200_ms_dcch, t200_ms_acch, lchan);
-
-	LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG, "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
-		  t200_ms_dcch[DL_SAPI0], t200_ms_dcch[DL_SAPI3], t200_ms_acch[DL_SAPI0], t200_ms_acch[DL_SAPI3]);
-
-	lapdm_channel_init2(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type);
-	lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
-	lapdm_channel_set_l1(lc, NULL, lchan);
+	if (t200_by_lchan(t200_ms_dcch, t200_ms_acch, lchan) == 0) {
+		LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG,
+			  "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
+			  t200_ms_dcch[DL_SAPI0], t200_ms_dcch[DL_SAPI3],
+			  t200_ms_acch[DL_SAPI0], t200_ms_acch[DL_SAPI3]);
+		lapdm_channel_init2(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type);
+		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
+		lapdm_channel_set_l1(lc, NULL, lchan);
+	}
+	/* We still need to set Rx callback to receive RACH requests: */
 	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);
 
 	return 0;
