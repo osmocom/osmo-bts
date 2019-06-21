@@ -479,13 +479,13 @@ int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 /* The defaults below correspond to various sources/recommendations that could be found online.
  * The BSC should override this via OML anyway. */
 const unsigned int oml_default_t200_ms[7] = {
-	[T200_SDCCH]		=  220,
-	[T200_SDCCH_SAPI3]	=  450,
-	[T200_SACCH_SDCCH]	=  900,
-	[T200_FACCH_F]		=  250,
-	[T200_FACCH_H]		=  250,
-	[T200_SACCH_TCH_SAPI0]	= 1500,
-	[T200_SACCH_TCH_SAPI3]	= 1500,
+        [T200_SDCCH]		= 1000,
+        [T200_FACCH_F]		= 1000,
+        [T200_FACCH_H]		= 1000,
+        [T200_SACCH_TCH_SAPI0]	= 2000,
+        [T200_SACCH_SDCCH]	= 2000,
+        [T200_SDCCH_SAPI3]	= 1000,
+        [T200_SACCH_TCH_SAPI3]	= 2000,
 };
 
 /* 3GPP TS 52.021 §8.11.1 Get Attributes has been received */
@@ -626,10 +626,20 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		payload = TLVP_VAL(&tp, NM_ATT_T200);
 		for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++) {
 			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
+#if 0
 			bts->t200_ms[i] = t200_ms;
 			DEBUGPFOH(DOML, foh, "T200[%u]: OML=%u, mult=%u => %u ms\n",
 				  i, payload[i], abis_nm_t200_ms[i],
 				  bts->t200_ms[i]);
+#else
+                        /* we'd rather use the 1s/2s (long) defaults by
+                         * libosmocore, as we appear to have some bug(s)
+                         * related to handling T200 expiration in
+                         * libosmogsm lapd(m) code? */
+                        LOGPFOH(DOML, LOGL_NOTICE, foh, "Ignoring T200[%u] (%u ms) "
+                                "as sent by BSC due to suspected LAPDm bug!\n",
+                                i, t200_ms);
+#endif
 		}
 	}
 
