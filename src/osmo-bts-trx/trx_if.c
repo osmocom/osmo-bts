@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
  * Copyright (C) 2016-2017  Harald Welte <laforge@gnumonks.org>
+ * Copyright (C) 2019  Vadim Yanitskiy <axilirator@gmail.com>
  *
  * All Rights Reserved
  *
@@ -588,65 +589,194 @@ rsp_error:
 /* Maximum DATA message length (header + burst) */
 #define TRX_DATA_MSG_MAX_LEN	512
 
+/* Common header length: 1/2 VER + 1/2 TDMA TN + 4 TDMA FN */
+#define TRX_CHDR_LEN		(1 + 4)
+/* Uplink v0 header length: 1 RSSI + 2 ToA256 */
+#define TRX_UL_V0HDR_LEN	(TRX_CHDR_LEN + 1 + 2)
+
+/* TRXD header dissector for version 0 */
+static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
+				  struct trx_ul_burst_ind *bi,
+				  const uint8_t *buf, size_t buf_len)
+{
+	/* Make sure we have enough data */
+	if (buf_len < TRX_UL_V0HDR_LEN) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Short read on TRXD, missing version 0 header "
+			"(len=%zu vs expected %d)\n", buf_len, TRX_UL_V0HDR_LEN);
+		return -EIO;
+	}
+
+	bi->tn = buf[0] & 0b111;
+	bi->fn = osmo_load32be(buf + 1);
+	bi->rssi = -(int8_t)buf[5];
+	bi->toa256 = (int16_t) osmo_load16be(buf + 6);
+
+	if (bi->fn >= GSM_HYPERFRAME) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Illegal TDMA fn=%u\n", bi->fn);
+		return -EINVAL;
+	}
+
+	return TRX_UL_V0HDR_LEN;
+}
+
+/* TRXD burst handler for header version 0 */
+static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
+				    struct trx_ul_burst_ind *bi,
+				    const uint8_t *buf, size_t buf_len)
+{
+	size_t i;
+
+	/* Verify burst length */
+	switch (buf_len) {
+	/* Legacy transceivers append two padding bytes */
+	case EGPRS_BURST_LEN + 2:
+	case GSM_BURST_LEN + 2:
+		bi->burst_len = buf_len - 2;
+		break;
+	case EGPRS_BURST_LEN:
+	case GSM_BURST_LEN:
+		bi->burst_len = buf_len;
+		break;
+
+	default:
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+			"Rx TRXD message with odd burst length %zu\n", buf_len);
+		return -EINVAL;
+	}
+
+	/* Convert unsigned soft-bits [254..0] to soft-bits [-127..127] */
+	for (i = 0; i < bi->burst_len; i++) {
+		if (buf[i] == 255)
+			bi->burst[i] = -127;
+		else
+			bi->burst[i] = 127 - buf[i];
+	}
+
+	return 0;
+}
+
+/* Parse TRXD message from transceiver, compose an UL burst indication.
+ *
+ * This message contains a demodulated Uplink burst with fixed-size
+ * header preceding the burst bits. The header consists of the common
+ * and message specific part.
+ *
+ *   +---------------+-----------------+------------+
+ *   | common header | specific header | burst bits |
+ *   +---------------+-----------------+------------+
+ *
+ * Common header is the same as for Downlink message:
+ *
+ *   +-----------------+----------------+-------------------+
+ *   | VER (1/2 octet) | TN (1/2 octet) | FN (4 octets, BE) |
+ *   +-----------------+----------------+-------------------+
+ *
+ * and among with TDMA parameters, contains the version indicator:
+ *
+ *   +-----------------+------------------------+
+ *   | 7 6 5 4 3 2 1 0 | bit numbers            |
+ *   +-----------------+------------------------+
+ *   | X X X X . . . . | header version (0..15) |
+ *   +-----------------+------------------------+
+ *   | . . . . . X X X | TDMA TN (0..7)         |
+ *   +-----------------+------------------------+
+ *   | . . . . X . . . | RESERVED (0)           |
+ *   +-----------------+------------------------+
+ *
+ * which is encoded in 4 MSB bits of the first octet, which used to be
+ * zero-initialized due to the value range of TDMA TN. Therefore, the
+ * old header format has implicit version 0x00.
+ *
+ * The message specific header has the following structure:
+ *
+ * == Version 0x00
+ *
+ *   +------+-----+--------------------+
+ *   | RSSI | ToA | soft-bits (254..0) |
+ *   +------+-----+--------------------+
+ *
+ * where:
+ *
+ *   - RSSI (1 octet) - Received Signal Strength Indication
+ *     encoded without the negative sign.
+ *   - ToA (2 octets) - Timing of Arrival in units of 1/256
+ *     of symbol (big endian).
+ *
+ * == Coding of the burst bits
+ *
+ * Unlike to be transmitted bursts, the received bursts are designated
+ * using the soft-bits notation, so the receiver can indicate its
+ * assurance from 0 to -127 that a given bit is 1, and from 0 to +127
+ * that a given bit is 0.
+ *
+ * Each soft-bit (-127..127) of the burst is encoded as an unsigned
+ * value in range (254..0) respectively using the constant shift.
+ *
+ */
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
-	int len;
-	uint8_t tn;
-	int8_t rssi;
-	int16_t toa256 = 0;
-	uint32_t fn;
-	sbit_t bits[EGPRS_BURST_LEN];
-	int i, burst_len = GSM_BURST_LEN;
+	struct trx_ul_burst_ind bi;
+	ssize_t hdr_len, buf_len;
+	uint8_t hdr_ver;
+	int rc;
 
-	len = recv(ofd->fd, buf, sizeof(buf), 0);
-	if (len <= 0) {
-		return len;
-	} else if (len == EGPRS_BURST_LEN + 10) {
-		burst_len = EGPRS_BURST_LEN;
-	/* Accept bursts ending with 2 bytes of padding (OpenBTS compatible trx) or without them: */
-	} else if (len != GSM_BURST_LEN + 10 && len != GSM_BURST_LEN + 8) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Got data message with invalid lenght "
-			"'%d'\n", len);
-		return -EINVAL;
-	}
-	tn = buf[0];
-	fn =  osmo_load32be(buf + 1);
-	rssi = -(int8_t)buf[5];
-	toa256 = (int16_t) osmo_load16be(buf + 6);
-
-	/* copy and convert bits {254..0} to sbits {-127..127} */
-	for (i = 0; i < burst_len; i++) {
-		if (buf[8 + i] == 255)
-			bits[i] = -127;
-		else
-			bits[i] = 127 - buf[8 + i];
+	buf_len = recv(ofd->fd, buf, sizeof(buf), 0);
+	if (buf_len <= 0) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"recv() failed on TRXD with rc=%zd\n", buf_len);
+		return buf_len;
 	}
 
-	if (tn >= 8) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Illegal TS %d\n", tn);
-		return -EINVAL;
-	}
-	if (fn >= GSM_HYPERFRAME) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Illegal FN %u\n", fn);
-		return -EINVAL;
+	/* Parse the header depending on its version */
+	hdr_ver = buf[0] >> 4;
+	switch (hdr_ver) {
+	case 0:
+		/* Legacy protocol has no version indicator */
+		hdr_len = trx_data_handle_hdr_v0(l1h, &bi, buf, buf_len);
+		break;
+	default:
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"TRXD header version %u is not supported\n", hdr_ver);
+		return -ENOTSUP;
 	}
 
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "RX burst tn=%u fn=%u rssi=%d toa256=%d\n",
-		tn, fn, rssi, toa256);
+	/* Header parsing error */
+	if (hdr_len < 0)
+		return hdr_len;
+
+	/* We're done with the header now */
+	buf_len -= hdr_len;
+
+	switch (hdr_ver) {
+	case 0:
+		rc = trx_data_handle_burst_v0(l1h, &bi, buf + hdr_len, buf_len);
+		break;
+	}
+
+	/* Burst parsing error */
+	if (rc < 0)
+		return rc;
+
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+		"Rx UL burst (hdr_ver=%u) tn=%u fn=%u rssi=%d toa256=%d\n",
+		hdr_ver, bi.tn, bi.fn, bi.rssi, bi.toa256);
 
 #ifdef TOA_RSSI_DEBUG
 	char deb[128];
 
 	sprintf(deb, "|                                0              "
-		"                 | rssi=%4d  toa=%5d fn=%u", rssi, toa256, fn);
-	deb[1 + (128 + rssi) / 4] = '*';
+		"                 | rssi=%4d  toa=%5d fn=%u",
+		bi.rssi, bi.toa256, bi.fn);
+	deb[1 + (128 + bi.rssi) / 4] = '*';
 	fprintf(stderr, "%s\n", deb);
 #endif
 
 	/* feed received burst into scheduler code */
-	trx_sched_ul_burst(&l1h->l1s, tn, fn, bits, burst_len, rssi, toa256);
+	trx_sched_ul_burst(&l1h->l1s, &bi);
 
 	return 0;
 }

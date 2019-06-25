@@ -173,10 +173,6 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
 /*! \brief PHY informs us of new (current) GSM frame number */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
-/*! \brief handle an UL burst received by PHY */
-int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-        sbit_t *bits, uint16_t nbits, int8_t rssi, int16_t toa);
-
 /*! \brief set multiframe scheduler to given physical channel config */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
         enum gsm_phys_chan_config pchan);
@@ -230,5 +226,21 @@ int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn);
 /*! Determine if given frame number contains SACCH (true) or other (false) burst */
 bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink);
 extern const struct trx_sched_multiframe trx_sched_multiframes[];
+
+/*! UL burst indication with the corresponding meta info */
+struct trx_ul_burst_ind {
+	/* Mandatory fields */
+	uint32_t fn;		/*!< TDMA frame number */
+	uint8_t tn;		/*!< TDMA time-slot number */
+	int16_t toa256;		/*!< Timing of Arrival in units of 1/256 of symbol */
+	int8_t rssi;		/*!< Received Signal Strength Indication */
+
+	/*! Burst soft-bits buffer */
+	sbit_t burst[EGPRS_BURST_LEN];
+	size_t burst_len;
+};
+
+/*! Handle an UL burst received by PHY */
+int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi);
 
 #endif /* TRX_SCHEDULER_H */

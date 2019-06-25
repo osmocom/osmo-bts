@@ -1313,11 +1313,10 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	return 0;
 }
 
-/* process uplink burst */
-int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	sbit_t *bits, uint16_t nbits, int8_t rssi, int16_t toa256)
+/* Process an Uplink burst indication */
+int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
@@ -1329,7 +1328,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* get frame from multiframe */
 	period = l1ts->mf_period;
-	offset = fn % period;
+	offset = bi->fn % period;
 	frame = l1ts->mf_frames + offset;
 
 	chan = frame->ul_chan;
@@ -1346,28 +1345,29 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return -EINVAL;
 
 	/* calculate how many TDMA frames were potentially lost */
-	trx_sched_calc_frame_loss(l1t, l1cs, tn, fn);
+	trx_sched_calc_frame_loss(l1t, l1cs, bi->tn, bi->fn);
 
 	/* update TDMA frame counters */
-	l1cs->last_tdma_fn = fn;
+	l1cs->last_tdma_fn = bi->fn;
 	l1cs->proc_tdma_fs++;
 
 	/* decrypt */
-	if (bits && l1cs->ul_encr_algo) {
+	if (bi->burst_len && l1cs->ul_encr_algo) {
 		ubit_t ks[114];
 		int i;
 
-		osmo_a5(l1cs->ul_encr_algo, l1cs->ul_encr_key, fn, NULL, ks);
+		osmo_a5(l1cs->ul_encr_algo, l1cs->ul_encr_key, bi->fn, NULL, ks);
 		for (i = 0; i < 57; i++) {
 			if (ks[i])
-				bits[i + 3] = - bits[i + 3];
+				bi->burst[i + 3] = - bi->burst[i + 3];
 			if (ks[i + 57])
-				bits[i + 88] = - bits[i + 88];
+				bi->burst[i + 88] = - bi->burst[i + 88];
 		}
 	}
 
-	/* put burst to function */
-	func(l1t, tn, fn, chan, bid, bits, nbits, rssi, toa256);
+	/* put burst to function
+	 * TODO: rather pass a pointer to trx_ul_burst_ind */
+	func(l1t, bi->tn, bi->fn, chan, bid, bi->burst, bi->burst_len, bi->rssi, bi->toa256);
 
 	return 0;
 }
