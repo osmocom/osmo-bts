@@ -611,9 +611,9 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EINVAL;
 	}
 	tn = buf[0];
-	fn = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
+	fn =  osmo_load32be(buf + 1);
 	rssi = -(int8_t)buf[5];
-	toa256 = ((int16_t)(buf[6] << 8) | buf[7]);
+	toa256 = (int16_t) osmo_load16be(buf + 6);
 
 	/* copy and convert bits {254..0} to sbits {-127..127} */
 	for (i = 0; i < burst_len; i++) {
