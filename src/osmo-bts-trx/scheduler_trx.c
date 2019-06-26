@@ -775,9 +775,8 @@ static enum rach_synch_seq_t rach_get_synch_seq(sbit_t *bits, int *best_score)
 	return seq;
 }
 
-int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, int16_t toa256)
+int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
 	struct osmo_phsap_prim l1sap;
 	int n_errors, n_bits_total;
@@ -796,31 +795,33 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* Handover RACH cannot be extended (11-bit) */
 	if (chan == TRXC_RACH)
-		synch_seq = rach_get_synch_seq(bits, &best_score);
+		/* TODO: check for TRX_BI_F_TS_INFO flag! */
+		synch_seq = rach_get_synch_seq((sbit_t *) bi->burst, &best_score);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
 	       "Received RACH (%s; match=%.1f%%) toa=%d\n",
 	       get_value_string(rach_synch_seq_names, synch_seq),
 	       best_score * 100.0 / (127 * RACH_SYNCH_SEQ_LEN),
-	       toa256);
+	       bi->toa256);
 
 	/* Compose a new L1SAP primitive */
 	memset(&l1sap, 0x00, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION, NULL);
-	l1sap.u.rach_ind.chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	l1sap.u.rach_ind.acc_delay = (toa256 >= 0) ? toa256 / 256 : 0;
-	l1sap.u.rach_ind.acc_delay_256bits = toa256;
-	l1sap.u.rach_ind.rssi = rssi;
-	l1sap.u.rach_ind.fn = fn;
+	l1sap.u.rach_ind.chan_nr = trx_chan_desc[chan].chan_nr | bi->tn;
+	l1sap.u.rach_ind.acc_delay = (bi->toa256 >= 0) ? bi->toa256 / 256 : 0;
+	l1sap.u.rach_ind.acc_delay_256bits = bi->toa256;
+	l1sap.u.rach_ind.rssi = bi->rssi;
+	l1sap.u.rach_ind.fn = bi->fn;
 
 	/* Decode RACH depending on its synch. sequence */
 	switch (synch_seq) {
 	case RACH_SYNCH_SEQ_TS1:
 	case RACH_SYNCH_SEQ_TS2:
-		rc = gsm0503_rach_ext_decode_ber(&ra11, bits + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
+		rc = gsm0503_rach_ext_decode_ber(&ra11, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 						 l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad Access Burst\n");
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			       "Received bad Access Burst\n");
 			return 0;
 		}
 
@@ -837,14 +838,16 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	default:
 		/* Fall-back to the default TS0 if needed */
 		if (synch_seq != RACH_SYNCH_SEQ_TS0) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Falling-back to the default TS0\n");
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			       "Falling-back to the default TS0\n");
 			synch_seq = RACH_SYNCH_SEQ_TS0;
 		}
 
-		rc = gsm0503_rach_decode_ber(&ra, bits + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
+		rc = gsm0503_rach_decode_ber(&ra, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 					     l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad Access Burst\n");
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			       "Received bad Access Burst\n");
 			return 0;
 		}
 
@@ -863,11 +866,10 @@ int rx_rach_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 }
 
 /*! \brief a single (SDCCH/SACCH) burst was received by the PHY, process it */
-int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, int16_t toa256)
+int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
@@ -883,9 +885,10 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
+		return rx_rach_fn(l1t, chan, bid, bi);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received Data, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+	       "Received Data, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -898,7 +901,7 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
-		*first_fn = fn;
+		*first_fn = bi->fn;
 		*rssi_sum = 0;
 		*rssi_num = 0;
 		*toa256_sum = 0;
@@ -907,20 +910,20 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* update mask + RSSI */
 	*mask |= (1 << bid);
-	*rssi_sum += rssi;
+	*rssi_sum += bi->rssi;
 	(*rssi_num)++;
-	*toa256_sum += toa256;
+	*toa256_sum += bi->toa256;
 	(*toa_num)++;
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	memcpy(burst, bi->burst + 3, 58);
+	memcpy(burst + 58, bi->burst + 87, 58);
 
 	/* send burst information to loops process */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
-		trx_loop_sacch_input(l1t, trx_chan_desc[chan].chan_nr | tn,
-			chan_state, rssi, toa256);
+		trx_loop_sacch_input(l1t, trx_chan_desc[chan].chan_nr | bi->tn,
+			chan_state, bi->rssi, bi->toa256);
 	}
 
 	/* wait until complete set of bursts */
@@ -929,7 +932,8 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete data (%u/%u)\n",
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received incomplete data (%u/%u)\n",
 			*first_fn, (*first_fn) % l1ts->mf_period);
 
 		/* we require first burst to have correct FN */
@@ -943,28 +947,33 @@ int rx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* decode */
 	rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received bad data (%u/%u)\n",
 			*first_fn, (*first_fn) % l1ts->mf_period);
 		l2_len = 0;
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr | tn,
-		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa256_sum / *toa_num);
+	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
+			      trx_chan_desc[chan].chan_nr | bi->tn,
+			      n_errors, n_bits_total,
+			      *rssi_sum / *rssi_num,
+			      *toa256_sum / *toa_num);
 	ber10k = compute_ber10k(n_bits_total, n_errors);
-	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan, l2, l2_len,
+	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
+					  chan, l2, l2_len,
 					  *rssi_sum / *rssi_num,
-					  *toa256_sum / *toa_num, 0, ber10k,
-					  PRES_INFO_UNKNOWN);
+					  *toa256_sum / *toa_num,
+					  0 /* FIXME: AVG C/I */,
+					  ber10k, PRES_INFO_UNKNOWN);
 }
 
 /*! \brief a single PDTCH burst was received by the PHY, process it */
-int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, int16_t toa256)
+int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
@@ -978,7 +987,8 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint16_t ber10k;
 	int rc;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received PDTCH bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+		"Received PDTCH bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -992,7 +1002,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
 		*mask = 0x0;
-		*first_fn = fn;
+		*first_fn = bi->fn;
 		*rssi_sum = 0;
 		*rssi_num = 0;
 		*toa256_sum = 0;
@@ -1001,21 +1011,21 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* update mask + rssi */
 	*mask |= (1 << bid);
-	*rssi_sum += rssi;
+	*rssi_sum += bi->rssi;
 	(*rssi_num)++;
-	*toa256_sum += toa256;
+	*toa256_sum += bi->toa256;
 	(*toa_num)++;
 
 	/* copy burst to buffer of 4 bursts */
-	if (nbits == EGPRS_BURST_LEN) {
+	if (bi->burst_len == EGPRS_BURST_LEN) {
 		burst = *bursts_p + bid * 348;
-		memcpy(burst, bits + 9, 174);
-		memcpy(burst + 174, bits + 261, 174);
+		memcpy(burst, bi->burst + 9, 174);
+		memcpy(burst + 174, bi->burst + 261, 174);
 		n_bursts_bits = GSM0503_EGPRS_BURSTS_NBITS;
 	} else {
 		burst = *bursts_p + bid * 116;
-		memcpy(burst, bits + 3, 58);
-		memcpy(burst + 58, bits + 87, 58);
+		memcpy(burst, bi->burst + 3, 58);
+		memcpy(burst + 58, bi->burst + 87, 58);
 		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
 	}
 
@@ -1025,8 +1035,9 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			"Received incomplete frame (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -1039,33 +1050,39 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	rc = gsm0503_pdtch_egprs_decode(l2, *bursts_p, n_bursts_bits,
 				NULL, &n_errors, &n_bits_total);
 
-	if ((nbits == GSM_BURST_LEN) && (rc < 0)) {
+	if ((bi->burst_len == GSM_BURST_LEN) && (rc < 0)) {
 		rc = gsm0503_pdtch_decode(l2, *bursts_p, NULL,
 				  &n_errors, &n_bits_total);
 	}
 
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr | tn,
-		n_errors, n_bits_total, *rssi_sum / *rssi_num, *toa256_sum / *toa_num);
+	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
+		trx_chan_desc[chan].chan_nr | bi->tn,
+		n_errors, n_bits_total,
+		*rssi_sum / *rssi_num,
+		*toa256_sum / *toa_num);
 
 	if (rc <= 0) {
-		LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received bad PDTCH (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			"Received bad PDTCH (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		return 0;
 	}
 	ber10k = compute_ber10k(n_bits_total, n_errors);
-	return _sched_compose_ph_data_ind(l1t, tn, *first_fn, chan,
-		l2, rc, *rssi_sum / *rssi_num, *toa256_sum / *toa_num, 0,
+	return _sched_compose_ph_data_ind(l1t, bi->tn,
+					  *first_fn, chan, l2, rc,
+					  *rssi_sum / *rssi_num,
+					  *toa256_sum / *toa_num,
+					  0 /* FIXME: AVG C/I */,
 					  ber10k, PRES_INFO_BOTH);
 }
 
 /*! \brief a single TCH/F burst was received by the PHY, process it */
-int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, int16_t toa256)
+int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
@@ -1077,13 +1094,14 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	int n_errors, n_bits_total;
 	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
-		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
+		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
+		return rx_rach_fn(l1t, chan, bid, bi);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/F, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+	       "Received TCH/F, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -1096,7 +1114,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
-		*first_fn = fn;
+		*first_fn = bi->fn;
 	}
 
 	/* update mask */
@@ -1104,8 +1122,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* copy burst to end of buffer of 8 bursts */
 	burst = *bursts_p + bid * 116 + 464;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	memcpy(burst, bi->burst + 3, 58);
+	memcpy(burst + 58, bi->burst + 87, 58);
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
@@ -1113,8 +1131,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received incomplete frame (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -1136,12 +1155,12 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * NOTE: A frame ends 7 FN after start.
 		 */
 		rc = gsm0503_tch_afs_decode(tch_data + 2, *bursts_p,
-			(((fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
+			(((bi->fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total);
 		if (rc)
 			trx_loop_amr_input(l1t,
-				trx_chan_desc[chan].chan_nr | tn, chan_state,
+				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
@@ -1152,26 +1171,31 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		}
 		break;
 	default:
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode %u invalid, please fix!\n",
+		LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
+			"TCH mode %u invalid, please fix!\n",
 			tch_mode);
 		return -EINVAL;
 	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr|tn,
-		n_errors, n_bits_total, rssi, toa256);
+	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
+			      trx_chan_desc[chan].chan_nr | bi->tn,
+			      n_errors, n_bits_total,
+			      bi->rssi, bi->toa256);
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received bad data (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		bfi_flag = true;
 		goto bfi;
 	}
 	if (rc < 4) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u) "
-			"with invalid codec mode %d\n", fn % l1ts->mf_period, l1ts->mf_period, rc);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received bad data (%u/%u) with invalid codec mode %d\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
 		bfi_flag = true;
 		goto bfi;
 	}
@@ -1179,9 +1203,14 @@ int rx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
-		_sched_compose_ph_data_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi, toa256, 0,
-					   ber10k, PRES_INFO_UNKNOWN);
+		_sched_compose_ph_data_ind(l1t, bi->tn,
+			/* FIXME: this calculation is wrong */
+			(bi->fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
+			tch_data + amr, GSM_MACBLOCK_LEN,
+			/* FIXME: AVG RSSI and ToA256 */
+			bi->rssi, bi->toa256,
+			0 /* FIXME: AVG C/I */,
+			ber10k, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1217,7 +1246,7 @@ bfi:
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
-				LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+				LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
 					"TCH mode %u invalid, please fix!\n", tch_mode);
 				return -EINVAL;
 			}
@@ -1233,16 +1262,17 @@ bfi:
 
 	/* TCH or BFI */
 compose_l1sap:
-	return _sched_compose_tch_ind(l1t, tn, (fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
+	return _sched_compose_tch_ind(l1t, bi->tn,
+		/* FIXME: this calculation is wrong */
+		(bi->fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
 		tch_data, rc);
 }
 
 /*! \brief a single TCH/H burst was received by the PHY, process it */
-int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, sbit_t *bits, uint16_t nbits,
-	int8_t rssi, int16_t toa256)
+int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
@@ -1253,18 +1283,19 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	int rc, amr = 0;
 	int n_errors, n_bits_total;
 	struct gsm_lchan *lchan =
-		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | tn);
+		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 	/* Note on FN-10: If we are at FN 10, we decoded an even aligned
 	 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
 	 * Even FN ending at: 10,11,19,20,2,3
 	 */
-	int fn_is_odd = (((fn + 26 - 10) % 26) >> 2) & 1;
+	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
-		return rx_rach_fn(l1t, tn, fn, chan, bid, bits, GSM_BURST_LEN, rssi, toa256);
+		return rx_rach_fn(l1t, chan, bid, bi);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Received TCH/H, bid=%u\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+		"Received TCH/H, bid=%u\n", bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -1277,7 +1308,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 232);
 		*mask = 0x0;
-		*first_fn = fn;
+		*first_fn = bi->fn;
 	}
 
 	/* update mask */
@@ -1285,8 +1316,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* copy burst to end of buffer of 6 bursts */
 	burst = *bursts_p + bid * 116 + 464;
-	memcpy(burst, bits + 3, 58);
-	memcpy(burst + 58, bits + 87, 58);
+	memcpy(burst, bi->burst + 3, 58);
+	memcpy(burst + 58, bi->burst + 87, 58);
 
 	/* wait until complete set of bursts */
 	if (bid != 1)
@@ -1294,8 +1325,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* check for complete set of bursts */
 	if ((*mask & 0x3) != 0x3) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received incomplete frame (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received incomplete frame (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
 
@@ -1332,7 +1364,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total);
 		if (rc)
 			trx_loop_amr_input(l1t,
-				trx_chan_desc[chan].chan_nr | tn, chan_state,
+				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
 				(float)n_errors/(float)n_bits_total);
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
@@ -1343,7 +1375,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		}
 		break;
 	default:
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode %u invalid, please fix!\n",
+		LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
+			"TCH mode %u invalid, please fix!\n",
 			tch_mode);
 		return -EINVAL;
 	}
@@ -1351,18 +1384,22 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 
 	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, tn, *first_fn, trx_chan_desc[chan].chan_nr|tn,
-		n_errors, n_bits_total, rssi, toa256);
+	l1if_process_meas_res(l1t->trx, bi->tn,
+		*first_fn /* FIXME: this is wrong */,
+		trx_chan_desc[chan].chan_nr | bi->tn,
+		n_errors, n_bits_total, bi->rssi, bi->toa256);
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u)\n",
-			fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received bad data (%u/%u)\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		goto bfi;
 	}
 	if (rc < 4) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Received bad data (%u/%u) "
-			"with invalid codec mode %d\n", fn % l1ts->mf_period, l1ts->mf_period, rc);
+		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+			"Received bad data (%u/%u) with invalid codec mode %d\n",
+			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
 		goto bfi;
 	}
 
@@ -1370,10 +1407,14 @@ int rx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
-		_sched_compose_ph_data_ind(l1t, tn,
-			(fn + GSM_HYPERFRAME - 10 - ((fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
-			tch_data + amr, GSM_MACBLOCK_LEN, rssi, toa256, 0,
-					   ber10k, PRES_INFO_UNKNOWN);
+		_sched_compose_ph_data_ind(l1t, bi->tn,
+			/* FIXME: what the hell is this?!? */
+			(bi->fn + GSM_HYPERFRAME - 10 - ((bi->fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
+			tch_data + amr, GSM_MACBLOCK_LEN,
+			/* FIXME: AVG both RSSI and ToA */
+			bi->rssi, bi->toa256,
+			0 /* FIXME: AVG C/I */,
+			ber10k, PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -1398,7 +1439,7 @@ bfi:
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
-				LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+				LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
 					"TCH mode %u invalid, please fix!\n", tch_mode);
 				return -EINVAL;
 			}
@@ -1415,8 +1456,9 @@ compose_l1sap:
 	 * with the slot 12, so an extra FN must be subtracted to get correct
 	 * start of frame.
 	 */
-	return _sched_compose_tch_ind(l1t, tn,
-		(fn + GSM_HYPERFRAME - 10 - ((fn%26)==19) - ((fn%26)==20)) % GSM_HYPERFRAME,
+	return _sched_compose_tch_ind(l1t, bi->tn,
+		/* FIXME: what the hell is this?!? */
+		(bi->fn + GSM_HYPERFRAME - 10 - ((bi->fn%26)==19) - ((bi->fn%26)==20)) % GSM_HYPERFRAME,
 		chan, tch_data, rc);
 }
 

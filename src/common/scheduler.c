@@ -1287,8 +1287,18 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 		 * Instead of doing this, it makes sense to use the
 		 * amount of lost frames in measurement calculations.
 		 */
-		static sbit_t zero_burst[GSM_BURST_LEN] = { 0 };
 		trx_sched_ul_func *func;
+
+		/* Prepare dummy burst indication */
+		struct trx_ul_burst_ind bi = {
+			.flags = TRX_BI_F_NOPE_IND,
+			.burst_len = GSM_BURST_LEN,
+			.burst = { 0 },
+			.rssi = -128,
+			.toa256 = 0,
+			/* TDMA FN is set below */
+			.tn = tn,
+		};
 
 		for (i = 1; i < elapsed_fs; i++) {
 			fn_i = TDMA_FN_SUM(l1cs->last_tdma_fn, i);
@@ -1303,8 +1313,8 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 				"Substituting lost TDMA frame=%u by all-zero "
 				"dummy burst\n", fn_i);
 
-			func(l1t, tn, fn_i, frame->ul_chan, frame->ul_bid,
-				zero_burst, GSM_BURST_LEN, -128, 0);
+			bi.fn = fn_i;
+			func(l1t, frame->ul_chan, frame->ul_bid, &bi);
 
 			l1cs->lost_tdma_fs--;
 		}
@@ -1365,9 +1375,8 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 		}
 	}
 
-	/* put burst to function
-	 * TODO: rather pass a pointer to trx_ul_burst_ind */
-	func(l1t, bi->tn, bi->fn, chan, bid, bi->burst, bi->burst_len, bi->rssi, bi->toa256);
+	/* Invoke the logical channel handler */
+	func(l1t, chan, bid, bi);
 
 	return 0;
 }
