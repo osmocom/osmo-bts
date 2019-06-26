@@ -269,6 +269,15 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h)
 		return 0;
 }
 
+/*! Send "SETFORMAT" command to TRX: change TRXD header format version */
+int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver)
+{
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
+		"Requesting TRXD header format version %u\n", ver);
+
+	return trx_ctrl_cmd(l1h, 0, "SETFORMAT", "%u", ver);
+}
+
 /*! Send "SETTSC" command to TRX */
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
 {
@@ -433,6 +442,8 @@ static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 	   expected that they can return different values */
 	if (strcmp(tcm->cmd, "SETSLOT") == 0 && strcmp(tcm->params, rsp->params))
 		return false;
+	else if (strcmp(tcm->cmd, "SETFORMAT") == 0 && strcmp(tcm->params, rsp->params))
+		return false;
 
 	return true;
 }
@@ -460,11 +471,59 @@ static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp
 	return rsp->status == 0 ? 0 : -EINVAL;
 }
 
+/* TRXD header format negotiation handler.
+ *
+ * If the transceiver does not support the format negotiation, it would
+ * reject SETFORMAT with 'RSP ERR 1'. If the requested version is not
+ * supported by the transceiver, status code of the response message
+ * should indicate a preferred (basically, the latest) version.
+ */
+static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
+				     struct trx_ctrl_rsp *rsp)
+{
+	/* Old transceivers reject 'SETFORMAT' with 'RSP ERR 1' */
+	if (strcmp(rsp->cmd, "SETFORMAT") != 0) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+			"Transceiver rejected the format negotiation command, "
+			"using legacy TRXD header format version (0)\n");
+		l1h->config.trxd_hdr_ver_use = 0;
+		return 0;
+	}
+
+	/* Status shall indicate a proper version supported by the transceiver */
+	if (rsp->status < 0 || rsp->status > l1h->config.trxd_hdr_ver_req) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Transceiver indicated an out of range "
+			"header format version %d (requested %u)\n",
+			rsp->status, l1h->config.trxd_hdr_ver_req);
+		return -EINVAL;
+	}
+
+	/* Transceiver may suggest a lower version (than requested) */
+	if (rsp->status == l1h->config.trxd_hdr_ver_req) {
+		l1h->config.trxd_hdr_ver_use = rsp->status;
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
+			"Using TRXD header format version %u\n",
+			l1h->config.trxd_hdr_ver_use);
+	} else {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+			"Transceiver suggests TRXD header version %u (requested %u)\n",
+			rsp->status, l1h->config.trxd_hdr_ver_req);
+		/* Send another SETFORMAT with suggested version */
+		l1h->config.trxd_hdr_ver_req = rsp->status;
+		trx_if_cmd_setformat(l1h, rsp->status);
+	}
+
+	return 0;
+}
+
 /* -EINVAL: unrecoverable error, exit BTS
  * N > 0: try sending originating command again after N seconds
  * 0: Done with response, get originating command out from send queue
  */
-static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool critical)
+static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
+			   struct trx_ctrl_rsp *rsp,
+			   struct trx_ctrl_msg *tcm)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 
@@ -484,14 +543,18 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp, bool c
 		}
 	} else if (strcmp(rsp->cmd, "SETSLOT") == 0) {
 		return trx_ctrl_rx_rsp_setslot(l1h, rsp);
+	/* We may get 'RSP ERR 1' if 'SETFORMAT' is not supported,
+	 * so that's why we should use tcm instead of rsp. */
+	} else if (strcmp(tcm->cmd, "SETFORMAT") == 0) {
+		return trx_ctrl_rx_rsp_setformat(l1h, rsp);
 	}
 
 	if (rsp->status) {
-		LOGPPHI(l1h->phy_inst, DTRX, critical ? LOGL_FATAL : LOGL_NOTICE,
+		LOGPPHI(l1h->phy_inst, DTRX, tcm->critical ? LOGL_FATAL : LOGL_NOTICE,
 			"transceiver rejected TRX command with response: '%s%s%s %d'\n",
 			rsp->cmd, rsp->params[0] != '\0' ? " ":"",
 			rsp->params, rsp->status);
-		if (critical)
+		if (tcm->critical)
 			return -EINVAL;
 	}
 	return 0;
@@ -547,13 +610,16 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"Response message '%s' does not match command "
 			"message 'CMD %s%s%s'\n",
 			buf, tcm->cmd, tcm->params_len ? " ":"", tcm->params);
-		goto rsp_error;
+
+		/* We may get 'RSP ERR 1' for non-critical commands */
+		if (tcm->critical)
+			goto rsp_error;
 	}
 
 	rsp.cb = tcm->cb;
 
 	/* check for response code */
-	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm->critical);
+	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm);
 	if (rc == -EINVAL)
 		goto rsp_error;
 

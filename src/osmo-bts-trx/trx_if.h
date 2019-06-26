@@ -35,4 +35,10 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits);
 int trx_if_powered(struct trx_l1h *l1h);
 
+/* The latest supported TRXD header format version */
+#define TRX_DATA_FORMAT_VER    1
+
+/* Format negotiation command */
+int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver);
+
 #endif /* TRX_IF_H */

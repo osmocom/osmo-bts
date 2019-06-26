@@ -208,6 +208,13 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			l1h->config.bsic_sent = 1;
 		}
 
+		/* Ask transceiver to use the newest TRXD header version */
+		if (!l1h->config.setformat_sent) {
+			trx_if_cmd_setformat(l1h, TRX_DATA_FORMAT_VER);
+			l1h->config.trxd_hdr_ver_req = TRX_DATA_FORMAT_VER;
+			l1h->config.setformat_sent = 1;
+		}
+
 		if (!l1h->config.poweron_sent) {
 			trx_if_cmd_poweron(l1h);
 			l1h->config.poweron_sent = 1;
@@ -264,6 +271,9 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+		l1h->config.trxd_hdr_ver_req = 0;
+		l1h->config.trxd_hdr_ver_use = 0;
+		l1h->config.setformat_sent = 0;
 		l1h->config.arfcn_sent = 0;
 		l1h->config.tsc_sent = 0;
 		l1h->config.bsic_sent = 0;
