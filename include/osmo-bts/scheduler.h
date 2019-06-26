@@ -79,11 +79,13 @@ struct l1sched_chan_state {
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
 
-	/* RSSI / TOA */
+	/* measurements */
 	uint8_t			rssi_num;	/* number of RSSI values */
 	float			rssi_sum;	/* sum of RSSI values */
 	uint8_t			toa_num;	/* number of TOA values */
 	int32_t			toa256_sum;	/* sum of TOA values (1/256 symbol) */
+	uint8_t			ci_cb_num;	/* number of C/I values */
+	int32_t			ci_cb_sum;	/* sum of C/I values (in centiBels) */
 
 	/* loss detection */
 	uint8_t			lost_frames;	/* how many L2 frames were lost */
