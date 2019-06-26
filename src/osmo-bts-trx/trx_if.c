@@ -52,8 +52,6 @@
 
 int transceiver_available = 0;
 
-#define TRX_MAX_BURST_LEN	512
-
 /*
  * socket helper functions
  */
@@ -587,10 +585,13 @@ rsp_error:
  * TRX burst data socket
  */
 
+/* Maximum DATA message length (header + burst) */
+#define TRX_DATA_MSG_MAX_LEN	512
+
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
-	uint8_t buf[TRX_MAX_BURST_LEN];
+	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 	int len;
 	uint8_t tn;
 	int8_t rssi;
@@ -661,7 +662,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits)
 {
-	uint8_t buf[TRX_MAX_BURST_LEN];
+	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 
 	if ((nbits != GSM_BURST_LEN) && (nbits != EGPRS_BURST_LEN)) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %u invalid\n", nbits);
