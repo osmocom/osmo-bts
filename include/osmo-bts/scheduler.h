@@ -227,13 +227,27 @@ int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn);
 bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink);
 extern const struct trx_sched_multiframe trx_sched_multiframes[];
 
+#define TRX_BI_F_NOPE_IND	(1 << 0)
+#define TRX_BI_F_MOD_TYPE	(1 << 1)
+#define TRX_BI_F_TS_INFO	(1 << 2)
+#define TRX_BI_F_CI_CB		(1 << 3)
+
 /*! UL burst indication with the corresponding meta info */
 struct trx_ul_burst_ind {
+	/* Field presence bitmask (see TRX_BI_F_*) */
+	uint8_t flags;
+
 	/* Mandatory fields */
 	uint32_t fn;		/*!< TDMA frame number */
 	uint8_t tn;		/*!< TDMA time-slot number */
 	int16_t toa256;		/*!< Timing of Arrival in units of 1/256 of symbol */
 	int8_t rssi;		/*!< Received Signal Strength Indication */
+
+	/* Optional fields (defined by flags) */
+	enum trx_burst_type bt;	/*!< Modulation type */
+	uint8_t tsc_set;	/*!< Training Sequence Set */
+	uint8_t tsc;		/*!< Training Sequence Code */
+	int16_t ci_cb;		/*!< Carrier-to-Interference ratio (in centiBels) */
 
 	/*! Burst soft-bits buffer */
 	sbit_t burst[EGPRS_BURST_LEN];

@@ -593,6 +593,8 @@ rsp_error:
 #define TRX_CHDR_LEN		(1 + 4)
 /* Uplink v0 header length: 1 RSSI + 2 ToA256 */
 #define TRX_UL_V0HDR_LEN	(TRX_CHDR_LEN + 1 + 2)
+/* Uplink v1 header length: + 1 MTS + 2 C/I */
+#define TRX_UL_V1HDR_LEN	(TRX_UL_V0HDR_LEN + 1 + 2)
 
 /* TRXD header dissector for version 0 */
 static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
@@ -619,6 +621,64 @@ static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 	}
 
 	return TRX_UL_V0HDR_LEN;
+}
+
+/* TRXD header dissector for version 0x01 */
+static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
+				  struct trx_ul_burst_ind *bi,
+				  const uint8_t *buf, size_t buf_len)
+{
+	uint8_t mts;
+	int rc;
+
+	/* Make sure we have enough data */
+	if (buf_len < TRX_UL_V1HDR_LEN) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Short read on TRXD, missing version 1 header "
+			"(len=%zu vs expected %d)\n", buf_len, TRX_UL_V1HDR_LEN);
+		return -EIO;
+	}
+
+	/* Parse v0 specific part */
+	rc = trx_data_handle_hdr_v0(l1h, bi, buf, buf_len);
+	if (rc < 0)
+		return rc;
+
+	/* Move closer to the v1 specific part */
+	buf_len -= rc;
+	buf += rc;
+
+	/* IDLE / NOPE frame indication */
+	if (buf[0] & (1 << 7)) {
+		bi->flags |= TRX_BI_F_NOPE_IND;
+		return TRX_UL_V1HDR_LEN;
+	}
+
+	/* Modulation info and TSC set */
+	mts = (buf[0] >> 3) & 0b1111;
+	if ((mts & 0b1100) == 0x00) {
+		bi->bt = TRX_BURST_GMSK;
+		bi->tsc_set = mts & 0b11;
+		bi->flags |= TRX_BI_F_MOD_TYPE;
+	} else if ((mts & 0b0100) == 0b0100) {
+		bi->bt = TRX_BURST_8PSK;
+		bi->tsc_set = mts & 0b1;
+		bi->flags |= TRX_BI_F_MOD_TYPE;
+	} else {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Indicated modulation 0x%02x is not supported\n", mts & 0b1110);
+		return -ENOTSUP;
+	}
+
+	/* Training Sequence Code */
+	bi->tsc = buf[0] & 0b111;
+	bi->flags |= TRX_BI_F_TS_INFO;
+
+	/* C/I: Carrier-to-Interference ratio (in centiBels) */
+	bi->ci_cb = (int16_t) osmo_load16be(buf + 1);
+	bi->flags |= TRX_BI_F_CI_CB;
+
+	return TRX_UL_V1HDR_LEN;
 }
 
 /* TRXD burst handler for header version 0 */
@@ -655,6 +715,30 @@ static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
 	}
 
 	return 0;
+}
+
+/* TRXD burst handler for header version 1 */
+static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
+				    struct trx_ul_burst_ind *bi,
+				    const uint8_t *buf, size_t buf_len)
+{
+	/* Modulation types defined in 3GPP TS 45.002 */
+	static const size_t bl[] = {
+		[TRX_BURST_GMSK] = 148, /* 1 bit per symbol */
+		[TRX_BURST_8PSK] = 444, /* 3 bits per symbol */
+	};
+
+	/* Verify burst length */
+	if (bl[bi->bt] != buf_len) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+			"Rx TRXD message with odd burst length %zu, "
+			"expected %zu\n", buf_len, bl[bi->bt]);
+		return -EINVAL;
+	}
+
+	/* The burst format is the same as for version 0.
+	 * NOTE: other modulation types to be handled separately. */
+	return trx_data_handle_burst_v0(l1h, bi, buf, buf_len);
 }
 
 /* Parse TRXD message from transceiver, compose an UL burst indication.
@@ -697,12 +781,72 @@ static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
  *   | RSSI | ToA | soft-bits (254..0) |
  *   +------+-----+--------------------+
  *
+ * == Version 0x01
+ *
+ *   +------+-----+-----+-----+--------------------+
+ *   | RSSI | ToA | MTS | C/I | soft-bits (254..0) |
+ *   +------+-----+-----+-----+--------------------+
+ *
  * where:
  *
  *   - RSSI (1 octet) - Received Signal Strength Indication
  *     encoded without the negative sign.
  *   - ToA (2 octets) - Timing of Arrival in units of 1/256
  *     of symbol (big endian).
+ *   - MTS (1 octet)  - Modulation and Training Sequence info.
+ *   - C/I (2 octets) - Carrier-to-Interference ratio (big endian).
+ *
+ * == Coding of MTS: Modulation and Training Sequence info
+ *
+ * 3GPP TS 45.002 version 15.1.0 defines several modulation types,
+ * and a few sets of training sequences for each type. The most
+ * common are GMSK and 8-PSK (which is used in EDGE).
+ *
+ *   +-----------------+---------------------------------------+
+ *   | 7 6 5 4 3 2 1 0 | bit numbers (value range)             |
+ *   +-----------------+---------------------------------------+
+ *   | . . . . . X X X | Training Sequence Code (0..7)         |
+ *   +-----------------+---------------------------------------+
+ *   | . X X X X . . . | Modulation, TS set number (see below) |
+ *   +-----------------+---------------------------------------+
+ *   | X . . . . . . . | IDLE / nope frame indication (0 or 1) |
+ *   +-----------------+---------------------------------------+
+ *
+ * The bit number 7 (MSB) is set to high when either nothing has been
+ * detected, or during IDLE frames, so we can deliver noise levels,
+ * and avoid clock gaps on the L1 side. Other bits are ignored,
+ * and should be set to low (0) in this case. L16 shall be set to 0x00.
+ *
+ * == Coding of modulation and TS set number
+ *
+ * GMSK has 4 sets of training sequences (see tables 5.2.3a-d),
+ * while 8-PSK (see tables 5.2.3f-g) and the others have 2 sets.
+ * Access and Synchronization bursts also have several synch.
+ * sequences.
+ *
+ *   +-----------------+---------------------------------------+
+ *   | 7 6 5 4 3 2 1 0 | bit numbers (value range)             |
+ *   +-----------------+---------------------------------------+
+ *   | . 0 0 X X . . . | GMSK, 4 TS sets (0..3)                |
+ *   +-----------------+---------------------------------------+
+ *   | . 0 1 0 X . . . | 8-PSK, 2 TS sets (0..1)               |
+ *   +-----------------+---------------------------------------+
+ *   | . 0 1 1 X . . . | AQPSK, 2 TS sets (0..1)               |
+ *   +-----------------+---------------------------------------+
+ *   | . 1 0 0 X . . . | 16QAM, 2 TS sets (0..1)               |
+ *   +-----------------+---------------------------------------+
+ *   | . 1 0 1 X . . . | 32QAM, 2 TS sets (0..1)               |
+ *   +-----------------+---------------------------------------+
+ *   | . 1 1 1 X . . . | RESERVED (0)                          |
+ *   +-----------------+---------------------------------------+
+ *
+ * NOTE: we only support GMSK and 8-PSK.
+ *
+ * == C/I: Carrier-to-Interference ratio
+ *
+ * The C/I value can be computed from the training sequence of each
+ * burst, where we can compare the "ideal" training sequence with
+ * the actual training sequence and then express that in centiBels.
  *
  * == Coding of the burst bits
  *
@@ -731,12 +875,18 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return buf_len;
 	}
 
+	/* Pre-clean (initialize) the flags */
+	bi.flags = 0x00;
+
 	/* Parse the header depending on its version */
 	hdr_ver = buf[0] >> 4;
 	switch (hdr_ver) {
 	case 0:
 		/* Legacy protocol has no version indicator */
 		hdr_len = trx_data_handle_hdr_v0(l1h, &bi, buf, buf_len);
+		break;
+	case 1:
+		hdr_len = trx_data_handle_hdr_v1(l1h, &bi, buf, buf_len);
 		break;
 	default:
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
@@ -748,21 +898,39 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (hdr_len < 0)
 		return hdr_len;
 
+	/* TODO: we can use NOPE indications to get noise levels on IDLE
+	 * TDMA frames, and properly drive scheduler if nothing has been
+	 * detected on non-IDLE channels. */
+	if (bi.flags & TRX_BI_F_NOPE_IND) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+			"IDLE / NOPE indications are not (yet) supported\n");
+		return -ENOTSUP;
+	}
+
 	/* We're done with the header now */
 	buf_len -= hdr_len;
 
+	/* Handle burst bits */
 	switch (hdr_ver) {
 	case 0:
 		rc = trx_data_handle_burst_v0(l1h, &bi, buf + hdr_len, buf_len);
 		break;
+	case 1:
+		rc = trx_data_handle_burst_v1(l1h, &bi, buf + hdr_len, buf_len);
+		break;
+	default:
+		/* Shall not happen, just to make GCC happy */
+		OSMO_ASSERT(0);
 	}
 
 	/* Burst parsing error */
 	if (rc < 0)
 		return rc;
 
+	/* TODO: also print TSC and C/I */
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Rx UL burst (hdr_ver=%u) tn=%u fn=%u rssi=%d toa256=%d\n",
+		"Rx %s (hdr_ver=%u): tn=%u fn=%u rssi=%d toa256=%d\n",
+		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
 		hdr_ver, bi.tn, bi.fn, bi.rssi, bi.toa256);
 
 #ifdef TOA_RSSI_DEBUG
