@@ -48,9 +48,6 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
-/* enable to print RSSI level graph */
-//#define TOA_RSSI_DEBUG
-
 int transceiver_available = 0;
 
 /*
@@ -932,16 +929,6 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		"Rx %s (hdr_ver=%u): tn=%u fn=%u rssi=%d toa256=%d\n",
 		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
 		hdr_ver, bi.tn, bi.fn, bi.rssi, bi.toa256);
-
-#ifdef TOA_RSSI_DEBUG
-	char deb[128];
-
-	sprintf(deb, "|                                0              "
-		"                 | rssi=%4d  toa=%5d fn=%u",
-		bi.rssi, bi.toa256, bi.fn);
-	deb[1 + (128 + bi.rssi) / 4] = '*';
-	fprintf(stderr, "%s\n", deb);
-#endif
 
 	/* feed received burst into scheduler code */
 	trx_sched_ul_burst(&l1h->l1s, &bi);
