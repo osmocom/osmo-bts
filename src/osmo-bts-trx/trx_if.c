@@ -738,6 +738,48 @@ static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 	return trx_data_handle_burst_v0(l1h, bi, buf, buf_len);
 }
 
+static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
+{
+	struct osmo_strbuf sb;
+	static char buf[256];
+
+	/* Modulation types defined in 3GPP TS 45.002 */
+	static const char *mod_names[] = {
+		[TRX_BURST_GMSK] = "GMSK",
+		[TRX_BURST_8PSK] = "8-PSK",
+	};
+
+	/* Initialize the string buffer */
+	sb = (struct osmo_strbuf) { .buf = buf, .len = sizeof(buf) };
+
+	/* Common TDMA parameters */
+	OSMO_STRBUF_PRINTF(sb, "tn=%u fn=%u", bi->tn, bi->fn);
+
+	/* Nothing else to print for NOPE.ind */
+	if (bi->flags & TRX_BI_F_NOPE_IND)
+		return buf;
+
+	/* RSSI and ToA256 */
+	OSMO_STRBUF_PRINTF(sb, " rssi=%d toa256=%d", bi->rssi, bi->toa256);
+
+	/* Modulation and TSC set */
+	if (bi->flags & TRX_BI_F_MOD_TYPE)
+		OSMO_STRBUF_PRINTF(sb, " mod=%s", mod_names[bi->bt]);
+
+	/* Training Sequence Code */
+	if (bi->flags & TRX_BI_F_TS_INFO)
+		OSMO_STRBUF_PRINTF(sb, " set=%u tsc=%u", bi->tsc_set, bi->tsc);
+
+	/* C/I: Carrier-to-Interference ratio (in centiBels) */
+	if (bi->flags & TRX_BI_F_CI_CB)
+		OSMO_STRBUF_PRINTF(sb, " C/I=%d cB", bi->ci_cb);
+
+	/* Burst length */
+	OSMO_STRBUF_PRINTF(sb, " burst_len=%zu", bi->burst_len);
+
+	return buf;
+}
+
 /* Parse TRXD message from transceiver, compose an UL burst indication.
  *
  * This message contains a demodulated Uplink burst with fixed-size
@@ -924,11 +966,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (rc < 0)
 		return rc;
 
-	/* TODO: also print TSC and C/I */
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Rx %s (hdr_ver=%u): tn=%u fn=%u rssi=%d toa256=%d\n",
+	/* Print header & burst info */
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (hdr_ver=%u): %s\n",
 		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
-		hdr_ver, bi.tn, bi.fn, bi.rssi, bi.toa256);
+		hdr_ver, trx_data_desc_msg(&bi));
 
 	/* feed received burst into scheduler code */
 	trx_sched_ul_burst(&l1h->l1s, &bi);
