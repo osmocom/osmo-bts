@@ -118,6 +118,8 @@ int main(int argc, char **argv)
 	/* send access burst with wrong ref */
 	memset(&nl1sap, 0, sizeof(nl1sap));
 	osmo_prim_init(&nl1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION, NULL);
+	/* Report the minimum acceptable value to pass L1SAP checks */
+	nl1sap.u.rach_ind.lqual_cb = bts->min_qual_rach;
 	nl1sap.u.rach_ind.chan_nr = 0x0a;
 	nl1sap.u.rach_ind.ra = 42;
 	l1sap_up(trx, &nl1sap);

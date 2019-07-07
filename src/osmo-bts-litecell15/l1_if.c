@@ -997,17 +997,10 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 			    struct msgb *l1p_msg)
 {
 	struct gsm_bts_trx *trx = lc15l1_hdl_trx(fl1);
-	struct gsm_bts *bts = trx->bts;
 	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;
-
-	/* FIXME: this should be deprecated/obsoleted as it bypasses rach.busy counting */
-	if (ra_ind->measParam.fLinkQuality * 10 < bts->min_qual_rach) {
-		msgb_free(l1p_msg);
-		return 0;
-	}
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 
@@ -1029,6 +1022,7 @@ static int handle_ph_ra_ind(struct lc15l1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 		.rssi = (int8_t) ra_ind->measParam.fRssi,
 		.ber10k = (unsigned int) (ra_ind->measParam.fBer * 10000.0),
 		.acc_delay_256bits = ra_ind->measParam.i16BurstTiming * 64,
+		.lqual_cb = (int16_t) ra_ind->measParam.fLinkQuality * 10, /* centiBels */
 	};
 
 	lchan = l1if_hLayer_to_lchan(trx, (uint32_t)ra_ind->hLayer2);

@@ -1272,6 +1272,14 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 		return false;
 	}
 
+	/* Link quality defined by C/I (Carrier-to-Interference ratio) */
+	if (rach_ind->lqual_cb < bts->min_qual_rach) {
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+			"link quality (%d) below the minimum (%d)\n",
+			rach_ind->lqual_cb, bts->min_qual_rach);
+		return false;
+	}
+
 	return true;
 }
 

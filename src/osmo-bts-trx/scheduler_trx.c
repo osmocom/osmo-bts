@@ -823,6 +823,12 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	l1sap.u.rach_ind.rssi = bi->rssi;
 	l1sap.u.rach_ind.fn = bi->fn;
 
+	/* Link quality is defined by C/I (Carrier-to-Interference ratio),
+	 * which has optional presence. If it's absent, report the
+	 * minimum acceptable value to pass L1SAP checks. */
+	/* TODO: check for TRX_BI_F_CI_CB, and use the value from UL.ind */
+	l1sap.u.rach_ind.lqual_cb = l1t->trx->bts->min_qual_rach;
+
 	/* Decode RACH depending on its synch. sequence */
 	switch (synch_seq) {
 	case RACH_SYNCH_SEQ_TS1:
