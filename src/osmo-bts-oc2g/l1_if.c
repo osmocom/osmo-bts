@@ -1060,7 +1060,7 @@ static int handle_ph_ra_ind(struct oc2gl1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	struct ph_rach_ind_param rach_ind_param;
 
 	/* FIXME: this should be deprecated/obsoleted as it bypasses rach.busy counting */
-	if (ra_ind->measParam.fLinkQuality < bts->min_qual_rach) {
+	if (ra_ind->measParam.fLinkQuality * 10 < bts->min_qual_rach) {
 		msgb_free(l1p_msg);
 		return 0;
 	}

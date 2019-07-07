@@ -300,9 +300,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
 		vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 	}
-	vty_out(vty, " min-qual-rach %.0f%s", bts->min_qual_rach * 10.0f,
+	vty_out(vty, " min-qual-rach %d%s", bts->min_qual_rach,
 		VTY_NEWLINE);
-	vty_out(vty, " min-qual-norm %.0f%s", bts->min_qual_norm * 10.0f,
+	vty_out(vty, " min-qual-norm %d%s", bts->min_qual_norm,
 		VTY_NEWLINE);
 	vty_out(vty, " max-ber10k-rach %u%s", bts->max_ber10k_rach,
 		VTY_NEWLINE);
@@ -618,24 +618,24 @@ DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 
 DEFUN(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
 	"min-qual-rach <-100-100>",
-	"Set the minimum quality level of RACH burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
+	"Set the minimum link quality level of Access Bursts to be accepted\n"
+	"C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n")
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->min_qual_rach = strtof(argv[0], NULL) / 10.0f;
+	bts->min_qual_rach = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
 	"min-qual-norm <-100-100>",
-	"Set the minimum quality level of normal burst to be accpeted\n"
-	"C/I level in tenth of dB\n")
+	"Set the minimum link quality level of Normal Bursts to be accepted\n"
+	"C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n")
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->min_qual_norm = strtof(argv[0], NULL) / 10.0f;
+	bts->min_qual_norm = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }

@@ -330,8 +330,8 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	LOGP(DPCU, LOGL_DEBUG, "Sending data indication: sapi=%s arfcn=%d block=%d data=%s\n",
 	     sapi_string[sapi], arfcn, block_nr, osmo_hexdump(data, len));
 
-	if (lqual / 10 < bts->min_qual_norm) {
-		LOGP(DPCU, LOGL_DEBUG, "Link quality %"PRId16" is below threshold %f, dropping packet\n",
+	if (lqual < bts->min_qual_norm) {
+		LOGP(DPCU, LOGL_DEBUG, "Link quality %"PRId16" is below threshold %d, dropping packet\n",
 			lqual, bts->min_qual_norm);
 		return 0;
 	}

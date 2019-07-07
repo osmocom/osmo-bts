@@ -51,8 +51,8 @@
 #include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/cbch.h>
 
-#define MIN_QUAL_RACH    5.0f   /* at least  5 dB C/I */
-#define MIN_QUAL_NORM   -0.5f   /* at least -1 dB C/I */
+#define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
+#define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
 
 static void bts_update_agch_max_queue_length(struct gsm_bts *bts);
 

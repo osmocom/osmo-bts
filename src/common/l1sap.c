@@ -1218,7 +1218,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * the content is not available due to decoding issues. Content not
 	 * available is expected as empty payload. We also check if quality is
 	 * good enough. */
-	if (msg->len && tch_ind->lqual_cb / 10 >= bts->min_qual_norm) {
+	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
 		/* hand msg to RTP code for transmission */
 		if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,

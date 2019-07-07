@@ -759,8 +759,8 @@ struct gsm_bts {
 	int smscb_queue_max_len; /* maximum queue length */
 	int smscb_queue_hyst; /* hysteresis for CBCH laod indications */
 
-	float min_qual_rach;	/* minimum quality for RACH bursts */
-	float min_qual_norm;	/* minimum quality for normal daata */
+	int16_t min_qual_rach;	/* minimum link quality (in centiBels) for Access Bursts */
+	int16_t min_qual_norm;	/* minimum link quality (in centiBels) for Normal Bursts */
 	uint16_t max_ber10k_rach;	/* Maximum permitted RACH BER in 0.01% */
 
 	struct {

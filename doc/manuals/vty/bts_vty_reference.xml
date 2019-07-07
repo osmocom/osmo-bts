@@ -1613,14 +1613,14 @@
     </command>
     <command id='min-qual-rach &lt;-100-100&gt;'>
       <params>
-        <param name='min-qual-rach' doc='Set the minimum quality level of RACH burst to be accpeted' />
-        <param name='&lt;-100-100&gt;' doc='C/I level in tenth of dB' />
+        <param name='min-qual-rach' doc='Set the minimum link quality level of Access Bursts to be accepted' />
+        <param name='&lt;-100-100&gt;' doc='C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)' />
       </params>
     </command>
     <command id='min-qual-norm &lt;-100-100&gt;'>
       <params>
-        <param name='min-qual-norm' doc='Set the minimum quality level of normal burst to be accpeted' />
-        <param name='&lt;-100-100&gt;' doc='C/I level in tenth of dB' />
+        <param name='min-qual-norm' doc='Set the minimum link quality level of Normal Bursts to be accepted' />
+        <param name='&lt;-100-100&gt;' doc='C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)' />
       </params>
     </command>
     <command id='nominal-tx-power &lt;0-100&gt;'>
