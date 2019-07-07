@@ -784,19 +784,22 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t ra;
 	int rc;
 
-	/* It would be great if the transceiver were doing some kind of tagging,
-	 * whether it is extended (11-bit) RACH or not. We would not need to guess
-	 * it here. For now, let's try to correlate the synch. sequence of a received
-	 * Access Burst with the known ones (3GPP TS 05.02, section 5.2.7), and
-	 * fall-back to the default TS0 if it fails. This would save some CPU
-	 * power, and what is more important - prevent possible collisions. */
+	/* TSC (Training Sequence Code) is an optional parameter of the UL burst
+	 * indication. We need this information in order to decide whether an
+	 * Access Burst is 11-bit encoded or not (see OS#1854). If this information
+	 * is absent, we try to correlate the received synch. sequence with the
+	 * known ones (3GPP TS 05.02, section 5.2.7), and fall-back to the default
+	 * TS0 if it fails. */
 	enum rach_synch_seq_t synch_seq = RACH_SYNCH_SEQ_TS0;
 	int best_score = 127 * RACH_SYNCH_SEQ_LEN;
 
 	/* Handover RACH cannot be extended (11-bit) */
-	if (chan == TRXC_RACH)
-		/* TODO: check for TRX_BI_F_TS_INFO flag! */
-		synch_seq = rach_get_synch_seq((sbit_t *) bi->burst, &best_score);
+	if (chan == TRXC_RACH) {
+		if (bi->flags & TRX_BI_F_TS_INFO)
+			synch_seq = (enum rach_synch_seq_t) bi->tsc;
+		else
+			synch_seq = rach_get_synch_seq((sbit_t *) bi->burst, &best_score);
+	}
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
 	       "Received RACH (%s; match=%.1f%%) toa=%d\n",
