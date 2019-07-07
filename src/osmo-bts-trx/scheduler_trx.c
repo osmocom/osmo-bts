@@ -896,8 +896,11 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t *rssi_num = &chan_state->rssi_num;
 	int32_t *toa256_sum = &chan_state->toa256_sum;
 	uint8_t *toa_num = &chan_state->toa_num;
+	int32_t *ci_cb_sum = &chan_state->ci_cb_sum;
+	uint8_t *ci_cb_num = &chan_state->ci_cb_num;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
 	int n_errors, n_bits_total;
+	int16_t lqual_cb;
 	uint16_t ber10k;
 	int rc;
 
@@ -924,6 +927,8 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		*rssi_num = 0;
 		*toa256_sum = 0;
 		*toa_num = 0;
+		*ci_cb_sum = 0;
+		*ci_cb_num = 0;
 	}
 
 	/* update mask + RSSI */
@@ -932,6 +937,12 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	(*rssi_num)++;
 	*toa256_sum += bi->toa256;
 	(*toa_num)++;
+
+	/* C/I: Carrier-to-Interference ratio (in centiBels) */
+	if (bi->flags & TRX_BI_F_CI_CB) {
+		*ci_cb_sum += bi->ci_cb;
+		(*ci_cb_num)++;
+	}
 
 	/* copy burst to buffer of 4 bursts */
 	burst = *bursts_p + bid * 116;
@@ -978,13 +989,14 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			      n_errors, n_bits_total,
 			      *rssi_sum / *rssi_num,
 			      *toa256_sum / *toa_num);
+	lqual_cb = *ci_cb_num ? (*ci_cb_sum / *ci_cb_num) : 0;
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
 					  chan, l2, l2_len,
 					  *rssi_sum / *rssi_num,
 					  *toa256_sum / *toa_num,
-					  0 /* FIXME: AVG C/I */,
-					  ber10k, PRES_INFO_UNKNOWN);
+					  lqual_cb, ber10k,
+					  PRES_INFO_UNKNOWN);
 }
 
 /*! \brief a single PDTCH burst was received by the PHY, process it */
