@@ -803,10 +803,16 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
-	       "Received RACH (%s; match=%.1f%%) toa=%d\n",
+	       "Received%s RACH (%s): rssi=%d toa256=%d",
+	       (chan != TRXC_RACH) ? " handover" : "",
 	       get_value_string(rach_synch_seq_names, synch_seq),
-	       best_score * 100.0 / (127 * RACH_SYNCH_SEQ_LEN),
-	       bi->toa256);
+	       bi->rssi, bi->toa256);
+	if (bi->flags & TRX_BI_F_CI_CB)
+		LOGPC(DL1P, LOGL_DEBUG, " C/I=%d cB", bi->ci_cb);
+	else
+		LOGPC(DL1P, LOGL_DEBUG, " match=%.1f%%",
+		      best_score * 100.0 / (127 * RACH_SYNCH_SEQ_LEN));
+	LOGPC(DL1P, LOGL_DEBUG, "\n");
 
 	/* Compose a new L1SAP primitive */
 	memset(&l1sap, 0x00, sizeof(l1sap));
