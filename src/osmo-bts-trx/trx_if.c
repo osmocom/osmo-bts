@@ -1054,6 +1054,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits)
 {
+	uint8_t hdr_ver = l1h->config.trxd_hdr_ver_use;
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 
 	if ((nbits != GSM_BURST_LEN) && (nbits != EGPRS_BURST_LEN)) {
@@ -1061,9 +1062,23 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 		return -1;
 	}
 
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "TX burst tn=%u fn=%u pwr=%u\n", tn, fn, pwr);
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+		"Tx burst (hdr_ver=%u): tn=%u fn=%u pwr=%u\n",
+		hdr_ver, tn, fn, pwr);
 
-	buf[0] = tn;
+	switch (hdr_ver) {
+	case 0:
+	case 1:
+		/* Both versions have the same header format */
+		break;
+
+	default:
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Requested TRXD header version %u is not supported\n", hdr_ver);
+		return -ENOTSUP;
+	}
+
+	buf[0] = ((hdr_ver & 0x0f) << 4) | tn;
 	buf[1] = (fn >> 24) & 0xff;
 	buf[2] = (fn >> 16) & 0xff;
 	buf[3] = (fn >>  8) & 0xff;
