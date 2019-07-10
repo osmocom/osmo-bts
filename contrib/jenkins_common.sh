@@ -57,4 +57,6 @@ build_bts() {
     if [ "$WITH_MANUALS" = "1" ] && [ "$PUBLISH" = "1" ]; then
         $MAKE -C "$base/doc/manuals" publish
     fi
+
+    $MAKE maintainer-clean
 }
