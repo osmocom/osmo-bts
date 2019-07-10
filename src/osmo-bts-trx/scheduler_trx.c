@@ -793,7 +793,8 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	enum rach_synch_seq_t synch_seq = RACH_SYNCH_SEQ_TS0;
 	int best_score = 127 * RACH_SYNCH_SEQ_LEN;
 
-	/* Handover RACH cannot be extended (11-bit) */
+	/* If chan != TRXC_RACH, this is a handover RACH, which is always encoded
+	 * as 8-bit and should contain the generic training sequence (TS0). */
 	if (chan == TRXC_RACH) {
 		if (bi->flags & TRX_BI_F_TS_INFO)
 			synch_seq = (enum rach_synch_seq_t) bi->tsc;
