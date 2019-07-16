@@ -3090,7 +3090,7 @@ static int rsl_rx_ipaccess(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	msg->lchan = lchan_lookup(trx, dch->chan_nr, "RSL rx IPACC: ");
 	if (!msg->lchan) {
-		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknow lchan\n",
+		LOGP(DRSL, LOGL_ERROR, "Rx RSL %s for unknown lchan\n",
 			rsl_msg_name(dch->c.msg_type));
 		return rsl_reject_unknown_lchan(msg);
 	}

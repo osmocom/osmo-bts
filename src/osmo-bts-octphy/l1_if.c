@@ -1175,7 +1175,7 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 
 	if (ra_ind->ulMsgLength != 1) {
 		LOGPFN(DL1C, LOGL_ERROR, ra_ind->ulFrameNumber,
-			"Rx PH-RACH.ind has lenghth %d > 1\n", ra_ind->ulMsgLength);
+			"Rx PH-RACH.ind has length %d > 1\n", ra_ind->ulMsgLength);
 		msgb_free(l1p_msg);
 		return 0;
 	}

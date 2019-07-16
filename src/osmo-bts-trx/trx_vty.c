@@ -237,7 +237,7 @@ DEFUN(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
 	OSMOTRX_STR
 	"Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
 	" USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
-	" During normal operation, Normal Bursts delay are controled by a Timing"
+	" During normal operation, Normal Bursts delay are controlled by a Timing"
 	" Advance control loop and thus Normal Bursts arrive to a BTS with no more"
 	" than a couple GSM symbols, which is already taken into account in osmo-trx."
 	" So changing this setting will have no effect in production installations"
