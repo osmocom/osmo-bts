@@ -368,7 +368,9 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 					LCHAN_REL_ACT_REACT;
 			}
 			/* decode original SI3 Rest Octets as sent by BSC */
-			osmo_gsm48_rest_octets_si3_decode(&bts->si3_ro_decoded, GSM_BTS_SI(bts, osmo_si));
+			const uint8_t *si3_ro_buf = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
+			si3_ro_buf += offsetof(struct gsm48_system_information_type_3, rest_octets);
+			osmo_gsm48_rest_octets_si3_decode(&bts->si3_ro_decoded, si3_ro_buf);
 			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
 			 * after PCU connects */
 			regenerate_si3_restoctets(bts);
