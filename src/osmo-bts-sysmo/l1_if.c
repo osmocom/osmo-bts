@@ -1851,6 +1851,7 @@ static void fill_trx_power_params(struct gsm_bts_trx *trx,
 		/* sysmoBTS 1002 without any setting in EEPROM */
 		LOGP(DL1C, LOGL_NOTICE, "Assuming 1002 for sysmoBTS "
 			"Model number %u\n", fl1h->hw_info.model_nr);
+		/* fall-through */
 	case 1002:
 		set_power_param(&trx->power_params, 23, 0);
 	}
