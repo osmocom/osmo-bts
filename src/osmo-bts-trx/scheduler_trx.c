@@ -382,8 +382,12 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			len = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->dl_cmr],
 				chan_state->codec[chan_state->dl_ft], AMR_BAD);
-			if (len < 2)
-				break;
+			if (len < 2) {
+				LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+				       "Failed to encode AMR_BAD frame (rc=%d), "
+				       "not sending BFI\n", len);
+				return;
+			}
 			memset(tch_data + 2, 0, len - 2);
 			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len);
 			break;
@@ -1284,8 +1288,12 @@ bfi:
 					chan_state->codec[chan_state->dl_cmr],
 					chan_state->codec[chan_state->dl_ft],
 					AMR_BAD);
-				if (rc < 2)
-					break;
+				if (rc < 2) {
+					LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
+					       "Failed to encode AMR_BAD frame (rc=%d), "
+					       "not sending BFI\n", rc);
+					return -EINVAL;
+				}
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
@@ -1477,8 +1485,12 @@ bfi:
 					chan_state->codec[chan_state->dl_cmr],
 					chan_state->codec[chan_state->dl_ft],
 					AMR_BAD);
-				if (rc < 2)
-					break;
+				if (rc < 2) {
+					LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
+					       "Failed to encode AMR_BAD frame (rc=%d), "
+					       "not sending BFI\n", rc);
+					return -EINVAL;
+				}
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
