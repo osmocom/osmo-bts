@@ -1393,7 +1393,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		 */
 		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
 			fn_is_odd, &n_errors, &n_bits_total);
-		if (rc) /* DTXu */
+		if (rc >= 0) /* DTXu */
 			lchan_set_marker(osmo_hr_check_sid(tch_data, rc), lchan);
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
