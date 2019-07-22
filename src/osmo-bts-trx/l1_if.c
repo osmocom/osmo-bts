@@ -185,6 +185,7 @@ static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int r
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 {
 	uint8_t tn;
+	struct phy_link *plink = l1h->phy_inst->phy_link;
 
 	if (!transceiver_available)
 		return -EIO;
@@ -208,10 +209,11 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			l1h->config.bsic_sent = 1;
 		}
 
-		/* Ask transceiver to use the newest TRXD header version */
-		if (!l1h->config.setformat_sent) {
-			trx_if_cmd_setformat(l1h, TRX_DATA_FORMAT_VER);
-			l1h->config.trxd_hdr_ver_req = TRX_DATA_FORMAT_VER;
+		/* Ask transceiver to use the newest TRXD header version if not using it yet */
+		if (!l1h->config.setformat_sent &&
+		    l1h->config.trxd_hdr_ver_use != plink->u.osmotrx.trxd_hdr_ver_max) {
+			trx_if_cmd_setformat(l1h, plink->u.osmotrx.trxd_hdr_ver_max);
+			l1h->config.trxd_hdr_ver_req = plink->u.osmotrx.trxd_hdr_ver_max;
 			l1h->config.setformat_sent = 1;
 		}
 

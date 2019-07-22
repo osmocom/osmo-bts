@@ -134,6 +134,8 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.osmotrx.trx_ta_loop = true;
 	plink->u.osmotrx.trx_ms_power_loop = false;
 	plink->u.osmotrx.trx_target_rssi = -10;
+	/* attempt use newest TRXD version by default: */
+	plink->u.osmotrx.trxd_hdr_ver_max = TRX_DATA_FORMAT_VER;
 }
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)

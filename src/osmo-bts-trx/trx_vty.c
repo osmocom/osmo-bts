@@ -496,6 +496,29 @@ DEFUN(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_trxd_max_version, cfg_phy_trxd_max_version_cmd,
+	"osmotrx trxd-max-version (latest|<0-15>)", OSMOTRX_STR
+	"Set maximum TRXD format version to negotiate with TRX\n"
+	"Use latest supported TRXD format version (default)\n"
+	"Maximum TRXD format version number\n")
+{
+	struct phy_link *plink = vty->index;
+
+	int max_ver;
+	if (strcmp(argv[0], "latest") == 0)
+		max_ver = TRX_DATA_FORMAT_VER;
+	else
+		max_ver = atoi(argv[0]);
+	if (max_ver > TRX_DATA_FORMAT_VER) {
+		vty_out(vty, "%% Format version %d is not supported, maximum supported is %d%s",
+			max_ver, TRX_DATA_FORMAT_VER, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	plink->u.osmotrx.trxd_hdr_ver_max = max_ver;
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 {
 	if (plink->u.osmotrx.local_ip)
@@ -525,6 +548,9 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 
 	if (plink->u.osmotrx.use_legacy_setbsic)
 		vty_out(vty, " osmotrx legacy-setbsic%s", VTY_NEWLINE);
+
+	if (plink->u.osmotrx.trxd_hdr_ver_max != TRX_DATA_FORMAT_VER)
+		vty_out(vty, " osmotrx trxd-max-version %d%s", plink->u.osmotrx.trxd_hdr_ver_max, VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
@@ -584,6 +610,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_osmotrx_ip_cmd);
 	install_element(PHY_NODE, &cfg_phy_setbsic_cmd);
 	install_element(PHY_NODE, &cfg_phy_no_setbsic_cmd);
+	install_element(PHY_NODE, &cfg_phy_trxd_max_version_cmd);
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);

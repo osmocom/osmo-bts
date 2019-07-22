@@ -50,6 +50,7 @@ struct phy_link {
 			uint32_t clock_advance;
 			uint32_t rts_advance;
 			bool use_legacy_setbsic;
+			uint8_t	 trxd_hdr_ver_max; /* Maximum TRXD header version to negotiate */
 		} osmotrx;
 		struct {
 			char *mcast_dev;		/* Network device for multicast */
