@@ -107,22 +107,22 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 	buf[len] = '\0';
 
 	if (!!strncmp(buf, "IND CLOCK ", 10)) {
-		LOGP(DTRX, LOGL_NOTICE, "Unknown message on clock port: %s\n",
-			buf);
+		LOGPPHI(pinst, DTRX, LOGL_NOTICE,
+			"Unknown message on clock port: %s\n", buf);
 		return 0;
 	}
 
 	if (sscanf(buf, "IND CLOCK %u", &fn) != 1) {
-		LOGP(DTRX, LOGL_ERROR, "Unable to parse '%s'\n", buf);
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Unable to parse '%s'\n", buf);
 		return 0;
 	}
 
-	LOGP(DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
+	LOGPPHI(pinst, DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
 
 	if (fn >= GSM_HYPERFRAME) {
 		fn %= GSM_HYPERFRAME;
-		LOGP(DTRX, LOGL_ERROR, "Indicated clock's FN is not wrapping "
-			"correctly, correcting to fn=%u\n", fn);
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Indicated clock's FN is not "
+			"wrapping correctly, correcting to fn=%u\n", fn);
 	}
 
 	/* inform core TRX clock handling code that a FN has been received */
@@ -339,8 +339,8 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 
 	freq10 = gsm_arfcn2freq10(arfcn, 1); /* RX = uplink */
 	if (freq10 == 0xffff) {
-		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
-		     arfcn & ~ARFCN_FLAG_MASK);
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
+			arfcn & ~ARFCN_FLAG_MASK);
 		return -ENOTSUP;
 	}
 
@@ -358,8 +358,8 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 
 	freq10 = gsm_arfcn2freq10(arfcn, 0); /* TX = downlink */
 	if (freq10 == 0xffff) {
-		LOGP(DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
-		     arfcn & ~ARFCN_FLAG_MASK);
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Arfcn %d not defined.\n",
+			arfcn & ~ARFCN_FLAG_MASK);
 		return -ENOTSUP;
 	}
 
