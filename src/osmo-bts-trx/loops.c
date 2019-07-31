@@ -109,7 +109,6 @@ static void ms_power_val(struct gsm_lchan *lchan, struct l1sched_chan_state *cha
 	if (chan_state->meas.rssi_valid_count == ARRAY_SIZE(chan_state->meas.rssi))
 		return;
 	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
-	chan_state->meas.rssi_valid_count++;
 }
 
 /*! Process a single clock tick of the MS power control loop.
