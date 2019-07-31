@@ -232,6 +232,9 @@ void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 					.lchan[l1sap_chan2ss(chan_nr)];
 	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
+	if (lchan->ms_power_ctrl.fixed)
+	        return;
+
 	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_clock(lchan, chan_state);
 
