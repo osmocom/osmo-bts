@@ -1236,15 +1236,18 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			"Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		bfi_flag = true;
-		goto bfi;
-	}
-	if (rc < 4) {
+	} else if (rc < 4) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
 			"Received bad data (%u/%u) with invalid codec mode %d\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
 		bfi_flag = true;
-		goto bfi;
 	}
+
+	if (rc != GSM_MACBLOCK_LEN && lchan->ecu_state)
+		osmo_ecu_frame_in(lchan->ecu_state, bfi_flag, tch_data, rc);
+
+	if (bfi_flag)
+		goto bfi;
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
@@ -1260,21 +1263,22 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
+			if (lchan->tch.dtx.ul_sid) {
+				/* DTXu: pause in progress. Push empty payload to upper layers */
+				rc = 0;
+				goto compose_l1sap;
+			}
+
+			/* If there is an ECU active on this channel, use its output */
+			if (lchan->ecu_state) {
+				rc = osmo_ecu_frame_out(lchan->ecu_state, tch_data);
+				goto compose_l1sap;
+			}
+
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* FR */
-				if (lchan->tch.dtx.ul_sid) {
-					/* DTXu: pause in progress. Push empty payload to upper layers */
-					rc = 0;
-					goto compose_l1sap;
-				}
-
-				/* Perform error concealment if possible */
-				rc = osmo_ecu_fr_conceal(&lchan->ecu_state.fr, tch_data);
-				if (rc) {
-					memset(tch_data, 0, GSM_FR_BYTES);
-					tch_data[0] = 0xd0;
-				}
-
+				memset(tch_data, 0, GSM_FR_BYTES);
+				tch_data[0] = 0xd0;
 				rc = GSM_FR_BYTES;
 				break;
 			case GSM48_CMODE_SPEECH_EFR: /* EFR */
@@ -1306,10 +1310,6 @@ bfi:
 	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
 		return 0;
 
-	/* Reset ECU with a good frame */
-	if (!bfi_flag && tch_mode == GSM48_CMODE_SPEECH_V1)
-		osmo_ecu_fr_reset(&lchan->ecu_state.fr, tch_data);
-
 	/* TCH or BFI */
 compose_l1sap:
 	return _sched_compose_tch_ind(l1t, bi->tn,
@@ -1332,6 +1332,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
 	int n_errors, n_bits_total;
+	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 	/* Note on FN-10: If we are at FN 10, we decoded an even aligned
@@ -1444,14 +1445,19 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
 			"Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
-		goto bfi;
-	}
-	if (rc < 4) {
+		bfi_flag = true;
+	} else if (rc < 4) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
 			"Received bad data (%u/%u) with invalid codec mode %d\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
-		goto bfi;
+		bfi_flag = true;
 	}
+
+	if (rc != GSM_MACBLOCK_LEN && lchan->ecu_state)
+		osmo_ecu_frame_in(lchan->ecu_state, bfi_flag, tch_data, rc);
+
+	if (bfi_flag)
+		goto bfi;
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
@@ -1470,13 +1476,20 @@ bfi:
 		 * so we actually need to send two bad frame indications! */
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
+			if (lchan->tch.dtx.ul_sid) {
+				/* DTXu: pause in progress. Push empty payload to upper layers */
+				rc = 0;
+				goto compose_l1sap;
+			}
+
+			/* If there is an ECU active on this channel, use its output */
+			if (lchan->ecu_state) {
+				rc = osmo_ecu_frame_out(lchan->ecu_state, tch_data);
+				goto compose_l1sap;
+			}
+
 			switch (tch_mode) {
 			case GSM48_CMODE_SPEECH_V1: /* HR */
-				if (lchan->tch.dtx.ul_sid) {
-					/* DTXu: pause in progress. Push empty payload to upper layers */
-					rc = 0;
-					goto compose_l1sap;
-				}
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
 				rc = 15;

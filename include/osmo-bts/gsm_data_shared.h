@@ -329,9 +329,7 @@ struct gsm_lchan {
 	struct msgb *pending_rel_ind_msg;
 
 	/* ECU (Error Concealment Unit) state */
-	union {
-		struct osmo_ecu_fr_state fr;
-	} ecu_state;
+	struct osmo_ecu_state *ecu_state;
 };
 
 static inline uint8_t lchan_get_ta(const struct gsm_lchan *lchan)
@@ -878,5 +876,7 @@ enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts);
 uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
 bool ts_is_tch(struct gsm_bts_trx_ts *ts);
 const char *gsm_trx_unit_id(struct gsm_bts_trx *trx);
+
+int lchan2ecu_codec(const struct gsm_lchan *lchan);
 
 #endif

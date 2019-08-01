@@ -31,6 +31,7 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/statistics.h>
+#include <osmocom/codec/ecu.h>
 
 #include <osmo-bts/gsm_data.h>
 
@@ -807,3 +808,24 @@ const struct value_string lchan_ciph_state_names[] = {
 	{ LCHAN_CIPH_RXTX_CONF,	"RXTX_CONF" },
 	{ 0, NULL }
 };
+
+/* determine the ECU codec constant for the codec used by given lchan */
+int lchan2ecu_codec(const struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		if (ts_pchan(ts) == GSM_PCHAN_TCH_H)
+			return OSMO_ECU_CODEC_HR;
+		else
+			return OSMO_ECU_CODEC_FR;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		return OSMO_ECU_CODEC_EFR;
+	case GSM48_CMODE_SPEECH_AMR:
+		return OSMO_ECU_CODEC_AMR;
+	default:
+		return -1;
+	}
+}

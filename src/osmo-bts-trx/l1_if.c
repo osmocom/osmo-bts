@@ -29,6 +29,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/codec/ecu.h>
 #include <osmocom/gsm/abis_nm.h>
 
 #include <osmo-bts/logging.h>
@@ -626,6 +627,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					break;
 				}
 
+				/* attempt to allocate an Error Concealment Unit instance, if available */
+				lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
+
 				/* trx_chan_desc[] in scheduler.c uses the RSL_CHAN_OSMO_PDCH cbits
 				 * (0xc0) to indicate the need for PDTCH and PTCCH SAPI activation.
 				 * However, 0xc0 is a cbits pattern exclusively used for Osmocom style
@@ -671,6 +675,10 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
+				/* ECU for possibly new codec */
+				if (lchan->ecu_state)
+					osmo_ecu_destroy(lchan->ecu_state);
+				lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
 				/* change mode */
 				trx_sched_set_mode(&l1h->l1s, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
@@ -688,6 +696,11 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
 					"chan_nr 0x%02x\n", chan_nr);
 				break;
+			}
+			/* clear ECU state (if any) */
+			if (lchan->ecu_state) {
+				osmo_ecu_destroy(lchan->ecu_state);
+				lchan->ecu_state = NULL;
 			}
 			/* deactivate associated channel */
 			bts_model_lchan_deactivate_sacch(lchan);
