@@ -301,7 +301,7 @@ int main(int argc, char **argv)
 		exit(2);
 
 	lc15bts_mgr_vty_init();
-	logging_vty_add_cmds(&mgr_log_info);
+	logging_vty_add_cmds();
 	rc = lc15bts_mgr_parse_config(&manager);
 	if (rc < 0) {
 		LOGP(DFIND, LOGL_FATAL, "Cannot parse config file\n");

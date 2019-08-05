@@ -1600,7 +1600,7 @@ DEFUN(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
-int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
+int bts_vty_init(struct gsm_bts *bts)
 {
 	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
 						"gsmtap-sapi (",
@@ -1622,7 +1622,7 @@ int bts_vty_init(struct gsm_bts *bts, const struct log_info *cat)
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
 
-	logging_vty_add_cmds(cat);
+	logging_vty_add_cmds();
 	osmo_talloc_vty_add_cmds();
 	osmo_stats_vty_add_cmds();
 

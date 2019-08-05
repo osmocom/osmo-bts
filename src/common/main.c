@@ -249,7 +249,7 @@ int bts_main(int argc, char **argv)
 	}
 
 	e1inp_vty_init();
-	bts_vty_init(bts, &bts_log_info);
+	bts_vty_init(bts);
 
 	/* enable realtime priority for us */
 	if (rt_prio != -1) {
