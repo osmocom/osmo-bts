@@ -1,3 +1,190 @@
+osmo-bts (1.1.0) unstable; urgency=medium
+
+  [ Daniel Willmann ]
+  * Rename oc2g config file to match new naming scheme
+  * dump_docs: Use new config file naming scheme
+  * systemd: Install OC2G service files with autotools
+  * doc/examples: Install OC2G config files with autotools
+  * osmo-bts-oc2g: Fix status LED responsibilities
+  * osmo-bts-lc15: Change LED behaviour to be the same as oc2g
+  * manuals: Add script to regenerate counter/vty documentation
+  * manuals: Add counter documentation
+  * manuals: Update vty documentation
+
+  [ Harald Welte ]
+  * Bump version: 0.8.1.199-5c93-dirty → 1.0.0
+  * scheduler_trx: Fix erroneous multiply-by-four
+  * OML: some more comments on what functions do
+  * OML: Return attributes in ACK/NACK messages
+  * OML: Ensure MOs are initialized with valid "Administrative State'
+  * OML: Don't overwrite MO instance before oml_tx_failure_event_rep()
+  * OML: remove double-logging on oml_tx_failure_event_rep()
+  * OML: send proper OML alerts in case of errors
+  * OML: Reduce code duplication in down_mom/down_fom
+  * OML: Report short messages even for invalid TRX numbers in down_fom()
+  * OML: Use 'const struct abis_oml_mo *' whenever users only read
+  * OML: Reject segmented OML messages
+  * OML: Properly reject short messages and truncate over-long messages
+  * OML: Work around OsmoBSC sending "GET ATTRIBUTES" with short length
+  * OML: Store merged attributes of IPA OML Managed Objects
+  * OML: Don't advertise baseband transceiver as UNLOCKED at startup
+  * OC-2G: Nominal transmit power is 25 dBm, not 40
+  * rsl.c: Add missing #include of gsm0808.h
+  * Forward GPRS SUSPEND REQ from DCCH to PCU socket
+  * handle NULL return from rate_ctr_group_alloc()
+  * rsl: Send RSL Error Report in case of unknown/unsupported msg_type
+  * rsl: Include Channel Nr and Link ID in Error reports whenever possible
+  * RSL: Reject RLL messages for lchans that are not active yet
+  * RSL: Fix off-by-one error when parsing SACCH INFO IE in RSL CHAN ACT
+  * cbch: Implement handling of "Schedule" message
+  * cbch: Refactor get_smscb_block() / remove smscb_msg.next_seg
+  * cbch: Log every RSL SMSCB COMMAND with type and number of blocks
+  * cbch: Implement support for DEFAULT message
+  * cbch: Fix memory leak and send error message on invalid SMSCB command
+  * cbch: Support Extended CBCH
+  * cbch: Keep SMSCB queue length counter
+  * manual: We now support RSL CBCH LOAD INDICATION
+  * manual: SMSCB BROADCAST COMMAND has no limitations anymore
+  * README.md: Mention LimeSDR as SDR device
+  * sysmo: Fix "nominal power" / BS power display in VTY
+  * cbch: Add counters; queue length limits and CBCH LOAD reporting
+  * cbch: Improve verbosity and extend logging; Always indicate BASIC/EXTD CBCH
+  * Use LOGPLCHAN whenever possible
+  * rsl.adoc: DELETE INDICATION is implemented since Feb '18
+  * RSL: Fix logic about fixed/dynamic MS power control in MS POWER COMMAND
+  * rsl: Implement parsing of BS Power Control message
+  * rsl: MS POWER COCNTROL isn't (only) about "forcing" power levels
+  * load_indication: Fix missing re-set of RACH parameters
+  * l1sap: Correctly count RACH slots in calc_exprd_rach_frames()
+  * l1sap: Fix calculation of expired RACH slots in case of missing frame numbers
+  * oml: Print more context from FOM Header or using MO
+  * oml: Have one generic log message for all transmitted messages
+  * Add severity to OML FAILURE EVENT REPORT
+  * Fix passing of RR SUSPEND REQ from DCCH to PCU socket
+  * clear GPRS indicator in SI3 while PCU is disconnected
+  * trx: Update documentation for fn-advance and rts-advance
+  * l1sap: Compute statistics on FN advance in PH-RTS.ind
+  * [correctly] use the LAPDm T200 values received via OML
+  * Update T200 timer default values
+  * lapdm: Use new libosmocore API to ensure per-channel-type N200 values
+  * sysmo/l1_if.c: Annotate fall-through in switch statement
+  * osmo-bts-trx: Don't increment rssi_valid_count twice
+  * osmo-bts-trx: Don't attemtp to adjust MS power if fixed
+  * scheduler_trx: Handle negative return of gsm0503_tch_hr_decode()
+
+  [ Vadim Yanitskiy ]
+  * common/vty.c: fix 'cfg_phy_no_inst_cmd' command description
+  * common/oml.c: fix: properly push abis_nm_ipa_magic
+  * common/pcu_sock.c: fix possible memleaks in pcu_sock_read()
+  * common/oml.c: constify argument 'trx' of handle_attrs_trx()
+  * common/oml.c: use proper NACK reason in oml_tx_attr_resp()
+  * common/oml.c: use proper OML object for Get Attribute Response
+  * common/oml.c: fix total length calculation in cleanup_attr_msg()
+  * common/l1sap.c: fix: add missing new line to a debug message
+  * common/rsl.c: fix size argument in memcmp() call
+  * common/rsl.c: fix unaligned pointers in rsl_add_rtp_stats()
+  * common/paging.c: fix unaligned pointer access
+  * common/oml.c: introduce and use both LOGPFOH and DEBUGPFOH
+  * common/oml.c: use proper format specifier for uint16_t
+  * common/oml.c: fix broken debug print in down_mom()
+  * common/oml.c: refactor Get Attribute Response message generation
+  * common/oml.c: fix: properly encode NM_ATT_SW_CONFIG
+  * osmo-bts-trx: distinguish 11-bit Access Bursts by synch. sequence
+  * osmo-bts-sysmo: fix: indicate BTS_FEAT_CBCH support on OML
+  * README.md: remove OS#1865 from 'Known limitations'
+  * common/rsl.c: fix NULL-pointer dereference in rsl_rx_rll()
+  * osmo-bts-trx/trx_if.c: dropping Tx bursts is a noticeable event
+  * osmo-bts-trx/l1_if.h: drop unused ho_rach_detect from trx_l1h
+  * osmo-bts/scheduler.h: cosmetic: use bool for ho_rach_detect
+  * common/rsl.c: RSL_IE_HANDO_REF is mandatory for handover CHAN ACT
+  * common/bts.c: bts_supports_cm(): take care about GSM48_CMODE_SIGN
+  * Use #define RSL_CHAN_RACH for RSL Channel Number of RACH
+  * common/scheduler.c: refactor description of TRXC_* lchans
+  * osmo-bts-trx/trx_if.c: use osmo_loadXXbe() for TDMA FN and ToA256
+  * osmo-bts-trx/trx_if.c: rename and clarify TRX_MAX_BURST_LEN
+  * osmo-bts-trx/trx_if.c: introduce TRXD header version handling
+  * osmo-bts-trx/trx_if.c: introduce TRXD header version 0x01 support
+  * osmo-bts-trx/trx_if.c: drop RSSI / ToA debugging code
+  * osmo-bts-trx/trx_if.c: properly describe TRXD messages in logs
+  * osmo-bts-trx/trx_if.c: add TRXD header version negotiation
+  * osmo-bts-trx/trx_if.c: encode actual TRXD header version
+  * osmo-bts-trx/scheduler: pass trx_ul_burst_ind to lchan handlers
+  * osmo-bts/scheduler: provide actual C/I values to OsmoPCU
+  * osmo-bts-trx/scheduler: rx_rach_fn(): use optional TSC info from TRX
+  * osmo-bts-trx/scheduler: rx_rach_fn(): clarify handover RACH handling
+  * osmo-bts-trx/scheduler: rx_rach_fn(): enrich debug message
+  * common/rsl.c: fix: properly handle SI3 Rest Octets
+  * Clarify and refactor link quality (C/I) handling
+  * Move Access Burst link quality handling to L1SAP
+  * osmo-bts-trx/scheduler: rx_rach_fn(): provide actual C/I ratio to L1SAP
+  * osmo-bts-trx/scheduler: rx_data_fn(): provide actual C/I ratio to L1SAP
+
+  [ Max ]
+  * osmo-bts-trx: add extended (11-bit) RACH support
+  * Log lchan kind on PCU-related error
+  * Enable statsd support
+  * Make gsm_pchan2chan_nr() static
+  * Constify pcu_rx_*() parameters
+
+  [ Philipp Maier ]
+  * scheduler_trx: use stored fn for pdtch data indications
+  * oc2g: remove unused define constant FACTORY_ROM_PATH
+  * lc15: remove unused define constant FACTORY_ROM_PATH
+  * oml: make oml_tx_failure_event_rep() public
+  * oc2gbts_mgr_vty: remove calls to vty_install_default()
+  * oc2g: l1if: delay trx initialization to avoid race condition
+  * oc2gbts_mgr: use msgb_talloc_ctx_init() instead of msgb_set_talloc_ctx()
+  * oc2g: generate failure event report in case of bad calibration
+  * oc2g: change log level for calibration file errors to FATAL
+  * vty: add function gsmnet_from_vty() to vty.h
+  * main: remove wrong call to oml_fail_rep() on SIGUSR1/2 and SIGABRT
+  * oml: use oml_tx_failure_event_rep() instead of oml_fail_rep()
+  * oml: use oml_tx_failure_event_rep() instead of signals to SS_FAIL
+  * l1_if: add include for missing header file
+  * oc2gbts_mgr_calib: don't use fsync() on *FILE pointer
+  * oc2gbts_mgr_calib: do not return NULL on integer function
+  * oc2gbts_mgr: use osmo_init_logging2() instead of osmo_init_logging()
+  * pcu_sock: use %zu conversion specifier for printing sizeof() result
+
+  [ Pau Espin Pedrol ]
+  * oc2g: Fix compilation error (comment mark inside comment)
+  * oc2g: Add get_hwversion_desc to header file
+  * oc2g: Cleanup of get_hwversion_desc
+  * oc2g: led_sleep_cb: pass correct ptr to llist_move_tail
+  * oc2g: fsync requires fd instead of file stream
+  * oc2g: Remove unused variables
+  * oc2g: Remove unused static function
+  * oc2g: vty: Compilation error fixes due to commented code
+  * contrib: Remove deprecated screen script helpers
+  * bts-trx: trx_if.c: Introduce logging macro LOGPPHI
+  * gsm_data_shared.h: Remove unused loc_list from struct gsm_bts
+  * bts: Bypass T200 DCCH values for CCCH
+  * bts-trx: Introduce VTY command osmotrx trxd-max-version
+  * trx: Use LOGPPHI instead of LOGP in some more messages
+  * Remove undefined param passed to {logging,osmo_stats}_vty_add_cmds
+  * configure.ac: Require libosmocore 1.2.0
+
+  [ Alexander Huemer ]
+  * Remove 11-bit RACH support from 'Known Limitations'
+
+  [ Oliver Smith ]
+  * debian: create -doc subpackage with pdf manuals
+  * Revert "debian: create -doc subpackage with pdf manuals"
+  * debian: create -doc subpackage with pdf manuals
+  * contrib/jenkins.sh: run "make maintainer-clean"
+
+  [ Neels Hofmeyr ]
+  * lc15,sysmo,oc2g: fix dsp-trace-flag command
+
+  [ Eric Wild ]
+  * revert changes to T200
+  * RSL: Fix fixed MS power control in RSL CHAN ACTIV
+
+  [ Thorsten Alteholz ]
+  * fix spelling stuff mentioned by lintian
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 07 Aug 2019 15:59:02 +0200
+
 osmo-bts (1.0.0) unstable; urgency=medium
 
   [ Stefan Sperling ]
