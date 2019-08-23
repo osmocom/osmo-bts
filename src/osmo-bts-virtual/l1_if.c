@@ -124,6 +124,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		/* we don't really know which RACH burst type the virtual MS is using, as this field is not
 		 * part of information present in the GSMTAP header.  So we simply report all of them as 0 */
 		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
+		l1sap.u.rach_ind.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
 		break;
 	case GSMTAP_CHANNEL_TCH_F:
 	case GSMTAP_CHANNEL_TCH_H:
