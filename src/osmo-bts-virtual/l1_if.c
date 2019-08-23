@@ -121,7 +121,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.rach_ind.acc_delay = 0; /* probably not used in virt um */
 		l1sap.u.rach_ind.is_11bit = 0;
 		l1sap.u.rach_ind.fn = fn;
-		/* we don't rally know which RACH bursrt type the virtual MS is using, as this field is not
+		/* we don't really know which RACH burst type the virtual MS is using, as this field is not
 		 * part of information present in the GSMTAP header.  So we simply report all of them as 0 */
 		l1sap.u.rach_ind.burst_type = GSM_L1_BURST_TYPE_ACCESS_0;
 		break;
