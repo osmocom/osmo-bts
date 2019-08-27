@@ -259,7 +259,7 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 						bts->si_buf[SYSINFO_TYPE_3];
 		osmo_plmn_from_bcd(si3->lai.digits, &net->plmn);
 		bts->location_area_code = ntohs(si3->lai.lac);
-		bts->cell_identity = si3->cell_identity;
+		bts->cell_identity = ntohs(si3->cell_identity);
 		avail_lai = 1;
 		break;
 	case S_NEW_NSE_ATTR:
