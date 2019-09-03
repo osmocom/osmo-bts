@@ -479,6 +479,7 @@ enum gsm_bts_features {
 	BTS_FEAT_SPEECH_F_EFR,
 	BTS_FEAT_SPEECH_F_AMR,
 	BTS_FEAT_SPEECH_H_AMR,
+	BTS_FEAT_ETWS_PN,
 	_NUM_BTS_FEAT
 };
 
@@ -717,6 +718,15 @@ struct gsm_bts {
 		uint64_t agch_msgs;
 		uint64_t pch_msgs;
 	} agch_queue;
+
+	struct {
+		uint8_t *prim_notif;	/* ETWS primary notification (NULL if none) */
+		ssize_t prim_notif_len;	/* Length of prim_notif; expected 56 bytes */
+		uint8_t page_size;
+		uint8_t num_pages;	/* total number of pages */
+		uint8_t next_page;	/* next page number to be sent */
+		bool pni;		/* Primary Notification Identifier */
+	} etws;
 
 	struct paging_state *paging_state;
 	char *bsc_oml_host;

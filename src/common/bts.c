@@ -192,6 +192,9 @@ int bts_init(struct gsm_bts *bts)
 	tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
 	osmo_rtp_init(tall_rtp_ctx);
 
+	/* features implemented in 'common', available for all models */
+	gsm_bts_set_feature(bts, BTS_FEAT_ETWS_PN);
+
 	rc = bts_model_init(bts);
 	if (rc < 0) {
 		llist_del(&bts->list);

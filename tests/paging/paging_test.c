@@ -42,6 +42,16 @@ static const uint8_t static_ilv[] = {
 		abort();			     \
 	}
 
+static bool is_padding(const uint8_t *in, size_t len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		if (in[i] != 0x2b)
+			return false;
+	}
+	return true;
+}
+
 static void test_paging_smoke(void)
 {
 	int rc;
@@ -61,7 +71,8 @@ static void test_paging_smoke(void)
 	g_time.t2 = 0;
 	g_time.t3 = 6;
 	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
-	ASSERT_TRUE(rc == 13);
+	ASSERT_TRUE(rc == 23);
+	ASSERT_TRUE(is_padding(out_buf+13, 23-13));
 	ASSERT_TRUE(is_empty == 0);
 
 	ASSERT_TRUE(paging_group_queue_empty(bts->paging_state, 0));
@@ -73,7 +84,8 @@ static void test_paging_smoke(void)
 	g_time.t2 = 0;
 	g_time.t3 = 6;
 	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
-	ASSERT_TRUE(rc == 6);
+	ASSERT_TRUE(rc == 23);
+	ASSERT_TRUE(is_padding(out_buf+6, 23-6));
 	ASSERT_TRUE(is_empty == 1);
 
 	/*
@@ -104,7 +116,8 @@ static void test_paging_sleep(void)
 	g_time.t2 = 0;
 	g_time.t3 = 6;
 	rc = paging_gen_msg(bts->paging_state, out_buf, &g_time, &is_empty);
-	ASSERT_TRUE(rc == 13);
+	ASSERT_TRUE(rc == 23);
+	ASSERT_TRUE(is_padding(out_buf+13, 23-13));
 	ASSERT_TRUE(is_empty == 0);
 
 	ASSERT_TRUE(paging_group_queue_empty(bts->paging_state, 0));

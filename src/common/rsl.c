@@ -522,6 +522,46 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	return 0;
 }
 
+/* OSMO_ETWS_CMD - proprietary extension as TS 48.058 has no standardized way to do this :( */
+static int rsl_rx_osmo_etws_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
+	struct gsm_bts *bts = trx->bts;
+	struct tlv_parsed tp;
+
+	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (!TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
+
+	bts->etws.prim_notif_len = TLVP_LEN(&tp, RSL_IE_SMSCB_MSG);
+	if (bts->etws.prim_notif_len == 0) {
+		LOGP(DRSL, LOGL_NOTICE, "ETWS Primary Notification OFF\n");
+		talloc_free(bts->etws.prim_notif);
+		bts->etws.prim_notif = NULL;
+		bts->etws.prim_notif_len = 0;
+		bts->etws.page_size = 0;
+		bts->etws.num_pages = 0;
+		bts->etws.next_page = 0;
+	} else {
+		LOGP(DRSL, LOGL_NOTICE, "ETWS Primary Notification: %s\n",
+		     osmo_hexdump(TLVP_VAL(&tp, RSL_IE_SMSCB_MSG),
+				  TLVP_LEN(&tp, RSL_IE_SMSCB_MSG)));
+		talloc_free(bts->etws.prim_notif);
+		bts->etws.prim_notif = talloc_memdup(bts, TLVP_VAL(&tp, RSL_IE_SMSCB_MSG),
+						     bts->etws.prim_notif_len);
+
+		bts->etws.page_size = 14; /* maximum possible in SI1 Rest Octets */
+		bts->etws.num_pages = bts->etws.prim_notif_len / bts->etws.page_size;
+		if (bts->etws.prim_notif_len % bts->etws.page_size)
+			bts->etws.num_pages++;
+
+		/* toggle the PNI to allow phones to distinguish new from old primary notification */
+		bts->etws.pni = !bts->etws.pni;
+	}
+	return 0;
+}
+
 /*! Prefix a given SACCH frame with a L2/LAPDm UI header and store it in given output buffer.
  *  \param[out] buf Output buffer, must be caller-allocated and hold at least len + 2 or sizeof(sysinfo_buf_t) bytes
  *  \param[out] valid pointer to bit-mask of 'valid' System information types
@@ -2950,6 +2990,9 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGPLCHAN(msg->lchan, DRSL, LOGL_NOTICE, "unimplemented RSL cchan msg_type %s\n",
 			  rsl_msg_name(cch->c.msg_type));
 		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &cch->chan_nr, NULL, msg);
+		break;
+	case RSL_MT_OSMO_ETWS_CMD:
+		ret = rsl_rx_osmo_etws_cmd(trx, msg);
 		break;
 	default:
 		LOGPLCHAN(msg->lchan, DRSL, LOGL_NOTICE, "undefined RSL cchan msg_type 0x%02x\n",

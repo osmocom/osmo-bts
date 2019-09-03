@@ -21,7 +21,7 @@
 
 /* TODO:
 	* eMLPP priprity
-	* add P1/P2/P3 rest octets
+	* add P2/P3 rest octets
  */
 
 #include <stdlib.h>
@@ -274,11 +274,86 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 
 #define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
 
+/* abstract representation of P1 rest octets; we only implement those parts we need for now */
+struct p1_rest_octets {
+	bool packet_page_ind[2];
+	bool r8_present;
+	struct {
+		bool prio_ul_access;
+		bool etws_present;
+		struct {
+			bool is_first;
+			uint8_t page_nr;
+			const uint8_t *page;
+			size_t page_bytes;
+		} etws;
+	} r8;
+};
+
+/* 3GPP TS 44.018 10.5.2.23 append a segment/page of an ETWS primary notification to given bitvec */
+static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t page_nr,
+				   const uint8_t *etws, ssize_t etws_len)
+{
+	OSMO_ASSERT(etws_len < 128/8);
+
+	/* ETWS primary Notification struct
+	 * 0 NNNN / 1 NNNN
+	 * PNI n
+	 * LEN nnnnnnn (at least 13 bits before paylod)
+	 * number of bits (LEN; up to 128) */
+
+	if (is_first)
+		bitvec_set_bit(bv, 0);
+	else
+		bitvec_set_bit(bv, 1);
+	bitvec_set_uint(bv, page_nr, 4); /* Segment Number / Total Number */
+	bitvec_set_bit(bv, 0); /* PNI to distinguish different ETWS */
+	bitvec_set_uint(bv, etws_len*8, 7); /* length of payload in number of bits */
+	bitvec_set_bytes(bv, etws, etws_len);
+
+	/* 17 bytes = 136bit - (11+13) = 112 bits = 14 bytes per PT1
+	 *  => at least 4x PT1 RO for complete primary notification (56 bytes) */
+}
+
+/* 3GPP TS 44.018 10.5.2.23 append P1 Rest Octets to given bit-vector */
+static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro)
+{
+	/* Paging 1 RO (at least 10 bits before ETWS struct) */
+	bitvec_set_bit(bv, L);		/* no NLN */
+	bitvec_set_bit(bv, L);		/* no Priority1 */
+	bitvec_set_bit(bv, L);		/* no Priority2 */
+	bitvec_set_bit(bv, L);		/* no Group Call Info */
+	if (p1ro->packet_page_ind[0])
+		bitvec_set_bit(bv, H);		/* Packet Page Indication 1 */
+	else
+		bitvec_set_bit(bv, L);		/* Packet Page Indication 1 */
+	if (p1ro->packet_page_ind[1])
+		bitvec_set_bit(bv, H);		/* Packet Page Indication 2 */
+	else
+		bitvec_set_bit(bv, L);		/* Packet Page Indication 2 */
+
+	bitvec_set_bit(bv, L);		/* No Release 6 additions */
+	bitvec_set_bit(bv, L);		/* No Release 7 additions */
+
+	if (p1ro->r8_present) {
+		bitvec_set_bit(bv, H);		/* Release 8 */
+		bitvec_set_bit(bv, p1ro->r8.prio_ul_access);	/* Priority Uplink Access */
+		if (p1ro->r8.etws_present) {
+			bitvec_set_bit(bv, 1);		/* ETWS present */
+			append_etws_prim_notif(bv, p1ro->r8.etws.is_first, p1ro->r8.etws.page_nr,
+					       p1ro->r8.etws.page, p1ro->r8.etws.page_bytes);
+		} else
+			bitvec_set_bit(bv, 0);
+	}
+}
+
 static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan1, const uint8_t *identity2_lv,
-				uint8_t chan2)
+				uint8_t chan2, const struct p1_rest_octets *p1ro)
 {
 	struct gsm48_paging1 *pt1 = (struct gsm48_paging1 *) out_buf;
+	struct bitvec bv;
+	unsigned int paging_len;
 	uint8_t *cur;
 
 	memset(out_buf, 0, sizeof(*pt1));
@@ -294,7 +369,19 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 
 	pt1->l2_plen = L2_PLEN(cur - out_buf);
 
-	return cur - out_buf;
+	paging_len = cur - out_buf;
+
+	memset(&bv, 0, sizeof(bv));
+	bv.data = cur;
+	bv.data_len = GSM_MACBLOCK_LEN - paging_len;
+
+	if (p1ro)
+		append_p1_rest_octets(&bv, p1ro);
+
+	/* pad to the end of the MAC block */
+	bitvec_spare_padding(&bv, bv.data_len *8);
+
+	return GSM_MACBLOCK_LEN;
 }
 
 static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
@@ -406,16 +493,43 @@ static void sort_pr_tmsi_imsi(struct paging_record *pr[], unsigned int n)
 	}
 }
 
+static void build_p1_rest_octets(struct p1_rest_octets *p1ro, struct gsm_bts *bts)
+{
+	memset(p1ro, 0, sizeof(*p1ro));
+	p1ro->packet_page_ind[0] = false;
+	p1ro->packet_page_ind[1] = false;
+	p1ro->r8_present = true;
+	p1ro->r8.prio_ul_access = false;
+	p1ro->r8.etws_present = true;
+	unsigned int offset = bts->etws.page_size * bts->etws.next_page;
+
+	if (bts->etws.next_page == 0) {
+		p1ro->r8.etws.is_first = true;
+		p1ro->r8.etws.page_nr = bts->etws.num_pages;
+	} else {
+		p1ro->r8.etws.is_first = false;
+		p1ro->r8.etws.page_nr = bts->etws.next_page + 1;
+	}
+	p1ro->r8.etws.page = bts->etws.prim_notif + offset;
+	/* last page may be smaller than first pages */
+	if (bts->etws.next_page < bts->etws.num_pages-1)
+		p1ro->r8.etws.page_bytes = bts->etws.page_size;
+	else
+		p1ro->r8.etws.page_bytes = bts->etws.prim_notif_len - offset;
+	bts->etws.next_page = (bts->etws.next_page + 1) % bts->etws.num_pages;
+}
+
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
 		   int *is_empty)
 {
 	struct llist_head *group_q;
+	struct gsm_bts *bts = ps->bts;
 	int group;
 	int len;
 
 	*is_empty = 0;
-	ps->bts->load.ccch.pch_total += 1;
+	bts->load.ccch.pch_total += 1;
 
 	group = get_pag_subch_nr(ps, gt);
 	if (group < 0) {
@@ -427,11 +541,15 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 
 	group_q = &ps->paging_queue[group];
 
-	/* There is nobody to be paged, send Type1 with two empty ID */
-	if (llist_empty(group_q)) {
+	if (ps->bts->etws.prim_notif) {
+		struct p1_rest_octets p1ro;
+		build_p1_rest_octets(&p1ro, bts);
+		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, &p1ro);
+	} else if (llist_empty(group_q)) {
+		/* There is nobody to be paged, send Type1 with two empty ID */
 		//DEBUGP(DPAG, "Tx PAGING TYPE 1 (empty)\n");
 		len = fill_paging_type_1(out_buf, empty_id_lv, 0,
-					 NULL, 0);
+					 NULL, 0, NULL);
 		*is_empty = 1;
 	} else {
 		struct paging_record *pr[4];
@@ -439,7 +557,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		time_t now = time(NULL);
 		unsigned int i, num_imsi = 0;
 
-		ps->bts->load.ccch.pch_used += 1;
+		bts->load.ccch.pch_used += 1;
 
 		/* get (if we have) up to four paging records */
 		for (i = 0; i < ARRAY_SIZE(pr); i++) {
@@ -509,7 +627,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			len = fill_paging_type_1(out_buf,
 						 pr[0]->u.paging.identity_lv,
 						 pr[0]->u.paging.chan_needed,
-						 NULL, 0);
+						 NULL, 0, NULL);
 		} else {
 			/* 2 (any type) or
 			 * 3 or 4, of which only 2 will be sent */
@@ -518,7 +636,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 						 pr[0]->u.paging.identity_lv,
 						 pr[0]->u.paging.chan_needed,
 						 pr[1]->u.paging.identity_lv,
-						 pr[1]->u.paging.chan_needed);
+						 pr[1]->u.paging.chan_needed, NULL);
 			if (num_pr >= 3) {
 				/* re-add #4 for next time */
 				llist_add(&pr[2]->list, group_q);
@@ -535,7 +653,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* skip those that we might have re-added above */
 			if (pr[i] == NULL)
 				continue;
-			rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_SENT);
+			rate_ctr_inc2(bts->ctrs, BTS_CTR_PAGING_SENT);
 			/* check if we can expire the paging record,
 			 * or if we need to re-queue it */
 			if (pr[i]->u.paging.expiration_time <= now) {

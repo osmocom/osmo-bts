@@ -106,6 +106,7 @@ const struct value_string gsm_bts_features_descs[] = {
 	{ BTS_FEAT_SPEECH_F_EFR,	"Fullrate speech EFR" },
 	{ BTS_FEAT_SPEECH_F_AMR,	"Fullrate speech AMR" },
 	{ BTS_FEAT_SPEECH_H_AMR,	"Halfrate speech AMR" },
+	{ BTS_FEAT_ETWS_PN,		"ETWS Primary Notification on PCH" },
 	{ 0, NULL }
 };
 
