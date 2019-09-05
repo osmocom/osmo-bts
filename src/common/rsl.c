@@ -558,6 +558,11 @@ static int rsl_rx_osmo_etws_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		/* toggle the PNI to allow phones to distinguish new from old primary notification */
 		bts->etws.pni = !bts->etws.pni;
+
+		/* forward the request to the PCU, so the PCU can send it over any active TBF
+		 * to phones which currently don't listen to the paging channel */
+		pcu_tx_app_info_req(bts, 0, TLVP_LEN(&tp, RSL_IE_SMSCB_MSG),
+				    TLVP_VAL(&tp, RSL_IE_SMSCB_MSG));
 	}
 	return 0;
 }

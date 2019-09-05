@@ -290,6 +290,27 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+int pcu_tx_app_info_req(struct gsm_bts *bts, uint8_t app_type, uint8_t len, const uint8_t *app_data)
+{
+	struct gsm_pcu_if_app_info_req *ai_req;
+	struct gsm_pcu_if *pcu_prim;
+	struct msgb *msg;
+
+	if (app_type & 0xF0 || len > sizeof(ai_req->data))
+		return -EINVAL;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_APP_INFO_REQ, bts->nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	ai_req = &pcu_prim->u.app_info_req;
+
+	ai_req->application_type = app_type;
+	ai_req->len = len;
+	memcpy(ai_req->data, app_data, ai_req->len);
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
 
 int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr)

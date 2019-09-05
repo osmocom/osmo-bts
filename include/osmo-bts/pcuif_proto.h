@@ -13,6 +13,7 @@
 #define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */
 #define PCU_IF_MSG_SUSP_REQ	0x03	/* BTS forwards GPRS SUSP REQ to PCU */
+#define PCU_IF_MSG_APP_INFO_REQ	0x04	/* BTS asks PCU to tranmit APP INFO via PACCH */
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
 #define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (with direct tlli) */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
@@ -172,6 +173,13 @@ struct gsm_pcu_if_pag_req {
 	uint8_t		identity_lv[9];
 } __attribute__ ((packed));
 
+/* BTS tells PCU to [once] send given application data via PACCH to all UE with active TBF */
+struct gsm_pcu_if_app_info_req {
+	uint8_t		application_type; /* 4bit field, see TS 44.060 11.2.47 */
+	uint8_t		len;		  /* length of data */
+	uint8_t		data[162];	  /* random size choice; ETWS needs 56 bytes */
+} __attribute__ ((packed));
+
 /* BTS tells PCU about a GPRS SUSPENSION REQUEST received on DCCH */
 struct gsm_pcu_if_susp_req {
 	uint32_t	tlli;
@@ -198,6 +206,7 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_act_req	act_req;
 		struct gsm_pcu_if_time_ind	time_ind;
 		struct gsm_pcu_if_pag_req	pag_req;
+		struct gsm_pcu_if_app_info_req	app_info_req;
 	} u;
 } __attribute__ ((packed));
 
