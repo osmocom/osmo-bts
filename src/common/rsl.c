@@ -1745,9 +1745,13 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 /* 8.5.8 CBCH Load Information */
 int rsl_tx_cbch_load_indication(struct gsm_bts *bts, bool ext_cbch, bool overflow, uint8_t amount)
 {
-	struct gsm_lchan *lchan = gsm_bts_get_cbch(bts);
+	struct gsm_lchan *lchan;
 	struct msgb *msg;
 	uint8_t load_info;
+
+	lchan = gsm_bts_get_cbch(bts);
+	if (!lchan)
+		return -ENODEV;
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_cchan_hdr));
 	if (!msg)
