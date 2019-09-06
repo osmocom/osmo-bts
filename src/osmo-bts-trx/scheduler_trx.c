@@ -1466,6 +1466,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			0 /* FIXME: AVG C/I */,
 			ber10k, PRES_INFO_UNKNOWN);
 bfi:
+		/* FIXME: a FACCH/H frame replaces two speech frames,
+		 * so we actually need to send two bad frame indications! */
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
 			switch (tch_mode) {
