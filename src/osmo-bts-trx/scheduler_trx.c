@@ -389,7 +389,6 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 				return;
 			}
 			memset(tch_data + 2, 0, len - 2);
-			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len);
 			break;
 		default:
 inval_mode1:
