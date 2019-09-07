@@ -81,6 +81,8 @@ Specific additions and limitations apply, see the linked sections.
 .3+.| <<pdch_deact>> | <<rsl_pdch_deact>> | RSL PDCH Deactivation | <- | Received
                    | <<rsl_pdch_deact_ack>> | RSL PDCH Deactivation ACK | -> | Sent
                    | <<rsl_pdch_deact_nack>> | RSL PDCH Deactivation NACK | -> | Sent
+5+<| *COMMON CHANNEL MANAGEMENT MESSAGES*
+.3+.| <<etws>> | <<OSMO_ETWS_CMD>> | Osmocom ETWS Command | <- | Received
 |===
 
 ==== Messages Not Implemented by OsmoBTS
@@ -455,6 +457,25 @@ include::dyn_ts_osmocom_style1.msc[]
 include::dyn_ts_osmocom_style2.msc[]
 ----
 
+[[etws]]
+=== ETWS (Earthquake and Tsunami Warning System)
+
+ETWS as specified in 3GPP TS 23.041 includes not only notification via
+SMSCB, but also so-called Primary Notifications (PN).  The ETWS PN are
+transmitted
+
+ * by the BSC to all subscribers with active dedicated channels
+ * by the BTS on the PCH to all subscribers in idle mode
+ * by the PCU on the PACCH to all subscribers with active TBF
+
+Unfortunately, 3GPP forgot to update their specifications with any
+information as to how the ETWS PN is transmitted from BSC to BTS in
+a portable way, and Osmocom had to invent their own non-standard
+signaling for it.
+
+See <<OSMO_ETWS_CMD>> for the Osmocom implementation.
+
+
 === Message Formats and Contents
 
 [[rsl_crcx_msg]]
@@ -754,6 +775,32 @@ on a IPA style dynamic TCH/F+PDCH channel.
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
 
+[[OSMO_ETWS_CMD]]
+==== Osmocom ETWS Command
+
+This message is sent by the BSC to transfer the ETWS Primary Notification (PN)
+from BSC to BTS and enable/disable transmission of ETWS PN by the BTS.  For more
+information about ETWS, see 3GPP TS 23.041.
+
+If the ETWS PN length is > 0, the BTS will immediately start transmission
+of the received ETWS PN on the PCH using P1 Rest Octets.  It will also forward
+he ETWS PN to the PCU to enable the PCU to transmit it via PACCH on active TBF.
+
+If the ETWS PN length is 0, the BTS will stop any ETWS PN broadcast via the PCH.
+
+The Channel Number IE is set to the Downlink CCCH (PCH).
+
+[options="header"]
+[cols="30%,25%,15%,15%,15%"]
+|===
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
+| Message discriminator | 08.58 9.1 | M | V | 1
+| Message type | <<own_msg_types>> | M | V | 1
+| Channel number | 08.58 9.3.1 | M | TV | 2
+| SMSCB Message | 08.58 9.3.42 | M | TLV | 2-58
+|===
+
+
 === Information Element Codings
 
 [[own_msg_types]]
@@ -776,6 +823,7 @@ indicated in 3GPP TS 08.58 Section 9.1:
 | 0x77 | Delete Connection (DLCX) | <<rsl_dlcx_msg>>
 | 0x78 | Delete Connection (DLCX) ACK | <<rsl_dlcx_msg_ack>>
 | 0x79 | Delete Connection (DLCX) NACK | <<rsl_dlcx_msg_nack>>
+| 0x7f | Osmocom ETWS Command | <<OSMO_ETWS_CMD>>
 | 0x48 | PDCH Activate | <<rsl_pdch_act>>
 | 0x49 | PDCH Activate ACK | <<rsl_pdch_act_ack>>
 | 0x4a | PDCH Activate NACK | <<rsl_pdch_act_nack>>
