@@ -1272,7 +1272,8 @@ bfi:
 			/* If there is an ECU active on this channel, use its output */
 			if (lchan->ecu_state) {
 				rc = osmo_ecu_frame_out(lchan->ecu_state, tch_data);
-				goto compose_l1sap;
+				if (rc >= 0) /* Otherwise we send a BFI */
+					goto compose_l1sap;
 			}
 
 			switch (tch_mode) {
@@ -1485,7 +1486,8 @@ bfi:
 			/* If there is an ECU active on this channel, use its output */
 			if (lchan->ecu_state) {
 				rc = osmo_ecu_frame_out(lchan->ecu_state, tch_data);
-				goto compose_l1sap;
+				if (rc >= 0) /* Otherwise we send a BFI */
+					goto compose_l1sap;
 			}
 
 			switch (tch_mode) {
