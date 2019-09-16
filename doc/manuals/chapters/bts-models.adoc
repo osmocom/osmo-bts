@@ -282,11 +282,11 @@ The value specified as `rts-advance` is added to the current GSM frame
 number as reported by OsmoTRX *and* the `osmotrx fn-advance` in order
 to generate the PH-RTS.ind (ready to send indications) across the L1SAP
 interface inside osmo-bts.  This will trigger the Layer 2 (LAPDm for
-the ocntrol plane, RTP for the voice plane, and OsmoPCU for GPRS) to
+the control plane, RTP for the voice plane, and OsmoPCU for GPRS) to
 generate a MAC block and input it into the osmo-bts-trx TDMA scheduler.
 
 If OsmoTRX reported N as the current frame number, the actual frame number
-reported on L1SAP to higher layes will be computed as follows:
+reported on L1SAP to higher layers will be computed as follows:
 
   N + fn-advance + rts-advance
 
