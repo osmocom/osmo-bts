@@ -1007,7 +1007,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	 * TDMA frames, and properly drive scheduler if nothing has been
 	 * detected on non-IDLE channels. */
 	if (bi.flags & TRX_BI_F_NOPE_IND) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
 			"IDLE / NOPE indications are not (yet) supported\n");
 		return -ENOTSUP;
 	}
