@@ -938,6 +938,47 @@ static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t 
 	return 0;
 }
 
+/* octv1_gsm_api.h does not have an end marker for CTVC1_GSM_SAPI_ENUM */
+#define _OCTVC1_GSM_SAPI_ENUM_LENGTH (cOCTVC1_GSM_SAPI_ENUM_PRACH + 1)
+
+static const enum l1sap_common_sapi common_sapi_by_oct_sapi[] = {
+	[cOCTVC1_GSM_SAPI_ENUM_IDLE]		= L1SAP_COMMON_SAPI_IDLE,
+	[cOCTVC1_GSM_SAPI_ENUM_FCCH]		= L1SAP_COMMON_SAPI_FCCH,
+	[cOCTVC1_GSM_SAPI_ENUM_SCH]		= L1SAP_COMMON_SAPI_SCH,
+	[cOCTVC1_GSM_SAPI_ENUM_SACCH]		= L1SAP_COMMON_SAPI_SACCH,
+	[cOCTVC1_GSM_SAPI_ENUM_SDCCH]		= L1SAP_COMMON_SAPI_SDCCH,
+	[cOCTVC1_GSM_SAPI_ENUM_BCCH]		= L1SAP_COMMON_SAPI_BCCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PCH_AGCH]	= L1SAP_COMMON_SAPI_PCH,
+	[cOCTVC1_GSM_SAPI_ENUM_CBCH]		= L1SAP_COMMON_SAPI_CBCH,
+	[cOCTVC1_GSM_SAPI_ENUM_RACH]		= L1SAP_COMMON_SAPI_RACH,
+	[cOCTVC1_GSM_SAPI_ENUM_TCHF]		= L1SAP_COMMON_SAPI_TCH_F,
+	[cOCTVC1_GSM_SAPI_ENUM_FACCHF]		= L1SAP_COMMON_SAPI_FACCH_F,
+	[cOCTVC1_GSM_SAPI_ENUM_TCHH]		= L1SAP_COMMON_SAPI_TCH_H,
+	[cOCTVC1_GSM_SAPI_ENUM_FACCHH]		= L1SAP_COMMON_SAPI_FACCH_H,
+	[cOCTVC1_GSM_SAPI_ENUM_NCH]		= L1SAP_COMMON_SAPI_NCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PDTCH]		= L1SAP_COMMON_SAPI_PDTCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PACCH]		= L1SAP_COMMON_SAPI_PACCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PBCCH]		= L1SAP_COMMON_SAPI_PBCCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PAGCH]		= L1SAP_COMMON_SAPI_PAGCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PPCH]		= L1SAP_COMMON_SAPI_PPCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PNCH]		= L1SAP_COMMON_SAPI_PNCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PTCCH]		= L1SAP_COMMON_SAPI_PTCCH,
+	[cOCTVC1_GSM_SAPI_ENUM_PRACH]		= L1SAP_COMMON_SAPI_PRACH,
+};
+
+static enum l1sap_common_sapi get_common_sapi(tOCT_UINT8 sapi)
+{
+	if (sapi >= _OCTVC1_GSM_SAPI_ENUM_LENGTH)
+		return L1SAP_COMMON_SAPI_UNKNOWN;
+	return common_sapi_by_oct_sapi[sapi];
+}
+
+static void set_log_ctx_sapi(tOCT_UINT8 sapi)
+{
+	l1sap_log_ctx_sapi = get_common_sapi(sapi);
+	log_set_context(LOG_CTX_L1_SAPI, &l1sap_log_ctx_sapi);
+}
+
 static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 	tOCTVC1_GSM_MSG_TRX_LOGICAL_CHANNEL_READY_TO_SEND_INDICATION_EVT *evt,
 	struct msgb *l1p_msg)
@@ -954,6 +995,8 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 
 	struct msgb *resp_msg;
 	tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *data_req;
+
+	set_log_ctx_sapi(evt->LchId.bySAPI);
 
 	/* Retrive the data */
 	fn = evt->ulFrameNumber;
@@ -1079,6 +1122,8 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	uint8_t ts_num = (uint8_t) data_ind->LchId.byTimeslotNb;
 	uint8_t sc = (uint8_t) data_ind->LchId.bySubChannelNb;
 
+	set_log_ctx_sapi(data_ind->LchId.bySAPI);
+
 	/* Need to combine two 16bit MSB and LSB to form 32bit FN */
 	fn = data_ind->Data.ulFrameNumber;
 
@@ -1170,6 +1215,8 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;
+
+	set_log_ctx_sapi(ra_ind->LchId.bySAPI);
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->MeasurementInfo);
 

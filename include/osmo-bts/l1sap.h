@@ -96,6 +96,37 @@ int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr);
 
+enum l1sap_common_sapi {
+	L1SAP_COMMON_SAPI_UNKNOWN,
+	/* alphabetic order */
+	L1SAP_COMMON_SAPI_AGCH,
+	L1SAP_COMMON_SAPI_BCCH,
+	L1SAP_COMMON_SAPI_CBCH,
+	L1SAP_COMMON_SAPI_FACCH_F,
+	L1SAP_COMMON_SAPI_FACCH_H,
+	L1SAP_COMMON_SAPI_FCCH,
+	L1SAP_COMMON_SAPI_IDLE,
+	L1SAP_COMMON_SAPI_NCH,
+	L1SAP_COMMON_SAPI_PACCH,
+	L1SAP_COMMON_SAPI_PAGCH,
+	L1SAP_COMMON_SAPI_PBCCH,
+	L1SAP_COMMON_SAPI_PCH,
+	L1SAP_COMMON_SAPI_PDTCH,
+	L1SAP_COMMON_SAPI_PNCH,
+	L1SAP_COMMON_SAPI_PPCH,
+	L1SAP_COMMON_SAPI_PRACH,
+	L1SAP_COMMON_SAPI_PTCCH,
+	L1SAP_COMMON_SAPI_RACH,
+	L1SAP_COMMON_SAPI_SACCH,
+	L1SAP_COMMON_SAPI_SCH,
+	L1SAP_COMMON_SAPI_SDCCH,
+	L1SAP_COMMON_SAPI_TCH_F,
+	L1SAP_COMMON_SAPI_TCH_H,
+};
+
+extern uint16_t l1sap_log_ctx_sapi;
+extern const struct value_string l1sap_common_sapi_names[];
+
 extern const struct value_string gsmtap_sapi_names[];
 extern struct gsmtap_inst *gsmtap;
 extern uint32_t gsmtap_sapi_mask;

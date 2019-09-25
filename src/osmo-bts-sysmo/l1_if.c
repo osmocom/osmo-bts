@@ -796,6 +796,45 @@ static uint8_t chan_nr_by_sapi(struct gsm_bts_trx_ts *ts,
 	return (cbits << 3) | u8Tn;
 }
 
+static const enum l1sap_common_sapi common_sapi_by_sapi_t[] = {
+	[GsmL1_Sapi_Idle]	= L1SAP_COMMON_SAPI_IDLE,
+	[GsmL1_Sapi_Fcch]	= L1SAP_COMMON_SAPI_FCCH,
+	[GsmL1_Sapi_Sch]	= L1SAP_COMMON_SAPI_SCH,
+	[GsmL1_Sapi_Sacch]	= L1SAP_COMMON_SAPI_SACCH,
+	[GsmL1_Sapi_Sdcch]	= L1SAP_COMMON_SAPI_SDCCH,
+	[GsmL1_Sapi_Bcch]	= L1SAP_COMMON_SAPI_BCCH,
+	[GsmL1_Sapi_Pch]	= L1SAP_COMMON_SAPI_PCH,
+	[GsmL1_Sapi_Agch]	= L1SAP_COMMON_SAPI_AGCH,
+	[GsmL1_Sapi_Cbch]	= L1SAP_COMMON_SAPI_CBCH,
+	[GsmL1_Sapi_Rach]	= L1SAP_COMMON_SAPI_RACH,
+	[GsmL1_Sapi_TchF]	= L1SAP_COMMON_SAPI_TCH_F,
+	[GsmL1_Sapi_FacchF]	= L1SAP_COMMON_SAPI_FACCH_F,
+	[GsmL1_Sapi_TchH]	= L1SAP_COMMON_SAPI_TCH_H,
+	[GsmL1_Sapi_FacchH]	= L1SAP_COMMON_SAPI_FACCH_H,
+	[GsmL1_Sapi_Nch]	= L1SAP_COMMON_SAPI_NCH,
+	[GsmL1_Sapi_Pdtch]	= L1SAP_COMMON_SAPI_PDTCH,
+	[GsmL1_Sapi_Pacch]	= L1SAP_COMMON_SAPI_PACCH,
+	[GsmL1_Sapi_Pbcch]	= L1SAP_COMMON_SAPI_PBCCH,
+	[GsmL1_Sapi_Pagch]	= L1SAP_COMMON_SAPI_PAGCH,
+	[GsmL1_Sapi_Ppch]	= L1SAP_COMMON_SAPI_PPCH,
+	[GsmL1_Sapi_Pnch]	= L1SAP_COMMON_SAPI_PNCH,
+	[GsmL1_Sapi_Ptcch]	= L1SAP_COMMON_SAPI_PTCCH,
+	[GsmL1_Sapi_Prach]	= L1SAP_COMMON_SAPI_PRACH,
+};
+
+static enum l1sap_common_sapi get_common_sapi(GsmL1_Sapi_t sapi)
+{
+	if (sapi >= GsmL1_Sapi_NUM)
+		return L1SAP_COMMON_SAPI_UNKNOWN;
+	return common_sapi_by_sapi_t[sapi];
+}
+
+static void set_log_ctx_sapi(GsmL1_Sapi_t sapi)
+{
+	l1sap_log_ctx_sapi = get_common_sapi(sapi);
+	log_set_context(LOG_CTX_L1_SAPI, &l1sap_log_ctx_sapi);
+}
+
 static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 				     GsmL1_PhReadyToSendInd_t *rts_ind,
 				     struct msgb *l1p_msg)
@@ -811,6 +850,8 @@ static int handle_ph_readytosend_ind(struct femtol1_hdl *fl1,
 	struct osmo_phsap_prim *l1sap;
 	uint8_t chan_nr, link_id;
 	uint32_t fn;
+
+	set_log_ctx_sapi(rts_ind->sapi);
 
 	/* check if primitive should be handled by common part */
 	chan_nr = chan_nr_by_sapi(&trx->ts[rts_ind->u8Tn], rts_ind->sapi,
@@ -933,6 +974,8 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 	struct gsm_time g_time;
 	int rc = 0;
 
+	set_log_ctx_sapi(data_ind->sapi);
+
 	chan_nr = chan_nr_by_sapi(&trx->ts[data_ind->u8Tn], data_ind->sapi,
 		data_ind->subCh, data_ind->u8Tn, data_ind->u32Fn);
 	if (!chan_nr) {
@@ -995,6 +1038,8 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	struct osmo_phsap_prim *l1sap;
 	int rc;
 	struct ph_rach_ind_param rach_ind_param;
+
+	set_log_ctx_sapi(ra_ind->sapi);
 
 	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
 

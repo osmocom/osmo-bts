@@ -257,6 +257,85 @@ int bts_check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 	return check_for_ciph_cmd(msg, lchan, chan_nr);
 }
 
+uint16_t l1sap_log_ctx_sapi;
+
+const struct value_string l1sap_common_sapi_names[] = {
+	{ L1SAP_COMMON_SAPI_UNKNOWN,	"UNKNOWN" },
+	/* alphabetic order */
+	{ L1SAP_COMMON_SAPI_AGCH,	"AGCH" },
+	{ L1SAP_COMMON_SAPI_BCCH,	"BCCH" },
+	{ L1SAP_COMMON_SAPI_CBCH,	"CBCH" },
+	{ L1SAP_COMMON_SAPI_FACCH_F,	"FACCH/F" },
+	{ L1SAP_COMMON_SAPI_FACCH_H,	"FACCH/H" },
+	{ L1SAP_COMMON_SAPI_FCCH,	"FCCH" },
+	{ L1SAP_COMMON_SAPI_IDLE,	"IDLE" },
+	{ L1SAP_COMMON_SAPI_NCH,	"NCH" },
+	{ L1SAP_COMMON_SAPI_PACCH,	"PACCH" },
+	{ L1SAP_COMMON_SAPI_PAGCH,	"PAGCH" },
+	{ L1SAP_COMMON_SAPI_PBCCH,	"PBCCH" },
+	{ L1SAP_COMMON_SAPI_PCH,	"PCH" },
+	{ L1SAP_COMMON_SAPI_PDTCH,	"PDTCH" },
+	{ L1SAP_COMMON_SAPI_PNCH,	"PNCH" },
+	{ L1SAP_COMMON_SAPI_PPCH,	"PPCH" },
+	{ L1SAP_COMMON_SAPI_PRACH,	"PRACH" },
+	{ L1SAP_COMMON_SAPI_PTCCH,	"PTCCH" },
+	{ L1SAP_COMMON_SAPI_RACH,	"RACH" },
+	{ L1SAP_COMMON_SAPI_SACCH,	"SACCH" },
+	{ L1SAP_COMMON_SAPI_SCH,	"SCH" },
+	{ L1SAP_COMMON_SAPI_SDCCH,	"SDCCH" },
+	{ L1SAP_COMMON_SAPI_TCH_F,	"TCH/F" },
+	{ L1SAP_COMMON_SAPI_TCH_H,	"TCH/H" },
+	{ 0, NULL }
+};
+
+static enum l1sap_common_sapi get_common_sapi_ph_data(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+{
+	uint8_t link_id = l1sap->u.data.link_id;
+	uint8_t chan_nr = l1sap->u.data.chan_nr;
+	uint32_t u32Fn = l1sap->u.data.fn;
+
+	if (L1SAP_IS_CHAN_TCHF(chan_nr))
+		return L1SAP_COMMON_SAPI_TCH_F;
+
+	if (L1SAP_IS_CHAN_TCHH(chan_nr))
+		return L1SAP_COMMON_SAPI_TCH_H;
+
+	if (L1SAP_IS_CHAN_SDCCH4(chan_nr) || L1SAP_IS_CHAN_SDCCH8(chan_nr))
+		return L1SAP_COMMON_SAPI_SDCCH;
+
+	if (L1SAP_IS_CHAN_BCCH(chan_nr))
+		return L1SAP_COMMON_SAPI_BCCH;
+
+	if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr))
+		/* The sapi depends on DSP configuration, not on the actual SYSTEM INFORMATION 3. */
+		return ((l1sap_fn2ccch_block(u32Fn) >= num_agch(trx, "PH-DATA-REQ"))
+			? L1SAP_COMMON_SAPI_PCH
+			: L1SAP_COMMON_SAPI_AGCH);
+
+	if (L1SAP_IS_CHAN_CBCH(chan_nr))
+		return L1SAP_COMMON_SAPI_CBCH;
+
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		return L1SAP_COMMON_SAPI_SACCH;
+
+	return L1SAP_COMMON_SAPI_UNKNOWN;
+}
+
+static enum l1sap_common_sapi get_common_sapi_by_trx_prim(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+{
+	/* Only downlink prims are relevant */
+	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST):
+		if (ts_is_pdch(&trx->ts[L1SAP_CHAN2TS(l1sap->u.data.chan_nr)]))
+			return ((L1SAP_IS_PTCCH(l1sap->u.data.fn))
+				? L1SAP_COMMON_SAPI_PTCCH
+				: L1SAP_COMMON_SAPI_PDTCH);
+		return get_common_sapi_ph_data(trx, l1sap);
+	default:
+		return L1SAP_COMMON_SAPI_UNKNOWN;
+	}
+}
+
 struct gsmtap_inst *gsmtap = NULL;
 uint32_t gsmtap_sapi_mask = 0;
 uint8_t gsmtap_sapi_acch = 0;
@@ -1455,6 +1534,9 @@ int l1sap_up(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 /* any L1 prim sent to bts model */
 static int l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
+	l1sap_log_ctx_sapi = get_common_sapi_by_trx_prim(trx, l1sap);
+	log_set_context(LOG_CTX_L1_SAPI, &l1sap_log_ctx_sapi);
+
 	if (OSMO_PRIM_HDR(&l1sap->oph) ==
 				 OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_REQUEST))
 		to_gsmtap(trx, l1sap);
