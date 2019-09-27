@@ -1,8 +1,6 @@
 #ifndef TRX_IF_H
 #define TRX_IF_H
 
-extern int transceiver_available;
-
 struct trx_l1h;
 
 struct trx_ctrl_msg {

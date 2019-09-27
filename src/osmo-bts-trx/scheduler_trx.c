@@ -1721,21 +1721,6 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 
 	clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
-	/* clock becomes valid */
-	if (!transceiver_available) {
-		LOGP(DL1C, LOGL_NOTICE, "initial GSM clock received: fn=%u\n", fn);
-
-		transceiver_available = 1;
-
-		/* start provisioning transceiver */
-		l1if_provision_transceiver(bts);
-
-		/* tell BSC */
-		check_transceiver_availability(bts, 1);
-
-		return trx_setup_clock(bts, tcs, &tv_now, &interval, fn);
-	}
-
 	/* calculate elapsed time +fn since last timer */
 	elapsed_us = compute_elapsed_us(&tcs->last_fn_timer.tv, &tv_now);
 	elapsed_fn = compute_elapsed_fn(tcs->last_fn_timer.fn, fn);

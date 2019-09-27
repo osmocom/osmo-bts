@@ -48,8 +48,6 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
-int transceiver_available = 0;
-
 /*
  * socket helper functions
  */
@@ -125,6 +123,10 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"wrapping correctly, correcting to fn=%u\n", fn);
 	}
 
+	if (!plink->u.osmotrx.powered) {
+		LOGPPHI(pinst, DTRX, LOGL_NOTICE, "Ignoring CLOCK IND %u, TRX not yet powered on\n", fn);
+		return 0;
+	}
 	/* inform core TRX clock handling code that a FN has been received */
 	trx_sched_clock(pinst->trx->bts, fn);
 
@@ -200,13 +202,6 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 	struct trx_ctrl_msg *prev = NULL;
 	va_list ap;
 	int pending;
-
-	if (!transceiver_available &&
-	    !(!strcmp(cmd, "POWEROFF") || !strcmp(cmd, "POWERON"))) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "CTRL %s ignored: No clock from "
-			"transceiver, please fix!\n", cmd);
-		return -EIO;
-	}
 
 	pending = !llist_empty(&l1h->trx_ctrl_list);
 
@@ -1097,12 +1092,11 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	/* copy ubits {0,1} */
 	memcpy(buf + 6, bits, nbits);
 
-	/* we must be sure that we have clock, and we have sent all control
-	 * data */
-	if (transceiver_available && llist_empty(&l1h->trx_ctrl_list)) {
+	/* we must be sure that TRX is on */
+	if (trx_if_powered(l1h)) {
 		send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
 	} else
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Ignoring TX data, transceiver offline.\n");
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Ignoring TX data, transceiver powered off.\n");
 
 	return 0;
 }
@@ -1255,8 +1249,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		if (trx_phy_inst_open(pinst) < 0)
 			goto cleanup;
 	}
-	/* FIXME: is there better way to check/report TRX availability? */
-	transceiver_available = 1;
+
 	return 0;
 
 cleanup:

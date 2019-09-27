@@ -58,12 +58,6 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
 
-	if (!transceiver_available) {
-		vty_out(vty, "transceiver is not connected%s", VTY_NEWLINE);
-	} else {
-		vty_out(vty, "transceiver is connected%s", VTY_NEWLINE);
-	}
-
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct phy_link *plink = pinst->phy_link;

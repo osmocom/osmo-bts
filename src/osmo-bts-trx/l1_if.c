@@ -204,8 +204,18 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct phy_link *plink = pinst->phy_link;
 
-	if (!transceiver_available)
+	/* During setup, pinst may still not be associated to a TRX nr */
+	if (!pinst->trx) {
+		LOGPPHI(pinst, DL1C, LOGL_INFO,
+			"Delaying provision, TRX not yet assigned to phy instance\n");
 		return -EIO;
+	}
+
+	if (phy_link_state_get(plink) == PHY_LINK_SHUTDOWN) {
+		LOGPPHI(pinst, DL1C, LOGL_INFO,
+			"Delaying provision, TRX not yet available\n");
+		return -EIO;
+	}
 
 	if (l1h->config.enabled
 	 && l1h->config.tsc_valid
@@ -390,6 +400,7 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct phy_link *plink = pinst->phy_link;
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		if (l1h->config.bsic != bsic || !l1h->config.bsic_valid) {
 			l1h->config.bsic = bsic;
@@ -397,7 +408,7 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 			l1h->config.bsic_sent = 0;
 			l1if_provision_transceiver_trx(l1h);
 		}
-		check_transceiver_availability_trx(l1h, transceiver_available);
+		check_transceiver_availability_trx(l1h, phy_link_state_get(plink) != PHY_LINK_SHUTDOWN);
 	}
 
 	return 0;
