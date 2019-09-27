@@ -30,16 +30,9 @@ int bts_init(struct gsm_bts *bts);
 int bts_trx_init(struct gsm_bts_trx *trx);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);
 
-struct gsm_bts *create_bts(uint8_t num_trx, char *id);
-int create_ms(struct gsm_bts_trx *trx, int maskc, uint8_t *maskv_tx,
-	uint8_t *maskv_rx);
-void destroy_bts(struct gsm_bts *bts);
-int work_bts(struct gsm_bts *bts);
 int bts_link_estab(struct gsm_bts *bts);
 int trx_link_estab(struct gsm_bts_trx *trx);
 int trx_set_available(struct gsm_bts_trx *trx, int avail);
-void bts_new_si(void *arg);
-void bts_setup_slot(struct gsm_bts_trx_ts *slot, uint8_t comb);
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
@@ -68,4 +61,3 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 int32_t bts_get_avg_fn_advance(struct gsm_bts *bts);
 
 #endif /* _BTS_H */
-
