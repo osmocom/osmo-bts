@@ -775,19 +775,7 @@ struct gsm_bts {
 		char *sock_path;
 	} pcu;
 
-	struct {
-		uint32_t last_fn;
-		struct timeval tv_clock;
-		struct osmo_timer_list fn_timer;
-	} vbts;
-#ifdef ENABLE_OC2GBTS
-        /* specific to Open Cellular 2G BTS */
-        struct {
-                uint8_t led_ctrl_mode;                                  /* 0: control by BTS, 1: not control by BTS */
-                struct llist_head ceased_alarm_list;    /* ceased alarm list*/
-                unsigned int rtp_drift_thres_ms;                /* RTP timestamp drift detection threshold */
-        } oc2g;
-#endif
+	void *model_priv; /* Allocated by bts_model, contains model specific data pointer */
 };
 
 

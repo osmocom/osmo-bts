@@ -30,6 +30,13 @@ enum {
 	_NUM_MQ_WRITE
 };
 
+/* gsm_bts->model_priv, specific to Open Cellular 2G BTS */
+struct bts_oc2g_priv {
+	uint8_t led_ctrl_mode;			/* 0: control by BTS, 1: not control by BTS */
+	struct llist_head ceased_alarm_list;	/* ceased alarm list*/
+	unsigned int rtp_drift_thres_ms;	/* RTP timestamp drift detection threshold */
+};
+
 struct calib_send_state {
 	FILE *fp;
 	const char *path;

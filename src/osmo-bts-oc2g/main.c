@@ -87,15 +87,17 @@ int bts_model_init(struct gsm_bts *bts)
 	static struct osmo_fd accept_fd, read_fd;
 	int rc;
 
+	struct bts_oc2g_priv *bts_oc2g = talloc(bts, struct bts_oc2g_priv);
+	bts->model_priv = bts_oc2g;
 	bts->variant = BTS_OSMO_OC2G;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 	/* specific default values for OC2G platform */
 
 	/* TODO(oramadan) MERGE
-	bts->oc2g.led_ctrl_mode = OC2G_BTS_LED_CTRL_MODE_DEFAULT;
+	bts_oc2g->led_ctrl_mode = OC2G_BTS_LED_CTRL_MODE_DEFAULT;
 	*/
 	/* RTP drift threshold default */
-	/* bts->oc2g.rtp_drift_thres_ms = OC2G_BTS_RTP_DRIFT_THRES_DEFAULT; */
+	/* bts_oc2g->rtp_drift_thres_ms = OC2G_BTS_RTP_DRIFT_THRES_DEFAULT; */
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {

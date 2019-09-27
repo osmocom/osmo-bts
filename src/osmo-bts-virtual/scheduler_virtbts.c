@@ -562,8 +562,9 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 static void vbts_fn_timer_cb(void *data)
 {
 	struct gsm_bts *bts = data;
+	struct bts_virt_priv *bts_virt = (struct bts_virt_priv *)bts->model_priv;
 	struct timeval tv_now;
-	struct timeval *tv_clock = &bts->vbts.tv_clock;
+	struct timeval *tv_clock = &bts_virt->tv_clock;
 	int32_t elapsed_us;
 
 	gettimeofday(&tv_now, NULL);
@@ -587,28 +588,29 @@ static void vbts_fn_timer_cb(void *data)
 		};
 		timeradd(tv_clock, &tv_frame, tv_clock);
 		/* increment the frame number in the BTS model instance */
-		bts->vbts.last_fn = (bts->vbts.last_fn + 1) % GSM_HYPERFRAME;
-		vbts_sched_fn(bts, bts->vbts.last_fn);
+		bts_virt->last_fn = (bts_virt->last_fn + 1) % GSM_HYPERFRAME;
+		vbts_sched_fn(bts, bts_virt->last_fn);
 		elapsed_us -= FRAME_DURATION_uS;
 	}
 
 	/* re-schedule the timer */
 	/* timer is set to frame duration - elapsed time to guarantee that this cb method will be
 	 * periodically executed every 4.615ms */
-	osmo_timer_schedule(&bts->vbts.fn_timer, 0, FRAME_DURATION_uS - elapsed_us);
+	osmo_timer_schedule(&bts_virt->fn_timer, 0, FRAME_DURATION_uS - elapsed_us);
 }
 
 int vbts_sched_start(struct gsm_bts *bts)
 {
+	struct bts_virt_priv *bts_virt = (struct bts_virt_priv *)bts->model_priv;
 	LOGP(DL1P, LOGL_NOTICE, "starting VBTS scheduler\n");
 
-	memset(&bts->vbts.fn_timer, 0, sizeof(bts->vbts.fn_timer));
-	bts->vbts.fn_timer.cb = vbts_fn_timer_cb;
-	bts->vbts.fn_timer.data = bts;
+	memset(&bts_virt->fn_timer, 0, sizeof(bts_virt->fn_timer));
+	bts_virt->fn_timer.cb = vbts_fn_timer_cb;
+	bts_virt->fn_timer.data = bts;
 
-	gettimeofday(&bts->vbts.tv_clock, NULL);
+	gettimeofday(&bts_virt->tv_clock, NULL);
 	/* trigger the first timer after 4615us (a frame duration) */
-	osmo_timer_schedule(&bts->vbts.fn_timer, 0, FRAME_DURATION_uS);
+	osmo_timer_schedule(&bts_virt->fn_timer, 0, FRAME_DURATION_uS);
 
 	return 0;
 }

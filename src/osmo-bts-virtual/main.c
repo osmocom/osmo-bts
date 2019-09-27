@@ -47,6 +47,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/phy_link.h>
 #include "virtual_um.h"
+#include "l1_if.h"
 
 /* dummy, since no direct dsp support */
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
@@ -56,6 +57,8 @@ uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	struct bts_virt_priv *bts_virt = talloc_zero(bts, struct bts_virt_priv);
+	bts->model_priv = bts_virt;
 	bts->variant = BTS_OSMO_VIRTUAL;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 

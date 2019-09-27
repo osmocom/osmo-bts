@@ -5,6 +5,13 @@
 
 #include "virtual_um.h"
 
+/* gsm_bts->model_priv, specific to osmo-bts-virtual */
+struct bts_virt_priv {
+	uint32_t last_fn;
+	struct timeval tv_clock;
+	struct osmo_timer_list fn_timer;
+};
+
 struct vbts_l1h {
 	struct gsm_bts_trx	*trx;
 	struct l1sched_trx	l1s;
