@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/abis_nm.h>
@@ -1600,6 +1601,45 @@ DEFUN(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
+DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
+{
+	uint8_t sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
+	struct log_target *tgt = osmo_log_vty2tgt(vty);
+	uint16_t **sapi_mask;
+
+	OSMO_ASSERT(sapi != -EINVAL);
+	if (!tgt)
+		return CMD_WARNING;
+
+	sapi_mask = (uint16_t **)&tgt->filter_data[LOG_FLT_L1_SAPI];
+
+	if (!*sapi_mask)
+		*sapi_mask = talloc(tgt, uint16_t);
+
+	**sapi_mask |= (1 << sapi);
+	tgt->filter_map |= (1 << LOG_FLT_L1_SAPI);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
+{
+	uint8_t sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
+	struct log_target *tgt = osmo_log_vty2tgt(vty);
+	uint16_t *sapi_mask;
+
+	OSMO_ASSERT(sapi != -EINVAL);
+	if (!tgt)
+		return CMD_WARNING;
+	if (!tgt->filter_data[LOG_FLT_L1_SAPI])
+		return CMD_SUCCESS;
+
+	sapi_mask = (uint16_t *)tgt->filter_data[LOG_FLT_L1_SAPI];
+	*sapi_mask &= ~(1 << sapi);
+
+	return CMD_SUCCESS;
+}
+
 int bts_vty_init(struct gsm_bts *bts)
 {
 	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
@@ -1616,11 +1656,27 @@ int bts_vty_init(struct gsm_bts *bts)
 						NO_STR "GSMTAP SAPI\n",
 						"\n", "", 0);
 
+	logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+						"logging filter l1-sapi (",
+						"|", ")", VTY_DO_LOWER);
+	logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+						LOGGING_STR FILTER_STR "L1 SAPI\n",
+						"\n", "", 0);
+
+	no_logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+						"no logging filter l1-sapi (",
+						"|", ")", VTY_DO_LOWER);
+	no_logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+						NO_STR LOGGING_STR FILTER_STR "L1 SAPI\n",
+						"\n", "", 0);
+
 	install_element_ve(&show_bts_cmd);
 	install_element_ve(&show_trx_cmd);
 	install_element_ve(&show_ts_cmd);
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
+	install_element_ve(&logging_fltr_l1_sapi_cmd);
+	install_element_ve(&no_logging_fltr_l1_sapi_cmd);
 
 	logging_vty_add_cmds();
 	osmo_talloc_vty_add_cmds();
