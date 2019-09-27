@@ -1581,48 +1581,6 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	return 0;
 }
 
-/*
- * TRX frame clock handling
- *
- * In a "normal" synchronous PHY layer, we would be polled every time
- * the PHY needs data for a given frame number.  However, the
- * OpenBTS-inherited TRX protocol works differently:  We (L1) must
- * autonomously send burst data based on our own clock, and every so
- * often (currently every ~ 216 frames), we get a clock indication from
- * the TRX.
- *
- * We're using a MONOTONIC timerfd interval timer for the 4.615ms frame
- * intervals, and then compute + send the 8 bursts for that frame.
- *
- * Upon receiving a clock indication from the TRX, we compensate
- * accordingly: If we were transmitting too fast, we're delaying the
- * next interval timer accordingly.  If we were too slow, we immediately
- * send burst data for the missing frame numbers.
- */
-
-/*! clock state of a given TRX */
-struct osmo_trx_clock_state {
-	/*! number of FN periods without TRX clock indication */
-	uint32_t fn_without_clock_ind;
-	struct {
-		/*! last FN we processed based on FN period timer */
-		uint32_t fn;
-		/*! time at which we last processed FN */
-		struct timespec tv;
-	} last_fn_timer;
-	struct {
-		/*! last FN we received a clock indication for */
-		uint32_t fn;
-		/*! time at which we received the last clock indication */
-		struct timespec tv;
-	} last_clk_ind;
-	/*! Osmocom FD wrapper for timerfd */
-	struct osmo_fd fn_timer_ofd;
-};
-
-/* TODO: This must go and become part of the phy_link */
-static struct osmo_trx_clock_state g_clk_s = { .fn_timer_ofd.fd = -1 };
-
 /*! duration of a GSM frame in nano-seconds. (120ms/26) */
 #define FRAME_DURATION_nS	4615384
 /*! duration of a GSM frame in micro-seconds (120s/26) */
@@ -1666,7 +1624,8 @@ extern int quit;
 static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct gsm_bts *bts = ofd->data;
-	struct osmo_trx_clock_state *tcs = &g_clk_s;
+	struct bts_trx_priv *bts_trx = (struct bts_trx_priv *)bts->model_priv;
+	struct osmo_trx_clock_state *tcs = &bts_trx->clk_s;
 	struct timespec tv_now;
 	uint64_t expire_count;
 	int64_t elapsed_us, error_us;
@@ -1749,7 +1708,8 @@ static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs
 /*! called every time we receive a clock indication from TRX */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 {
-	struct osmo_trx_clock_state *tcs = &g_clk_s;
+	struct bts_trx_priv *bts_trx = (struct bts_trx_priv *)bts->model_priv;
+	struct osmo_trx_clock_state *tcs = &bts_trx->clk_s;
 	struct timespec tv_now;
 	int elapsed_fn;
 	int64_t elapsed_us, elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;

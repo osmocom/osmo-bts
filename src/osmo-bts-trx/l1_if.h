@@ -5,6 +5,50 @@
 #include <osmo-bts/phy_link.h>
 #include "trx_if.h"
 
+/*
+ * TRX frame clock handling
+ *
+ * In a "normal" synchronous PHY layer, we would be polled every time
+ * the PHY needs data for a given frame number.  However, the
+ * OpenBTS-inherited TRX protocol works differently:  We (L1) must
+ * autonomously send burst data based on our own clock, and every so
+ * often (currently every ~ 216 frames), we get a clock indication from
+ * the TRX.
+ *
+ * We're using a MONOTONIC timerfd interval timer for the 4.615ms frame
+ * intervals, and then compute + send the 8 bursts for that frame.
+ *
+ * Upon receiving a clock indication from the TRX, we compensate
+ * accordingly: If we were transmitting too fast, we're delaying the
+ * next interval timer accordingly.  If we were too slow, we immediately
+ * send burst data for the missing frame numbers.
+ */
+
+/*! clock state of a given TRX */
+struct osmo_trx_clock_state {
+	/*! number of FN periods without TRX clock indication */
+	uint32_t fn_without_clock_ind;
+	struct {
+		/*! last FN we processed based on FN period timer */
+		uint32_t fn;
+		/*! time at which we last processed FN */
+		struct timespec tv;
+	} last_fn_timer;
+	struct {
+		/*! last FN we received a clock indication for */
+		uint32_t fn;
+		/*! time at which we received the last clock indication */
+		struct timespec tv;
+	} last_clk_ind;
+	/*! Osmocom FD wrapper for timerfd */
+	struct osmo_fd fn_timer_ofd;
+};
+
+/* gsm_bts->model_priv, specific to osmo-bts-trx */
+struct bts_trx_priv {
+	struct osmo_trx_clock_state clk_s;
+};
+
 struct trx_config {
 	uint8_t			trxd_hdr_ver_req; /* requested TRXD header version */
 	uint8_t			trxd_hdr_ver_use; /* actual TRXD header version in use */

@@ -97,6 +97,10 @@ int bts_model_handle_options(int argc, char **argv)
 
 int bts_model_init(struct gsm_bts *bts)
 {
+	struct bts_trx_priv *bts_trx = talloc_zero(bts, struct bts_trx_priv);
+	bts_trx->clk_s.fn_timer_ofd.fd = -1;
+
+	bts->model_priv = bts_trx;
 	bts->variant = BTS_OSMO_TRX;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
