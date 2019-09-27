@@ -15,11 +15,12 @@ struct trx_ctrl_msg {
 	void 			*cb;
 };
 
+typedef void trx_if_cmd_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc);
 typedef void trx_if_cmd_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc);
 
 void trx_if_init(struct trx_l1h *l1h);
-int trx_if_cmd_poweroff(struct trx_l1h *l1h);
-int trx_if_cmd_poweron(struct trx_l1h *l1h);
+int trx_if_cmd_poweroff(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb);
+int trx_if_cmd_poweron(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb);
 int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc);
 int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic);
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db);

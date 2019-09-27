@@ -290,9 +290,9 @@ DEFUN(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	if (strcmp(argv[0], "on"))
-		vty_out(vty, "OFF: %d%s", trx_if_cmd_poweroff(l1h), VTY_NEWLINE);
+		vty_out(vty, "OFF: %d%s", trx_if_cmd_poweroff(l1h, NULL), VTY_NEWLINE);
 	else {
-		vty_out(vty, "ON: %d%s", trx_if_cmd_poweron(l1h), VTY_NEWLINE);
+		vty_out(vty, "ON: %d%s", trx_if_cmd_poweron(l1h, NULL), VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

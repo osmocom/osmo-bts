@@ -179,6 +179,21 @@ static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int r
 	cb_ts_connected(ts, rc);
 }
 
+static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct phy_link *plink = pinst->phy_link;
+
+	plink->u.osmotrx.powered = poweronoff;
+	plink->u.osmotrx.poweronoff_sent = false;
+
+	if (poweronoff) {
+		if (rc == 0 && pinst->phy_link->state != PHY_LINK_CONNECTED)
+			phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
+		else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN)
+			phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
+	}
+}
 
 /*
  * transceiver provisioning
@@ -192,7 +207,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	if (!transceiver_available)
 		return -EIO;
 
-	if (l1h->config.poweron
+	if (l1h->config.enabled
 	 && l1h->config.tsc_valid
 	 && l1h->config.bsic_valid
 	 && l1h->config.arfcn_valid) {
@@ -225,9 +240,9 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			l1h->config.setformat_sent = 1;
 		}
 
-		if (!l1h->config.poweron_sent) {
-			trx_if_cmd_poweron(l1h);
-			l1h->config.poweron_sent = 1;
+		if (pinst->num == 0 && !plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
+			trx_if_cmd_poweron(l1h, l1if_poweronoff_cb);
+			plink->u.osmotrx.poweronoff_sent = true;
 		}
 
 		/* after power on */
@@ -259,9 +274,11 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		return 0;
 	}
 
-	if (!l1h->config.poweron && !l1h->config.poweron_sent) {
-		trx_if_cmd_poweroff(l1h);
-		l1h->config.poweron_sent = 1;
+	if (!l1h->config.enabled) {
+		if (pinst->num == 0 && plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
+			trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
+			plink->u.osmotrx.poweronoff_sent = true;
+		}
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
@@ -287,7 +304,6 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 		l1h->config.arfcn_sent = 0;
 		l1h->config.tsc_sent = 0;
 		l1h->config.bsic_sent = 0;
-		l1h->config.poweron_sent = 0;
 		l1h->config.rxgain_sent = 0;
 		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
@@ -310,9 +326,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	/* power on transceiver, if not already */
-	if (!l1h->config.poweron) {
-		l1h->config.poweron = 1;
-		l1h->config.poweron_sent = 0;
+	if (!l1h->config.enabled) {
+		l1h->config.enabled = true;
 		l1if_provision_transceiver_trx(l1h);
 	}
 
@@ -343,9 +358,8 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	}
 
 	/* power off transceiver, if not already */
-	if (l1h->config.poweron) {
-		l1h->config.poweron = 0;
-		l1h->config.poweron_sent = 0;
+	if (l1h->config.enabled) {
+		l1h->config.enabled = false;
 		l1if_provision_transceiver_trx(l1h);
 	}
 

@@ -250,23 +250,15 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 #define trx_ctrl_cmd(l1h, critical, cmd, fmt, ...) trx_ctrl_cmd_cb(l1h, critical, NULL, cmd, fmt, ##__VA_ARGS__)
 
 /*! Send "POWEROFF" command to TRX */
-int trx_if_cmd_poweroff(struct trx_l1h *l1h)
+int trx_if_cmd_poweroff(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	if (pinst->num == 0)
-		return trx_ctrl_cmd(l1h, 1, "POWEROFF", "");
-	else
-		return 0;
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "POWEROFF", "");
 }
 
 /*! Send "POWERON" command to TRX */
-int trx_if_cmd_poweron(struct trx_l1h *l1h)
+int trx_if_cmd_poweron(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	if (pinst->num == 0)
-		return trx_ctrl_cmd(l1h, 1, "POWERON", "");
-	else
-		return 0;
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "POWERON", "");
 }
 
 /*! Send "SETFORMAT" command to TRX: change TRXD header format version */
@@ -448,6 +440,35 @@ static bool cmd_matches_rsp(struct trx_ctrl_msg *tcm, struct trx_ctrl_rsp *rsp)
 	return true;
 }
 
+static int trx_ctrl_rx_rsp_poweron(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_poweronoff_cb *cb = (trx_if_cmd_poweronoff_cb*) rsp->cb;
+
+	if (rsp->status != 0)
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+			"transceiver rejected POWERON command (%d), re-trying in a few seconds\n",
+			rsp->status);
+
+	if (cb)
+		cb(l1h, true, rsp->status);
+
+	/* If TRX fails, try again after 5 sec */
+	return rsp->status == 0 ? 0 : 5;
+}
+
+static int trx_ctrl_rx_rsp_poweroff(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_poweronoff_cb *cb = (trx_if_cmd_poweronoff_cb*) rsp->cb;
+
+	if (rsp->status == 0) {
+		if (cb)
+			cb(l1h, false, rsp->status);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
 {
 	trx_if_cmd_setslot_cb *cb = (trx_if_cmd_setslot_cb*) rsp->cb;
@@ -525,22 +546,10 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 			   struct trx_ctrl_rsp *rsp,
 			   struct trx_ctrl_msg *tcm)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-
-	/* If TRX fails, try again after 1 sec */
 	if (strcmp(rsp->cmd, "POWERON") == 0) {
-		if (rsp->status == 0) {
-			if (pinst->phy_link->state != PHY_LINK_CONNECTED)
-				phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
-			return 0;
-		} else {
-			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
-				"transceiver rejected POWERON command (%d), re-trying in a few seconds\n",
-				rsp->status);
-			if (pinst->phy_link->state != PHY_LINK_SHUTDOWN)
-				phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
-			return 5;
-		}
+		return trx_ctrl_rx_rsp_poweron(l1h, rsp);
+	} else if (strcmp(rsp->cmd, "POWEROFF") == 0) {
+		return trx_ctrl_rx_rsp_poweroff(l1h, rsp);
 	} else if (strcmp(rsp->cmd, "SETSLOT") == 0) {
 		return trx_ctrl_rx_rsp_setslot(l1h, rsp);
 	/* We may get 'RSP ERR 1' if 'SETFORMAT' is not supported,
@@ -1176,9 +1185,8 @@ static int trx_if_open(struct trx_l1h *l1h)
 	/* enable all slots */
 	l1h->config.slotmask = 0xff;
 
-	/* FIXME: why was this only for TRX0 ? */
-	//if (l1h->trx->nr == 0)
-	trx_if_cmd_poweroff(l1h);
+	if (pinst->num == 0)
+		trx_if_cmd_poweroff(l1h, NULL);
 
 	return 0;
 
@@ -1266,5 +1274,7 @@ cleanup:
 /*! determine if the TRX for given handle is powered up */
 int trx_if_powered(struct trx_l1h *l1h)
 {
-	return l1h->config.poweron;
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct phy_link *plink = pinst->phy_link;
+	return plink->u.osmotrx.powered;
 }

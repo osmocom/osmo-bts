@@ -54,8 +54,8 @@ struct trx_config {
 	uint8_t			trxd_hdr_ver_use; /* actual TRXD header version in use */
 	int			setformat_sent;
 
-	uint8_t			poweron;	/* poweron(1) or poweroff(0) */
-	int			poweron_sent;
+	bool			enabled;
+
 
 	int			arfcn_valid;
 	uint16_t		arfcn;
