@@ -47,6 +47,11 @@ src/osmo-bts-octphy/osmo-bts-octphy
 src/osmo-bts-virtual/osmo-bts-virtual
 src/osmo-bts-omldummy/osmo-bts-omldummy
 
+src/osmo-bts-oc2g/osmo-bts-oc2g
+src/osmo-bts-oc2g/oc2gbts-mgr
+src/osmo-bts-oc2g/oc2gbts-util
+src/osmo-bts-oc2g/misc/.dirstamp
+
 tests/atconfig
 tests/package.m4
 tests/agch/agch_test
