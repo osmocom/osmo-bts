@@ -71,7 +71,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 		vty_out(vty, "TRX %d %s%s", trx->nr, sname, VTY_NEWLINE);
 		talloc_free(sname);
 		vty_out(vty, " %s%s",
-			(l1h->config.poweron) ? "poweron":"poweroff",
+			trx_if_powered(l1h) ? "poweron":"poweroff",
 			VTY_NEWLINE);
 		if (l1h->config.arfcn_valid)
 			vty_out(vty, " arfcn  : %d%s%s",
