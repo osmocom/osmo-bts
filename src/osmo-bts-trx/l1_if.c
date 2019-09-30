@@ -383,9 +383,8 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 			l1h->config.bsic_sent = 0;
 			l1if_provision_transceiver_trx(l1h);
 		}
+		check_transceiver_availability_trx(l1h, transceiver_available);
 	}
-	check_transceiver_availability(bts, transceiver_available);
-
 
 	return 0;
 }
