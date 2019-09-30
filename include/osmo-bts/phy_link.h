@@ -157,6 +157,8 @@ struct phy_link *phy_link_by_num(int num);
 struct phy_link *phy_link_create(void *ctx, int num);
 void phy_link_destroy(struct phy_link *plink);
 void phy_link_state_set(struct phy_link *plink, enum phy_link_state state);
+enum phy_link_state phy_link_state_get(struct phy_link *plink);
+const char *phy_link_state_name(enum phy_link_state state);
 int phy_links_open(void);
 
 struct phy_instance *phy_instance_by_num(struct phy_link *plink, int num);

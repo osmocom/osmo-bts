@@ -66,13 +66,16 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
-		char *sname = osmo_sock_get_name(NULL, pinst->phy_link->u.osmotrx.trx_ofd_clk.fd);
+		struct phy_link *plink = pinst->phy_link;
+		char *sname = osmo_sock_get_name(NULL, plink->u.osmotrx.trx_ofd_clk.fd);
 		l1h = pinst->u.osmotrx.hdl;
 		vty_out(vty, "TRX %d %s%s", trx->nr, sname, VTY_NEWLINE);
 		talloc_free(sname);
 		vty_out(vty, " %s%s",
 			trx_if_powered(l1h) ? "poweron":"poweroff",
 			VTY_NEWLINE);
+		vty_out(vty, "phy link state: %s%s",
+			phy_link_state_name(phy_link_state_get(plink)), VTY_NEWLINE);
 		if (l1h->config.arfcn_valid)
 			vty_out(vty, " arfcn  : %d%s%s",
 				(l1h->config.arfcn & ~ARFCN_PCS),

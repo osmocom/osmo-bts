@@ -81,6 +81,16 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 	plink->state = state;
 }
 
+enum phy_link_state phy_link_state_get(struct phy_link *plink)
+{
+	return plink->state;
+}
+
+const char *phy_link_state_name(enum phy_link_state state)
+{
+	return get_value_string(phy_link_state_vals, state);
+}
+
 struct phy_instance *phy_instance_by_num(struct phy_link *plink, int num)
 {
 	struct phy_instance *pinst;
