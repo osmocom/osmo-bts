@@ -1678,10 +1678,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 
 no_clock:
 	osmo_timerfd_disable(&tcs->fn_timer_ofd);
-	transceiver_available = 0;
-
 	bts_shutdown(bts, "No clock from osmo-trx");
-
 	return -1;
 }
 
