@@ -114,18 +114,6 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 	}
 }
 
-int check_transceiver_availability(struct gsm_bts *bts, int avail)
-{
-	struct gsm_bts_trx *trx;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-		check_transceiver_availability_trx(l1h, avail);
-	}
-	return 0;
-}
-
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
 	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
