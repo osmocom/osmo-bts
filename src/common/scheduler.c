@@ -776,7 +776,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 	uint8_t tn = l1sap->u.data.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGL1S(DL1P, LOGL_INFO, l1t, tn, -1, l1sap->u.data.fn,
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.data.fn,
 		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
 		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
@@ -799,7 +799,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 	uint8_t tn = l1sap->u.tch.chan_nr & 7;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
-	LOGL1S(DL1P, LOGL_INFO, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
 		l1sap->u.tch.chan_nr);
 
 	if (!l1sap->oph.msg)
@@ -839,7 +839,7 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return -ENODEV;
 	}
 
-	LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn,
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
 		"PH-RTS.ind: chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
 
 	/* generate prim */
@@ -875,7 +875,7 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return -ENODEV;
 	}
 
-	LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
 
 	/* only send, if FACCH is selected */
 	if (facch) {
