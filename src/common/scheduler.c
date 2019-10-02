@@ -29,6 +29,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/core/utils.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/a5.h>
@@ -780,8 +781,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
 		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
-	if (!l1sap->oph.msg)
-		abort();
+	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
 	if (!msgb_l2len(l1sap->oph.msg)) {
@@ -802,8 +802,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
 		l1sap->u.tch.chan_nr);
 
-	if (!l1sap->oph.msg)
-		abort();
+	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
 	if (!msgb_l2len(l1sap->oph.msg)) {
