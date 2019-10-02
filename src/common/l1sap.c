@@ -1026,8 +1026,12 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 		lchan->s--;
 		DEBUGP(DMEAS, "%s counting down radio link counter S=%d\n",
 			gsm_lchan_name(lchan), lchan->s);
-		if (lchan->s == 0)
+		if (lchan->s == 0) {
+			LOGPLCHAN(lchan, DMEAS, LOGL_NOTICE,
+				  "radio link counter timeout S=%d, dropping conn\n",
+				  lchan->s);
 			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
+		}
 		return;
 	}
 
