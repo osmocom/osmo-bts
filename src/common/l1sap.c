@@ -1362,7 +1362,8 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		LOGPFN(DL1P, LOGL_INFO, rach_ind->fn, "RACH for packet access (toa=%d, ra=%d)\n",
 			rach_ind->acc_delay, rach_ind->ra);
 
-		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
+		/* QTA: Timing Advance in units of 1/4 of a symbol */
+		pcu_tx_rach_ind(bts, rach_ind->acc_delay_256bits >> 6,
 			rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
 			rach_ind->burst_type, PCU_IF_SAPI_RACH);
 		return 0;
