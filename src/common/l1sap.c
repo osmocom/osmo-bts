@@ -1313,6 +1313,20 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind\n");
 
+	/* PTCCH/UL (Packet Timing Advance Control Channel) */
+	if (L1SAP_IS_CHAN_PDCH(rach_ind->chan_nr) && L1SAP_IS_PTCCH(rach_ind->fn)) {
+		LOGPFN(DL1P, LOGL_DEBUG, rach_ind->fn,
+		       /* TODO: calculate and print Timing Advance Index */
+		       "Access Burst for continuous Timing Advance control (toa256=%d)\n",
+		       rach_ind->acc_delay_256bits);
+
+		/* QTA: Timing Advance in units of 1/4 of a symbol */
+		pcu_tx_rach_ind(bts, rach_ind->acc_delay_256bits >> 6,
+				rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
+				rach_ind->burst_type, PCU_IF_SAPI_PTCCH);
+		return 0;
+	}
+
 	/* check for handover access burst on dedicated channels */
 	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
@@ -1349,8 +1363,8 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 			rach_ind->acc_delay, rach_ind->ra);
 
 		pcu_tx_rach_ind(bts, rach_ind->acc_delay << 2,
-			rach_ind->ra, rach_ind->fn,
-			rach_ind->is_11bit, rach_ind->burst_type);
+			rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
+			rach_ind->burst_type, PCU_IF_SAPI_RACH);
 		return 0;
 	}
 

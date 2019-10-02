@@ -539,11 +539,15 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.desc = "Packet Timing advance control channel",
 		.chan_nr = RSL_CHAN_OSMO_PDCH,
 
-		/* Same as for TRXC_BCCH (xCCH), see above. */
+		/* On the Uplink, mobile stations transmit random Access Bursts
+		 * to allow estimation of the timing advance for one MS in packet
+		 * transfer mode. On Downlink, the network sends timing advance
+		 * updates for several mobile stations. The coding scheme used
+		 * for PTCCH/D messages is the same as for PDTCH CS-1. */
 		.flags = TRX_CHAN_FLAG_PDCH,
 		.rts_fn = rts_data_fn,
-		.dl_fn = tx_data_fn,
-		.ul_fn = rx_data_fn,
+		.dl_fn = tx_pdtch_fn,
+		.ul_fn = rx_rach_fn,
 	},
 	[TRXC_CBCH] = {
 		/* TODO: distinguish CBCH on SDCCH/4 and SDCCH/8 */
