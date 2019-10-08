@@ -2,6 +2,7 @@
 #define L1SAP_H
 
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 
 /* lchan link ID */
 #define LID_SACCH 0x40
@@ -15,16 +16,26 @@
 #define L1SAP_CHAN2SS_BCCH(chan_nr) (CCCH_LCHAN)
 
 /* logical channel from chan_nr + link_id */
-#define L1SAP_IS_LINK_SACCH(link_id) ((link_id & 0xC0) == LID_SACCH)
-#define L1SAP_IS_CHAN_TCHF(chan_nr) ((chan_nr & 0xf8) == 0x08)
-#define L1SAP_IS_CHAN_TCHH(chan_nr) ((chan_nr & 0xf0) == 0x10)
-#define L1SAP_IS_CHAN_SDCCH4(chan_nr) ((chan_nr & 0xe0) == 0x20)
-#define L1SAP_IS_CHAN_SDCCH8(chan_nr) ((chan_nr & 0xc0) == 0x40)
-#define L1SAP_IS_CHAN_BCCH(chan_nr) ((chan_nr & 0xf8) == 0x80)
-#define L1SAP_IS_CHAN_RACH(chan_nr) ((chan_nr & 0xf8) == 0x88)
-#define L1SAP_IS_CHAN_AGCH_PCH(chan_nr) ((chan_nr & 0xf8) == 0x90)
-#define L1SAP_IS_CHAN_PDCH(chan_nr) ((chan_nr & 0xf8) == 0xc0)
-#define L1SAP_IS_CHAN_CBCH(chan_nr) ((chan_nr & 0xf8) == 0xc8)
+#define L1SAP_IS_LINK_SACCH(link_id) \
+	((link_id & 0xC0) == LID_SACCH)
+#define L1SAP_IS_CHAN_TCHF(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_Bm_ACCHs)
+#define L1SAP_IS_CHAN_TCHH(chan_nr) \
+	((chan_nr & 0xf0) == RSL_CHAN_Lm_ACCHs)
+#define L1SAP_IS_CHAN_SDCCH4(chan_nr) \
+	((chan_nr & 0xe0) == RSL_CHAN_SDCCH4_ACCH)
+#define L1SAP_IS_CHAN_SDCCH8(chan_nr) \
+	((chan_nr & 0xc0) == RSL_CHAN_SDCCH8_ACCH)
+#define L1SAP_IS_CHAN_BCCH(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_BCCH)
+#define L1SAP_IS_CHAN_RACH(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_RACH)
+#define L1SAP_IS_CHAN_AGCH_PCH(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_PCH_AGCH)
+#define L1SAP_IS_CHAN_PDCH(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_OSMO_PDCH)
+#define L1SAP_IS_CHAN_CBCH(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH4)
 
 /* rach type from ra */
 #define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)
