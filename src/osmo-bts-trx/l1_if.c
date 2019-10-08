@@ -176,10 +176,13 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 	plink->u.osmotrx.poweronoff_sent = false;
 
 	if (poweronoff) {
-		if (rc == 0 && pinst->phy_link->state != PHY_LINK_CONNECTED)
+		if (rc == 0 && pinst->phy_link->state != PHY_LINK_CONNECTED) {
+			trx_sched_clock_started(pinst->trx->bts);
 			phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
-		else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN)
+		} else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN) {
+			trx_sched_clock_stopped(pinst->trx->bts);
 			phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
+		}
 	}
 }
 

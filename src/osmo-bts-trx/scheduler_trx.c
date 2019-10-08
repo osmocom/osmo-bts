@@ -1682,6 +1682,52 @@ no_clock:
 	return -1;
 }
 
+/*! \brief This is the cb of the initial timer set upon start. On timeout, it
+ *  means it wasn't replaced and hence no CLOCK IND was received. */
+static int trx_start_noclockind_to_cb(struct osmo_fd *ofd, unsigned int what)
+{
+	struct gsm_bts *bts = ofd->data;
+	struct bts_trx_priv *bts_trx = (struct bts_trx_priv *)bts->model_priv;
+	struct osmo_trx_clock_state *tcs = &bts_trx->clk_s;
+
+	osmo_fd_close(&tcs->fn_timer_ofd); /* Avoid being called again */
+	bts_shutdown(bts, "No clock since TRX was started");
+	return -1;
+}
+
+/*! \brief PHY informs us clock indications should start to be received */
+int trx_sched_clock_started(struct gsm_bts *bts)
+{
+	struct bts_trx_priv *bts_trx = (struct bts_trx_priv *)bts->model_priv;
+	struct osmo_trx_clock_state *tcs = &bts_trx->clk_s;
+	const struct timespec it_val = {3, 0};
+	const struct timespec it_intval = {0, 0};
+
+	LOGP(DL1C, LOGL_NOTICE, "GSM clock started, waiting for clock indications\n");
+	osmo_fd_close(&tcs->fn_timer_ofd);
+	memset(tcs, 0, sizeof(*tcs));
+	tcs->fn_timer_ofd.fd = -1;
+	/* Set up timeout to shutdown BTS if no clock ind is received in a few
+	 * seconds. Upon clock ind receival, fn_timer_ofd will be reused and
+	 * timeout won't trigger.
+	 */
+	osmo_timerfd_setup(&tcs->fn_timer_ofd, trx_start_noclockind_to_cb, bts);
+	osmo_timerfd_schedule(&tcs->fn_timer_ofd, &it_val, &it_intval);
+	return 0;
+}
+
+/*! \brief PHY informs us no more clock indications should be received anymore */
+int trx_sched_clock_stopped(struct gsm_bts *bts)
+{
+	struct bts_trx_priv *bts_trx = (struct bts_trx_priv *)bts->model_priv;
+	struct osmo_trx_clock_state *tcs = &bts_trx->clk_s;
+
+	LOGP(DL1C, LOGL_NOTICE, "GSM clock stopped\n");
+	osmo_fd_close(&tcs->fn_timer_ofd);
+
+	return 0;
+}
+
 /*! reset clock with current fn and schedule it. Called when trx becomes
  *  available or when max clock skew is reached */
 static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs,

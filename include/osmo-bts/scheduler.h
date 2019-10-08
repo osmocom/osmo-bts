@@ -175,6 +175,12 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
 /*! \brief PHY informs us of new (current) GSM frame number */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
 
+/*! \brief PHY informs us clock indications should start to be received */
+int trx_sched_clock_started(struct gsm_bts *bts);
+
+/*! \brief PHY informs us no more clock indications should be received anymore */
+int trx_sched_clock_stopped(struct gsm_bts *bts);
+
 /*! \brief set multiframe scheduler to given physical channel config */
 int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
         enum gsm_phys_chan_config pchan);
