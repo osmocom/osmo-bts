@@ -94,14 +94,18 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 	struct phy_link *plink = ofd->data;
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
 	char buf[1500];
-	int len;
+	ssize_t len;
 	uint32_t fn;
 
 	OSMO_ASSERT(pinst);
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
-	if (len <= 0)
+	if (len <= 0) {
+		strerror_r(errno, (char *)buf, sizeof(buf));
+		LOGPPHI(pinst, DTRX, LOGL_ERROR,
+			"recv() failed on TRXD with rc=%zd (%s)\n", len, buf);
 		return len;
+	}
 	buf[len] = '\0';
 
 	if (!!strncmp(buf, "IND CLOCK ", 10)) {
@@ -144,6 +148,7 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 	struct trx_ctrl_msg *tcm;
 	char buf[1500];
 	int len;
+	ssize_t snd_len;
 
 	/* get first command */
 	if (llist_empty(&l1h->trx_ctrl_list))
@@ -155,7 +160,12 @@ static void trx_ctrl_send(struct trx_l1h *l1h)
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Sending control '%s'\n", buf);
 	/* send command */
-	send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
+	snd_len = send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
+	if (snd_len <= 0) {
+		strerror_r(errno, (char *)buf, sizeof(buf));
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"send() failed on TRXC with rc=%zd (%s)\n", snd_len, buf);
+	}
 
 	/* start timer */
 	osmo_timer_schedule(&l1h->trx_ctrl_timer, 2, 0);
@@ -979,8 +989,9 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	buf_len = recv(ofd->fd, buf, sizeof(buf), 0);
 	if (buf_len <= 0) {
+		strerror_r(errno, (char *)buf, sizeof(buf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"recv() failed on TRXD with rc=%zd\n", buf_len);
+			"recv() failed on TRXD with rc=%zd (%s)\n", buf_len, buf);
 		return buf_len;
 	}
 
@@ -1058,6 +1069,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	const ubit_t *bits, uint16_t nbits)
 {
+	ssize_t snd_len;
 	uint8_t hdr_ver = l1h->config.trxd_hdr_ver_use;
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 
@@ -1094,7 +1106,13 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 
 	/* we must be sure that TRX is on */
 	if (trx_if_powered(l1h)) {
-		send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
+		snd_len = send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
+		if (snd_len <= 0) {
+			strerror_r(errno, (char *)buf, sizeof(buf));
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+				"send() failed on TRXD with rc=%zd (%s)\n", snd_len, buf);
+			return -2;
+		}
 	} else
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Ignoring TX data, transceiver powered off.\n");
 
