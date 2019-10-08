@@ -371,7 +371,7 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	}
 
 	*data = (uint8_t *)&l1sap->u.rach_ind.ra;
-	*len = 1;
+	*len = (l1sap->u.rach_ind.is_11bit) ? 2 : 1;
 
 	return 0;
 }
