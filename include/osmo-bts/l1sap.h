@@ -35,7 +35,8 @@
 #define L1SAP_IS_CHAN_PDCH(chan_nr) \
 	((chan_nr & 0xf8) == RSL_CHAN_OSMO_PDCH)
 #define L1SAP_IS_CHAN_CBCH(chan_nr) \
-	((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH4)
+	((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH4) \
+	|| ((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH8)
 
 /* rach type from ra */
 #define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)
