@@ -1258,7 +1258,7 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 
 	/* Check for RACH exceeding BER threshold (ghost RACH) */
 	if (rach_ind->ber10k > bts->max_ber10k_rach) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
 			"BER10k(%u) > BER10k_MAX(%u)\n",
 			rach_ind->ber10k, bts->max_ber10k_rach);
 		return false;
@@ -1270,7 +1270,7 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 	 * according to maximal allowed Timing Advance value.
 	 */
 	if (toa256 < RACH_MIN_TOA256 || toa256 > bts->max_ta * 256) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
 			"ToA(%d) exceeds the allowed range (%d..%d)\n",
 			toa256, RACH_MIN_TOA256, bts->max_ta * 256);
 		return false;
@@ -1278,7 +1278,7 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 
 	/* Link quality defined by C/I (Carrier-to-Interference ratio) */
 	if (rach_ind->lqual_cb < bts->min_qual_rach) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring RACH request: "
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
 			"link quality (%d) below the minimum (%d)\n",
 			rach_ind->lqual_cb, bts->min_qual_rach);
 		return false;
