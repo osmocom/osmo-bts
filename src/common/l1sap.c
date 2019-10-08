@@ -1109,11 +1109,20 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=%s link_id=0x%02x len=%d\n",
 		 rsl_chan_nr_str(chan_nr), link_id, len);
 
+	/* Actually, there can be no DATA.ind on PTCCH/U (rather RACH.ind instead),
+	 * but some BTS models with buggy implementation may still be sending them
+	 * to us. Let's keep this for backwards compatibility. */
+	if (L1SAP_IS_CHAN_PDCH(chan_nr) && L1SAP_IS_PTCCH(fn)) {
+		LOGPGT(DL1P, LOGL_NOTICE, &g_time, "There can be no DATA.ind on PTCCH/U. "
+		       "This is probably a bug of the BTS model you're using, please fix!\n");
+		return -EINVAL;
+	}
+
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
 			LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
-		if (lchan && lchan->loopback && !L1SAP_IS_PTCCH(fn)) {
+		if (lchan && lchan->loopback) {
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
 			 * returned in downlink */
@@ -1128,21 +1137,14 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		/* don't send bad frames to PCU */
 		if (len == 0)
 			return -EINVAL;
-		if (L1SAP_IS_PTCCH(fn)) {
-			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PTCCH, fn,
-					trx->arfcn, L1SAP_FN2PTCCHBLOCK(fn),
-					data, len, rssi, data_ind->ber10k,
-					data_ind->ta_offs_256bits/64,
-					data_ind->lqual_cb);
-		} else {
-			/* drop incomplete UL block */
-			if (pr_info != PRES_INFO_BOTH)
-				return 0;
-			/* PDTCH / PACCH frame handling */
-			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, trx->arfcn,
-					L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
-					data_ind->ta_offs_256bits/64, data_ind->lqual_cb);
-		}
+		/* drop incomplete UL block */
+		if (pr_info != PRES_INFO_BOTH)
+			return 0;
+
+		/* PDTCH / PACCH frame handling */
+		pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, trx->arfcn,
+				L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
+				data_ind->ta_offs_256bits/64, data_ind->lqual_cb);
 		return 0;
 	}
 
