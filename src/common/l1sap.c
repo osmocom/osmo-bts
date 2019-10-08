@@ -349,18 +349,27 @@ static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, unsigned int *len)
 {
-	uint8_t chan_nr;
+	uint8_t chan_nr = l1sap->u.rach_ind.chan_nr;
 
 	*chan_type = GSMTAP_CHANNEL_RACH;
 	*fn = l1sap->u.rach_ind.fn;
-	*tn = L1SAP_CHAN2TS(l1sap->u.rach_ind.chan_nr);
-	chan_nr = l1sap->u.rach_ind.chan_nr;
+	*tn = L1SAP_CHAN2TS(chan_nr);
+
 	if (L1SAP_IS_CHAN_TCHH(chan_nr))
 		*ss = L1SAP_CHAN2SS_TCHH(chan_nr);
 	else if (L1SAP_IS_CHAN_SDCCH4(chan_nr))
 		*ss = L1SAP_CHAN2SS_SDCCH4(chan_nr);
 	else if (L1SAP_IS_CHAN_SDCCH8(chan_nr))
 		*ss = L1SAP_CHAN2SS_SDCCH8(chan_nr);
+	else if (L1SAP_IS_CHAN_PDCH(chan_nr)) {
+		if (L1SAP_IS_PTCCH(*fn)) {
+			/* TODO: calculate sub-slot from frame-number */
+			*chan_type = GSMTAP_CHANNEL_PTCCH;
+		} else {
+			*chan_type = GSMTAP_CHANNEL_PDTCH;
+		}
+	}
+
 	*data = (uint8_t *)&l1sap->u.rach_ind.ra;
 	*len = 1;
 
@@ -1303,6 +1312,32 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param
 	return 0;
 }
 
+/* Special case for Access Bursts on PDTCH/U or PTCCH/U */
+static int l1sap_pdch_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
+{
+	/* Filter out noise / interference / ghosts */
+	if (!rach_pass_filter(rach_ind, trx->bts))
+		return -EAGAIN;
+
+	/* PTCCH/U (Packet Timing Advance Control Channel) */
+	if (L1SAP_IS_PTCCH(rach_ind->fn)) {
+		LOGPFN(DL1P, LOGL_DEBUG, rach_ind->fn,
+		       /* TODO: calculate and print Timing Advance Index */
+		       "Access Burst for continuous Timing Advance control (toa256=%d)\n",
+		       rach_ind->acc_delay_256bits);
+
+		/* QTA: Timing Advance in units of 1/4 of a symbol */
+		pcu_tx_rach_ind(trx->bts, rach_ind->acc_delay_256bits >> 6,
+				rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
+				rach_ind->burst_type, PCU_IF_SAPI_PTCCH);
+		return 0;
+	} else { /* The MS may acknowledge DL data by 4 consequent Access Bursts */
+		LOGPFN(DL1P, LOGL_NOTICE, rach_ind->fn,
+		       "Access Bursts on PDTCH/U are not (yet) supported\n");
+		return -ENOTSUP;
+	}
+}
+
 /* RACH received from bts model */
 static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
@@ -1312,22 +1347,15 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 
 	DEBUGPFN(DL1P, rach_ind->fn, "Rx PH-RA.ind\n");
 
-	/* PTCCH/UL (Packet Timing Advance Control Channel) */
-	if (L1SAP_IS_CHAN_PDCH(rach_ind->chan_nr) && L1SAP_IS_PTCCH(rach_ind->fn)) {
-		LOGPFN(DL1P, LOGL_DEBUG, rach_ind->fn,
-		       /* TODO: calculate and print Timing Advance Index */
-		       "Access Burst for continuous Timing Advance control (toa256=%d)\n",
-		       rach_ind->acc_delay_256bits);
-
-		/* QTA: Timing Advance in units of 1/4 of a symbol */
-		pcu_tx_rach_ind(bts, rach_ind->acc_delay_256bits >> 6,
-				rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
-				rach_ind->burst_type, PCU_IF_SAPI_PTCCH);
-		return 0;
-	}
-
-	/* check for handover access burst on dedicated channels */
-	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
+	/* Check the origin of an Access Burst */
+	switch (rach_ind->chan_nr & 0xf8) {
+	case RSL_CHAN_RACH:
+		/* CS or PS RACH, to be handled in this function */
+		break;
+	case RSL_CHAN_OSMO_PDCH:
+		/* TODO: do we need to count Access Bursts on PDCH? */
+		return l1sap_pdch_rach(trx, rach_ind);
+	default:
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
 		return l1sap_handover_rach(trx, rach_ind);
 	}
