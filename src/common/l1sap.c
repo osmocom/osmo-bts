@@ -802,10 +802,10 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		} else {
 			/* forward RTS.ind to PCU */
 			if (L1SAP_IS_PTCCH(rts_ind->fn)) {
-				pcu_tx_rts_req(&trx->ts[tn], 1, fn, 1 /* ARFCN */,
+				pcu_tx_rts_req(&trx->ts[tn], 1, fn, trx->arfcn,
 						L1SAP_FN2PTCCHBLOCK(fn));
 			} else {
-				pcu_tx_rts_req(&trx->ts[tn], 0, fn, 0 /* ARFCN */,
+				pcu_tx_rts_req(&trx->ts[tn], 0, fn, trx->arfcn,
 						L1SAP_FN2MACBLOCK(fn));
 			}
 			/* return early, PCU takes care of rest */
@@ -1135,7 +1135,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			return -EINVAL;
 		if (L1SAP_IS_PTCCH(fn)) {
 			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PTCCH, fn,
-					0 /* ARFCN */, L1SAP_FN2PTCCHBLOCK(fn),
+					trx->arfcn, L1SAP_FN2PTCCHBLOCK(fn),
 					data, len, rssi, data_ind->ber10k,
 					data_ind->ta_offs_256bits/64,
 					data_ind->lqual_cb);
@@ -1144,7 +1144,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			if (pr_info != PRES_INFO_BOTH)
 				return 0;
 			/* PDTCH / PACCH frame handling */
-			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, 0 /* ARFCN */,
+			pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, trx->arfcn,
 					L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
 					data_ind->ta_offs_256bits/64, data_ind->lqual_cb);
 		}
