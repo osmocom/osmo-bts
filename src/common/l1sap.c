@@ -1288,8 +1288,7 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 }
 
 /* Special case where handover RACH is detected */
-static int l1sap_handover_rach(struct gsm_bts_trx *trx,
-	struct osmo_phsap_prim *l1sap, struct ph_rach_ind_param *rach_ind)
+static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
 {
 	/* Filter out noise / interference / ghosts */
 	if (!rach_pass_filter(rach_ind, trx->bts)) {
@@ -1330,7 +1329,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 	/* check for handover access burst on dedicated channels */
 	if (!L1SAP_IS_CHAN_RACH(rach_ind->chan_nr)) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
-		return l1sap_handover_rach(trx, l1sap, rach_ind);
+		return l1sap_handover_rach(trx, rach_ind);
 	}
 
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);
