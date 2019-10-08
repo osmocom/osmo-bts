@@ -333,8 +333,10 @@ static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	if (L1SAP_IS_PTCCH(fn)) {
 		*chan_type = GSMTAP_CHANNEL_PTCCH;
 		*ss = L1SAP_FN2PTCCHBLOCK(fn);
-	} else
-		*chan_type = GSMTAP_CHANNEL_PACCH;
+	} else {
+		/* TODO: distinguish PACCH */
+		*chan_type = GSMTAP_CHANNEL_PDTCH;
+	}
 
 	return 0;
 }
