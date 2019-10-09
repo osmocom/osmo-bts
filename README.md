@@ -117,8 +117,3 @@ osmo-bts-octphy
  * no clear indication of nominal transmit power, various power related
    computations are likely off
  * no OML attribute validation during bts_model_check_oml()
-
-osmo-bts-trx
-------------
-
- * No BER value delivered to OsmoPCU (https://osmocom.org/issues/1855)
