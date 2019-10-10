@@ -46,6 +46,7 @@
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
+#include <osmocom/gsm/gsm0502.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
@@ -1142,6 +1143,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
+	unsigned int fn_begin;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1225,12 +1227,6 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 
-	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
-			      trx_chan_desc[chan].chan_nr | bi->tn,
-			      n_errors, n_bits_total,
-			      bi->rssi, bi->toa256);
-
 	/* Check if the frame is bad */
 	if (rc < 0) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
@@ -1253,9 +1249,12 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
-		_sched_compose_ph_data_ind(l1t, bi->tn,
-			/* FIXME: this calculation is wrong */
-			(bi->fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
+		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_F);
+		l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
+				      trx_chan_desc[chan].chan_nr | bi->tn,
+				      n_errors, n_bits_total,
+				      bi->rssi, bi->toa256);
+		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			/* FIXME: AVG RSSI and ToA256 */
 			bi->rssi, bi->toa256,
@@ -1314,10 +1313,13 @@ bfi:
 
 	/* TCH or BFI */
 compose_l1sap:
-	return _sched_compose_tch_ind(l1t, bi->tn,
-		/* FIXME: this calculation is wrong */
-		(bi->fn + GSM_HYPERFRAME - 7) % GSM_HYPERFRAME, chan,
-		tch_data, rc);
+	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
+	l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
+			      trx_chan_desc[chan].chan_nr | bi->tn,
+			      n_errors, n_bits_total,
+			      bi->rssi, bi->toa256);
+	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
+				      tch_data, rc);
 }
 
 /*! \brief a single TCH/H burst was received by the PHY, process it */
@@ -1342,6 +1344,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	 * Even FN ending at: 10,11,19,20,2,3
 	 */
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
+	unsigned int fn_begin;
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1436,12 +1439,6 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	memcpy(*bursts_p, *bursts_p + 232, 232);
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 
-	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, bi->tn,
-		*first_fn /* FIXME: this is wrong */,
-		trx_chan_desc[chan].chan_nr | bi->tn,
-		n_errors, n_bits_total, bi->rssi, bi->toa256);
-
 	/* Check if the frame is bad */
 	if (rc < 0) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
@@ -1465,9 +1462,15 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
 		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
-		_sched_compose_ph_data_ind(l1t, bi->tn,
-			/* FIXME: what the hell is this?!? */
-			(bi->fn + GSM_HYPERFRAME - 10 - ((bi->fn % 26) >= 19)) % GSM_HYPERFRAME, chan,
+		if (lchan->nr == 0)
+			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
+		else
+			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
+		l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
+				      trx_chan_desc[chan].chan_nr | bi->tn,
+				      n_errors, n_bits_total, bi->rssi,
+				      bi->toa256);
+		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			/* FIXME: AVG both RSSI and ToA */
 			bi->rssi, bi->toa256,
@@ -1528,10 +1531,16 @@ compose_l1sap:
 	 * with the slot 12, so an extra FN must be subtracted to get correct
 	 * start of frame.
 	 */
-	return _sched_compose_tch_ind(l1t, bi->tn,
-		/* FIXME: what the hell is this?!? */
-		(bi->fn + GSM_HYPERFRAME - 10 - ((bi->fn%26)==19) - ((bi->fn%26)==20)) % GSM_HYPERFRAME,
-		chan, tch_data, rc);
+	if (lchan->nr == 0)
+		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H0);
+	else
+		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H1);
+	l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
+			      trx_chan_desc[chan].chan_nr | bi->tn,
+			      n_errors, n_bits_total, bi->rssi,
+			      bi->toa256);
+	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
+				      tch_data, rc);
 }
 
 /* schedule all frames of all TRX for given FN */
