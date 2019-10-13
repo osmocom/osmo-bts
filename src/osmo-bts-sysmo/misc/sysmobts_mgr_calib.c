@@ -54,7 +54,7 @@ enum calib_result {
 	CALIB_FAIL_START,
 	CALIB_FAIL_GPS,
 	CALIB_FAIL_CTRL,
-	CALIB_SUCESS,
+	CALIB_SUCCESS,
 };
 
 static inline int compat_gps_read(struct gps_data_t *data)
@@ -271,7 +271,7 @@ static void calib_state_reset(struct sysmobts_mgr_instance *mgr, int outcome)
 		 * and in case of a failure in some minutes.
 		 */
 		int timeout = 2 * 60 * 60;
-		if (outcome != CALIB_SUCESS)
+		if (outcome != CALIB_SUCCESS)
 			timeout = 5 * 60;
 
 		mgr->calib.calib_timeout.data = mgr;
@@ -390,7 +390,7 @@ static void handle_ctrl_set_cor(
 
 	LOGP(DCALIB, LOGL_NOTICE,
 		"Calibration process completed\n");
-	calib_state_reset(mgr, CALIB_SUCESS);
+	calib_state_reset(mgr, CALIB_SUCCESS);
 }
 
 static void handle_ctrl(struct sysmobts_mgr_instance *mgr, struct msgb *msg)
