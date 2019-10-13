@@ -95,10 +95,10 @@ msc {
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_FIRST)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -110,10 +110,10 @@ msc {
 	bts -x mgw	[label="Suppressed RTP frame"];
 
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 }
@@ -123,7 +123,7 @@ ULSF2:: As per 3GPP TS 05.03 section 3.9.2.4 The last 4 bursts shall not be tran
 the SID_FIRST frame is immediately followed by a speech frame. It has been observed that some phone
 does not transmit the last 4 bursts even if it is not followed by a speech frame.
 
-ULSU2:: There must be exactly two supressed voice frames between the
+ULSU2:: There must be exactly two suppressed voice frames between the
 SID_FIRST and the SID_UPDATE, i.e. there's 60ms between SID_FIRST and
 SID_UPDATE.
 
@@ -152,52 +152,52 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -208,10 +208,10 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 }
@@ -254,10 +254,10 @@ msc {
 	...;
 	---		[label="Once voice is active again"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -345,10 +345,10 @@ msc {
 	...;
 	---		[label="FACCH/F Frame During DTX"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -368,10 +368,10 @@ msc {
 	phy => bts	[label="PH-DATA.ind FACCH/F"];
 	bts => mgw	[label="FACCH/F"];
 
-	ms -x phy	[label="Supressed L1 burst", id="ULSF2"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst", id="ULSF2"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_FIRST)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 	...;
@@ -382,7 +382,7 @@ ULSF2:: The sub-blocks 5-8 of SID_FIRST are not transmitted, as all
 information bits are contained in sub-blocks 1-4 only
 
 Note:: It has been observed with some phones that the SID_FIRST is not sent following the FACCH/F
-frame. If this case occures the No Data Frame and SID_UPDATE order resumes.
+frame. If this case occurs the No Data Frame and SID_UPDATE order resumes.
 
 === TCH/AFS Downlink (Network to MS)
 
@@ -660,10 +660,10 @@ msc {
 	phy => bts	[label="PH-RTS.ind (TCH)"];
 	phy <= bts	[label="PH-EMPTY-FRAME.req (FACCH/F)"];
 	phy <= bts	[label="PH-EMPTY-FRAME.req (TCH/F)"];
-	ms x- phy	[label="Supressed burst"];
-	ms x- phy	[label="Supressed burst"];
-	ms x- phy	[label="Supressed burst"];
-	ms x- phy	[label="Supressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
+	ms x- phy	[label="Suppressed burst"];
 }
 ----
 
@@ -738,8 +738,8 @@ msc {
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (N)"];
 	bts => mgw	[label="RTP (AMR FT=0..7,Q=1)"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP1", id="ULSF1"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 
@@ -753,8 +753,8 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 }
@@ -764,7 +764,7 @@ ULSF1:: Only SID_FIRST_P1 contains information so it must be the only one transm
 
 NOTE:: It has been observed that not all phones transmit SID_FIRST_P2 so the PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP2 is not guaranteed to be sent to the BTS.
 
-ULSU1:: There must be exactly two supressed voice frames between the
+ULSU1:: There must be exactly two suppressed voice frames between the
 SID_FIRST and the SID_UPDATE, i.e. there's 60ms between SID_FIRST and
 SID_UPDATE.
 
@@ -795,33 +795,33 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -834,8 +834,8 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr (SID_UPDATE)"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 }
@@ -999,8 +999,8 @@ msc {
 	...;
 	ms .. mgw	[label="FACCH/H during DTX operation"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
@@ -1026,8 +1026,8 @@ msc {
 	phy => bts	[label="PH-DATA.ind with empty payload"];
 	bts -x mgw	[label="Suppressed RTP frame"];
 
-	ms -x phy	[label="Supressed L1 burst"];
-	ms -x phy	[label="Supressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
+	ms -x phy	[label="Suppressed L1 burst"];
 	phy => bts	[label="PH-DATA.ind GsmL1_TchPlType_Amr_SidFirstP1"];
 	bts => mgw	[label="RTP (AMR FT=SID,Q=1)"];
 }

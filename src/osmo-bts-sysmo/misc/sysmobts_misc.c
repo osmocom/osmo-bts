@@ -234,14 +234,14 @@ int sysmobts_firmware_reload(enum sysmobts_firmware_type type)
 
 	fd_in = open(name, O_RDONLY);
 	if (fd_in < 0) {
-		LOGP(DFW, LOGL_ERROR, "unable ot open firmware file %s: %s\n",
+		LOGP(DFW, LOGL_ERROR, "unable to open firmware file %s: %s\n",
 		     name, strerror(errno));
 		return fd_in;
 	}
 
 	fd_out = open(fw_devs[type], O_WRONLY);
 	if (fd_out < 0) {
-		LOGP(DFW, LOGL_ERROR, "unable ot open firmware device %s: %s\n",
+		LOGP(DFW, LOGL_ERROR, "unable to open firmware device %s: %s\n",
 		     fw_devs[type], strerror(errno));
 		close(fd_in);
 		return fd_out;

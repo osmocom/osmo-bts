@@ -622,7 +622,7 @@ int set_clock_cor(int clock_cor, int calib, int source)
 		return -1;
 	}
 	if (prim.u.rfClockSetupCnf.status != GsmL1_Status_Success) {
-		printf("Clock setup was not successfull.\n");
+		printf("Clock setup was not successful.\n");
 		return -2;
 	}
 

@@ -307,7 +307,7 @@ static int calib_verify(struct oc2gl1_hdl *fl1h, const struct calib_file_desc *d
 	fseek(st->fp, 0L, SEEK_END);
 	sz = ftell(st->fp);
 
-	/* rewind read poiner */
+	/* rewind read pointer */
 	fseek(st->fp, 0L, SEEK_SET);
 
 	/* read file */

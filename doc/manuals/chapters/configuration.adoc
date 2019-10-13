@@ -14,7 +14,7 @@ OsmoBTS software.
 
 === Command Line Options
 
-Ths OsmoBTS executables (`osmo-bts-sysmo`, `osmo-bts-trx`,
+The OsmoBTS executables (`osmo-bts-sysmo`, `osmo-bts-trx`,
 `osmo-bts-octphy`, `osmo-bts-litecell15`, ...) share the following
 generic command line options:
 

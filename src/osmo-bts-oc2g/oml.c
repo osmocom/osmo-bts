@@ -1869,7 +1869,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 	}
 
-	/* FIXME: we actaully need to send a ACK or NACK for the OML message */
+	/* FIXME: we actually need to send a ACK or NACK for the OML message */
 	return oml_fom_ack_nack(msg, 0);
 }
 

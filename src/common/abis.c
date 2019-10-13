@@ -173,7 +173,7 @@ static void sign_link_down(struct e1inp_line *line)
 }
 
 
-/* callback for incoming mesages from A-bis/IP */
+/* callback for incoming messages from A-bis/IP */
 static int sign_link_cb(struct msgb *msg)
 {
 	struct e1inp_sign_link *link = msg->dst;
@@ -212,7 +212,7 @@ uint32_t get_signlink_remote_ip(struct e1inp_sign_link *link)
 		return 0;
 	}
 
-	/* we assume that the soket is AF_INET.  As Abis/IP contains
+	/* we assume that the socket is AF_INET.  As Abis/IP contains
 	 * lots of hard-coded IPv4 addresses, this safe */
 	OSMO_ASSERT(sin.sin_family == AF_INET);
 
@@ -270,7 +270,7 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, char *dst_host,
 {
 	struct e1inp_line *line;
 
-	/* patch in various data from VTY and othe sources */
+	/* patch in various data from VTY and other sources */
 	line_ops.cfg.ipa.addr = dst_host;
 	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
 	bts_dev_info.site_id = bts->ip_access.site_id;

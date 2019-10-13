@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 
 	/* test error case / excess power (40 dBm is too much) */
 	test_power_ramp(trx, 40);
-	/* test actaul ramping to full 33 dBm */
+	/* test actual ramping to full 33 dBm */
 	test_power_ramp(trx, 33);
 
 	while (1) {

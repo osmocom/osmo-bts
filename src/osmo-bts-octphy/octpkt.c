@@ -101,7 +101,7 @@ void octvc1_fill_msg_hdr(tOCTVC1_MSG_HEADER *mh, uint32_t len,
 #include <net/ethernet.h>
 
 /*! \brief Initialize a packet socket
- *  \param[in] tye Socket type like SOCK_RAW or SOCK_DGRAM
+ *  \param[in] type Socket type like SOCK_RAW or SOCK_DGRAM
  *  \param[in] proto The link-layer protocol in network byte order
  *  \param[in] bind_dev The name of the interface to bind to (if any)
  *  \param[in] flags flags like \ref OSMO_SOCK_F_BIND

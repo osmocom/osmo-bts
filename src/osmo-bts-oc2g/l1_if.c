@@ -1533,7 +1533,7 @@ static int reset_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	return 0;
 }
 
-/* FIXME: This delays the TRX initalization by 5 sec in order to avoid the
+/* FIXME: This delays the TRX initialization by 5 sec in order to avoid the
  * occurrence of a race condition in the OML bringup. This a work around and
  * should be fixed properly. See also OS#3782, OS#2470 and OS#2469 */
 void l1if_reset_cb(void *arg)

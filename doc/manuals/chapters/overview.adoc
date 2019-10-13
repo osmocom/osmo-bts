@@ -38,7 +38,7 @@ Typical configurations either use OsmoBTS with OsmoBSC, or with
 OsmoNITB, as can be seen in the following figures.
 
 [[fig-gsm-classic]]
-.Classic GSM archtiecture using OsmoBTS with OsmoBTS components
+.Classic GSM architecture using OsmoBTS with OsmoBTS components
 [graphviz]
 ----
 digraph G {

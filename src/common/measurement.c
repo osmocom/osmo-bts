@@ -340,7 +340,7 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 	}
 
 	/* We expect the lower layers to mark AMR SID_UPDATE frames already as such.
-	 * In this function, we only deal with the comon logic as per the TS 45.008 tables */
+	 * In this function, we only deal with the common logic as per the TS 45.008 tables */
 	if (!ulm->is_sub)
 		ulm->is_sub = ts45008_83_is_sub(lchan, fn, false);
 
@@ -698,7 +698,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 
 	lchan->meas.num_ul_meas = 0;
 
-	/* return 1 to indicte that the computation has been done and the next
+	/* return 1 to indicate that the computation has been done and the next
 	 * interval begins. */
 	return 1;
 }

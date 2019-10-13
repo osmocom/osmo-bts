@@ -52,7 +52,7 @@ static void load_timer_cb(void *data)
 		uint16_t buffer_space = paging_buffer_space(bts->paging_state);
 		rsl_tx_ccch_load_ind_pch(bts, buffer_space);
 	} else {
-		/* This is an extenstion of TS 08.58.  We don't only
+		/* This is an extension of TS 08.58.  We don't only
 		 * send load indications if the load is above threshold,
 		 * but we also explicitly indicate that we are below
 		 * threshold by using the magic value 0xffff */

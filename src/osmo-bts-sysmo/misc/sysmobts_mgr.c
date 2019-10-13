@@ -312,7 +312,7 @@ int main(int argc, char **argv)
 		LOGP(DLCTRL, LOGL_ERROR, "Can't connect to CTRL @ localhost:%u\n",
 		     OSMO_CTRL_PORT_BTS);
 	else
-		LOGP(DLCTRL, LOGL_NOTICE, "CTRL connected to locahost:%u\n",
+		LOGP(DLCTRL, LOGL_NOTICE, "CTRL connected to localhost:%u\n",
 		     OSMO_CTRL_PORT_BTS);
 
         sysmobts_mgr_temp_init(&manager, ccon);

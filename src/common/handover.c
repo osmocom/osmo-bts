@@ -135,7 +135,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 	osmo_timer_schedule(&lchan->ho.t3105, 0, bts->t3105_ms * 1000);
 }
 
-/* received frist valid data frame on dedicated channel */
+/* received first valid data frame on dedicated channel */
 void handover_frame(struct gsm_lchan *lchan)
 {
 	LOGPLCHAN(lchan, DHO, LOGL_INFO, "First valid frame detected\n");

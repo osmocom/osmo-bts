@@ -292,7 +292,7 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 		bts_model_trx_close(trx);
 	}
 
-	/* shedule a timer to make sure select loop logic can run again
+	/* schedule a timer to make sure select loop logic can run again
 	 * to dispatch any pending primitives */
 	osmo_timer_schedule(&shutdown_timer, 3, 0);
 }
@@ -591,7 +591,7 @@ static int try_merge_imm_ass_rej(struct gsm48_imm_ass_rej *old_rej,
 		return 0;
 
 	/* GSM 08.58, 5.7
-	 * -> The BTS may combine serveral IMM.ASS.REJ messages
+	 * -> The BTS may combine several IMM.ASS.REJ messages
 	 * -> Identical request refs in one message may be squeezed
 	 *
 	 * GSM 04.08, 9.1.20.2
@@ -669,7 +669,7 @@ struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 /*
  * Remove lower prio messages if the queue has grown too long.
  *
- * \return 0 iff the number of messages in the queue would fit into the AGCH
+ * \return 0 if the number of messages in the queue would fit into the AGCH
  *         reserved part of the CCCH.
  */
 static void compact_agch_queue(struct gsm_bts *bts)

@@ -160,7 +160,7 @@ static void queue_limit_to(const char *prefix, struct llist_head *queue, unsigne
 }
 
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data
- * in order to wrap femtobts header arround l2 data, there must be enough space
+ * in order to wrap femtobts header around l2 data, there must be enough space
  * in front and behind data pointer */
 struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 {
@@ -664,7 +664,7 @@ static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
-/* any L1 MPH_INFO indication prim recevied from bts model */
+/* any L1 MPH_INFO indication prim received from bts model */
 static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
 {
@@ -738,7 +738,7 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 	return 0;
 }
 
-/* any L1 MPH_INFO confirm prim recevied from bts model */
+/* any L1 MPH_INFO confirm prim received from bts model */
 static int l1sap_mph_info_cnf(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
 {
@@ -798,7 +798,7 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
 	/* Note: The number of available access grant channels is set by the
 	 * parameter BS_AG_BLKS_RES via system information type 3. This SI is
-	 * transfered to osmo-bts via RSL */
+	 * transferred to osmo-bts via RSL */
         return l1sap_fn2ccch_block(fn) < num_agch(trx, "PH-RTS-IND");
 }
 
@@ -1008,7 +1008,7 @@ static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 	return true;
 }
 
-/* TCH-RTS-IND prim recevied from bts model */
+/* TCH-RTS-IND prim received from bts model */
 static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_tch_param *rts_ind)
 {

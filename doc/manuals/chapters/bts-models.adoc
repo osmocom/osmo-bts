@@ -443,7 +443,7 @@ configuration at the BTS configuration file is (as always) very minimal,
 as in the GSM network architecture provides almost all relevant
 configuration to the BTS from the BSC.
 
-An example configuratin file is provided as part of the osmo-bts source
+An example configuration file is provided as part of the osmo-bts source
 code: `doc/examples/virtual/osmobts-virtual.cfg`
 
 For more information see

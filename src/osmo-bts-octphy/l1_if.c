@@ -998,7 +998,7 @@ static int handle_ph_readytosend_ind(struct octphy_hdl *fl1,
 
 	set_log_ctx_sapi(evt->LchId.bySAPI);
 
-	/* Retrive the data */
+	/* Retrieve the data */
 	fn = evt->ulFrameNumber;
 	ts_num = (uint8_t) evt->LchId.byTimeslotNb;
 	sc = (uint8_t) evt->LchId.bySubChannelNb;
@@ -1194,7 +1194,7 @@ static int handle_ph_data_ind(struct octphy_hdl *fl1,
 	/* burst timing  in 1x but PCU is expecting 4X */
 	l1sap->u.data.ta_offs_256bits = data_ind->MeasurementInfo.sBurstTiming4x*64;
 	snr = data_ind->MeasurementInfo.sSNRDb;
-	/* FIXME: better converion formulae for SnR -> C / I?
+	/* FIXME: better conversion formulae for SnR -> C / I?
 	l1sap->u.data.lqual_cb = (snr ? snr : (snr - 65536)) * 10 / 256;
 	LOGP(DL1C, LOGL_ERROR, "SnR: raw %d, computed %d\n", snr, l1sap->u.data.lqual_cb);
 	*/
@@ -1681,7 +1681,7 @@ static int rx_octphy_msg(struct msgb *msg)
 	}
 
 	/* we first need to decode the common OCTPKT header and dispatch
-	 * based on contrl (command/resp) or data (event=indication) */
+	 * based on control (command/resp) or data (event=indication) */
 	switch (format) {
 	case cOCTVOCNET_PKT_FORMAT_CTRL:
 		ctlh = (tOCTVOCNET_PKT_CTL_HEADER *) (msg->l1h + 4);

@@ -363,7 +363,7 @@ int lc15bts_firmware_reload(enum lc15bts_firmware_type type)
 	case LC15BTS_FW_DSP1: 
 		fd = open(fw_sysfs[type], O_WRONLY);
 	        if (fd < 0) {
-	                LOGP(DFW, LOGL_ERROR, "unable ot open firmware device %s: %s\n",
+	                LOGP(DFW, LOGL_ERROR, "unable to open firmware device %s: %s\n",
                     	fw_sysfs[type], strerror(errno));
 	                close(fd);
         	        return fd;

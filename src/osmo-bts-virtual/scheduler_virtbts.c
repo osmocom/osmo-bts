@@ -1,4 +1,4 @@
-/* Scheduler worker functiosn for Virtua OsmoBTS */
+/* Scheduler worker functions for Virtua OsmoBTS */
 
 /* (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
  * (C) 2017 Sebastian Stumpf <sebastian.stumpf87@googlemail.com>
@@ -64,7 +64,7 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 {
 	const struct trx_chan_desc *chdesc = &trx_chan_desc[chan];
 	struct msgb *outmsg;			/* msg to send with gsmtap header prepended */
-	uint16_t arfcn = l1t->trx->arfcn;	/* ARFCN of the tranceiver the message is send with */
+	uint16_t arfcn = l1t->trx->arfcn;	/* ARFCN of the transceiver the message is send with */
 	uint8_t signal_dbm = 63;		/* signal strength, 63 is best */
 	uint8_t snr = 63;			/* signal noise ratio, 63 is best */
 	uint8_t *data = msgb_l2(msg);		/* data to transmit (whole message without l1 header) */

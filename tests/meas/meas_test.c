@@ -306,7 +306,7 @@ static void test_is_meas_complete(void)
  * received. The process must still go on when measurement indications (blocks)
  * are lost or otherwise spaced out. Even the complete absence of the
  * measurement indications from the SACCH which are used to detect the interval
- * end must not keep the interval from beeing processed. */
+ * end must not keep the interval from being processed. */
 void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 {
 	struct gsm_lchan *lchan = &trx->ts[2].lchan[0];

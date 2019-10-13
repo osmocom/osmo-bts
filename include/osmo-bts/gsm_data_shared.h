@@ -250,7 +250,7 @@ struct gsm_lchan {
 	} si;
 	struct {
 		uint8_t flags;
-		/* RSL measurment result number, 0 at lchan_act */
+		/* RSL measurement result number, 0 at lchan_act */
 		uint8_t res_nr;
 		/* current Tx power level of the BTS */
 		uint8_t bts_tx_pwr;
@@ -556,7 +556,7 @@ struct gsm_bts {
 	/* list header in net->bts_list */
 	struct llist_head list;
 
-	/* number of ths BTS in network */
+	/* number of the BTS in network */
 	uint8_t nr;
 	/* human readable name / description */
 	char *description;
@@ -622,7 +622,7 @@ struct gsm_bts {
 	/* is SI3 GPRS Indicator currently disabled due to lack of PCU connection? */
 	bool si3_gprs_ind_disabled;
 
-	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
+	/* ip.access Unit ID's have Site/BTS/TRX layout */
 	union {
 		struct {
 			uint16_t site_id;
@@ -765,7 +765,7 @@ struct gsm_bts {
 	struct bts_smscb_state smscb_extended;
 	int smscb_queue_tgt_len; /* ideal/target queue length */
 	int smscb_queue_max_len; /* maximum queue length */
-	int smscb_queue_hyst; /* hysteresis for CBCH laod indications */
+	int smscb_queue_hyst; /* hysteresis for CBCH load indications */
 
 	int16_t min_qual_rach;	/* minimum link quality (in centiBels) for Access Bursts */
 	int16_t min_qual_norm;	/* minimum link quality (in centiBels) for Normal Bursts */

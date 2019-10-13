@@ -208,7 +208,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	llist_for_each_entry(pinst, &plink->instances, list) {
 		trx_sched_init(&pinst->u.virt.sched, pinst->trx);
 		/* Only start the scheduler for the transceiver on C0.
-		 * If we have multiple tranceivers, CCCH is always on C0
+		 * If we have multiple transceivers, CCCH is always on C0
 		 * and has to be auto active */
 		/* Other TRX are activated via OML by a PRIM_INFO_MODIFY
 		 * / PRIM_INFO_ACTIVATE */

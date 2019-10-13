@@ -94,7 +94,7 @@ static int get_clock_info(struct ctrl_cmd *cmd, void *data)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	struct ctrl_cmd_def *cd;
 
-	/* geneate a deferred control command */
+	/* generate a deferred control command */
 	cd = ctrl_cmd_def_make(fl1h, cmd, NULL, 10);
 
 	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
@@ -136,7 +136,7 @@ static int set_clock_info(struct ctrl_cmd *cmd, void *data)
 	SuperFemto_Prim_t *sysp = msgb_sysprim(msg);
 	struct ctrl_cmd_def *cd;
 
-	/* geneate a deferred control command */
+	/* generate a deferred control command */
 	cd = ctrl_cmd_def_make(fl1h, cmd, NULL, 10);
 
 	/* Set GPS/PPS as reference */
@@ -197,7 +197,7 @@ static int get_clock_corr(struct ctrl_cmd *cmd, void *data)
 	 * prefer to to ask the actual L1 about the currently used value to
 	 * avoid any mistakes */
 
-	/* geneate a deferred control command */
+	/* generate a deferred control command */
 	cd = ctrl_cmd_def_make(fl1h, cmd, NULL, 10);
 
 	sysp->id = SuperFemto_PrimId_RfClockInfoReq;
@@ -241,7 +241,7 @@ static int set_clock_corr(struct ctrl_cmd *cmd, void *data)
 
 	fl1h->clk_cal = atoi(cmd->value);
 
-	/* geneate a deferred control command */
+	/* generate a deferred control command */
 	cd = ctrl_cmd_def_make(fl1h, cmd, NULL, 10);
 
 	sysp->id = SuperFemto_PrimId_RfClockSetupReq;

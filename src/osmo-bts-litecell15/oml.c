@@ -1724,7 +1724,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
 	}
 
-	/* FIXME: we actaully need to send a ACK or NACK for the OML message */
+	/* FIXME: we actually need to send a ACK or NACK for the OML message */
 	return oml_fom_ack_nack(msg, 0);
 }
 

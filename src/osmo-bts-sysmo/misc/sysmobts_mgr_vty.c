@@ -380,11 +380,11 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 	vty_out(vty, "Temperature control state: %s%s",
 		sysmobts_mgr_temp_get_state(s_mgr->state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
-	vty_out(vty, " Digital: %f Celcius%s",
+	vty_out(vty, " Digital: %f Celsius%s",
 		sysmobts_temp_get(SYSMOBTS_TEMP_DIGITAL,
 					SYSMOBTS_TEMP_INPUT) / 1000.0f,
 		VTY_NEWLINE);
-	vty_out(vty, " RF:      %f Celcius%s",
+	vty_out(vty, " RF:      %f Celsius%s",
 		sysmobts_temp_get(SYSMOBTS_TEMP_RF,
 					SYSMOBTS_TEMP_INPUT) / 1000.0f,
 		VTY_NEWLINE);
@@ -396,8 +396,8 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 			is_sbts2050_master() ? "master" : "slave", VTY_NEWLINE);
 
 		sbts2050_uc_check_temp(&temp_pa, &temp_board);
-		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_pa, VTY_NEWLINE);
-		vty_out(vty, " sysmoBTS 2050 PA: %d Celcius%s", temp_board, VTY_NEWLINE);
+		vty_out(vty, " sysmoBTS 2050 PA: %d Celsius%s", temp_pa, VTY_NEWLINE);
+		vty_out(vty, " sysmoBTS 2050 PA: %d Celsius%s", temp_board, VTY_NEWLINE);
 
 		sbts2050_uc_get_status(&status);
 		vty_out(vty, "Power Status%s", VTY_NEWLINE);

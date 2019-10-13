@@ -45,7 +45,7 @@ We provide a
 as well as a
 [VTY Reference Manual](http://ftp.osmocom.org/docs/latest/osmobsc-vty-reference.pdf)
 and a
-[Abis refrence MAnual](http://ftp.osmocom.org/docs/latest/osmobts-abis.pdf)
+[Abis reference MAnual](http://ftp.osmocom.org/docs/latest/osmobts-abis.pdf)
 describing the OsmoBTS specific A-bis dialect.
 
 Mailing List

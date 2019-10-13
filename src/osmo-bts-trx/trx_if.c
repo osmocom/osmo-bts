@@ -195,7 +195,7 @@ void trx_if_init(struct trx_l1h *l1h)
 
 /*! Send a new TRX control command.
  *  \param[inout] l1h TRX Layer1 handle to which to send command
- *  \param[in] criticial
+ *  \param[in] critical
  *  \param[in] cb callback function to be called when valid response is
  *  		  received. Type of cb depends on type of message.
  *  \param[in] cmd zero-terminated string containing command
@@ -1166,7 +1166,7 @@ static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data
 		return plink->u.osmotrx.base_port_local + (pinst->num << 1) + inc;
 }
 
-/*! open a TRX interface. creates contro + data sockets */
+/*! open a TRX interface. creates control + data sockets */
 static int trx_if_open(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;

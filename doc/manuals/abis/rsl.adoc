@@ -346,7 +346,7 @@ See <<rsl_dlcx_ind_msg>>
 In the classic data model established by ETSI/3GPP for A-bis, each
 timeslot (channel) is configured using a static channel combination by
 means of A-bis OML.  Particularly in presence of GPRS services, this
-is very unflexible and leads to inefficient use of air interface
+is very inflexible and leads to inefficient use of air interface
 resources.
 
 As such, several methods have been implemented to overcome this

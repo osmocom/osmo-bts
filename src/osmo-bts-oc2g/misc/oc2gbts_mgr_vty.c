@@ -512,35 +512,35 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		oc2gbts_mgr_sensor_get_state(s_mgr->state.state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
 	oc2gbts_temp_get(OC2GBTS_TEMP_SUPPLY, &temp);
-	vty_out(vty, " Main Supply : %4.2f Celcius%s",
+	vty_out(vty, " Main Supply : %4.2f Celsius%s",
 		 temp/ 1000.0f,
 		VTY_NEWLINE);
 	oc2gbts_temp_get(OC2GBTS_TEMP_SOC, &temp);
-	vty_out(vty, " SoC         : %4.2f Celcius%s",
+	vty_out(vty, " SoC         : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	oc2gbts_temp_get(OC2GBTS_TEMP_FPGA, &temp);
-	vty_out(vty, " FPGA        : %4.2f Celcius%s",
+	vty_out(vty, " FPGA        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	if (oc2gbts_option_get(OC2GBTS_OPTION_RMS_FWD) ||
 			oc2gbts_option_get(OC2GBTS_OPTION_RMS_REFL)) {
 		oc2gbts_temp_get(OC2GBTS_TEMP_RMSDET, &temp);
-		vty_out(vty, " RMSDet      : %4.2f Celcius%s",
+		vty_out(vty, " RMSDet      : %4.2f Celsius%s",
 			temp / 1000.0f,
 			VTY_NEWLINE);
 	}
 	oc2gbts_temp_get(OC2GBTS_TEMP_OCXO, &temp);
-	vty_out(vty, " OCXO        : %4.2f Celcius%s",
+	vty_out(vty, " OCXO        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	oc2gbts_temp_get(OC2GBTS_TEMP_TX, &temp);
-	vty_out(vty, " TX          : %4.2f Celcius%s",
+	vty_out(vty, " TX          : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	if (oc2gbts_option_get(OC2GBTS_OPTION_PA_TEMP)) {
 		oc2gbts_temp_get(OC2GBTS_TEMP_PA, &temp);
-		vty_out(vty, " Power Amp   : %4.2f Celcius%s",
+		vty_out(vty, " Power Amp   : %4.2f Celsius%s",
 			temp / 1000.0f,
 			VTY_NEWLINE);
 	}

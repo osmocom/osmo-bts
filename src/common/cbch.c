@@ -38,7 +38,7 @@ struct smscb_msg {
 	uint8_t num_segs;		/* total number of segments */
 };
 
-/* determine if current queue length differes more than permitted hysteresis from target
+/* determine if current queue length differs more than permitted hysteresis from target
  * queue length. If it does, send CBCH LOAD IND */
 static void check_and_send_cbch_load(struct gsm_bts *bts, struct bts_smscb_state *bts_ss)
 {

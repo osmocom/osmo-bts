@@ -361,7 +361,7 @@ int oc2gbts_firmware_reload(enum oc2gbts_firmware_type type)
 	case OC2GBTS_FW_DSP:
 		fd = open(fw_sysfs[type], O_WRONLY);
 	        if (fd < 0) {
-	                LOGP(DFW, LOGL_ERROR, "unable ot open firmware device %s: %s\n",
+	                LOGP(DFW, LOGL_ERROR, "unable to open firmware device %s: %s\n",
                     	fw_sysfs[type], strerror(errno));
 	                close(fd);
         	        return fd;

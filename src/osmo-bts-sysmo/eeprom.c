@@ -226,12 +226,12 @@ typedef struct
 
                 char szSn[16];                  ///< Serial number
                 uint32_t u8Rev      :  8;       ///< Board revision
-                uint32_t u2Tcxo     :  2;       ///< TCXO present       (0:absent, 1:present, x:unknows)
-                uint32_t u2Ocxo     :  2;       ///< OCXO present       (0:absent, 1:present, x:unknows)
-                uint32_t u2GSM850   :  2;       ///< GSM-850 supported  (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2GSM900   :  2;       ///< GSM-900 supported  (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2DCS1800  :  2;       ///< GSM-1800 supported (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2PCS1900  :  2;       ///< GSM-1900 supported (0:unsupported, 1:supported, x:unknows)
+                uint32_t u2Tcxo     :  2;       ///< TCXO present       (0:absent, 1:present, x:unknown)
+                uint32_t u2Ocxo     :  2;       ///< OCXO present       (0:absent, 1:present, x:unknown)
+                uint32_t u2GSM850   :  2;       ///< GSM-850 supported  (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2GSM900   :  2;       ///< GSM-900 supported  (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2DCS1800  :  2;       ///< GSM-1800 supported (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2PCS1900  :  2;       ///< GSM-1900 supported (0:unsupported, 1:supported, x:unknown)
                 uint32_t            : 12;       ///< unused
             } __attribute__((packed)) sysInfo;
 
@@ -307,12 +307,12 @@ typedef struct
                 uint32_t u32Time;               ///< Epoch time
                 char szSn[16];                  ///< Serial number
                 uint32_t u8Rev      :  8;       ///< Board revision
-                uint32_t u2Tcxo     :  2;       ///< TCXO present       (0:absent, 1:present, x:unknows)
-                uint32_t u2Ocxo     :  2;       ///< OCXO present       (0:absent, 1:present, x:unknows)
-                uint32_t u2GSM850   :  2;       ///< GSM-850 supported  (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2GSM900   :  2;       ///< GSM-900 supported  (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2DCS1800  :  2;       ///< GSM-1800 supported (0:unsupported, 1:supported, x:unknows)
-                uint32_t u2PCS1900  :  2;       ///< GSM-1900 supported (0:unsupported, 1:supported, x:unknows)
+                uint32_t u2Tcxo     :  2;       ///< TCXO present       (0:absent, 1:present, x:unknown)
+                uint32_t u2Ocxo     :  2;       ///< OCXO present       (0:absent, 1:present, x:unknown)
+                uint32_t u2GSM850   :  2;       ///< GSM-850 supported  (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2GSM900   :  2;       ///< GSM-900 supported  (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2DCS1800  :  2;       ///< GSM-1800 supported (0:unsupported, 1:supported, x:unknown)
+                uint32_t u2PCS1900  :  2;       ///< GSM-1900 supported (0:unsupported, 1:supported, x:unknown)
                 uint32_t            : 12;       ///< unused
             } __attribute__((packed)) sysInfo;
 

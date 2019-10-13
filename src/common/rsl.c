@@ -285,7 +285,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 }
 
 /*
- * common channel releated messages
+ * common channel related messages
  */
 
 /* 8.5.1 BCCH INFOrmation is received */
@@ -571,7 +571,7 @@ static int rsl_rx_osmo_etws_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
  *  \param[out] buf Output buffer, must be caller-allocated and hold at least len + 2 or sizeof(sysinfo_buf_t) bytes
  *  \param[out] valid pointer to bit-mask of 'valid' System information types
  *  \param[in] current input data (L3 without L2/L1 header)
- *  \param[in] osmo_si Sytstem Infrormation Type (SYSINFO_TYPE_*)
+ *  \param[in] osmo_si Sytstem Information Type (SYSINFO_TYPE_*)
  *  \param[in] len length of \a current in octets */
 static inline void lapdm_ui_prefix(uint8_t *buf, uint32_t *valid, const uint8_t *current, uint8_t osmo_si, uint16_t len)
 {
@@ -593,7 +593,7 @@ static inline void lapdm_ui_prefix(uint8_t *buf, uint32_t *valid, const uint8_t 
 /*! Prefix a given SACCH frame with a L2/LAPDm UI header and store it in given BTS SACCH buffer
  *  \param[out] bts BTS in whose System Information State we shall store
  *  \param[in] current input data (L3 without L2/L1 header)
- *  \param[in] osmo_si Sytstem Infrormation Type (SYSINFO_TYPE_*)
+ *  \param[in] osmo_si Sytstem Information Type (SYSINFO_TYPE_*)
  *  \param[in] len length of \a current in octets */
 static inline void lapdm_ui_prefix_bts(struct gsm_bts *bts, const uint8_t *current, uint8_t osmo_si, uint16_t len)
 {
@@ -603,7 +603,7 @@ static inline void lapdm_ui_prefix_bts(struct gsm_bts *bts, const uint8_t *curre
 /*! Prefix a given SACCH frame with a L2/LAPDm UI header and store it in given lchan SACCH buffer
  *  \param[out] lchan Logical Channel in whose System Information State we shall store
  *  \param[in] current input data (L3 without L2/L1 header)
- *  \param[in] osmo_si Sytstem Infrormation Type (SYSINFO_TYPE_*)
+ *  \param[in] osmo_si Sytstem Information Type (SYSINFO_TYPE_*)
  *  \param[in] len length of \a current in octets */
 static inline void lapdm_ui_prefix_lchan(struct gsm_lchan *lchan, const uint8_t *current, uint8_t osmo_si, uint16_t len)
 {

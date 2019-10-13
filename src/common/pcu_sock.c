@@ -909,7 +909,7 @@ static int pcu_sock_cb(struct osmo_fd *bfd, unsigned int flags)
 	return rc;
 }
 
-/* accept connection comming from PCU */
+/* accept connection coming from PCU */
 static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 {
 	struct pcu_sock_state *state = (struct pcu_sock_state *)bfd->data;

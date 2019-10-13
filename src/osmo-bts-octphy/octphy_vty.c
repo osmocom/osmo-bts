@@ -60,7 +60,7 @@ static struct gsm_bts *vty_bts;
 
 DEFUN(cfg_phy_hwaddr, cfg_phy_hwaddr_cmd,
 	"octphy hw-addr HWADDR",
-	OCT_STR "Configure the hardware addess of the OCTPHY\n"
+	OCT_STR "Configure the hardware address of the OCTPHY\n"
 	"hardware address in aa:bb:cc:dd:ee:ff format\n")
 {
 	struct phy_link *plink = vty->index;

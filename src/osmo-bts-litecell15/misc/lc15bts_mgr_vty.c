@@ -584,39 +584,39 @@ DEFUN(show_mgr, show_mgr_cmd, "show manager",
 		lc15bts_mgr_sensor_get_state(s_mgr->state.state), VTY_NEWLINE);
 	vty_out(vty, "Current Temperatures%s", VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_SUPPLY, &temp);
-	vty_out(vty, " Main Supply : %4.2f Celcius%s",
+	vty_out(vty, " Main Supply : %4.2f Celsius%s",
 		 temp/ 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_SOC, &temp);
-	vty_out(vty, " SoC         : %4.2f Celcius%s",
+	vty_out(vty, " SoC         : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_FPGA, &temp);
-	vty_out(vty, " FPGA        : %4.2f Celcius%s",
+	vty_out(vty, " FPGA        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_RMSDET, &temp);
-	vty_out(vty, " RMSDet      : %4.2f Celcius%s",
+	vty_out(vty, " RMSDet      : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_OCXO, &temp);
-	vty_out(vty, " OCXO        : %4.2f Celcius%s",
+	vty_out(vty, " OCXO        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_TX0, &temp);
-	vty_out(vty, " TX 0        : %4.2f Celcius%s",
+	vty_out(vty, " TX 0        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_TX1, &temp);
-	vty_out(vty, " TX 1        : %4.2f Celcius%s",
+	vty_out(vty, " TX 1        : %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_PA0, &temp);
-	vty_out(vty, " Power Amp #0: %4.2f Celcius%s",
+	vty_out(vty, " Power Amp #0: %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 	lc15bts_temp_get(LC15BTS_TEMP_PA1, &temp);
-	vty_out(vty, " Power Amp #1: %4.2f Celcius%s",
+	vty_out(vty, " Power Amp #1: %4.2f Celsius%s",
 		temp / 1000.0f,
 		VTY_NEWLINE);
 

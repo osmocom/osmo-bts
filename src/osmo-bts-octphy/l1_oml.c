@@ -506,7 +506,7 @@ static int set_ciph_compl_cb(struct octphy_hdl *fl1, struct msgb *resp, void *da
 	 * sub-channel, only th request contains this information :( */
 	lchan = &ts->lchan[(unsigned long) data];
 
-	/* TODO: This state machine should be shared accross BTS models? */
+	/* TODO: This state machine should be shared across BTS models? */
 	switch (lchan->ciph_state) {
 	case LCHAN_CIPH_RX_REQ:
 		lchan->ciph_state = LCHAN_CIPH_RX_CONF;
@@ -1191,7 +1191,7 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 
 		if (!no_fw_check) {
 			LOGP(DL1C, LOGL_ERROR,
-			     "use option -I to override the check (not recommened)\n");
+			     "use option -I to override the check (not recommended)\n");
 			LOGP(DL1C, LOGL_ERROR,
 			     "exiting...\n");
 			exit(1);
@@ -1346,7 +1346,7 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	if (plink->u.octphy.tx_atten_flag) {
 		oc->RfConfig.ulTxAttndB = plink->u.octphy.tx_atten_db;
 	} else {
-		/* Take the Tx Attn received in set radio attribures
+		/* Take the Tx Attn received in set radio attributes
 		 * x4 is for the value in db */
 		oc->RfConfig.ulTxAttndB = (trx->max_power_red) << 2;
 	}

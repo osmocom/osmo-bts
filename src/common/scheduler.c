@@ -896,7 +896,7 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		rc = l1sap_up(l1t->trx, l1sap);
 	}
 
-	/* dont send, if TCH is in signalling only mode */
+	/* don't send, if TCH is in signalling only mode */
 	if (l1ts->chan_state[chan].rsl_cmode != RSL_CMOD_SPD_SIGN) {
 		/* generate prim */
 		msg = l1sap_msgb_alloc(200);
@@ -1266,7 +1266,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	 * There are several TDMA frames between the last processed
 	 * frame and currently received one. Let's walk through this
 	 * path and count potentially lost frames, i.e. for which
-	 * we didn't receive the corresponsing UL bursts.
+	 * we didn't receive the corresponding UL bursts.
 	 *
 	 * Start counting from the last_fn + 1.
 	 */
