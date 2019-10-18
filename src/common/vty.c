@@ -1616,6 +1616,7 @@ DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	if (!*sapi_mask)
 		*sapi_mask = talloc(tgt, uint16_t);
 
+	OSMO_ASSERT(sapi <= 31);
 	**sapi_mask |= (1 << sapi);
 	tgt->filter_map |= (1 << LOG_FLT_L1_SAPI);
 
@@ -1634,6 +1635,7 @@ DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	if (!tgt->filter_data[LOG_FLT_L1_SAPI])
 		return CMD_SUCCESS;
 
+	OSMO_ASSERT(sapi <= 31);
 	sapi_mask = (uint16_t *)tgt->filter_data[LOG_FLT_L1_SAPI];
 	*sapi_mask &= ~(1 << sapi);
 
