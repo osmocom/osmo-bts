@@ -1603,11 +1603,11 @@ DEFUN(no_bts_t_t_l_loopback,
 
 DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 {
-	uint8_t sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
+	int sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
 	uint16_t **sapi_mask;
 
-	OSMO_ASSERT(sapi != -EINVAL);
+	OSMO_ASSERT(sapi < 0);
 	if (!tgt)
 		return CMD_WARNING;
 
@@ -1624,11 +1624,11 @@ DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 
 DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 {
-	uint8_t sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
+	int sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
 	uint16_t *sapi_mask;
 
-	OSMO_ASSERT(sapi != -EINVAL);
+	OSMO_ASSERT(sapi < 0);
 	if (!tgt)
 		return CMD_WARNING;
 	if (!tgt->filter_data[LOG_FLT_L1_SAPI])
