@@ -967,7 +967,7 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if ((*mask & 0xf) != 0xf) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
 			"Received incomplete data (%u/%u)\n",
-			*first_fn, (*first_fn) % l1ts->mf_period);
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 
 		/* we require first burst to have correct FN */
 		if (!(*mask & 0x1)) {
@@ -982,7 +982,7 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (rc) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
 			"Received bad data (%u/%u)\n",
-			*first_fn, (*first_fn) % l1ts->mf_period);
+			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		l2_len = 0;
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
