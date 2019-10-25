@@ -45,7 +45,7 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	enum gsm_band band = trx->bts->band;
 	uint16_t arfcn = trx->arfcn;
-	int8_t new_power;
+	int8_t new_power; /* TS 05.05 power level */
 
 	/* compute new target MS output power level based on current value subtracted by 'diff/2' */
 	new_power = lchan->ms_power_ctrl.current - (diff >> 1);
