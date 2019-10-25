@@ -1,6 +1,8 @@
 #ifndef _TRX_LOOPS_H
 #define _TRX_LOOPS_H
 
+#include <osmo-bts/scheduler.h>
+
 /*
  * calibration of loops
  */
