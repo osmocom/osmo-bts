@@ -57,6 +57,10 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 	if (new_power < 0)
 		new_power = 0;
 
+	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
+	if (new_power < lchan->ms_power)
+		new_power = lchan->ms_power;
+
 	/* saturate at the maximum possible power level for the given band */
 	// FIXME: to go above 1W, we need to know classmark of MS
 	if (arfcn >= 512 && arfcn <= 885) {
