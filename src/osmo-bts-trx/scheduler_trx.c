@@ -783,7 +783,8 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	       uint8_t bid, const struct trx_ul_burst_ind *bi)
 {
 	struct osmo_phsap_prim l1sap;
-	int n_errors, n_bits_total;
+	int n_errors = 0;
+	int n_bits_total = 0;
 	uint16_t ra11;
 	uint8_t ra;
 	int rc;
@@ -904,7 +905,8 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int32_t *ci_cb_sum = &chan_state->ci_cb_sum;
 	uint8_t *ci_cb_num = &chan_state->ci_cb_num;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
-	int n_errors, n_bits_total;
+	int n_errors = 0;
+	int n_bits_total = 0;
 	int16_t lqual_cb;
 	uint16_t ber10k;
 	int rc;
@@ -1020,7 +1022,9 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int32_t *ci_cb_sum = &chan_state->ci_cb_sum;
 	uint8_t *ci_cb_num = &chan_state->ci_cb_num;
 	uint8_t l2[EGPRS_0503_MAX_BYTES];
-	int n_errors, n_bursts_bits, n_bits_total;
+	int n_errors = 0;
+	int n_bursts_bits = 0;
+	int n_bits_total = 0;
 	int16_t lqual_cb;
 	uint16_t ber10k;
 	int rc;
@@ -1139,7 +1143,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
-	int n_errors, n_bits_total;
+	int n_errors = 0;
+	int n_bits_total = 0;
 	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
@@ -1335,7 +1340,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
 	int rc, amr = 0;
-	int n_errors, n_bits_total;
+	int n_errors = 0;
+	int n_bits_total = 0;
 	bool bfi_flag = false;
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
