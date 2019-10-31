@@ -109,6 +109,7 @@ const struct value_string gsm_bts_features_descs[] = {
 	{ BTS_FEAT_SPEECH_H_AMR,	"Halfrate speech AMR" },
 	{ BTS_FEAT_ETWS_PN,		"ETWS Primary Notification on PCH" },
 	{ BTS_FEAT_MS_PWR_CTRL_DSP,	"DSP/HW based MS Power Control Loop" },
+	{ BTS_FEAT_MEAS_PAYLOAD_COMB,	"Measurement and Payload data combined"},
 	{ 0, NULL }
 };
 

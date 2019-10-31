@@ -479,6 +479,11 @@ enum gsm_bts_features {
 	BTS_FEAT_SPEECH_H_AMR,
 	BTS_FEAT_ETWS_PN,
 	BTS_FEAT_MS_PWR_CTRL_DSP,
+	/* When the feature is set then the measurement data is included in
+	 * (PRIM_PH_DATA) and struct ph_tch_param (PRIM_TCH). Otherwise the
+	 * measurement data is passed using a separate MPH INFO MEAS IND.
+	 * (See also ticket: OS#2977) */
+	BTS_FEAT_MEAS_PAYLOAD_COMB,
 	_NUM_BTS_FEAT
 };
 

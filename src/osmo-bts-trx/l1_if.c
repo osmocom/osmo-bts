@@ -572,40 +572,6 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 	return l1sap_up(bts->c0, &l1sap);
 }
 
-
-static void l1if_fill_meas_res(struct osmo_phsap_prim *l1sap, uint8_t chan_nr, int16_t toa256,
-	float ber, float rssi, uint32_t fn)
-{
-	memset(l1sap, 0, sizeof(*l1sap));
-	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_MPH_INFO,
-		PRIM_OP_INDICATION, NULL);
-	l1sap->u.info.type = PRIM_INFO_MEAS;
-	l1sap->u.info.u.meas_ind.chan_nr = chan_nr;
-	l1sap->u.info.u.meas_ind.ta_offs_256bits = toa256;
-	l1sap->u.info.u.meas_ind.ber10k = (unsigned int) (ber * 10000);
-	l1sap->u.info.u.meas_ind.inv_rssi = (uint8_t) (rssi * -1);
-	l1sap->u.info.u.meas_ind.fn = fn;
-}
-
-int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t fn, uint8_t chan_nr,
-	int n_errors, int n_bits_total, float rssi, int16_t toa256)
-{
-	struct gsm_lchan *lchan = &trx->ts[tn].lchan[l1sap_chan2ss(chan_nr)];
-	struct osmo_phsap_prim l1sap;
-	/* 100% BER is n_bits_total is 0 */
-	float ber = n_bits_total==0 ? 1.0 : (float)n_errors / (float)n_bits_total;
-
-	LOGPFN(DMEAS, LOGL_DEBUG, fn, "RX UL measurement for %s fn=%u chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
-		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa256=%d\n",
-		gsm_lchan_name(lchan), fn, chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.current),
-		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info[1], lchan->rqd_ta, toa256);
-
-	l1if_fill_meas_res(&l1sap, chan_nr, toa256, ber, rssi, fn);
-
-	return l1sap_up(trx, &l1sap);
-}
-
-
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {

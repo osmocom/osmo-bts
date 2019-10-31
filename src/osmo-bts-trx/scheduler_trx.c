@@ -193,12 +193,10 @@ got_msg:
 			/* TODO: Should we pass old TOA here? Otherwise we risk
 			 * unnecessary decreasing TA */
 
-			/* Send uplink measurement information to L2 */
-			l1if_process_meas_res(l1t->trx, tn, fn, trx_chan_desc[chan].chan_nr | tn,
-				456, 456, -110, 0);
-			/* FIXME: use actual values for BER etc */
+			/* Note: RSSI is set to 0 to indicate to the higher
+			 * layers that this is a faked ph_data_ind */
 			_sched_compose_ph_data_ind(l1t, tn, 0, chan, NULL, 0,
-						   -110, 0, 0, 10000,
+						   0, 0, 0, 10000,
 						   PRES_INFO_INVALID);
 		}
 	}
@@ -345,6 +343,9 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
+	int32_t *toa256_sum = &chan_state->toa256_sum;
+	uint8_t *toa_num = &chan_state->toa_num;
+	int16_t toa256;
 
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
@@ -390,8 +391,17 @@ inval_mode1:
 			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode invalid, please fix!\n");
 			len = 0;
 		}
-		if (len)
-			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len);
+
+		if (len) {
+			if (*toa_num == 0)
+				toa256 = 0;
+			else
+				toa256 = *toa256_sum / *toa_num;
+
+			/* Note: RSSI is set to 0 to indicate to the higher
+			 * layers that this is a faked tch_ind */
+			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len, toa256, 10000, 0);
+		}
 	}
 
 	/* get frame and unlink from queue */
@@ -982,12 +992,6 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
 
-	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
-			      trx_chan_desc[chan].chan_nr | bi->tn,
-			      n_errors, n_bits_total,
-			      *rssi_sum / *rssi_num,
-			      *toa256_sum / *toa_num);
 	lqual_cb = *ci_cb_num ? (*ci_cb_sum / *ci_cb_num) : 0;
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
@@ -1097,14 +1101,6 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 				  &n_errors, &n_bits_total);
 	}
 
-
-	/* Send uplink measurement information to L2 */
-	l1if_process_meas_res(l1t->trx, bi->tn, *first_fn,
-		trx_chan_desc[chan].chan_nr | bi->tn,
-		n_errors, n_bits_total,
-		*rssi_sum / *rssi_num,
-		*toa256_sum / *toa_num);
-
 	if (rc <= 0) {
 		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
 			"Received bad PDTCH (%u/%u)\n",
@@ -1141,6 +1137,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	struct gsm_lchan *lchan =
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 	unsigned int fn_begin;
+	uint16_t ber10k;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1240,17 +1237,13 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (rc != GSM_MACBLOCK_LEN && lchan->ecu_state)
 		osmo_ecu_frame_in(lchan->ecu_state, bfi_flag, tch_data, rc);
 
+	ber10k = compute_ber10k(n_bits_total, n_errors);
 	if (bfi_flag)
 		goto bfi;
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
-		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_F);
-		l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
-				      trx_chan_desc[chan].chan_nr | bi->tn,
-				      n_errors, n_bits_total,
-				      bi->rssi, bi->toa256);
 		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			/* FIXME: AVG RSSI and ToA256 */
@@ -1311,12 +1304,8 @@ bfi:
 	/* TCH or BFI */
 compose_l1sap:
 	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
-	l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
-			      trx_chan_desc[chan].chan_nr | bi->tn,
-			      n_errors, n_bits_total,
-			      bi->rssi, bi->toa256);
 	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc);
+				      tch_data, rc, bi->toa256, ber10k, bi->rssi);
 }
 
 /*! \brief a single TCH/H burst was received by the PHY, process it */
@@ -1343,6 +1332,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	 */
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
 	unsigned int fn_begin;
+	uint16_t ber10k;
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1384,6 +1374,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
+
+        ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* skip second of two TCH frames of FACCH was received */
 	if (chan_state->ul_ongoing_facch) {
@@ -1464,10 +1456,6 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
 		else
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
-		l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
-				      trx_chan_desc[chan].chan_nr | bi->tn,
-				      n_errors, n_bits_total, bi->rssi,
-				      bi->toa256);
 		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			/* FIXME: AVG both RSSI and ToA */
@@ -1533,12 +1521,8 @@ compose_l1sap:
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H0);
 	else
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H1);
-	l1if_process_meas_res(l1t->trx, bi->tn, fn_begin,
-			      trx_chan_desc[chan].chan_nr | bi->tn,
-			      n_errors, n_bits_total, bi->rssi,
-			      bi->toa256);
 	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc);
+				      tch_data, rc, bi->toa256, ber10k, bi->rssi);
 }
 
 /* schedule all frames of all TRX for given FN */

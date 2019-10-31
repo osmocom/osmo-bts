@@ -753,7 +753,8 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 }
 
 int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-		    enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len)
+			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
+			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
@@ -769,6 +770,10 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		PRIM_OP_INDICATION, msg);
 	l1sap->u.tch.chan_nr = chan_nr;
 	l1sap->u.tch.fn = fn;
+	l1sap->u.tch.rssi = (int8_t) (rssi);
+	l1sap->u.tch.ber10k = ber10k;
+	l1sap->u.tch.ta_offs_256bits = ta_offs_256bits;
+
 	msg->l2h = msgb_put(msg, tch_len);
 	if (tch_len)
 		memcpy(msg->l2h, tch, tch_len);

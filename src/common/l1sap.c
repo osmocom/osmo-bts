@@ -629,42 +629,93 @@ static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool se
 }
 
 /* measurement information received from bts model */
-static int l1sap_info_meas_ind(struct gsm_bts_trx *trx,
-	struct osmo_phsap_prim *l1sap,
-	struct info_meas_ind_param *info_meas_ind)
+static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
+				    struct osmo_phsap_prim *l1sap,
+				    enum osmo_ph_prim ind_type)
 {
 	struct bts_ul_meas ulm;
 	struct gsm_lchan *lchan;
+	struct info_meas_ind_param *info_meas_ind;
+	struct ph_data_param *ph_data_ind;
+	struct ph_tch_param *ph_tch_ind;
+	uint8_t chan_nr;
+	uint32_t fn;
+	uint8_t inv_rssi;
+	uint8_t is_sub;
+	int16_t ta_offs_256bits;
+	uint16_t ber10k;
+	const char *ind_name;
 
-	lchan = get_active_lchan_by_chan_nr(trx, info_meas_ind->chan_nr);
-	if (!lchan) {
-		LOGPFN(DL1P, LOGL_ERROR, info_meas_ind->fn,
-			"No lchan for MPH INFO MEAS IND (chan_nr=%s)\n", rsl_chan_nr_str(info_meas_ind->chan_nr));
-		return 0;
+	switch (ind_type) {
+	case PRIM_MPH_INFO:
+		/* (legacy way, see also OS#2977) */
+	        info_meas_ind = &l1sap->u.info.u.meas_ind;
+		chan_nr = info_meas_ind->chan_nr;
+		fn = info_meas_ind->fn;
+		inv_rssi = info_meas_ind->inv_rssi;
+		is_sub = info_meas_ind->is_sub;
+		ta_offs_256bits = info_meas_ind->ta_offs_256bits;
+		ber10k = info_meas_ind->ber10k;
+		ind_name = "MPH INFO";
+		break;
+	case PRIM_TCH:
+		ph_tch_ind = &l1sap->u.tch;
+		if (ph_tch_ind->rssi == 0)
+			return;
+		chan_nr = ph_tch_ind->chan_nr;
+		fn = ph_tch_ind->fn;
+		inv_rssi = abs(ph_tch_ind->rssi);
+		is_sub = ph_tch_ind->is_sub;
+		ta_offs_256bits = ph_tch_ind->ta_offs_256bits;
+		ber10k = ph_tch_ind->ber10k;
+		ind_name = "TCH";
+		break;
+	case PRIM_PH_DATA:
+		ph_data_ind = &l1sap->u.data;
+		if (ph_data_ind->rssi == 0)
+			return;
+		chan_nr = ph_data_ind->chan_nr;
+		fn = ph_data_ind->fn;
+		inv_rssi = abs(ph_data_ind->rssi);
+		is_sub = ph_data_ind->is_sub;
+		ta_offs_256bits = ph_data_ind->ta_offs_256bits;
+		ber10k = ph_data_ind->ber10k;
+		ind_name = "DATA";
+		break;
+	default:
+		OSMO_ASSERT(false);
 	}
 
-	DEBUGPFN(DL1P, info_meas_ind->fn,
-		"%s MPH_INFO meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u\n",
-		gsm_lchan_name(lchan), info_meas_ind->ta_offs_256bits,
-		info_meas_ind->ber10k, info_meas_ind->inv_rssi);
+	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
+	if (!lchan) {
+		LOGPFN(DL1P, LOGL_ERROR, fn,
+		       "No lchan for %s MEAS IND (chan_nr=%s)\n",
+		       ind_name, rsl_chan_nr_str(chan_nr));
+		return;
+	}
+
+	DEBUGPFN(DL1P, fn,
+		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u\n",
+		 gsm_lchan_name(lchan), ind_name, ta_offs_256bits, ber10k,
+		 inv_rssi);
 
 	/* in the GPRS case we are not interested in measurement
 	 * processing.  The PCU will take care of it */
 	if (lchan->type == GSM_LCHAN_PDTCH)
-		return 0;
+		return;
 
 	memset(&ulm, 0, sizeof(ulm));
-	ulm.ta_offs_256bits = info_meas_ind->ta_offs_256bits;
-	ulm.ber10k = info_meas_ind->ber10k;
-	ulm.inv_rssi = info_meas_ind->inv_rssi;
-	ulm.is_sub = info_meas_ind->is_sub;
+	ulm.ta_offs_256bits = ta_offs_256bits;
+	ulm.ber10k = ber10k;
+	ulm.inv_rssi = inv_rssi;
+	ulm.is_sub = is_sub;
 
 	/* we assume that symbol period is 1 bit: */
-	set_ms_to_data(lchan, info_meas_ind->ta_offs_256bits / 256, true);
+	set_ms_to_data(lchan, ta_offs_256bits / 256, true);
 
-	lchan_meas_process_measurement(lchan, &ulm, info_meas_ind->fn);
+	lchan_meas_process_measurement(lchan, &ulm, fn);
 
-	return 0;
+	return;
 }
 
 /* any L1 MPH_INFO indication prim received from bts model */
@@ -685,7 +736,12 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 						 &info->u.time_ind);
 		break;
 	case PRIM_INFO_MEAS:
-		rc = l1sap_info_meas_ind(trx, l1sap, &info->u.meas_ind);
+		/* We should never get an INFO_IND with PRIM_INFO_MEAS
+		 * when BTS_FEAT_MEAS_PAYLOAD_COMB is enabled */
+		if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+			OSMO_ASSERT(false);
+
+		process_l1sap_meas_data(trx, l1sap, PRIM_MPH_INFO);
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO ind type %d\n",
@@ -1200,6 +1256,12 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		return -EINVAL;
 	}
 
+	/* The ph_data_param contained in the l1sap primitive may contain
+	 * measurement data. If this data is present, forward it for
+	 * processing */
+	if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+		process_l1sap_meas_data(trx, l1sap, PRIM_PH_DATA);
+
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
@@ -1314,6 +1376,12 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=%s)\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
+
+	/* The ph_tch_param contained in the l1sap primitive may contain
+	 * measurement data. If this data is present, forward it for
+	 * processing */
+	if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+		process_l1sap_meas_data(trx, l1sap, PRIM_TCH);
 
 	msgb_pull(msg, sizeof(*l1sap));
 
