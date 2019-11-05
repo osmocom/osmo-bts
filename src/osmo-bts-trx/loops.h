@@ -8,8 +8,8 @@
  */
 
 /* how much power levels do we raise/lower as maximum (1 level = 2 dB) */
-#define MS_RAISE_MAX 4
-#define MS_LOWER_MAX 2
+#define MS_RAISE_MAX_DB 4
+#define MS_LOWER_MAX_DB 8
 
 /*
  * loops api

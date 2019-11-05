@@ -23,11 +23,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/gsm/gsm_utils.h>
 
 #include "trx_if.h"
 #include "l1_if.h"
@@ -39,45 +41,70 @@
 
 /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
  *  \param lchan logical channel for which to compute (and in which to store) new power value.
- *  \param[in] diff input delta value (in dB) */
+ *  \param[in] diff input delta value (in dB). How many dBs measured power
+ *  	       should be increased (+) or decreased (-) to reach expected power.
+ */
 static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	enum gsm_band band = trx->bts->band;
-	uint16_t arfcn = trx->arfcn;
 	int8_t new_power; /* TS 05.05 power level */
+	int8_t new_dbm, current_dbm, bsc_max_dbm, pwclass_max_dbm;
 
-	/* compute new target MS output power level based on current value subtracted by 'diff/2' */
-	new_power = lchan->ms_power_ctrl.current - (diff >> 1);
-
-	if (diff == 0)
+	/* power levels change in steps of 2 dB, so a smaller diff will end up in no change */
+	if (diff < 2 && diff > -2)
 		return;
 
-	/* ms transmit power level cannot become negative */
-	if (new_power < 0)
-		new_power = 0;
-
-	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
-	if (new_power < lchan->ms_power)
-		new_power = lchan->ms_power;
-
-	/* saturate at the maximum possible power level for the given band */
-	// FIXME: to go above 1W, we need to know classmark of MS
-	if (arfcn >= 512 && arfcn <= 885) {
-		if (new_power > 15)
-			new_power = 15;
-	} else {
-		if (new_power > 19)
-			new_power = 19;
+	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
+	if (current_dbm < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
+			  lchan->ms_power_ctrl.current, gsm_band_name(band));
+		return;
+	}
+	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power);
+	if (bsc_max_dbm < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
+			  lchan->ms_power, gsm_band_name(band));
+		return;
 	}
 
-	/* don't ever change more than MS_{LOWER,RAISE}_MAX during one loop iteration, i.e.
+	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop iteration, i.e.
 	 * reduce the speed at which the MS transmit power can change */
 	/* a higher value means a lower level (and vice versa) */
-	if (new_power > lchan->ms_power_ctrl.current + MS_LOWER_MAX)
-		new_power = lchan->ms_power_ctrl.current + MS_LOWER_MAX;
-	else if (new_power < lchan->ms_power_ctrl.current - MS_RAISE_MAX)
-		new_power = lchan->ms_power_ctrl.current - MS_RAISE_MAX;
+	if (diff > MS_RAISE_MAX_DB)
+		diff = MS_RAISE_MAX_DB;
+	else if (diff < -MS_LOWER_MAX_DB)
+		diff = -MS_LOWER_MAX_DB;
+
+	new_dbm = current_dbm + diff;
+
+	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
+	   cope with any unsigned dbm value, regardless of band minimal value. */
+	if (new_dbm < 0)
+		new_dbm = 0;
+
+	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
+	if (new_dbm > bsc_max_dbm)
+		new_dbm = bsc_max_dbm;
+
+	/* Make sure in no case the dBm value is higher than the one of ms
+	   power class 1 (the one with more output power) for the given band.
+	   Ideally we should catch the MS specific power class and apply it
+	   here, but for now let's assume the BSC sent us one taking the power
+	   class into account. */
+	pwclass_max_dbm = (int)ms_class_gmsk_dbm(band, 1);
+	if (pwclass_max_dbm >= 0 && new_dbm > pwclass_max_dbm)
+		new_dbm = pwclass_max_dbm;
+
+	new_power = ms_pwr_ctl_lvl(band, new_dbm);
+	if (new_power < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to retrieve power level for %" PRId8 " dBm on band %d\n",
+			  new_dbm, band);
+		return;
+	}
 
 	if (lchan->ms_power_ctrl.current == new_power) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
@@ -138,8 +165,8 @@ static void ms_power_clock(struct gsm_lchan *lchan, struct l1sched_chan_state *c
 
 	/* if no burst was received from MS at clock */
 	if (chan_state->meas.rssi_count == 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE, "LOST SACCH frame, so we raise MS power\n");
-		ms_power_diff(lchan, MS_RAISE_MAX);
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE, "LOST SACCH frame, so we raise MS power output\n");
+		ms_power_diff(lchan, MS_RAISE_MAX_DB);
 		return;
 	}
 
