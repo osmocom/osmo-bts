@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 
@@ -1623,8 +1624,10 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct tlv_parsed tp;
 	uint8_t pwr;
+	int max_pwr, curr_pwr;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1633,9 +1636,9 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
 
 	pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-	lchan->ms_power_ctrl.current = pwr;
+	lchan->ms_power = pwr;
 
-	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Rx MS POWER CONTROL %d\n", lchan->ms_power_ctrl.current);
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %d\n", lchan->ms_power_ctrl.current);
 
 	/* 9.3.31 MS Power Parameters (O) */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
@@ -1645,6 +1648,23 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
 		lchan->ms_power_ctrl.fixed = 1;
+	}
+
+	/* Only set current to lchan->ms_power if actual value of current
+	   in dBm > value in dBm from lchan->ms_power, or if fixed=1. */
+	if (lchan->ms_power_ctrl.fixed) {
+		lchan->ms_power_ctrl.current = lchan->ms_power;
+	} else {
+		max_pwr = ms_pwr_dbm(bts->band, lchan->ms_power);
+		curr_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.current);
+		if (max_pwr < 0 || curr_pwr < 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR,
+				  "Unable to calculate power levels to dBm: %" PRIu8 " -> %d, %" PRIu8 " -> %d\n",
+				  lchan->ms_power, max_pwr,
+				  lchan->ms_power_ctrl.current, curr_pwr);
+		} else if (curr_pwr > max_pwr) {
+			lchan->ms_power_ctrl.current = lchan->ms_power;
+		}
 	}
 
 	bts_model_adjst_ms_pwr(lchan);
