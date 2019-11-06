@@ -1349,6 +1349,13 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	l1cs = &l1ts->chan_state[chan];
 	func = trx_chan_desc[chan].ul_fn;
 
+	/* TODO: handle noise measurements */
+	if (chan == TRXC_IDLE && bi->flags & TRX_BI_F_NOPE_IND) {
+		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+		       "Rx noise measurement (%d)\n", bi->rssi);
+		return -ENOTSUP;
+	}
+
 	/* check if channel is active */
 	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
 		return -EINVAL;
@@ -1363,6 +1370,14 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	/* update TDMA frame counters */
 	l1cs->last_tdma_fn = bi->fn;
 	l1cs->proc_tdma_fs++;
+
+	/* handle NOPE indications (if the handler is present) */
+	if (bi->flags & TRX_BI_F_NOPE_IND) {
+		func = trx_chan_desc[chan].nope_fn;
+		if (!func)
+			return 0;
+		return func(l1t, chan, bid, bi);
+	}
 
 	/* decrypt */
 	if (bi->burst_len && l1cs->ul_encr_algo) {

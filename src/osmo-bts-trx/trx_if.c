@@ -1018,14 +1018,8 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (hdr_len < 0)
 		return hdr_len;
 
-	/* TODO: we can use NOPE indications to get noise levels on IDLE
-	 * TDMA frames, and properly drive scheduler if nothing has been
-	 * detected on non-IDLE channels. */
-	if (bi.flags & TRX_BI_F_NOPE_IND) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-			"IDLE / NOPE indications are not (yet) supported\n");
-		return -ENOTSUP;
-	}
+	if (bi.flags & TRX_BI_F_NOPE_IND)
+		goto skip_burst;
 
 	/* We're done with the header now */
 	buf_len -= hdr_len;
@@ -1047,6 +1041,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (rc < 0)
 		return rc;
 
+skip_burst:
 	/* Print header & burst info */
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (hdr_ver=%u): %s\n",
 		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",

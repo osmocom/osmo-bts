@@ -31,6 +31,8 @@ struct trx_chan_desc {
 	trx_sched_dl_func	*dl_fn;
 	/*! \brief function to call when burst received from PHY */
 	trx_sched_ul_func	*ul_fn;
+	/*! \brief function to call when NOPE.ind received from PHY */
+	trx_sched_ul_func	*nope_fn;
 	/*! \brief channel flags, see TRX_CHAN_FLAG_* */
 	uint8_t			flags;
 };
