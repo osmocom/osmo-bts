@@ -1638,7 +1638,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
 	lchan->ms_power = pwr;
 
-	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %d\n", lchan->ms_power_ctrl.current);
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %" PRIu8 "\n", pwr);
 
 	/* 9.3.31 MS Power Parameters (O) */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
