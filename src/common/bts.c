@@ -778,9 +778,9 @@ int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher)
 	return sup > 0;
 }
 
-int trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
+bool trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
 {
-	return trx->ms_power_control == 1;
+	return trx->ms_pwr_ctl_soft;
 }
 
 struct gsm_time *get_time(struct gsm_bts *bts)

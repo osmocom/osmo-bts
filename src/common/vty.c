@@ -332,7 +332,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  power-ramp step-interval %d%s",
 			tpp->ramp.step_interval_sec, VTY_NEWLINE);
 		vty_out(vty, "  ms-power-control %s%s",
-			trx->ms_power_control == 0 ? "dsp" : "osmo",
+			trx->ms_pwr_ctl_soft ? "osmo" : "dsp",
 			VTY_NEWLINE);
 		vty_out(vty, "  phy %u instance %u%s", pinst->phy_link->num,
 			pinst->num, VTY_NEWLINE);
@@ -790,7 +790,7 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 {
 	struct gsm_bts_trx *trx = vty->index;
 
-	trx->ms_power_control = argv[0][0] == 'd' ? 0 : 1;
+	trx->ms_pwr_ctl_soft = !strcmp(argv[0], "osmo");
 	return CMD_SUCCESS;
 }
 

@@ -417,7 +417,7 @@ struct gsm_bts_trx {
 
 
 	struct trx_power_params power_params;
-	int ms_power_control;
+	bool ms_pwr_ctl_soft; /* is power control loop done by osmocom software? */
 
 	struct {
 		void *l1h;

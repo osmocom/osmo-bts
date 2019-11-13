@@ -48,7 +48,7 @@ static void test_power_loop(void)
 	ts.trx = &trx;
 	trx.bts = &bts;
 	bts.band = GSM_BAND_1800;
-	trx.ms_power_control = 1;
+	trx.ms_pwr_ctl_soft = true;
 	bts.ul_power_target = -75;
 
 	lchan->state = LCHAN_S_NONE;
