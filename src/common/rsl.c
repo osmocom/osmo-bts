@@ -999,7 +999,7 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	 * cleared, or we would enable encryption on PDCH with parameters remaining from the TCH. */
 	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power;
-	lchan->ms_power_ctrl.fixed = 0;
+	lchan->ms_power_ctrl.fixed = false;
 	lchan->rsl_cmode = 0;
 	lchan->tch_mode = 0;
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
@@ -1104,7 +1104,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* Initialize channel defaults */
 	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power;
-	lchan->ms_power_ctrl.fixed = 0;
+	lchan->ms_power_ctrl.fixed = false;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1156,7 +1156,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
 		lchan->ms_power_ctrl.current = lchan->ms_power;
-		lchan->ms_power_ctrl.fixed = 0;
+		lchan->ms_power_ctrl.fixed = false;
 	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
@@ -1165,12 +1165,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* 9.3.32 BS Power Parameters */
 	/* 9.3.31 MS Power Parameters */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
-		lchan->ms_power_ctrl.fixed = 0;
+		lchan->ms_power_ctrl.fixed = false;
 	else {
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
-		lchan->ms_power_ctrl.fixed = 1;
+		lchan->ms_power_ctrl.fixed = true;
 	}
 	/* 9.3.16 Physical Context */
 
@@ -1642,16 +1642,16 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 
 	/* 9.3.31 MS Power Parameters (O) */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
-		lchan->ms_power_ctrl.fixed = 0;
+		lchan->ms_power_ctrl.fixed = false;
 	else {
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
-		lchan->ms_power_ctrl.fixed = 1;
+		lchan->ms_power_ctrl.fixed = true;
 	}
 
 	/* Only set current to lchan->ms_power if actual value of current
-	   in dBm > value in dBm from lchan->ms_power, or if fixed=1. */
+	   in dBm > value in dBm from lchan->ms_power, or if fixed. */
 	if (lchan->ms_power_ctrl.fixed) {
 		lchan->ms_power_ctrl.current = lchan->ms_power;
 	} else {

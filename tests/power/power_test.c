@@ -68,11 +68,11 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -100, 1, 0);
 
 	/* Fix it and jump down */
-	lchan->ms_power_ctrl.fixed = 1;
+	lchan->ms_power_ctrl.fixed = true;
 	apply_power_test(lchan, -60, 0, 0);
 
 	/* And leave it again */
-	lchan->ms_power_ctrl.fixed = 0;
+	lchan->ms_power_ctrl.fixed = false;
 	apply_power_test(lchan, -40, 1, 15);
 }
 

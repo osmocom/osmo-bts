@@ -323,7 +323,7 @@ struct gsm_lchan {
 	/* power handling */
 	struct {
 		uint8_t current;
-		uint8_t fixed;
+		bool fixed;
 	} ms_power_ctrl;
 
 	struct msgb *pending_rel_ind_msg;
