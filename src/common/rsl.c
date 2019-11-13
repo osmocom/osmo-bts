@@ -997,9 +997,6 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 {
 	/* These values don't apply to PDCH, just clear them. Particularly the encryption must be
 	 * cleared, or we would enable encryption on PDCH with parameters remaining from the TCH. */
-	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
-	lchan->ms_power_ctrl.current = lchan->ms_power;
-	lchan->ms_power_ctrl.fixed = false;
 	lchan->rsl_cmode = 0;
 	lchan->tch_mode = 0;
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
