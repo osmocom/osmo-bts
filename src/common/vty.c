@@ -1173,7 +1173,7 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	vty_out(vty, "  BS Power: %d dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
-		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max),
 		VTY_NEWLINE);
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
 		get_value_string(gsm48_cmode_names, lchan->tch_mode),

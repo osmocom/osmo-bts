@@ -1002,7 +1002,6 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
 	lchan->bs_power = 0;
-	lchan->ms_power = 0;
 	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
 	lchan->rqd_ta = 0;
 	copy_sacch_si_to_lchan(lchan);
@@ -1099,8 +1098,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		  gsm_lchans_name(lchan->state));
 
 	/* Initialize channel defaults */
-	lchan->ms_power = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
-	lchan->ms_power_ctrl.current = lchan->ms_power;
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 	lchan->ms_power_ctrl.fixed = false;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
@@ -1151,8 +1150,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 	/* 9.3.13 MS Power */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
-		lchan->ms_power = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
-		lchan->ms_power_ctrl.current = lchan->ms_power;
+		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
+		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 		lchan->ms_power_ctrl.fixed = false;
 	}
 	/* 9.3.24 Timing Advance */
@@ -1633,7 +1632,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
 
 	pwr = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-	lchan->ms_power = pwr;
+	lchan->ms_power_ctrl.max = pwr;
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %" PRIu8 "\n", pwr);
 
@@ -1647,20 +1646,20 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 		lchan->ms_power_ctrl.fixed = true;
 	}
 
-	/* Only set current to lchan->ms_power if actual value of current
-	   in dBm > value in dBm from lchan->ms_power, or if fixed. */
+	/* Only set current to max if actual value of current
+	   in dBm > value in dBm from max, or if fixed. */
 	if (lchan->ms_power_ctrl.fixed) {
-		lchan->ms_power_ctrl.current = lchan->ms_power;
+		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 	} else {
-		max_pwr = ms_pwr_dbm(bts->band, lchan->ms_power);
+		max_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.max);
 		curr_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.current);
 		if (max_pwr < 0 || curr_pwr < 0) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR,
 				  "Unable to calculate power levels to dBm: %" PRIu8 " -> %d, %" PRIu8 " -> %d\n",
-				  lchan->ms_power, max_pwr,
+				  lchan->ms_power_ctrl.max, max_pwr,
 				  lchan->ms_power_ctrl.current, curr_pwr);
 		} else if (curr_pwr > max_pwr) {
-			lchan->ms_power_ctrl.current = lchan->ms_power;
+			lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 		}
 	}
 

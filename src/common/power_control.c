@@ -83,8 +83,8 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	/* Don't ask for smaller ms power level than the one set
 	 * by BSC upon RSL CHAN ACT
 	 */
-	if (new_pwr < lchan->ms_power)
-		new_pwr = lchan->ms_power;
+	if (new_pwr < lchan->ms_power_ctrl.max)
+		new_pwr = lchan->ms_power_ctrl.max;
 
 	if (lchan->ms_power_ctrl.current != new_pwr) {
 		lchan->ms_power_ctrl.current = new_pwr;

@@ -62,11 +62,11 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 			  lchan->ms_power_ctrl.current, gsm_band_name(band));
 		return;
 	}
-	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power);
+	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
 	if (bsc_max_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
 			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  lchan->ms_power, gsm_band_name(band));
+			  lchan->ms_power_ctrl.max, gsm_band_name(band));
 		return;
 	}
 

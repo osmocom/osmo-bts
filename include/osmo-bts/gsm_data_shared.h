@@ -199,9 +199,6 @@ struct gsm_lchan {
 	/* State */
 	enum gsm_lchan_state state;
 	const char *broken_reason;
-	/* Power levels for MS and BTS */
-	uint8_t bs_power;
-	uint8_t ms_power;
 	/* Encryption information */
 	struct {
 		uint8_t alg_id;
@@ -323,8 +320,11 @@ struct gsm_lchan {
 	/* power handling */
 	struct {
 		uint8_t current;
+		uint8_t max;
 		bool fixed;
 	} ms_power_ctrl;
+	/* Power levels for BTS */
+	uint8_t bs_power;
 
 	struct msgb *pending_rel_ind_msg;
 
