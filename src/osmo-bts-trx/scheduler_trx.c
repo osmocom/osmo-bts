@@ -1215,7 +1215,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
-				(float)n_errors/(float)n_bits_total);
+				n_errors, n_bits_total);
 		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
@@ -1427,7 +1427,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
-				(float)n_errors/(float)n_bits_total);
+				n_errors, n_bits_total);
 		amr = 2; /* we store tch_data + 2 two */
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {

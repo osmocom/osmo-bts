@@ -268,11 +268,19 @@ void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 }
 
 void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, float ber)
+	struct l1sched_chan_state *chan_state,
+	int n_errors, int n_bits_total)
 {
 	struct gsm_bts_trx *trx = l1t->trx;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
+	float ber;
+
+	/* calculate BER (Bit Error Ratio) */
+	if (n_bits_total == 0)
+		ber = 1.0; /* 100% BER */
+	else
+		ber = (float) n_errors / (float) n_bits_total;
 
 	/* check if loop is enabled */
 	if (!chan_state->amr_loop)
