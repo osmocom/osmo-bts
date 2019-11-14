@@ -237,8 +237,9 @@ void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 					.lchan[l1sap_chan2ss(chan_nr)];
 	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
 
-	/* if MS power control loop is enabled, handle it */
-	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
+	/* if common upper layer MS power control loop is disabled
+	   and lower layer MS power control loop is enabled, handle it */
+	if (!l1t->trx->ms_pwr_ctl_soft && pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_val(lchan, chan_state, rssi);
 
 	/* if TA loop is enabled, handle it */
@@ -257,7 +258,9 @@ void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
 	if (lchan->ms_power_ctrl.fixed)
 	        return;
 
-	if (pinst->phy_link->u.osmotrx.trx_ms_power_loop)
+	/* if common upper layer MS power control loop is disabled
+	   and lower layer MS power control loop is enabled, handle it */
+	if (!l1t->trx->ms_pwr_ctl_soft && pinst->phy_link->u.osmotrx.trx_ms_power_loop)
 		ms_power_clock(lchan, chan_state);
 
 	/* count the number of SACCH clocks */

@@ -789,8 +789,14 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	"Handled by DSP\n" "Handled by OsmoBTS\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
+	bool soft = !strcmp(argv[0], "osmo");
 
-	trx->ms_pwr_ctl_soft = !strcmp(argv[0], "osmo");
+	if (!soft && !gsm_bts_has_feature(trx->bts, BTS_FEAT_MS_PWR_CTRL_DSP)) {
+		vty_out(vty, "This BTS model has no DSP/HW MS Power Control support%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	trx->ms_pwr_ctl_soft = soft;
 	return CMD_SUCCESS;
 }
 

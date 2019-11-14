@@ -256,6 +256,10 @@ int bts_trx_init(struct gsm_bts_trx *trx)
 	tpp->ramp.step_size_mdB = to_mdB(2);
 	tpp->ramp.step_interval_sec = 1;
 
+	/* IF BTS model doesn't DSP/HW support MS Power Control Loop, enable osmo algo by default: */
+	if (!gsm_bts_has_feature(trx->bts, BTS_FEAT_MS_PWR_CTRL_DSP))
+		trx->ms_pwr_ctl_soft = true;
+
 	rc = bts_model_trx_init(trx);
 	if (rc < 0) {
 		llist_del(&trx->list);
