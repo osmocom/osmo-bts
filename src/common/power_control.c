@@ -53,8 +53,19 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* The phone hasn't reached the power level yet.
 	   TODO: store .last and check if MS is trying to move towards current. */
-	if (lchan->ms_power_ctrl.current != ms_power)
-		return 0;
+	if (lchan->ms_power_ctrl.current != ms_power) {
+		if (lchan->ms_power_ctrl.last_received == -1 ||
+		    lchan->ms_power_ctrl.last_received != ms_power) {
+			/* MS Power still changing, keep current power level */
+			lchan->ms_power_ctrl.last_received = ms_power;
+			return 0;
+		}
+		/* else: we are stuck with some received MS Power level
+		   different than the one we announce, probably because the MS
+		   doesn't support that exact one so it picked the nearest one
+		   */
+		lchan->ms_power_ctrl.last_received = ms_power;
+	}
 
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	   to reach expected power. */
