@@ -99,15 +99,17 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	}
 
 	if (lchan->ms_power_ctrl.current == new_power) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
-			new_power, ms_pwr_dbm(band, new_power));
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d, %d dBm "
+			  "(rx-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
+			new_power, ms_pwr_dbm(band, new_power), ms_power, rxLevel, bts->ul_power_target);
 		return 0;
 	}
 
-	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d, %d dBm "
+		  "(rx-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		(diff > 0) ? "Raising" : "Lowering",
 		lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
-		new_power, ms_pwr_dbm(band, new_power));
+		new_power, ms_pwr_dbm(band, new_power), ms_power, rxLevel, bts->ul_power_target);
 
 	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power;
