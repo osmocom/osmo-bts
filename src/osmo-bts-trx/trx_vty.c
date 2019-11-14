@@ -160,26 +160,23 @@ DEFUN(show_phy, show_phy_cmd, "show phy",
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
+DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 	"osmotrx ms-power-loop <-127-127>", OSMOTRX_STR
 	"Enable MS power control loop\nTarget RSSI value (transceiver specific, "
 	"should be 6dB or more above noise floor)\n")
 {
-	struct phy_link *plink = vty->index;
+	vty_out (vty, "'osmotrx ms-power-loop' is deprecated, use 'uplink-power-target' instead%s", VTY_NEWLINE);
 
-	plink->u.osmotrx.trx_target_rssi = atoi(argv[0]);
-	plink->u.osmotrx.trx_ms_power_loop = true;
+	vty_bts->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_no_ms_power_loop, cfg_phy_no_ms_power_loop_cmd,
+DEFUN_DEPRECATED(cfg_phy_no_ms_power_loop, cfg_phy_no_ms_power_loop_cmd,
 	"no osmotrx ms-power-loop",
 	NO_STR OSMOTRX_STR "Disable MS power control loop\n")
 {
-	struct phy_link *plink = vty->index;
-
-	plink->u.osmotrx.trx_ms_power_loop = false;
+	vty_out (vty, "'no osmotrx ms-power-loop' is deprecated, use of BTS control loop is managed by BSC%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -525,10 +522,6 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		vty_out(vty, " osmotrx ip remote %s%s",
 			plink->u.osmotrx.remote_ip, VTY_NEWLINE);
 
-	if (plink->u.osmotrx.trx_ms_power_loop)
-		vty_out(vty, " osmotrx ms-power-loop %d%s", plink->u.osmotrx.trx_target_rssi, VTY_NEWLINE);
-	else
-		vty_out(vty, " no osmotrx ms-power-loop%s", VTY_NEWLINE);
 	vty_out(vty, " %sosmotrx timing-advance-loop%s", (plink->u.osmotrx.trx_ta_loop) ? "" : "no ", VTY_NEWLINE);
 
 	if (plink->u.osmotrx.base_port_local)

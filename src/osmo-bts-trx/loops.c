@@ -36,161 +36,11 @@
 #include "loops.h"
 
 /*
- * MS Power loop
+ * Timing Advance loop
  */
-
-/*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
- *  \param lchan logical channel for which to compute (and in which to store) new power value.
- *  \param[in] diff input delta value (in dB). How many dBs measured power
- *  	       should be increased (+) or decreased (-) to reach expected power.
- */
-static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
-{
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-	enum gsm_band band = trx->bts->band;
-	int8_t new_power; /* TS 05.05 power level */
-	int8_t new_dbm, current_dbm, bsc_max_dbm;
-
-	/* power levels change in steps of 2 dB, so a smaller diff will end up in no change */
-	if (diff < 2 && diff > -2)
-		return;
-
-	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
-	if (current_dbm < 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
-			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  lchan->ms_power_ctrl.current, gsm_band_name(band));
-		return;
-	}
-	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
-	if (bsc_max_dbm < 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
-			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  lchan->ms_power_ctrl.max, gsm_band_name(band));
-		return;
-	}
-
-	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop iteration, i.e.
-	 * reduce the speed at which the MS transmit power can change */
-	/* a higher value means a lower level (and vice versa) */
-	if (diff > MS_RAISE_MAX_DB)
-		diff = MS_RAISE_MAX_DB;
-	else if (diff < -MS_LOWER_MAX_DB)
-		diff = -MS_LOWER_MAX_DB;
-
-	new_dbm = current_dbm + diff;
-
-	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
-	   cope with any unsigned dbm value, regardless of band minimal value. */
-	if (new_dbm < 0)
-		new_dbm = 0;
-
-	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
-	if (new_dbm > bsc_max_dbm)
-		new_dbm = bsc_max_dbm;
-
-	new_power = ms_pwr_ctl_lvl(band, new_dbm);
-	if (new_power < 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
-			  "Failed to retrieve power level for %" PRId8 " dBm on band %d\n",
-			  new_dbm, band);
-		return;
-	}
-
-	if (lchan->ms_power_ctrl.current == new_power) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
-			new_power, ms_pwr_dbm(band, new_power));
-	} else {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
-			(diff > 0) ? "Raising" : "Lowering",
-			lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
-			new_power, ms_pwr_dbm(band, new_power));
-
-		/* store the resulting new MS power level in the lchan */
-		lchan->ms_power_ctrl.current = new_power;
-	}
-}
-
-/*! Input a new RSSI value into the MS power control loop for the given logical channel.
- *  \param lchan logical channel
- *  \param chan_state L1 channel state of the logical channel.
- *  \param rssi Received Signal Strength Indication (in dBm) */
-static void ms_power_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int8_t rssi)
-{
-	/* ignore inserted dummy frames, treat as lost frames */
-	if (rssi < -127)
-		return;
-
-	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Got RSSI value of %d\n", rssi);
-
-	chan_state->meas.rssi_count++;
-
-	chan_state->meas.rssi_got_burst = 1;
-
-	/* store and process RSSI */
-	if (chan_state->meas.rssi_valid_count == ARRAY_SIZE(chan_state->meas.rssi))
-		return;
-	chan_state->meas.rssi[chan_state->meas.rssi_valid_count++] = rssi;
-}
-
-/*! Process a single clock tick of the MS power control loop.
- *  \param lchan Logical channel to which the clock tick applies */
-static void ms_power_clock(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state)
-{
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-	struct phy_instance *pinst = trx_phy_instance(trx);
-	int rssi;
-	int i;
-
-	/* skip every second clock, to prevent oscillating due to roundtrip
-	 * delay */
-	if (!(chan_state->meas.clock & 1))
-		return;
-
-	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Got SACCH master clock at RSSI count %d\n",
-		chan_state->meas.rssi_count);
-
-	/* wait for initial burst */
-	if (!chan_state->meas.rssi_got_burst)
-		return;
-
-	/* if no burst was received from MS at clock */
-	if (chan_state->meas.rssi_count == 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE, "LOST SACCH frame, so we raise MS power output\n");
-		ms_power_diff(lchan, MS_RAISE_MAX_DB);
-		return;
-	}
-
-	/* reset total counter */
-	chan_state->meas.rssi_count = 0;
-
-	/* check the minimum level received after MS acknowledged the ordered
-	 * power level */
-	if (chan_state->meas.rssi_valid_count == 0)
-		return;
-	for (rssi = 999, i = 0; i < chan_state->meas.rssi_valid_count; i++) {
-		if (rssi > chan_state->meas.rssi[i])
-			rssi = chan_state->meas.rssi[i];
-	}
-
-	/* reset valid counter */
-	chan_state->meas.rssi_valid_count = 0;
-
-	/* change RSSI */
-	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Lowest RSSI: %d Target RSSI: %d Current "
-		"MS power: %d (%d dBm)\n", rssi,
-		pinst->phy_link->u.osmotrx.trx_target_rssi, lchan->ms_power_ctrl.current,
-		ms_pwr_dbm(trx->bts->band, lchan->ms_power_ctrl.current));
-	ms_power_diff(lchan, pinst->phy_link->u.osmotrx.trx_target_rssi - rssi);
-}
-
 
 /* 90% of one bit duration in 1/256 symbols: 256*0.9 */
 #define TOA256_9OPERCENT	230
-
-/*
- * Timing Advance loop
- */
 
 void ta_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int16_t toa256)
 {
@@ -231,40 +81,15 @@ void ta_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int1
  * \param[in] rssi Receive Signal Strength Indication
  * \param[in] toa256 Time of Arrival in 1/256 symbol periods */
 void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa256)
+	struct l1sched_chan_state *chan_state, int16_t toa256)
 {
 	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
 					.lchan[l1sap_chan2ss(chan_nr)];
 	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-
-	/* if common upper layer MS power control loop is disabled
-	   and lower layer MS power control loop is enabled, handle it */
-	if (!l1t->trx->ms_pwr_ctl_soft && pinst->phy_link->u.osmotrx.trx_ms_power_loop)
-		ms_power_val(lchan, chan_state, rssi);
 
 	/* if TA loop is enabled, handle it */
 	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
 		ta_val(lchan, chan_state, toa256);
-}
-
-/*! Called once every downlink SACCH block needs to be sent. */
-void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state)
-{
-	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
-					.lchan[l1sap_chan2ss(chan_nr)];
-	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-
-	if (lchan->ms_power_ctrl.fixed)
-	        return;
-
-	/* if common upper layer MS power control loop is disabled
-	   and lower layer MS power control loop is enabled, handle it */
-	if (!l1t->trx->ms_pwr_ctl_soft && pinst->phy_link->u.osmotrx.trx_ms_power_loop)
-		ms_power_clock(lchan, chan_state);
-
-	/* count the number of SACCH clocks */
-	chan_state->meas.clock++;
 }
 
 void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,

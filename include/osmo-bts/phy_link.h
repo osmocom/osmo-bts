@@ -45,8 +45,6 @@ struct phy_link {
 			uint16_t base_port_remote;
 			struct osmo_fd trx_ofd_clk;
 			bool trx_ta_loop;
-			bool trx_ms_power_loop;
-			int8_t trx_target_rssi;
 			uint32_t clock_advance;
 			uint32_t rts_advance;
 			bool use_legacy_setbsic;

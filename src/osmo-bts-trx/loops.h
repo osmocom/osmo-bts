@@ -7,19 +7,12 @@
  * calibration of loops
  */
 
-/* how much power levels do we raise/lower as maximum (1 level = 2 dB) */
-#define MS_RAISE_MAX_DB 4
-#define MS_LOWER_MAX_DB 8
-
 /*
  * loops api
  */
 
 void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int8_t rssi, int16_t toa);
-
-void trx_loop_sacch_clock(struct l1sched_trx *l1t, uint8_t chan_nr,
-        struct l1sched_chan_state *chan_state);
+	struct l1sched_chan_state *chan_state, int16_t toa);
 
 void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state,

@@ -121,11 +121,6 @@ struct l1sched_chan_state {
 
 	/* measurements */
 	struct {
-		uint8_t		clock;		/* cyclic clock counter */
-		int8_t		rssi[32];	/* last RSSI values */
-		int		rssi_count;	/* received RSSI values */
-		int		rssi_valid_count; /* number of stored value */
-		int		rssi_got_burst; /* any burst received so far */
 		int32_t		toa256_sum;	/* sum of TOA values (1/256 symbol) */
 		int		toa_num;	/* number of TOA value */
 	} meas;

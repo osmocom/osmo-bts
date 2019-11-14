@@ -116,7 +116,6 @@ int bts_model_init(struct gsm_bts *bts)
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
 	gsm_bts_set_feature(bts, BTS_FEAT_CBCH);
-	gsm_bts_set_feature(bts, BTS_FEAT_MS_PWR_CTRL_DSP);
 
 	bts_model_vty_init(bts);
 
@@ -137,8 +136,6 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.osmotrx.clock_advance = 20;
 	plink->u.osmotrx.rts_advance = 5;
 	plink->u.osmotrx.trx_ta_loop = true;
-	plink->u.osmotrx.trx_ms_power_loop = false;
-	plink->u.osmotrx.trx_target_rssi = -10;
 	/* attempt use newest TRXD version by default: */
 	plink->u.osmotrx.trxd_hdr_ver_max = TRX_DATA_FORMAT_VER;
 }
