@@ -49,7 +49,7 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	enum gsm_band band = trx->bts->band;
 	int8_t new_power; /* TS 05.05 power level */
-	int8_t new_dbm, current_dbm, bsc_max_dbm, pwclass_max_dbm;
+	int8_t new_dbm, current_dbm, bsc_max_dbm;
 
 	/* power levels change in steps of 2 dB, so a smaller diff will end up in no change */
 	if (diff < 2 && diff > -2)
@@ -88,15 +88,6 @@ static void ms_power_diff(struct gsm_lchan *lchan, int8_t diff)
 	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
 	if (new_dbm > bsc_max_dbm)
 		new_dbm = bsc_max_dbm;
-
-	/* Make sure in no case the dBm value is higher than the one of ms
-	   power class 1 (the one with more output power) for the given band.
-	   Ideally we should catch the MS specific power class and apply it
-	   here, but for now let's assume the BSC sent us one taking the power
-	   class into account. */
-	pwclass_max_dbm = (int)ms_class_gmsk_dbm(band, 1);
-	if (pwclass_max_dbm >= 0 && new_dbm > pwclass_max_dbm)
-		new_dbm = pwclass_max_dbm;
 
 	new_power = ms_pwr_ctl_lvl(band, new_dbm);
 	if (new_power < 0) {
