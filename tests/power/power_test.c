@@ -17,7 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/application.h>
+
 #include <osmo-bts/bts.h>
+#include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/power_control.h>
 
@@ -79,6 +83,11 @@ static void test_power_loop(void)
 int main(int argc, char **argv)
 {
 	printf("Testing power loop...\n");
+
+	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
+	msgb_talloc_ctx_init(tall_bts_ctx, 0);
+
+	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
 
 	test_power_loop();
 

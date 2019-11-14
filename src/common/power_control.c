@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -30,67 +31,87 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
 
-/*
- * Check if manual power control is needed
- * Check if fixed power was selected
- * Check if the MS is already using our level if not
- * the value is bogus..
- * TODO: Add a timeout.. e.g. if the ms is not capable of reaching
- * the value we have set.
- */
+ /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
+  *  \param lchan logical channel for which to compute (and in which to store) new power value.
+  *  \param[in] ms_power MS Power Level received from Uplink L1 SACCH Header in SACCH block.
+  *  \param[in] rxLevel Signal level of the received SACCH block, in dBm.
+  */
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power, const int rxLevel)
 {
-	int rx;
-	int cur_dBm, new_dBm, new_pwr;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-	const enum gsm_band band = bts->band;
+	int diff;
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+	struct gsm_bts *bts = trx->bts;
+	enum gsm_band band = bts->band;
+	int8_t new_power; /* TS 05.05 power level */
+	int8_t new_dbm, current_dbm, bsc_max_dbm;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
 		return 0;
 	if (lchan->ms_power_ctrl.fixed)
 		return 0;
 
-	/* The phone hasn't reached the power level yet */
+	/* The phone hasn't reached the power level yet.
+	   TODO: store .last and check if MS is trying to move towards current. */
 	if (lchan->ms_power_ctrl.current != ms_power)
 		return 0;
 
-	/* What is the difference between what we want and received? */
-	rx = bts->ul_power_target - rxLevel;
+	/* How many dBs measured power should be increased (+) or decreased (-)
+	   to reach expected power. */
+	diff = bts->ul_power_target - rxLevel;
 
-	cur_dBm = ms_pwr_dbm(band, ms_power);
-	new_dBm = cur_dBm + rx;
+	/* power levels change in steps of 2 dB, so a smaller diff will end up in no change */
+	if (diff < 2 && diff > -2)
+		return 0;
 
-	/* Clamp negative values and do it depending on the band */
-	if (new_dBm < 0)
-		new_dBm = 0;
-
-	switch (band) {
-	case GSM_BAND_1800:
-		/* If MS_TX_PWR_MAX_CCH is set the values 29,
-		 * 30, 31 are not used. Avoid specifying a dBm
-		 * that would lead to these power levels. The
-		 * phone might not be able to reach them. */
-		if (new_dBm > 30)
-			new_dBm = 30;
-		break;
-	default:
-		break;
+	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
+	if (current_dbm < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
+			  lchan->ms_power_ctrl.current, gsm_band_name(band));
+		return 0;
+	}
+	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
+	if (bsc_max_dbm < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
+			  lchan->ms_power_ctrl.max, gsm_band_name(band));
+		return 0;
 	}
 
-	new_pwr = ms_pwr_ctl_lvl(band, new_dBm);
+	new_dbm = current_dbm + diff;
 
-	/* Don't ask for smaller ms power level than the one set
-	 * by BSC upon RSL CHAN ACT
-	 */
-	if (new_pwr < lchan->ms_power_ctrl.max)
-		new_pwr = lchan->ms_power_ctrl.max;
+	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
+	   cope with any unsigned dbm value, regardless of band minimal value. */
+	if (new_dbm < 0)
+		new_dbm = 0;
 
-	if (lchan->ms_power_ctrl.current != new_pwr) {
-		lchan->ms_power_ctrl.current = new_pwr;
-		bts_model_adjst_ms_pwr(lchan);
-		return 1;
+	/* Don't ask for smaller ms power level than the one set by BSC upon RSL CHAN ACT */
+	if (new_dbm > bsc_max_dbm)
+		new_dbm = bsc_max_dbm;
+
+	new_power = ms_pwr_ctl_lvl(band, new_dbm);
+	if (new_power < 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+			  "Failed to retrieve power level for %" PRId8 " dBm on band %d\n",
+			  new_dbm, band);
+		return 0;
 	}
 
-	return 0;
+	if (lchan->ms_power_ctrl.current == new_power) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d (%d dBm)\n",
+			new_power, ms_pwr_dbm(band, new_power));
+		return 0;
+	}
+
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d (%d dBm)\n",
+		(diff > 0) ? "Raising" : "Lowering",
+		lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
+		new_power, ms_pwr_dbm(band, new_power));
+
+	/* store the resulting new MS power level in the lchan */
+	lchan->ms_power_ctrl.current = new_power;
+	bts_model_adjst_ms_pwr(lchan);
+
+	return 1;
 }
