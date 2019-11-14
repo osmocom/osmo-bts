@@ -694,7 +694,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		*rc = -EINVAL;
 
 	if (cbits == 0x01) {
-		lch_idx = 0;	/* TCH/F */	
+		lch_idx = 0;	/* TCH/F */
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
 		    ts->pchan != GSM_PCHAN_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH &&

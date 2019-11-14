@@ -2,7 +2,7 @@
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
  * Copyright (C) 2016 by Harald Welte <laforge@gnumonks.org>
- * 
+ *
  * Based on sysmoBTS:
  *     (C) 2011-2013 by Harald Welte <laforge@gnumonks.org>
  *
