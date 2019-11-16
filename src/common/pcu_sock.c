@@ -379,8 +379,9 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
-int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
-	uint8_t is_11bit, enum ph_burst_type burst_type, uint8_t sapi)
+int pcu_tx_rach_ind(uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
+		    int16_t qta, uint16_t ra, uint32_t fn, uint8_t is_11bit,
+		    enum ph_burst_type burst_type, uint8_t sapi)
 {
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
@@ -389,7 +390,7 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
 	LOGP(DPCU, LOGL_INFO, "Sending RACH indication: qta=%d, ra=%d, "
 		"fn=%d\n", qta, ra, fn);
 
-	msg = pcu_msgb_alloc(PCU_IF_MSG_RACH_IND, bts->nr);
+	msg = pcu_msgb_alloc(PCU_IF_MSG_RACH_IND, bts_nr);
 	if (!msg)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
@@ -401,6 +402,8 @@ int pcu_tx_rach_ind(struct gsm_bts *bts, int16_t qta, uint16_t ra, uint32_t fn,
 	rach_ind->fn = fn;
 	rach_ind->is_11bit = is_11bit;
 	rach_ind->burst_type = burst_type;
+	rach_ind->trx_nr = trx_nr;
+	rach_ind->ts_nr = ts_nr;
 
 	return pcu_sock_send(&bts_gsmnet, msg);
 }

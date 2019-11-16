@@ -1403,7 +1403,8 @@ static int l1sap_pdch_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *ra
 		       rach_ind->acc_delay_256bits);
 
 		/* QTA: Timing Advance in units of 1/4 of a symbol */
-		pcu_tx_rach_ind(trx->bts, rach_ind->acc_delay_256bits >> 6,
+		pcu_tx_rach_ind(trx->bts->nr, trx->nr, rach_ind->chan_nr & 0x07,
+				rach_ind->acc_delay_256bits >> 6,
 				rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
 				rach_ind->burst_type, PCU_IF_SAPI_PTCCH);
 		return 0;
@@ -1466,7 +1467,8 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 			rach_ind->acc_delay, rach_ind->ra);
 
 		/* QTA: Timing Advance in units of 1/4 of a symbol */
-		pcu_tx_rach_ind(bts, rach_ind->acc_delay_256bits >> 6,
+		pcu_tx_rach_ind(bts->nr, trx->nr, rach_ind->chan_nr & 0x07,
+			rach_ind->acc_delay_256bits >> 6,
 			rach_ind->ra, rach_ind->fn, rach_ind->is_11bit,
 			rach_ind->burst_type, PCU_IF_SAPI_RACH);
 		return 0;

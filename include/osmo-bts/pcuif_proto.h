@@ -108,6 +108,8 @@ struct gsm_pcu_if_rach_ind {
 	uint16_t	arfcn;
 	uint8_t		is_11bit;
 	uint8_t		burst_type;
+	uint8_t		trx_nr;
+	uint8_t		ts_nr;
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_info_trx {
