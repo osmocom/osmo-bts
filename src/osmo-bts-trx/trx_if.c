@@ -728,7 +728,7 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 	/* IDLE / NOPE frame indication */
 	if (buf[0] & (1 << 7)) {
 		bi->flags |= TRX_BI_F_NOPE_IND;
-		return TRX_UL_V1HDR_LEN;
+		goto skip_mts;
 	}
 
 	/* Modulation info and TSC set */
@@ -751,6 +751,7 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 	bi->tsc = buf[0] & 0b111;
 	bi->flags |= TRX_BI_F_TS_INFO;
 
+skip_mts:
 	/* C/I: Carrier-to-Interference ratio (in centiBels) */
 	bi->ci_cb = (int16_t) osmo_load16be(buf + 1);
 	bi->flags |= TRX_BI_F_CI_CB;
@@ -838,6 +839,10 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	/* RSSI and ToA256 */
 	OSMO_STRBUF_PRINTF(sb, " rssi=%d toa256=%d", bi->rssi, bi->toa256);
 
+	/* C/I: Carrier-to-Interference ratio (in centiBels) */
+	if (bi->flags & TRX_BI_F_CI_CB)
+		OSMO_STRBUF_PRINTF(sb, " C/I=%d cB", bi->ci_cb);
+
 	/* Nothing else to print for NOPE.ind */
 	if (bi->flags & TRX_BI_F_NOPE_IND)
 		return buf;
@@ -849,10 +854,6 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	/* Training Sequence Code */
 	if (bi->flags & TRX_BI_F_TS_INFO)
 		OSMO_STRBUF_PRINTF(sb, " set=%u tsc=%u", bi->tsc_set, bi->tsc);
-
-	/* C/I: Carrier-to-Interference ratio (in centiBels) */
-	if (bi->flags & TRX_BI_F_CI_CB)
-		OSMO_STRBUF_PRINTF(sb, " C/I=%d cB", bi->ci_cb);
 
 	/* Burst length */
 	OSMO_STRBUF_PRINTF(sb, " burst_len=%zu", bi->burst_len);
