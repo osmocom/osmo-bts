@@ -835,12 +835,12 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	/* Common TDMA parameters */
 	OSMO_STRBUF_PRINTF(sb, "tn=%u fn=%u", bi->tn, bi->fn);
 
+	/* RSSI and ToA256 */
+	OSMO_STRBUF_PRINTF(sb, " rssi=%d toa256=%d", bi->rssi, bi->toa256);
+
 	/* Nothing else to print for NOPE.ind */
 	if (bi->flags & TRX_BI_F_NOPE_IND)
 		return buf;
-
-	/* RSSI and ToA256 */
-	OSMO_STRBUF_PRINTF(sb, " rssi=%d toa256=%d", bi->rssi, bi->toa256);
 
 	/* Modulation and TSC set */
 	if (bi->flags & TRX_BI_F_MOD_TYPE)
