@@ -1018,8 +1018,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	if (hdr_len < 0)
 		return hdr_len;
 
-	if (bi.flags & TRX_BI_F_NOPE_IND)
+	if (bi.flags & TRX_BI_F_NOPE_IND) {
+		bi.burst_len = 0;
 		goto skip_burst;
+	}
 
 	/* We're done with the header now */
 	buf_len -= hdr_len;
