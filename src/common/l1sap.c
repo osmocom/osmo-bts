@@ -1647,7 +1647,6 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 	lchan->sacch_deact = 0;
 	lchan->s = lchan->ts->trx->bts->radio_link_timeout;
-	lchan->ms_power_ctrl.last_received = -1; /* mark no ms power received yet */
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)

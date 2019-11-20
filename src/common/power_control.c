@@ -51,35 +51,15 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (lchan->ms_power_ctrl.fixed)
 		return 0;
 
-	/* The phone hasn't reached the power level yet.
-	   TODO: store .last and check if MS is trying to move towards current. */
-	if (lchan->ms_power_ctrl.current != ms_power) {
-		if (lchan->ms_power_ctrl.last_received == -1 ||
-		    lchan->ms_power_ctrl.last_received != ms_power) {
-			/* MS Power still changing, keep current power level */
-			lchan->ms_power_ctrl.last_received = ms_power;
-			return 0;
-		}
-		/* else: we are stuck with some received MS Power level
-		   different than the one we announce, probably because the MS
-		   doesn't support that exact one so it picked the nearest one
-		   */
-		lchan->ms_power_ctrl.last_received = ms_power;
-	}
-
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	   to reach expected power. */
 	diff = bts->ul_power_target - rxLevel;
 
-	/* power levels change in steps of 2 dB, so a smaller diff will end up in no change */
-	if (diff < 2 && diff > -2)
-		return 0;
-
-	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
+	current_dbm = ms_pwr_dbm(band, ms_power);
 	if (current_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
 			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  lchan->ms_power_ctrl.current, gsm_band_name(band));
+			  ms_power, gsm_band_name(band));
 		return 0;
 	}
 	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
@@ -110,13 +90,13 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	}
 
 	if (lchan->ms_power_ctrl.current == new_power) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS new_power at control level %d, %d dBm "
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			new_power, ms_pwr_dbm(band, new_power), ms_power, rxLevel, bts->ul_power_target);
 		return 0;
 	}
 
-	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS new_power from control level %d (%d dBm) to %d, %d dBm "
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power from control level %d (%d dBm) to %d, %d dBm "
 		  "(rx-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		(diff > 0) ? "Raising" : "Lowering",
 		lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),

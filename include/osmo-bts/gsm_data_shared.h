@@ -322,7 +322,6 @@ struct gsm_lchan {
 		uint8_t current;
 		uint8_t max;
 		bool fixed;
-		int8_t last_received; /* last received MS Power in uplink L1 SACCH, -1 means not set */
 	} ms_power_ctrl;
 	/* Power levels for BTS */
 	uint8_t bs_power;
