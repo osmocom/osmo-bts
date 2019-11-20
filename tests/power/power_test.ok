@@ -1,7 +1,26 @@
 Testing power loop...
 power control [0]: MS current power 15
+power control [1]: MS current power 13
+power control [1]: MS current power 11
+power control [1]: MS current power 9
 power control [1]: MS current power 7
+power control [1]: MS current power 5
+power control [0]: MS current power 5
+power control [1]: MS current power 3
+power control [1]: MS current power 2
+power control [0]: MS current power 2
 power control [1]: MS current power 0
 power control [0]: MS current power 0
+power control [1]: MS current power 30
+power control [1]: MS current power 29
+power control [0]: MS current power 29
+power control [0]: MS current power 29
+power control [1]: MS current power 1
+power control [1]: MS current power 5
+power control [1]: MS current power 9
+power control [1]: MS current power 10
+power control [1]: MS current power 9
+power control [1]: MS current power 14
+power control [0]: MS current power 14
 power control [1]: MS current power 15
 Power loop test OK

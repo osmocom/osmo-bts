@@ -30,6 +30,11 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/power_control.h>
+
+/* how many dB do we raise/lower as maximum (1 ms power level = 2 dB) */
+#define MS_RAISE_MAX_DB 4
+#define MS_LOWER_MAX_DB 8
 
  /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
   *  \param lchan logical channel for which to compute (and in which to store) new power value.
@@ -51,10 +56,6 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (lchan->ms_power_ctrl.fixed)
 		return 0;
 
-	/* How many dBs measured power should be increased (+) or decreased (-)
-	   to reach expected power. */
-	diff = bts->ul_power_target - rxLevel;
-
 	current_dbm = ms_pwr_dbm(band, ms_power);
 	if (current_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
@@ -69,6 +70,18 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 			  lchan->ms_power_ctrl.max, gsm_band_name(band));
 		return 0;
 	}
+
+	/* How many dBs measured power should be increased (+) or decreased (-)
+	   to reach expected power. */
+	diff = bts->ul_power_target - rxLevel;
+
+	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop
+	   iteration, i.e. reduce the speed at which the MS transmit power can
+	   change. A higher value means a lower level (and vice versa) */
+	if (diff > MS_RAISE_MAX_DB)
+		diff = MS_RAISE_MAX_DB;
+	else if (diff < -MS_LOWER_MAX_DB)
+		diff = -MS_LOWER_MAX_DB;
 
 	new_dbm = current_dbm + diff;
 

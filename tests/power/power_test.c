@@ -58,22 +58,64 @@ static void test_power_loop(void)
 	lchan->state = LCHAN_S_NONE;
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
 	/* Simply clamping */
 	apply_power_test(lchan, -60, 0, 15);
 
 	/*
 	 * Now 15 dB too little and we should power it up. Could be a
-	 * power level of 7 or 8 for 15 dBm
+	 * power level of 7 or 8 for 15 dBm. However, since we limit peace at
+	 * which we change values, expect several steps of MS_RAISE_MAX_DB/2 levels:
 	 */
+	apply_power_test(lchan, -90, 1, 13);
+	apply_power_test(lchan, -90, 1, 11);
+	apply_power_test(lchan, -90, 1, 9);
 	apply_power_test(lchan, -90, 1, 7);
+	apply_power_test(lchan, -90, 1, 5);
 
-	/* It should be clamped to level 0 and 30 dBm */
-	apply_power_test(lchan, -100, 1, 0);
+	/* Check good RSSI value keeps it at same power level: */
+	apply_power_test(lchan, bts.ul_power_target, 0, 5);
+
+	apply_power_test(lchan, -90, 1, 3);
+	apply_power_test(lchan, -90, 1, 2); /* .max is pwr lvl 2 */
+	apply_power_test(lchan, -90, 0, 2); /* .max is pwr lvl 2 */
+
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
+	apply_power_test(lchan, -90, 1, 0); /* .max is pwr lvl 0 */
+	apply_power_test(lchan, -90, 0, 0); /* .max is pwr lvl 0 */
+
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 36);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 29);
+	apply_power_test(lchan, -90, 1, 30);
+	apply_power_test(lchan, -90, 1, 29);
+	apply_power_test(lchan, -90, 0, 29);
+
+	/* Check good RSSI value keeps it at same power level: */
+	apply_power_test(lchan, bts.ul_power_target, 0, 29);
+
+	/* Now go down, steps are double size in this direction: */
+	apply_power_test(lchan, -45, 1, 1);
+	apply_power_test(lchan, -45, 1, 5);
+	apply_power_test(lchan, -45, 1, 9);
+
+	/* Go down only one level down and up: */
+	apply_power_test(lchan, bts.ul_power_target + 2, 1, 10);
+	apply_power_test(lchan, bts.ul_power_target - 2, 1, 9);
+
+	/* Check if BSC requesting a low max power is applied after loop calculation: */
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 2);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 14);
+	apply_power_test(lchan, bts.ul_power_target + 2, 1, 14);
+	/* Set back a more normal max: */
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
 
 	/* Fix it and jump down */
 	lchan->ms_power_ctrl.fixed = true;
-	apply_power_test(lchan, -60, 0, 0);
+	apply_power_test(lchan, -60, 0, 14);
 
 	/* And leave it again */
 	lchan->ms_power_ctrl.fixed = false;
