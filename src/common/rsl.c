@@ -2834,8 +2834,8 @@ struct osmo_bts_supp_meas_info {
 	uint16_t toa256_std_dev;
 } __attribute__((packed));
 
-/* 8.4.8 MEASUREMENT RESult */
-static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const struct lapdm_entity *le)
+/* Compose and send 8.4.8 MEASUREMENT RESult via RSL */
+int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const struct lapdm_entity *le)
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
@@ -2895,9 +2895,12 @@ static int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, con
 		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
 		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
 	}
-	msgb_tl16v_put(msg, RSL_IE_L3_INFO, l3_len, l3);
+
+	if (l3 && l3_len > 0)
+		msgb_tl16v_put(msg, RSL_IE_L3_INFO, l3_len, l3);
 	if (ms_to_valid(lchan)) {
-		msgb_tv_put(msg, RSL_IE_MS_TIMING_OFFSET, ms_to2rsl(lchan, le));
+		if (l3 && l3_len > 0)
+			msgb_tv_put(msg, RSL_IE_MS_TIMING_OFFSET, ms_to2rsl(lchan, le));
 		lchan->ms_t_offs = -1;
 		lchan->p_offs = -1;
 	}

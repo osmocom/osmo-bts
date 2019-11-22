@@ -1238,8 +1238,17 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 	/* bad frame */
 	if (len == 0) {
-		if (L1SAP_IS_LINK_SACCH(link_id))
+		if (L1SAP_IS_LINK_SACCH(link_id)) {
+			/* In case we loose a SACCH block, we must take care
+			 * that the related measurement report is sent via RSL.
+			 * This is a fallback method. The report will also
+			 * lack the measurement report from the MS side. See
+			 * also rsl.c:lapdm_rll_tx_cb() */
+			le = &lchan->lapdm_ch.lapdm_acch;
+			rsl_tx_meas_res(lchan, NULL, 0, le);
+
 			radio_link_timeout(lchan, 1);
+		}
 		return -EINVAL;
 	}
 

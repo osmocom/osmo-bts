@@ -945,10 +945,14 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		(*ci_cb_num)++;
 	}
 
-	/* copy burst to buffer of 4 bursts */
+	/* Copy burst to buffer of 4 bursts. If the burst indication contains
+	 * no data, ensure that the buffer does not stay uninitalized */
 	burst = *bursts_p + bid * 116;
-	memcpy(burst, bi->burst + 3, 58);
-	memcpy(burst + 58, bi->burst + 87, 58);
+	if (bi->burst_len > 0) {
+		memcpy(burst, bi->burst + 3, 58);
+		memcpy(burst + 58, bi->burst + 87, 58);
+	} else
+		memset(burst, 0, 58 * 2);
 
 	/* send burst information to loops process */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
