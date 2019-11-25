@@ -292,7 +292,7 @@ got_msg:
 	/* check validity of message */
 	if (rc < 0) {
 		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim invalid length, please FIX! "
-			"(len=%ld)\n", msg->tail - msg->l2h);
+			"(len=%ld)\n", (long)(msg->tail - msg->l2h));
 		/* free message */
 		msgb_free(msg);
 		goto no_msg;
