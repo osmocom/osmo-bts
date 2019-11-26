@@ -1244,10 +1244,12 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			 * This is a fallback method. The report will also
 			 * lack the measurement report from the MS side. See
 			 * also rsl.c:lapdm_rll_tx_cb() */
+			LOGPGT(DL1P, LOGL_INFO, &g_time, "Lost SACCH block, faking meas reports and ms pwr\n");
 			le = &lchan->lapdm_ch.lapdm_acch;
 			rsl_tx_meas_res(lchan, NULL, 0, le);
 
 			radio_link_timeout(lchan, 1);
+			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, data_ind->rssi);
 		}
 		return -EINVAL;
 	}
