@@ -1613,7 +1613,7 @@ DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
 	uint16_t **sapi_mask;
 
-	OSMO_ASSERT(sapi < 0);
+	OSMO_ASSERT(sapi >= 0);
 	if (!tgt)
 		return CMD_WARNING;
 
@@ -1635,7 +1635,7 @@ DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
 	uint16_t *sapi_mask;
 
-	OSMO_ASSERT(sapi < 0);
+	OSMO_ASSERT(sapi >= 0);
 	if (!tgt)
 		return CMD_WARNING;
 	if (!tgt->filter_data[LOG_FLT_L1_SAPI])
