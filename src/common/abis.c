@@ -108,12 +108,11 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
 		sign_link = g_bts->oml_link =
 			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
-						E1INP_SIGN_OML, NULL, 255, 0);
+						E1INP_SIGN_OML, g_bts->c0, 255, 0);
 		if (clock_gettime(CLOCK_MONOTONIC, &g_bts->oml_conn_established_timestamp) != 0)
 			memset(&g_bts->oml_conn_established_timestamp, 0,
 			       sizeof(g_bts->oml_conn_established_timestamp));
 		drain_oml_queue(g_bts);
-		sign_link->trx = g_bts->c0;
 		bts_link_estab(g_bts);
 		break;
 	default:
@@ -129,8 +128,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		e1inp_ts_config_sign(&line->ts[type-1], line);
 		sign_link = trx->rsl_link =
 			e1inp_sign_link_create(&line->ts[type-1],
-						E1INP_SIGN_RSL, NULL, 0, 0);
-		sign_link->trx = trx;
+						E1INP_SIGN_RSL, trx, 0, 0);
 		trx_link_estab(trx);
 		break;
 	}
