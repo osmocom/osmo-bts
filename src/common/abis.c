@@ -128,7 +128,8 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		e1inp_ts_config_sign(&line->ts[type-1], line);
 		sign_link = trx->rsl_link =
 			e1inp_sign_link_create(&line->ts[type-1],
-						E1INP_SIGN_RSL, trx, 0, 0);
+						E1INP_SIGN_RSL, trx,
+						trx->rsl_tei, 0);
 		trx_link_estab(trx);
 		break;
 	}

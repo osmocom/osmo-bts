@@ -1323,8 +1323,10 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (trx->bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
 		LOGP(DOML, LOGL_NOTICE, "%s: Not connecting RSL in OML-DUMMY!\n", trx_name);
-	} else
+	} else {
+		trx->rsl_tei = stream_id;
 		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port, trx->nr);
+	}
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "%s: Error in abis_open(RSL): %d\n", trx_name, rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
