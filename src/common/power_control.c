@@ -38,29 +38,29 @@
 
  /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
   *  \param lchan logical channel for which to compute (and in which to store) new power value.
-  *  \param[in] ms_power MS Power Level received from Uplink L1 SACCH Header in SACCH block.
+  *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
   *  \param[in] rxLevel Signal level of the received SACCH block, in dBm.
   */
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
-		      const uint8_t ms_power, const int rxLevel)
+		      const uint8_t ms_power_lvl, const int rxLevel)
 {
 	int diff;
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsm_bts *bts = trx->bts;
 	enum gsm_band band = bts->band;
-	int8_t new_power; /* TS 05.05 power level */
-	int8_t new_dbm, current_dbm, bsc_max_dbm;
+	int8_t new_power_lvl; /* TS 05.05 power level */
+	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
 		return 0;
 	if (lchan->ms_power_ctrl.fixed)
 		return 0;
 
-	current_dbm = ms_pwr_dbm(band, ms_power);
-	if (current_dbm < 0) {
+	ms_dbm = ms_pwr_dbm(band, ms_power_lvl);
+	if (ms_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
 			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  ms_power, gsm_band_name(band));
+			  ms_power_lvl, gsm_band_name(band));
 		return 0;
 	}
 	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
@@ -83,7 +83,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	else if (diff < -MS_LOWER_MAX_DB)
 		diff = -MS_LOWER_MAX_DB;
 
-	new_dbm = current_dbm + diff;
+	new_dbm = ms_dbm + diff;
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
 	   cope with any unsigned dbm value, regardless of band minimal value. */
@@ -94,33 +94,33 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (new_dbm > bsc_max_dbm)
 		new_dbm = bsc_max_dbm;
 
-	new_power = ms_pwr_ctl_lvl(band, new_dbm);
-	if (new_power < 0) {
+	new_power_lvl = ms_pwr_ctl_lvl(band, new_dbm);
+	if (new_power_lvl < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
 			  "Failed to retrieve power level for %" PRId8 " dBm on band %d\n",
 			  new_dbm, band);
 		return 0;
 	}
 
-	if (lchan->ms_power_ctrl.current == new_power) {
+	if (lchan->ms_power_ctrl.current == new_power_lvl) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
-			  new_power, ms_pwr_dbm(band, new_power),
-			  ms_power, lchan->ms_power_ctrl.max,
+			  new_power_lvl, new_dbm,
+			  ms_power_lvl, lchan->ms_power_ctrl.max,
 			  rxLevel, bts->ul_power_target);
 		return 0;
 	}
 
+	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power from control level %d (%d dBm) to %d, %d dBm "
 		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
-		  (diff > 0) ? "Raising" : "Lowering",
-		  lchan->ms_power_ctrl.current, ms_pwr_dbm(band, lchan->ms_power_ctrl.current),
-		  new_power, ms_pwr_dbm(band, new_power),
-		  ms_power, lchan->ms_power_ctrl.max,
+		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
+		  lchan->ms_power_ctrl.current, current_dbm, new_power_lvl, new_dbm,
+		  ms_power_lvl, lchan->ms_power_ctrl.max,
 		  rxLevel, bts->ul_power_target);
 
 	/* store the resulting new MS power level in the lchan */
-	lchan->ms_power_ctrl.current = new_power;
+	lchan->ms_power_ctrl.current = new_power_lvl;
 	bts_model_adjst_ms_pwr(lchan);
 
 	return 1;
