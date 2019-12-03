@@ -1150,7 +1150,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 	/* 9.3.13 MS Power */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
-		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER);
+		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
 		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 		lchan->ms_power_ctrl.fixed = false;
 	}
