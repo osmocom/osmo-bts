@@ -1100,7 +1100,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* Initialize channel defaults */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
-	lchan->ms_power_ctrl.fixed = false;
+	lchan->ms_power_ctrl.fixed = true;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1152,7 +1152,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
 		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
-		lchan->ms_power_ctrl.fixed = false;
 	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
@@ -1160,13 +1159,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* 9.3.32 BS Power Parameters */
 	/* 9.3.31 MS Power Parameters */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
-		lchan->ms_power_ctrl.fixed = false;
-	else {
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
-		lchan->ms_power_ctrl.fixed = true;
+		lchan->ms_power_ctrl.fixed = false;
 	}
 	/* 9.3.16 Physical Context */
 
@@ -1637,12 +1634,12 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %" PRIu8 "\n", pwr);
 
 	/* 9.3.31 MS Power Parameters (O) */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM))
-		lchan->ms_power_ctrl.fixed = false;
-	else {
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
+		lchan->ms_power_ctrl.fixed = false;
+	} else {
 		lchan->ms_power_ctrl.fixed = true;
 	}
 
