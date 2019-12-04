@@ -1337,14 +1337,15 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 #define RACH_MIN_TOA256 -2 * 256
 
-static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts *bts)
+static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts *bts,
+			     const char *chan_name)
 {
 	int16_t toa256 = rach_ind->acc_delay_256bits;
 
 	/* Check for RACH exceeding BER threshold (ghost RACH) */
 	if (rach_ind->ber10k > bts->max_ber10k_rach) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
-			"BER10k(%u) > BER10k_MAX(%u)\n",
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst on %s: "
+			"BER10k(%u) > BER10k_MAX(%u)\n", chan_name,
 			rach_ind->ber10k, bts->max_ber10k_rach);
 		return false;
 	}
@@ -1355,16 +1356,16 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 	 * according to maximal allowed Timing Advance value.
 	 */
 	if (toa256 < RACH_MIN_TOA256 || toa256 > bts->max_ta * 256) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
-			"ToA(%d) exceeds the allowed range (%d..%d)\n",
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst on %s: "
+			"ToA(%d) exceeds the allowed range (%d..%d)\n", chan_name,
 			toa256, RACH_MIN_TOA256, bts->max_ta * 256);
 		return false;
 	}
 
 	/* Link quality defined by C/I (Carrier-to-Interference ratio) */
 	if (rach_ind->lqual_cb < bts->min_qual_rach) {
-		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst: "
-			"link quality (%d) below the minimum (%d)\n",
+		LOGPFN(DL1C, LOGL_INFO, rach_ind->fn, "Ignoring an Access Burst on %s: "
+			"link quality (%d) below the minimum (%d)\n", chan_name,
 			rach_ind->lqual_cb, bts->min_qual_rach);
 		return false;
 	}
@@ -1376,7 +1377,7 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
 {
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, trx->bts)) {
+	if (!rach_pass_filter(rach_ind, trx->bts, "handover")) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
@@ -1392,7 +1393,7 @@ static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param
 static int l1sap_pdch_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
 {
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, trx->bts))
+	if (!rach_pass_filter(rach_ind, trx->bts, "PDCH"))
 		return -EAGAIN;
 
 	/* PTCCH/U (Packet Timing Advance Control Channel) */
@@ -1444,7 +1445,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		bts->load.rach.busy++;
 
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, bts)) {
+	if (!rach_pass_filter(rach_ind, bts, "CCCH")) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
