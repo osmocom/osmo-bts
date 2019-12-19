@@ -792,8 +792,17 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	bool soft = !strcmp(argv[0], "osmo");
 
 	if (!soft && !gsm_bts_has_feature(trx->bts, BTS_FEAT_MS_PWR_CTRL_DSP)) {
-		vty_out(vty, "This BTS model has no DSP/HW MS Power Control support%s", VTY_NEWLINE);
-		return CMD_WARNING;
+		/* NOTE: osmo-bts-trx used to have its own (low-level) MS Power Control loop, which
+		 * has been ripped out in favour of the common implementation. Configuration files
+		 * may still contain 'dsp', so let's be tolerant and override 'dsp' by 'osmo'. */
+		if (trx->bts->variant == BTS_OSMO_TRX && vty->type == VTY_FILE) {
+			vty_out(vty, "BTS model 'osmo-bts-trx' has no DSP/HW MS Power Control support, "
+				     "consider updating your configuration file!%s", VTY_NEWLINE);
+			soft = true; /* override */
+		} else {
+			vty_out(vty, "This BTS model has no DSP/HW MS Power Control support%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
 	}
 
 	trx->ms_pwr_ctl_soft = soft;
