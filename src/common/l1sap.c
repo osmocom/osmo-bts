@@ -458,6 +458,9 @@ static const uint8_t paging_fill[GSM_MACBLOCK_LEN] = {
 
 static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int len)
 {
+	if (len != GSM_MACBLOCK_LEN)
+		return false;
+
 	switch (chan_type) {
 	case GSMTAP_CHANNEL_AGCH:
 		if (!memcmp(data, fill_frame, GSM_MACBLOCK_LEN))
