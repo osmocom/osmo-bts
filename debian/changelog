@@ -1,3 +1,114 @@
+osmo-bts (1.2.0) unstable; urgency=medium
+
+  [ Oliver Smith ]
+  * Cosmetic: virtual: l1sap.c: fix typos
+  * virtual: set link quality for GSMTAP_CHANNEL_RACH
+  * pcu_sock: fix endian-swapped CellID
+  * gitignore: add oc2g generated files
+  * log: set L1 SAPI log context
+  * vty: add "logging filter l1-sapi"
+  * vty.c: don't ignore get_string_value() errors
+  * vty.c: avoid coverity BAD_SHIFT issues
+  * osmo-bts-virtual.cfg: ms-power-control dsp -> osmo
+
+  [ Harald Welte ]
+  * ETWS Primary Notification via P1 Rest Octets
+  * pcu_interface: Forward ETWS Primary Notification to PCU
+  * doc: Update Abis manual RSL section with ETWS related infomration
+  * osmo-bts-trx/scheduler: prevent uninitialized memory access
+  * osmo-bts-trx: migrate to new generic ECU abstraction
+  * rach_pass_filter(): Add information about channel type
+
+  [ Vadim Yanitskiy ]
+  * common/rsl.c: fix possible NULL-pointer dereference
+  * osmo-bts-trx/scheduler: fix tx_tch_common(): do not send AMR BFI twice
+  * osmo-bts-trx/scheduler: add FIXME note about FACCH/H and BFI
+  * osmo-bts-trx/scheduler: fix: check rc of osmo_ecu_frame_out()
+  * scheduler: fix handling of PTCCH/U and PTCCH/D logical channels
+  * osmo-bts-trx/scheduler: also detect TSC for Access Bursts on PDCH
+  * common/l1sap: increase ToA precision for packet Access Bursts
+  * L1SAP: use RSL_CHAN_* definitions from libosmogsm
+  * L1SAP: also consider RSL_CHAN_OSMO_CBCH8 as CBCH
+  * L1SAP: clarify debug messages in rach_pass_filter()
+  * L1SAP: do not pass unused parameter to l1sap_handover_rach()
+  * L1SAP: refactor handling of Access Bursts on PDCH
+  * L1SAP: properly handle 11-bit encoded RACH.ind in gsmtap_ph_rach()
+  * L1SAP: use the actual ARFCN for outgoing PCUIF messages
+  * L1SAP: fix gsmtap_pdch(): there can be no DATA.ind on PTCCH/U
+  * L1SAP: use GSMTAP_CHANNEL_PDTCH for PDTCH blocks by default
+  * L1SAP: there can be no DATA.ind primitives on PTCCH/U, reject them
+  * README.md: update osmo-bts-trx specific limitations
+  * osmo-bts-trx/scheduler: fix: print the last frame number in rx_data_fn()
+  * osmo-bts-trx: general handling of NOPE / IDLE indications
+  * osmo-bts-trx/trx_if.c: fix: always initialize bi->burst_len for NOPE.ind
+  * osmo-bts-trx/trx_if.c: also print both RSSI and ToA256 for NOPE.ind
+  * osmo-bts-trx/trx_if.c: fix: NOPE.ind also contains C/I field
+  * pcuif_proto.h: extend RACH.ind with TRX and timeslot number fields
+  * common/vty.c: fix: properly assert() the result of get_string_value()
+  * common/abis.c: pass gsm_bts_trx to e1inp_sign_link_create()
+  * common/abis.c: use tall_bts_ctx as talloc-context for libosmo_abis_init()
+  * osmo-bts-trx/vty: ensure backwards compatibility with older config files
+
+  [ Pau Espin Pedrol ]
+  * bts-trx: Log case where no SETFORMAT is sent
+  * bts-trx: Change super verbose IDLE ind not-supported line to DEBUG
+  * doc: bts-models.adoc: Fix typos in rts-advance section
+  * bts-trx: vty: Use API to get poweron state
+  * bts.h: Remove non-existent function definitions
+  * scheduler.c: Move some message log level to DEBUG
+  * scheduler: Use OSMO_ASSERT instead of abort
+  * l1sap: Log conn dropped due to radio link counter timeout
+  * struct gsm_bts: Add model_priv pointer handing bts_model specific data
+  * bts-trx: Allocate struct osmo_trx_clock_state as part of bts-trx private data
+  * bts-trx: vty: Print phy link state in cmd 'show transceiver'
+  * bts-trx: trx_set_bts(): Avoid double loop by checking current trx
+  * bts-trx: Rework code handling poweron state
+  * bts-trx: Don't reset transceiver_available in scheduler_trx.c
+  * bts-trx: Get rid of messy transceiver_available state handler
+  * bts-trx: Drop unused func check_transceiver_availability()
+  * bts-trx: Log TRXC and TRXD socket recv()/send() failures
+  * bts-trx: Time out if no clock ind recvd after RSP POWERON
+  * cosmetic: bts-trx: document variable power level
+  * bts-trx: loops.c: Take into account RSL CHAN ACT ms power level limits
+  * loops.h: Fix missing include for struct l1sched_trx
+  * power_control.c: Take into account RSL CHAN ACT ms power level limits
+  * cosmetic: l1sap.c: Fix typo
+  * rsl: Assign recv pwr to lchan's max ms power
+  * bts-trx: Implement MS Power control loop calculations using dBm instead of ctl levels
+  * rsl: Fix logged value in rx MS Power Control
+  * cosmetic: Fix trailing whitespace
+  * Change gsm_bts_trx field to bool and rename it
+  * Change gsm_lchan field fixed to bool
+  * rsl: Remove unneeded duplicate reset on some lchan fields
+  * Move and rename gsm_lchan.ms_power field
+  * bts-trx: loops.c: Avoid always clamping MS power to MS power class 1
+  * power_control.c: Apply latests improvements from loops.c
+  * power_control.c: Log rx current and target signal levels
+  * power_control.c: Fix ms pwr ctrl skipped if MS doesn't support announced MS Power Level
+  * Introduce BTS feature BTS_FEAT_MS_PWR_CTRL_DSP
+  * power_control.c: Don't use announced MS Power level as input for loop calculations
+  * power_control.c: Limit speed of announced MS Power Level value changes
+  * scheduler_trx.c: cast ptrdiff value to fix printf format
+  * bts-trx: Drop low layer MS Power Control Loop algo
+  * rsl_rx_chan_act: Apply bitmask when parsing IE MS_POWER
+  * rsl: Clarify when autnonoums MS Power Ctrl Loop is used
+  * power_control.c: Log maximum allowed MS Power Level
+  * power_control.c: Clarify loop algo vars and use correct ones during log
+  * l1sap: is_fille_frame(): verify len of data compared
+
+  [ Martin Hauke ]
+  * Fix common misspellings and typos
+  * Rename variable: CALIB_SUCESS -> CALIB_SUCCESS
+
+  [ Philipp Maier ]
+  * scheduler_trx: use gsm0502_fn_remap() to calculate frame number
+  * scheduler_trx: initalize n_errors, n_bursts_bits, n_bits_total
+  * scheduler_trx.c: avoid division by zero when calculating BER
+  * rsl: ensure measurement reports are sent
+  * l1sap.c: ensure ms power control loop is running
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Fri, 03 Jan 2020 17:18:44 +0100
+
 osmo-bts (1.1.0) unstable; urgency=medium
 
   [ Daniel Willmann ]
