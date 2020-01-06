@@ -662,7 +662,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	if (!num_ul_meas_actual)
 		ta256b_sum = lchan->meas.ms_toa256;
 	else
-		ta256b_sum = ta256b_sum / num_ul_meas_actual;
+		ta256b_sum = ta256b_sum / (signed)num_ul_meas_actual;
 
 	if (!num_meas_sub)
 		ber_sub_sum = MEASUREMENT_DUMMY_BER;
