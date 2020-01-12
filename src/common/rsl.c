@@ -2081,7 +2081,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
-		char cname[32];
+		char cname[256+4];
 		char *ipstr = NULL;
 		if (lchan->abis_ip.rtp_socket) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC CRCX, "
