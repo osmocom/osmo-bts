@@ -62,6 +62,7 @@ tests/meas/meas_test
 tests/misc/misc_test
 tests/handover/handover_test
 tests/tx_power/tx_power_test
+tests/ta_control/ta_control_test
 tests/testsuite
 tests/testsuite.log
 

@@ -1,0 +1,609 @@
+toa256_start = 4096 / 256 = 16, steps = 20
+Step #0
+  lchan.rqd_ta (before) = 0
+  toa256 (before) = 4096 / 256 = 16
+  lchan.rqd_ta (after) = 1
+  toa256 (after) = 3840 / 256 = 15
+Step #1
+  lchan.rqd_ta (before) = 1
+  toa256 (before) = 3840 / 256 = 15
+  lchan.rqd_ta (after) = 2
+  toa256 (after) = 3584 / 256 = 14
+Step #2
+  lchan.rqd_ta (before) = 2
+  toa256 (before) = 3584 / 256 = 14
+  lchan.rqd_ta (after) = 3
+  toa256 (after) = 3328 / 256 = 13
+Step #3
+  lchan.rqd_ta (before) = 3
+  toa256 (before) = 3328 / 256 = 13
+  lchan.rqd_ta (after) = 4
+  toa256 (after) = 3072 / 256 = 12
+Step #4
+  lchan.rqd_ta (before) = 4
+  toa256 (before) = 3072 / 256 = 12
+  lchan.rqd_ta (after) = 5
+  toa256 (after) = 2816 / 256 = 11
+Step #5
+  lchan.rqd_ta (before) = 5
+  toa256 (before) = 2816 / 256 = 11
+  lchan.rqd_ta (after) = 6
+  toa256 (after) = 2560 / 256 = 10
+Step #6
+  lchan.rqd_ta (before) = 6
+  toa256 (before) = 2560 / 256 = 10
+  lchan.rqd_ta (after) = 7
+  toa256 (after) = 2304 / 256 = 9
+Step #7
+  lchan.rqd_ta (before) = 7
+  toa256 (before) = 2304 / 256 = 9
+  lchan.rqd_ta (after) = 8
+  toa256 (after) = 2048 / 256 = 8
+Step #8
+  lchan.rqd_ta (before) = 8
+  toa256 (before) = 2048 / 256 = 8
+  lchan.rqd_ta (after) = 9
+  toa256 (after) = 1792 / 256 = 7
+Step #9
+  lchan.rqd_ta (before) = 9
+  toa256 (before) = 1792 / 256 = 7
+  lchan.rqd_ta (after) = 10
+  toa256 (after) = 1536 / 256 = 6
+Step #10
+  lchan.rqd_ta (before) = 10
+  toa256 (before) = 1536 / 256 = 6
+  lchan.rqd_ta (after) = 11
+  toa256 (after) = 1280 / 256 = 5
+Step #11
+  lchan.rqd_ta (before) = 11
+  toa256 (before) = 1280 / 256 = 5
+  lchan.rqd_ta (after) = 12
+  toa256 (after) = 1024 / 256 = 4
+Step #12
+  lchan.rqd_ta (before) = 12
+  toa256 (before) = 1024 / 256 = 4
+  lchan.rqd_ta (after) = 13
+  toa256 (after) = 768 / 256 = 3
+Step #13
+  lchan.rqd_ta (before) = 13
+  toa256 (before) = 768 / 256 = 3
+  lchan.rqd_ta (after) = 14
+  toa256 (after) = 512 / 256 = 2
+Step #14
+  lchan.rqd_ta (before) = 14
+  toa256 (before) = 512 / 256 = 2
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 256 / 256 = 1
+Step #15
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 256 / 256 = 1
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 0 / 256 = 0
+Step #16
+  lchan.rqd_ta (before) = 16
+  toa256 (before) = 0 / 256 = 0
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 0 / 256 = 0
+Step #17
+  lchan.rqd_ta (before) = 16
+  toa256 (before) = 0 / 256 = 0
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 0 / 256 = 0
+Step #18
+  lchan.rqd_ta (before) = 16
+  toa256 (before) = 0 / 256 = 0
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 0 / 256 = 0
+Step #19
+  lchan.rqd_ta (before) = 16
+  toa256 (before) = 0 / 256 = 0
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 0 / 256 = 0
+Done.
+
+toa256_start = 4000 / 256 = 15, steps = 50
+Step #0
+  lchan.rqd_ta (before) = 0
+  toa256 (before) = 4000 / 256 = 15
+  lchan.rqd_ta (after) = 1
+  toa256 (after) = 3744 / 256 = 14
+Step #1
+  lchan.rqd_ta (before) = 1
+  toa256 (before) = 3744 / 256 = 14
+  lchan.rqd_ta (after) = 2
+  toa256 (after) = 3488 / 256 = 13
+Step #2
+  lchan.rqd_ta (before) = 2
+  toa256 (before) = 3488 / 256 = 13
+  lchan.rqd_ta (after) = 3
+  toa256 (after) = 3232 / 256 = 12
+Step #3
+  lchan.rqd_ta (before) = 3
+  toa256 (before) = 3232 / 256 = 12
+  lchan.rqd_ta (after) = 4
+  toa256 (after) = 2976 / 256 = 11
+Step #4
+  lchan.rqd_ta (before) = 4
+  toa256 (before) = 2976 / 256 = 11
+  lchan.rqd_ta (after) = 5
+  toa256 (after) = 2720 / 256 = 10
+Step #5
+  lchan.rqd_ta (before) = 5
+  toa256 (before) = 2720 / 256 = 10
+  lchan.rqd_ta (after) = 6
+  toa256 (after) = 2464 / 256 = 9
+Step #6
+  lchan.rqd_ta (before) = 6
+  toa256 (before) = 2464 / 256 = 9
+  lchan.rqd_ta (after) = 7
+  toa256 (after) = 2208 / 256 = 8
+Step #7
+  lchan.rqd_ta (before) = 7
+  toa256 (before) = 2208 / 256 = 8
+  lchan.rqd_ta (after) = 8
+  toa256 (after) = 1952 / 256 = 7
+Step #8
+  lchan.rqd_ta (before) = 8
+  toa256 (before) = 1952 / 256 = 7
+  lchan.rqd_ta (after) = 9
+  toa256 (after) = 1696 / 256 = 6
+Step #9
+  lchan.rqd_ta (before) = 9
+  toa256 (before) = 1696 / 256 = 6
+  lchan.rqd_ta (after) = 10
+  toa256 (after) = 1440 / 256 = 5
+Step #10
+  lchan.rqd_ta (before) = 10
+  toa256 (before) = 1440 / 256 = 5
+  lchan.rqd_ta (after) = 11
+  toa256 (after) = 1184 / 256 = 4
+Step #11
+  lchan.rqd_ta (before) = 11
+  toa256 (before) = 1184 / 256 = 4
+  lchan.rqd_ta (after) = 12
+  toa256 (after) = 928 / 256 = 3
+Step #12
+  lchan.rqd_ta (before) = 12
+  toa256 (before) = 928 / 256 = 3
+  lchan.rqd_ta (after) = 13
+  toa256 (after) = 672 / 256 = 2
+Step #13
+  lchan.rqd_ta (before) = 13
+  toa256 (before) = 672 / 256 = 2
+  lchan.rqd_ta (after) = 14
+  toa256 (after) = 416 / 256 = 1
+Step #14
+  lchan.rqd_ta (before) = 14
+  toa256 (before) = 416 / 256 = 1
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #15
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #16
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #17
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #18
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #19
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #20
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #21
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #22
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #23
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #24
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #25
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #26
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #27
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #28
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #29
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #30
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #31
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #32
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #33
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #34
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #35
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #36
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #37
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #38
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #39
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #40
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #41
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #42
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #43
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #44
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #45
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #46
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #47
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #48
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Step #49
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 160 / 256 = 0
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 160 / 256 = 0
+Done.
+
+toa256_start = 12345 / 256 = 48, steps = 50
+Step #0
+  lchan.rqd_ta (before) = 0
+  toa256 (before) = 12345 / 256 = 48
+  lchan.rqd_ta (after) = 1
+  toa256 (after) = 12089 / 256 = 47
+Step #1
+  lchan.rqd_ta (before) = 1
+  toa256 (before) = 12089 / 256 = 47
+  lchan.rqd_ta (after) = 2
+  toa256 (after) = 11833 / 256 = 46
+Step #2
+  lchan.rqd_ta (before) = 2
+  toa256 (before) = 11833 / 256 = 46
+  lchan.rqd_ta (after) = 3
+  toa256 (after) = 11577 / 256 = 45
+Step #3
+  lchan.rqd_ta (before) = 3
+  toa256 (before) = 11577 / 256 = 45
+  lchan.rqd_ta (after) = 4
+  toa256 (after) = 11321 / 256 = 44
+Step #4
+  lchan.rqd_ta (before) = 4
+  toa256 (before) = 11321 / 256 = 44
+  lchan.rqd_ta (after) = 5
+  toa256 (after) = 11065 / 256 = 43
+Step #5
+  lchan.rqd_ta (before) = 5
+  toa256 (before) = 11065 / 256 = 43
+  lchan.rqd_ta (after) = 6
+  toa256 (after) = 10809 / 256 = 42
+Step #6
+  lchan.rqd_ta (before) = 6
+  toa256 (before) = 10809 / 256 = 42
+  lchan.rqd_ta (after) = 7
+  toa256 (after) = 10553 / 256 = 41
+Step #7
+  lchan.rqd_ta (before) = 7
+  toa256 (before) = 10553 / 256 = 41
+  lchan.rqd_ta (after) = 8
+  toa256 (after) = 10297 / 256 = 40
+Step #8
+  lchan.rqd_ta (before) = 8
+  toa256 (before) = 10297 / 256 = 40
+  lchan.rqd_ta (after) = 9
+  toa256 (after) = 10041 / 256 = 39
+Step #9
+  lchan.rqd_ta (before) = 9
+  toa256 (before) = 10041 / 256 = 39
+  lchan.rqd_ta (after) = 10
+  toa256 (after) = 9785 / 256 = 38
+Step #10
+  lchan.rqd_ta (before) = 10
+  toa256 (before) = 9785 / 256 = 38
+  lchan.rqd_ta (after) = 11
+  toa256 (after) = 9529 / 256 = 37
+Step #11
+  lchan.rqd_ta (before) = 11
+  toa256 (before) = 9529 / 256 = 37
+  lchan.rqd_ta (after) = 12
+  toa256 (after) = 9273 / 256 = 36
+Step #12
+  lchan.rqd_ta (before) = 12
+  toa256 (before) = 9273 / 256 = 36
+  lchan.rqd_ta (after) = 13
+  toa256 (after) = 9017 / 256 = 35
+Step #13
+  lchan.rqd_ta (before) = 13
+  toa256 (before) = 9017 / 256 = 35
+  lchan.rqd_ta (after) = 14
+  toa256 (after) = 8761 / 256 = 34
+Step #14
+  lchan.rqd_ta (before) = 14
+  toa256 (before) = 8761 / 256 = 34
+  lchan.rqd_ta (after) = 15
+  toa256 (after) = 8505 / 256 = 33
+Step #15
+  lchan.rqd_ta (before) = 15
+  toa256 (before) = 8505 / 256 = 33
+  lchan.rqd_ta (after) = 16
+  toa256 (after) = 8249 / 256 = 32
+Step #16
+  lchan.rqd_ta (before) = 16
+  toa256 (before) = 8249 / 256 = 32
+  lchan.rqd_ta (after) = 17
+  toa256 (after) = 7993 / 256 = 31
+Step #17
+  lchan.rqd_ta (before) = 17
+  toa256 (before) = 7993 / 256 = 31
+  lchan.rqd_ta (after) = 18
+  toa256 (after) = 7737 / 256 = 30
+Step #18
+  lchan.rqd_ta (before) = 18
+  toa256 (before) = 7737 / 256 = 30
+  lchan.rqd_ta (after) = 19
+  toa256 (after) = 7481 / 256 = 29
+Step #19
+  lchan.rqd_ta (before) = 19
+  toa256 (before) = 7481 / 256 = 29
+  lchan.rqd_ta (after) = 20
+  toa256 (after) = 7225 / 256 = 28
+Step #20
+  lchan.rqd_ta (before) = 20
+  toa256 (before) = 7225 / 256 = 28
+  lchan.rqd_ta (after) = 21
+  toa256 (after) = 6969 / 256 = 27
+Step #21
+  lchan.rqd_ta (before) = 21
+  toa256 (before) = 6969 / 256 = 27
+  lchan.rqd_ta (after) = 22
+  toa256 (after) = 6713 / 256 = 26
+Step #22
+  lchan.rqd_ta (before) = 22
+  toa256 (before) = 6713 / 256 = 26
+  lchan.rqd_ta (after) = 23
+  toa256 (after) = 6457 / 256 = 25
+Step #23
+  lchan.rqd_ta (before) = 23
+  toa256 (before) = 6457 / 256 = 25
+  lchan.rqd_ta (after) = 24
+  toa256 (after) = 6201 / 256 = 24
+Step #24
+  lchan.rqd_ta (before) = 24
+  toa256 (before) = 6201 / 256 = 24
+  lchan.rqd_ta (after) = 25
+  toa256 (after) = 5945 / 256 = 23
+Step #25
+  lchan.rqd_ta (before) = 25
+  toa256 (before) = 5945 / 256 = 23
+  lchan.rqd_ta (after) = 26
+  toa256 (after) = 5689 / 256 = 22
+Step #26
+  lchan.rqd_ta (before) = 26
+  toa256 (before) = 5689 / 256 = 22
+  lchan.rqd_ta (after) = 27
+  toa256 (after) = 5433 / 256 = 21
+Step #27
+  lchan.rqd_ta (before) = 27
+  toa256 (before) = 5433 / 256 = 21
+  lchan.rqd_ta (after) = 28
+  toa256 (after) = 5177 / 256 = 20
+Step #28
+  lchan.rqd_ta (before) = 28
+  toa256 (before) = 5177 / 256 = 20
+  lchan.rqd_ta (after) = 29
+  toa256 (after) = 4921 / 256 = 19
+Step #29
+  lchan.rqd_ta (before) = 29
+  toa256 (before) = 4921 / 256 = 19
+  lchan.rqd_ta (after) = 30
+  toa256 (after) = 4665 / 256 = 18
+Step #30
+  lchan.rqd_ta (before) = 30
+  toa256 (before) = 4665 / 256 = 18
+  lchan.rqd_ta (after) = 31
+  toa256 (after) = 4409 / 256 = 17
+Step #31
+  lchan.rqd_ta (before) = 31
+  toa256 (before) = 4409 / 256 = 17
+  lchan.rqd_ta (after) = 32
+  toa256 (after) = 4153 / 256 = 16
+Step #32
+  lchan.rqd_ta (before) = 32
+  toa256 (before) = 4153 / 256 = 16
+  lchan.rqd_ta (after) = 33
+  toa256 (after) = 3897 / 256 = 15
+Step #33
+  lchan.rqd_ta (before) = 33
+  toa256 (before) = 3897 / 256 = 15
+  lchan.rqd_ta (after) = 34
+  toa256 (after) = 3641 / 256 = 14
+Step #34
+  lchan.rqd_ta (before) = 34
+  toa256 (before) = 3641 / 256 = 14
+  lchan.rqd_ta (after) = 35
+  toa256 (after) = 3385 / 256 = 13
+Step #35
+  lchan.rqd_ta (before) = 35
+  toa256 (before) = 3385 / 256 = 13
+  lchan.rqd_ta (after) = 36
+  toa256 (after) = 3129 / 256 = 12
+Step #36
+  lchan.rqd_ta (before) = 36
+  toa256 (before) = 3129 / 256 = 12
+  lchan.rqd_ta (after) = 37
+  toa256 (after) = 2873 / 256 = 11
+Step #37
+  lchan.rqd_ta (before) = 37
+  toa256 (before) = 2873 / 256 = 11
+  lchan.rqd_ta (after) = 38
+  toa256 (after) = 2617 / 256 = 10
+Step #38
+  lchan.rqd_ta (before) = 38
+  toa256 (before) = 2617 / 256 = 10
+  lchan.rqd_ta (after) = 39
+  toa256 (after) = 2361 / 256 = 9
+Step #39
+  lchan.rqd_ta (before) = 39
+  toa256 (before) = 2361 / 256 = 9
+  lchan.rqd_ta (after) = 40
+  toa256 (after) = 2105 / 256 = 8
+Step #40
+  lchan.rqd_ta (before) = 40
+  toa256 (before) = 2105 / 256 = 8
+  lchan.rqd_ta (after) = 41
+  toa256 (after) = 1849 / 256 = 7
+Step #41
+  lchan.rqd_ta (before) = 41
+  toa256 (before) = 1849 / 256 = 7
+  lchan.rqd_ta (after) = 42
+  toa256 (after) = 1593 / 256 = 6
+Step #42
+  lchan.rqd_ta (before) = 42
+  toa256 (before) = 1593 / 256 = 6
+  lchan.rqd_ta (after) = 43
+  toa256 (after) = 1337 / 256 = 5
+Step #43
+  lchan.rqd_ta (before) = 43
+  toa256 (before) = 1337 / 256 = 5
+  lchan.rqd_ta (after) = 44
+  toa256 (after) = 1081 / 256 = 4
+Step #44
+  lchan.rqd_ta (before) = 44
+  toa256 (before) = 1081 / 256 = 4
+  lchan.rqd_ta (after) = 45
+  toa256 (after) = 825 / 256 = 3
+Step #45
+  lchan.rqd_ta (before) = 45
+  toa256 (before) = 825 / 256 = 3
+  lchan.rqd_ta (after) = 46
+  toa256 (after) = 569 / 256 = 2
+Step #46
+  lchan.rqd_ta (before) = 46
+  toa256 (before) = 569 / 256 = 2
+  lchan.rqd_ta (after) = 47
+  toa256 (after) = 313 / 256 = 1
+Step #47
+  lchan.rqd_ta (before) = 47
+  toa256 (before) = 313 / 256 = 1
+  lchan.rqd_ta (after) = 48
+  toa256 (after) = 57 / 256 = 0
+Step #48
+  lchan.rqd_ta (before) = 48
+  toa256 (before) = 57 / 256 = 0
+  lchan.rqd_ta (after) = 48
+  toa256 (after) = 57 / 256 = 0
+Step #49
+  lchan.rqd_ta (before) = 48
+  toa256 (before) = 57 / 256 = 0
+  lchan.rqd_ta (after) = 48
+  toa256 (after) = 57 / 256 = 0
+Done.
+

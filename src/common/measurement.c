@@ -10,6 +10,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/ta_control.h>
 
 /* Tables as per TS 45.008 Section 8.3 */
 static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
@@ -695,6 +696,11 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
 
 	lchan_meas_compute_extended(lchan);
+
+	/* Compute new ta_req value. This has to be done here since the value
+	 * in lchan->meas.num_ul_meas together with lchan->meas.ms_toa256
+	 * is needed for the computation. */
+	lchan_ms_ta_ctrl(lchan);
 
 	lchan->meas.num_ul_meas = 0;
 

@@ -49,3 +49,9 @@ AT_KEYWORDS([meas])
 cat $abs_srcdir/meas/meas_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/meas/meas_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([ta_control])
+AT_KEYWORDS([ta_control])
+cat $abs_srcdir/ta_control/ta_control_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/ta_control/ta_control_test], [], [expout], [ignore])
+AT_CLEANUP

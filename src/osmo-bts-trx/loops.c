@@ -35,63 +35,6 @@
 #include "l1_if.h"
 #include "loops.h"
 
-/*
- * Timing Advance loop
- */
-
-/* 90% of one bit duration in 1/256 symbols: 256*0.9 */
-#define TOA256_9OPERCENT	230
-
-void ta_val(struct gsm_lchan *lchan, struct l1sched_chan_state *chan_state, int16_t toa256)
-{
-	/* check if the current L1 header acks to the current ordered TA */
-	if (lchan->meas.l1_info[1] != lchan->rqd_ta)
-		return;
-
-	/* sum measurement */
-	chan_state->meas.toa256_sum += toa256;
-	if (++(chan_state->meas.toa_num) < 16)
-		return;
-
-	/* complete set */
-	toa256 = chan_state->meas.toa256_sum / chan_state->meas.toa_num;
-
-	/* check for change of TOA */
-	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > 0) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is too early (%d), now lowering TA from %d to %d\n",
-			toa256, lchan->rqd_ta, lchan->rqd_ta - 1);
-		lchan->rqd_ta--;
-	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < 63) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is too late (%d), now raising TA from %d to %d\n",
-			toa256, lchan->rqd_ta, lchan->rqd_ta + 1);
-		lchan->rqd_ta++;
-	} else
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "TOA is correct (%d), keeping current TA of %d\n",
-			toa256, lchan->rqd_ta);
-
-	chan_state->meas.toa_num = 0;
-	chan_state->meas.toa256_sum = 0;
-}
-
-/*! Process a SACCH event as input to the MS power control and TA loop.  Function
- *  is called once every uplink SACCH block is received.
- * \param l1t L1 TRX instance on which we operate
- * \param chan_nr RSL channel number on which we operate
- * \param chan_state L1 scheduler channel state of the channel on which we operate
- * \param[in] rssi Receive Signal Strength Indication
- * \param[in] toa256 Time of Arrival in 1/256 symbol periods */
-void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int16_t toa256)
-{
-	struct gsm_lchan *lchan = &l1t->trx->ts[L1SAP_CHAN2TS(chan_nr)]
-					.lchan[l1sap_chan2ss(chan_nr)];
-	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-
-	/* if TA loop is enabled, handle it */
-	if (pinst->phy_link->u.osmotrx.trx_ta_loop)
-		ta_val(lchan, chan_state, toa256);
-}
-
 void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state,
 	int n_errors, int n_bits_total)

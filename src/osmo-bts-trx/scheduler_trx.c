@@ -954,12 +954,6 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	} else
 		memset(burst, 0, 58 * 2);
 
-	/* send burst information to loops process */
-	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id)) {
-		trx_loop_sacch_input(l1t, trx_chan_desc[chan].chan_nr | bi->tn,
-			chan_state, bi->toa256);
-	}
-
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;

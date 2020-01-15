@@ -382,6 +382,7 @@ AC_OUTPUT(
     tests/sysmobts/Makefile
     tests/misc/Makefile
     tests/handover/Makefile
+    tests/ta_control/Makefile
     tests/tx_power/Makefile
     tests/power/Makefile
     tests/meas/Makefile

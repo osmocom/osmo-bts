@@ -181,23 +181,19 @@ DEFUN_DEPRECATED(cfg_phy_no_ms_power_loop, cfg_phy_no_ms_power_loop_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_timing_advance_loop, cfg_phy_timing_advance_loop_cmd,
+DEFUN_DEPRECATED(cfg_phy_timing_advance_loop, cfg_phy_timing_advance_loop_cmd,
 	"osmotrx timing-advance-loop", OSMOTRX_STR
 	"Enable timing advance control loop\n")
 {
-	struct phy_link *plink = vty->index;
-
-	plink->u.osmotrx.trx_ta_loop = true;
+	vty_out (vty, "'osmotrx timing-advance-loop' is deprecated, ta control is now active by default%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
-DEFUN(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_cmd,
+DEFUN_DEPRECATED(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_cmd,
 	"no osmotrx timing-advance-loop",
 	NO_STR OSMOTRX_STR "Disable timing advance control loop\n")
 {
-	struct phy_link *plink = vty->index;
-
-	plink->u.osmotrx.trx_ta_loop = false;
+	vty_out (vty, "'no osmotrx timing-advance-loop' is deprecated, ta control is now active by default%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -521,8 +517,6 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 	if (plink->u.osmotrx.remote_ip)
 		vty_out(vty, " osmotrx ip remote %s%s",
 			plink->u.osmotrx.remote_ip, VTY_NEWLINE);
-
-	vty_out(vty, " %sosmotrx timing-advance-loop%s", (plink->u.osmotrx.trx_ta_loop) ? "" : "no ", VTY_NEWLINE);
 
 	if (plink->u.osmotrx.base_port_local)
 		vty_out(vty, " osmotrx base-port local %"PRIu16"%s",

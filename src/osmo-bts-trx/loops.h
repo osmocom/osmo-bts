@@ -11,9 +11,6 @@
  * loops api
  */
 
-void trx_loop_sacch_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state, int16_t toa);
-
 void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 	struct l1sched_chan_state *chan_state,
 	int n_errors, int n_bits_total);
