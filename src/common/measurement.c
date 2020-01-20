@@ -656,7 +656,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	ber_full_sum = ber_full_sum / num_ul_meas;
 
 	if (!irssi_full_sum)
-		ber_full_sum = MEASUREMENT_DUMMY_IRSSI;
+		irssi_full_sum = MEASUREMENT_DUMMY_IRSSI;
 	else
 		irssi_full_sum = irssi_full_sum / num_ul_meas_actual;
 

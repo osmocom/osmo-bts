@@ -585,8 +585,8 @@ meas.ext.toa256_min      |      0 |      0
 meas.ext.toa256_max      |      0 |      0
 meas.ms_toa256           |      0 |      0
 meas.ext.toa256_std_dev  |      0 |      0
-meas.ul_res.full.rx_lev  |     63 |     63
-meas.ul_res.full.rx_qual |      3 |      3
+meas.ul_res.full.rx_lev  |      1 |      1
+meas.ul_res.full.rx_qual |      7 |      7
 
 
 ===========================================================
