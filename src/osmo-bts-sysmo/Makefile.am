@@ -22,7 +22,7 @@ l1fwd_proxy_SOURCES = l1_fwd_main.c l1_transp_hw.c
 l1fwd_proxy_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)
 
 if ENABLE_SYSMOBTS_CALIB
-bin_PROGRAMS = sysmobts-calib
+bin_PROGRAMS += sysmobts-calib
 
 sysmobts_calib_SOURCES = misc/sysmobts-calib.c misc/sysmobts-layer1.c
 sysmobts_calib_LDADD = -lrt $(COMMON_LDADD)
