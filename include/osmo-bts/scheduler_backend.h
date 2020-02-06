@@ -53,7 +53,8 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
-			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi);
+			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
+			   uint8_t is_sub);
 
 ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);

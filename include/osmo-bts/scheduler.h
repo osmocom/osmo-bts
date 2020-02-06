@@ -106,6 +106,7 @@ struct l1sched_chan_state {
 	uint8_t			ul_cmr;		/* current uplink CMR index */
 	uint8_t			dl_cmr;		/* current downlink CMR index */
 	uint8_t			amr_loop;	/* if AMR loop is enabled */
+	uint8_t			amr_last_dtx;	/* last received dtx frame type */
 
 	/* TCH/H */
 	uint8_t			dl_ongoing_facch; /* FACCH/H on downlink */

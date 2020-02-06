@@ -37,6 +37,8 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
 #include <osmocom/coding/gsm0503_coding.h>
+#include <osmocom/coding/gsm0503_amr_dtx.h>
+
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -400,7 +402,7 @@ inval_mode1:
 
 			/* Note: RSSI is set to 0 to indicate to the higher
 			 * layers that this is a faked tch_ind */
-			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len, toa256, 10000, 0);
+			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len, toa256, 10000, 0, 0);
 		}
 	}
 
@@ -1138,6 +1140,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 	unsigned int fn_begin;
 	uint16_t ber10k;
+	uint8_t is_sub = 0;
+	uint8_t ft;
 
 	/* handle rach, if handover rach detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1200,21 +1204,65 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		 * the first FN 4,13,21 defines that CMR is included in frame.
 		 * NOTE: A frame ends 7 FN after start.
 		 */
-		rc = gsm0503_tch_afs_decode(tch_data + 2, *bursts_p,
+
+		/* The AFS_ONSET frame itself does not result into an RTP frame
+		 * since it only contains a recognition pattern that marks the
+		 * end of the DTX interval. To mark the end of the DTX interval
+		 * in the RTP stream as well, the voice frame after the
+		 * AFS_ONSET frame is used. */
+		if (chan_state->amr_last_dtx == AFS_ONSET)
+			lchan_set_marker(false, lchan);
+
+		/* we store tch_data + 2 header bytes, the amr variable set to
+		 * 2 will allow us to skip the first 2 bytes in case we did
+		 * receive an FACCH frame instead of a voice frame (we do not
+		 * know this before we actually decode the frame) */
+		amr = 2;
+		rc = gsm0503_tch_afs_decode_dtx(tch_data + amr, *bursts_p,
 			(((bi->fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
-			&chan_state->ul_cmr, &n_errors, &n_bits_total);
+			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
+
+		/* Tag all frames that are not regular AMR voice frames as
+		 * SUB-Frames */
+		if (chan_state->amr_last_dtx != AMR_OTHER) {
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			       "Received AMR SID frame: %s\n",
+			       gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
+			is_sub = 1;
+		}
+
+		/* The occurrence of the following frames indicates that we
+		 * are either at the beginning or in the middle of a talk
+		 * spurt. We update the SID status accordingly, but we do
+		 * not want the marker to be set, since this must only
+		 * happen when the talk spurt is over (see above) */
+		switch (chan_state->amr_last_dtx) {
+		case AFS_SID_FIRST:
+		case AFS_SID_UPDATE:
+		case AFS_SID_UPDATE_CN:
+			lchan_set_marker(true, lchan);
+			lchan->rtp_tx_marker = false;
+			break;
+		}
+
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
 				n_errors, n_bits_total);
-		amr = 2; /* we store tch_data + 2 header bytes */
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
+			if (chan_state->amr_last_dtx == AMR_OTHER) {
+				ft = chan_state->codec[chan_state->ul_cmr];
+			} else {
+				/* SID frames will always get Frame Type Index 8 (AMR_SID) */
+				ft = AMR_SID;
+			}
 			rc = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
-				chan_state->codec[chan_state->ul_ft], AMR_GOOD);
+			        ft, AMR_GOOD);
 		}
+
 		break;
 	default:
 		LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
@@ -1308,7 +1356,7 @@ bfi:
 compose_l1sap:
 	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
 	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc, bi->toa256, ber10k, bi->rssi);
+				      tch_data, rc, bi->toa256, ber10k, bi->rssi, is_sub);
 }
 
 /*! \brief a single TCH/H burst was received by the PHY, process it */
@@ -1336,6 +1384,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
 	unsigned int fn_begin;
 	uint16_t ber10k;
+	uint8_t is_sub = 0;
+	uint8_t ft;
 
 	/* handle RACH, if handover RACH detection is turned on */
 	if (chan_state->ho_rach_detect == 1)
@@ -1409,21 +1459,61 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		 * in frame, the first FN 4,13,21 or 5,14,22 defines that CMR
 		 * is included in frame.
 		 */
-		rc = gsm0503_tch_ahs_decode(tch_data + 2, *bursts_p,
+
+		/* See comment in function rx_tchf_fn() */
+		switch (chan_state->amr_last_dtx) {
+		case AHS_ONSET:
+		case AHS_SID_FIRST_INH:
+		case AHS_SID_UPDATE_INH:
+			lchan_set_marker(false, lchan);
+			break;
+		}
+
+		/* See comment in function rx_tchf_fn() */
+		amr = 2;
+		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, *bursts_p,
 			fn_is_odd, fn_is_odd, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
-			&chan_state->ul_cmr, &n_errors, &n_bits_total);
+			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
+
+		/* Tag all frames that are not regular AMR voice frames
+		   as SUB-Frames */
+		if (chan_state->amr_last_dtx != AMR_OTHER) {
+			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+			       "Received AMR SID frame: %s\n",
+			       gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
+			is_sub = 1;
+		}
+
+		/* See comment in function rx_tchf_fn() */
+		switch (chan_state->amr_last_dtx) {
+		case AHS_SID_FIRST_P1:
+		case AHS_SID_FIRST_P2:
+		case AHS_SID_UPDATE:
+		case AHS_SID_UPDATE_CN:
+			lchan_set_marker(true, lchan);
+			lchan->rtp_tx_marker = false;
+			break;
+		}
+
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
 				n_errors, n_bits_total);
-		amr = 2; /* we store tch_data + 2 two */
+
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
+			if (chan_state->amr_last_dtx == AMR_OTHER) {
+				ft = chan_state->codec[chan_state->ul_cmr];
+			} else {
+				/* SID frames will always get Frame Type Index 8 (AMR_SID) */
+				ft = AMR_SID;
+			}
 			rc = osmo_amr_rtp_enc(tch_data,
 				chan_state->codec[chan_state->ul_cmr],
-				chan_state->codec[chan_state->ul_ft], AMR_GOOD);
+			        ft, AMR_GOOD);
 		}
+
 		break;
 	default:
 		LOGL1S(DL1P, LOGL_ERROR, l1t, bi->tn, chan, bi->fn,
@@ -1529,7 +1619,7 @@ compose_l1sap:
 	else
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H1);
 	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc, bi->toa256, ber10k, bi->rssi);
+				      tch_data, rc, bi->toa256, ber10k, bi->rssi, is_sub);
 }
 
 /* schedule all frames of all TRX for given FN */
