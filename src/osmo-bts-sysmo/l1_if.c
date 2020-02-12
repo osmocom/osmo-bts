@@ -937,12 +937,8 @@ empty_frame:
 	goto tx;
 }
 
-static void dump_meas_res(int ll, GsmL1_MeasParam_t *m)
-{
-	LOGPC(DL1C, ll, ", Meas: RSSI %-3.2f dBm,  Qual %-3.2f dB,  "
-		"BER %-3.2f,  Timing %d\n", m->fRssi, m->fLinkQuality,
-		m->fBer, m->i16BurstTiming);
-}
+#define LOG_FMT_MEAS "Meas: RSSI %-3.2f dBm, Qual %-3.2f dB, BER %-3.2f, Timing %d"
+#define LOG_PARAM_MEAS(meas_param) (meas_param)->fRssi, (meas_param)->fLinkQuality, (meas_param)->fBer, (meas_param)->i16BurstTiming
 
 static int process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 			    uint32_t fn, GsmL1_MeasParam_t *m)
@@ -991,10 +987,10 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind %s (hL2 %08x): %s\n",
+	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind %s (hL2 %08x): %s, " LOG_FMT_MEAS "\n",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi), data_ind->hLayer2,
-		osmo_hexdump(data_ind->msgUnitParam.u8Buffer, data_ind->msgUnitParam.u8Size));
-	dump_meas_res(LOGL_DEBUG, &data_ind->measParam);
+		osmo_hexdump(data_ind->msgUnitParam.u8Buffer, data_ind->msgUnitParam.u8Size),
+		LOG_PARAM_MEAS(&data_ind->measParam));
 
 	/* check for TCH */
 	if (data_ind->sapi == GsmL1_Sapi_TchF
@@ -1040,8 +1036,8 @@ static int handle_ph_ra_ind(struct femtol1_hdl *fl1, GsmL1_PhRaInd_t *ra_ind,
 	struct ph_rach_ind_param rach_ind_param;
 
 	set_log_ctx_sapi(ra_ind->sapi);
-
-	dump_meas_res(LOGL_DEBUG, &ra_ind->measParam);
+	LOGPFN(DL1C, LOGL_DEBUG, ra_ind->u32Fn, "Rx PH-RA.ind, " LOG_FMT_MEAS "\n",
+	       LOG_PARAM_MEAS(&ra_ind->measParam));
 
 	if ((ra_ind->msgUnitParam.u8Size != 1) &&
 		(ra_ind->msgUnitParam.u8Size != 2)) {

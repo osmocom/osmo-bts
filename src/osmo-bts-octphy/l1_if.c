@@ -906,14 +906,9 @@ static void process_meas_res(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	l1sap_up(trx, &l1sap);
 }
 
-static void dump_meas_res(int ll, tOCTVC1_GSM_MEASUREMENT_INFO * m)
-{
-	LOGP(DMEAS, ll,
-	     "Meas: RSSI %d dBm, Burst Timing %d Quarter of bits :%d, "
-	     "BER Error Count %d , BER Toatal Bit count %d in last decoded frame\n",
-	     m->sRSSIDbm, m->sBurstTiming, m->sBurstTiming4x, m->usBERCnt,
-	     m->usBERTotalBitCnt);
-}
+
+#define LOG_FMT_MEAS "Meas: RSSI %d dBm, Burst Timing %d Quarter of bits: %d, BER Error Count %d, BER Toatal Bit count %d in last decoded frame"
+#define LOG_PARAM_MEAS(meas_param) (meas_param)->sRSSIDbm, (meas_param)->sBurstTiming, (meas_param)->sBurstTiming4x, (meas_param)->usBERCnt, (meas_param)->usBERTotalBitCnt
 
 static int handle_mph_time_ind(struct octphy_hdl *fl1, uint8_t trx_id, uint32_t fn)
 {
@@ -1218,7 +1213,8 @@ static int handle_ph_rach_ind(struct octphy_hdl *fl1,
 
 	set_log_ctx_sapi(ra_ind->LchId.bySAPI);
 
-	dump_meas_res(LOGL_DEBUG, &ra_ind->MeasurementInfo);
+	LOGPFN(DL1C, LOGL_DEBUG, ra_ind->ulFrameNumber, "Rx PH-RA.ind, " LOG_FMT_MEAS "\n",
+	       LOG_PARAM_MEAS(&ra_ind->MeasurementInfo));
 
 	if (ra_ind->ulMsgLength != 1) {
 		LOGPFN(DL1C, LOGL_ERROR, ra_ind->ulFrameNumber,
