@@ -1369,7 +1369,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	LOGPGT(DL1P, LOGL_INFO, &g_time, "Rx TCH.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
+	LOGPGT(DL1P, LOGL_DEBUG, &g_time, "Rx TCH.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
