@@ -176,9 +176,15 @@ struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 	return msg;
 }
 
+/* Enclose rmsg into an osmo_phsap primitive and hand it over to the higher
+ * layers. The phsap primitive also contains measurement information. The
+ * parameters rssi, ta_offs and is_sub are only needed when the measurement
+ * information is passed along with the TCH data. When separate measurement
+ * indications are used, those last three parameters may be set to zero. */
 int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 		     struct gsm_lchan *lchan, uint8_t chan_nr, uint32_t fn,
-		     uint16_t ber10k, int16_t lqual_cb)
+		     uint16_t ber10k, int16_t lqual_cb, int8_t rssi,
+		     int16_t ta_offs, uint8_t is_sub)
 {
 	struct osmo_phsap_prim *l1sap;
 
@@ -193,6 +199,10 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 	l1sap->u.tch.fn = fn;
 	l1sap->u.tch.ber10k = ber10k;
 	l1sap->u.tch.lqual_cb = lqual_cb;
+
+	l1sap->u.tch.rssi = rssi;
+	l1sap->u.tch.ta_offs_256bits = ta_offs;
+	l1sap->u.tch.is_sub = is_sub;
 
 	return l1sap_up(trx, l1sap);
 }

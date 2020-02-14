@@ -87,6 +87,7 @@ int bts_model_init(struct gsm_bts *bts)
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
 	gsm_bts_set_feature(bts, BTS_FEAT_MS_PWR_CTRL_DSP);
+	gsm_bts_set_feature(bts, BTS_FEAT_MEAS_PAYLOAD_COMB);
 
 	bts_model_vty_init(bts);
 

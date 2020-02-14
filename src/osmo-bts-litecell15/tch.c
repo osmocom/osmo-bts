@@ -373,7 +373,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr, data_ind->u32Fn,
 					data_ind->measParam.fBer * 10000,
-					data_ind->measParam.fLinkQuality * 10);
+					data_ind->measParam.fLinkQuality * 10, 0, 0, 0);
 	}
 
 	payload_type = data_ind->msgUnitParam.u8Buffer[0];
@@ -463,7 +463,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	if (rmsg)
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr, data_ind->u32Fn,
 					data_ind->measParam.fBer * 10000,
-					data_ind->measParam.fLinkQuality * 10);
+					data_ind->measParam.fLinkQuality * 10, 0, 0, 0);
 
 	return 0;
 
