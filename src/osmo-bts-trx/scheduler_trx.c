@@ -956,7 +956,7 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 
 	/* Copy burst to buffer of 4 bursts. If the burst indication contains
-	 * no data, ensure that the buffer does not stay uninitalized */
+	 * no data, ensure that the buffer does not stay uninitialized */
 	burst = *bursts_p + bid * 116;
 	if (bi->burst_len > 0) {
 		memcpy(burst, bi->burst + 3, 58);

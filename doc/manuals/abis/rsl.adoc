@@ -423,9 +423,9 @@ The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
 procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:
 
 * The 'C-bits' part of the 'Channel Number' IE take the non-standard binary
-  value 11000 (C5 thru C1 as seen in 3GPP TS 08.58 § 9.3.1).
+  value 11000 (C5 through C1 as seen in 3GPP TS 08.58 § 9.3.1).
 * The 'A-bits' part of the 'Activation Type' IE take the non-standard binary
-  value 1111, with an additional fourth bit (add A4 to A3 thru A1 as seen in
+  value 1111, with an additional fourth bit (add A4 to A3 through A1 as seen in
   3GPP TS 08.58 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
   coded as zero).
 * The normally mandatory 'Channel Mode' IE is omitted; none of the optional IEs

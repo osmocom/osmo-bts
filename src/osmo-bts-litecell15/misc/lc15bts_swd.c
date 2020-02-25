@@ -161,7 +161,7 @@ int lc15bts_swd_init(struct lc15bts_mgr_instance *mgr, int swd_num_events)
    the value must be in the range of [0,'swd_num_events'[ (see lc15bts_swd_init).
    For example, if 'swd_num_events' was 64, 'swd_event' events are numbered 0 to 63.
    WARNING: if this function can be used from multiple threads at the same time,
-   it must be protected with a kind of mutex to avoid loosing event notification.
+   it must be protected with a kind of mutex to avoid losing event notification.
 */
 int lc15bts_swd_event(struct lc15bts_mgr_instance *mgr, enum mgr_swd_events swd_event)
 {
