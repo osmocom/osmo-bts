@@ -394,8 +394,8 @@ static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp
 		goto parse_err;
 
 	if (p - buf_in >= sizeof(rsp->cmd)) {
-		LOGP(DTRX, LOGL_ERROR, "cmd buffer too small %lu >= %lu\n",
-			p - buf_in, sizeof(rsp->cmd));
+		LOGP(DTRX, LOGL_ERROR, "cmd buffer too small %lu >= %zu\n",
+		     (long unsigned) (p - buf_in), sizeof(rsp->cmd));
 		goto parse_err;
 	}
 
@@ -415,7 +415,7 @@ static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp
 		k = p + strlen(p);
 
 	if (strlen(k) >= sizeof(rsp->params)) {
-		LOGP(DTRX, LOGL_ERROR, "params buffer too small %lu >= %lu\n",
+		LOGP(DTRX, LOGL_ERROR, "params buffer too small %zu >= %zu\n",
 			strlen(k), sizeof(rsp->params));
 		goto parse_err;
 	}
