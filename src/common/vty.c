@@ -250,7 +250,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			bts->agch_queue.high_level, VTY_NEWLINE);
 
 	for (i = 0; i < 32; i++) {
-		if (gsmtap_sapi_mask & (1 << i)) {
+		if (gsmtap_sapi_mask & ((uint32_t) 1 << i)) {
 			sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, i));
 			vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 		}
