@@ -27,7 +27,9 @@
 #include <osmocom/core/talloc.h>
 #include "osmo_mcast_sock.h"
 #include "virtual_um.h"
+
 #include <unistd.h>
+#include <errno.h>
 
 /**
  * Virtual UM interface file descriptor callback.
@@ -93,7 +95,7 @@ int virt_um_write_msg(struct virt_um_inst *vui, struct msgb *msg)
 	rc = mcast_bidir_sock_tx(vui->mcast_sock, msgb_data(msg),
 	                msgb_length(msg));
 	if (rc < 0)
-		perror("Writing to multicast socket");
+		rc = -errno;
 	msgb_free(msg);
 
 	return rc;

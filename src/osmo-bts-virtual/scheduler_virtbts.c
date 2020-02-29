@@ -21,6 +21,7 @@
  */
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 #include <stdint.h>
 #include <ctype.h>
@@ -91,7 +92,7 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
 		if (rc < 0)
 			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
-			       "GSMTAP msg could not send to virtual Um\n");
+			       "GSMTAP msg could not send to virtual Um: %s\n", strerror(-rc));
 		else if (rc == 0)
 			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
