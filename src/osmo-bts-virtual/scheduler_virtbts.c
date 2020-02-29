@@ -46,16 +46,6 @@
 
 #define MODULO_HYPERFRAME 0
 
-static const char *gsmtap_hdr_stringify(const struct gsmtap_hdr *gh)
-{
-	static char buf[256];
-	snprintf(buf, sizeof(buf), "(ARFCN=%u, ts=%u, ss=%u, type=%u/%u)",
-		 ntohs(gh->arfcn & GSMTAP_ARFCN_MASK),
-		 gh->timeslot, gh->sub_slot,
-		 gh->type, gh->sub_type);
-	return buf;
-}
-
 /**
  * Send a message over the virtual um interface.
  * This will at first wrap the msg with a GSMTAP header and then write it to the declared multicast socket.
@@ -96,18 +86,17 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	if (outmsg) {
 		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
-		struct gsmtap_hdr *gh = (struct gsmtap_hdr *)msgb_data(outmsg);
 		int rc;
 
 		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
 		if (rc < 0)
 			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
-				"%s GSMTAP msg could not send to virtual Um\n", gsmtap_hdr_stringify(gh));
+			       "GSMTAP msg could not send to virtual Um\n");
 		else if (rc == 0)
 			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
 			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
-				"%s Sending GSMTAP message to virtual Um\n", gsmtap_hdr_stringify(gh));
+			       "Sending GSMTAP message to virtual Um\n");
 	} else
 		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "GSMTAP msg could not be created!\n");
 
