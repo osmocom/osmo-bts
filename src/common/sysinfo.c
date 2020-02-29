@@ -156,7 +156,7 @@ uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
 		si3 = GSM_BTS_SI(b, SYSINFO_TYPE_3);
 		return si3->control_channel_desc.bs_ag_blks_res;
 	}
-	LOGP(DL1P, LOGL_ERROR, "%s: Unable to determine actual BS_AG_BLKS_RES "
+	LOGP(DL1P, LOGL_NOTICE, "%s: Unable to determine actual BS_AG_BLKS_RES "
 	     "value as SI3 is not available yet, fallback to 1\n", arg);
 	return 1;
 }
