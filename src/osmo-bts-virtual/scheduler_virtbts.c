@@ -50,7 +50,9 @@ static const char *gsmtap_hdr_stringify(const struct gsmtap_hdr *gh)
 {
 	static char buf[256];
 	snprintf(buf, sizeof(buf), "(ARFCN=%u, ts=%u, ss=%u, type=%u/%u)",
-		 gh->arfcn & GSMTAP_ARFCN_MASK, gh->timeslot, gh->sub_slot, gh->type, gh->sub_type);
+		 ntohs(gh->arfcn & GSMTAP_ARFCN_MASK),
+		 gh->timeslot, gh->sub_slot,
+		 gh->type, gh->sub_type);
 	return buf;
 }
 
