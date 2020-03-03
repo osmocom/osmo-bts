@@ -51,8 +51,8 @@
  * This will at first wrap the msg with a GSMTAP header and then write it to the declared multicast socket.
  * TODO: we might want to remove unused argument uint8_t tn
  */
-static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-			  enum trx_chan_type chan, struct msgb *msg)
+static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+			   enum trx_chan_type chan, struct msgb *msg, bool is_voice_frame)
 {
 	const struct trx_chan_desc *chdesc = &trx_chan_desc[chan];
 	struct msgb *outmsg;			/* msg to send with gsmtap header prepended */
@@ -69,9 +69,11 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	rsl_dec_chan_nr(chdesc->chan_nr, &rsl_chantype, &subslot, &timeslot);
 	/* the timeslot is not encoded in the chan_nr of the chdesc, and so has to be overwritten */
 	timeslot = tn;
+	if (is_voice_frame)
+		gsmtap_chantype = GSMTAP_CHANNEL_VOICE;
 	/* in Osmocom, AGCH is only sent on ccch block 0. no idea why. this seems to cause false GSMTAP channel
 	 * types for agch and pch. */
-	if (rsl_chantype == RSL_CHAN_PCH_AGCH &&
+	else if (rsl_chantype == RSL_CHAN_PCH_AGCH &&
 	    l1sap_fn2ccch_block(fn) >= num_agch(l1t->trx, "PH-DATA-REQ"))
 		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
 	else
@@ -102,6 +104,18 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* free incoming message */
 	msgb_free(msg);
+}
+
+static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+			  enum trx_chan_type chan, struct msgb *msg)
+{
+	_tx_to_virt_um(l1t, tn, fn, chan, msg, false);
+}
+
+static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+				      enum trx_chan_type chan, struct msgb *msg)
+{
+	_tx_to_virt_um(l1t, tn, fn, chan, msg, true);
 }
 
 /*
@@ -410,11 +424,10 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	if (msg_facch) {
+	if (msg_facch)
 		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
-		msgb_free(msg_tch);
-	} else
-		tx_to_virt_um(l1t, tn, fn, chan, msg_tch);
+	if (msg_tch)
+		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
 
 send_burst:
 
@@ -451,11 +464,10 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		goto send_burst;
 	}
 
-	if (msg_facch) {
+	if (msg_facch)
 		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
-		msgb_free(msg_tch);
-	} else if (msg_tch)
-		tx_to_virt_um(l1t, tn, fn, chan, msg_tch);
+	if (msg_tch)
+		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
 
 send_burst:
 	return NULL;

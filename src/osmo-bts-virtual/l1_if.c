@@ -87,6 +87,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 	uint8_t link_id;			/* rsl link id tells if this is an ssociated or dedicated link */
 	uint8_t chan_nr;			/* encoded rsl channel type, timeslot and mf subslot */
 	struct osmo_phsap_prim l1sap;
+	struct msgb *msg_tch;
 
 	memset(&l1sap, 0, sizeof(l1sap));
 	/* get rid of l1 gsmtap hdr */
@@ -128,12 +129,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		break;
 	case GSMTAP_CHANNEL_TCH_F:
 	case GSMTAP_CHANNEL_TCH_H:
-#if 0
-		/* TODO: handle voice messages */
-		if (!facch && ! tch_acch) {
-			osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, msg);
-		}
-#endif
+		/* This is TCH signalling, for voice frames see GSMTAP_CHANNEL_VOICE */
 	case GSMTAP_CHANNEL_SDCCH4:
 	case GSMTAP_CHANNEL_SDCCH8:
 	case GSMTAP_CHANNEL_PACCH:
@@ -151,6 +147,14 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.data.pdch_presence_info = PRES_INFO_BOTH;
 		l1if_process_meas_res(pinst->trx, timeslot, fn, chan_nr, 0, 0, 0, 0);
 		break;
+	case GSMTAP_CHANNEL_VOICE:
+		msg_tch = msgb_alloc_headroom(sizeof(l1sap) + msg->len, sizeof(l1sap),
+					      "virtphy-voice-frame-from-GSMTAP-to-Um");
+		msgb_put(msg_tch, msg->len);
+		memcpy(msg_tch->data, msg->data, msg->len);
+		add_l1sap_header(pinst->trx, msg_tch, NULL, chan_nr, fn,
+				 0, 10 * signal_dbm, 0, 0, 0);
+		return;
 	case GSMTAP_CHANNEL_AGCH:
 	case GSMTAP_CHANNEL_PCH:
 	case GSMTAP_CHANNEL_BCCH:
