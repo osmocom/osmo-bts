@@ -237,6 +237,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, " rtp port-range %u %u%s", bts->rtp_port_range_start,
 		bts->rtp_port_range_end, VTY_NEWLINE);
+	if (bts->rtp_ip_dscp)
+		vty_out(vty, " rtp ip-dscp %i%s", bts->rtp_ip_dscp, VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
@@ -497,6 +499,19 @@ DEFUN(cfg_bts_rtp_port_range,
 	bts->rtp_port_range_start = start;
 	bts->rtp_port_range_end = end;
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rtp_ip_dscp,
+	cfg_bts_rtp_ip_dscp_cmd,
+	"rtp ip-dscp <0-255>",
+      RTP_STR "Apply IP_TOS to the audio stream\n" "The DSCP value\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int dscp = atoi(argv[0]);
+
+	bts->rtp_ip_dscp = dscp;
 
 	return CMD_SUCCESS;
 }
@@ -1665,6 +1680,7 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_rtp_bind_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_jitbuf_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_port_range_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_ip_dscp_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);
