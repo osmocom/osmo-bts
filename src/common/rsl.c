@@ -2009,8 +2009,15 @@ static int bind_rtp(struct gsm_bts *bts, struct osmo_rtp_socket *rs, const char 
 
 		bts->rtp_port_range_next += 2;
 
-		if (rc == 0)
-			return 0;
+		if (rc != 0)
+			continue;
+
+		if (bts->rtp_ip_dscp != -1) {
+			if (osmo_rtp_socket_set_dscp(rs, bts->rtp_ip_dscp))
+				LOGP(DRSL, LOGL_ERROR, "failed to set DSCP=%i: %s\n",
+					bts->rtp_ip_dscp, strerror(errno));
+		}
+		return 0;
 	}
 
 	return -1;

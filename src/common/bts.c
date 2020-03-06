@@ -159,6 +159,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_port_range_start = 16384;
 	bts->rtp_port_range_end = 17407;
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
+	bts->rtp_ip_dscp = -1;
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;
