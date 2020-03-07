@@ -128,12 +128,7 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		break;
 	case GSMTAP_CHANNEL_TCH_F:
 	case GSMTAP_CHANNEL_TCH_H:
-#if 0
-		/* TODO: handle voice messages */
-		if (!facch && ! tch_acch) {
-			osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, msg);
-		}
-#endif
+		/* This is TCH signalling, for voice frames see GSMTAP_CHANNEL_VOICE */
 	case GSMTAP_CHANNEL_SDCCH4:
 	case GSMTAP_CHANNEL_SDCCH8:
 	case GSMTAP_CHANNEL_PACCH:
@@ -149,6 +144,19 @@ static void virt_um_rcv_cb(struct virt_um_inst *vui, struct msgb *msg)
 		l1sap.u.data.ta_offs_256bits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
 		l1sap.u.data.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
 		l1sap.u.data.pdch_presence_info = PRES_INFO_BOTH;
+		l1if_process_meas_res(pinst->trx, timeslot, fn, chan_nr, 0, 0, 0, 0);
+		break;
+	case GSMTAP_CHANNEL_VOICE_F:
+	case GSMTAP_CHANNEL_VOICE_H:
+		/* the first byte indicates the type of voice codec (gsmtap_um_voice_type) */
+		msg->l2h = msgb_pull(msg, 1);
+		osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_INDICATION, msg);
+		l1sap.u.tch.chan_nr = chan_nr;
+		l1sap.u.tch.fn = fn;
+		l1sap.u.tch.rssi = 0; /* Radio Signal Strength Indicator. Best -> 0 */
+		l1sap.u.tch.ber10k = 0; /* Bit Error Rate in 0.01%. Best -> 0 */
+		l1sap.u.tch.ta_offs_256bits = 0; /* Burst time of arrival in quarter bits. Probably used for Timing Advance calc. Best -> 0 */
+		l1sap.u.tch.lqual_cb = 10 * signal_dbm; /* Link quality in centiBel = 10 * dB. */
 		l1if_process_meas_res(pinst->trx, timeslot, fn, chan_nr, 0, 0, 0, 0);
 		break;
 	case GSMTAP_CHANNEL_AGCH:

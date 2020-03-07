@@ -52,8 +52,8 @@
  * This will at first wrap the msg with a GSMTAP header and then write it to the declared multicast socket.
  * TODO: we might want to remove unused argument uint8_t tn
  */
-static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-			  enum trx_chan_type chan, struct msgb *msg)
+static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+			   enum trx_chan_type chan, struct msgb *msg, bool is_voice_frame)
 {
 	const struct trx_chan_desc *chdesc = &trx_chan_desc[chan];
 	struct msgb *outmsg;			/* msg to send with gsmtap header prepended */
@@ -76,7 +76,7 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	    l1sap_fn2ccch_block(fn) >= num_agch(l1t->trx, "PH-DATA-REQ"))
 		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
 	else
-		gsmtap_chantype = chantype_rsl2gsmtap(rsl_chantype, chdesc->link_id); /* the logical channel type */
+		gsmtap_chantype = chantype_rsl2gsmtap2(rsl_chantype, chdesc->link_id, is_voice_frame); /* the logical channel type */
 
 #if MODULO_HYPERFRAME
 	/* Restart fn after every superframe (26 * 51 frames) to simulate hyperframe overflow each 6 seconds. */
@@ -103,6 +103,65 @@ static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* free incoming message */
 	msgb_free(msg);
+}
+
+static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+			  enum trx_chan_type chan, struct msgb *msg)
+{
+	_tx_to_virt_um(l1t, tn, fn, chan, msg, false);
+}
+
+
+static struct gsm_lchan *lchan_from_l1t(struct l1sched_trx *l1t, uint8_t tn, enum trx_chan_type chan)
+{
+	struct gsm_bts_trx_ts *ts;
+	uint8_t subslot = 0;
+
+	OSMO_ASSERT(l1t && l1t->trx);
+
+	if (chan == TRXC_TCHH_1)
+		subslot = 1;
+
+	ts = &l1t->trx->ts[tn];
+	return &ts->lchan[subslot];
+}
+
+/* Determine the gsmtap_um_voice_type of a gsm_lchan */
+static int get_um_voice_type(const struct gsm_lchan *lchan)
+{
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		if (lchan->type == GSM_LCHAN_TCH_H)
+			return GSMTAP_UM_VOICE_HR;
+		else
+			return GSMTAP_UM_VOICE_FR;
+	case GSM48_CMODE_SPEECH_EFR:
+		return GSMTAP_UM_VOICE_EFR;
+	case GSM48_CMODE_SPEECH_AMR:
+		return GSMTAP_UM_VOICE_AMR;
+	default:
+		return -1;
+	}
+}
+
+static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+				      enum trx_chan_type chan, struct msgb *msg)
+{
+	struct gsm_lchan *lchan = lchan_from_l1t(l1t, tn, chan);
+	int um_voice_type;
+
+	OSMO_ASSERT(lchan);
+	um_voice_type = get_um_voice_type(lchan);
+	if (um_voice_type < 0) {
+		LOGPLCHAN(lchan, DL1P, LOGL_ERROR, "Cannot determine Um voice type from lchan\n");
+		um_voice_type = 0xff;
+	}
+
+	/* the first byte indicates the type of voice codec (gsmtap_um_voice_type) */
+	msgb_pull_to_l2(msg);
+	msgb_push_u8(msg, um_voice_type);
+	msg->l2h = msg->data;
+	_tx_to_virt_um(l1t, tn, fn, chan, msg, true);
 }
 
 /*
@@ -414,8 +473,8 @@ ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (msg_facch) {
 		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
 		msgb_free(msg_tch);
-	} else
-		tx_to_virt_um(l1t, tn, fn, chan, msg_tch);
+	} else if (msg_tch)
+		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
 
 send_burst:
 
@@ -456,7 +515,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um(l1t, tn, fn, chan, msg_tch);
+		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
 
 send_burst:
 	return NULL;
