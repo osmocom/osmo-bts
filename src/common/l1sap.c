@@ -1355,8 +1355,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		l1sap_tx_ciph_req(lchan->ts->trx, chan_nr, 1, 0);
 
 	/* SDCCH, SACCH and FACCH all go to LAPDm */
-	msgb_pull(msg, (msg->l2h - msg->data));
-	msg->l1h = NULL;
+	msgb_pull_to_l2(msg);
 	lapdm_phsap_up(&l1sap->oph, le);
 
 	/* don't free, because we forwarded data */
@@ -1393,7 +1392,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
 		process_l1sap_meas_data(trx, l1sap, PRIM_TCH);
 
-	msgb_pull(msg, sizeof(*l1sap));
+	msgb_pull_to_l2(msg);
 
 	/* Low level layers always call us when TCH content is expected, even if
 	 * the content is not available due to decoding issues. Content not
