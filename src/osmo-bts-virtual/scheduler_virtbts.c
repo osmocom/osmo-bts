@@ -386,47 +386,8 @@ inval_mode1:
 			}
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-#if 0
-			len = amr_decompose_payload(msg_tch->l2h,
-				msgb_l2len(msg_tch), &cmr_codec, &ft_codec,
-				&bfi);
-			cmr = -1;
-			ft = -1;
-			for (i = 0; i < chan_state->codecs; i++) {
-				if (chan_state->codec[i] == cmr_codec)
-					cmr = i;
-				if (chan_state->codec[i] == ft_codec)
-					ft = i;
-			}
-			if (cmr >= 0) { /* new request */
-				chan_state->dl_cmr = cmr;
-				/* disable AMR loop */
-				trx_loop_amr_set(chan_state, 0);
-			} else {
-				/* enable AMR loop */
-				trx_loop_amr_set(chan_state, 1);
-			}
-			if (ft < 0) {
-				LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
-					"Codec (FT = %d) of RTP frame not in list. ", ft_codec);
-				goto free_bad_msg;
-			}
-			if (codec_mode_request && chan_state->dl_ft != ft) {
-				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
-					"Codec (FT = %d) of RTP cannot be changed now, but in "
-					"next frame\n", ft_codec);
-				goto free_bad_msg;
-			}
-			chan_state->dl_ft = ft;
-			if (bfi) {
-				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
-					"Transmitting 'bad AMR frame'\n");
-				goto free_bad_msg;
-			}
-#else
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "AMR not supported!\n");
-			goto free_bad_msg;
-#endif
+			/* TODO: check length for consistency */
+			goto send_frame;
 			break;
 		default:
 inval_mode2:
