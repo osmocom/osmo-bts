@@ -204,7 +204,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	plink->u.virt.virt_um = virt_um_init(plink, plink->u.virt.ms_mcast_group, plink->u.virt.ms_mcast_port,
 					     plink->u.virt.bts_mcast_group, plink->u.virt.bts_mcast_port,
-					     virt_um_rcv_cb);
+					     plink->u.virt.ttl, virt_um_rcv_cb);
 	if (!plink->u.virt.virt_um) {
 		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
 		return -1;

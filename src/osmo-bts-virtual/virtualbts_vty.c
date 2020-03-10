@@ -69,6 +69,9 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 	if (plink->u.virt.mcast_dev)
 		vty_out(vty, " virtual-um net-device %s%s",
 			plink->u.virt.mcast_dev, VTY_NEWLINE);
+	if (plink->u.virt.ttl != -1)
+		vty_out(vty, " virtual-um ttl %d%s",
+			plink->u.virt.ttl, VTY_NEWLINE);
 	if (strcmp(plink->u.virt.ms_mcast_group, DEFAULT_BTS_MCAST_GROUP))
 		vty_out(vty, " virtual-um ms-multicast-group %s%s",
 			plink->u.virt.ms_mcast_group, VTY_NEWLINE);
@@ -171,6 +174,23 @@ DEFUN(cfg_phy_mcast_dev, cfg_phy_mcast_dev_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_mcast_ttl, cfg_phy_mcast_ttl_cmd,
+	"virtual-um ttl <0-255>",
+	VUM_STR "Configure the TTL for transmitted multicast GSMTAP packets\n")
+{
+	struct phy_link *plink = vty->index;
+
+	if (plink->state != PHY_LINK_SHUTDOWN) {
+		vty_out(vty, "Can only reconfigure a PHY link that is down%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	plink->u.virt.ttl = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 int bts_model_vty_init(struct gsm_bts *bts)
 {
 	vty_bts = bts;
@@ -180,6 +200,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_NODE, &cfg_phy_bts_mcast_group_cmd);
 	install_element(PHY_NODE, &cfg_phy_bts_mcast_port_cmd);
 	install_element(PHY_NODE, &cfg_phy_mcast_dev_cmd);
+	install_element(PHY_NODE, &cfg_phy_mcast_ttl_cmd);
 
 	return 0;
 }

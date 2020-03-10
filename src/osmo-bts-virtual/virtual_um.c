@@ -62,10 +62,12 @@ static int virt_um_fd_cb(struct osmo_fd *ofd, unsigned int what)
 }
 
 struct virt_um_inst *virt_um_init(void *ctx, char *tx_mcast_group, uint16_t tx_mcast_port,
-				  char *rx_mcast_group, uint16_t rx_mcast_port,
+				  char *rx_mcast_group, uint16_t rx_mcast_port, int ttl,
 				  void (*recv_cb)(struct virt_um_inst *vui, struct msgb *msg))
 {
 	struct virt_um_inst *vui = talloc_zero(ctx, struct virt_um_inst);
+	int rc;
+
 	vui->mcast_sock = mcast_bidir_sock_setup(ctx, tx_mcast_group, tx_mcast_port,
 						 rx_mcast_group, rx_mcast_port, 1, virt_um_fd_cb, vui);
 	if (!vui->mcast_sock) {
@@ -74,6 +76,17 @@ struct virt_um_inst *virt_um_init(void *ctx, char *tx_mcast_group, uint16_t tx_m
 		return NULL;
 	}
 	vui->recv_cb = recv_cb;
+
+	/* -1 means default, i.e. no TTL explicitly configured in VTY */
+	if (ttl >= 0) {
+		rc = osmo_sock_mcast_ttl_set(vui->mcast_sock->tx_ofd.fd, ttl);
+		if (rc < 0) {
+			perror("Cannot set TTL of Virtual Um transmit socket");
+			mcast_bidir_sock_close(vui->mcast_sock);
+			talloc_free(vui);
+			return NULL;
+		}
+	}
 
 	return vui;
 

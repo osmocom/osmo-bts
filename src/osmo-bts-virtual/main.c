@@ -123,6 +123,7 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.virt.bts_mcast_port = DEFAULT_BTS_MCAST_PORT;
 	plink->u.virt.ms_mcast_group = talloc_strdup(plink, DEFAULT_MS_MCAST_GROUP);
 	plink->u.virt.ms_mcast_port = DEFAULT_MS_MCAST_PORT;
+	plink->u.virt.ttl = -1; /* initialize to -1 to prevent us setting the TTL */
 }
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)

@@ -53,6 +53,7 @@ struct phy_link {
 		} osmotrx;
 		struct {
 			char *mcast_dev;		/* Network device for multicast */
+			int ttl;			/* TTL of transmitted udp multicast */
 			char *bts_mcast_group;		/* BTS are listening to this group */
 			uint16_t bts_mcast_port;
 			char *ms_mcast_group;		/* MS are listening to this group */
