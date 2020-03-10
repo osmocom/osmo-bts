@@ -62,7 +62,7 @@ static int virt_um_fd_cb(struct osmo_fd *ofd, unsigned int what)
 }
 
 struct virt_um_inst *virt_um_init(void *ctx, char *tx_mcast_group, uint16_t tx_mcast_port,
-				  char *rx_mcast_group, uint16_t rx_mcast_port, int ttl,
+				  char *rx_mcast_group, uint16_t rx_mcast_port, int ttl, const char *dev_name,
 				  void (*recv_cb)(struct virt_um_inst *vui, struct msgb *msg))
 {
 	struct virt_um_inst *vui = talloc_zero(ctx, struct virt_um_inst);
@@ -82,14 +82,29 @@ struct virt_um_inst *virt_um_init(void *ctx, char *tx_mcast_group, uint16_t tx_m
 		rc = osmo_sock_mcast_ttl_set(vui->mcast_sock->tx_ofd.fd, ttl);
 		if (rc < 0) {
 			perror("Cannot set TTL of Virtual Um transmit socket");
-			mcast_bidir_sock_close(vui->mcast_sock);
-			talloc_free(vui);
-			return NULL;
+			goto out_close;
+		}
+	}
+
+	if (dev_name) {
+		rc = osmo_sock_mcast_iface_set(vui->mcast_sock->tx_ofd.fd, dev_name);
+		if (rc < 0) {
+			perror("Cannot bind multicast tx to given device");
+			goto out_close;
+		}
+		rc = osmo_sock_mcast_iface_set(vui->mcast_sock->rx_ofd.fd, dev_name);
+		if (rc < 0) {
+			perror("Cannot bind multicast rx to given device");
+			goto out_close;
 		}
 	}
 
 	return vui;
 
+out_close:
+	mcast_bidir_sock_close(vui->mcast_sock);
+	talloc_free(vui);
+	return NULL;
 }
 
 void virt_um_destroy(struct virt_um_inst *vui)

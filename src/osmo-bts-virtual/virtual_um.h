@@ -23,7 +23,7 @@ struct virt_um_inst {
 
 struct virt_um_inst *virt_um_init(
                 void *ctx, char *tx_mcast_group, uint16_t tx_mcast_port,
-                char *rx_mcast_group, uint16_t rx_mcast_port, int ttl,
+                char *rx_mcast_group, uint16_t rx_mcast_port, int ttl, const char *dev_name,
                 void (*recv_cb)(struct virt_um_inst *vui, struct msgb *msg));
 
 void virt_um_destroy(struct virt_um_inst *vui);
