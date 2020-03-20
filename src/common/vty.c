@@ -928,6 +928,25 @@ DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 	return CMD_SUCCESS;
 }
 
+DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test send-failure-event-report <0-255>",
+      "Various testing commands\n"
+      "Send a test OML failure event report to the BSC\n" BTS_NR_STR)
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	int bts_nr = atoi(argv[0]);
+	struct gsm_bts *bts;
+
+	if (bts_nr >= net->num_bts) {
+		vty_out(vty, "%% can't find BTS '%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(net, bts_nr);
+	oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MINOR, OSMO_EVT_WARN_SW_WARN, "test message sent from VTY");
+
+	return CMD_SUCCESS;
+}
+
 static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
@@ -1716,6 +1735,7 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
+	install_element(ENABLE_NODE, &test_send_failure_event_report_cmd);
 
 	install_element(CONFIG_NODE, &cfg_phy_cmd);
 	install_node(&phy_node, config_write_phy);
