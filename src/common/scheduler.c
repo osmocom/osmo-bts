@@ -191,7 +191,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchf_fn,
 		.dl_fn = tx_tchf_fn,
 		.ul_fn = rx_tchf_fn,
-		.nope_fn = rx_tchf_fn,
 	},
 	[TRXC_TCHH_0] = {
 		.name = "TCH/H(0)", /* 3GPP TS 05.02, section 3.2 */
@@ -212,7 +211,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchh_fn,
 		.dl_fn = tx_tchh_fn,
 		.ul_fn = rx_tchh_fn,
-		.nope_fn = rx_tchh_fn,
 	},
 	[TRXC_TCHH_1] = {
 		.name = "TCH/H(1)", /* 3GPP TS 05.02, section 3.2 */
@@ -224,7 +222,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchh_fn,
 		.dl_fn = tx_tchh_fn,
 		.ul_fn = rx_tchh_fn,
-		.nope_fn = rx_tchh_fn,
 	},
 	[TRXC_SDCCH4_0] = {
 		.name = "SDCCH/4(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -236,7 +233,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH4_1] = {
 		.name = "SDCCH/4(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -248,7 +244,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH4_2] = {
 		.name = "SDCCH/4(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -260,7 +255,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH4_3] = {
 		.name = "SDCCH/4(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -272,7 +266,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_0] = {
 		.name = "SDCCH/8(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -284,7 +277,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_1] = {
 		.name = "SDCCH/8(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -296,7 +288,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_2] = {
 		.name = "SDCCH/8(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -308,7 +299,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_3] = {
 		.name = "SDCCH/8(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -320,7 +310,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_4] = {
 		.name = "SDCCH/8(4)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -332,7 +321,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_5] = {
 		.name = "SDCCH/8(5)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -344,7 +332,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_6] = {
 		.name = "SDCCH/8(6)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -356,7 +343,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SDCCH8_7] = {
 		.name = "SDCCH/8(7)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -368,7 +354,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCHTF] = {
 		.name = "SACCH/TF", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -380,7 +365,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCHTH_0] = {
 		.name = "SACCH/TH(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -392,7 +376,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCHTH_1] = {
 		.name = "SACCH/TH(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -404,7 +387,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH4_0] = {
 		.name = "SACCH/4(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -416,7 +398,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH4_1] = {
 		.name = "SACCH/4(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -428,7 +409,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH4_2] = {
 		.name = "SACCH/4(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -440,7 +420,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH4_3] = {
 		.name = "SACCH/4(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -452,7 +431,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_0] = {
 		.name = "SACCH/8(0)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -464,7 +442,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_1] = {
 		.name = "SACCH/8(1)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -476,7 +453,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_2] = {
 		.name = "SACCH/8(2)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -488,7 +464,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_3] = {
 		.name = "SACCH/8(3)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -500,7 +475,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_4] = {
 		.name = "SACCH/8(4)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -512,7 +486,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_5] = {
 		.name = "SACCH/8(5)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -524,7 +497,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_6] = {
 		.name = "SACCH/8(6)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -536,7 +508,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_SACCH8_7] = {
 		.name = "SACCH/8(7)", /* 3GPP TS 05.02, section 3.3.4.1 */
@@ -548,7 +519,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 		.ul_fn = rx_data_fn,
-		.nope_fn = rx_data_fn,
 	},
 	[TRXC_PDTCH] = {
 		.name = "PDTCH", /* 3GPP TS 05.02, sections 3.2.4, 3.3.2.4 */
@@ -1406,12 +1376,19 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	l1cs->last_tdma_fn = bi->fn;
 	l1cs->proc_tdma_fs++;
 
-	/* handle NOPE indications (if the handler is present) */
+	/* handle NOPE indications */
 	if (bi->flags & TRX_BI_F_NOPE_IND) {
-		func = trx_chan_desc[chan].nope_fn;
-		if (!func)
+		switch (chan) {
+		case TRXC_PDTCH:
+		case TRXC_PTCCH:
+		case TRXC_RACH:
+			/* For some logical channel types NOPE.ind is valueless. */
 			return 0;
-		return func(l1t, chan, bid, bi);
+		default:
+			/* NOTE: Uplink burst handler must check bi->burst_len before
+			 * accessing bi->burst to avoid uninitialized memory access. */
+			return func(l1t, chan, bid, bi);
+		}
 	}
 
 	/* decrypt */
