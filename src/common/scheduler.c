@@ -191,6 +191,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchf_fn,
 		.dl_fn = tx_tchf_fn,
 		.ul_fn = rx_tchf_fn,
+		.nope_fn = rx_tchf_fn,
 	},
 	[TRXC_TCHH_0] = {
 		.name = "TCH/H(0)", /* 3GPP TS 05.02, section 3.2 */
@@ -211,6 +212,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchh_fn,
 		.dl_fn = tx_tchh_fn,
 		.ul_fn = rx_tchh_fn,
+		.nope_fn = rx_tchh_fn,
 	},
 	[TRXC_TCHH_1] = {
 		.name = "TCH/H(1)", /* 3GPP TS 05.02, section 3.2 */
@@ -222,6 +224,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.rts_fn = rts_tchh_fn,
 		.dl_fn = tx_tchh_fn,
 		.ul_fn = rx_tchh_fn,
+		.nope_fn = rx_tchh_fn,
 	},
 	[TRXC_SDCCH4_0] = {
 		.name = "SDCCH/4(0)", /* 3GPP TS 05.02, section 3.3.4.1 */

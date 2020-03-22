@@ -1165,8 +1165,11 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	/* copy burst to end of buffer of 8 bursts */
 	burst = *bursts_p + bid * 116 + 464;
-	memcpy(burst, bi->burst + 3, 58);
-	memcpy(burst + 58, bi->burst + 87, 58);
+	if (bi->burst_len > 0) {
+		memcpy(burst, bi->burst + 3, 58);
+		memcpy(burst + 58, bi->burst + 87, 58);
+	} else
+		memset(burst, 0, 116);
 
 	/* wait until complete set of bursts */
 	if (bid != 3)
@@ -1360,8 +1363,11 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	/* copy burst to end of buffer of 6 bursts */
 	burst = *bursts_p + bid * 116 + 464;
-	memcpy(burst, bi->burst + 3, 58);
-	memcpy(burst + 58, bi->burst + 87, 58);
+	if (bi->burst_len > 0) {
+		memcpy(burst, bi->burst + 3, 58);
+		memcpy(burst + 58, bi->burst + 87, 58);
+	} else
+		memset(burst, 0, 116);
 
 	/* wait until complete set of bursts */
 	if (bid != 1)
