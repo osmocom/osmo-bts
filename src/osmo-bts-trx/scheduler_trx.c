@@ -1375,13 +1375,12 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 	*mask = 0x0;
 
-        ber10k = compute_ber10k(n_bits_total, n_errors);
-
 	/* skip second of two TCH frames of FACCH was received */
 	if (chan_state->ul_ongoing_facch) {
 		chan_state->ul_ongoing_facch = 0;
 		memcpy(*bursts_p, *bursts_p + 232, 232);
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+		ber10k = 0;
 		goto bfi;
 	}
 
@@ -1428,6 +1427,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 	memcpy(*bursts_p, *bursts_p + 232, 232);
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+	ber10k = compute_ber10k(n_bits_total, n_errors);
+
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
