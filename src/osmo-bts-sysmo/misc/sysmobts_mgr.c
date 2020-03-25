@@ -218,25 +218,25 @@ static struct log_info_cat mgr_log_info_cat[] = {
 		.name = "DTEMP",
 		.description = "Temperature monitoring",
 		.color = "\033[1;35m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DFW] =	{
 		.name = "DFW",
 		.description = "DSP/FPGA firmware management",
 		.color = "\033[1;36m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DFIND] = {
 		.name = "DFIND",
 		.description = "ipaccess-find handling",
 		.color = "\033[1;37m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DCALIB] = {
 		.name = "DCALIB",
 		.description = "Calibration handling",
 		.color = "\033[1;37m",
-		.enabled = 1, .loglevel = LOGL_INFO,
+		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 };
 
