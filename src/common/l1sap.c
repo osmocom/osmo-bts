@@ -434,6 +434,7 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, unsigned int *len)
 {
 	uint8_t chan_nr = l1sap->u.rach_ind.chan_nr;
+	static uint8_t ra_buf[2];
 
 	*chan_type = GSMTAP_CHANNEL_RACH;
 	*fn = l1sap->u.rach_ind.fn;
@@ -454,8 +455,17 @@ static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 		}
 	}
 
-	*data = (uint8_t *)&l1sap->u.rach_ind.ra;
-	*len = (l1sap->u.rach_ind.is_11bit) ? 2 : 1;
+	if (l1sap->u.rach_ind.is_11bit) {
+		/* Pack as described in 3GPP TS 44.004, figure 7.4a.b */
+		ra_buf[0] = (uint8_t) (l1sap->u.rach_ind.ra >> 3);
+		ra_buf[1] = (uint8_t) (l1sap->u.rach_ind.ra & 0x07);
+		*len  = sizeof(ra_buf);
+		*data = ra_buf;
+	} else {
+		ra_buf[0] = (uint8_t) (l1sap->u.rach_ind.ra & 0xff);
+		*len  = sizeof(ra_buf[0]);
+		*data = ra_buf;
+	}
 
 	return 0;
 }
