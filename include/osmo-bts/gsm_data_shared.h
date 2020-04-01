@@ -783,6 +783,14 @@ struct gsm_bts {
 	} pcu;
 
 	void *model_priv; /* Allocated by bts_model, contains model specific data pointer */
+#ifdef ENABLE_LC15BTS
+	/* specific to LC15 BTS */
+	struct {
+		uint8_t led_ctrl_mode;		/* 0: control by BTS, 1: not control by BTS */
+		struct llist_head ceased_alarm_list;	/* ceased alarm list*/
+		unsigned int rtp_drift_thres_ms;		/* RTP timestamp drift detection threshold */
+	} lc15;
+#endif
 };
 
 
