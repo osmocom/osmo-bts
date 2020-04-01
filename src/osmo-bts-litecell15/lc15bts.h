@@ -22,6 +22,27 @@ enum l1prim_type {
 	L1P_T_IND,
 };
 
+enum lc15_diversity_mode{
+	LC15_DIVERSITY_SISO_A = 0,
+	LC15_DIVERSITY_SISO_B,
+	LC15_DIVERSITY_MRC,
+};
+
+enum lc15_pedestal_mode{
+	LC15_PEDESTAL_OFF = 0,
+	LC15_PEDESTAL_ON,
+};
+
+enum lc15_led_control_mode{
+	LC15_LED_CONTROL_BTS = 0,
+	LC15_LED_CONTROL_EXT,
+};
+
+enum lc15_auto_pwr_adjust_mode{
+	LC15_TX_PWR_ADJ_NONE = 0,
+	LC15_TX_PWR_ADJ_AUTO,
+};
+
 enum l1prim_type lc15bts_get_l1prim_type(GsmL1_PrimId_t id);
 const struct value_string lc15bts_l1prim_names[GsmL1_PrimId_NUM+1];
 GsmL1_PrimId_t lc15bts_get_l1prim_conf(GsmL1_PrimId_t id);
@@ -60,5 +81,16 @@ enum pdch_cs {
 };
 
 const uint8_t pdch_msu_size[_NUM_PDCH_CS];
+
+/* LC15 default parameters */
+#define LC15_BTS_MAX_CELL_SIZE_DEFAULT	166	/* 166 qbits is default  value */
+#define LC15_BTS_DIVERSITY_MODE_DEFAULT	0	/* SISO-A is default mode */
+#define LC15_BTS_PEDESTAL_MODE_DEFAULT	0	/* Unused TS is off by default */
+#define LC15_BTS_LED_CTRL_MODE_DEFAULT	0	/* LED is controlled by BTS by default */
+#define LC15_BTS_DSP_ALIVE_TMR_DEFAULT	5	/* Default DSP alive timer is 5 seconds  */
+#define LC15_BTS_TX_PWR_ADJ_DEFAULT	0	/* Default Tx power auto adjustment is none */
+#define LC15_BTS_TX_RED_PWR_8PSK_DEFAULT	0	/* Default 8-PSK maximum power level is 0 dB */
+#define LC15_BTS_RTP_DRIFT_THRES_DEFAULT	0	/* Default RTP drift threshold is 0 ms (disabled) */
+#define LC15_BTS_TX_C0_IDLE_RED_PWR_DEFAULT	0	/* Default C0 idle slot reduction power level is 0 dB */
 
 #endif /* LC15BTS_H */

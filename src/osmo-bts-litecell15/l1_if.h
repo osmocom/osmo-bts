@@ -41,6 +41,7 @@ struct lc15l1_hdl {
 	HANDLE hLayer1;				/* handle to the L1 instance in the DSP */
 	uint32_t dsp_trace_f;			/* currently operational DSP trace flags */
 	struct llist_head wlc_list;
+//	struct llist_head alarm_list;	/* list of sent alarms */
 
 	struct phy_instance *phy_inst;
 
@@ -62,6 +63,12 @@ struct lc15l1_hdl {
 	struct calib_send_state st;
 
 	uint8_t last_rf_mute[8];
+
+	struct {
+		struct osmo_timer_list dsp_alive_timer;
+		unsigned int dsp_alive_cnt;
+		uint8_t dsp_alive_period;
+	} hw_alive;
 };
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)

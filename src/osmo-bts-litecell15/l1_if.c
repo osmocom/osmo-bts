@@ -1263,8 +1263,10 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
 				get_value_string(lc15bts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
-		} else
-			bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
+		} else {
+			if(trx->bts->lc15.led_ctrl_mode == LC15_LED_CONTROL_BTS)
+				bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
+		}
 
 		/* signal availability */
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
@@ -1275,7 +1277,8 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	} else {
-		bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
+		if(trx->bts->lc15.led_ctrl_mode == LC15_LED_CONTROL_BTS)
+			bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 	}
@@ -1290,17 +1293,25 @@ int l1if_activate_rf(struct lc15l1_hdl *hdl, int on)
 {
 	struct msgb *msg = sysp_msgb_alloc();
 	Litecell15_Prim_t *sysp = msgb_sysprim(msg);
+	struct phy_instance *pinst = hdl->phy_inst;
 
 	if (on) {
 		sysp->id = Litecell15_PrimId_ActivateRfReq;
 		sysp->u.activateRfReq.msgq.u8UseTchMsgq = 0;
 		sysp->u.activateRfReq.msgq.u8UsePdtchMsgq = pcu_direct;
 
-		sysp->u.activateRfReq.u8UnusedTsMode = 0;
+		sysp->u.activateRfReq.u8UnusedTsMode = pinst->u.lc15.pedestal_mode;
 		sysp->u.activateRfReq.u8McCorrMode = 0;
 
-		/* maximum cell size in quarter-bits, 90 == 12.456 km */
-		sysp->u.activateRfReq.u8MaxCellSize = 90;
+		/* diversity mode: 0: SISO-A, 1: SISO-B, 2: MRC */
+		sysp->u.activateRfReq.u8DiversityMode = pinst->u.lc15.diversity_mode;
+
+		/* maximum cell size in quarter-bits, eg. 90 == 12.456 km */
+		sysp->u.activateRfReq.u8MaxCellSize = pinst->u.lc15.max_cell_size;
+
+		/* auto tx power adjustment mode 0:none, 1: automatic*/
+		sysp->u.activateRfReq.u8EnAutoPowerAdjust = pinst->u.lc15.tx_pwr_adj_mode;
+
 	} else {
 		sysp->id = Litecell15_PrimId_DeactivateRfReq;
 	}
@@ -1589,6 +1600,83 @@ int l1if_close(struct lc15l1_hdl *fl1h)
 	return 0;
 }
 
+static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+{
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
+	Litecell15_IsAliveCnf_t *sac = &sysp->u.isAliveCnf;
+	struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+
+	fl1h->hw_alive.dsp_alive_cnt++;
+	LOGP(DL1C, LOGL_DEBUG, "Rx SYS prim %s, status=%d (%d)\n",
+			get_value_string(lc15bts_sysprim_names, sysp->id), sac->status, trx->nr);
+
+	msgb_free(resp);
+}
+
+static int dsp_alive_timer_cb(void *data)
+{
+	struct lc15l1_hdl *fl1h = data;
+	struct gsm_bts_trx *trx = fl1h->phy_inst->trx;
+	struct msgb *msg = sysp_msgb_alloc();
+	int rc;
+	struct oml_alarm_list *alarm_sent;
+
+	Litecell15_Prim_t *sys_prim =  msgb_sysprim(msg);
+	sys_prim->id = Litecell15_PrimId_IsAliveReq;
+
+	if (fl1h->hw_alive.dsp_alive_cnt == 0) {
+#if 0
+		/* check for the alarm has already sent or not */
+		llist_for_each_entry(alarm_sent, &fl1h->alarm_list, list) {
+			llist_del(&alarm_sent->list);
+			if (alarm_sent->alarm_signal != S_NM_OML_BTS_DSP_ALIVE_ALARM)
+				continue;
+
+			LOGP(DL1C, LOGL_ERROR, "Alarm %d has removed from sent alarm list (%d)\n", alarm_sent->alarm_signal, trx->nr);
+			exit(23);
+		}
+#endif
+		LOGP(DL1C, LOGL_ERROR, "Timeout waiting for SYS prim %s primitive (%d)\n",
+				get_value_string(lc15bts_sysprim_names, sys_prim->id + 1), trx->nr);
+
+		if( fl1h->phy_inst->trx ){
+			fl1h->phy_inst->trx->mo.obj_inst.trx_nr = fl1h->phy_inst->trx->nr;
+
+#if 0
+			alarm_sig_data.mo = &fl1h->phy_inst->trx->mo;
+			memcpy(alarm_sig_data.spare, &sys_prim->id, sizeof(unsigned int));
+			osmo_signal_dispatch(SS_NM, S_NM_OML_BTS_DSP_ALIVE_ALARM, &alarm_sig_data);
+			if (!alarm_sig_data.rc) {
+				/* allocate new list of sent alarms */
+				alarm_sent = talloc_zero(fl1h, struct oml_alarm_list);
+				if (!alarm_sent)
+					return -EIO;
+
+				alarm_sent->alarm_signal = S_NM_OML_BTS_DSP_ALIVE_ALARM;
+				/* add alarm to sent list */
+				llist_add(&alarm_sent->list, &fl1h->alarm_list);
+				LOGP(DL1C, LOGL_ERROR, "Alarm %d has added to sent alarm list (%d)\n", alarm_sent->alarm_signal, trx->nr);
+			}
+#endif
+		}
+	}
+
+	LOGP(DL1C, LOGL_DEBUG, "Tx SYS prim %s (%d)\n",
+			get_value_string(lc15bts_sysprim_names, sys_prim->id), trx->nr);
+
+	rc = l1if_req_compl(fl1h, msg, dsp_alive_compl_cb, NULL);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Failed to send %s primitive\n", get_value_string(lc15bts_sysprim_names, sys_prim->id));
+		return -EIO;
+	}
+
+	/* restart timer */
+	fl1h->hw_alive.dsp_alive_cnt = 0;
+	osmo_timer_schedule(&fl1h->hw_alive.dsp_alive_timer, fl1h->hw_alive.dsp_alive_period, 0);
+
+	return 0;
+}
+
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
@@ -1608,6 +1696,27 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		return -EIO;
 	}
 
+	/* Set default PHY parameters */
+	if (!pinst->u.lc15.max_cell_size)
+		pinst->u.lc15.max_cell_size = LC15_BTS_MAX_CELL_SIZE_DEFAULT;
+
+	if (!pinst->u.lc15.diversity_mode)
+		pinst->u.lc15.diversity_mode = LC15_BTS_DIVERSITY_MODE_DEFAULT;
+
+	if (!pinst->u.lc15.pedestal_mode)
+		pinst->u.lc15.pedestal_mode = LC15_BTS_PEDESTAL_MODE_DEFAULT;
+
+	if (!pinst->u.lc15.dsp_alive_period)
+		pinst->u.lc15.dsp_alive_period = LC15_BTS_DSP_ALIVE_TMR_DEFAULT;
+
+	if (!pinst->u.lc15.tx_pwr_adj_mode)
+		pinst->u.lc15.tx_pwr_adj_mode = LC15_BTS_TX_PWR_ADJ_DEFAULT;
+
+	if (!pinst->u.lc15.tx_pwr_red_8psk)
+		pinst->u.lc15.tx_pwr_red_8psk = LC15_BTS_TX_RED_PWR_8PSK_DEFAULT;
+
+	if (!pinst->u.lc15.tx_c0_idle_pwr_red)
+		pinst->u.lc15.tx_c0_idle_pwr_red = LC15_BTS_TX_C0_IDLE_RED_PWR_DEFAULT;
 
 	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 	fl1h->dsp_trace_f = dsp_trace;
@@ -1615,6 +1724,26 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	l1if_reset(pinst->u.lc15.hdl);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
+
+	/* Send first IS_ALIVE primitive */
+	struct msgb *msg = sysp_msgb_alloc();
+	int rc;
+
+	Litecell15_Prim_t *sys_prim =  msgb_sysprim(msg);
+	sys_prim->id = Litecell15_PrimId_IsAliveReq;
+
+	rc = l1if_req_compl(fl1h, msg, dsp_alive_compl_cb, NULL);
+	if (rc < 0) {
+		LOGP(DL1C, LOGL_FATAL, "Failed to send %s primitive\n", get_value_string(lc15bts_sysprim_names, sys_prim->id));
+		return -EIO;
+	}
+
+	/* initialize DSP heart beat alive timer */
+	fl1h->hw_alive.dsp_alive_timer.cb = dsp_alive_timer_cb;
+	fl1h->hw_alive.dsp_alive_timer.data = fl1h;
+	fl1h->hw_alive.dsp_alive_cnt = 0;
+	fl1h->hw_alive.dsp_alive_period = pinst->u.lc15.dsp_alive_period;
+	osmo_timer_schedule(&fl1h->hw_alive.dsp_alive_timer, fl1h->hw_alive.dsp_alive_period, 0);
 
 	return 0;
 }

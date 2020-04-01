@@ -90,6 +90,10 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts->variant = BTS_OSMO_LITECELL15;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	/* specific default values for LC15 platform */
+	bts->lc15.led_ctrl_mode = LC15_BTS_LED_CTRL_MODE_DEFAULT;
+	/* RTP drift threshold default */
+	bts->lc15.rtp_drift_thres_ms = LC15_BTS_RTP_DRIFT_THRES_DEFAULT;
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {
