@@ -167,8 +167,8 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.osmotrx.remote_ip = talloc_strdup(plink, "127.0.0.1");
 	plink->u.osmotrx.base_port_local = 5800;
 	plink->u.osmotrx.base_port_remote = 5700;
-	plink->u.osmotrx.clock_advance = 20;
-	plink->u.osmotrx.rts_advance = 5;
+	plink->u.osmotrx.clock_advance = 2;
+	plink->u.osmotrx.rts_advance = 3;
 	/* attempt use newest TRXD version by default: */
 	plink->u.osmotrx.trxd_hdr_ver_max = TRX_DATA_FORMAT_VER;
 }

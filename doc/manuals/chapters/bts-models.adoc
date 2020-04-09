@@ -270,8 +270,7 @@ on a remote host will inevitably require a higher fn-advance than
 running it on the same machine, where the UDP packets are just passed
 over the loopback device.
 
-The default value for `fn-advance` is 20 (corresponding to 92
-milliseconds).
+The default value for `fn-advance` is 2 (corresponding to 9.2 milliseconds).
 
 ===== `osmotrx rts-advance <0-30>`
 
@@ -290,7 +289,7 @@ reported on L1SAP to higher layers will be computed as follows:
 
   N + fn-advance + rts-advance
 
-The default value of `rts-advance` is 5 (corresponding to 23 milliseconds).
+The default value of `rts-advance` is 3 (corresponding to 14 milliseconds).
 Do not change this unless you have a good reason!
 
 ===== `osmotrx rx-gain <0-50>`
