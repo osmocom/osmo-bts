@@ -1299,8 +1299,9 @@ int l1if_activate_rf(struct lc15l1_hdl *hdl, int on)
 		sysp->u.activateRfReq.u8UnusedTsMode = 0;
 		sysp->u.activateRfReq.u8McCorrMode = 0;
 
-		/* maximum cell size in quarter-bits, 90 == 12.456 km */
-		sysp->u.activateRfReq.u8MaxCellSize = 90;
+		/* maximum cell size in quarter-bits, eg. 90 == 12.456 km */
+		/* This is the default value in osmo-bts's manufacturer branch */
+		sysp->u.activateRfReq.u8MaxCellSize = 166;
 	} else {
 		sysp->id = Litecell15_PrimId_DeactivateRfReq;
 	}
