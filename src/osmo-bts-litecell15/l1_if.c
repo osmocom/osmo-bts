@@ -1265,7 +1265,7 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 				get_value_string(lc15bts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
 		} else {
-			if(bts_lc15->led_ctrl_mode == LC15_LED_CONTROL_BTS)
+			if (bts_lc15->led_ctrl_mode == LC15_LED_CONTROL_BTS)
 				bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
                }
 
@@ -1278,7 +1278,7 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	} else {
-		if(bts_lc15->led_ctrl_mode == LC15_LED_CONTROL_BTS)
+		if (bts_lc15->led_ctrl_mode == LC15_LED_CONTROL_BTS)
 			bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
 		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
 		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
