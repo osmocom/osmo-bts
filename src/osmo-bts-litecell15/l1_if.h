@@ -30,6 +30,12 @@ enum {
 	_NUM_MQ_WRITE
 };
 
+/* gsm_bts->model_priv, specific to Litecell 1.5 BTS */
+struct bts_lc15_priv {
+	uint8_t led_ctrl_mode;			/* 0: control by BTS, 1: not control by BTS */
+	unsigned int rtp_drift_thres_ms;	/* RTP timestamp drift detection threshold */
+};
+
 struct calib_send_state {
 	FILE *fp;
 	const char *path;
@@ -62,6 +68,12 @@ struct lc15l1_hdl {
 	struct calib_send_state st;
 
 	uint8_t last_rf_mute[8];
+
+	struct {
+		struct osmo_timer_list dsp_alive_timer;
+		unsigned int dsp_alive_cnt;
+		uint8_t dsp_alive_period;
+	} hw_alive;
 };
 
 #define msgb_l1prim(msg)	((GsmL1_Prim_t *)(msg)->l1h)
