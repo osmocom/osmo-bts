@@ -2546,6 +2546,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	const char *name;
 	struct in_addr ia;
+	int rc;
 
 	if (orig_msgt == RSL_MT_IPAC_CRCX)
 		name = "CRCX";
@@ -2590,7 +2591,17 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 	rsl_ipa_push_hdr(msg, orig_msgt + 1, chan_nr);
 	msg->trx = lchan->ts->trx;
 
-	return abis_bts_rsl_sendmsg(msg);
+	rc = abis_bts_rsl_sendmsg(msg);
+
+	/* extra log message to debug how long the Tx takes - is the interface blocking? */
+	ia.s_addr = htonl(lchan->abis_ip.bound_ip);
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "RSL Tx IPAC_%s_ACK (local %s:%u, ",
+		  name, inet_ntoa(ia), lchan->abis_ip.bound_port);
+	ia.s_addr = htonl(lchan->abis_ip.connect_ip);
+	LOGPC(DRSL, LOGL_INFO, "remote %s:%u) [TX COMPLETE, RC=%i]\n",
+		inet_ntoa(ia), lchan->abis_ip.connect_port, rc);
+
+	return rc;
 }
 
 static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
