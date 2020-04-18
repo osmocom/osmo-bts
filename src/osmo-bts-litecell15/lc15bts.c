@@ -121,6 +121,14 @@ enum l1prim_type lc15bts_get_sysprim_type(Litecell15_PrimId_t id)
 	case Litecell15_PrimId_MuteRfCnf:        return L1P_T_CONF;
 	case Litecell15_PrimId_SetRxAttenReq:    return L1P_T_REQ;
 	case Litecell15_PrimId_SetRxAttenCnf:    return L1P_T_CONF;
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	case Litecell15_PrimId_IsAliveReq:       return L1P_T_REQ;
+	case Litecell15_PrimId_IsAliveCnf:       return L1P_T_CONF;
+	case Litecell15_PrimId_SetMaxCellSizeReq:       return L1P_T_REQ;
+	case Litecell15_PrimId_SetMaxCellSizeCnf:       return L1P_T_CONF;
+	case Litecell15_PrimId_SetC0IdleSlotPowerReductionReq:       return L1P_T_REQ;
+	case Litecell15_PrimId_SetC0IdleSlotPowerReductionCnf:       return L1P_T_CONF;
+#endif
 	default:                                 return L1P_T_INVALID;
 	}
 }
@@ -142,6 +150,14 @@ const struct value_string lc15bts_sysprim_names[Litecell15_PrimId_NUM+1] = {
 	{ Litecell15_PrimId_MuteRfCnf,	        "MUTE-RF.cnf" },
 	{ Litecell15_PrimId_SetRxAttenReq,	"SET-RX-ATTEN.req" },
 	{ Litecell15_PrimId_SetRxAttenCnf,	"SET-RX-ATTEN-CNF.cnf" },
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	{ Litecell15_PrimId_IsAliveReq,         "IS-ALIVE.req" },
+	{ Litecell15_PrimId_IsAliveCnf,         "IS-ALIVE-CNF.cnf" },
+	{ Litecell15_PrimId_SetMaxCellSizeReq,         "SET-MAX-CELL-SIZE.req" },
+	{ Litecell15_PrimId_SetMaxCellSizeCnf,         "SET-MAX-CELL-SIZE.cnf" },
+	{ Litecell15_PrimId_SetC0IdleSlotPowerReductionReq,         "SET-C0-IDLE-PWR-RED.req" },
+	{ Litecell15_PrimId_SetC0IdleSlotPowerReductionCnf,         "SET-C0-IDLE-PWR-RED.cnf" },
+#endif
 	{ 0, NULL }
 };
 
@@ -155,6 +171,11 @@ Litecell15_PrimId_t lc15bts_get_sysprim_conf(Litecell15_PrimId_t id)
 	case Litecell15_PrimId_SetCalibTblReq:   return Litecell15_PrimId_SetCalibTblCnf;
 	case Litecell15_PrimId_MuteRfReq:        return Litecell15_PrimId_MuteRfCnf;
 	case Litecell15_PrimId_SetRxAttenReq:    return Litecell15_PrimId_SetRxAttenCnf;
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	case Litecell15_PrimId_IsAliveReq:       return Litecell15_PrimId_IsAliveCnf;
+	case Litecell15_PrimId_SetMaxCellSizeReq:       return Litecell15_PrimId_SetMaxCellSizeCnf;
+	case Litecell15_PrimId_SetC0IdleSlotPowerReductionReq:       return Litecell15_PrimId_SetC0IdleSlotPowerReductionCnf;
+#endif
         default:                                 return -1;	// Weak
         }
 }

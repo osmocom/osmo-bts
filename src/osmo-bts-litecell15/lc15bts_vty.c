@@ -43,6 +43,11 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/misc.h>
 
+#include <osmocom/ctrl/control_cmd.h>
+#include <osmo-bts/signal.h>
+#include <osmo-bts/oml.h>
+#include <osmo-bts/bts.h>
+
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
@@ -55,6 +60,7 @@
 #include "utils.h"
 
 extern int lchan_activate(struct gsm_lchan *lchan);
+extern int rsl_tx_preproc_meas_res(struct gsm_lchan *lchan);
 
 #define TRX_STR "Transceiver related commands\n" "TRX number\n"
 
@@ -64,6 +70,33 @@ extern int lchan_activate(struct gsm_lchan *lchan);
 #define DSP_TRACE_F_STR		"DSP Trace Flag\n"
 
 static struct gsm_bts *vty_bts;
+
+static const struct value_string lc15_diversity_mode_strs[] = {
+	{ LC15_DIVERSITY_SISO_A, "siso-a" },
+	{ LC15_DIVERSITY_SISO_B, "siso-b" },
+	{ LC15_DIVERSITY_MRC, "mrc" },
+	{ 0, NULL }
+};
+
+static const struct value_string lc15_pedestal_mode_strs[] = {
+	{ LC15_PEDESTAL_OFF, "off" },
+	{ LC15_PEDESTAL_ON, "on" },
+	{ 0, NULL }
+};
+
+static const struct value_string lc15_led_mode_strs[] = {
+	{ LC15_LED_CONTROL_BTS, "bts" },
+	{ LC15_LED_CONTROL_EXT, "external" },
+	{ 0, NULL }
+};
+
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+static const struct value_string lc15_auto_adj_pwr_strs[] = {
+	{ LC15_TX_PWR_ADJ_NONE, "none" },
+	{ LC15_TX_PWR_ADJ_AUTO, "auto" },
+	{ 0, NULL }
+};
+#endif
 
 /* configuration */
 
@@ -302,9 +335,9 @@ DEFUN(no_loopback, no_loopback_cmd,
 }
 
 DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
-       "nominal-tx-power <0-40>",
-       "Set the nominal transmit output power in dBm\n"
-       "Nominal transmit output power level in dBm\n")
+	"nominal-tx-power <0-40>",
+	"Set the nominal transmit output power in dBm\n"
+	"Nominal transmit output power level in dBm\n")
 {
 	int nominal_power = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
@@ -321,8 +354,166 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_phy_max_cell_size, cfg_phy_max_cell_size_cmd,
+	"max-cell-size <0-166>",
+	"Set the maximum cell size in qbits\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int cell_size = (uint8_t)atoi(argv[0]);
+
+	if (( cell_size >  166 ) || ( cell_size < 0 )) {
+		vty_out(vty, "Max cell size must be between 0 and 166 qbits (%d) %s",
+				cell_size, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst->u.lc15.max_cell_size = (uint8_t)cell_size;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_diversity_mode, cfg_phy_diversity_mode_cmd,
+		"diversity-mode (siso-a|siso-b|mrc)",
+		"Set reception diversity mode \n"
+		"Reception diversity mode can be (siso-a, siso-b, mrc)\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int val = get_string_value(lc15_diversity_mode_strs, argv[0]);
+
+	if((val < LC15_DIVERSITY_SISO_A) || (val > LC15_DIVERSITY_MRC)) {
+			vty_out(vty, "Invalid reception diversity mode %d%s", val, VTY_NEWLINE);
+			return CMD_WARNING;
+	}
+
+	pinst->u.lc15.diversity_mode = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_pedestal_mode, cfg_phy_pedestal_mode_cmd,
+		"pedestal-mode (on|off)",
+		"Set unused time-slot transmission in pedestal mode\n"
+		"Transmission pedestal mode can be (off, on)\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int val = get_string_value(lc15_pedestal_mode_strs, argv[0]);
+
+	if((val < LC15_PEDESTAL_OFF)  || (val > LC15_PEDESTAL_ON)) {
+			vty_out(vty, "Invalid unused time-slot transmission mode %d%s", val, VTY_NEWLINE);
+			return CMD_WARNING;
+	}
+
+	pinst->u.lc15.pedestal_mode = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_led_mode, cfg_bts_led_mode_cmd,
+		"led-control-mode (bts|external)",
+		"Set LED controlled by BTS or external software\n"
+		"LED can be controlled by (bts, external)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int val = get_string_value(lc15_led_mode_strs, argv[0]);
+
+	if((val < LC15_LED_CONTROL_BTS)  || (val > LC15_LED_CONTROL_EXT)) {
+			vty_out(vty, "Invalid LED control mode %d%s", val, VTY_NEWLINE);
+			return CMD_WARNING;
+	}
+
+        struct bts_lc15_priv *bts_lc15 = bts->model_priv;
+	bts_lc15->led_ctrl_mode = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+DEFUN(cfg_phy_dsp_alive_timer, cfg_phy_dsp_alive_timer_cmd,
+	"dsp-alive-period <0-60>",
+	"Set DSP alive timer period in second\n")
+{
+	struct phy_instance *pinst = vty->index;
+	uint8_t period = (uint8_t)atoi(argv[0]);
+
+	if (( period >  60 ) || ( period < 0 )) {
+		vty_out(vty, "DSP heart beat alive timer period must be between 0 and 60 seconds (%d) %s",
+				period, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst->u.lc15.dsp_alive_period = period;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_auto_tx_pwr_adj, cfg_phy_auto_tx_pwr_adj_cmd,
+	"pwr-adj-mode (none|auto)",
+	"Set output power adjustment mode\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int val = get_string_value(lc15_auto_adj_pwr_strs, argv[0]);
+
+	if((val < LC15_TX_PWR_ADJ_NONE) || (val > LC15_TX_PWR_ADJ_AUTO)) {
+		vty_out(vty, "Invalid output power adjustment mode %d%s", val, VTY_NEWLINE);
+	return CMD_WARNING;
+	}
+
+	pinst->u.lc15.tx_pwr_adj_mode = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_tx_red_pwr_8psk, cfg_phy_tx_red_pwr_8psk_cmd,
+	"tx-red-pwr-8psk <0-40>",
+	"Set reduction output power for 8-PSK scheme in dB unit\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int val = atoi(argv[0]);
+
+	if ((val > 40) || (val < 0)) {
+		vty_out(vty, "Reduction Tx power level must be between 0 and 40 dB (%d) %s",
+		val, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst->u.lc15.tx_pwr_red_8psk = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_c0_idle_red_pwr, cfg_phy_c0_idle_red_pwr_cmd,
+	"c0-idle-red-pwr <0-40>",
+	"Set reduction output power for C0 idle slot in dB unit\n")
+{
+	struct phy_instance *pinst = vty->index;
+	int val = atoi(argv[0]);
+
+	if ((val > 40) || (val < 0)) {
+		vty_out(vty, "Reduction Tx power level must be between 0 and 40 dB (%d) %s",
+		val, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst->u.lc15.tx_c0_idle_pwr_red = (uint8_t)val;
+	return CMD_SUCCESS;
+}
+#endif
+
+DEFUN(cfg_bts_rtp_drift_threshold, cfg_bts_rtp_drift_threshold_cmd,
+	"rtp-drift-threshold <0-10000>",
+	"RTP parameters\n"
+	"RTP timestamp drift threshold in ms\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	struct bts_lc15_priv *bts_lc15 = bts->model_priv;
+	bts_lc15->rtp_drift_thres_ms = (unsigned int) atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
+	struct bts_lc15_priv *bts_lc15 = bts->model_priv;
+	vty_out(vty, " led-control-mode %s%s",
+			get_value_string(lc15_led_mode_strs, bts_lc15->led_ctrl_mode), VTY_NEWLINE);
+
+	vty_out(vty, " rtp-drift-threshold %d%s",
+			bts_lc15->rtp_drift_thres_ms, VTY_NEWLINE);
+
 }
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
@@ -349,6 +540,29 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 	if (pinst->u.lc15.calib_path)
 		vty_out(vty, "  trx-calibration-path %s%s",
 			pinst->u.lc15.calib_path, VTY_NEWLINE);
+
+	vty_out(vty, "  max-cell-size %d%s",
+			pinst->u.lc15.max_cell_size, VTY_NEWLINE);
+
+	vty_out(vty, "  diversity-mode %s%s",
+			get_value_string(lc15_diversity_mode_strs, pinst->u.lc15.diversity_mode), VTY_NEWLINE);
+
+	vty_out(vty, "  pedestal-mode %s%s",
+			get_value_string(lc15_pedestal_mode_strs, pinst->u.lc15.pedestal_mode) , VTY_NEWLINE);
+
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	vty_out(vty, "  dsp-alive-period %d%s",
+			pinst->u.lc15.dsp_alive_period, VTY_NEWLINE);
+
+	vty_out(vty, "  pwr-adj-mode %s%s",
+			get_value_string(lc15_auto_adj_pwr_strs, pinst->u.lc15.tx_pwr_adj_mode), VTY_NEWLINE);
+
+	vty_out(vty, "  tx-red-pwr-8psk %d%s",
+			pinst->u.lc15.tx_pwr_red_8psk, VTY_NEWLINE);
+
+	vty_out(vty, "  c0-idle-red-pwr %d%s",
+			pinst->u.lc15.tx_c0_idle_pwr_red, VTY_NEWLINE);
+#endif
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
@@ -401,6 +615,8 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(BTS_NODE, &cfg_bts_auto_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_auto_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_led_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_drift_threshold_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 
@@ -408,6 +624,15 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_INST_NODE, &cfg_phy_no_dsp_trace_f_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_cal_path_cmd);
 
+	install_element(PHY_INST_NODE, &cfg_phy_diversity_mode_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_pedestal_mode_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_max_cell_size_cmd);
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	install_element(PHY_INST_NODE, &cfg_phy_dsp_alive_timer_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_auto_tx_pwr_adj_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_tx_red_pwr_8psk_cmd);
+	install_element(PHY_INST_NODE, &cfg_phy_c0_idle_red_pwr_cmd);
+#endif
 	return 0;
 }
 
