@@ -384,7 +384,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct msgb *msg;
 	GsmL1_MphInitReq_t *mi_req;
 	GsmL1_DeviceParam_t *dev_par;
-	int lc15_band;
+	int rc, lc15_band;
 
 	if (!gsm_abis_mo_check_attr(&trx->mo, trx_rqd_attr,
 				    ARRAY_SIZE(trx_rqd_attr))) {
@@ -392,6 +392,15 @@ static int trx_init(struct gsm_bts_trx *trx)
 		 * doesn't deal with this very well */
 		return oml_mo_opstart_ack(&trx->mo);
 		//return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
+	}
+
+	/* Update TRX band */
+	rc = gsm_arfcn2band_rc(trx->arfcn, &trx->bts->band);
+	if (rc) {
+		/* FIXME: abort initialization? */
+		LOGP(DL1C, LOGL_ERROR, "Could not pick GSM band "
+			"for ARFCN %u\n", trx->arfcn);
+		trx->bts->band = 0x00;
 	}
 
 	lc15_band = lc15bts_select_lc15_band(trx, trx->arfcn);
@@ -1170,6 +1179,9 @@ const struct value_string lc15bts_l1cfgt_names[] = {
 	{ GsmL1_ConfigParamId_SetTxPowerLevel,	"Set Tx power level" },
 	{ GsmL1_ConfigParamId_SetLogChParams,	"Set logical channel params" },
 	{ GsmL1_ConfigParamId_SetCipheringParams,"Configure ciphering params" },
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	{ GsmL1_ConfigParamId_Set8pskPowerReduction,	"Set 8PSK Tx power reduction" },
+#endif
 	{ 0, NULL }
 };
 
@@ -1226,6 +1238,58 @@ static int chmod_txpower_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 
 	return 0;
 }
+
+static int chmod_max_cell_size_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+				  void *data)
+{
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
+	Litecell15_SetMaxCellSizeCnf_t *sac = &sysp->u.setMaxCellSizeCnf;
+
+	LOGP(DL1C, LOGL_INFO, "%s Rx SYS prim %s -> %s\n",
+			gsm_trx_name(trx),
+			get_value_string(lc15bts_sysprim_names, sysp->id),
+			get_value_string(lc15bts_l1status_names, sac->status));
+
+	msgb_free(resp);
+
+	return 0;
+}
+
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+static int chmod_txpower_backoff_8psk_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
+				  void *data)
+{
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1_msg);
+	GsmL1_MphConfigCnf_t *cc = &l1p->u.mphConfigCnf;
+
+	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
+		gsm_trx_name(trx),
+		get_value_string(lc15bts_l1cfgt_names, cc->cfgParamId));
+
+	LOGPC(DL1C, LOGL_INFO, "Backoff %u dB\n",
+		cc->cfgParams.set8pskPowerReduction.u8PowerReduction);
+
+	msgb_free(l1_msg);
+
+	return 0;
+}
+
+static int chmod_c0_idle_pwr_red_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
+				  void *data)
+{
+	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
+	Litecell15_SetC0IdleSlotPowerReductionCnf_t *sac = &sysp->u.setC0IdleSlotPowerReductionCnf;
+
+	LOGP(DL1C, LOGL_INFO, "%s Rx SYS prim %s -> %s\n",
+			gsm_trx_name(trx),
+			get_value_string(lc15bts_sysprim_names, sysp->id),
+			get_value_string(lc15bts_l1status_names, sac->status));
+
+	msgb_free(resp);
+
+	return 0;
+}
+#endif
 
 static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 				void *data)
@@ -1367,6 +1431,49 @@ int l1if_set_txpower(struct lc15l1_hdl *fl1h, float tx_power)
 
 	return l1if_gsm_req_compl(fl1h, msg, chmod_txpower_compl_cb, NULL);
 }
+
+int l1if_set_max_cell_size(struct lc15l1_hdl *fl1h, uint8_t cell_size)
+{
+	struct msgb *msg =  sysp_msgb_alloc();
+	Litecell15_Prim_t *sys_prim =  msgb_sysprim(msg);
+	sys_prim->id = Litecell15_PrimId_SetMaxCellSizeReq;
+	sys_prim->u.setMaxCellSizeReq.u8MaxCellSize = cell_size;
+
+	LOGP(DL1C, LOGL_INFO, "%s Set max cell size = %d qbits\n",
+			gsm_trx_name(fl1h->phy_inst->trx),
+			cell_size);
+
+	return l1if_req_compl(fl1h, msg, chmod_max_cell_size_compl_cb, NULL);
+
+}
+
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+int l1if_set_txpower_backoff_8psk(struct lc15l1_hdl *fl1h, uint8_t backoff)
+{
+	struct msgb *msg = l1p_msgb_alloc();
+	GsmL1_MphConfigReq_t *conf_req;
+
+	conf_req = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphConfigReq, fl1h, 0);
+	conf_req->cfgParamId = GsmL1_ConfigParamId_Set8pskPowerReduction;
+	conf_req->cfgParams.set8pskPowerReduction.u8PowerReduction = backoff;
+
+	return l1if_gsm_req_compl(fl1h, msg, chmod_txpower_backoff_8psk_compl_cb, NULL);
+}
+
+int l1if_set_txpower_c0_idle_pwr_red(struct lc15l1_hdl *fl1h, uint8_t red)
+{
+	struct msgb *msg =  sysp_msgb_alloc();
+	Litecell15_Prim_t *sys_prim =  msgb_sysprim(msg);
+	sys_prim->id = Litecell15_PrimId_SetC0IdleSlotPowerReductionReq;
+	sys_prim->u.setC0IdleSlotPowerReductionReq.u8PowerReduction = red;
+
+	LOGP(DL1C, LOGL_INFO, "%s Set C0 idle slot power reduction = %d dB\n",
+			gsm_trx_name(fl1h->phy_inst->trx),
+			red);
+
+	return l1if_req_compl(fl1h, msg, chmod_c0_idle_pwr_red_compl_cb, NULL);
+}
+#endif
 
 const enum GsmL1_CipherId_t rsl2l1_ciph[] = {
 	[0]	= GsmL1_CipherId_A50,
@@ -1700,7 +1807,8 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 		/* our L1 only supports one global TSC for all channels
 		 * one one TRX, so we need to make sure not to activate
 		 * channels with a different TSC!! */
-		if (TLVP_PRES_LEN(new_attr, NM_ATT_TSC, 1) &&
+		if (TLVP_PRESENT(new_attr, NM_ATT_TSC) &&
+		    TLVP_LEN(new_attr, NM_ATT_TSC) >= 1 &&
 		    *TLVP_VAL(new_attr, NM_ATT_TSC) != (bts->bsic & 7)) {
 			LOGP(DOML, LOGL_ERROR, "Channel TSC %u != BSIC-TSC %u\n",
 				*TLVP_VAL(new_attr, NM_ATT_TSC), bts->bsic & 7);
@@ -1718,12 +1826,39 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 	if (kind == NM_OC_RADIO_CARRIER) {
 		struct gsm_bts_trx *trx = obj;
 		struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
+		/* convert max TA to max cell size in qbits */
+		uint8_t cell_size = bts->max_ta << 2;
+
+		/* We do not need to check for L1 handle
+		 * because the max cell size parameter can receive before MphInit */
+		if (fl1h->phy_inst->u.lc15.max_cell_size != cell_size) {
+			/* instruct L1 to apply max cell size */
+			l1if_set_max_cell_size(fl1h, cell_size);
+			/* update current max cell size */
+			fl1h->phy_inst->u.lc15.max_cell_size = cell_size;
+		}
+
 
 		/* Did we go through MphInit yet? If yes fire and forget */
-		if (fl1h->hLayer1)
+		if (fl1h->hLayer1) {
 			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
-	}
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+			if (fl1h->phy_inst->u.lc15.tx_pwr_red_8psk != trx->max_power_backoff_8psk) {
+				/* update current Tx power backoff for 8-PSK */
+				fl1h->phy_inst->u.lc15.tx_pwr_red_8psk = trx->max_power_backoff_8psk;
+				/* instruct L1 to apply Tx power backoff for 8 PSK */
+				l1if_set_txpower_backoff_8psk(fl1h, fl1h->phy_inst->u.lc15.tx_pwr_red_8psk);
+			}
 
+			if (fl1h->phy_inst->u.lc15.tx_c0_idle_pwr_red != trx->c0_idle_power_red) {
+				/* update current C0 idle slot Tx power reduction */
+				fl1h->phy_inst->u.lc15.tx_c0_idle_pwr_red = trx->c0_idle_power_red;
+				/* instruct L1 to apply C0 idle slot power reduction */
+				l1if_set_txpower_c0_idle_pwr_red(fl1h, fl1h->phy_inst->u.lc15.tx_c0_idle_pwr_red);
+			}
+#endif
+		}
+	}
 	/* FIXME: we actually need to send a ACK or NACK for the OML message */
 	return oml_fom_ack_nack(msg, 0);
 }
@@ -1893,6 +2028,8 @@ static int ts_disconnect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 
 	cb_ts_disconnected(ts);
 
+	msgb_free(l1_msg);
+
 	return 0;
 }
 
@@ -1926,6 +2063,8 @@ static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	       ts->flags & TS_F_PDCH_DEACT_PENDING ? "DEACT_PENDING " : "");
 
 	cb_ts_connected(ts, 0);
+
+	msgb_free(l1_msg);
 
 	return 0;
 }

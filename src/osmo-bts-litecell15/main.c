@@ -83,13 +83,20 @@ unsigned int dsp_trace = 0x00000000;
 
 int bts_model_init(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
 	struct stat st;
 	static struct osmo_fd accept_fd, read_fd;
 	int rc;
 
+	struct bts_lc15_priv *bts_lc15 = talloc(bts, struct bts_lc15_priv);
+
+	bts->model_priv = bts_lc15;
 	bts->variant = BTS_OSMO_LITECELL15;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+
+	/* specific default values for LC15 platform */
+	bts_lc15->led_ctrl_mode = LC15_BTS_LED_CTRL_MODE_DEFAULT;
+	/* RTP drift threshold default */
+	bts_lc15->rtp_drift_thres_ms = LC15_BTS_RTP_DRIFT_THRES_DEFAULT;
 
 	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
 	if (rc < 0) {
