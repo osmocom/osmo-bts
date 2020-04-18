@@ -1311,8 +1311,10 @@ int l1if_activate_rf(struct lc15l1_hdl *hdl, int on)
 		/* maximum cell size in quarter-bits, 90 == 12.456 km */
 		sysp->u.activateRfReq.u8MaxCellSize = pinst->u.lc15.max_cell_size;
 
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 		/* auto tx power adjustment mode 0:none, 1: automatic*/
 		sysp->u.activateRfReq.u8EnAutoPowerAdjust = pinst->u.lc15.tx_pwr_adj_mode;
+#endif
 
 	} else {
 		sysp->id = Litecell15_PrimId_DeactivateRfReq;
@@ -1682,6 +1684,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	if (!pinst->u.lc15.dsp_alive_period)
 		pinst->u.lc15.dsp_alive_period = LC15_BTS_DSP_ALIVE_TMR_DEFAULT;
 
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 	if (!pinst->u.lc15.tx_pwr_adj_mode)
 		pinst->u.lc15.tx_pwr_adj_mode = LC15_BTS_TX_PWR_ADJ_DEFAULT;
 
@@ -1690,6 +1693,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	if (!pinst->u.lc15.tx_c0_idle_pwr_red)
 		pinst->u.lc15.tx_c0_idle_pwr_red = LC15_BTS_TX_C0_IDLE_RED_PWR_DEFAULT;
+#endif
 
 	struct lc15l1_hdl *fl1h = pinst->u.lc15.hdl;
 	fl1h->dsp_trace_f = dsp_trace;

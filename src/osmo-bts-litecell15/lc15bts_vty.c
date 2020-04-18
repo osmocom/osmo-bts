@@ -421,6 +421,7 @@ DEFUN(cfg_bts_led_mode, cfg_bts_led_mode_cmd,
 	return CMD_SUCCESS;
 }
 
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 DEFUN(cfg_phy_dsp_alive_timer, cfg_phy_dsp_alive_timer_cmd,
 	"dsp-alive-period <0-60>",
 	"Set DSP alive timer period in second\n")
@@ -487,6 +488,7 @@ DEFUN(cfg_phy_c0_idle_red_pwr, cfg_phy_c0_idle_red_pwr_cmd,
 	pinst->u.lc15.tx_c0_idle_pwr_red = (uint8_t)val;
 	return CMD_SUCCESS;
 }
+#endif
 
 DEFUN(cfg_bts_rtp_drift_threshold, cfg_bts_rtp_drift_threshold_cmd,
 	"rtp-drift-threshold <0-10000>",
@@ -546,6 +548,7 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 	vty_out(vty, "  pedestal-mode %s%s",
 			get_value_string(lc15_pedestal_mode_strs, pinst->u.lc15.pedestal_mode) , VTY_NEWLINE);
 
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 	vty_out(vty, "  dsp-alive-period %d%s",
 			pinst->u.lc15.dsp_alive_period, VTY_NEWLINE);
 
@@ -557,7 +560,7 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 
 	vty_out(vty, "  c0-idle-red-pwr %d%s",
 			pinst->u.lc15.tx_c0_idle_pwr_red, VTY_NEWLINE);
-
+#endif
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
@@ -622,11 +625,12 @@ int bts_model_vty_init(struct gsm_bts *bts)
 	install_element(PHY_INST_NODE, &cfg_phy_diversity_mode_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_pedestal_mode_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_max_cell_size_cmd);
+#if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 	install_element(PHY_INST_NODE, &cfg_phy_dsp_alive_timer_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_auto_tx_pwr_adj_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_tx_red_pwr_8psk_cmd);
 	install_element(PHY_INST_NODE, &cfg_phy_c0_idle_red_pwr_cmd);
-
+#endif
 	return 0;
 }
 
