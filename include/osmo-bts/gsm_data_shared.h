@@ -342,13 +342,13 @@ static inline const char *lchan_ciph_state_name(uint8_t state) {
 	return get_value_string(lchan_ciph_state_names, state);
 }
 
-enum {
+enum gsm_bts_trx_ts_flags {
 	TS_F_PDCH_ACTIVE =		0x1000,
 	TS_F_PDCH_ACT_PENDING =		0x2000,
 	TS_F_PDCH_DEACT_PENDING =	0x4000,
 	TS_F_PDCH_PENDING_MASK =	0x6000 /*<
 			TS_F_PDCH_ACT_PENDING | TS_F_PDCH_DEACT_PENDING */
-} gsm_bts_trx_ts_flags;
+};
 
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
@@ -799,8 +799,8 @@ enum gsm_bts_type_variant str2btsvariant(const char *arg);
 const char *btsvariant2str(enum gsm_bts_type_variant v);
 
 extern const struct value_string gsm_chreq_descs[];
-const struct value_string gsm_pchant_names[13];
-const struct value_string gsm_pchant_descs[13];
+extern const struct value_string gsm_pchant_names[13];
+extern const struct value_string gsm_pchant_descs[13];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);

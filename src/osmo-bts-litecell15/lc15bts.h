@@ -23,24 +23,24 @@ enum l1prim_type {
 };
 
 enum l1prim_type lc15bts_get_l1prim_type(GsmL1_PrimId_t id);
-const struct value_string lc15bts_l1prim_names[GsmL1_PrimId_NUM+1];
+extern const struct value_string lc15bts_l1prim_names[GsmL1_PrimId_NUM+1];
 GsmL1_PrimId_t lc15bts_get_l1prim_conf(GsmL1_PrimId_t id);
 
 enum l1prim_type lc15bts_get_sysprim_type(Litecell15_PrimId_t id);
-const struct value_string lc15bts_sysprim_names[Litecell15_PrimId_NUM+1];
+extern const struct value_string lc15bts_sysprim_names[Litecell15_PrimId_NUM+1];
 Litecell15_PrimId_t lc15bts_get_sysprim_conf(Litecell15_PrimId_t id);
 
-const struct value_string lc15bts_l1sapi_names[GsmL1_Sapi_NUM+1];
-const struct value_string lc15bts_l1status_names[GSML1_STATUS_NUM+1];
+extern const struct value_string lc15bts_l1sapi_names[GsmL1_Sapi_NUM+1];
+extern const struct value_string lc15bts_l1status_names[GSML1_STATUS_NUM+1];
 
-const struct value_string lc15bts_tracef_names[29];
-const struct value_string lc15bts_tracef_docs[29];
+extern const struct value_string lc15bts_tracef_names[29];
+extern const struct value_string lc15bts_tracef_docs[29];
 
-const struct value_string lc15bts_tch_pl_names[15];
+extern const struct value_string lc15bts_tch_pl_names[15];
 
-const struct value_string lc15bts_clksrc_names[10];
+extern const struct value_string lc15bts_clksrc_names[10];
 
-const struct value_string lc15bts_dir_names[6];
+extern const struct value_string lc15bts_dir_names[6];
 
 enum pdch_cs {
 	PDCH_CS_1,
@@ -59,6 +59,6 @@ enum pdch_cs {
 	_NUM_PDCH_CS
 };
 
-const uint8_t pdch_msu_size[_NUM_PDCH_CS];
+extern const uint8_t pdch_msu_size[_NUM_PDCH_CS];
 
 #endif /* LC15BTS_H */

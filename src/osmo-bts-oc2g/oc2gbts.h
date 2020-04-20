@@ -39,26 +39,26 @@ enum oc2g_auto_pwr_adjust_mode{
 };
 
 enum l1prim_type oc2gbts_get_l1prim_type(GsmL1_PrimId_t id);
-const struct value_string oc2gbts_l1prim_names[GsmL1_PrimId_NUM+1];
+extern const struct value_string oc2gbts_l1prim_names[GsmL1_PrimId_NUM+1];
 GsmL1_PrimId_t oc2gbts_get_l1prim_conf(GsmL1_PrimId_t id);
 
 enum l1prim_type oc2gbts_get_sysprim_type(Oc2g_PrimId_t id);
-const struct value_string oc2gbts_sysprim_names[Oc2g_PrimId_NUM+1];
+extern const struct value_string oc2gbts_sysprim_names[Oc2g_PrimId_NUM+1];
 Oc2g_PrimId_t oc2gbts_get_sysprim_conf(Oc2g_PrimId_t id);
 
-const struct value_string oc2gbts_l1sapi_names[GsmL1_Sapi_NUM+1];
-const struct value_string oc2gbts_l1status_names[GSML1_STATUS_NUM+1];
+extern const struct value_string oc2gbts_l1sapi_names[GsmL1_Sapi_NUM+1];
+extern const struct value_string oc2gbts_l1status_names[GSML1_STATUS_NUM+1];
 
-const struct value_string oc2gbts_tracef_names[29];
-const struct value_string oc2gbts_tracef_docs[29];
+extern const struct value_string oc2gbts_tracef_names[29];
+extern const struct value_string oc2gbts_tracef_docs[29];
 
-const struct value_string oc2gbts_tch_pl_names[15];
+extern const struct value_string oc2gbts_tch_pl_names[15];
 
-const struct value_string oc2gbts_clksrc_names[10];
+extern const struct value_string oc2gbts_clksrc_names[10];
 
-const struct value_string oc2gbts_dir_names[6];
+extern const struct value_string oc2gbts_dir_names[6];
 
-const struct value_string oc2gbts_rsl_ho_causes[IPAC_HO_RQD_CAUSE_MAX];
+extern const struct value_string oc2gbts_rsl_ho_causes[IPAC_HO_RQD_CAUSE_MAX];
 
 enum pdch_cs {
 	PDCH_CS_1,
@@ -77,7 +77,7 @@ enum pdch_cs {
 	_NUM_PDCH_CS
 };
 
-const uint8_t pdch_msu_size[_NUM_PDCH_CS];
+extern const uint8_t pdch_msu_size[_NUM_PDCH_CS];
 
 /* OC2G default parameters */
 #define OC2G_BTS_MAX_CELL_SIZE_DEFAULT	166	/* 166 qbits is default  value */

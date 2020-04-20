@@ -13,5 +13,6 @@ sysmobts_test_SOURCES = sysmobts_test.c $(top_srcdir)/src/osmo-bts-sysmo/utils.c
 		$(top_srcdir)/src/osmo-bts-sysmo/calib_file.c \
 		$(top_srcdir)/src/osmo-bts-sysmo/calib_fixup.c \
 		$(top_srcdir)/src/osmo-bts-sysmo/misc/sysmobts_par.c \
+		$(top_srcdir)/src/osmo-bts-sysmo/femtobts.c \
 		$(top_srcdir)/src/osmo-bts-sysmo/eeprom.c
 sysmobts_test_LDADD = $(top_builddir)/src/common/libbts.a $(LIBOSMOABIS_LIBS) $(LDADD)
