@@ -12,7 +12,7 @@ int lchan_meas_process_measurement(struct gsm_lchan *lchan, struct bts_ul_meas *
 
 void lchan_meas_reset(struct gsm_lchan *lchan);
 
-bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_update);
+bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn);
 
 int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn);
 

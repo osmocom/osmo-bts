@@ -45,7 +45,7 @@ static bool array_contains(const uint8_t *arr, unsigned int len, uint8_t val) {
 
 /* Decide if a given frame number is part of the "-SUB" measurements (true) or not (false)
  * (this function is only used internally, it is public to call it from unit-tests) */
-bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_update)
+bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 {
 	uint32_t fn104 = fn % 104;
 
@@ -65,8 +65,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_upd
 			break;
 		case GSM48_CMODE_SPEECH_AMR:
 			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
-				return true;
-			if (is_amr_sid_update)
 				return true;
 			break;
 		default:
@@ -95,8 +93,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn, bool is_amr_sid_upd
 			break;
 		case GSM48_CMODE_SPEECH_AMR:
 			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
-				return true;
-			if (is_amr_sid_update)
 				return true;
 			break;
 		case GSM48_CMODE_SIGN:
@@ -343,7 +339,7 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 	/* We expect the lower layers to mark AMR SID_UPDATE frames already as such.
 	 * In this function, we only deal with the common logic as per the TS 45.008 tables */
 	if (!ulm->is_sub)
-		ulm->is_sub = ts45008_83_is_sub(lchan, fn, false);
+		ulm->is_sub = ts45008_83_is_sub(lchan, fn);
 
 	DEBUGPFN(DMEAS, fn, "%s adding measurement (is_sub=%u), num_ul_meas=%d, fn_mod=%u\n",
 		 gsm_lchan_name(lchan), ulm->is_sub, lchan->meas.num_ul_meas, fn_mod);

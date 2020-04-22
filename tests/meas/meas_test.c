@@ -469,7 +469,7 @@ static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
 	/* Walk trough the first 100 intervals and check for unexpected
 	 * results (false positive and false negative) */
 	for (i = 0; i < 104 * 100; i++) {
-		rc = ts45008_83_is_sub(lchan, i, false);
+		rc = ts45008_83_is_sub(lchan, i);
 		if (rc) {
 			if (!test_ts45008_83_is_sub_is_sacch(i)
 			    && !test_ts45008_83_is_sub_is_sub(i, ss)) {
