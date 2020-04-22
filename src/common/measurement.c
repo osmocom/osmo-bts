@@ -571,10 +571,11 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR)
 		num_meas_sub_expect = lchan_meas_sub_num_expected(lchan);
 	else {
-		/* FIXME: the amount of SUB Measurements is a dynamic parameter
-		 * in AMR and can not be determined by using a lookup table.
-		 * See also: OS#2978 */
-		num_meas_sub_expect = 0;
+		/* When AMR is used, we expect at least one SUB frame, since
+		 * the SACCH will always be SUB frame. There may occur more
+		 * SUB frames but since DTX periods in AMR are dynamic, we
+		 * can not know how much exactly. */
+		num_meas_sub_expect = 1;
 	}
 
 	if (lchan->meas.num_ul_meas > num_ul_meas_expect)
@@ -618,9 +619,16 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 			num_ul_meas_actual++;
 		} else {
 			m = &measurement_dummy;
-			if (num_ul_meas_expect - i <= num_meas_sub_expect - num_meas_sub) {
-				num_meas_sub_subst++;
-				is_sub = true;
+
+			/* For AMR the amount of SUB frames is defined by the
+			 * the occurrence of DTX periods, which are dynamically
+			 * negotiated in AMR, so we can not know if and how many
+			 * SUB frames are missing. */
+			if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+				if (num_ul_meas_expect - i <= num_meas_sub_expect - num_meas_sub) {
+					num_meas_sub_subst++;
+					is_sub = true;
+				}
 			}
 
 			num_ul_meas_subst++;
@@ -633,21 +641,42 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		}
 	}
 
-	LOGP(DMEAS, LOGL_DEBUG, "%s received UL measurements contain %u SUB measurements, expected %u\n",
-	     gsm_lchan_name(lchan), num_meas_sub_actual, num_meas_sub_expect);
+	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+		LOGP(DMEAS, LOGL_DEBUG,
+		     "%s received UL measurements contain %u SUB measurements, expected %u\n",
+		     gsm_lchan_name(lchan), num_meas_sub_actual,
+		     num_meas_sub_expect);
+	} else {
+		LOGP(DMEAS, LOGL_DEBUG,
+		     "%s received UL measurements contain %u SUB measurements, expected at least %u\n",
+		     gsm_lchan_name(lchan), num_meas_sub_actual,
+		     num_meas_sub_expect);
+	}
+
 	LOGP(DMEAS, LOGL_DEBUG, "%s replaced %u measurements with dummy values, from which %u were SUB measurements\n",
 	     gsm_lchan_name(lchan), num_ul_meas_subst, num_meas_sub_subst);
 
-	if (num_meas_sub != num_meas_sub_expect) {
-		LOGP(DMEAS, LOGL_ERROR, "%s Incorrect number of SUB measurements detected! (%u vs exp %u)\n",
-		     gsm_lchan_name(lchan), num_meas_sub, num_meas_sub_expect);
-		/* Normally the logic above should make sure that there is
-		 * always the exact amount of SUB measurements taken into
-		 * account. If not then the logic that decides tags the received
-		 * measurements as is_sub works incorrectly. Since the logic
-		 * above only adds missing measurements during the calculation
-		 * it can not remove excess SUB measurements or add missing SUB
-		 * measurements when there is no more room in the interval. */
+	/* Normally the logic above should make sure that there is
+	 * always the exact amount of SUB measurements taken into
+	 * account. If not then the logic that decides tags the received
+	 * measurements as is_sub works incorrectly. Since the logic
+	 * above only adds missing measurements during the calculation
+	 * it can not remove excess SUB measurements or add missing SUB
+	 * measurements when there is no more room in the interval. */
+	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+		if (num_meas_sub != num_meas_sub_expect) {
+			LOGP(DMEAS, LOGL_ERROR,
+			     "%s Incorrect number of SUB measurements detected! (%u vs exp %u)\n",
+			     gsm_lchan_name(lchan), num_meas_sub,
+			     num_meas_sub_expect);
+		}
+	} else {
+		if (num_meas_sub < num_meas_sub_expect) {
+			LOGP(DMEAS, LOGL_ERROR,
+			     "%s Incorrect number of SUB measurements detected! (%u vs exp >=%u)\n",
+			     gsm_lchan_name(lchan), num_meas_sub,
+			     num_meas_sub_expect);
+		}
 	}
 
 	/* Measurement computation step 2: divide */
