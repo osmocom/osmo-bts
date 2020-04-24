@@ -1671,7 +1671,7 @@ static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void 
 	msgb_free(resp);
 }
 
-static int dsp_alive_timer_cb(void *data)
+static void dsp_alive_timer_cb(void *data)
 {
 	struct oc2gl1_hdl *fl1h = data;
 	struct gsm_bts_trx *trx = fl1h->phy_inst->trx;
@@ -1706,7 +1706,7 @@ static int dsp_alive_timer_cb(void *data)
 				/* allocate new list of sent alarms */
 				alarm_sent = talloc_zero(fl1h, struct oml_alarm_list);
 				if (!alarm_sent)
-					return -EIO;
+					return;
 
 				alarm_sent->alarm_signal = S_NM_OML_BTS_DSP_ALIVE_ALARM;
 				/* add alarm to sent list */
@@ -1722,14 +1722,14 @@ static int dsp_alive_timer_cb(void *data)
 	rc = l1if_req_compl(fl1h, msg, dsp_alive_compl_cb, NULL);
 	if (rc < 0) {
 		LOGP(DL1C, LOGL_FATAL, "Failed to send %s primitive\n", get_value_string(oc2gbts_sysprim_names, sys_prim->id));
-		return -EIO;
+		return;
 	}
 
 	/* restart timer */
 	fl1h->hw_alive.dsp_alive_cnt = 0;
 	osmo_timer_schedule(&fl1h->hw_alive.dsp_alive_timer, fl1h->hw_alive.dsp_alive_period, 0);
 
-	return 0;
+	return;
 }
 #endif
 
@@ -1793,8 +1793,7 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	}
 
 	/ * initialize DSP heart beat alive timer * /
-	fl1h->hw_alive.dsp_alive_timer.cb = dsp_alive_timer_cb;
-	fl1h->hw_alive.dsp_alive_timer.data = fl1h;
+	osmo_timer_setup(&fl1h->hw_alive.dsp_alive_timer, dsp_alive_timer_cb, fl1h);
 	fl1h->hw_alive.dsp_alive_cnt = 0;
 	fl1h->hw_alive.dsp_alive_period = pinst->u.oc2g.dsp_alive_period;
 	osmo_timer_schedule(&fl1h->hw_alive.dsp_alive_timer, fl1h->hw_alive.dsp_alive_period, 0); */
