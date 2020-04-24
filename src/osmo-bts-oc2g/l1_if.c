@@ -1658,7 +1658,7 @@ int l1if_close(struct oc2gl1_hdl *fl1h)
 
 /* TODO(oramadan) MERGE */
 #ifdef MERGE_ME
-static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
 {
 	Oc2g_Prim_t *sysp = msgb_sysprim(resp);
 	Oc2g_IsAliveCnf_t *sac = &sysp->u.isAliveCnf;
@@ -1669,6 +1669,7 @@ static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void 
 			get_value_string(oc2gbts_sysprim_names, sysp->id), sac->status, trx->nr);
 
 	msgb_free(resp);
+	return 0;
 }
 
 static void dsp_alive_timer_cb(void *data)
