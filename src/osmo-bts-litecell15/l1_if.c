@@ -1605,7 +1605,7 @@ int l1if_close(struct lc15l1_hdl *fl1h)
 }
 
 #if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
-static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+static int dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
 {
 	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
 	Litecell15_IsAliveCnf_t *sac = &sysp->u.isAliveCnf;
@@ -1616,6 +1616,7 @@ static void dsp_alive_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void 
 			get_value_string(lc15bts_sysprim_names, sysp->id), sac->status, trx->nr);
 
 	msgb_free(resp);
+	return 0;
 }
 
 static void dsp_alive_timer_cb(void *data)
