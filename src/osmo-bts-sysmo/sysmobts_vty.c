@@ -178,7 +178,7 @@ DEFUN(cfg_phy_dsp_trace_f, cfg_phy_dsp_trace_f_cmd,
 	struct phy_instance *pinst = vty->index;
 	unsigned int flag;
 
-	flag = get_string_value(femtobts_tracef_names, argv[1]);
+	flag = get_string_value(femtobts_tracef_names, argv[0]);
 	pinst->u.sysmobts.dsp_trace_f |= flag;
 
 	return CMD_SUCCESS;
@@ -190,7 +190,7 @@ DEFUN(cfg_phy_no_dsp_trace_f, cfg_phy_no_dsp_trace_f_cmd,
 	struct phy_instance *pinst = vty->index;
 	unsigned int flag;
 
-	flag = get_string_value(femtobts_tracef_names, argv[1]);
+	flag = get_string_value(femtobts_tracef_names, argv[0]);
 	pinst->u.sysmobts.dsp_trace_f &= ~flag;
 
 	return CMD_SUCCESS;
