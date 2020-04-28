@@ -341,8 +341,10 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 	if (!ulm->is_sub)
 		ulm->is_sub = ts45008_83_is_sub(lchan, fn);
 
-	DEBUGPFN(DMEAS, fn, "%s adding measurement (is_sub=%u), num_ul_meas=%d, fn_mod=%u\n",
-		 gsm_lchan_name(lchan), ulm->is_sub, lchan->meas.num_ul_meas, fn_mod);
+	DEBUGPFN(DMEAS, fn, "%s adding measurement (ber10k=%u, ta_offs=%d, ci=%0.2f, is_sub=%u, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
+		 gsm_lchan_name(lchan), ulm->ber10k, ulm->ta_offs_256bits,
+		 ulm->c_i, ulm->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
+		 fn_mod);
 
 	memcpy(&lchan->meas.uplink[lchan->meas.num_ul_meas++], ulm,
 		sizeof(*ulm));
