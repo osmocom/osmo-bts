@@ -1,0 +1,1 @@
+* update libosmocore dependency to > 1.3.x for lapdm_channel_init3()

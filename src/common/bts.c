@@ -429,7 +429,8 @@ int lchan_init_lapdm(struct gsm_lchan *lchan)
 			  "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
 			  t200_ms_dcch[DL_SAPI0], t200_ms_dcch[DL_SAPI3],
 			  t200_ms_acch[DL_SAPI0], t200_ms_acch[DL_SAPI3]);
-		lapdm_channel_init2(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type);
+		lapdm_channel_init3(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type,
+				    gsm_lchan_name(lchan));
 		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
 		lapdm_channel_set_l1(lc, NULL, lchan);
 	}
