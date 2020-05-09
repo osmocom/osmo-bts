@@ -119,7 +119,7 @@ int oml_router_init(struct gsm_bts *bts, const char *path,
 
 	read_fd->cb = oml_router_read_cb;
 	read_fd->data = bts;
-	read_fd->when = BSC_FD_READ;
+	read_fd->when = OSMO_FD_READ;
 	read_fd->fd = -1;
 
 	rc = osmo_sock_unix_init_ofd(accept_fd, SOCK_SEQPACKET, 0,

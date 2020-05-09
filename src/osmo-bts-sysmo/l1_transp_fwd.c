@@ -128,7 +128,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *fl1h)
 
 	ofd->data = fl1h;
 	ofd->priv_nr = q;
-	ofd->when |= BSC_FD_READ;
+	ofd->when |= OSMO_FD_READ;
 
 	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
 				bts_host, fwd_udp_ports[q],

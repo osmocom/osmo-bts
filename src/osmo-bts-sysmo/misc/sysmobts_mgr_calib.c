@@ -169,7 +169,7 @@ static void mgr_gps_open(struct sysmobts_mgr_instance *mgr)
 #endif
 	mgr->calib.gpsfd.data = mgr;
 	mgr->calib.gpsfd.cb = mgr_gps_read;
-	mgr->calib.gpsfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	mgr->calib.gpsfd.when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 	mgr->calib.gpsfd.fd = mgr->calib.gpsdata->gps_fd;
 	if (osmo_fd_register(&mgr->calib.gpsfd) < 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
@@ -459,7 +459,7 @@ static void bts_recon_timer_cb(void *data)
 	struct sysmobts_mgr_instance *mgr = data;
 
 	/* The connection failures are to be expected during boot */
-	mgr->calib.bts_conn->ofd->when |= BSC_FD_WRITE;
+	mgr->calib.bts_conn->ofd->when |= OSMO_FD_WRITE;
 	rc = ipa_client_conn_open(mgr->calib.bts_conn);
 	if (rc < 0) {
 		LOGP(DLCTRL, LOGL_NOTICE, "Failed to connect to BTS.\n");

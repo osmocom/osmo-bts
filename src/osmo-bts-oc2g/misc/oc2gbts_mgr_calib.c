@@ -222,7 +222,7 @@ static void mgr_gps_open(struct oc2gbts_mgr_instance *mgr)
 
 	mgr->gps.gpsfd.data = mgr;
 	mgr->gps.gpsfd.cb = mgr_gps_read;
-	mgr->gps.gpsfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	mgr->gps.gpsfd.when = OSMO_FD_READ | OSMO_FD_EXCEPT;
 	mgr->gps.gpsfd.fd = mgr->gps.gpsdata.gps_fd;
 	if (osmo_fd_register(&mgr->gps.gpsfd) < 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
@@ -607,7 +607,7 @@ static void bts_recon_timer_cb(void *data)
 	select_led_pattern(mgr);
 
 	/* The connection failures are to be expected during boot */
-	mgr->oc2gbts_ctrl.bts_conn->ofd->when |= BSC_FD_WRITE;
+	mgr->oc2gbts_ctrl.bts_conn->ofd->when |= OSMO_FD_WRITE;
 	rc = ipa_client_conn_open(mgr->oc2gbts_ctrl.bts_conn);
 	if (rc < 0) {
 		LOGP(DLCTRL, LOGL_NOTICE, "Failed to connect to BTS.\n");

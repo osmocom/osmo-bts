@@ -1719,7 +1719,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	int64_t elapsed_us, error_us;
 	int rc, i;
 
-	if (!(what & BSC_FD_READ))
+	if (!(what & OSMO_FD_READ))
 		return 0;
 
 	/* read from timerfd: number of expirations of periodic timer */

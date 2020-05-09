@@ -95,18 +95,18 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 
 	queue = container_of(fd, struct osmo_wqueue, bfd);
 
-	if (what & BSC_FD_READ)
+	if (what & OSMO_FD_READ)
 		queue->read_cb(fd);
 
-	if (what & BSC_FD_EXCEPT)
+	if (what & OSMO_FD_EXCEPT)
 		queue->except_cb(fd);
 
-	if (what & BSC_FD_WRITE) {
+	if (what & OSMO_FD_WRITE) {
 		struct iovec iov[5];
 		struct msgb *msg, *tmp;
 		int written, count = 0;
 
-		fd->when &= ~BSC_FD_WRITE;
+		fd->when &= ~OSMO_FD_WRITE;
 
 		llist_for_each_entry(msg, &queue->msg_queue, list) {
 			/* more writes than we have */
@@ -124,7 +124,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		/* Nothing scheduled? This should not happen. */
 		if (count == 0) {
 			if (!llist_empty(&queue->msg_queue))
-				fd->when |= BSC_FD_WRITE;
+				fd->when |= OSMO_FD_WRITE;
 			return 0;
 		}
 
@@ -132,7 +132,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		if (written < 0) {
 			/* nothing written?! */
 			if (!llist_empty(&queue->msg_queue))
-				fd->when |= BSC_FD_WRITE;
+				fd->when |= OSMO_FD_WRITE;
 			return 0;
 		}
 
@@ -151,7 +151,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		}
 
 		if (!llist_empty(&queue->msg_queue))
-			fd->when |= BSC_FD_WRITE;
+			fd->when |= OSMO_FD_WRITE;
 	}
 
 	return 0;
@@ -275,7 +275,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 	read_ofd->priv_nr = q;
 	read_ofd->data = hdl;
 	read_ofd->cb = l1if_fd_cb;
-	read_ofd->when = BSC_FD_READ;
+	read_ofd->when = OSMO_FD_READ;
 	rc = osmo_fd_register(read_ofd);
 	if (rc < 0) {
 		close(read_ofd->fd);
@@ -295,7 +295,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 	write_ofd->fd = rc;
 	write_ofd->priv_nr = q;
 	write_ofd->data = hdl;
-	write_ofd->when = BSC_FD_WRITE;
+	write_ofd->when = OSMO_FD_WRITE;
 	rc = osmo_fd_register(write_ofd);
 	if (rc < 0) {
 		close(write_ofd->fd);
