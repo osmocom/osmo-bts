@@ -1127,7 +1127,6 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
-	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -1161,7 +1160,6 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
-		*first_fn = bi->fn;
 	}
 
 	/* update mask */
@@ -1366,7 +1364,6 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
-	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -1405,7 +1402,6 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (bid == 0) {
 		memset(*bursts_p + 464, 0, 232);
 		*mask = 0x0;
-		*first_fn = bi->fn;
 	}
 
 	/* update mask */
