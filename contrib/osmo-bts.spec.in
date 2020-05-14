@@ -12,22 +12,21 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
-#
-
 Name:           osmo-bts
-Version:        1.2.0.49
+Version:        @VERSION@
 Release:        0
 Summary:        Osmocom BTS-Side code (Abis, scheduling)
 License:        AGPL-3.0-or-later AND GPL-2.0-only
 Group:          Productivity/Telephony/Servers
-URL:            https://osmocom.org/projects/osmobts/wiki/Wiki
+URL:            https://osmocom.org/projects/osmobts
 Source:         %{name}-%{version}.tar.xz
 BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  libtool
 BuildRequires:  pkgconfig >= 0.20
+%if 0%{?suse_version}
 BuildRequires:  systemd-rpm-macros
+%endif
 BuildRequires:  pkgconfig(libosmoabis) >= 0.6.0
 BuildRequires:  pkgconfig(libosmocodec) >= 1.2.0
 BuildRequires:  pkgconfig(libosmocoding) >= 1.2.0
@@ -38,6 +37,7 @@ BuildRequires:  pkgconfig(libosmotrau) >= 0.6.0
 BuildRequires:  pkgconfig(libosmovty) >= 1.2.0
 ### FIXME: DependencyHACK to include  osmocom/gprs/protocol/gsm_04_60.h
 BuildRequires:  pkgconfig(libosmogb)
+%{?systemd_requires}
 
 %description
 Osmocom BTS-Side code (A-bis, scheduling).
@@ -76,6 +76,7 @@ make V=1 %{?_smp_mflags}
 %install
 %make_install
 
+%if 0%{?suse_version}
 %pre    %service_add_pre    osmo-bts-trx.service
 %post   %service_add_post   osmo-bts-trx.service
 %preun  %service_del_preun  osmo-bts-trx.service
@@ -84,6 +85,7 @@ make V=1 %{?_smp_mflags}
 %post   virtual %service_add_post   osmo-bts-virtual.service
 %preun  virtual %service_del_preun  osmo-bts-virtual.service
 %postun virtual %service_del_postun osmo-bts-virtual.service
+%endif
 
 %check
 make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
