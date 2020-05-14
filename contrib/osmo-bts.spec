@@ -12,11 +12,8 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
-#
-
 Name:           osmo-bts
-Version:        1.2.0.49
+Version:        0.0.0
 Release:        0
 Summary:        Osmocom BTS-Side code (Abis, scheduling)
 License:        AGPL-3.0-or-later AND GPL-2.0-only
@@ -27,7 +24,11 @@ BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  libtool
 BuildRequires:  pkgconfig >= 0.20
+%if 0%{?centos_ver}
+BuildRequires:  systemd
+%else
 BuildRequires:  systemd-rpm-macros
+%endif
 BuildRequires:  pkgconfig(libosmoabis) >= 0.6.0
 BuildRequires:  pkgconfig(libosmocodec) >= 1.2.0
 BuildRequires:  pkgconfig(libosmocoding) >= 1.2.0
@@ -76,6 +77,7 @@ make V=1 %{?_smp_mflags}
 %install
 %make_install
 
+%if 0%{?suse_version}
 %pre    %service_add_pre    osmo-bts-trx.service
 %post   %service_add_post   osmo-bts-trx.service
 %preun  %service_del_preun  osmo-bts-trx.service
@@ -84,6 +86,7 @@ make V=1 %{?_smp_mflags}
 %post   virtual %service_add_post   osmo-bts-virtual.service
 %preun  virtual %service_del_preun  osmo-bts-virtual.service
 %postun virtual %service_del_postun osmo-bts-virtual.service
+%endif
 
 %check
 make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
