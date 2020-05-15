@@ -78,6 +78,10 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	else
 		gsmtap_chantype = chantype_rsl2gsmtap2(rsl_chantype, chdesc->link_id, is_voice_frame); /* the logical channel type */
 
+	if (gsmtap_chantype == GSMTAP_CHANNEL_UNKNOWN)
+		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Tx GSMTAP for RSL channel type 0x%02x: cannot send, this"
+		       " channel type is unknown in GSMTAP\n", rsl_chantype);
+
 #if MODULO_HYPERFRAME
 	/* Restart fn after every superframe (26 * 51 frames) to simulate hyperframe overflow each 6 seconds. */
 	fn %= 26 * 51;
