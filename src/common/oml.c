@@ -472,7 +472,6 @@ int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 	if (!nmsg)
 		return -ENOMEM;
 
-	msgb_put(nmsg, sizeof(struct abis_om_fom_hdr));
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
