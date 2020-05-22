@@ -5,9 +5,13 @@ SUBDIRS = include src tests doc contrib
 
 # package the contrib and doc
 EXTRA_DIST = \
+	.version \
+	README.md \
 	contrib/dump_docs.py \
-	git-version-gen .version \
-	README.md
+	contrib/osmo-bts.spec.in \
+	debian \
+	git-version-gen \
+	$(NULL)
 
 AM_DISTCHECK_CONFIGURE_FLAGS = \
 	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
