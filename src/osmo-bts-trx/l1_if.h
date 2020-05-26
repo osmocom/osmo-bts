@@ -73,10 +73,7 @@ struct trx_config {
 	uint8_t			rxgain;
 	int			rxgain_sent;
 
-	int			power_valid;
-	uint8_t			power;
-	int			power_oml;
-	int			power_sent;
+	int			forced_max_power_red; /* -1 if not forced by VTY config (default) */
 
 	bool			nominal_power_set_by_vty; /* whether nominal trx power was enforced/retreived from VTY config "nominal-tx-power" */
 

@@ -303,9 +303,9 @@ int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 }
 
 /*! Send "SETPOWER" command to TRX */
-int trx_if_cmd_setpower(struct trx_l1h *l1h, int db)
+int trx_if_cmd_setpower(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_cb *cb)
 {
-	return trx_ctrl_cmd(l1h, 0, "SETPOWER", "%d", db);
+	return trx_ctrl_cmd_cb(l1h, 0, cb, "SETPOWER", "%d", power_att_db);
 }
 
 /*! Send "SETMAXDLY" command to TRX, i.e. maximum delay for RACH bursts */
@@ -544,6 +544,22 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 	return 0;
 }
 
+static int trx_ctrl_rx_rsp_setpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_setpower_cb *cb = (trx_if_cmd_setpower_cb*) rsp->cb;
+	struct phy_instance *pinst = l1h->phy_inst;
+	int power_att;
+
+	if (rsp->status)
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETPOWER failed with status %d\n",
+			rsp->status);
+	if (cb) {
+		sscanf(rsp->params, "%d", &power_att);
+		cb(l1h, power_att, rsp->status);
+	}
+	return 0;
+}
+
 /* -EINVAL: unrecoverable error, exit BTS
  * N > 0: try sending originating command again after N seconds
  * 0: Done with response, get originating command out from send queue
@@ -562,6 +578,8 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 	 * so that's why we should use tcm instead of rsp. */
 	} else if (strcmp(tcm->cmd, "SETFORMAT") == 0) {
 		return trx_ctrl_rx_rsp_setformat(l1h, rsp);
+	} else if (strcmp(tcm->cmd, "SETPOWER") == 0) {
+		return trx_ctrl_rx_rsp_setpower(l1h, rsp);
 	}
 
 	if (rsp->status) {

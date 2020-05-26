@@ -65,6 +65,8 @@ int get_p_nominal_mdBm(struct gsm_bts_trx *trx);
 int get_p_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie);
 int get_p_target_mdBm_lchan(struct gsm_lchan *lchan);
 
+int get_p_actual_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm);
+
 int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie);
 int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan);
 

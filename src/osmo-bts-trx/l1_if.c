@@ -177,11 +177,30 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 		if (rc == 0 && pinst->phy_link->state != PHY_LINK_CONNECTED) {
 			trx_sched_clock_started(pinst->trx->bts);
 			phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
+
+			/* Begin to ramp up the power on all TRX associated with this phy */
+			llist_for_each_entry(pinst, &plink->instances, list) {
+				struct gsm_bts_trx *trx = pinst->trx;
+				if (l1h->config.forced_max_power_red == -1)
+					power_ramp_start(trx, get_p_nominal_mdBm(trx), 0);
+				else
+					power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1);
+			}
 		} else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN) {
 			trx_sched_clock_stopped(pinst->trx->bts);
 			phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
 		}
 	}
+}
+
+static void l1if_setpower_cb(struct trx_l1h *l1h, int power_att_db, int rc)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct gsm_bts_trx *trx = pinst->trx;
+
+	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_setpower_cb(power_att_db=%d, rc=%d)\n", power_att_db, rc);
+
+	power_trx_change_compl(trx, get_p_max_out_mdBm(trx) - to_mdB(power_att_db));
 }
 
 /*
@@ -249,10 +268,6 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			trx_if_cmd_setrxgain(l1h, l1h->config.rxgain);
 			l1h->config.rxgain_sent = 1;
 		}
-		if (l1h->config.power_valid && !l1h->config.power_sent) {
-			trx_if_cmd_setpower(l1h, l1h->config.power);
-			l1h->config.power_sent = 1;
-		}
 		if (l1h->config.maxdly_valid && !l1h->config.maxdly_sent) {
 			trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
 			l1h->config.maxdly_sent = 1;
@@ -279,7 +294,6 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			plink->u.osmotrx.poweronoff_sent = true;
 		}
 		l1h->config.rxgain_sent = 0;
-		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
 		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
@@ -304,7 +318,6 @@ int l1if_provision_transceiver(struct gsm_bts *bts)
 		l1h->config.tsc_sent = 0;
 		l1h->config.bsic_sent = 0;
 		l1h->config.rxgain_sent = 0;
-		l1h->config.power_sent = 0;
 		l1h->config.maxdly_sent = 0;
 		l1h->config.maxdlynb_sent = 0;
 		for (tn = 0; tn < TRX_NR_TS; tn++)
@@ -408,6 +421,7 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	struct phy_link *plink = pinst->phy_link;
 	uint16_t arfcn = trx->arfcn;
 
 	if (l1h->config.arfcn != arfcn || !l1h->config.arfcn_valid) {
@@ -417,12 +431,11 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 		l1if_provision_transceiver_trx(l1h);
 	}
 
-	if (l1h->config.power_oml) {
-		l1h->config.power = trx->max_power_red;
-		l1h->config.power_valid = 1;
-		l1h->config.power_sent = 0;
-		l1if_provision_transceiver_trx(l1h);
-	}
+	/* Begin to ramp up the power if power reduction is set by OML and TRX
+	   is already running. Otherwise skip, power ramping will be started
+	   after TRX is running */
+	if (plink->u.osmotrx.powered && l1h->config.forced_max_power_red == -1)
+		power_ramp_start(pinst->trx, get_p_nominal_mdBm(pinst->trx), 0);
 
 	return 0;
 }
@@ -802,9 +815,10 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 {
-#warning "implement bts_model_change_power\n"
-	LOGP(DL1C, LOGL_NOTICE, "Setting TRX output power not supported!\n");
-	return 0;
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	int power_att = (get_p_max_out_mdBm(trx) - p_trxout_mdBm) / 1000;
+	return trx_if_cmd_setpower(l1h, power_att, l1if_setpower_cb);
 }
 
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)

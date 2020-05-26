@@ -129,6 +129,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->bts->c0->nominal_power);
 	return 0;
 }
 
@@ -150,7 +151,7 @@ void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 	l1h = trx_l1h_alloc(tall_bts_ctx, pinst);
 	pinst->u.osmotrx.hdl = l1h;
 
-	l1h->config.power_oml = 1;
+	l1h->config.forced_max_power_red = -1;
 }
 
 int main(int argc, char **argv)

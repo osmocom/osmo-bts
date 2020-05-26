@@ -97,6 +97,7 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 {
 	uint8_t tn;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	struct gsm_bts_trx *trx = pinst->trx;
 
 	vty_out(vty, "PHY Instance %s%s",
 		phy_instance_name(pinst), VTY_NEWLINE);
@@ -106,11 +107,9 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 			l1h->config.rxgain, VTY_NEWLINE);
 	else
 		vty_out(vty, " rx-gain        : undefined%s", VTY_NEWLINE);
-	if (l1h->config.power_valid)
-		vty_out(vty, " tx-attenuation : %d dB%s",
-			l1h->config.power, VTY_NEWLINE);
-	else
-		vty_out(vty, " tx-attenuation : undefined%s", VTY_NEWLINE);
+	vty_out(vty, " tx-attenuation : %d dB%s",
+		(get_p_max_out_mdBm(trx) - get_p_actual_mdBm(trx, trx->power_params.p_total_tgt_mdBm))/1000,
+		VTY_NEWLINE);
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, " maxdly : %d%s", l1h->config.maxdly,
 			VTY_NEWLINE);
@@ -171,6 +170,7 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	int val = atoi(argv[0]);
 
 	trx->nominal_power = val;
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->nominal_power);
 	l1h->config.nominal_power_set_by_vty = true;
 
 	return CMD_SUCCESS;
@@ -361,36 +361,19 @@ DEFUN(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
 }
 
 DEFUN(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
-	"osmotrx tx-attenuation <0-50>",
+	"osmotrx tx-attenuation (oml|<0-50>)",
 	OSMOTRX_STR
 	"Set the transmitter attenuation\n"
-	"Fixed attenuation in dB, overriding OML\n")
+	"Use NM_ATT_RF_MAXPOWR_R (max power reduction) from BSC via OML (default)\n"
+	"Fixed attenuation in dB, overriding OML (default)\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	l1h->config.power = atoi(argv[0]);
-	l1h->config.power_oml = 0;
-	l1h->config.power_valid = 1;
-	l1h->config.power_sent = 0;
-	l1if_provision_transceiver_trx(l1h);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phyinst_tx_atten_oml, cfg_phyinst_tx_atten_oml_cmd,
-	"osmotrx tx-attenuation oml",
-	OSMOTRX_STR
-	"Set the transmitter attenuation\n"
-	"Use NM_ATT_RF_MAXPOWR_R (max power reduction) from BSC via OML\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-
-	l1h->config.power_oml = 1;
-	l1h->config.power_valid = 1;
-	l1h->config.power_sent = 0;
-	l1if_provision_transceiver_trx(l1h);
+	if (strcmp(argv[0], "oml") == 0)
+		l1h->config.forced_max_power_red = -1;
+	else
+		l1h->config.forced_max_power_red = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -403,18 +386,6 @@ DEFUN(cfg_phyinst_no_rxgain, cfg_phyinst_no_rxgain_cmd,
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	l1h->config.rxgain_valid = 0;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_phyinst_no_tx_atten, cfg_phyinst_no_tx_atten_cmd,
-	"no osmotrx tx-attenuation",
-	NO_STR OSMOTRX_STR "Unset the transmitter attenuation\n")
-{
-	struct phy_instance *pinst = vty->index;
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-
-	l1h->config.power_valid = 0;
 
 	return CMD_SUCCESS;
 }
@@ -574,13 +545,11 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 	if (l1h->config.rxgain_valid)
 		vty_out(vty, "  osmotrx rx-gain %d%s",
 			l1h->config.rxgain, VTY_NEWLINE);
-	if (l1h->config.power_valid) {
-		if (l1h->config.power_oml)
-			vty_out(vty, "  osmotrx tx-attenuation oml%s", VTY_NEWLINE);
-		else
-			vty_out(vty, "  osmotrx tx-attenuation %d%s",
-				l1h->config.power, VTY_NEWLINE);
-	}
+	if (l1h->config.forced_max_power_red == -1)
+		vty_out(vty, "  osmotrx tx-attenuation oml%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  osmotrx tx-attenuation %d%s",
+			l1h->config.forced_max_power_red, VTY_NEWLINE);
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, "  osmotrx maxdly %d%s", l1h->config.maxdly, VTY_NEWLINE);
 	if (l1h->config.maxdlynb_valid)
@@ -637,9 +606,7 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);
-	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_oml_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_no_rxgain_cmd);
-	install_element(PHY_INST_NODE, &cfg_phyinst_no_tx_atten_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_slotmask_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_power_on_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_maxdly_cmd);
