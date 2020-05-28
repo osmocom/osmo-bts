@@ -692,7 +692,7 @@ DEFUN(cfg_bts_smscb_qhyst, cfg_bts_smscb_qhyst_cmd,
 }
 
 
-#define DB_DBM_STR 							\
+#define DB_MDB_STR 							\
 	"Unit is dB (decibels)\n"					\
 	"Unit is mdB (milli-decibels, or rather 1/10000 bel)\n"
 
@@ -710,7 +710,7 @@ DEFUN(cfg_trx_user_gain,
 	cfg_trx_user_gain_cmd,
 	"user-gain <-100000-100000> (dB|mdB)",
 	"Inform BTS about additional, user-provided gain or attenuation at TRX output\n"
-	"Value of user-provided external gain(+)/attenuation(-)\n" DB_DBM_STR)
+	"Value of user-provided external gain(+)/attenuation(-)\n" DB_MDB_STR)
 {
 	struct gsm_bts_trx *trx = vty->index;
 
@@ -723,7 +723,7 @@ DEFUN(cfg_trx_user_gain,
 DEFUN(cfg_trx_pr_max_initial, cfg_trx_pr_max_initial_cmd,
 	"power-ramp max-initial <0-100000> (dBm|mdBm)",
 	PR_STR "Maximum initial power\n"
-	"Value\n" DB_DBM_STR)
+	"Value\n" DB_MDB_STR)
 {
 	struct gsm_bts_trx *trx = vty->index;
 
@@ -736,7 +736,7 @@ DEFUN(cfg_trx_pr_max_initial, cfg_trx_pr_max_initial_cmd,
 DEFUN(cfg_trx_pr_step_size, cfg_trx_pr_step_size_cmd,
 	"power-ramp step-size <1-100000> (dB|mdB)",
 	PR_STR "Power increase by step\n"
-	"Step size\n" DB_DBM_STR)
+	"Step size\n" DB_MDB_STR)
 {
 	struct gsm_bts_trx *trx = vty->index;
 
