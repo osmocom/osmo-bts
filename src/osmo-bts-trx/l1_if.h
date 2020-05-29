@@ -78,6 +78,8 @@ struct trx_config {
 	int			power_oml;
 	int			power_sent;
 
+	bool			nominal_power_set_by_vty; /* whether nominal trx power was enforced/retreived from VTY config "nominal-tx-power" */
+
 	int			maxdly_valid;
 	int			maxdly;
 	int			maxdly_sent;

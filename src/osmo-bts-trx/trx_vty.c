@@ -160,6 +160,36 @@ DEFUN(show_phy, show_phy_cmd, "show phy",
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
+	"nominal-tx-power <-10-100>",
+	"Manually set (force) the nominal transmit output power in dBm\n"
+	"Nominal transmit output power level in dBm\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	int val = atoi(argv[0]);
+
+	trx->nominal_power = val;
+	l1h->config.nominal_power_set_by_vty = true;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_no_nominal_power, cfg_trx_no_nominal_power_cmd,
+	"no nominal-tx-power",
+	NO_STR
+	"Manually set (force) the nominal transmit output power; ask the TRX instead (default)\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	l1h->config.nominal_power_set_by_vty = false;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 	"osmotrx ms-power-loop <-127-127>", OSMOTRX_STR
 	"Enable MS power control loop\nTarget RSSI value (transceiver specific, "
@@ -574,6 +604,12 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
 {
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	if (l1h->config.nominal_power_set_by_vty)
+		vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,
+			VTY_NEWLINE);
 }
 
 int bts_model_vty_init(struct gsm_bts *bts)
@@ -582,6 +618,9 @@ int bts_model_vty_init(struct gsm_bts *bts)
 
 	install_element_ve(&show_transceiver_cmd);
 	install_element_ve(&show_phy_cmd);
+
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
+	install_element(TRX_NODE, &cfg_trx_no_nominal_power_cmd);
 
 	install_element(PHY_NODE, &cfg_phy_ms_power_loop_cmd);
 	install_element(PHY_NODE, &cfg_phy_no_ms_power_loop_cmd);
