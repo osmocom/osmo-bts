@@ -138,6 +138,13 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
 }
 
+/* Sets the nominal power, in dB */
+void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, unsigned int nominal_power)
+{
+	trx->nominal_power = nominal_power;
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
+}
+
 static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc)
 {
 	struct phy_instance *pinst = l1h->phy_inst;

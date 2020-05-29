@@ -169,8 +169,7 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	int val = atoi(argv[0]);
 
-	trx->nominal_power = val;
-	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->nominal_power);
+	l1if_trx_set_nominal_power(trx, val);
 	l1h->config.nominal_power_set_by_vty = true;
 
 	return CMD_SUCCESS;
