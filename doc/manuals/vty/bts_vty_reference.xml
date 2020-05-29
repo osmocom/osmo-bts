@@ -18,10 +18,11 @@
         <param name='terminal' doc='Write to terminal' />
       </params>
     </command>
-    <command id='write file'>
+    <command id='write file [PATH]'>
       <params>
         <param name='write' doc='Write running configuration to memory, network, or terminal' />
         <param name='file' doc='Write to configuration file' />
+        <param name='[PATH]' doc='Set file path to store the config, or replace if already exists' />
       </params>
     </command>
     <command id='write memory'>
@@ -161,6 +162,69 @@
         <param name='[&lt;0-255&gt;]' doc='TRX Number' />
         <param name='[&lt;0-7&gt;]' doc='Timeslot Number' />
         <param name='[&lt;0-7&gt;]' doc='Logical Channel Number' />
+      </params>
+    </command>
+    <command id='logging filter l1-sapi (unknown|agch|bcch|cbch|facch/f|facch/h|fcch|idle|nch|pacch|pagch|pbcch|pch|pdtch|pnch|ppch|prach|ptcch|rach|sacch|sch|sdcch|tch/f|tch/h)'>
+      <params>
+        <param name='logging' doc='Configure logging' />
+        <param name='filter' doc='Filter log messages' />
+        <param name='l1-sapi' doc='L1 SAPI' />
+        <param name='unknown' doc='UNKNOWN' />
+        <param name='agch' doc='AGCH' />
+        <param name='bcch' doc='BCCH' />
+        <param name='cbch' doc='CBCH' />
+        <param name='facch/f' doc='FACCH/F' />
+        <param name='facch/h' doc='FACCH/H' />
+        <param name='fcch' doc='FCCH' />
+        <param name='idle' doc='IDLE' />
+        <param name='nch' doc='NCH' />
+        <param name='pacch' doc='PACCH' />
+        <param name='pagch' doc='PAGCH' />
+        <param name='pbcch' doc='PBCCH' />
+        <param name='pch' doc='PCH' />
+        <param name='pdtch' doc='PDTCH' />
+        <param name='pnch' doc='PNCH' />
+        <param name='ppch' doc='PPCH' />
+        <param name='prach' doc='PRACH' />
+        <param name='ptcch' doc='PTCCH' />
+        <param name='rach' doc='RACH' />
+        <param name='sacch' doc='SACCH' />
+        <param name='sch' doc='SCH' />
+        <param name='sdcch' doc='SDCCH' />
+        <param name='tch/f' doc='TCH/F' />
+        <param name='tch/h' doc='TCH/H' />
+      </params>
+    </command>
+    <command id='no logging filter l1-sapi (unknown|agch|bcch|cbch|facch/f|facch/h|fcch|idle|nch|pacch|pagch|pbcch|pch|pdtch|pnch|ppch|prach|ptcch|rach|sacch|sch|sdcch|tch/f|tch/h)'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='logging' doc='Configure logging' />
+        <param name='filter' doc='Filter log messages' />
+        <param name='l1-sapi' doc='L1 SAPI' />
+        <param name='unknown' doc='UNKNOWN' />
+        <param name='agch' doc='AGCH' />
+        <param name='bcch' doc='BCCH' />
+        <param name='cbch' doc='CBCH' />
+        <param name='facch/f' doc='FACCH/F' />
+        <param name='facch/h' doc='FACCH/H' />
+        <param name='fcch' doc='FCCH' />
+        <param name='idle' doc='IDLE' />
+        <param name='nch' doc='NCH' />
+        <param name='pacch' doc='PACCH' />
+        <param name='pagch' doc='PAGCH' />
+        <param name='pbcch' doc='PBCCH' />
+        <param name='pch' doc='PCH' />
+        <param name='pdtch' doc='PDTCH' />
+        <param name='pnch' doc='PNCH' />
+        <param name='ppch' doc='PPCH' />
+        <param name='prach' doc='PRACH' />
+        <param name='ptcch' doc='PTCCH' />
+        <param name='rach' doc='RACH' />
+        <param name='sacch' doc='SACCH' />
+        <param name='sch' doc='SCH' />
+        <param name='sdcch' doc='SDCCH' />
+        <param name='tch/f' doc='TCH/F' />
+        <param name='tch/h' doc='TCH/H' />
       </params>
     </command>
     <command id='logging enable'>
@@ -330,6 +394,52 @@
         <param name='logging' doc='Configure logging' />
         <param name='level' doc='Set the log level for a specified category' />
         <param name='force-all' doc='Release any globally forced log level set with &apos;logging level force-all &lt;level&gt;&apos;' />
+      </params>
+    </command>
+    <command id='logp (rsl|oml|rll|rr|meas|pag|l1c|l1p|dsp|pcu|ho|trx|loop|abis|rtp|sum|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats|lgsup|loap|lss7|lsccp|lsua|lm3ua|lmgcp|ljibuf|lrspro) (debug|info|notice|error|fatal) .LOGMESSAGE'>
+      <params>
+        <param name='logp' doc='Print a message on all log outputs; useful for placing markers in test logs' />
+        <param name='rsl' doc='A-bis Radio Siganlling Link (RSL)' />
+        <param name='oml' doc='A-bis Network Management / O&amp;M (NM/OML)' />
+        <param name='rll' doc='A-bis Radio Link Layer (RLL)' />
+        <param name='rr' doc='Layer3 Radio Resource (RR)' />
+        <param name='meas' doc='Radio Measurement Processing' />
+        <param name='pag' doc='Paging Subsystem' />
+        <param name='l1c' doc='Layer 1 Control (MPH)' />
+        <param name='l1p' doc='Layer 1 Primitives (PH)' />
+        <param name='dsp' doc='DSP Trace Messages' />
+        <param name='pcu' doc='PCU interface' />
+        <param name='ho' doc='Handover' />
+        <param name='trx' doc='TRX interface' />
+        <param name='loop' doc='Control loops' />
+        <param name='abis' doc='A-bis Intput Subsystem' />
+        <param name='rtp' doc='Realtime Transfer Protocol' />
+        <param name='sum' doc='DSUM' />
+        <param name='lglobal' doc='Library-internal global log family' />
+        <param name='llapd' doc='LAPD in libosmogsm' />
+        <param name='linp' doc='A-bis Intput Subsystem' />
+        <param name='lmux' doc='A-bis B-Subchannel TRAU Frame Multiplex' />
+        <param name='lmi' doc='A-bis Input Driver for Signalling' />
+        <param name='lmib' doc='A-bis Input Driver for B-Channels (voice)' />
+        <param name='lsms' doc='Layer3 Short Message Service (SMS)' />
+        <param name='lctrl' doc='Control Interface' />
+        <param name='lgtp' doc='GPRS GTP library' />
+        <param name='lstats' doc='Statistics messages and logging' />
+        <param name='lgsup' doc='Generic Subscriber Update Protocol' />
+        <param name='loap' doc='Osmocom Authentication Protocol' />
+        <param name='lss7' doc='libosmo-sigtran Signalling System 7' />
+        <param name='lsccp' doc='libosmo-sigtran SCCP Implementation' />
+        <param name='lsua' doc='libosmo-sigtran SCCP User Adaptation' />
+        <param name='lm3ua' doc='libosmo-sigtran MTP3 User Adaptation' />
+        <param name='lmgcp' doc='libosmo-mgcp Media Gateway Control Protocol' />
+        <param name='ljibuf' doc='libosmo-netif Jitter Buffer' />
+        <param name='lrspro' doc='Remote SIM protocol' />
+        <param name='debug' doc='Log debug messages and higher levels' />
+        <param name='info' doc='Log informational messages and higher levels' />
+        <param name='notice' doc='Log noticeable messages and higher levels' />
+        <param name='error' doc='Log error messages and higher levels' />
+        <param name='fatal' doc='Log only fatal messages' />
+        <param name='.LOGMESSAGE' doc='Arbitrary message to log on given category and log level' />
       </params>
     </command>
     <command id='show logging vty'>
@@ -555,6 +665,69 @@
         <param name='[&lt;0-7&gt;]' doc='Logical Channel Number' />
       </params>
     </command>
+    <command id='logging filter l1-sapi (unknown|agch|bcch|cbch|facch/f|facch/h|fcch|idle|nch|pacch|pagch|pbcch|pch|pdtch|pnch|ppch|prach|ptcch|rach|sacch|sch|sdcch|tch/f|tch/h)'>
+      <params>
+        <param name='logging' doc='Configure logging' />
+        <param name='filter' doc='Filter log messages' />
+        <param name='l1-sapi' doc='L1 SAPI' />
+        <param name='unknown' doc='UNKNOWN' />
+        <param name='agch' doc='AGCH' />
+        <param name='bcch' doc='BCCH' />
+        <param name='cbch' doc='CBCH' />
+        <param name='facch/f' doc='FACCH/F' />
+        <param name='facch/h' doc='FACCH/H' />
+        <param name='fcch' doc='FCCH' />
+        <param name='idle' doc='IDLE' />
+        <param name='nch' doc='NCH' />
+        <param name='pacch' doc='PACCH' />
+        <param name='pagch' doc='PAGCH' />
+        <param name='pbcch' doc='PBCCH' />
+        <param name='pch' doc='PCH' />
+        <param name='pdtch' doc='PDTCH' />
+        <param name='pnch' doc='PNCH' />
+        <param name='ppch' doc='PPCH' />
+        <param name='prach' doc='PRACH' />
+        <param name='ptcch' doc='PTCCH' />
+        <param name='rach' doc='RACH' />
+        <param name='sacch' doc='SACCH' />
+        <param name='sch' doc='SCH' />
+        <param name='sdcch' doc='SDCCH' />
+        <param name='tch/f' doc='TCH/F' />
+        <param name='tch/h' doc='TCH/H' />
+      </params>
+    </command>
+    <command id='no logging filter l1-sapi (unknown|agch|bcch|cbch|facch/f|facch/h|fcch|idle|nch|pacch|pagch|pbcch|pch|pdtch|pnch|ppch|prach|ptcch|rach|sacch|sch|sdcch|tch/f|tch/h)'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='logging' doc='Configure logging' />
+        <param name='filter' doc='Filter log messages' />
+        <param name='l1-sapi' doc='L1 SAPI' />
+        <param name='unknown' doc='UNKNOWN' />
+        <param name='agch' doc='AGCH' />
+        <param name='bcch' doc='BCCH' />
+        <param name='cbch' doc='CBCH' />
+        <param name='facch/f' doc='FACCH/F' />
+        <param name='facch/h' doc='FACCH/H' />
+        <param name='fcch' doc='FCCH' />
+        <param name='idle' doc='IDLE' />
+        <param name='nch' doc='NCH' />
+        <param name='pacch' doc='PACCH' />
+        <param name='pagch' doc='PAGCH' />
+        <param name='pbcch' doc='PBCCH' />
+        <param name='pch' doc='PCH' />
+        <param name='pdtch' doc='PDTCH' />
+        <param name='pnch' doc='PNCH' />
+        <param name='ppch' doc='PPCH' />
+        <param name='prach' doc='PRACH' />
+        <param name='ptcch' doc='PTCCH' />
+        <param name='rach' doc='RACH' />
+        <param name='sacch' doc='SACCH' />
+        <param name='sch' doc='SCH' />
+        <param name='sdcch' doc='SDCCH' />
+        <param name='tch/f' doc='TCH/F' />
+        <param name='tch/h' doc='TCH/H' />
+      </params>
+    </command>
     <command id='logging enable'>
       <params>
         <param name='logging' doc='Configure logging' />
@@ -724,6 +897,52 @@
         <param name='force-all' doc='Release any globally forced log level set with &apos;logging level force-all &lt;level&gt;&apos;' />
       </params>
     </command>
+    <command id='logp (rsl|oml|rll|rr|meas|pag|l1c|l1p|dsp|pcu|ho|trx|loop|abis|rtp|sum|lglobal|llapd|linp|lmux|lmi|lmib|lsms|lctrl|lgtp|lstats|lgsup|loap|lss7|lsccp|lsua|lm3ua|lmgcp|ljibuf|lrspro) (debug|info|notice|error|fatal) .LOGMESSAGE'>
+      <params>
+        <param name='logp' doc='Print a message on all log outputs; useful for placing markers in test logs' />
+        <param name='rsl' doc='A-bis Radio Siganlling Link (RSL)' />
+        <param name='oml' doc='A-bis Network Management / O&amp;M (NM/OML)' />
+        <param name='rll' doc='A-bis Radio Link Layer (RLL)' />
+        <param name='rr' doc='Layer3 Radio Resource (RR)' />
+        <param name='meas' doc='Radio Measurement Processing' />
+        <param name='pag' doc='Paging Subsystem' />
+        <param name='l1c' doc='Layer 1 Control (MPH)' />
+        <param name='l1p' doc='Layer 1 Primitives (PH)' />
+        <param name='dsp' doc='DSP Trace Messages' />
+        <param name='pcu' doc='PCU interface' />
+        <param name='ho' doc='Handover' />
+        <param name='trx' doc='TRX interface' />
+        <param name='loop' doc='Control loops' />
+        <param name='abis' doc='A-bis Intput Subsystem' />
+        <param name='rtp' doc='Realtime Transfer Protocol' />
+        <param name='sum' doc='DSUM' />
+        <param name='lglobal' doc='Library-internal global log family' />
+        <param name='llapd' doc='LAPD in libosmogsm' />
+        <param name='linp' doc='A-bis Intput Subsystem' />
+        <param name='lmux' doc='A-bis B-Subchannel TRAU Frame Multiplex' />
+        <param name='lmi' doc='A-bis Input Driver for Signalling' />
+        <param name='lmib' doc='A-bis Input Driver for B-Channels (voice)' />
+        <param name='lsms' doc='Layer3 Short Message Service (SMS)' />
+        <param name='lctrl' doc='Control Interface' />
+        <param name='lgtp' doc='GPRS GTP library' />
+        <param name='lstats' doc='Statistics messages and logging' />
+        <param name='lgsup' doc='Generic Subscriber Update Protocol' />
+        <param name='loap' doc='Osmocom Authentication Protocol' />
+        <param name='lss7' doc='libosmo-sigtran Signalling System 7' />
+        <param name='lsccp' doc='libosmo-sigtran SCCP Implementation' />
+        <param name='lsua' doc='libosmo-sigtran SCCP User Adaptation' />
+        <param name='lm3ua' doc='libosmo-sigtran MTP3 User Adaptation' />
+        <param name='lmgcp' doc='libosmo-mgcp Media Gateway Control Protocol' />
+        <param name='ljibuf' doc='libosmo-netif Jitter Buffer' />
+        <param name='lrspro' doc='Remote SIM protocol' />
+        <param name='debug' doc='Log debug messages and higher levels' />
+        <param name='info' doc='Log informational messages and higher levels' />
+        <param name='notice' doc='Log noticeable messages and higher levels' />
+        <param name='error' doc='Log error messages and higher levels' />
+        <param name='fatal' doc='Log only fatal messages' />
+        <param name='.LOGMESSAGE' doc='Arbitrary message to log on given category and log level' />
+      </params>
+    </command>
     <command id='show logging vty'>
       <params>
         <param name='show' doc='Show running system information' />
@@ -843,6 +1062,13 @@
         <param name='lchan' doc='logical channel commands' />
         <param name='&lt;0-1&gt;' doc='logical channel number' />
         <param name='loopback' doc='Set loopback' />
+      </params>
+    </command>
+    <command id='test send-failure-event-report &lt;0-255&gt;'>
+      <params>
+        <param name='test' doc='Various testing commands' />
+        <param name='send-failure-event-report' doc='Send a test OML failure event report to the BSC' />
+        <param name='&lt;0-255&gt;' doc='BTS Number' />
       </params>
     </command>
   </node>
@@ -1327,6 +1553,12 @@
         <param name='disable' doc='Disable the reporter' />
       </params>
     </command>
+    <command id='flush-period &lt;0-65535&gt;'>
+      <params>
+        <param name='flush-period' doc='Configure stats sub-system' />
+        <param name='&lt;0-65535&gt;' doc='Send all stats even if they have not changed (i.e. force the flush)every N-th reporting interval. Set to 0 to disable regular flush (default).' />
+      </params>
+    </command>
   </node>
   <node id='config-line'>
     <name>config-line</name>
@@ -1351,7 +1583,19 @@
   </node>
   <node id='config-e1_input'>
     <name>config-e1_input</name>
-    <command id='e1_line &lt;0-255&gt; driver (misdn|misdn_lapd|dahdi|ipa|unixsocket)'>
+    <command id='pcap .FILE'>
+      <params>
+        <param name='pcap' doc='Setup a pcap recording of all E1 traffic' />
+        <param name='.FILE' doc='Filename to save the packets to' />
+      </params>
+    </command>
+    <command id='no pcap'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='pcap' doc='Disable pcap recording of all E1 traffic' />
+      </params>
+    </command>
+    <command id='e1_line &lt;0-255&gt; driver (misdn|misdn_lapd|dahdi|e1d|ipa|unixsocket)'>
       <params>
         <param name='e1_line' doc='Configure E1/T1/J1 Line' />
         <param name='&lt;0-255&gt;' doc='Line Number' />
@@ -1359,8 +1603,9 @@
         <param name='misdn' doc='mISDN supported E1 Card (kernel LAPD)' />
         <param name='misdn_lapd' doc='mISDN supported E1 Card (userspace LAPD)' />
         <param name='dahdi' doc='DAHDI supported E1/T1/J1 Card' />
-        <param name='ipa' doc='IPA TCP/IP input' />
-        <param name='unixsocket' doc='HSL TCP/IP input' />
+        <param name='e1d' doc='IPA TCP/IP input' />
+        <param name='ipa' doc='HSL TCP/IP input' />
+        <param name='unixsocket' doc='Unix socket input' />
       </params>
     </command>
     <command id='e1_line &lt;0-255&gt; port &lt;0-255&gt;'>
@@ -1410,6 +1655,23 @@
         <param name='e1_line' doc='Configure E1/T1/J1 Line' />
         <param name='&lt;0-255&gt;' doc='Line Number' />
         <param name='keepalive' doc='Enable keep-alive probing' />
+      </params>
+    </command>
+    <command id='e1_line &lt;0-255&gt; ipa-keepalive &lt;1-300&gt; &lt;1-300&gt;'>
+      <params>
+        <param name='e1_line' doc='Configure E1/T1/J1 Line' />
+        <param name='&lt;0-255&gt;' doc='Line Number' />
+        <param name='ipa-keepalive' doc='Enable IPA PING/PONG keep-alive' />
+        <param name='&lt;1-300&gt;' doc='Idle interval in seconds before probes are sent' />
+        <param name='&lt;1-300&gt;' doc='Time to wait for PONG response' />
+      </params>
+    </command>
+    <command id='no e1_line &lt;0-255&gt; ipa-keepalive'>
+      <params>
+        <param name='no' doc='Negate a command or set its defaults' />
+        <param name='e1_line' doc='Configure E1/T1/J1 Line' />
+        <param name='&lt;0-255&gt;' doc='Line Number' />
+        <param name='ipa-keepalive' doc='Enable IPA PING/PONG keep-alive' />
       </params>
     </command>
     <command id='ipa bind A.B.C.D'>
@@ -1479,6 +1741,13 @@
         <param name='NETDEV' doc='(null)' />
       </params>
     </command>
+    <command id='virtual-um ttl &lt;0-255&gt;'>
+      <params>
+        <param name='virtual-um' doc='Virtual Um layer' />
+        <param name='ttl' doc='Configure the TTL for transmitted multicast GSMTAP packets' />
+        <param name='&lt;0-255&gt;' doc='(null)' />
+      </params>
+    </command>
   </node>
   <node id='phy-inst'>
     <name>phy-inst</name>
@@ -1514,6 +1783,13 @@
         <param name='port-range' doc='Range of local ports to use for RTP/RTCP traffic' />
         <param name='&lt;1-65534&gt;' doc='(null)' />
         <param name='&lt;1-65534&gt;' doc='(null)' />
+      </params>
+    </command>
+    <command id='rtp ip-dscp &lt;0-63&gt;'>
+      <params>
+        <param name='rtp' doc='RTP parameters' />
+        <param name='ip-dscp' doc='Specify DSCP for RTP/IP packets' />
+        <param name='&lt;0-63&gt;' doc='The DSCP value (upper 6 bits of TOS)' />
       </params>
     </command>
     <command id='band (450|GSM450|480|GSM480|750|GSM750|810|GSM810|850|GSM850|900|GSM900|1800|DCS1800|1900|PCS1900)'>
