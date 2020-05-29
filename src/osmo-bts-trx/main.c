@@ -104,10 +104,9 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->variant = BTS_OSMO_TRX;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
-	/* The nominal value is later  overwritten through VTY cmd
-	 * 'nominal-tx-power' if present.
-	 * FIXME: In the future, we want osmo-trx to provide us with this info
-	 * through TRXC. */
+	/* The nominal value for each TRX is later overwritten through VTY cmd
+	 * 'nominal-tx-power' if present, otherwise through TRXC cmd NOMTXPOWER.
+	 */
 	bts->c0->nominal_power = 23;
 
 	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
@@ -129,6 +128,9 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
+	/* The nominal value for each TRX is later overwritten through VTY cmd
+	 * 'nominal-tx-power' if present, otherwise through TRXC cmd NOMTXPOWER.
+	 */
 	l1if_trx_set_nominal_power(trx, trx->bts->c0->nominal_power);
 	return 0;
 }

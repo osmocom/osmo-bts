@@ -302,6 +302,12 @@ int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 	return trx_ctrl_cmd(l1h, 0, "SETRXGAIN", "%d", db);
 }
 
+/*! Send "NOMTXPOWER" command to TRX */
+int trx_if_cmd_getnompower(struct trx_l1h *l1h, trx_if_cmd_getnompower_cb *cb)
+{
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "NOMTXPOWER", "");
+}
+
 /*! Send "SETPOWER" command to TRX */
 int trx_if_cmd_setpower_att(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_att_cb *cb)
 {
@@ -544,6 +550,22 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 	return 0;
 }
 
+static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
+{
+	trx_if_cmd_getnompower_cb *cb = (trx_if_cmd_getnompower_cb*) rsp->cb;
+	struct phy_instance *pinst = l1h->phy_inst;
+	unsigned int nominal_power;
+
+	if (rsp->status)
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver NOMTXPOWER failed with status %d\n",
+			rsp->status);
+	if (cb) {
+		sscanf(rsp->params, "%u", &nominal_power);
+		cb(l1h, nominal_power, rsp->status);
+	}
+	return 0;
+}
+
 static int trx_ctrl_rx_rsp_setpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
 {
 	trx_if_cmd_setpower_att_cb *cb = (trx_if_cmd_setpower_att_cb*) rsp->cb;
@@ -578,6 +600,8 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 	 * so that's why we should use tcm instead of rsp. */
 	} else if (strcmp(tcm->cmd, "SETFORMAT") == 0) {
 		return trx_ctrl_rx_rsp_setformat(l1h, rsp);
+	} else if (strcmp(tcm->cmd, "NOMTXPOWER") == 0) {
+		return trx_ctrl_rx_rsp_nomtxpower(l1h, rsp);
 	} else if (strcmp(tcm->cmd, "SETPOWER") == 0) {
 		return trx_ctrl_rx_rsp_setpower(l1h, rsp);
 	}

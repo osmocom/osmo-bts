@@ -145,6 +145,16 @@ void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, unsigned int nominal_po
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
 }
 
+static void l1if_getnompower_cb(struct trx_l1h *l1h, unsigned int nominal_power, int rc)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct gsm_bts_trx *trx = pinst->trx;
+
+	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_getnompower_cb(nominal_power=%u, rc=%d)\n", nominal_power, rc);
+
+	l1if_trx_set_nominal_power(trx, nominal_power);
+}
+
 static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -240,6 +250,13 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		if (!l1h->config.arfcn_sent) {
 			trx_if_cmd_rxtune(l1h, l1h->config.arfcn);
 			trx_if_cmd_txtune(l1h, l1h->config.arfcn);
+			/* After TXTUNE is sent to TRX, get the tx nominal power
+			 * (which may vary precisly on band/arfcn. Avoid sending
+			 * it if we are forced by VTY to use a specific nominal
+			 * power (because TRX may not support the command or
+			 * provide broken values) */
+			if (!l1h->config.nominal_power_set_by_vty)
+				trx_if_cmd_getnompower(l1h, l1if_getnompower_cb);
 			l1h->config.arfcn_sent = 1;
 		}
 		if (!l1h->config.tsc_sent) {
