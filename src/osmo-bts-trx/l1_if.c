@@ -193,12 +193,12 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 	}
 }
 
-static void l1if_setpower_cb(struct trx_l1h *l1h, int power_att_db, int rc)
+static void l1if_setpower_att_cb(struct trx_l1h *l1h, int power_att_db, int rc)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct gsm_bts_trx *trx = pinst->trx;
 
-	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_setpower_cb(power_att_db=%d, rc=%d)\n", power_att_db, rc);
+	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_setpower_att_cb(power_att_db=%d, rc=%d)\n", power_att_db, rc);
 
 	power_trx_change_compl(trx, get_p_max_out_mdBm(trx) - to_mdB(power_att_db));
 }
@@ -818,7 +818,7 @@ int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	int power_att = (get_p_max_out_mdBm(trx) - p_trxout_mdBm) / 1000;
-	return trx_if_cmd_setpower(l1h, power_att, l1if_setpower_cb);
+	return trx_if_cmd_setpower_att(l1h, power_att, l1if_setpower_att_cb);
 }
 
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)

@@ -303,7 +303,7 @@ int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db)
 }
 
 /*! Send "SETPOWER" command to TRX */
-int trx_if_cmd_setpower(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_cb *cb)
+int trx_if_cmd_setpower_att(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_att_cb *cb)
 {
 	return trx_ctrl_cmd_cb(l1h, 0, cb, "SETPOWER", "%d", power_att_db);
 }
@@ -546,7 +546,7 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 
 static int trx_ctrl_rx_rsp_setpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp)
 {
-	trx_if_cmd_setpower_cb *cb = (trx_if_cmd_setpower_cb*) rsp->cb;
+	trx_if_cmd_setpower_att_cb *cb = (trx_if_cmd_setpower_att_cb*) rsp->cb;
 	struct phy_instance *pinst = l1h->phy_inst;
 	int power_att;
 
