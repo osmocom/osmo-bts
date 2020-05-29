@@ -197,6 +197,7 @@ static void test_power_ramp(struct gsm_bts_trx *trx, int dBm)
 {
 	printf("Testing tx_power ramping for sysmoBTS 1020\n");
 	trx->power_params = tpp_1020;
+	trx->power_params.ramp.step_interval_sec = 0; /* speedup test */
 	trx->max_power_red = 0;
 
 	power_ramp_start(trx, to_mdB(dBm), 0);
