@@ -166,10 +166,10 @@ static void test_bts_supports_cm(void)
 
 	bts = gsm_bts_alloc(ctx, 0);
 
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
 
 	OSMO_ASSERT(bts_supports_cm
 		    (bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1) == 1);

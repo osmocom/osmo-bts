@@ -62,13 +62,13 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->variant = BTS_OSMO_VIRTUAL;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
 
-	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_EFR);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
-	gsm_bts_set_feature(bts, BTS_FEAT_CBCH);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_EFR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
 
 	bts_model_vty_init(bts);
 

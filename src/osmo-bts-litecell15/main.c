@@ -110,16 +110,17 @@ int bts_model_init(struct gsm_bts *bts)
 		exit(23);
 	}
 
-	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
-	gsm_bts_set_feature(bts, BTS_FEAT_EGPRS);
-	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
-	gsm_bts_set_feature(bts, BTS_FEAT_AGCH_PCH_PROP);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_EFR);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_AMR);
-	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_AMR);
-	gsm_bts_set_feature(bts, BTS_FEAT_MS_PWR_CTRL_DSP);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_EGPRS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_AGCH_PCH_PROP);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_EFR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
+
+	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP);
 
 	bts_model_vty_init(bts);
 

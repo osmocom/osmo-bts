@@ -766,7 +766,7 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	struct gsm_bts_trx *trx = vty->index;
 	bool soft = !strcmp(argv[0], "osmo");
 
-	if (!soft && !gsm_bts_has_feature(trx->bts, BTS_FEAT_MS_PWR_CTRL_DSP)) {
+	if (!soft && !bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP)) {
 		/* NOTE: osmo-bts-trx used to have its own (low-level) MS Power Control loop, which
 		 * has been ripped out in favour of the common implementation. Configuration files
 		 * may still contain 'dsp', so let's be tolerant and override 'dsp' by 'osmo'. */
@@ -827,13 +827,27 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
 {
 	unsigned int i;
-	bool no_features = true;
+	bool no_features;
+
 	vty_out(vty, "  Features:%s", VTY_NEWLINE);
 
-	for (i = 0; i < _NUM_BTS_FEAT; i++) {
-		if (gsm_bts_has_feature(bts, i)) {
+	for (i = 0, no_features = true; i < _NUM_BTS_FEAT; i++) {
+		if (osmo_bts_has_feature(bts->features, i)) {
 			vty_out(vty, "    %03u ", i);
-			vty_out(vty, "%-40s%s", get_value_string(gsm_bts_features_descs, i), VTY_NEWLINE);
+			vty_out(vty, "%-40s%s", osmo_bts_feature_name(i), VTY_NEWLINE);
+			no_features = false;
+		}
+	}
+
+	if (no_features)
+		vty_out(vty, "    (not available)%s", VTY_NEWLINE);
+
+	vty_out(vty, "  BTS model specific (internal) flags:%s", VTY_NEWLINE);
+
+	for (i = 0, no_features = true; i < sizeof(bts->flags) * 8; i++) {
+		if (bts_internal_flag_get(bts, i)) {
+			vty_out(vty, "    %03u ", i);
+			vty_out(vty, "%-40s%s", get_value_string(bts_impl_flag_desc, i), VTY_NEWLINE);
 			no_features = false;
 		}
 	}

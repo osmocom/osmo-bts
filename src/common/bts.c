@@ -194,7 +194,7 @@ int bts_init(struct gsm_bts *bts)
 	osmo_rtp_init(tall_rtp_ctx);
 
 	/* features implemented in 'common', available for all models */
-	gsm_bts_set_feature(bts, BTS_FEAT_ETWS_PN);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_ETWS_PN);
 
 	rc = bts_model_init(bts);
 	if (rc < 0) {
@@ -258,7 +258,7 @@ int bts_trx_init(struct gsm_bts_trx *trx)
 	tpp->ramp.step_interval_sec = 1;
 
 	/* IF BTS model doesn't DSP/HW support MS Power Control Loop, enable osmo algo by default: */
-	if (!gsm_bts_has_feature(trx->bts, BTS_FEAT_MS_PWR_CTRL_DSP))
+	if (!bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP))
 		trx->ms_pwr_ctl_soft = true;
 
 	rc = bts_model_trx_init(trx);
@@ -797,7 +797,7 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 		    enum gsm48_chan_mode cm)
 {
-	enum gsm_bts_features feature = _NUM_BTS_FEAT;
+	enum osmo_bts_features feature = _NUM_BTS_FEAT;
 
 	/* We assume that signalling support is mandatory,
 	 * there is no BTS_FEAT_* definition to check that. */
@@ -845,7 +845,7 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 	}
 
 	/* Check if the feature is supported by this BTS */
-	if (gsm_bts_has_feature(bts, feature))
+	if (osmo_bts_has_feature(bts->features, feature))
 		return 1;
 
 	return 0;

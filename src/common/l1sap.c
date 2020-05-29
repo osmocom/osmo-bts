@@ -757,8 +757,8 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 		break;
 	case PRIM_INFO_MEAS:
 		/* We should never get an INFO_IND with PRIM_INFO_MEAS
-		 * when BTS_FEAT_MEAS_PAYLOAD_COMB is enabled */
-		if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+		 * when BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB is set */
+		if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
 			OSMO_ASSERT(false);
 
 		process_l1sap_meas_data(trx, l1sap, PRIM_MPH_INFO);
@@ -1279,7 +1279,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	/* The ph_data_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
 	 * processing */
-	if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
 		process_l1sap_meas_data(trx, l1sap, PRIM_PH_DATA);
 
 	if (ts_is_pdch(&trx->ts[tn])) {
@@ -1399,7 +1399,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	/* The ph_tch_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
 	 * processing */
-	if (gsm_bts_has_feature(trx->bts, BTS_FEAT_MEAS_PAYLOAD_COMB))
+	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
 		process_l1sap_meas_data(trx, l1sap, PRIM_TCH);
 
 	msgb_pull_to_l2(msg);

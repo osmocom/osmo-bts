@@ -14,6 +14,7 @@
 #include <osmocom/gsm/rxlev_stat.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <osmocom/gsm/meas_rep.h>
+#include <osmocom/gsm/bts_features.h>
 #include <osmocom/gsm/gsm48_rest_octets.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
@@ -37,8 +38,6 @@
 #define TS_MAX_LCHAN	8
 
 #define MAX_VERSION_LENGTH 64
-
-#define MAX_BTS_FEATURES 128
 
 struct gsm_lchan;
 struct osmo_rtp_socket;
@@ -402,35 +401,21 @@ enum bts_attribute {
 	TRX_PHY_VERSION,
 };
 
-/* N. B: always add new features to the end of the list (right before _NUM_BTS_FEAT) to avoid breaking compatibility
-   with BTS compiled against earlier version of this header. Also make sure that the description strings
-   gsm_bts_features_descs[] in gsm_data_shared.c are also updated accordingly! */
-enum gsm_bts_features {
-	BTS_FEAT_HSCSD,
-	BTS_FEAT_GPRS,
-	BTS_FEAT_EGPRS,
-	BTS_FEAT_ECSD,
-	BTS_FEAT_HOPPING,
-	BTS_FEAT_MULTI_TSC,
-	BTS_FEAT_OML_ALERTS,
-	BTS_FEAT_AGCH_PCH_PROP,
-	BTS_FEAT_CBCH,
-	BTS_FEAT_SPEECH_F_V1,
-	BTS_FEAT_SPEECH_H_V1,
-	BTS_FEAT_SPEECH_F_EFR,
-	BTS_FEAT_SPEECH_F_AMR,
-	BTS_FEAT_SPEECH_H_AMR,
-	BTS_FEAT_ETWS_PN,
-	BTS_FEAT_MS_PWR_CTRL_DSP,
-	/* When the feature is set then the measurement data is included in
-	 * (PRIM_PH_DATA) and struct ph_tch_param (PRIM_TCH). Otherwise the
-	 * measurement data is passed using a separate MPH INFO MEAS IND.
-	 * (See also ticket: OS#2977) */
-	BTS_FEAT_MEAS_PAYLOAD_COMB,
-	_NUM_BTS_FEAT
-};
+/* BTS implementation flags (internal use, not exposed via OML) */
+#define bts_internal_flag_get(bts, flag) \
+	((bts->flags & (typeof(bts->flags)) flag) != 0)
+#define bts_internal_flag_set(bts, flag) \
+	bts->flags |= (typeof(bts->flags)) flag
 
-extern const struct value_string gsm_bts_features_descs[];
+/* TODO: add a brief description of this flag */
+#define BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP		(1 << 0)
+/* When this flag is set then the measurement data is included in
+ * (PRIM_PH_DATA) and struct ph_tch_param (PRIM_TCH). Otherwise the
+ * measurement data is passed using a separate MPH INFO MEAS IND.
+ * (See also ticket: OS#2977) */
+#define BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB		(1 << 1)
+
+extern const struct value_string bts_impl_flag_desc[];
 
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
@@ -522,8 +507,10 @@ struct gsm_bts {
 	char version[MAX_VERSION_LENGTH];
 	char sub_model[MAX_VERSION_LENGTH];
 
-	/* features of a given BTS set/reported via OML */
+	/* public features of a given BTS (set/reported via OML) */
 	struct bitvec *features;
+	/* implementation flags of a given BTS (not exposed via OML) */
+	uint16_t flags;
 
 	/* Connected PCU version (if any) */
 	char pcu_version[MAX_VERSION_LENGTH];
@@ -738,18 +725,6 @@ const char *gsm_lchans_name(enum gsm_lchan_state s);
 static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 {
 	return lchan->name;
-}
-
-static inline int gsm_bts_set_feature(struct gsm_bts *bts, enum gsm_bts_features feat)
-{
-	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
-	return bitvec_set_bit_pos(bts->features, feat, 1);
-}
-
-static inline bool gsm_bts_has_feature(const struct gsm_bts *bts, enum gsm_bts_features feat)
-{
-	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
-	return bitvec_get_bit_pos(bts->features, feat);
 }
 
 void gsm_abis_mo_reset(struct gsm_abis_mo *mo);

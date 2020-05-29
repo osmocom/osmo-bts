@@ -92,24 +92,9 @@ const char *btsvariant2str(enum gsm_bts_type_variant v)
 	return get_value_string(osmo_bts_variant_names, v);
 }
 
-const struct value_string gsm_bts_features_descs[] = {
-	{ BTS_FEAT_HSCSD,		"HSCSD" },
-	{ BTS_FEAT_GPRS,		"GPRS" },
-	{ BTS_FEAT_EGPRS,		"EGPRS" },
-	{ BTS_FEAT_ECSD,		"ECSD" },
-	{ BTS_FEAT_HOPPING,		"Frequency Hopping" },
-	{ BTS_FEAT_MULTI_TSC,		"Multi-TSC" },
-	{ BTS_FEAT_OML_ALERTS,		"OML Alerts" },
-	{ BTS_FEAT_AGCH_PCH_PROP,	"AGCH/PCH proportional allocation" },
-	{ BTS_FEAT_CBCH,		"CBCH" },
-	{ BTS_FEAT_SPEECH_F_V1,		"Fullrate speech V1" },
-	{ BTS_FEAT_SPEECH_H_V1,		"Halfrate speech V1" },
-	{ BTS_FEAT_SPEECH_F_EFR,	"Fullrate speech EFR" },
-	{ BTS_FEAT_SPEECH_F_AMR,	"Fullrate speech AMR" },
-	{ BTS_FEAT_SPEECH_H_AMR,	"Halfrate speech AMR" },
-	{ BTS_FEAT_ETWS_PN,		"ETWS Primary Notification on PCH" },
-	{ BTS_FEAT_MS_PWR_CTRL_DSP,	"DSP/HW based MS Power Control Loop" },
-	{ BTS_FEAT_MEAS_PAYLOAD_COMB,	"Measurement and Payload data combined"},
+const struct value_string bts_impl_flag_desc[] = {
+	{ BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP,	"DSP/HW based MS Power Control Loop" },
+	{ BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB,	"Measurement and Payload data combined" },
 	{ 0, NULL }
 };
 
