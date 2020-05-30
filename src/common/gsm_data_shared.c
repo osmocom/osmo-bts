@@ -76,9 +76,9 @@ const struct value_string osmo_bts_variant_names[_NUM_BTS_VARIANT + 1] = {
 	{ BTS_OSMO_OC2G,	"osmo-bts-oc2g" },
 	{ BTS_OSMO_OCTPHY,	"osmo-bts-octphy" },
 	{ BTS_OSMO_SYSMO,	"osmo-bts-sysmo" },
-	{ BTS_OSMO_TRX,		"omso-bts-trx" },
-	{ BTS_OSMO_VIRTUAL,	"omso-bts-virtual" },
-	{ BTS_OSMO_OMLDUMMY,	"omso-bts-omldummy" },
+	{ BTS_OSMO_TRX,		"osmo-bts-trx" },
+	{ BTS_OSMO_VIRTUAL,	"osmo-bts-virtual" },
+	{ BTS_OSMO_OMLDUMMY,	"osmo-bts-omldummy" },
 	{ 0, NULL }
 };
 
