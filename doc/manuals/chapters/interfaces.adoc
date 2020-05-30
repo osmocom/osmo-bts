@@ -43,7 +43,7 @@ See <<vty>> for further information.
 
 === OsmoBTS Control Interface
 
-The general structure of the Omsocom control interface is described in
+The general structure of the Osmocom control interface is described in
 <<common-control-if>>.
 
 The number of control interface commands/attributes is currently quite
