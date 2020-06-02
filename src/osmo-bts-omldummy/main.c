@@ -15,12 +15,13 @@ int main(int argc, char **argv)
 	int i;
 
 	if (argc < 3) {
-		fprintf(stderr, "Usage: %s dst_host site_id\n", argv[0]);
+		fprintf(stderr, "Usage: %s dst_host site_id [trx_num]\n", argv[0]);
 		return 1;
 	}
 
 	char *dst_host = argv[1];
 	int site_id = atoi(argv[2]);
+	int trx_num = argc > 3 ? atoi(argv[3]) : 8;
 
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	msgb_talloc_ctx_init(tall_bts_ctx, 10*1024);
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
 	bts->ip_access.bts_id = 0;
 
 	/* Additional TRXs */
-	for (i = 1; i < 8; i++) {
+	for (i = 1; i < trx_num; i++) {
 		trx = gsm_bts_trx_alloc(bts);
 		if (!trx)
 			exit(1);
