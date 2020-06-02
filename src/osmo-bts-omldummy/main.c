@@ -14,6 +14,11 @@ int main(int argc, char **argv)
 	struct e1inp_line *line;
 	int i;
 
+	if (argc < 3) {
+		fprintf(stderr, "Usage: %s dst_host site_id\n", argv[0]);
+		return 1;
+	}
+
 	char *dst_host = argv[1];
 	int site_id = atoi(argv[2]);
 
