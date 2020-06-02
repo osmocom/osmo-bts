@@ -429,7 +429,7 @@ DEFUN(cfg_bts_band,
 
 DEFUN(cfg_bts_oml_ip,
       cfg_bts_oml_ip_cmd,
-      "oml remote-ip A.B.C.D",
+      "oml remote-ip " CMD_IPV46,
       "OML Parameters\n" "OML IP Address\n" "OML IP Address\n")
 {
 	struct gsm_bts *bts = vty->index;
@@ -446,7 +446,7 @@ DEFUN(cfg_bts_oml_ip,
 
 DEFUN_DEPRECATED(cfg_bts_rtp_bind_ip,
       cfg_bts_rtp_bind_ip_cmd,
-      "rtp bind-ip A.B.C.D",
+      "rtp bind-ip " CMD_IPV46,
       RTP_STR "RTP local bind IP Address\n" "RTP local bind IP Address\n")
 {
 	vty_out(vty, "%% rtp bind-ip is now deprecated%s", VTY_NEWLINE);
