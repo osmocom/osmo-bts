@@ -157,6 +157,7 @@ struct phy_instance {
 struct phy_link *phy_link_by_num(int num);
 struct phy_link *phy_link_create(void *ctx, int num);
 void phy_link_destroy(struct phy_link *plink);
+const char *phy_link_name(struct phy_link *plink);
 void phy_link_state_set(struct phy_link *plink, enum phy_link_state state);
 enum phy_link_state phy_link_state_get(struct phy_link *plink);
 const char *phy_link_state_name(enum phy_link_state state);
@@ -178,4 +179,5 @@ static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *tr
 
 int bts_model_phy_link_open(struct phy_link *plink);
 
+#define LOGPPHL(plink, section, lvl, fmt, args...) LOGP(section, lvl, "%s: " fmt, phy_link_name(plink), ##args)
 #define LOGPPHI(pinst, section, lvl, fmt, args...) LOGP(section, lvl, "%s: " fmt, phy_instance_name(pinst), ##args)

@@ -53,9 +53,9 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 {
 	struct phy_instance *pinst;
 
-	LOGP(DL1C, LOGL_INFO, "PHY link state change %s -> %s\n",
-	     get_value_string(phy_link_state_vals, plink->state),
-	     get_value_string(phy_link_state_vals, state));
+	LOGPPHL(plink, DL1C, LOGL_INFO, "PHY link state change %s -> %s\n",
+	        get_value_string(phy_link_state_vals, plink->state),
+	        get_value_string(phy_link_state_vals, state));
 
 	/* notify all TRX associated with this phy */
 	llist_for_each_entry(pinst, &plink->instances, list) {
@@ -65,11 +65,11 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 
 		switch (state) {
 		case PHY_LINK_CONNECTED:
-			LOGP(DL1C, LOGL_INFO, "trx_set_avail(1)\n");
+			LOGPPHI(pinst, DL1C, LOGL_INFO, "trx_set_avail(1)\n");
 			trx_set_available(trx, 1);
 			break;
 		case PHY_LINK_SHUTDOWN:
-			LOGP(DL1C, LOGL_INFO, "trx_set_avail(0)\n");
+			LOGPPHI(pinst, DL1C, LOGL_INFO, "trx_set_avail(0)\n");
 			trx_set_available(trx, 0);
 			break;
 		case PHY_LINK_CONNECTING:
@@ -148,6 +148,13 @@ void phy_link_destroy(struct phy_link *plink)
 	talloc_free(plink);
 }
 
+static char name_buf[32];
+const char *phy_link_name(struct phy_link *plink)
+{
+	snprintf(name_buf, sizeof(name_buf), "phy%u", plink->num);
+	return name_buf;
+}
+
 int phy_links_open(void)
 {
 	struct phy_link *plink;
@@ -165,9 +172,7 @@ int phy_links_open(void)
 
 const char *phy_instance_name(struct phy_instance *pinst)
 {
-	static char buf[32];
-
-	snprintf(buf, sizeof(buf), "phy%u.%u", pinst->phy_link->num,
+	snprintf(name_buf, sizeof(name_buf), "phy%u.%u", pinst->phy_link->num,
 		 pinst->num);
-	return buf;
+	return name_buf;
 }
