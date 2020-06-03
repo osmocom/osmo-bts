@@ -138,11 +138,34 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
 }
 
+static void l1if_trx_start_power_ramp(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	if (l1h->config.forced_max_power_red == -1)
+		power_ramp_start(trx, get_p_nominal_mdBm(trx), 0);
+	else
+		power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1);
+}
+
 /* Sets the nominal power, in dB */
 void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, unsigned int nominal_power)
 {
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	bool nom_pwr_changed = trx->nominal_power != nominal_power;
+
 	trx->nominal_power = nominal_power;
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
+
+	/* If TRX is not yet powered, delay ramping until it's ON */
+	if (!nom_pwr_changed || !pinst->phy_link->u.osmotrx.powered)
+		return;
+
+	/* We are already ON and we got new information about nominal power, so
+	 * let's make sure we adapt the tx power to it
+	 */
+	l1if_trx_start_power_ramp(trx);
 }
 
 static void l1if_getnompower_cb(struct trx_l1h *l1h, unsigned int nominal_power, int rc)
@@ -197,11 +220,7 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 
 			/* Begin to ramp up the power on all TRX associated with this phy */
 			llist_for_each_entry(pinst, &plink->instances, list) {
-				struct gsm_bts_trx *trx = pinst->trx;
-				if (l1h->config.forced_max_power_red == -1)
-					power_ramp_start(trx, get_p_nominal_mdBm(trx), 0);
-				else
-					power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1);
+				l1if_trx_start_power_ramp(pinst->trx);
 			}
 		} else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN) {
 			trx_sched_clock_stopped(pinst->trx->bts);
