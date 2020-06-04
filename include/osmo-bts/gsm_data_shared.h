@@ -102,12 +102,6 @@ struct bts_ul_meas {
 	uint8_t inv_rssi;
 };
 
-struct bts_codec_conf {
-	uint8_t hr;
-	uint8_t efr;
-	uint8_t amr;
-};
-
 struct amr_mode {
 	uint8_t mode;
 	uint8_t threshold;
