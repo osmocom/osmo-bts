@@ -1,7 +1,6 @@
 #ifndef _GSM_DATA_SHAREDH
 #define _GSM_DATA_SHAREDH
 
-#include <regex.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -813,12 +812,6 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */
 struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
-
-/*
- * help with parsing regexps
- */
-int gsm_parse_reg(void *ctx, regex_t *reg, char **str,
-		int argc, const char **argv) __attribute__ ((warn_unused_result));
 
 #define BSIC2BCC(bsic) ((bsic) & 0x3)
 
