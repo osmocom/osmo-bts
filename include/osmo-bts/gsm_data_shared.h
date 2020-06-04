@@ -65,12 +65,6 @@ enum gsm_hooks {
 	GSM_HOOK_RR_SECURITY,
 };
 
-enum bts_gprs_mode {
-	BTS_GPRS_NONE = 0,
-	BTS_GPRS_GPRS = 1,
-	BTS_GPRS_EGPRS = 2,
-};
-
 struct gsm_lchan;
 struct osmo_rtp_socket;
 struct pcu_sock_state;
@@ -640,7 +634,6 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
-		enum bts_gprs_mode mode;
 		struct {
 			struct gsm_abis_mo mo;
 			uint16_t nsei;
