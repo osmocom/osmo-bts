@@ -322,8 +322,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	}
 	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 
-	bts->rach_b_thresh = -1;
-	bts->rach_ldavg_slots = -1;
 	bts->features.data = &bts->_features_data[0];
 	bts->features.data_len = sizeof(bts->_features_data);
 

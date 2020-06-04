@@ -598,10 +598,6 @@ struct gsm_bts {
 		uint8_t rac;
 	} gprs;
 
-	/* RACH NM values */
-	int rach_b_thresh;
-	int rach_ldavg_slots;
-
 	/* transceivers */
 	int num_trx;
 	struct llist_head trx_list;
