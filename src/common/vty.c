@@ -1106,19 +1106,6 @@ DEFUN(show_ts,
 	return CMD_SUCCESS;
 }
 
-/* FIXME: move this to libosmogsm */
-static const struct value_string gsm48_cmode_names[] = {
-	{ GSM48_CMODE_SIGN,		"signalling" },
-	{ GSM48_CMODE_SPEECH_V1,	"FR or HR" },
-	{ GSM48_CMODE_SPEECH_EFR,	"EFR" },
-	{ GSM48_CMODE_SPEECH_AMR,	"AMR" },
-	{ GSM48_CMODE_DATA_14k5,	"CSD(14k5)" },
-	{ GSM48_CMODE_DATA_12k0,	"CSD(12k0)" },
-	{ GSM48_CMODE_DATA_6k0,		"CSD(6k0)" },
-	{ GSM48_CMODE_DATA_3k6,		"CSD(3k6)" },
-	{ 0, NULL }
-};
-
 /* call vty_out() to print a string like " as TCH/H" for dynamic timeslots.
  * Don't do anything if the ts is not dynamic. */
 static void vty_out_dyn_ts_status(struct vty *vty, struct gsm_bts_trx_ts *ts)
@@ -1185,7 +1172,7 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max),
 		VTY_NEWLINE);
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
-		get_value_string(gsm48_cmode_names, lchan->tch_mode),
+		gsm48_chan_mode_name(lchan->tch_mode),
 		VTY_NEWLINE);
 
 	if (lchan->abis_ip.bound_ip) {
