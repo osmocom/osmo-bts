@@ -148,13 +148,6 @@ struct l1sched_trx {
 
 struct l1sched_ts *l1sched_trx_get_ts(struct l1sched_trx *l1t, uint8_t tn);
 
-/*! \brief how many frame numbers in advance we should send bursts to PHY */
-extern uint32_t trx_clock_advance;
-/*! \brief advance RTS.ind to L2 by that many clocks */
-extern uint32_t trx_rts_advance;
-/*! \brief last frame number as received from PHY */
-extern uint32_t transceiver_last_fn;
-
 
 /*! \brief Initialize the scheduler data structures */
 int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx);
