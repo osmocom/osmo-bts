@@ -72,12 +72,6 @@ struct gsm_abis_mo {
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
 
-/* is the data link established? who established it? */
-#define LCHAN_SAPI_UNUSED	0
-#define LCHAN_SAPI_MS		1
-#define LCHAN_SAPI_NET		2
-#define LCHAN_SAPI_REL		3
-
 /* state of a logical channel */
 enum gsm_lchan_state {
 	LCHAN_S_NONE,		/* channel is not active */
