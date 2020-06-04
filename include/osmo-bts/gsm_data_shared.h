@@ -160,9 +160,6 @@ struct gsm_lchan {
 	/* AMR bits */
 	uint8_t mr_bts_lv[7];
 
-	/* Established data link layer services */
-	int sacch_deact;
-
 	struct {
 		uint32_t bound_ip;
 		uint32_t connect_ip;

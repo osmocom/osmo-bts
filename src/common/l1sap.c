@@ -1749,7 +1749,6 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		}
 	}
 
-	lchan->sacch_deact = 0;
 	lchan->s = lchan->ts->trx->bts->radio_link_timeout;
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
@@ -1795,8 +1794,6 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivating sacch chan_nr=%s trx=%d\n",
 		  rsl_chan_nr_str(chan_nr), trx->nr);
-
-	lchan->sacch_deact = 1;
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
 		1);
