@@ -14,9 +14,6 @@ enum bts_vty_node {
 	TRX_NODE,
 };
 
-extern struct cmd_element ournode_exit_cmd;
-extern struct cmd_element ournode_end_cmd;
-
 extern struct cmd_element cfg_bts_auto_band_cmd;
 extern struct cmd_element cfg_bts_no_auto_band_cmd;
 
