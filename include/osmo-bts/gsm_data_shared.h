@@ -37,11 +37,6 @@
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
 
-/* for multi-drop config */
-#define HARDCODED_BTS0_TS	1
-#define HARDCODED_BTS1_TS	6
-#define HARDCODED_BTS2_TS	11
-
 #define MAX_VERSION_LENGTH 64
 
 #define MAX_BTS_FEATURES 128
