@@ -602,10 +602,6 @@ struct gsm_bts {
 	int num_trx;
 	struct llist_head trx_list;
 
-	/* SI related items */
-	int force_combined_si;
-	int bcch_change_mark;
-
 	struct rate_ctr_group *ctrs;
 	bool supp_meas_toa256;
 

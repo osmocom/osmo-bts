@@ -325,9 +325,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	bts->features.data = &bts->_features_data[0];
 	bts->features.data_len = sizeof(bts->_features_data);
 
-	/* si handling */
-	bts->bcch_change_mark = 1;
-
 	return bts;
 }
 
