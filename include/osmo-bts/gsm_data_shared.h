@@ -541,8 +541,6 @@ struct gsm_bts {
 	struct timespec oml_conn_established_timestamp;
 
 	/* Abis network management O&M handle */
-	struct abis_nm_h *nmh;
-
 	struct gsm_abis_mo mo;
 
 	/* number of this BTS on given E1 link */
