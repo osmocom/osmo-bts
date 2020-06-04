@@ -83,7 +83,6 @@ enum gsm_lchan_state {
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
-/* BTS ONLY */
 #define MAX_NUM_UL_MEAS	104
 #define LC_UL_M_F_L1_VALID	(1 << 0)
 #define LC_UL_M_F_RES_VALID	(1 << 1)
@@ -114,7 +113,6 @@ struct amr_multirate_conf {
 	struct amr_mode bts_mode[4];
 	uint8_t num_modes;
 };
-/* /BTS ONLY */
 
 enum lchan_csd_mode {
 	LCHAN_CSD_M_NT,
