@@ -37,9 +37,6 @@
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
 
-#define HARDCODED_ARFCN 123
-#define HARDCODED_BSIC	0x3f	/* NCC = 7 / BCC = 7 */
-
 /* for multi-drop config */
 #define HARDCODED_BTS0_TS	1
 #define HARDCODED_BTS1_TS	6
