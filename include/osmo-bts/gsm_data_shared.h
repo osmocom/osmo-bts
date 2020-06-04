@@ -41,12 +41,6 @@
 
 #define MAX_BTS_FEATURES 128
 
-enum gsm_hooks {
-	GSM_HOOK_NM_SWLOAD,
-	GSM_HOOK_RR_PAGING,
-	GSM_HOOK_RR_SECURITY,
-};
-
 struct gsm_lchan;
 struct osmo_rtp_socket;
 struct pcu_sock_state;
