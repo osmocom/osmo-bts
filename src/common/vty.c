@@ -414,9 +414,11 @@ DEFUN(cfg_bts_band,
 	struct gsm_bts *bts = vty->index;
 	int band = gsm_band_parse(argv[0]);
 
+	/* This should not happen with the recent versions of libosmovty,
+	 * but old versions may pass incomplete choice values like 'GSM9'. */
 	if (band < 0) {
-		vty_out(vty, "%% BAND %d is not a valid GSM band%s",
-			band, VTY_NEWLINE);
+		vty_out(vty, "%% BAND '%s' is not a valid GSM band%s",
+			argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
