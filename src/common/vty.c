@@ -856,7 +856,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);
 	vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
-			bts->oml_tei, VTY_NEWLINE);
+			bts->oml_link ? bts->oml_link->tei : 0x00,
+			VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");

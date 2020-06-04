@@ -536,7 +536,6 @@ struct gsm_bts {
 	int ms_max_power;
 
 	/* how do we talk OML with this TRX? */
-	uint8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
 	struct timespec oml_conn_established_timestamp;
 
