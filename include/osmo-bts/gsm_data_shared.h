@@ -71,7 +71,6 @@ struct gsm_abis_mo {
 
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
-#define MAX_EARFCN_LIST 32
 
 /* is the data link established? who established it? */
 #define LCHAN_SAPI_UNUSED	0
