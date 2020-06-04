@@ -547,7 +547,6 @@ struct gsm_bts {
 	uint8_t bts_nr;
 
 	/* DTX features of this BTS */
-	enum gsm48_dtx_mode dtxu;
 	bool dtxd;
 
 	/* CCCH is on C0 */
