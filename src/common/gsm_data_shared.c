@@ -113,16 +113,6 @@ const struct value_string gsm_bts_features_descs[] = {
 	{ 0, NULL }
 };
 
-const struct value_string gsm_chreq_descs[] = {
-	{ GSM_CHREQ_REASON_EMERG,	"emergency call" },
-	{ GSM_CHREQ_REASON_PAG,		"answer to paging" },
-	{ GSM_CHREQ_REASON_CALL,	"call re-establishment" },
-	{ GSM_CHREQ_REASON_LOCATION_UPD,"Location updating" },
-	{ GSM_CHREQ_REASON_PDCH,	"one phase packet access" },
-	{ GSM_CHREQ_REASON_OTHER,	"other" },
-	{ 0,				NULL }
-};
-
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },
@@ -186,20 +176,6 @@ static const struct value_string lchan_s_names[] = {
 const char *gsm_lchans_name(enum gsm_lchan_state s)
 {
 	return get_value_string(lchan_s_names, s);
-}
-
-static const struct value_string chreq_names[] = {
-	{ GSM_CHREQ_REASON_EMERG,	"EMERGENCY" },
-	{ GSM_CHREQ_REASON_PAG,		"PAGING" },
-	{ GSM_CHREQ_REASON_CALL,	"CALL" },
-	{ GSM_CHREQ_REASON_LOCATION_UPD,"LOCATION_UPDATE" },
-	{ GSM_CHREQ_REASON_OTHER,	"OTHER" },
-	{ 0,				NULL }
-};
-
-const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
-{
-	return get_value_string(chreq_names, c);
 }
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)

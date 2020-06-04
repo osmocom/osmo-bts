@@ -30,16 +30,6 @@
 #define SI2Q_MAX_LEN 160
 #define SI2Q_MIN_LEN 18
 
-/* Channel Request reason */
-enum gsm_chreq_reason_t {
-	GSM_CHREQ_REASON_EMERG,
-	GSM_CHREQ_REASON_PAG,
-	GSM_CHREQ_REASON_CALL,
-	GSM_CHREQ_REASON_LOCATION_UPD,
-	GSM_CHREQ_REASON_OTHER,
-	GSM_CHREQ_REASON_PDCH,
-};
-
 /* lchans 0..3 are SDCCH in combined channel configuration,
    use 4 as magic number for BCCH hack - see osmo-bts-../oml.c:opstart_compl() */
 #define CCCH_LCHAN 4
@@ -790,13 +780,11 @@ const char *btsatttr2str(enum bts_attribute v);
 enum gsm_bts_type_variant str2btsvariant(const char *arg);
 const char *btsvariant2str(enum gsm_bts_type_variant v);
 
-extern const struct value_string gsm_chreq_descs[];
 extern const struct value_string gsm_pchant_names[13];
 extern const struct value_string gsm_pchant_descs[13];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
-const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 char *gsm_trx_name(const struct gsm_bts_trx *trx);
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts);
