@@ -78,13 +78,16 @@ void amr_set_mode_pref(uint8_t *data, const struct amr_multirate_conf *amr_mrc,
 int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 		      const uint8_t *mr_conf, unsigned int len)
 {
-	uint8_t mr_version = mr_conf[0] >> 5;
 	uint8_t num_codecs = 0;
 	int i, j = 0;
 
-	if (mr_version != 1) {
-		LOGP(DRSL, LOGL_ERROR, "AMR Multirate Version %u unknown\n",
-			mr_version);
+	if (len < 2) {
+		LOGP(DRSL, LOGL_ERROR, "AMR Multirate IE is too short (%u)\n", len);
+		goto ret_einval;
+	}
+
+	if ((mr_conf[0] >> 5) != 1) {
+		LOGP(DRSL, LOGL_ERROR, "AMR Multirate Version %u unknown\n", (mr_conf[0] >> 5));
 		goto ret_einval;
 	}
 

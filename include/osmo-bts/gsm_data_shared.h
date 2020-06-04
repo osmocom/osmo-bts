@@ -157,9 +157,6 @@ struct gsm_lchan {
 		uint8_t key[MAX_A5_KEY_LEN];
 	} encr;
 
-	/* AMR bits */
-	uint8_t mr_bts_lv[7];
-
 	struct {
 		uint32_t bound_ip;
 		uint32_t connect_ip;
