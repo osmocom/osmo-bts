@@ -405,8 +405,6 @@ enum bts_attribute {
 	TRX_PHY_VERSION,
 };
 
-struct vty;
-
 /* N. B: always add new features to the end of the list (right before _NUM_BTS_FEAT) to avoid breaking compatibility
    with BTS compiled against earlier version of this header. Also make sure that the description strings
    gsm_bts_features_descs[] in gsm_data_shared.c are also updated accordingly! */
