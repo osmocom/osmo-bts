@@ -2,8 +2,7 @@ OSMOCONF_FILES = virtual/osmo-bts-virtual.cfg
 
 doc_virtualdir = $(docdir)/examples/osmo-bts-virtual
 doc_virtual_DATA = \
-        virtual/osmo-bts-virtual.cfg \
-        virtual/openbsc-virtual.cfg
+        virtual/osmo-bts-virtual.cfg
 EXTRA_DIST = $(doc_virtual_DATA)
 
 if ENABLE_SYSMOBTS

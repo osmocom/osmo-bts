@@ -99,7 +99,6 @@ make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
 %{_docdir}/%{name}/examples/osmo-bts-trx/osmo-bts-trx-calypso.cfg
 %{_docdir}/%{name}/examples/osmo-bts-trx/osmo-bts-trx.cfg
 %dir %{_docdir}/%{name}/examples/osmo-bts-virtual
-%{_docdir}/%{name}/examples/osmo-bts-virtual/openbsc-virtual.cfg
 %{_docdir}/%{name}/examples/osmo-bts-virtual/osmo-bts-virtual.cfg
 %{_bindir}/osmo-bts-trx
 %dir %{_sysconfdir}/osmocom
