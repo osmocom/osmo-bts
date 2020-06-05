@@ -586,7 +586,7 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 		for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
 			struct l1sched_chan_state *chan_state;
 			chan_state = &l1ts->chan_state[i];
-			chan_state->active = 0;
+			chan_state->active = false;
 		}
 	}
 
@@ -960,8 +960,7 @@ int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 }
 
 /* setting all logical channels given attributes to active/inactive */
-int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id,
-	int active)
+int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id, bool active)
 {
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);

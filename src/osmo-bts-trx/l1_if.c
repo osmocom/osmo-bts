@@ -128,16 +128,14 @@ int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 	/* set lchan inactive */
 	lchan_set_state(lchan, LCHAN_S_NONE);
 
-	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan),
-				   LID_DEDIC, 0);
+	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_DEDIC, false);
 }
 
 int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
 	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan),
-				   LID_SACCH, 0);
+	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
 }
 
 static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc)
@@ -632,9 +630,9 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					chan_nr = RSL_CHAN_OSMO_PDCH | (chan_nr & ~RSL_CHAN_NR_MASK);
 
 				/* activate dedicated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, 1);
+				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, true);
 				/* activate associated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, 1);
+				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, true);
 				/* set mode */
 				trx_sched_set_mode(&l1h->l1s, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,

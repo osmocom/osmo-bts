@@ -72,7 +72,7 @@ enum trx_burst_type {
 /* States each channel on a multiframe */
 struct l1sched_chan_state {
 	/* scheduler */
-	uint8_t			active;		/* Channel is active */
+	bool			active;		/* Channel is active */
 	ubit_t			*dl_bursts;	/* burst buffer for TX */
 	enum trx_burst_type	dl_burst_type;  /* GMSK or 8PSK burst type */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
@@ -175,8 +175,7 @@ int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
         enum gsm_phys_chan_config pchan);
 
 /*! \brief set all matching logical channels active/inactive */
-int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id,
-	int active);
+int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id, bool active);
 
 /*! \brief set mode of all matching logical channels to given mode(s) */
 int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmode,
