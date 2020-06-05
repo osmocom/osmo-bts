@@ -28,6 +28,7 @@ LDADD = \
 	$(NULL)
 
 noinst_HEADERS = \
+	sched_utils.h \
 	trx_if.h \
 	l1_if.h \
 	loops.h \
@@ -40,6 +41,12 @@ osmo_bts_trx_SOURCES = \
 	trx_if.c \
 	l1_if.c \
 	scheduler_trx.c \
+	sched_lchan_fcch_sch.c \
+	sched_lchan_rach.c \
+	sched_lchan_xcch.c \
+	sched_lchan_pdtch.c \
+	sched_lchan_tchf.c \
+	sched_lchan_tchh.c \
 	trx_vty.c \
 	loops.c \
 	$(NULL)
