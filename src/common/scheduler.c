@@ -986,9 +986,6 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			LOGP(DL1C, LOGL_NOTICE, "%s %s on trx=%d ts=%d\n",
 				(active) ? "Activating" : "Deactivating",
 				trx_chan_desc[i].name, l1t->trx->nr, tn);
-			if (active)
-				memset(chan_state, 0, sizeof(*chan_state));
-			chan_state->active = active;
 			/* free burst memory, to cleanly start with burst 0 */
 			if (chan_state->dl_bursts) {
 				talloc_free(chan_state->dl_bursts);
@@ -998,8 +995,12 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 				talloc_free(chan_state->ul_bursts);
 				chan_state->ul_bursts = NULL;
 			}
-			if (!active)
+
+			if (active)
+				memset(chan_state, 0, sizeof(*chan_state));
+			else
 				chan_state->ho_rach_detect = 0;
+			chan_state->active = active;
 		}
 	}
 
