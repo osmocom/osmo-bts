@@ -27,8 +27,7 @@ LDADD = \
 	-ldl \
 	$(NULL)
 
-# TODO: use noinst_HEADERS instead?
-EXTRA_DIST = \
+noinst_HEADERS = \
 	trx_if.h \
 	l1_if.h \
 	loops.h \
