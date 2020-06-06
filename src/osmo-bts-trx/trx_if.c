@@ -211,9 +211,6 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 	struct trx_ctrl_msg *tcm;
 	struct trx_ctrl_msg *prev = NULL;
 	va_list ap;
-	int pending;
-
-	pending = !llist_empty(&l1h->trx_ctrl_list);
 
 	/* create message */
 	tcm = talloc_zero(tall_bts_ctx, struct trx_ctrl_msg);
@@ -236,18 +233,22 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 	tcm->cb = cb;
 
 	/* Avoid adding consecutive duplicate messages, eg: two consecutive POWEROFF */
-	if(pending)
+	if (!llist_empty(&l1h->trx_ctrl_list))
 		prev = llist_entry(l1h->trx_ctrl_list.prev, struct trx_ctrl_msg, list);
-
-	if (!pending ||
-	    !(strcmp(tcm->cmd, prev->cmd) == 0 && strcmp(tcm->params, prev->params) == 0)) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Enqueuing TRX control command 'CMD %s%s%s'\n",
-			tcm->cmd, tcm->params_len ? " ":"", tcm->params);
-		llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
+	if (prev != NULL && !strcmp(tcm->cmd, prev->cmd)
+			 && !strcmp(tcm->params, prev->params)) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+			"Not sending duplicate command '%s'\n", tcm->cmd);
+		talloc_free(tcm);
+		return 0;
 	}
 
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Enqueuing TRX control command 'CMD %s%s%s'\n",
+		tcm->cmd, tcm->params_len ? " " : "", tcm->params);
+	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
+
 	/* send message, if we didn't already have pending messages */
-	if (!pending)
+	if (prev == NULL)
 		trx_ctrl_send(l1h);
 
 	return 0;
