@@ -202,7 +202,7 @@ void trx_if_init(struct trx_l1h *l1h)
  *  \param[in] fmt Format string (+ variable list of arguments)
  *  \returns 0 on success; negative on error
  *
- *  The new ocommand will be added to the end of the control command
+ *  The new command will be added to the end of the control command
  *  queue.
  */
 static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const char *cmd,
