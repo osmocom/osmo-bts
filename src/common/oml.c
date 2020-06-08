@@ -1316,8 +1316,8 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 
 	in.s_addr = htonl(ip);
-	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n", 
-		trx_name, inet_ntoa(in), port, stream_id);
+	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
+	     trx_name, inet_ntoa(in), port, stream_id);
 
 	if (trx->bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
