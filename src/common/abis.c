@@ -280,8 +280,10 @@ struct e1inp_line *abis_open(struct gsm_bts *bts, char *dst_host,
 	bts_dev_info.location2 = model_name;
 
 	line = e1inp_line_find(0);
-	if (!line)
-		line = e1inp_line_create(0, "ipa");
+	if (line)
+		e1inp_line_get(line); /* We want a new reference for returned line */
+	else
+		line = e1inp_line_create(0, "ipa"); /* already comes with a reference */
 	if (!line)
 		return NULL;
 	e1inp_line_bind_ops(line, &line_ops);
