@@ -917,8 +917,9 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint16_t ber10k;
 	int rc;
 
-	/* handle RACH, if handover RACH detection is turned on */
-	if (chan_state->ho_rach_detect == 1)
+	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
+	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
+	if (chan_state->ho_rach_detect == 1 && ~bi->flags & TRX_BI_F_NOPE_IND)
 		return rx_rach_fn(l1t, chan, bid, bi);
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
@@ -1142,8 +1143,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t is_sub = 0;
 	uint8_t ft;
 
-	/* handle rach, if handover rach detection is turned on */
-	if (chan_state->ho_rach_detect == 1)
+	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
+	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
+	if (chan_state->ho_rach_detect == 1 && ~bi->flags & TRX_BI_F_NOPE_IND)
 		return rx_rach_fn(l1t, chan, bid, bi);
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
@@ -1384,8 +1386,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t is_sub = 0;
 	uint8_t ft;
 
-	/* handle RACH, if handover RACH detection is turned on */
-	if (chan_state->ho_rach_detect == 1)
+	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
+	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
+	if (chan_state->ho_rach_detect == 1 && ~bi->flags & TRX_BI_F_NOPE_IND)
 		return rx_rach_fn(l1t, chan, bid, bi);
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
