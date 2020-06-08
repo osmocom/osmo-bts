@@ -1002,6 +1002,10 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	if (mo->nm_state.administrative == adm_state)
 		LOGPFOH(DOML, LOGL_NOTICE, foh, "ADM state already was %s\n",
 			get_value_string(abis_nm_adm_state_names, adm_state));
+	else
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "ADM STATE %s -> %s\n",
+			get_value_string(abis_nm_adm_state_names, mo->nm_state.administrative),
+			get_value_string(abis_nm_adm_state_names, adm_state));
 
 	/* Step 3: Ask BTS driver to apply the state chg */
 	return bts_model_chg_adm_state(bts, mo, obj, adm_state);
