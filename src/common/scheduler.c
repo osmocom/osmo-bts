@@ -827,7 +827,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 }
 
 
-/* 
+/*
  * ready-to-send indication (to upper layer)
  */
 
