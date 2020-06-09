@@ -1211,6 +1211,8 @@ no_data:
 			     trx_chan_desc[chan].name, fn, tn, bid);
 #endif
 		bits = (ubit_t *) dummy_burst;
+		if (nbits)
+			*nbits = ARRAY_SIZE(dummy_burst);
 	}
 
 	return bits;
