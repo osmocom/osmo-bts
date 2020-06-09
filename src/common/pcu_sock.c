@@ -474,7 +474,7 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
 
-	LOGP(DPCU, LOGL_INFO, "Sending PCH confirm\n");
+	LOGP(DPCU, LOGL_DEBUG, "Sending PCH confirm\n");
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF, bts->nr);
 	if (!msg)
