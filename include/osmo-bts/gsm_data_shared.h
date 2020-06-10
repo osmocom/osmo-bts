@@ -523,8 +523,7 @@ struct gsm_bts {
 	char sub_model[MAX_VERSION_LENGTH];
 
 	/* features of a given BTS set/reported via OML */
-	struct bitvec features;
-	uint8_t _features_data[MAX_BTS_FEATURES/8];
+	struct bitvec *features;
 
 	/* Connected PCU version (if any) */
 	char pcu_version[MAX_VERSION_LENGTH];
@@ -744,13 +743,13 @@ static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 static inline int gsm_bts_set_feature(struct gsm_bts *bts, enum gsm_bts_features feat)
 {
 	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
-	return bitvec_set_bit_pos(&bts->features, feat, 1);
+	return bitvec_set_bit_pos(bts->features, feat, 1);
 }
 
 static inline bool gsm_bts_has_feature(const struct gsm_bts *bts, enum gsm_bts_features feat)
 {
 	OSMO_ASSERT(_NUM_BTS_FEAT < MAX_BTS_FEATURES);
-	return bitvec_get_bit_pos(&bts->features, feat);
+	return bitvec_get_bit_pos(bts->features, feat);
 }
 
 void gsm_abis_mo_reset(struct gsm_abis_mo *mo);

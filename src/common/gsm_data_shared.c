@@ -322,8 +322,8 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	}
 	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 
-	bts->features.data = &bts->_features_data[0];
-	bts->features.data_len = sizeof(bts->_features_data);
+	bts->features = bitvec_alloc(MAX_BTS_FEATURES / 8, bts);
+	OSMO_ASSERT(bts->features != NULL);
 
 	return bts;
 }

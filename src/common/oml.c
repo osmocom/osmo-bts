@@ -174,7 +174,7 @@ static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
 {
 	unsigned int len = OSMO_BYTES_FOR_BITS(_NUM_BTS_FEAT);
-	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, len, bts->_features_data);
+	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, len, bts->features->data);
 }
 
 static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
