@@ -111,6 +111,7 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->c0->nominal_power = 23;
 
 	gsm_bts_set_feature(bts, BTS_FEAT_GPRS);
+	gsm_bts_set_feature(bts, BTS_FEAT_EGPRS);
 	gsm_bts_set_feature(bts, BTS_FEAT_OML_ALERTS);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_F_V1);
 	gsm_bts_set_feature(bts, BTS_FEAT_SPEECH_H_V1);
