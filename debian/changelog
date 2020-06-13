@@ -1,3 +1,9 @@
+osmo-bts (1.2.0-fw.2) unstable; urgency=medium
+
+  * pulled up a memory leak fix from https://osmocom.org/issues/4586
+
+ -- Kirill Zakharenko <kirill.zakharenko@fairwaves.co>  Sun, 14 Jun 2020 00:40:54 +0300
+
 osmo-bts (1.2.0-fw.1) unstable; urgency=medium
 
   * relocated to master:40fb4b7614cb
