@@ -1136,10 +1136,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 	}
 
 	buf[0] = ((hdr_ver & 0x0f) << 4) | tn;
-	buf[1] = (fn >> 24) & 0xff;
-	buf[2] = (fn >> 16) & 0xff;
-	buf[3] = (fn >>  8) & 0xff;
-	buf[4] = (fn >>  0) & 0xff;
+	osmo_store32be(fn, buf + 1);
 	buf[5] = pwr;
 
 	/* copy ubits {0,1} */
