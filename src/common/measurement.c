@@ -470,7 +470,7 @@ static void lchan_meas_compute_extended(struct gsm_lchan *lchan)
 
 	/* each measurement is an int32_t, so the squared difference value must fit in 32bits */
 	/* the sum of the squared values (each up to 32bit) can very easily exceed 32 bits */
-	u_int64_t sq_diff_sum = 0;
+	uint64_t sq_diff_sum = 0;
 
 	/* In case we do not have any measurement values collected there is no
 	 * computation possible. We just skip the whole computation here, the
