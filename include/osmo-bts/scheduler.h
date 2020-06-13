@@ -250,6 +250,17 @@ struct trx_ul_burst_ind {
 	size_t burst_len;
 };
 
+/*! DL burst request with the corresponding meta info */
+struct trx_dl_burst_req {
+	uint32_t fn;		/*!< TDMA frame number */
+	uint8_t tn;		/*!< TDMA timeslot number */
+	uint8_t att;		/*!< Tx power attenuation */
+
+	/*! Burst hard-bits buffer */
+	ubit_t burst[EGPRS_BURST_LEN];
+	size_t burst_len;
+};
+
 /*! Handle an UL burst received by PHY */
 int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi);
 

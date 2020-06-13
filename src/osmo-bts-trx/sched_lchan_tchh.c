@@ -313,30 +313,29 @@ extern void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			  struct msgb **_msg_tch, struct msgb **_msg_facch);
 
 /* obtain a to-be-transmitted TCH/H (Half Traffic Channel) burst */
-ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-		   enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[tn];
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
+	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
-	static ubit_t bits[GSM_BURST_LEN];
 
 	/* send burst, if we already got a frame */
 	if (bid > 0) {
 		if (!*bursts_p)
-			return NULL;
+			return 0;
 		goto send_burst;
 	}
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch);
+	tx_tch_common(l1t, br->tn, br->fn, chan, bid, &msg_tch, &msg_facch);
 
 	/* check for FACCH alignment */
-	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot transmit FACCH starting on "
+	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
+		LOGL1S(DL1P, LOGL_ERROR, l1t, br->tn, chan, br->fn, "Cannot transmit FACCH starting on "
 			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -349,7 +348,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 696);
 		if (!*bursts_p)
-			return NULL;
+			return -ENOMEM;
 	} else {
 		memcpy(*bursts_p, *bursts_p + 232, 232);
 		if (chan_state->dl_ongoing_facch) {
@@ -362,7 +361,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "No TCH or FACCH prim for transmit.\n");
+		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "No TCH or FACCH prim for transmit.\n");
 		goto send_burst;
 	}
 
@@ -377,7 +376,7 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
 		gsm0503_tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(fn),
+			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
@@ -393,16 +392,13 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 send_burst:
 	/* compose burst */
 	burst = *bursts_p + bid * 116;
-	memset(bits, 0, 3);
-	memcpy(bits + 3, burst, 58);
-	memcpy(bits + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
-	memcpy(bits + 87, burst + 58, 58);
-	memset(bits + 145, 0, 3);
+	memcpy(br->burst + 3, burst, 58);
+	memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
+	memcpy(br->burst + 87, burst + 58, 58);
 
-	if (nbits)
-		*nbits = GSM_BURST_LEN;
+	br->burst_len = GSM_BURST_LEN;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting burst=%u.\n", bid);
 
-	return bits;
+	return 0;
 }

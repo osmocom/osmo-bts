@@ -48,25 +48,19 @@
 #include "trx_if.h"
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting IDLE\n");
-
-	if (nbits)
-		*nbits = GSM_BURST_LEN;
-
-	return NULL;
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting IDLE\n");
+	return 0;
 }
 
 /* schedule all frames of all TRX for given FN */
 static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 {
+	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
 	uint8_t tn;
-	const ubit_t *bits;
-	uint8_t gain;
-	uint16_t nbits = 0;
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
@@ -91,15 +85,21 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			/* ready-to-send */
 			_sched_rts(l1t, tn,
 				(fn + plink->u.osmotrx.rts_advance) % GSM_HYPERFRAME);
+
+			/* TODO: Tx attenuation is always 0? */
+			br = (struct trx_dl_burst_req) {
+				.fn = fn, .tn = tn,
+				.att = 0,
+			};
+
 			/* get burst for FN */
-			bits = _sched_dl_burst(l1t, tn, fn, &nbits);
-			if (!bits) {
+			_sched_dl_burst(l1t, &br);
+			if (br.burst_len == 0) {
 				/* if no bits, send no burst */
 				continue;
-			} else
-				gain = 0;
-			if (nbits)
-				trx_if_send_burst(l1h, tn, fn, gain, bits, nbits);
+			}
+
+			trx_if_send_burst(l1h, &br);
 		}
 	}
 

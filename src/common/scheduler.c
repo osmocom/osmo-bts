@@ -1154,23 +1154,21 @@ int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
 }
 
 /* process downlink burst */
-const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
-				uint32_t fn, uint16_t *nbits)
+void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_dl_func *func;
 	enum trx_chan_type chan;
-	ubit_t *bits = NULL;
 
 	if (!l1ts->mf_index)
 		goto no_data;
 
 	/* get frame from multiframe */
 	period = l1ts->mf_period;
-	offset = fn % period;
+	offset = br->fn % period;
 	frame = l1ts->mf_frames + offset;
 
 	chan = frame->dl_chan;
@@ -1180,42 +1178,37 @@ const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
 	l1cs = &l1ts->chan_state[chan];
 
 	/* check if channel is active */
-	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan)) {
-		if (nbits)
-			*nbits = GSM_BURST_LEN;
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
 		goto no_data;
-	}
 
 	/* get burst from function */
-	bits = func(l1t, tn, fn, chan, bid, nbits);
+	if (func(l1t, chan, bid, br) != 0)
+		goto no_data;
 
 	/* encrypt */
-	if (bits && l1cs->dl_encr_algo) {
+	if (br->burst_len && l1cs->dl_encr_algo) {
 		ubit_t ks[114];
 		int i;
 
-		osmo_a5(l1cs->dl_encr_algo, l1cs->dl_encr_key, fn, ks, NULL);
+		osmo_a5(l1cs->dl_encr_algo, l1cs->dl_encr_key, br->fn, ks, NULL);
 		for (i = 0; i < 57; i++) {
-			bits[i + 3] ^= ks[i];
-			bits[i + 88] ^= ks[i + 57];
+			br->burst[i +  3] ^= ks[i];
+			br->burst[i + 88] ^= ks[i + 57];
 		}
 	}
 
 no_data:
 	/* in case of C0, we need a dummy burst to maintain RF power */
-	if (bits == NULL && l1t->trx == l1t->trx->bts->c0) {
+	if (!br->burst_len && l1t->trx == l1t->trx->bts->c0) {
 #if 0
 		if (chan != TRXC_IDLE) // hack
 			LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
 			     "burst=%d on C0, so filling with dummy burst\n",
 			     trx_chan_desc[chan].name, fn, tn, bid);
 #endif
-		bits = (ubit_t *) dummy_burst;
-		if (nbits)
-			*nbits = ARRAY_SIZE(dummy_burst);
+		memcpy(br->burst, dummy_burst, ARRAY_SIZE(dummy_burst));
+		br->burst_len = ARRAY_SIZE(dummy_burst);
 	}
-
-	return bits;
 }
 
 #define TDMA_FN_SUM(a, b) \

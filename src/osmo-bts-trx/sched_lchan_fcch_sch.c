@@ -35,34 +35,32 @@
 #include <sched_utils.h>
 
 /* obtain a to-be-transmitted FCCH (frequency correction channel) burst */
-ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-		   enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting FCCH\n");
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting FCCH\n");
 
-	if (nbits)
-		*nbits = GSM_BURST_LEN;
+	memcpy(br->burst, _sched_fcch_burst, GSM_BURST_LEN);
+	br->burst_len = GSM_BURST_LEN;
 
-	/* BURST BYPASS */
-
-	return (ubit_t *) _sched_fcch_burst;
+	return 0;
 }
 
 /* obtain a to-be-transmitted SCH (synchronization channel) burst */
-ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-		  enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	      uint8_t bid, struct trx_dl_burst_req *br)
 {
-	static ubit_t bits[GSM_BURST_LEN], burst[78];
+	ubit_t burst[78];
 	uint8_t sb_info[4];
 	struct	gsm_time t;
 	uint8_t t3p, bsic;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting SCH\n");
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting SCH\n");
 
 	/* BURST BYPASS */
 
 	/* create SB info from GSM time and BSIC */
-	gsm_fn2gsmtime(&t, fn);
+	gsm_fn2gsmtime(&t, br->fn);
 	t3p = t.t3 / 10;
 	bsic = l1t->trx->bts->bsic;
 	sb_info[0] =
@@ -81,14 +79,11 @@ ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	gsm0503_sch_encode(burst, sb_info);
 
 	/* compose burst */
-	memset(bits, 0, 3);
-	memcpy(bits + 3, burst, 39);
-	memcpy(bits + 42, _sched_sch_train, 64);
-	memcpy(bits + 106, burst + 39, 39);
-	memset(bits + 145, 0, 3);
+	memcpy(br->burst + 3, burst, 39);
+	memcpy(br->burst + 42, _sched_sch_train, 64);
+	memcpy(br->burst + 106, burst + 39, 39);
 
-	if (nbits)
-		*nbits = GSM_BURST_LEN;
+	br->burst_len = GSM_BURST_LEN;
 
-	return bits;
+	return 0;
 }

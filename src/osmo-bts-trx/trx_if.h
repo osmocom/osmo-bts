@@ -1,6 +1,7 @@
 #ifndef TRX_IF_H
 #define TRX_IF_H
 
+struct trx_dl_burst_req;
 struct trx_l1h;
 
 struct trx_ctrl_msg {
@@ -33,8 +34,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
-int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
-	const ubit_t *bits, uint16_t nbits);
+int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br);
 int trx_if_powered(struct trx_l1h *l1h);
 
 /* The latest supported TRXD header format version */

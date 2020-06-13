@@ -154,30 +154,29 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 }
 
 /* obtain a to-be-transmitted PDTCH (packet data) burst */
-ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-		    enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	        uint8_t bid, struct trx_dl_burst_req *br)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[tn];
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
+	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct msgb *msg = NULL; /* make GCC happy */
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[chan].dl_bursts;
 	enum trx_burst_type *burst_type = &l1ts->chan_state[chan].dl_burst_type;
-	static ubit_t bits[EGPRS_BURST_LEN];
 	int rc = 0;
 
 	/* send burst, if we already got a frame */
 	if (bid > 0) {
 		if (!*bursts_p)
-			return NULL;
+			return 0;
 		goto send_burst;
 	}
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
+	msg = _sched_dequeue_prim(l1t, br->tn, br->fn, chan);
 	if (msg)
 		goto got_msg;
 
-	LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "No prim for transmit.\n");
+	LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "No prim for transmit.\n");
 
 no_msg:
 	/* free burst memory */
@@ -185,7 +184,7 @@ no_msg:
 		talloc_free(*bursts_p);
 		*bursts_p = NULL;
 	}
-	return NULL;
+	return -ENODEV;
 
 got_msg:
 	/* BURST BYPASS */
@@ -195,7 +194,7 @@ got_msg:
 		*bursts_p = talloc_zero_size(tall_bts_ctx,
 					     GSM0503_EGPRS_BURSTS_NBITS);
 		if (!*bursts_p)
-			return NULL;
+			return -ENOMEM;
 	}
 
 	/* encode bursts */
@@ -205,7 +204,7 @@ got_msg:
 
 	/* check validity of message */
 	if (rc < 0) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim invalid length, please FIX! "
+		LOGL1S(DL1P, LOGL_FATAL, l1t, br->tn, chan, br->fn, "Prim invalid length, please FIX! "
 			"(len=%ld)\n", (long)(msg->tail - msg->l2h));
 		/* free message */
 		msgb_free(msg);
@@ -223,27 +222,23 @@ send_burst:
 	/* compose burst */
 	if (*burst_type == TRX_BURST_8PSK) {
 		burst = *bursts_p + bid * 348;
-		memset(bits, 1, 9);
-		memcpy(bits + 9, burst, 174);
-		memcpy(bits + 183, _sched_egprs_tsc[gsm_ts_tsc(ts)], 78);
-		memcpy(bits + 261, burst + 174, 174);
-		memset(bits + 435, 1, 9);
+		memset(br->burst, 1, 9);
+		memcpy(br->burst + 9, burst, 174);
+		memcpy(br->burst + 183, _sched_egprs_tsc[gsm_ts_tsc(ts)], 78);
+		memcpy(br->burst + 261, burst + 174, 174);
+		memset(br->burst + 435, 1, 9);
 
-		if (nbits)
-			*nbits = EGPRS_BURST_LEN;
+		br->burst_len = EGPRS_BURST_LEN;
 	} else {
 		burst = *bursts_p + bid * 116;
-		memset(bits, 0, 3);
-		memcpy(bits + 3, burst, 58);
-		memcpy(bits + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
-		memcpy(bits + 87, burst + 58, 58);
-		memset(bits + 145, 0, 3);
+		memcpy(br->burst + 3, burst, 58);
+		memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
+		memcpy(br->burst + 87, burst + 58, 58);
 
-		if (nbits)
-			*nbits = GSM_BURST_LEN;
+		br->burst_len = GSM_BURST_LEN;
 	}
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "Transmitting burst=%u.\n", bid);
+	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting burst=%u.\n", bid);
 
-	return bits;
+	return 0;
 }

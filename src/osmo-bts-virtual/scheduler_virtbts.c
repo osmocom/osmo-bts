@@ -173,72 +173,72 @@ static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint3
  */
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
-	return NULL;
+	return 0;
 }
 
-ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
-	return NULL;
+	return 0;
 }
 
-ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
-	return NULL;
+	return 0;
 }
 
-ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg;
 
 	if (bid > 0)
-		return NULL;
+		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
+	msg = _sched_dequeue_prim(l1t, br->tn, br->fn, chan);
 	if (!msg) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
-		return NULL;
+		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		return -ENODEV;
 	}
 
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
+		LOGL1S(DL1P, LOGL_FATAL, l1t, br->tn, chan, br->fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
 			msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
-		return NULL;
+		return -EINVAL;
 	}
 
 	/* transmit the msg received on dl from bsc to layer1 (virt Um) */
-	tx_to_virt_um(l1t, tn, fn, chan, msg);
+	tx_to_virt_um(l1t, br->tn, br->fn, chan, msg);
 
-	return NULL;
+	return 0;
 }
 
-ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
 
 	if (bid > 0)
-		return NULL;
+		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, tn, fn, chan);
+	msg = _sched_dequeue_prim(l1t, br->tn, br->fn, chan);
 	if (!msg) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
-		return NULL;
+		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		return -ENODEV;
 	}
 
-	tx_to_virt_um(l1t, tn, fn, chan, msg);
+	tx_to_virt_um(l1t, br->tn, br->fn, chan, msg);
 
-	return NULL;
+	return 0;
 }
 
 static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
@@ -418,53 +418,51 @@ send_frame:
 	*_msg_facch = msg_facch;
 }
 
-ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 
 	if (bid > 0)
-		return NULL;
+		return 0;
 
-	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch,
-		(((fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, br->tn, br->fn, chan, bid, &msg_tch, &msg_facch,
+		(((br->fn + 4) % 26) >> 2) & 1);
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
-		goto send_burst;
+		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
+		tx_to_virt_um(l1t, br->tn, br->fn, chan, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
+		tx_to_virt_um_voice_frame(l1t, br->tn, br->fn, chan, msg_tch);
 
-send_burst:
-
-	return NULL;
+	return 0;
 }
 
-ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits)
+int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	//uint8_t tch_mode = chan_state->tch_mode;
 
 	/* send burst, if we already got a frame */
 	if (bid > 0)
-		return NULL;
+		return 0;
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, tn, fn, chan, bid, &msg_tch, &msg_facch,
-		(((fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, br->tn, br->fn, chan, bid, &msg_tch, &msg_facch,
+		(((br->fn + 4) % 26) >> 2) & 1);
 
 	/* check for FACCH alignment */
-	if (msg_facch && ((((fn + 4) % 26) >> 2) & 1)) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot transmit FACCH starting on "
+	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
+		LOGL1S(DL1P, LOGL_ERROR, l1t, br->tn, chan, br->fn, "Cannot transmit FACCH starting on "
 			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -472,18 +470,17 @@ ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, tn, chan, fn, "has not been served !! No prim\n");
-		goto send_burst;
+		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, tn, fn, chan, msg_facch);
+		tx_to_virt_um(l1t, br->tn, br->fn, chan, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, tn, fn, chan, msg_tch);
+		tx_to_virt_um_voice_frame(l1t, br->tn, br->fn, chan, msg_tch);
 
-send_burst:
-	return NULL;
+	return 0;
 }
 
 
@@ -550,11 +547,10 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct l1sched_trx *l1t = &pinst->u.virt.sched;
-		int tn;
-		uint16_t nbits;
+		struct trx_dl_burst_req br = { .fn = fn };
 
 		/* do for each of the 8 timeslots */
-		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
+		for (br.tn = 0; br.tn < ARRAY_SIZE(l1t->ts); br.tn++) {
 			/* Generate RTS indication to higher layers */
 			/* This will basically do 2 things (check l1_if:bts_model_l1sap_down):
 			 * 1) Get pending messages from layer 2 (from the lapdm queue)
@@ -562,13 +558,13 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			 *    --> Handle and process non-transparent RSL-Messages (activate channel, )
 			 *    --> Forward transparent RSL-DATA-Messages to the ms by appending them to
 			 *        the l1-dl-queue */
-			_sched_rts(l1t, tn, (fn + RTS_ADVANCE) % GSM_HYPERFRAME);
+			_sched_rts(l1t, br.tn, (fn + RTS_ADVANCE) % GSM_HYPERFRAME);
 			/* schedule transmit backend functions */
 			/* Process data in the l1-dlqueue and forward it
 			 * to MS */
 			/* the returned bits are not used here, the routines called will directly forward their
 			 * bits to the virt Um */
-			_sched_dl_burst(l1t, tn, fn, &nbits);
+			_sched_dl_burst(l1t, &br);
 		}
 	}
 

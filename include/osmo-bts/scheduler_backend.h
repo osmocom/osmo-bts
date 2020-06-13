@@ -9,9 +9,8 @@
 typedef int trx_sched_rts_func(struct l1sched_trx *l1t, uint8_t tn,
 			       uint32_t fn, enum trx_chan_type chan);
 
-typedef ubit_t *trx_sched_dl_func(struct l1sched_trx *l1t, uint8_t tn,
-				  uint32_t fn, enum trx_chan_type chan,
-				  uint8_t bid, uint16_t *nbits);
+typedef int trx_sched_dl_func(struct l1sched_trx *l1t, enum trx_chan_type chan,
+			      uint8_t bid, struct trx_dl_burst_req *br);
 
 typedef int trx_sched_ul_func(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			      uint8_t bid, const struct trx_ul_burst_ind *bi);
@@ -56,20 +55,21 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
 			   uint8_t is_sub);
 
-ubit_t *tx_idle_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_fcch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_sch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_pdtch_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
-ubit_t *tx_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, uint16_t *nbits);
+int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
+	       uint8_t bid, struct trx_dl_burst_req *br);
+
 int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	       uint8_t bid, const struct trx_ul_burst_ind *bi);
 int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
@@ -81,7 +81,6 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	       uint8_t bid, const struct trx_ul_burst_ind *bi);
 
-const ubit_t *_sched_dl_burst(struct l1sched_trx *l1t, uint8_t tn,
-			      uint32_t fn, uint16_t *nbits);
+void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
 int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);
 void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate);

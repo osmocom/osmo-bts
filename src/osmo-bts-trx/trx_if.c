@@ -1101,27 +1101,23 @@ skip_burst:
 
 /*! Send burst data for given FN/timeslot to TRX
  *  \param[inout] l1h TRX Layer1 handle referring to TX
- *  \param[in] tn Timeslot Number (0..7)
- *  \param[in] fn GSM Frame Number
- *  \param[in] pwr Transmit Power to use
- *  \param[in] bits Unpacked bits to be transmitted
- *  \param[in] nbits Number of \a bits
+ *  \param[in] br Downlink burst request structure
  *  \returns 0 on success; negative on error */
-int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
-	const ubit_t *bits, uint16_t nbits)
+int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	ssize_t snd_len;
 	uint8_t hdr_ver = l1h->config.trxd_hdr_ver_use;
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 
-	if ((nbits != GSM_BURST_LEN) && (nbits != EGPRS_BURST_LEN)) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %u invalid\n", nbits);
+	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %zu invalid\n",
+			br->burst_len);
 		return -1;
 	}
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Tx burst (hdr_ver=%u): tn=%u fn=%u pwr=%u\n",
-		hdr_ver, tn, fn, pwr);
+		"Tx burst (hdr_ver=%u): tn=%u fn=%u att=%u\n",
+		hdr_ver, br->tn, br->fn, br->att);
 
 	switch (hdr_ver) {
 	case 0:
@@ -1135,16 +1131,16 @@ int trx_if_send_burst(struct trx_l1h *l1h, uint8_t tn, uint32_t fn, uint8_t pwr,
 		return -ENOTSUP;
 	}
 
-	buf[0] = ((hdr_ver & 0x0f) << 4) | tn;
-	osmo_store32be(fn, buf + 1);
-	buf[5] = pwr;
+	buf[0] = ((hdr_ver & 0x0f) << 4) | br->tn;
+	osmo_store32be(br->fn, buf + 1);
+	buf[5] = br->att;
 
 	/* copy ubits {0,1} */
-	memcpy(buf + 6, bits, nbits);
+	memcpy(buf + 6, br->burst, br->burst_len);
 
 	/* we must be sure that TRX is on */
 	if (trx_if_powered(l1h)) {
-		snd_len = send(l1h->trx_ofd_data.fd, buf, nbits + 6, 0);
+		snd_len = send(l1h->trx_ofd_data.fd, buf, br->burst_len + 6, 0);
 		if (snd_len <= 0) {
 			strerror_r(errno, (char *)buf, sizeof(buf));
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
