@@ -2,6 +2,7 @@
 #define _BTS_H
 
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/socket.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_trx.h>
 
@@ -69,9 +70,8 @@ struct gsm_bts_gprs_nsvc {
 	 * via OML from BSC */
 	int id;
 	uint16_t nsvci;
-	uint16_t local_port;	/* on the BTS */
-	uint16_t remote_port;	/* on the SGSN */
-	uint32_t remote_ip;	/* on the SGSN */
+	struct osmo_sockaddr local;	/* on the BTS */
+	struct osmo_sockaddr remote;	/* on the SGSN */
 
 	struct gsm_abis_mo mo;
 };

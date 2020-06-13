@@ -1259,15 +1259,58 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 		uint16_t _cur_s;
 		uint32_t _cur_l;
 
+		memset(&nsvc->local, 0, sizeof(nsvc->local));
+		memset(&nsvc->remote, 0, sizeof(nsvc->remote));
+
+		nsvc->local.u.sin.sin_family = AF_INET;
+		nsvc->remote.u.sin.sin_family = AF_INET;
+
 		memcpy(&_cur_s, cur, 2);
-		nsvc->remote_port = ntohs(_cur_s);
+		nsvc->remote.u.sin.sin_port = _cur_s;
 		cur += 2;
 		memcpy(&_cur_l, cur, 4);
-		nsvc->remote_ip = ntohl(_cur_l);
+		nsvc->remote.u.sin.sin_addr.s_addr = _cur_l;
 		cur += 4;
 		memcpy(&_cur_s, cur, 2);
-		nsvc->local_port = ntohs(_cur_s);
+		nsvc->local.u.sin.sin_port = ntohs(_cur_s);
 	}
+
+	if (TLVP_PRES_LEN(tp, NM_ATT_OSMO_NS_LINK_CFG, 10)) {
+		const uint8_t *cur = TLVP_VAL(tp, NM_ATT_OSMO_NS_LINK_CFG);
+		uint16_t address_family;
+
+		memset(&nsvc->local, 0, sizeof(nsvc->local));
+		memset(&nsvc->remote, 0, sizeof(nsvc->remote));
+
+		address_family = osmo_load16be(cur);
+		cur += 2;
+
+		memcpy(&nsvc->local.u.sin.sin_port, cur, 2);
+		cur += 2;
+
+		memcpy(&nsvc->remote.u.sin.sin_port, cur, 2);
+		cur += 2;
+
+		switch (address_family) {
+		case OSMO_NSVC_ADDR_IPV4:
+			/* we already checked for 10 bytes */
+			nsvc->remote.u.sas.ss_family = AF_INET;
+			nsvc->local.u.sas.ss_family = AF_INET;
+			memcpy(&nsvc->remote.u.sin.sin_addr.s_addr, cur, sizeof(in_addr_t));
+			break;
+		case OSMO_NSVC_ADDR_IPV6:
+			if (TLVP_LEN(tp, NM_ATT_OSMO_NS_LINK_CFG) < 22) {
+				return -1;
+			}
+			nsvc->remote.u.sas.ss_family = AF_INET6;
+			nsvc->local.u.sas.ss_family = AF_INET6;
+			memcpy(&nsvc->remote.u.sin6.sin6_addr, cur, sizeof(struct in6_addr));
+			break;
+		default:
+			return -1;
+		}
+	}
+
 
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSVC_ATTR, nsvc);
 
@@ -1505,6 +1548,7 @@ int oml_init(struct gsm_abis_mo *mo)
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef_ipa);
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef);
+	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_osmo_att_tlvdef);
 
 	return 0;
 }

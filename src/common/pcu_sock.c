@@ -330,10 +330,21 @@ int pcu_tx_info_ind(void)
 	for (i = 0; i < 2; i++) {
 		nsvc = &bts->gprs.nsvc[i];
 		info_ind->nsvci[i] = nsvc->nsvci;
-		info_ind->local_port[i] = nsvc->local_port;
-		info_ind->remote_port[i] = nsvc->remote_port;
-		info_ind->remote_ip[i].v4.s_addr = htonl(nsvc->remote_ip);
-		info_ind->address_type[i] = PCU_IF_ADDR_TYPE_IPV4;
+		info_ind->local_port[i] = nsvc->local.u.sin.sin_port;
+		info_ind->remote_port[i] = nsvc->remote.u.sin.sin_port;
+		switch (nsvc->remote.u.sas.ss_family) {
+		case AF_INET:
+			info_ind->address_type[i] = PCU_IF_ADDR_TYPE_IPV4;
+			info_ind->remote_ip[i].v4 = nsvc->remote.u.sin.sin_addr;
+			break;
+		case AF_INET6:
+			info_ind->address_type[i] = PCU_IF_ADDR_TYPE_IPV6;
+			info_ind->remote_ip[i].v6 = nsvc->remote.u.sin6.sin6_addr;
+			break;
+		default:
+			info_ind->address_type[i] = PCU_IF_ADDR_TYPE_UNSPEC;
+			break;
+		}
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
