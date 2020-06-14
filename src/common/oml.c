@@ -937,8 +937,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc = BSIC2BCC(bts->bsic);
 	}
-	LOGPFOH(DOML, LOGL_INFO, foh, "%s SET CHAN ATTR (TSC=%u pchan=%s)\n",
-		gsm_abis_mo_name(&ts->mo), ts->tsc, gsm_pchan_name(ts->pchan));
+	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s)\n",
+		ts->tsc, gsm_pchan_name(ts->pchan));
 
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);
