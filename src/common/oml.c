@@ -872,7 +872,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts *bts = ts->trx->bts;
 	struct tlv_parsed tp, *tp_merged;
-	int rc;
+	int rc, i;
 
 	DEBUGPFOH(DOML, foh, "Rx SET CHAN ATTR\n");
 
@@ -883,11 +883,39 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	/* 9.4.21 HSN... */
-	/* 9.4.27 MAIO */
+	/* Check frequency hopping parameters (HSN, MAIO, ARFCN list) */
 	if (TLVP_PRESENT(&tp, NM_ATT_HSN) || TLVP_PRESENT(&tp, NM_ATT_MAIO)) {
-		LOGPFOH(DOML, LOGL_NOTICE, foh, "SET CHAN ATTR: Frequency hopping not supported.\n");
-		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_HOPPING)) {
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: Frequency hopping not supported.\n");
+			return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
+		}
+
+		if (!TLVP_PRES_LEN(&tp, NM_ATT_HSN, 1) || !TLVP_PRES_LEN(&tp, NM_ATT_MAIO, 1)) {
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: HSN and/or MAIO is missing: "
+				"hsn=%u, maio=%u\n", TLVP_LEN(&tp, NM_ATT_HSN), TLVP_LEN(&tp, NM_ATT_MAIO));
+			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
+		}
+
+		if (!TLVP_PRES_LEN(&tp, NM_ATT_ARFCN_LIST, 2)) { /* At least one ARFCN */
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: ARFCN list is missing\n");
+			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
+		}
+
+		if (TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) > sizeof(ts->hopping.ma)) {
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: ARFCN list is too long\n");
+			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
+		} else if (TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) % 2 != 0) {
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: ARFCN list has odd length\n");
+			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
+		}
+
+		ts->hopping.enabled = true;
+		ts->hopping.hsn = *TLVP_VAL(&tp, NM_ATT_HSN);
+		ts->hopping.maio = *TLVP_VAL(&tp, NM_ATT_MAIO);
+
+		ts->hopping.ma_len = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) / sizeof(uint16_t);
+		for (i = 0; i < ts->hopping.ma_len; i++)
+			ts->hopping.ma[i] = osmo_load16be(TLVP_VAL(&tp, NM_ATT_ARFCN_LIST) + i * 2);
 	}
 
 	/* 9.4.52 Starting Time */
@@ -928,8 +956,6 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		}
 	}
 
-	/* 9.4.5 ARFCN List */
-
 	/* 9.4.60 TSC */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_TSC, 1)) {
 		ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
@@ -937,8 +963,12 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc = BSIC2BCC(bts->bsic);
 	}
-	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s)\n",
+	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s",
 		ts->tsc, gsm_pchan_name(ts->pchan));
+	if (ts->hopping.enabled)
+		LOGPC(DOML, LOGL_INFO, " hsn=%u maio=%u ma_len=%u",
+		      ts->hopping.hsn, ts->hopping.maio, ts->hopping.ma_len);
+	LOGPC(DOML, LOGL_INFO, ")\n");
 
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);

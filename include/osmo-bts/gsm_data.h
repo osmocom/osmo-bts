@@ -350,17 +350,13 @@ struct gsm_bts_trx_ts {
 	uint8_t nm_chan_comb;
 	int tsc;		/* -1 == use BTS TSC */
 
+	/* Frequency hopping parameters (configured via OML) */
 	struct {
-		/* Parameters below are configured by VTY */
-		int enabled;
+		bool enabled;
 		uint8_t maio;
 		uint8_t hsn;
-		struct bitvec arfcns;
-		uint8_t arfcns_data[1024/8];
-		/* This is the pre-computed MA for channel assignments */
-		struct bitvec ma;
-		uint8_t ma_len;	/* part of ma_data that is used */
-		uint8_t ma_data[8];	/* 10.5.2.21: max 8 bytes value part */
+		uint16_t ma[64];
+		uint8_t ma_len;
 	} hopping;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
