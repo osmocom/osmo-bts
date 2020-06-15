@@ -29,6 +29,8 @@
 /* bts-trx specific rate counters */
 enum {
 	BTSTRX_CTR_SCHED_DL_MISS_FN,
+	BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER,
+	BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER,
 };
 
 /*! clock state of a given TRX */

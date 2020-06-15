@@ -34,6 +34,7 @@
 #include <osmocom/core/timer_compat.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/gsm/a5.h>
+#include <osmocom/gsm/gsm0502.h>
 
 
 #include <osmo-bts/gsm_data.h>
@@ -47,12 +48,49 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
+#define SCHED_FH_PARAMS_FMT "hsn=%u, maio=%u, ma_len=%u"
+#define SCHED_FH_PARAMS_VALS(ts) \
+	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.ma_len
+
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
 int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	       uint8_t bid, struct trx_dl_burst_req *br)
 {
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting IDLE\n");
 	return 0;
+}
+
+/* Find a route (PHY instance) for a given Downlink burst request */
+static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
+					  struct gsm_bts_trx_ts *ts)
+{
+	const struct gsm_bts_trx *trx;
+	struct gsm_time time;
+	uint16_t idx;
+
+	gsm_fn2gsmtime(&time, br->fn);
+
+	/* Check the "cache" first, so we eliminate frequent lookups */
+	idx = gsm0502_hop_seq_gen(&time, SCHED_FH_PARAMS_VALS(ts), NULL);
+	if (ts->fh_trx_list[idx] != NULL)
+		return ts->fh_trx_list[idx]->role_bts.l1h;
+
+	/* The "cache" may not be filled yet, lookup the transceiver */
+	llist_for_each_entry(trx, &ts->trx->bts->trx_list, list) {
+		if (trx->arfcn == ts->hopping.ma[idx]) {
+			ts->fh_trx_list[idx] = trx;
+			return trx->role_bts.l1h;
+		}
+	}
+
+	LOGPTRX(ts->trx, DL1C, LOGL_FATAL, "Failed to find the transceiver (RF carrier) "
+		"for a Downlink burst (fn=%u, tn=%u, " SCHED_FH_PARAMS_FMT ")\n",
+		br->fn, br->tn, SCHED_FH_PARAMS_VALS(ts));
+
+	struct bts_trx_priv *priv = (struct bts_trx_priv *) ts->trx->bts->model_priv;
+	rate_ctr_inc(&priv->ctrs->ctr[BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER]);
+
+	return NULL;
 }
 
 /* schedule all frames of all TRX for given FN */
@@ -100,8 +138,16 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				continue;
 			}
 
+			/* resolve PHY instance if freq. hopping is enabled */
+			if (trx->ts[tn].hopping.enabled) {
+				pinst = dlfh_route_br(&br, &trx->ts[tn]);
+				if (pinst == NULL)
+					continue;
+				l1h = pinst->u.osmotrx.hdl;
+			}
+
 			/* update dummy burst mask for C0 */
-			if (trx == bts->c0)
+			if (pinst->trx == bts->c0)
 				c0_mask |= (1 << tn);
 
 			trx_if_send_burst(l1h, &br);
@@ -125,6 +171,57 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 			continue;
 		trx_if_send_burst(l1h, &br);
 	}
+}
+
+/* Find a route (TRX instance) for a given Uplink burst indication */
+static struct gsm_bts_trx *ulfh_route_bi(const struct trx_ul_burst_ind *bi,
+					 const struct gsm_bts_trx *src_trx)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_time time;
+	uint16_t arfcn;
+
+	gsm_fn2gsmtime(&time, bi->fn);
+
+	llist_for_each_entry(trx, &src_trx->bts->trx_list, list) {
+		const struct gsm_bts_trx_ts *ts = &trx->ts[bi->tn];
+		if (!ts->hopping.enabled)
+			continue;
+
+		arfcn = gsm0502_hop_seq_gen(&time, SCHED_FH_PARAMS_VALS(ts), ts->hopping.ma);
+		if (src_trx->arfcn == arfcn)
+			return trx;
+	}
+
+	LOGPTRX(src_trx, DL1C, LOGL_DEBUG, "Failed to find the transceiver (RF carrier) "
+		"for an Uplink burst (fn=%u, tn=%u, " SCHED_FH_PARAMS_FMT ")\n",
+		bi->fn, bi->tn, SCHED_FH_PARAMS_VALS(&src_trx->ts[bi->tn]));
+
+	struct bts_trx_priv *priv = (struct bts_trx_priv *) src_trx->bts->model_priv;
+	rate_ctr_inc(&priv->ctrs->ctr[BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER]);
+
+	return NULL;
+}
+
+/* Route a given Uplink burst indication to the scheduler depending on freq. hopping state */
+int trx_sched_route_burst_ind(struct trx_ul_burst_ind *bi, struct l1sched_trx *l1t)
+{
+	const struct phy_instance *pinst;
+	const struct gsm_bts_trx *trx;
+	struct trx_l1h *l1h;
+
+	/* no frequency hopping => nothing to do */
+	if (!l1t->trx->ts[bi->tn].hopping.enabled)
+		return trx_sched_ul_burst(l1t, bi);
+
+	trx = ulfh_route_bi(bi, l1t->trx);
+	if (trx == NULL)
+		return -ENODEV;
+
+	pinst = trx_phy_instance(trx);
+	l1h = pinst->u.osmotrx.hdl;
+
+	return trx_sched_ul_burst(&l1h->l1s, bi);
 }
 
 /*! maximum number of 'missed' frame periods we can tolerate of OS doesn't schedule us*/

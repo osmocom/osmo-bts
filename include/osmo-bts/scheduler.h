@@ -267,6 +267,7 @@ struct trx_dl_burst_req {
 };
 
 /*! Handle an UL burst received by PHY */
+int trx_sched_route_burst_ind(struct trx_ul_burst_ind *bi, struct l1sched_trx *l1t);
 int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi);
 
 #endif /* TRX_SCHEDULER_H */

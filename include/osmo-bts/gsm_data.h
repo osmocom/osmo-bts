@@ -335,6 +335,9 @@ struct gsm_bts_trx_ts {
 		uint8_t ma_len;
 	} hopping;
 
+	/* Transceiver "cache" for frequency hopping */
+	const struct gsm_bts_trx *fh_trx_list[64];
+
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 

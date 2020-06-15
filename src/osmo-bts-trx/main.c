@@ -62,8 +62,18 @@
 #include "trx_if.h"
 
 static const struct rate_ctr_desc btstrx_ctr_desc[] = {
-	[BTSTRX_CTR_SCHED_DL_MISS_FN] =	{"trx_clk:sched_dl_miss_fn",
-					 "Downlink frames scheduled later than expected due to missed timerfd event (due to high system load)"},
+	[BTSTRX_CTR_SCHED_DL_MISS_FN] = {
+		"trx_clk:sched_dl_miss_fn",
+		"Downlink frames scheduled later than expected due to missed timerfd event (due to high system load)"
+	},
+	[BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER] = {
+		"trx_sched:dl_fh_no_carrier",
+		"Frequency hopping: no carrier found for a Downlink burst (check hopping parameters)"
+	},
+	[BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER] = {
+		"trx_sched:ul_fh_no_carrier",
+		"Frequency hopping: no carrier found for an Uplink burst (check hopping parameters)"
+	},
 };
 static const struct rate_ctr_group_desc btstrx_ctrg_desc = {
 	"bts-trx",

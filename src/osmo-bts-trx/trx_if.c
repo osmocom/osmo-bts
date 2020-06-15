@@ -1094,7 +1094,7 @@ skip_burst:
 		hdr_ver, trx_data_desc_msg(&bi));
 
 	/* feed received burst into scheduler code */
-	trx_sched_ul_burst(&l1h->l1s, &bi);
+	trx_sched_route_burst_ind(&bi, &l1h->l1s);
 
 	return 0;
 }
