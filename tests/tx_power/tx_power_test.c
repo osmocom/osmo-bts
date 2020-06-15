@@ -120,9 +120,9 @@ static void test_sbts1002(struct gsm_bts_trx *trx)
 	/* at max_power_red = 2, we expect 21dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(21));
 	/* at 1 step (of 2dB), we expect full 23-2-2=19 dBm */
-	OSMO_ASSERT(get_p_target_mdBm(trx, 1) == to_mdB(19));
+	OSMO_ASSERT(get_p_target_mdBm(trx, 2) == to_mdB(19));
 	/* at 2 steps (= 4dB), we expect 23-2-4=17*/
-	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 2) == to_mdB(17));
+	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 4) == to_mdB(17));
 }
 
 static void test_sbts1020(struct gsm_bts_trx *trx)
@@ -138,9 +138,9 @@ static void test_sbts1020(struct gsm_bts_trx *trx)
 	/* at max_power_red = 2, we expect 31dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(31));
 	/* at 1 step (of 2dB), we expect full 33-2-2=29 dBm */
-	OSMO_ASSERT(get_p_target_mdBm(trx, 1) == to_mdB(29));
+	OSMO_ASSERT(get_p_target_mdBm(trx, 2) == to_mdB(29));
 	/* at 2 steps (= 4dB), we expect 33-2-4-10=17*/
-	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 2) == to_mdB(17));
+	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 4) == to_mdB(17));
 }
 
 
@@ -157,9 +157,9 @@ static void test_sbts1100(struct gsm_bts_trx *trx)
 	/* at max_power_red = 2, we expect 38dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(38));
 	/* at 1 step (of 2dB), we expect full 40-2-2=36 dBm */
-	OSMO_ASSERT(get_p_target_mdBm(trx, 1) == to_mdB(36));
+	OSMO_ASSERT(get_p_target_mdBm(trx, 2) == to_mdB(36));
 	/* at 2 steps (= 4dB), we expect 40-2-4-17=17*/
-	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 2) == to_mdB(17));
+	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 4) == to_mdB(17));
 }
 
 static void test_sbts2050(struct gsm_bts_trx *trx)
@@ -175,9 +175,9 @@ static void test_sbts2050(struct gsm_bts_trx *trx)
 	/* at max_power_red = 2, we expect 35dBm */
 	OSMO_ASSERT(get_p_nominal_mdBm(trx) == to_mdB(35));
 	/* at 1 step (of 2dB), we expect full 37-2-2=33 dBm */
-	OSMO_ASSERT(get_p_target_mdBm(trx, 1) == to_mdB(33));
+	OSMO_ASSERT(get_p_target_mdBm(trx, 2) == to_mdB(33));
 	/* at 2 steps (= 4dB), we expect 37-2-4=31dBm */
-	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 2) == to_mdB(31));
+	OSMO_ASSERT(get_p_trxout_target_mdBm(trx, 4) == to_mdB(31));
 }
 
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)

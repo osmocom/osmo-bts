@@ -1190,9 +1190,9 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	if (func(l1t, chan, bid, br) != 0)
 		goto no_data;
 
-	/* BS Power reduction (2 dB steps) per logical channel */
+	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
-		br->att = l1cs->lchan->bs_power * 2;
+		br->att = l1cs->lchan->bs_power_red;
 
 	/* encrypt */
 	if (br->burst_len && l1cs->dl_encr_algo) {

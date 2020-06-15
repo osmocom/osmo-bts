@@ -60,6 +60,9 @@
 
 //#define FAKE_CIPH_MODE_COMPL
 
+/* Parse power attenuation (in dB) from BS Power IE (see 9.3.4) */
+#define BS_POWER2DB(bs_power) \
+	((bs_power & 0x0f) * 2)
 
 static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause, const uint8_t *chan_nr,
 				const uint8_t *link_id, const struct msgb *orig_msg);
@@ -1001,7 +1004,7 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	lchan->tch_mode = 0;
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
-	lchan->bs_power = 0;
+	lchan->bs_power_red = 0;
 	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
 	lchan->rqd_ta = 0;
 	copy_sacch_si_to_lchan(lchan);
@@ -1146,8 +1149,18 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* 9.3.4 BS Power */
-	if (TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
-		lchan->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+	if (TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1)) {
+		if (*TLVP_VAL(&tp, RSL_IE_BS_POWER) & (1 << 4)) {
+			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE,
+				  "Fast Power Control is not supported\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_SERV_OPT_UNIMPL);
+		}
+
+		lchan->bs_power_red = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
+		LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "BS Power attenuation %u dB\n",
+			  lchan->bs_power_red);
+	}
+
 	/* 9.3.13 MS Power */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
@@ -1664,21 +1677,13 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	return 0;
 }
 
-/* See TS 48.058 Section 9.3.4 */
-static int bs_power_attenuation_dB(uint8_t bs_power)
-{
-	/* the lower nibble contains the number of 2dB steps that the BS power is reduced compared
-	 * to its nominal transmit power */
-	return - ((bs_power & 0xF) *2);
-}
-
 /* 8.4.16 BS POWER CONTROL */
 static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct tlv_parsed tp;
-	uint8_t new_bs_power;
+	uint8_t old_bs_power_red;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1686,12 +1691,16 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 	if (!TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
 		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
 
-	new_bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+	if (*TLVP_VAL(&tp, RSL_IE_BS_POWER) & (1 << 4)) {
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Fast Power Control is not supported\n");
+		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL, &dch->chan_nr, NULL, msg);
+	}
+
+	old_bs_power_red = lchan->bs_power_red;
+	lchan->bs_power_red = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "BS POWER CONTROL Attenuation %d -> %d dB\n",
-		  bs_power_attenuation_dB(lchan->bs_power), bs_power_attenuation_dB(new_bs_power));
-
-	lchan->bs_power = new_bs_power;
+		  old_bs_power_red, lchan->bs_power_red);
 
 	/* 9.3.31 MS Power Parameters (O) */
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
@@ -2896,7 +2905,7 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
 	}
-	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->meas.bts_tx_pwr);
+	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power_red / 2);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
 		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
 		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;

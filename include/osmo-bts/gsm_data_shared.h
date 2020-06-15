@@ -193,8 +193,6 @@ struct gsm_lchan {
 		uint8_t flags;
 		/* RSL measurement result number, 0 at lchan_act */
 		uint8_t res_nr;
-		/* current Tx power level of the BTS */
-		uint8_t bts_tx_pwr;
 		/* number of measurements stored in array below */
 		uint8_t num_ul_meas;
 		struct bts_ul_meas uplink[MAX_NUM_UL_MEAS];
@@ -267,8 +265,9 @@ struct gsm_lchan {
 		uint8_t max;
 		bool fixed;
 	} ms_power_ctrl;
-	/* Power levels for BTS */
-	uint8_t bs_power;
+
+	/* BTS power reduction (in dB) */
+	uint8_t bs_power_red;
 
 	struct msgb *pending_rel_ind_msg;
 

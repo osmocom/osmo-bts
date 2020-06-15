@@ -60,14 +60,14 @@ int get_p_nominal_mdBm(struct gsm_bts_trx *trx)
 /* calculate the target total output power required, reduced by both
  * OML and RSL, but ignoring the attenuation required for power ramping and
  * thermal management */
-int get_p_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie)
+int get_p_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red)
 {
-	/* Pn subtracted by RSL BS Power IE (in 2 dB steps) */
-	return get_p_nominal_mdBm(trx) - to_mdB(bs_power_ie * 2);
+	/* Pn subtracted by RSL BS Power Recudtion (in 1 dB steps) */
+	return get_p_nominal_mdBm(trx) - to_mdB(bs_power_red);
 }
 int get_p_target_mdBm_lchan(struct gsm_lchan *lchan)
 {
-	return get_p_target_mdBm(lchan->ts->trx, lchan->bs_power);
+	return get_p_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
 }
 
 /* calculate the actual total output power required, taking into account the
@@ -113,14 +113,14 @@ int get_p_trxout_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 
 /* calculate target TRX output power required, ignoring the
  * attenuations required for power ramping but not thermal management */
-int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie)
+int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red)
 {
 	struct trx_power_params *tpp = &trx->power_params;
 	int p_target_mdBm, user_pa_drvlvl_mdBm, pa_drvlvl_mdBm;
 	unsigned int arfcn = trx->arfcn;
 
 	/* P_target subtracted by any bulk gain added by the user */
-	p_target_mdBm = get_p_target_mdBm(trx, bs_power_ie) - tpp->user_gain_mdB;
+	p_target_mdBm = get_p_target_mdBm(trx, bs_power_red) - tpp->user_gain_mdB;
 
 	/* determine input drive level required at input to user PA */
 	user_pa_drvlvl_mdBm = get_pa_drive_level_mdBm(&tpp->user_pa, p_target_mdBm, arfcn);
@@ -133,7 +133,7 @@ int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_ie)
 }
 int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan)
 {
-	return get_p_trxout_target_mdBm(lchan->ts->trx, lchan->bs_power);
+	return get_p_trxout_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
 }
 
 
