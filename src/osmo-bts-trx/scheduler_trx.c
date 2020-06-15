@@ -86,10 +86,9 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			_sched_rts(l1t, tn,
 				(fn + plink->u.osmotrx.rts_advance) % GSM_HYPERFRAME);
 
-			/* TODO: Tx attenuation is always 0? */
+			/* All other parameters to be set by _sched_dl_burst() */
 			br = (struct trx_dl_burst_req) {
 				.fn = fn, .tn = tn,
-				.att = 0,
 			};
 
 			/* get burst for FN */
