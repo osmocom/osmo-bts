@@ -71,6 +71,11 @@ enum trx_burst_type {
 
 /* States each channel on a multiframe */
 struct l1sched_chan_state {
+	/* Pointer to the associated logical channel state from gsm_data_shared.
+	 * Initialized during channel activation, thus may be NULL for inactive
+	 * or auto-active channels. Always check before dereferencing! */
+	struct gsm_lchan	*lchan;
+
 	/* scheduler */
 	bool			active;		/* Channel is active */
 	ubit_t			*dl_bursts;	/* burst buffer for TX */

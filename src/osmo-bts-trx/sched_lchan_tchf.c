@@ -50,6 +50,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 {
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
+	struct gsm_lchan *lchan = chan_state->lchan;
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
@@ -59,8 +60,6 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int n_errors = 0;
 	int n_bits_total = 0;
 	bool bfi_flag = false;
-	struct gsm_lchan *lchan =
-		get_lchan_by_chan_nr(l1t->trx, trx_chan_desc[chan].chan_nr | bi->tn);
 	unsigned int fn_begin;
 	uint16_t ber10k;
 	uint8_t is_sub = 0;
