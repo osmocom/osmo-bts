@@ -643,13 +643,8 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 	llist_for_each_entry_safe(msg, msg2, &l1ts->dl_prims, list) {
 		l1sap = msgb_l1sap_prim(msg);
 		if (l1sap->oph.operation != PRIM_OP_REQUEST) {
-wrong_type:
 			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
-free_msg:
-			/* unlink and free message */
-			llist_del(&msg->list);
-			msgb_free(msg);
-			return NULL;
+			goto free_msg;
 		}
 		switch (l1sap->oph.primitive) {
 		case PRIM_PH_DATA:
@@ -663,7 +658,8 @@ free_msg:
 			l1sap_fn = l1sap->u.tch.fn;
 			break;
 		default:
-			goto wrong_type;
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
+			goto free_msg;
 		}
 		prim_fn = ((l1sap_fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 		if (prim_fn > 100) { /* l1sap_fn < fn */
@@ -700,6 +696,12 @@ found_msg:
 	/* unlink and return message */
 	llist_del(&msg->list);
 	return msg;
+
+free_msg:
+	/* unlink and free message */
+	llist_del(&msg->list);
+	msgb_free(msg);
+	return NULL;
 }
 
 int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
