@@ -121,8 +121,8 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	LOGPPHI(pinst, DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
 
-	if (fn >= GSM_HYPERFRAME) {
-		fn %= GSM_HYPERFRAME;
+	if (fn >= GSM_TDMA_HYPERFRAME) {
+		fn %= GSM_TDMA_HYPERFRAME;
 		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Indicated clock's FN is not "
 			"wrapping correctly, correcting to fn=%u\n", fn);
 	}
@@ -737,7 +737,7 @@ static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 	bi->rssi = -(int8_t)buf[5];
 	bi->toa256 = (int16_t) osmo_load16be(buf + 6);
 
-	if (bi->fn >= GSM_HYPERFRAME) {
+	if (bi->fn >= GSM_TDMA_HYPERFRAME) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Illegal TDMA fn=%u\n", bi->fn);
 		return -EINVAL;

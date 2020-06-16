@@ -621,7 +621,7 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	/* increment number of RACH slots that have passed by since the
 	 * last time indication */
 	for (i = 0; i < frames_expired; i++) {
-		uint32_t fn = (info_time_ind->fn + GSM_HYPERFRAME - i) % GSM_HYPERFRAME;
+		uint32_t fn = GSM_TDMA_FN_SUB(info_time_ind->fn, i);
 		bts->load.rach.total += calc_exprd_rach_frames(bts, fn);
 	}
 
@@ -891,7 +891,7 @@ int32_t bts_get_avg_fn_advance(struct gsm_bts *bts)
 
 static void l1sap_update_fnstats(struct gsm_bts *bts, uint32_t rts_fn)
 {
-	int32_t delta = (rts_fn + GSM_HYPERFRAME - bts->gsm_time.fn) % GSM_HYPERFRAME;
+	int32_t delta = GSM_TDMA_FN_SUB(rts_fn, bts->gsm_time.fn);
 
 	if (delta < bts->fn_stats.min)
 		bts->fn_stats.min = delta;

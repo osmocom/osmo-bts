@@ -684,7 +684,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
 			goto free_msg;
 		}
-		prim_fn = ((l1sap_fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
+		prim_fn = GSM_TDMA_FN_SUB(l1sap_fn, fn);
 		if (prim_fn > 100) { /* l1sap_fn < fn */
 			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
 			     "Prim %u is out of range (%u vs exp %u), or channel %s with "
@@ -1248,12 +1248,6 @@ no_data:
 	}
 }
 
-#define TDMA_FN_SUM(a, b) \
-	((a + GSM_HYPERFRAME + b) % GSM_HYPERFRAME)
-
-#define TDMA_FN_SUB(a, b) \
-	((a + GSM_HYPERFRAME - b) % GSM_HYPERFRAME)
-
 static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	struct l1sched_chan_state *l1cs, uint8_t tn, uint32_t fn)
 {
@@ -1291,7 +1285,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	}
 
 	/* How many frames elapsed since the last one? */
-	elapsed_fs = TDMA_FN_SUB(fn, l1cs->last_tdma_fn);
+	elapsed_fs = GSM_TDMA_FN_SUB(fn, l1cs->last_tdma_fn);
 	if (elapsed_fs > l1ts->mf_period) { /* Too many! */
 		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, frame_head->ul_chan, fn,
 			"Too many (>%u) contiguous TDMA frames=%u elapsed "
@@ -1310,7 +1304,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	 * Start counting from the last_fn + 1.
 	 */
 	for (i = 1; i < elapsed_fs; i++) {
-		fn_i = TDMA_FN_SUM(l1cs->last_tdma_fn, i);
+		fn_i = GSM_TDMA_FN_SUM(l1cs->last_tdma_fn, i);
 		offset = fn_i % l1ts->mf_period;
 		frame = l1ts->mf_frames + offset;
 
@@ -1343,7 +1337,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 		};
 
 		for (i = 1; i < elapsed_fs; i++) {
-			fn_i = TDMA_FN_SUM(l1cs->last_tdma_fn, i);
+			fn_i = GSM_TDMA_FN_SUM(l1cs->last_tdma_fn, i);
 			offset = fn_i % l1ts->mf_period;
 			frame = l1ts->mf_frames + offset;
 			func = trx_chan_desc[frame->ul_chan].ul_fn;

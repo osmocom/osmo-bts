@@ -532,7 +532,6 @@ void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int ac
  ***********************************************************************/
 
 #define RTS_ADVANCE		5	/* about 20ms */
-#define FRAME_DURATION_uS	4615
 
 static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 {
@@ -558,7 +557,7 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			 *    --> Handle and process non-transparent RSL-Messages (activate channel, )
 			 *    --> Forward transparent RSL-DATA-Messages to the ms by appending them to
 			 *        the l1-dl-queue */
-			_sched_rts(l1t, br.tn, (fn + RTS_ADVANCE) % GSM_HYPERFRAME);
+			_sched_rts(l1t, br.tn, GSM_TDMA_FN_SUM(fn, RTS_ADVANCE));
 			/* schedule transmit backend functions */
 			/* Process data in the l1-dlqueue and forward it
 			 * to MS */
@@ -587,28 +586,27 @@ static void vbts_fn_timer_cb(void *data)
 	                + (tv_now.tv_usec - tv_clock->tv_usec);
 
 	/* not so good somehow a lot of time passed between two timer callbacks */
-	if (elapsed_us > 2 *FRAME_DURATION_uS)
+	if (elapsed_us > 2 *GSM_TDMA_FN_DURATION_uS)
 		LOGP(DL1P, LOGL_NOTICE, "vbts_fn_timer_cb after %d us\n", elapsed_us);
 
 	/* schedule the current frame/s (fn = frame number)
 	 * this loop will be called at least once, but can also be executed
 	 * multiple times if more than one frame duration (4615us) passed till the last callback */
-	while (elapsed_us > FRAME_DURATION_uS / 2) {
+	while (elapsed_us > GSM_TDMA_FN_DURATION_uS / 2) {
 		const struct timeval tv_frame = {
 			.tv_sec = 0,
-			.tv_usec = FRAME_DURATION_uS,
+			.tv_usec = GSM_TDMA_FN_DURATION_uS,
 		};
 		timeradd(tv_clock, &tv_frame, tv_clock);
 		/* increment the frame number in the BTS model instance */
-		bts_virt->last_fn = (bts_virt->last_fn + 1) % GSM_HYPERFRAME;
-		vbts_sched_fn(bts, bts_virt->last_fn);
-		elapsed_us -= FRAME_DURATION_uS;
+		vbts_sched_fn(bts, GSM_TDMA_FN_INC(bts_virt->last_fn));
+		elapsed_us -= GSM_TDMA_FN_DURATION_uS;
 	}
 
 	/* re-schedule the timer */
 	/* timer is set to frame duration - elapsed time to guarantee that this cb method will be
 	 * periodically executed every 4.615ms */
-	osmo_timer_schedule(&bts_virt->fn_timer, 0, FRAME_DURATION_uS - elapsed_us);
+	osmo_timer_schedule(&bts_virt->fn_timer, 0, GSM_TDMA_FN_DURATION_uS - elapsed_us);
 }
 
 int vbts_sched_start(struct gsm_bts *bts)
@@ -622,7 +620,7 @@ int vbts_sched_start(struct gsm_bts *bts)
 
 	gettimeofday(&bts_virt->tv_clock, NULL);
 	/* trigger the first timer after 4615us (a frame duration) */
-	osmo_timer_schedule(&bts_virt->fn_timer, 0, FRAME_DURATION_uS);
+	osmo_timer_schedule(&bts_virt->fn_timer, 0, GSM_TDMA_FN_DURATION_uS);
 
 	return 0;
 }

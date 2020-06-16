@@ -74,7 +74,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 
 		/* advance frame number, so the transceiver has more
 		 * time until it must be transmitted. */
-		fn = (fn + plink->u.osmotrx.clock_advance) % GSM_HYPERFRAME;
+		fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
 
 		/* we don't schedule, if power is off */
 		if (!trx_if_powered(l1h))
@@ -83,8 +83,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
 			/* ready-to-send */
-			_sched_rts(l1t, tn,
-				(fn + plink->u.osmotrx.rts_advance) % GSM_HYPERFRAME);
+			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.rts_advance));
 
 			/* All other parameters to be set by _sched_dl_burst() */
 			br = (struct trx_dl_burst_req) {
@@ -105,10 +104,6 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 	return 0;
 }
 
-/*! duration of a GSM frame in nano-seconds. (120ms/26) */
-#define FRAME_DURATION_nS	4615384
-/*! duration of a GSM frame in micro-seconds (120s/26) */
-#define FRAME_DURATION_uS	(FRAME_DURATION_nS/1000)
 /*! maximum number of 'missed' frame periods we can tolerate of OS doesn't schedule us*/
 #define MAX_FN_SKEW		50
 /*! maximum number of frame periods we can tolerate without TRX Clock Indication*/
@@ -126,9 +121,9 @@ static inline int64_t compute_elapsed_us(const struct timespec *last, const stru
 /*! compute the number of frame number intervals elapsed between \a last and \a now */
 static inline int compute_elapsed_fn(const uint32_t last, const uint32_t now)
 {
-	int elapsed_fn = (now + GSM_HYPERFRAME - last) % GSM_HYPERFRAME;
+	int elapsed_fn = GSM_TDMA_FN_SUB(now, last);
 	if (elapsed_fn >= 135774)
-		elapsed_fn -= GSM_HYPERFRAME;
+		elapsed_fn -= GSM_TDMA_HYPERFRAME;
 	return elapsed_fn;
 }
 
@@ -138,9 +133,6 @@ static inline void normalize_timespec(struct timespec *ts)
 	ts->tv_sec += ts->tv_nsec / 1000000000;
 	ts->tv_nsec = ts->tv_nsec % 1000000000;
 }
-
-/*! Increment a GSM frame number modulo GSM_HYPERFRAME */
-#define INCREMENT_FN(fn)	(fn) = (((fn) + 1) % GSM_HYPERFRAME)
 
 extern int quit;
 
@@ -178,7 +170,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	/* compute actual elapsed time and resulting OS scheduling error */
 	clock_gettime(CLOCK_MONOTONIC, &tv_now);
 	elapsed_us = compute_elapsed_us(&tcs->last_fn_timer.tv, &tv_now);
-	error_us = elapsed_us - FRAME_DURATION_uS;
+	error_us = elapsed_us - GSM_TDMA_FN_DURATION_uS;
 #ifdef DEBUG_CLOCK
 	printf("%s(): %09ld, elapsed_us=%05" PRId64 ", error_us=%-d: fn=%d\n", __func__,
 		tv_now.tv_nsec, elapsed_us, error_us, tcs->last_fn_timer.fn+1);
@@ -186,17 +178,15 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	tcs->last_fn_timer.tv = tv_now;
 
 	/* if someone played with clock, or if the process stalled */
-	if (elapsed_us > FRAME_DURATION_uS * MAX_FN_SKEW || elapsed_us < 0) {
+	if (elapsed_us > GSM_TDMA_FN_DURATION_uS * MAX_FN_SKEW || elapsed_us < 0) {
 		LOGP(DL1C, LOGL_ERROR, "PC clock skew: elapsed_us=%" PRId64 ", error_us=%" PRId64 "\n",
 			elapsed_us, error_us);
 		goto no_clock;
 	}
 
 	/* call trx_sched_fn() for all expired FN */
-	for (i = 0; i < expire_count; i++) {
-		INCREMENT_FN(tcs->last_fn_timer.fn);
-		trx_sched_fn(bts, tcs->last_fn_timer.fn);
-	}
+	for (i = 0; i < expire_count; i++)
+		trx_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
 
 	return 0;
 
@@ -281,7 +271,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	int elapsed_fn;
 	int64_t elapsed_us, elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
 	unsigned int fn_caught_up = 0;
-	const struct timespec interval = { .tv_sec = 0, .tv_nsec = FRAME_DURATION_nS };
+	const struct timespec interval = { .tv_sec = 0, .tv_nsec = GSM_TDMA_FN_DURATION_nS };
 
 	if (quit)
 		return 0;
@@ -307,7 +297,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	elapsed_us_since_clk = compute_elapsed_us(&tcs->last_clk_ind.tv, &tv_now);
 	elapsed_fn_since_clk = compute_elapsed_fn(tcs->last_clk_ind.fn, fn);
 	/* error (delta) between local clock since last CLK and CLK based on FN clock at TRX */
-	error_us_since_clk = elapsed_us_since_clk - (FRAME_DURATION_uS * elapsed_fn_since_clk);
+	error_us_since_clk = elapsed_us_since_clk - (GSM_TDMA_FN_DURATION_uS * elapsed_fn_since_clk);
 	LOGP(DL1C, LOGL_INFO, "TRX Clock Ind: elapsed_us=%7"PRId64", "
 		"elapsed_fn=%3"PRId64", error_us=%+5"PRId64"\n",
 		elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk);
@@ -328,14 +318,14 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	}
 
 	LOGP(DL1C, LOGL_INFO, "GSM clock jitter: %" PRId64 "us (elapsed_fn=%d)\n",
-		elapsed_fn * FRAME_DURATION_uS - elapsed_us, elapsed_fn);
+		elapsed_fn * GSM_TDMA_FN_DURATION_uS - elapsed_us, elapsed_fn);
 
 	/* too many frames have been processed already */
 	if (elapsed_fn < 0) {
 		struct timespec first = interval;
 		/* set clock to the time or last FN should have been
 		 * transmitted. */
-		first.tv_nsec += (0 - elapsed_fn) * FRAME_DURATION_nS;
+		first.tv_nsec += (0 - elapsed_fn) * GSM_TDMA_FN_DURATION_nS;
 		normalize_timespec(&first);
 		LOGP(DL1C, LOGL_NOTICE, "We were %d FN faster than TRX, compensating\n", -elapsed_fn);
 		/* set time to the time our next FN has to be transmitted */
@@ -345,8 +335,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 
 	/* transmit what we still need to transmit */
 	while (fn != tcs->last_fn_timer.fn) {
-		INCREMENT_FN(tcs->last_fn_timer.fn);
-		trx_sched_fn(bts, tcs->last_fn_timer.fn);
+		trx_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
 		fn_caught_up++;
 	}
 

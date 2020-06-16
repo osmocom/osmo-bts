@@ -12,6 +12,7 @@
 #include <osmocom/codec/ecu.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/gsm23003.h>
+#include <osmocom/gsm/gsm0502.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/rxlev_stat.h>
@@ -34,9 +35,6 @@
 #define GSM_FR_BYTES	33	/* TS 101318 Chapter 5.1: 260 bits + 4bit sig */
 #define GSM_HR_BYTES	14	/* TS 101318 Chapter 5.2: 112 bits, no sig */
 #define GSM_EFR_BYTES	31	/* TS 101318 Chapter 5.3: 244 bits + 4bit sig */
-
-#define GSM_SUPERFRAME	(26*51)			/* 1326 TDMA frames */
-#define GSM_HYPERFRAME	(2048*GSM_SUPERFRAME)	/* GSM_HYPERFRAME frames */
 
 #define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT 41
 #define GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE 999999
