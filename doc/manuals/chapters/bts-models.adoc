@@ -248,7 +248,7 @@ current GSM frame number.
 GSM is a TDMA (time division multiple access) system on the radio
 interface.  OsmoTRX is the "clock master" of that in the Osmocom
 implementation. It informs OsmoBTS of the current GSM frame
-number.  However, as there is non-zero delays (UDP packet trnsmission
+number.  However, as there is non-zero delays (UDP packet transmission
 delay, operating system scheduler delay on both OsmoTRX and OsmoBTS
 side, ...), OsmoBTS must compensate for that delay by "advancing"
 the clock a certain amount of time.
@@ -266,8 +266,8 @@ underruns on the OsmoTRX side.
 
 The detailed value will depend on your underlying computer systems,
 operating system and related tuning parameters.  Running OsmoTRX
-on a remote host will inevitably require a higher fn-advance then
-running it on the same machine, where the UDP packetes are just passed
+on a remote host will inevitably require a higher fn-advance than
+running it on the same machine, where the UDP packets are just passed
 over the loopback device.
 
 The default value for `fn-advance` is 20 (corresponding to 92
