@@ -566,10 +566,12 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 
 enum {
 	L1SCHED_TS_CTR_DL_LATE,
+	L1SCHED_TS_CTR_DL_NOT_FOUND,
 };
 
 static const struct rate_ctr_desc l1sched_ts_ctr_desc[] = {
 	[L1SCHED_TS_CTR_DL_LATE] =	{"l1sched_ts:dl_late", "Downlink frames arrived too late to submit to lower layers"},
+	[L1SCHED_TS_CTR_DL_NOT_FOUND] =	{"l1sched_ts:dl_not_found", "Downlink frames not found while scheduling"},
 };
 static const struct rate_ctr_group_desc l1sched_ts_ctrg_desc = {
 	"l1sched_ts",
@@ -698,7 +700,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			continue;
 		}
 		if (prim_fn > 0) /* l1sap_fn > fn */
-			return NULL;
+			break;
 
 		/* l1sap_fn == fn */
 		if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
@@ -714,6 +716,8 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 		return msg;
 	}
 
+	/* Queue was traversed with no candidate, no prim is available for current FN: */
+	rate_ctr_inc2(l1ts->ctrs, L1SCHED_TS_CTR_DL_NOT_FOUND);
 	return NULL;
 
 free_msg:
