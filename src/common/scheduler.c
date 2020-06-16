@@ -30,6 +30,8 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/a5.h>
@@ -562,6 +564,21 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 	},
 };
 
+enum {
+	L1SCHED_TS_CTR_DL_LATE,
+};
+
+static const struct rate_ctr_desc l1sched_ts_ctr_desc[] = {
+	[L1SCHED_TS_CTR_DL_LATE] =	{"l1sched_ts:dl_late", "Downlink frames arrived too late to submit to lower layers"},
+};
+static const struct rate_ctr_group_desc l1sched_ts_ctrg_desc = {
+	"l1sched_ts",
+	"L1 scheduler timeslot",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(l1sched_ts_ctr_desc),
+	l1sched_ts_ctr_desc
+};
+
 /*
  * init / exit
  */
@@ -582,7 +599,9 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 		struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
 		l1ts->mf_index = 0;
+		l1ts->ctrs = rate_ctr_group_alloc(trx, &l1sched_ts_ctrg_desc, (trx->nr + 1) * 10 + tn);
 		INIT_LLIST_HEAD(&l1ts->dl_prims);
+
 		for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
 			struct l1sched_chan_state *chan_state;
 			chan_state = &l1ts->chan_state[i];
@@ -604,6 +623,8 @@ void trx_sched_exit(struct l1sched_trx *l1t)
 	for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
 		struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 		msgb_queue_flush(&l1ts->dl_prims);
+		rate_ctr_group_free(l1ts->ctrs);
+		l1ts->ctrs = NULL;
 		for (i = 0; i < _TRX_CHAN_MAX; i++) {
 			struct l1sched_chan_state *chan_state;
 			chan_state = &l1ts->chan_state[i];
@@ -670,6 +691,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			     prim_fn, l1sap_fn, fn,
 			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
 			     trx_chan_desc[chan].name);
+			rate_ctr_inc2(l1ts->ctrs, L1SCHED_TS_CTR_DL_LATE);
 			/* unlink and free message */
 			llist_del(&msg->list);
 			msgb_free(msg);

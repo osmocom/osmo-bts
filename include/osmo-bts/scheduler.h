@@ -2,6 +2,7 @@
 #define TRX_SCHEDULER_H
 
 #include <osmocom/core/utils.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <osmo-bts/gsm_data.h>
 
@@ -141,6 +142,8 @@ struct l1sched_ts {
 	const struct trx_sched_frame *mf_frames; /* pointer to frame layout */
 
 	struct llist_head	dl_prims;	/* Queue primitives for TX */
+
+	struct rate_ctr_group	*ctrs;		/* rate counters */
 
 	/* Channel states for all logical channels */
 	struct l1sched_chan_state chan_state[_TRX_CHAN_MAX];
