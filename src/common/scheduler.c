@@ -635,7 +635,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 {
 	struct msgb *msg, *msg2;
 	struct osmo_phsap_prim *l1sap;
-	uint32_t prim_fn;
+	uint32_t prim_fn, l1sap_fn;
 	uint8_t chan_nr, link_id;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
@@ -655,22 +655,24 @@ free_msg:
 		case PRIM_PH_DATA:
 			chan_nr = l1sap->u.data.chan_nr;
 			link_id = l1sap->u.data.link_id;
-			prim_fn = ((l1sap->u.data.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
+			l1sap_fn = l1sap->u.data.fn;
 			break;
 		case PRIM_TCH:
 			chan_nr = l1sap->u.tch.chan_nr;
 			link_id = 0;
-			prim_fn = ((l1sap->u.tch.fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
+			l1sap_fn = l1sap->u.tch.fn;
 			break;
 		default:
 			goto wrong_type;
 		}
+		prim_fn = ((l1sap_fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
 		if (prim_fn > 100) {
 			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
-			     "Prim %u is out of range (100), or channel %s with "
+			     "Prim %u is out of range (%u vs exp %u), or channel %s with "
 			     "type %s is already disabled. If this happens in "
 			     "conjunction with PCU, increase 'rts-advance' by 5.\n",
-			     prim_fn, get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
+			     prim_fn, l1sap_fn, fn,
+			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
 			     trx_chan_desc[chan].name);
 			/* unlink and free message */
 			llist_del(&msg->list);
