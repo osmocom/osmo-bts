@@ -666,7 +666,7 @@ free_msg:
 			goto wrong_type;
 		}
 		prim_fn = ((l1sap_fn + GSM_HYPERFRAME - fn) % GSM_HYPERFRAME);
-		if (prim_fn > 100) {
+		if (prim_fn > 100) { /* l1sap_fn < fn */
 			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
 			     "Prim %u is out of range (%u vs exp %u), or channel %s with "
 			     "type %s is already disabled. If this happens in "
@@ -679,9 +679,10 @@ free_msg:
 			msgb_free(msg);
 			continue;
 		}
-		if (prim_fn > 0)
-			continue;
+		if (prim_fn > 0) /* l1sap_fn > fn */
+			return NULL;
 
+		/* l1sap_fn == fn */
 		goto found_msg;
 	}
 
