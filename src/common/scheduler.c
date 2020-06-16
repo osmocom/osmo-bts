@@ -679,23 +679,20 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			return NULL;
 
 		/* l1sap_fn == fn */
-		goto found_msg;
+		if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
+		 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
+			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
+				"expecting chan_nr=0x%02x link_id=%02x.\n", chan_nr, link_id,
+				trx_chan_desc[chan].chan_nr | tn, trx_chan_desc[chan].link_id);
+			goto free_msg;
+		}
+
+		/* unlink and return message */
+		llist_del(&msg->list);
+		return msg;
 	}
 
 	return NULL;
-
-found_msg:
-	if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
-	 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
-			"expecting chan_nr=0x%02x link_id=%02x.\n", chan_nr, link_id,
-			trx_chan_desc[chan].chan_nr | tn, trx_chan_desc[chan].link_id);
-		goto free_msg;
-	}
-
-	/* unlink and return message */
-	llist_del(&msg->list);
-	return msg;
 
 free_msg:
 	/* unlink and free message */
