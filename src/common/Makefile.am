@@ -27,6 +27,7 @@ libbts_a_SOURCES = \
 	tx_power.c \
 	bts_ctrl_commands.c \
 	bts_ctrl_lookup.c \
+	bts_shutdown_fsm.c \
 	l1sap.c \
 	cbch.c \
 	power_control.c \

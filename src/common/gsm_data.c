@@ -28,12 +28,22 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/core/fsm.h>
+#include <osmocom/core/tdef.h>
+
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/abis_nm.h>
-#include <osmocom/core/statistics.h>
 #include <osmocom/codec/ecu.h>
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/bts_shutdown_fsm.h>
+
+static struct osmo_tdef bts_T_defs[] = {
+	{ .T=-1, .default_val=1, .desc="Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s)" },
+	{ .T=-2, .default_val=3, .desc="Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s)" },
+	{}
+};
 
 void gsm_abis_mo_reset(struct gsm_abis_mo *mo)
 {
@@ -276,6 +286,12 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
+
+	bts->T_defs = bts_T_defs;
+	osmo_tdefs_reset(bts->T_defs);
+	bts->shutdown_fi = osmo_fsm_inst_alloc(&bts_shutdown_fsm, bts, bts,
+					       LOGL_INFO, NULL);
+	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);
 
 	gsm_mo_init(&bts->mo, bts, NM_OC_BTS,
 			bts->nr, 0xff, 0xff);

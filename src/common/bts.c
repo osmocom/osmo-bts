@@ -269,39 +269,6 @@ int bts_trx_init(struct gsm_bts_trx *trx)
 	return 0;
 }
 
-static void shutdown_timer_cb(void *data)
-{
-	fprintf(stderr, "Shutdown timer expired\n");
-	exit(42);
-}
-
-static struct osmo_timer_list shutdown_timer = {
-	.cb = &shutdown_timer_cb,
-};
-
-void bts_shutdown(struct gsm_bts *bts, const char *reason)
-{
-	struct gsm_bts_trx *trx;
-
-	if (osmo_timer_pending(&shutdown_timer)) {
-		LOGP(DOML, LOGL_NOTICE,
-			"BTS is already being shutdown.\n");
-		return;
-	}
-
-	LOGP(DOML, LOGL_NOTICE, "Shutting down BTS %u, Reason %s\n",
-		bts->nr, reason);
-
-	llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
-		bts_model_trx_deact_rf(trx);
-		bts_model_trx_close(trx);
-	}
-
-	/* schedule a timer to make sure select loop logic can run again
-	 * to dispatch any pending primitives */
-	osmo_timer_schedule(&shutdown_timer, 3, 0);
-}
-
 /* main link is established, send status report */
 int bts_link_estab(struct gsm_bts *bts)
 {

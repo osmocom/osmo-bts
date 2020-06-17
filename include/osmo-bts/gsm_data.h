@@ -733,6 +733,9 @@ struct gsm_bts {
 		char *sock_path;
 	} pcu;
 
+	struct osmo_fsm_inst *shutdown_fi; /* FSM instance to manage shutdown procedure during process exit */
+	struct osmo_tdef *T_defs; /* Timer defines */
+
 	void *model_priv; /* Allocated by bts_model, contains model specific data pointer */
 };
 
