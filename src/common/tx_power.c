@@ -210,8 +210,11 @@ static void power_ramp_do_step(struct gsm_bts_trx *trx, int first)
 	struct trx_power_params *tpp = &trx->power_params;
 
 	/* we had finished in last loop iteration */
-	if (!first && tpp->ramp.attenuation_mdB == 0)
+	if (!first && tpp->ramp.attenuation_mdB == 0) {
+		if (tpp->ramp.compl_cb)
+			tpp->ramp.compl_cb(trx);
 		return;
+	}
 
 	if (we_are_ramping_up(trx)) {
 		/* ramp up power -> ramp down attenuation */
@@ -236,7 +239,7 @@ static void power_ramp_do_step(struct gsm_bts_trx *trx, int first)
 }
 
 
-int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
+int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, ramp_compl_cb_t ramp_compl_cb)
 {
 	struct trx_power_params *tpp = &trx->power_params;
 
@@ -259,6 +262,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 
 	/* set the new target */
 	tpp->p_total_tgt_mdBm = p_total_tgt_mdBm;
+	tpp->ramp.compl_cb = ramp_compl_cb;
 
 	if (we_are_ramping_up(trx)) {
 		if (tpp->p_total_tgt_mdBm <= tpp->ramp.max_initial_pout_mdBm) {

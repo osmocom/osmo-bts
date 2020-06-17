@@ -20,6 +20,8 @@ struct power_amp {
 	struct pa_calibration calib;
 };
 
+typedef void (*ramp_compl_cb_t)(struct gsm_bts_trx *trx);
+
 /* Transmit power related parameters of a transceiver */
 struct trx_power_params {
 	/* specified maximum output of TRX at full power, has to be
@@ -55,6 +57,8 @@ struct trx_power_params {
 		unsigned int step_size_mdB;
 		unsigned int step_interval_sec;
 		struct osmo_timer_list step_timer;
+		/* call-back called when target is reached */
+		ramp_compl_cb_t compl_cb;
 	} ramp;
 };
 
@@ -73,7 +77,7 @@ int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan);
 int get_p_trxout_actual_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red);
 int get_p_trxout_actual_mdBm_lchan(struct gsm_lchan *lchan);
 
-int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass);
+int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, ramp_compl_cb_t ramp_compl_cb);
 
 void power_trx_change_compl(struct gsm_bts_trx *trx, int p_trxout_cur_mdBm);
 

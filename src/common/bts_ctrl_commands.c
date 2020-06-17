@@ -57,7 +57,7 @@ static int set_therm_att(struct ctrl_cmd *cmd, void *data)
 
 	tpp->thermal_attenuation_mdB = val;
 
-	power_ramp_start(trx, tpp->p_total_cur_mdBm, 0);
+	power_ramp_start(trx, tpp->p_total_cur_mdBm, 0, NULL);
 
 	return get_therm_att(cmd, data);
 }

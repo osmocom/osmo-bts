@@ -284,7 +284,7 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 	int power = atoi(argv[1]);
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
 
-	power_ramp_start(trx, to_mdB(power), 1);
+	power_ramp_start(trx, to_mdB(power), 1, NULL);
 
 	return CMD_SUCCESS;
 }

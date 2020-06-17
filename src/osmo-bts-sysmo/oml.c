@@ -358,7 +358,7 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 #endif
 
 	/* Begin to ramp up the power */
-	power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
+	power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0, NULL);
 
 	return opstart_compl(&trx->mo, l1_msg);
 }
@@ -1743,7 +1743,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 		/* Did we go through MphInit yet? If yes fire and forget */
 		if (fl1h->hLayer1)
-			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
+			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0, NULL);
 	}
 
 	/* FIXME: we actually need to send a ACK or NACK for the OML message */

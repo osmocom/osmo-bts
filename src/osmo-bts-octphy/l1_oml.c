@@ -1740,7 +1740,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 		struct gsm_bts_trx *trx = obj;
 		/*struct octphy_hdl *fl1h = trx_octphy_hdl(trx); */
 
-		power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
+		power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0, NULL);
 	}
 	return oml_fom_ack_nack(msg, 0);
 }

@@ -355,7 +355,7 @@ static int trx_init_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		trx_rf_lock(trx, 1, trx_mute_on_init_cb);
 
 	/* Begin to ramp up the power */
-	power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
+	power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0, NULL);
 
 	return opstart_compl(&trx->mo, l1_msg);
 }
@@ -1842,7 +1842,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 		/* Did we go through MphInit yet? If yes fire and forget */
 		if (fl1h->hLayer1) {
-			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0);
+			power_ramp_start(trx, get_p_target_mdBm(trx, 0), 0, NULL);
 #if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
 			if (fl1h->phy_inst->u.lc15.tx_pwr_red_8psk != trx->max_power_backoff_8psk) {
 				/* update current Tx power backoff for 8-PSK */

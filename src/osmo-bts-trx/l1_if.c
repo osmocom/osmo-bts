@@ -144,9 +144,9 @@ static void l1if_trx_start_power_ramp(struct gsm_bts_trx *trx)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	if (l1h->config.forced_max_power_red == -1)
-		power_ramp_start(trx, get_p_nominal_mdBm(trx), 0);
+		power_ramp_start(trx, get_p_nominal_mdBm(trx), 0, NULL);
 	else
-		power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1);
+		power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1, NULL);
 }
 
 /* Sets the nominal power, in dB */
@@ -478,7 +478,7 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 	   is already running. Otherwise skip, power ramping will be started
 	   after TRX is running */
 	if (plink->u.osmotrx.powered && l1h->config.forced_max_power_red == -1)
-		power_ramp_start(pinst->trx, get_p_nominal_mdBm(pinst->trx), 0);
+		power_ramp_start(pinst->trx, get_p_nominal_mdBm(pinst->trx), 0, NULL);
 
 	return 0;
 }
