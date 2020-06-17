@@ -47,17 +47,41 @@ static void st_none(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	}
 }
 
+static void ramp_down_compl_cb(struct gsm_bts_trx *trx) {
+       osmo_fsm_inst_dispatch(trx->bts->shutdown_fi, BTS_SHUTDOWN_EV_TRX_RAMP_COMPL, trx);
+}
+
 static void st_wait_ramp_down_compl_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
-	/* TODO: here power ramp down will be started on all TRX, prior to changing state */
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		power_ramp_start(trx, to_mdB(-10), 1, ramp_down_compl_cb);
 }
 
 static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
-	/* TODO: In here once we have ramp down implemented we'll transit to
-	   regular exit. For now we simply wait for state timeout
-	   bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
-	*/
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct gsm_bts_trx *src_trx;
+	unsigned int remaining = 0;
+	struct gsm_bts_trx *trx;
+
+	switch(event) {
+	case BTS_SHUTDOWN_EV_TRX_RAMP_COMPL:
+		src_trx = (struct gsm_bts_trx *)data;
+
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->power_params.p_total_cur_mdBm > 0)
+				remaining++;
+		}
+
+		LOGPFSML(fi, LOGL_INFO, "%s Ramping down complete, %u TRX remaining\n",
+			 gsm_trx_name(src_trx), remaining);
+		if (remaining == 0)
+			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
+		break;
+	}
 }
 
 static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
@@ -82,7 +106,8 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 		.action = st_none,
 	},
 	[BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL] = {
-		.in_event_mask = 0,
+		.in_event_mask =
+			X(BTS_SHUTDOWN_EV_TRX_RAMP_COMPL),
 		.out_state_mask =
 			X(BTS_SHUTDOWN_ST_EXIT),
 		.name = "WAIT_RAMP_DOWN_COMPL",
@@ -97,6 +122,7 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 
 const struct value_string bts_shutdown_fsm_event_names[] = {
 	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_START),
+	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_TRX_RAMP_COMPL),
 	{ 0, NULL }
 };
 

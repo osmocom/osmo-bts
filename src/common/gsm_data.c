@@ -40,7 +40,16 @@
 #include <osmo-bts/bts_shutdown_fsm.h>
 
 static struct osmo_tdef bts_T_defs[] = {
-	{ .T=-1, .default_val=1, .desc="Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s)" },
+	/* T-1: FIXME: Ideally should be dynamically calculated per trx at
+	 * shutdown start based on params below, and highest trx value taken:
+	 * + VTY's power-ramp step-interval.
+	 * + Amount of steps needed (taking into account how many dB each step moves).
+	 * + Extra time to get response back for each step.
+	 * For now we simply give 5 mins, which should be enough for any
+	 * acceptable setup, while still ensuring will timeout at some point if
+	 * something fails in the ramp down procedure.
+	 */
+	{ .T=-1, .default_val=300, .desc="Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s)" },
 	{ .T=-2, .default_val=3, .desc="Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s)" },
 	{}
 };
