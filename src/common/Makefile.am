@@ -8,7 +8,7 @@ endif
 
 noinst_LIBRARIES = libbts.a libl1sched.a
 libbts_a_SOURCES = \
-	gsm_data_shared.c \
+	gsm_data.c \
 	sysinfo.c \
 	logging.c \
 	abis.c \
