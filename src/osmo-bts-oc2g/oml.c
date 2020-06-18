@@ -457,20 +457,24 @@ static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 			      void *data)
 {
 	msgb_free(l1_msg);
+	bts_model_trx_close_cb(trx, 0);
 	return 0;
 }
 
-int bts_model_trx_close(struct gsm_bts_trx *trx)
+void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	struct oc2gl1_hdl *fl1h = trx_oc2gl1_hdl(trx);
 	struct msgb *msg;
+	int rc;
 
 	msg = l1p_msgb_alloc();
 	prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphCloseReq, fl1h,
 		  l1p_handle_for_trx(trx));
 	LOGP(DL1C, LOGL_NOTICE, "Close TRX %u\n", trx->nr);
 
-	return l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb, NULL);
+	rc = l1if_gsm_req_compl(fl1h, msg, trx_close_compl_cb, NULL);
+	if (rc < 0)
+		bts_model_trx_close_cb(trx, rc);
 }
 
 static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb)

@@ -50,10 +50,10 @@ int osmo_amr_rtp_dec(const uint8_t *rtppayload, int payload_len, uint8_t *cmr,
 	return -1;
 }
 
-int bts_model_trx_close(struct gsm_bts_trx *trx)
+void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
-	return 0;
+	bts_model_trx_close_cb(trx, 0);
 }
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)

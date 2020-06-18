@@ -214,17 +214,27 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 	plink->u.osmotrx.poweronoff_sent = false;
 
 	if (poweronoff) {
-		if (rc == 0 && pinst->phy_link->state != PHY_LINK_CONNECTED) {
+		if (rc == 0 && plink->state != PHY_LINK_CONNECTED) {
 			trx_sched_clock_started(pinst->trx->bts);
-			phy_link_state_set(pinst->phy_link, PHY_LINK_CONNECTED);
+			phy_link_state_set(plink, PHY_LINK_CONNECTED);
 
 			/* Begin to ramp up the power on all TRX associated with this phy */
 			llist_for_each_entry(pinst, &plink->instances, list) {
 				l1if_trx_start_power_ramp(pinst->trx);
 			}
-		} else if (rc != 0 && pinst->phy_link->state != PHY_LINK_SHUTDOWN) {
+		} else if (rc != 0 && plink->state != PHY_LINK_SHUTDOWN) {
 			trx_sched_clock_stopped(pinst->trx->bts);
-			phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
+			phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+		}
+	} else {
+		if (plink->state != PHY_LINK_SHUTDOWN) {
+			trx_sched_clock_stopped(pinst->trx->bts);
+			phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+
+			/* Notify TRX close on all TRX associated with this phy */
+			llist_for_each_entry(pinst, &plink->instances, list) {
+				bts_model_trx_close_cb(pinst->trx, rc);
+			}
 		}
 	}
 }
@@ -422,7 +432,7 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 }
 
 /* deactivate transceiver */
-int bts_model_trx_close(struct gsm_bts_trx *trx)
+void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -431,12 +441,12 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	if (l1h->config.enabled) {
 		l1h->config.enabled = false;
 		l1if_provision_transceiver_trx(l1h);
-	}
+	} else if (!pinst->phy_link->u.osmotrx.poweronoff_sent) {
+		bts_model_trx_close_cb(trx, 0);
+	} /* else: poweroff in progress, cb will be called upon TRXC RSP */
 
 	/* Set to Operational State: Disabled */
 	check_transceiver_availability_trx(l1h, 0);
-
-	return 0;
 }
 
 /* on RSL failure, deactivate transceiver */

@@ -170,3 +170,9 @@ void bts_shutdown(struct gsm_bts *bts, const char *reason)
 	LOGPFSML(fi, LOGL_NOTICE, "Shutting down BTS, reason: %s\n", reason);
 	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_START, NULL);
 }
+
+void bts_model_trx_close_cb(struct gsm_bts_trx *trx, int rc)
+{
+	struct osmo_fsm_inst *fi = trx->bts->shutdown_fi;
+	LOGPFSML(fi, LOGL_DEBUG, "%s Received TRX close cb rc=%d\n", gsm_trx_name(trx), rc);
+}

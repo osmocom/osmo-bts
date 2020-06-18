@@ -1,4 +1,5 @@
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_model.h>
 
 struct femtol1_hdl;
 struct bts_model_set_dyn_pdch_data;
@@ -23,8 +24,8 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 { return 0; }
-int bts_model_trx_close(struct gsm_bts_trx *trx)
-{ return 0; }
+void bts_model_trx_close(struct gsm_bts_trx *trx)
+{ bts_model_trx_close_cb(trx, 0); }
 int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 			struct tlv_parsed *old_attr, struct tlv_parsed *new_attr,
 			void *obj)

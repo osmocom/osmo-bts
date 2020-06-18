@@ -1678,7 +1678,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			bts_model_trx_deact_rf(trx);
 
 			/* Close TRX */
-			rc = bts_model_trx_close(trx);
+			rc = trx_close(trx);
 			if (rc != 0) {
 				LOGP(DL1C, LOGL_ERROR,
 				     "Cannot close TRX %d, it is already closed.\n",
@@ -1716,10 +1716,11 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 	return l1if_activate_rf(trx, 0);
 }
 
-int bts_model_trx_close(struct gsm_bts_trx *trx)
+void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
 	/* FIXME: close only one TRX */
-	return trx_close(trx);
+	int rc = trx_close(trx);
+	bts_model_trx_close_cb(trx, rc);
 }
 
 
