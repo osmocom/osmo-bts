@@ -28,12 +28,14 @@
 enum bts_shutdown_fsm_states {
 	BTS_SHUTDOWN_ST_NONE,
 	BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL,
+	BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED,
 	BTS_SHUTDOWN_ST_EXIT,
 };
 
 enum bts_shutdown_fsm_events {
 	BTS_SHUTDOWN_EV_START,
 	BTS_SHUTDOWN_EV_TRX_RAMP_COMPL,
+	BTS_SHUTDOWN_EV_TRX_CLOSED,
 };
 
 extern struct osmo_fsm bts_shutdown_fsm;

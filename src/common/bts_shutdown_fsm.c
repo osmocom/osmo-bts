@@ -32,7 +32,7 @@
 
 static const struct osmo_tdef_state_timeout bts_shutdown_fsm_timeouts[32] = {
 	[BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL] = { .T = -1 },
-	[BTS_SHUTDOWN_ST_EXIT] = { .T = -2 },
+	[BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED] = { .T = -2 },
 };
 
 #define bts_shutdown_fsm_state_chg(fi, NEXT_STATE) \
@@ -79,12 +79,12 @@ static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, vo
 		LOGPFSML(fi, LOGL_INFO, "%s Ramping down complete, %u TRX remaining\n",
 			 gsm_trx_name(src_trx), remaining);
 		if (remaining == 0)
-			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
+			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED);
 		break;
 	}
 }
 
-static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+static void st_wait_trx_closed_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
 	struct gsm_bts_trx *trx;
@@ -94,9 +94,36 @@ static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 	llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
 		bts_model_trx_close(trx);
 	}
-	/* There's yet no way to get confirmation from lower layers regarding
-	   state. Allow a few seconds of select() loop and timeout timer will
-	   exit later */
+	/* Now wait until all TRX are closed asynchronously, we'll get feedback through events... */
+}
+
+static void st_wait_trx_closed(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct gsm_bts_trx *src_trx, *trx;
+	unsigned int remaining = 0;
+
+	switch(event) {
+	case BTS_SHUTDOWN_EV_TRX_CLOSED:
+		src_trx = (struct gsm_bts_trx *)data;
+
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->mo.nm_state.operational != NM_OPSTATE_DISABLED)
+				remaining++;
+		}
+
+		LOGPFSML(fi, LOGL_INFO, "%s TRX closed, %u TRX remaining\n",
+			 gsm_trx_name(src_trx), remaining);
+		if (remaining == 0)
+			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
+		break;
+	}
+}
+
+static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfuly, exiting process\n");
+	exit(0);
 }
 
 static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
@@ -111,10 +138,19 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 		.in_event_mask =
 			X(BTS_SHUTDOWN_EV_TRX_RAMP_COMPL),
 		.out_state_mask =
-			X(BTS_SHUTDOWN_ST_EXIT),
+			X(BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED),
 		.name = "WAIT_RAMP_DOWN_COMPL",
 		.onenter = st_wait_ramp_down_compl_on_enter,
 		.action = st_wait_ramp_down_compl,
+	},
+	[BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED] = {
+		.in_event_mask =
+			X(BTS_SHUTDOWN_EV_TRX_CLOSED),
+		.out_state_mask =
+			X(BTS_SHUTDOWN_ST_EXIT),
+		.name = "WAIT_TRX_CLOSED",
+		.onenter = st_wait_trx_closed_on_enter,
+		.action = st_wait_trx_closed,
 	},
 	[BTS_SHUTDOWN_ST_EXIT] = {
 		.name = "EXIT",
@@ -125,6 +161,7 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 const struct value_string bts_shutdown_fsm_event_names[] = {
 	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_START),
 	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_TRX_RAMP_COMPL),
+	OSMO_VALUE_STRING(BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED),
 	{ 0, NULL }
 };
 
@@ -133,11 +170,11 @@ int bts_shutdown_fsm_timer_cb(struct osmo_fsm_inst *fi)
 	switch (fi->state) {
 	case BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL:
 		LOGPFSML(fi, LOGL_ERROR, "Timer expired waiting for ramp down complete\n");
-		bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
+		bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED);
 		break;
-	case BTS_SHUTDOWN_ST_EXIT:
-		LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfuly, exiting process\n");
-		exit(0);
+	case BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED:
+		LOGPFSML(fi, LOGL_ERROR, "Timer expired waiting for TRX close\n");
+		bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_EXIT);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -175,4 +212,5 @@ void bts_model_trx_close_cb(struct gsm_bts_trx *trx, int rc)
 {
 	struct osmo_fsm_inst *fi = trx->bts->shutdown_fi;
 	LOGPFSML(fi, LOGL_DEBUG, "%s Received TRX close cb rc=%d\n", gsm_trx_name(trx), rc);
+	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_TRX_CLOSED, trx);
 }
