@@ -2,6 +2,8 @@
 
 struct femtol1_hdl;
 struct bts_model_set_dyn_pdch_data;
+struct phy_link;
+struct phy_instance;
 
 /*
  * Stubs to provide an empty bts model implementation for testing.
@@ -60,3 +62,12 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config as_pchan)
 { return; }
+
+void bts_model_phy_link_set_defaults(struct phy_link *plink)
+{ return; }
+
+void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
+{ return; }
+
+int bts_model_phy_link_open(struct phy_link *plink)
+{ return 0; }

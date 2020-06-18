@@ -220,3 +220,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	return 0;
 }
+
+int bts_model_phy_link_open(struct phy_link *plink)
+{
+	return 0;
+}
