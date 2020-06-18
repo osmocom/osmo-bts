@@ -169,8 +169,6 @@ void phy_instance_link_to_trx(struct phy_instance *pinst, struct gsm_bts_trx *tr
 void phy_instance_destroy(struct phy_instance *pinst);
 const char *phy_instance_name(struct phy_instance *pinst);
 
-void phy_user_statechg_notif(struct phy_instance *pinst, enum phy_link_state link_state);
-
 static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *trx)
 {
 	OSMO_ASSERT(trx);
