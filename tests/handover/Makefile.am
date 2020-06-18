@@ -4,5 +4,5 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCODEC_LIBS) $(LIBOSMOTRA
 noinst_PROGRAMS = handover_test
 EXTRA_DIST = handover_test.ok
 
-handover_test_SOURCES = handover_test.c
+handover_test_SOURCES = handover_test.c $(srcdir)/../stubs.c
 handover_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)

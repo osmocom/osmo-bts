@@ -30,13 +30,13 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj)
 { return 0; }
-int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
+__attribute__((weak)) int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 { return 0; }
 
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
 { return 0; }
 
-int bts_model_oml_estab(struct gsm_bts *bts)
+__attribute__((weak)) int bts_model_oml_estab(struct gsm_bts *bts)
 { return 0; }
 
 int l1if_set_txpower(struct femtol1_hdl *fl1h, float tx_power)
@@ -48,7 +48,7 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan) { return 0; }
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 { return 0; }
 
-void bts_model_abis_close(struct gsm_bts *bts)
+__attribute__((weak)) void bts_model_abis_close(struct gsm_bts *bts)
 { }
 
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)

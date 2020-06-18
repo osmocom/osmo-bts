@@ -268,18 +268,3 @@ done:
 		msgb_free(msg);
 	return rc;
 }
-
-int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type, struct tlv_parsed *old_attr, struct tlv_parsed *new_attr, void *obj) { return 0; }
-int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg, struct tlv_parsed *new_attr, int obj_kind, void *obj) { return 0; }
-int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj) { return 0; }
-int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj, uint8_t adm_state) { return 0; }
-int bts_model_init(struct gsm_bts *bts) { return 0; }
-int bts_model_trx_init(struct gsm_bts_trx *trx) { return 0; }
-int bts_model_trx_deact_rf(struct gsm_bts_trx *trx) { return 0; }
-int bts_model_trx_close(struct gsm_bts_trx *trx) { return 0; }
-void trx_get_hlayer1(void) {}
-int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan) { return 0; }
-int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts) { return 0; }
-void bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan) { return; }
-int bts_model_lchan_deactivate(struct gsm_lchan *lchan) { return 0; }
-int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan) { return 0; }
