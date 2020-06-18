@@ -396,8 +396,8 @@ static int trx_init(struct gsm_bts_trx *trx)
 	return oml_mo_opstart_ack(&trx->mo);
 }
 
-/* deactivate transceiver */
-int bts_model_trx_close(struct gsm_bts_trx *trx)
+/* Deact RF on transceiver */
+int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -411,6 +411,21 @@ int bts_model_trx_close(struct gsm_bts_trx *trx)
 	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
 		lchan_set_state(&trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_INACTIVE);
 	}
+	/* FIXME: There's currently no way to communicate to osmo-trx through
+	 * TRXC that a specific TRX processing shall be paused. Let's simply
+	 * make sure that at least we don't transmit with power on it by setting
+	 * a rather low value:
+	 */
+	power_ramp_start(trx, to_mdB(-10), 1, NULL);
+
+	return 0;
+}
+
+/* deactivate transceiver */
+int bts_model_trx_close(struct gsm_bts_trx *trx)
+{
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	/* power off transceiver, if not already */
 	if (l1h->config.enabled) {
@@ -844,11 +859,6 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	/* blindly accept all state changes */
 	mo->nm_state.administrative = adm_state;
 	return oml_mo_statechg_ack(mo);
-}
-
-int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
-{
-	return 0;
 }
 
 int bts_model_oml_estab(struct gsm_bts *bts)
