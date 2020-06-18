@@ -171,13 +171,13 @@ static void power_ramp_timer_cb(void *_trx)
 	/* compute new effective (= minus ramp and thermal attenuation) TRX output required */
 	p_trxout_eff_mdBm = get_p_trxout_eff_mdBm(trx, tpp->p_total_tgt_mdBm);
 
-	LOGP(DL1C, LOGL_DEBUG, "ramp_timer_cb(cur_pout=%d, tgt_pout=%d, "
+	LOGPTRX(trx, DL1C, LOGL_DEBUG, "ramp_timer_cb(cur_pout=%d, tgt_pout=%d, "
 		"ramp_att=%d, therm_att=%d, user_gain=%d)\n",
 		tpp->p_total_cur_mdBm, tpp->p_total_tgt_mdBm,
 		tpp->ramp.attenuation_mdB, tpp->thermal_attenuation_mdB,
 		tpp->user_gain_mdB);
 
-	LOGP(DL1C, LOGL_INFO,
+	LOGPTRX(trx, DL1C, LOGL_INFO,
 		"ramping TRX board output power to %d mdBm.\n", p_trxout_eff_mdBm);
 
 	/* Instruct L1 to apply new effective TRX output power required */
@@ -196,9 +196,9 @@ void power_trx_change_compl(struct gsm_bts_trx *trx, int p_trxout_cur_mdBm)
 	/* for now we simply write an error message, but in the future
 	 * we might use the value (again) as part of our math? */
 	if (p_trxout_cur_mdBm != p_trxout_should_mdBm) {
-		LOGP(DL1C, LOGL_ERROR, "bts_model notifies us of %u mdBm TRX "
-		     "output power.  However, it should be %u mdBm!\n",
-		     p_trxout_cur_mdBm, p_trxout_should_mdBm);
+		LOGPTRX(trx, DL1C, LOGL_ERROR, "bts_model notifies us of %u mdBm TRX "
+			"output power.  However, it should be %u mdBm!\n",
+			p_trxout_cur_mdBm, p_trxout_should_mdBm);
 	}
 
 	/* and do another step... */
@@ -244,13 +244,13 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 	 * the maximum total system power subtracted by OML as well as RSL
 	 * reductions */
 
-	LOGP(DL1C, LOGL_INFO, "power_ramp_start(cur=%d, tgt=%d)\n",
+	LOGPTRX(trx, DL1C, LOGL_INFO, "power_ramp_start(cur=%d, tgt=%d)\n",
 		tpp->p_total_cur_mdBm, p_total_tgt_mdBm);
 
 	if (!bypass && (p_total_tgt_mdBm > get_p_nominal_mdBm(trx))) {
-		LOGP(DL1C, LOGL_ERROR, "Asked to ramp power up to "
-		     "%d mdBm, which exceeds P_max_out (%d)\n",
-		     p_total_tgt_mdBm, get_p_nominal_mdBm(trx));
+		LOGPTRX(trx, DL1C, LOGL_ERROR, "Asked to ramp power up to "
+			"%d mdBm, which exceeds P_max_out (%d)\n",
+			p_total_tgt_mdBm, get_p_nominal_mdBm(trx));
 		return -ERANGE;
 	}
 
@@ -262,7 +262,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass)
 
 	if (we_are_ramping_up(trx)) {
 		if (tpp->p_total_tgt_mdBm <= tpp->ramp.max_initial_pout_mdBm) {
-			LOGP(DL1C, LOGL_INFO,
+			LOGPTRX(trx, DL1C, LOGL_INFO,
 				"target_power(%d) is below max.initial power\n",
 				tpp->p_total_tgt_mdBm);
 			/* new setting is below the maximum initial output

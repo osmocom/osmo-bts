@@ -44,6 +44,7 @@
 #define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
 
 #define LOGPLCHAN(lchan, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_lchan_name(lchan), ## args)
+#define LOGPTRX(trx, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_trx_name(trx), ## args)
 
 struct gsm_network {
 	struct llist_head bts_list;
