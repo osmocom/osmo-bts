@@ -35,6 +35,8 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/l1sap.h>
 
+#include "virtual_um.h"
+
 /* TODO: check if dummy method is sufficient, else implement */
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
@@ -52,7 +54,14 @@ int osmo_amr_rtp_dec(const uint8_t *rtppayload, int payload_len, uint8_t *cmr,
 
 void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
-	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	struct phy_instance *pinst = trx_phy_instance(trx);
+	struct phy_link *plink = pinst->phy_link;
+
+	if (phy_link_state_get(plink) != PHY_LINK_SHUTDOWN) {
+		virt_um_destroy(plink->u.virt.virt_um);
+		plink->u.virt.virt_um = NULL;
+		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+	}
 	bts_model_trx_close_cb(trx, 0);
 }
 
