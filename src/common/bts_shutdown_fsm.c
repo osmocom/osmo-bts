@@ -90,6 +90,8 @@ static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 	struct gsm_bts_trx *trx;
 	llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
 		bts_model_trx_deact_rf(trx);
+	}
+	llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
 		bts_model_trx_close(trx);
 	}
 	/* There's yet no way to get confirmation from lower layers regarding
