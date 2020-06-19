@@ -557,7 +557,10 @@ static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *
 	unsigned int nominal_power;
 
 	if (rsp->status)
-		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver NOMTXPOWER failed with status %d\n",
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver NOMTXPOWER failed "
+			"with status %d. If your transceiver doesn't support this "
+			"command, then please set the nominal transmit power manually "
+			"through VTY cmd 'nominal-tx-power'.\n",
 			rsp->status);
 	if (cb) {
 		sscanf(rsp->params, "%u", &nominal_power);
