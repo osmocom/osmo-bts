@@ -150,13 +150,16 @@ static void l1if_trx_start_power_ramp(struct gsm_bts_trx *trx)
 }
 
 /* Sets the nominal power, in dB */
-void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, unsigned int nominal_power)
+void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, int nominal_power)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	bool nom_pwr_changed = trx->nominal_power != nominal_power;
 
 	trx->nominal_power = nominal_power;
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
+	/* If we receive ultra-low  nominal Tx power (<0dBm), make sure to update where we are */
+	trx->power_params.p_total_cur_mdBm = OSMO_MIN(trx->power_params.p_total_cur_mdBm,
+						      trx->power_params.trx_p_max_out_mdBm);
 
 	/* If TRX is not yet powered, delay ramping until it's ON */
 	if (!nom_pwr_changed || !pinst->phy_link->u.osmotrx.powered)
@@ -168,12 +171,12 @@ void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, unsigned int nominal_po
 	l1if_trx_start_power_ramp(trx);
 }
 
-static void l1if_getnompower_cb(struct trx_l1h *l1h, unsigned int nominal_power, int rc)
+static void l1if_getnompower_cb(struct trx_l1h *l1h, int nominal_power, int rc)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct gsm_bts_trx *trx = pinst->trx;
 
-	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_getnompower_cb(nominal_power=%u, rc=%d)\n", nominal_power, rc);
+	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_getnompower_cb(nominal_power=%d, rc=%d)\n", nominal_power, rc);
 
 	l1if_trx_set_nominal_power(trx, nominal_power);
 }

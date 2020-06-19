@@ -554,7 +554,7 @@ static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *
 {
 	trx_if_cmd_getnompower_cb *cb = (trx_if_cmd_getnompower_cb*) rsp->cb;
 	struct phy_instance *pinst = l1h->phy_inst;
-	unsigned int nominal_power;
+	int nominal_power;
 
 	if (rsp->status)
 		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver NOMTXPOWER failed "
@@ -563,7 +563,7 @@ static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *
 			"through VTY cmd 'nominal-tx-power'.\n",
 			rsp->status);
 	if (cb) {
-		sscanf(rsp->params, "%u", &nominal_power);
+		sscanf(rsp->params, "%d", &nominal_power);
 		cb(l1h, nominal_power, rsp->status);
 	}
 	return 0;

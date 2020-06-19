@@ -196,8 +196,8 @@ void power_trx_change_compl(struct gsm_bts_trx *trx, int p_trxout_cur_mdBm)
 	/* for now we simply write an error message, but in the future
 	 * we might use the value (again) as part of our math? */
 	if (p_trxout_cur_mdBm != p_trxout_should_mdBm) {
-		LOGPTRX(trx, DL1C, LOGL_ERROR, "bts_model notifies us of %u mdBm TRX "
-			"output power.  However, it should be %u mdBm!\n",
+		LOGPTRX(trx, DL1C, LOGL_ERROR, "bts_model notifies us of %d mdBm TRX "
+			"output power.  However, it should be %d mdBm!\n",
 			p_trxout_cur_mdBm, p_trxout_should_mdBm);
 	}
 
