@@ -247,8 +247,8 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 	 * the maximum total system power subtracted by OML as well as RSL
 	 * reductions */
 
-	LOGPTRX(trx, DL1C, LOGL_INFO, "power_ramp_start(cur=%d, tgt=%d)\n",
-		tpp->p_total_cur_mdBm, p_total_tgt_mdBm);
+	LOGPTRX(trx, DL1C, LOGL_INFO, "power_ramp_start(cur=%d, tgt=%d%s)\n",
+		tpp->p_total_cur_mdBm, p_total_tgt_mdBm, bypass ? ", bypass" : "");
 
 	if (!bypass && (p_total_tgt_mdBm > get_p_nominal_mdBm(trx))) {
 		LOGPTRX(trx, DL1C, LOGL_ERROR, "Asked to ramp power up to "
