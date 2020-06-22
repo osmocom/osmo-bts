@@ -102,13 +102,13 @@ make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
 %{_docdir}/%{name}/examples/osmo-bts-virtual/osmo-bts-virtual.cfg
 %{_bindir}/osmo-bts-trx
 %dir %{_sysconfdir}/osmocom
-%config %{_sysconfdir}/osmocom/osmo-bts-trx.cfg
+%config(noreplace) %{_sysconfdir}/osmocom/osmo-bts-trx.cfg
 %{_unitdir}/osmo-bts-trx.service
 
 %files -n osmo-bts-virtual
 %{_bindir}/osmo-bts-virtual
 %dir %{_sysconfdir}/osmocom
-%config %{_sysconfdir}/osmocom/osmo-bts-virtual.cfg
+%config(noreplace) %{_sysconfdir}/osmocom/osmo-bts-virtual.cfg
 %{_unitdir}/osmo-bts-virtual.service
 
 %files -n osmo-bts-omldummy
