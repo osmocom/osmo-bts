@@ -56,6 +56,8 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
+	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_OCTO;
+	struct l1sched_meas_set meas_avg;
 	int rc, amr = 0;
 	int n_errors = 0;
 	int n_bits_total = 0;
@@ -88,6 +90,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	/* update mask */
 	*mask |= (1 << bid);
+
+	/* store measurements */
+	trx_sched_meas_push(chan_state, bi);
 
 	/* copy burst to end of buffer of 8 bursts */
 	burst = *bursts_p + bid * 116 + 464;
@@ -194,6 +199,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 	memcpy(*bursts_p, *bursts_p + 464, 464);
 
+	/* average measurements of the last N (depends on mode) bursts */
+	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
+
 	/* Check if the frame is bad */
 	if (rc < 0) {
 		LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
@@ -219,10 +227,9 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_F);
 		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
-			/* FIXME: AVG RSSI and ToA256 */
-			bi->rssi, bi->toa256,
-			0 /* FIXME: AVG C/I */,
-			ber10k, PRES_INFO_UNKNOWN);
+			meas_avg.rssi, meas_avg.toa256,
+			meas_avg.ci_cb, ber10k,
+			PRES_INFO_UNKNOWN);
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
@@ -277,8 +284,10 @@ bfi:
 	/* TCH or BFI */
 compose_l1sap:
 	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
-	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc, bi->toa256, ber10k, bi->rssi, is_sub);
+	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan, tch_data, rc,
+				      /* FIXME: what should we use for BFI here? */
+				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,
+				      bfi_flag ? bi->rssi : meas_avg.rssi, is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
@@ -293,9 +302,6 @@ void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
-	int32_t *toa256_sum = &chan_state->toa256_sum;
-	uint8_t *toa_num = &chan_state->toa_num;
-	int16_t toa256;
 
 	/* handle loss detection of received TCH frames */
 	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
@@ -343,14 +349,9 @@ inval_mode1:
 		}
 
 		if (len) {
-			if (*toa_num == 0)
-				toa256 = 0;
-			else
-				toa256 = *toa256_sum / *toa_num;
-
-			/* Note: RSSI is set to 0 to indicate to the higher
+			/* Note: RSSI/ToA256 is set to 0 to indicate to the higher
 			 * layers that this is a faked tch_ind */
-			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len, toa256, 10000, 0, 0);
+			_sched_compose_tch_ind(l1t, tn, fn, chan, tch_data, len, 0, 10000, 0, 0);
 		}
 	}
 

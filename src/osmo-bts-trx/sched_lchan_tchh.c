@@ -65,6 +65,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	 * Even FN ending at: 10,11,19,20,2,3
 	 */
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
+	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_QUAD;
+	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
 	uint16_t ber10k;
 	uint8_t is_sub = 0;
@@ -93,6 +95,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	/* update mask */
 	*mask |= (1 << bid);
+
+	/* store measurements */
+	trx_sched_meas_push(chan_state, bi);
 
 	/* copy burst to end of buffer of 6 bursts */
 	burst = *bursts_p + bid * 116 + 464;
@@ -208,6 +213,10 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
+	/* average measurements of the last N (depends on mode) bursts */
+	if (rc == GSM_MACBLOCK_LEN)
+		meas_avg_mode = SCHED_MEAS_AVG_M_SIX;
+	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
@@ -238,10 +247,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
 		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
-			/* FIXME: AVG both RSSI and ToA */
-			bi->rssi, bi->toa256,
-			0 /* FIXME: AVG C/I */,
-			ber10k, PRES_INFO_UNKNOWN);
+			meas_avg.rssi, meas_avg.toa256,
+			meas_avg.ci_cb, ber10k,
+			PRES_INFO_UNKNOWN);
 bfi:
 		/* FIXME: a FACCH/H frame replaces two speech frames,
 		 * so we actually need to send two bad frame indications! */
@@ -301,8 +309,10 @@ compose_l1sap:
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H0);
 	else
 		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H1);
-	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan,
-				      tch_data, rc, bi->toa256, ber10k, bi->rssi, is_sub);
+	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan, tch_data, rc,
+				      /* FIXME: what should we use for BFI here? */
+				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,
+				      bfi_flag ? bi->rssi : meas_avg.rssi, is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).

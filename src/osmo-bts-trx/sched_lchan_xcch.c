@@ -43,16 +43,10 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
-	float *rssi_sum = &chan_state->rssi_sum;
-	uint8_t *rssi_num = &chan_state->rssi_num;
-	int32_t *toa256_sum = &chan_state->toa256_sum;
-	uint8_t *toa_num = &chan_state->toa_num;
-	int32_t *ci_cb_sum = &chan_state->ci_cb_sum;
-	uint8_t *ci_cb_num = &chan_state->ci_cb_num;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
+	struct l1sched_meas_set meas_avg;
 	int n_errors = 0;
 	int n_bits_total = 0;
-	int16_t lqual_cb;
 	uint16_t ber10k;
 	int rc;
 
@@ -76,26 +70,13 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		memset(*bursts_p, 0, 464);
 		*mask = 0x0;
 		*first_fn = bi->fn;
-		*rssi_sum = 0;
-		*rssi_num = 0;
-		*toa256_sum = 0;
-		*toa_num = 0;
-		*ci_cb_sum = 0;
-		*ci_cb_num = 0;
 	}
 
-	/* update mask + RSSI */
+	/* update mask */
 	*mask |= (1 << bid);
-	*rssi_sum += bi->rssi;
-	(*rssi_num)++;
-	*toa256_sum += bi->toa256;
-	(*toa_num)++;
 
-	/* C/I: Carrier-to-Interference ratio (in centiBels) */
-	if (bi->flags & TRX_BI_F_CI_CB) {
-		*ci_cb_sum += bi->ci_cb;
-		(*ci_cb_num)++;
-	}
+	/* store measurements */
+	trx_sched_meas_push(chan_state, bi);
 
 	/* Copy burst to buffer of 4 bursts. If the burst indication contains
 	 * no data, ensure that the buffer does not stay uninitialized */
@@ -109,6 +90,9 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	/* wait until complete set of bursts */
 	if (bid != 3)
 		return 0;
+
+	/* average measurements of the last 4 bursts */
+	trx_sched_meas_avg(chan_state, &meas_avg, SCHED_MEAS_AVG_M_QUAD);
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
@@ -134,13 +118,11 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
 
-	lqual_cb = *ci_cb_num ? (*ci_cb_sum / *ci_cb_num) : 0;
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
 					  chan, l2, l2_len,
-					  *rssi_sum / *rssi_num,
-					  *toa256_sum / *toa_num,
-					  lqual_cb, ber10k,
+					  meas_avg.rssi, meas_avg.toa256,
+					  meas_avg.ci_cb, ber10k,
 					  PRES_INFO_UNKNOWN);
 }
 

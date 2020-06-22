@@ -70,6 +70,13 @@ enum trx_burst_type {
 	TRX_BURST_8PSK,
 };
 
+/* A set of measurements belonging to one Uplink burst */
+struct l1sched_meas_set {
+	int16_t			toa256;		/* Timing of Arrival (1/256 of a symbol) */
+	int16_t			ci_cb;		/* Carrier-to-Interference (cB) */
+	float			rssi;		/* RSSI (dBm) */
+};
+
 /* States each channel on a multiframe */
 struct l1sched_chan_state {
 	/* Pointer to the associated logical channel state from gsm_data_shared.
@@ -84,14 +91,6 @@ struct l1sched_chan_state {
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
-
-	/* measurements */
-	uint8_t			rssi_num;	/* number of RSSI values */
-	float			rssi_sum;	/* sum of RSSI values */
-	uint8_t			toa_num;	/* number of TOA values */
-	int32_t			toa256_sum;	/* sum of TOA values (1/256 symbol) */
-	uint8_t			ci_cb_num;	/* number of C/I values */
-	int32_t			ci_cb_sum;	/* sum of C/I values (in centiBels) */
 
 	/* loss detection */
 	uint8_t			lost_frames;	/* how many L2 frames were lost */
@@ -126,8 +125,11 @@ struct l1sched_chan_state {
 	uint8_t			ul_encr_key[MAX_A5_KEY_LEN];
 	uint8_t			dl_encr_key[MAX_A5_KEY_LEN];
 
-	/* measurements */
-	/* TODO: measurement history (ring buffer) will be added here */
+	/* Simple ring buffer (up to 8 unique measurements) */
+	struct {
+		struct l1sched_meas_set buf[8];
+		unsigned int current; /* current position */
+	} meas;
 
 	/* handover */
 	bool			ho_rach_detect;	/* if rach detection is on */
@@ -265,5 +267,21 @@ struct trx_dl_burst_req {
 /*! Handle an UL burst received by PHY */
 int trx_sched_route_burst_ind(struct trx_ul_burst_ind *bi, struct l1sched_trx *l1t);
 int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi);
+
+/* Averaging mode for trx_sched_meas_avg() */
+enum sched_meas_avg_mode {
+	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
+	SCHED_MEAS_AVG_M_QUAD,
+	/* last 8 bursts (default for TCH/F and FACCH/F) */
+	SCHED_MEAS_AVG_M_OCTO,
+	/* last 6 bursts (default for FACCH/H) */
+	SCHED_MEAS_AVG_M_SIX,
+};
+
+void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
+			 const struct trx_ul_burst_ind *bi);
+void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
+			struct l1sched_meas_set *avg,
+			enum sched_meas_avg_mode mode);
 
 #endif /* TRX_SCHEDULER_H */

@@ -473,3 +473,73 @@ void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int ac
 	else
 		trx_if_cmd_nohandover(l1h, tn, ss);
 }
+
+/* Add a set of UL burst measurements to the history */
+void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
+			 const struct trx_ul_burst_ind *bi)
+{
+	unsigned int hist_size = ARRAY_SIZE(chan_state->meas.buf);
+	unsigned int current = chan_state->meas.current;
+
+	chan_state->meas.buf[current] = (struct l1sched_meas_set) {
+		.ci_cb = (bi->flags & TRX_BI_F_CI_CB) ? bi->ci_cb : 0,
+		.toa256 = bi->toa256,
+		.rssi = bi->rssi,
+	};
+
+	chan_state->meas.current = (current + 1) % hist_size;
+}
+
+/* Calculate the AVG of n measurements from the history */
+void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
+			struct l1sched_meas_set *avg,
+			enum sched_meas_avg_mode mode)
+{
+	unsigned int hist_size = ARRAY_SIZE(chan_state->meas.buf);
+	unsigned int current = chan_state->meas.current;
+	const struct l1sched_meas_set *set;
+	unsigned int shift, pos, i, n;
+
+	float rssi_sum = 0;
+	int toa256_sum = 0;
+	int ci_cb_sum = 0;
+
+	switch (mode) {
+	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
+	case SCHED_MEAS_AVG_M_QUAD:
+		n = 4; shift = n;
+		break;
+	/* last 8 bursts (default for TCH/F and FACCH/F) */
+	case SCHED_MEAS_AVG_M_OCTO:
+		n = 8; shift = n;
+		break;
+	/* last 6 bursts (default for FACCH/H) */
+	case SCHED_MEAS_AVG_M_SIX:
+		n = 6; shift = n;
+		break;
+	default:
+		/* Shall not happen */
+		OSMO_ASSERT(false);
+	}
+
+	/* Calculate the sum of n entries starting from pos */
+	for (i = 0; i < n; i++) {
+		pos = (current + hist_size - shift + i) % hist_size;
+		set = &chan_state->meas.buf[pos];
+
+		rssi_sum   += set->rssi;
+		toa256_sum += set->toa256;
+		ci_cb_sum  += set->ci_cb;
+	}
+
+	/* Calculate the average for each value */
+	*avg = (struct l1sched_meas_set) {
+		.rssi   = (rssi_sum   / n),
+		.toa256 = (toa256_sum / n),
+		.ci_cb  = (ci_cb_sum  / n),
+	};
+
+	LOGP(DL1C, LOGL_DEBUG, "Measurement AVG (num=%u, shift=%u): "
+	     "RSSI %f, ToA256 %d, C/I %d cB\n", n, shift,
+	     avg->rssi, avg->toa256, avg->ci_cb);
+}
