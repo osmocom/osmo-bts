@@ -127,10 +127,7 @@ struct l1sched_chan_state {
 	uint8_t			dl_encr_key[MAX_A5_KEY_LEN];
 
 	/* measurements */
-	struct {
-		int32_t		toa256_sum;	/* sum of TOA values (1/256 symbol) */
-		int		toa_num;	/* number of TOA value */
-	} meas;
+	/* TODO: measurement history (ring buffer) will be added here */
 
 	/* handover */
 	bool			ho_rach_detect;	/* if rach detection is on */
