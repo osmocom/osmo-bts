@@ -41,10 +41,12 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/scheduler.h>
+#include <osmo-bts/pcu_if.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
 
+#define RF_DISABLED_mdB to_mdB(-10)
 
 static const uint8_t transceiver_chan_types[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_NONE]                = 8,
@@ -138,15 +140,15 @@ int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
 }
 
-static void l1if_trx_start_power_ramp(struct gsm_bts_trx *trx)
+static int l1if_trx_start_power_ramp(struct gsm_bts_trx *trx, ramp_compl_cb_t ramp_compl_cb)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	if (l1h->config.forced_max_power_red == -1)
-		power_ramp_start(trx, get_p_nominal_mdBm(trx), 0, NULL);
+		return power_ramp_start(trx, get_p_nominal_mdBm(trx), 0, ramp_compl_cb);
 	else
-		power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1, NULL);
+		return power_ramp_start(trx, get_p_max_out_mdBm(trx) - to_mdB(l1h->config.forced_max_power_red), 1, ramp_compl_cb);
 }
 
 /* Sets the nominal power, in dB */
@@ -162,13 +164,14 @@ void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, int nominal_power)
 						      trx->power_params.trx_p_max_out_mdBm);
 
 	/* If TRX is not yet powered, delay ramping until it's ON */
-	if (!nom_pwr_changed || !pinst->phy_link->u.osmotrx.powered)
+	if (!nom_pwr_changed || !pinst->phy_link->u.osmotrx.powered ||
+	    trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
 		return;
 
 	/* We are already ON and we got new information about nominal power, so
 	 * let's make sure we adapt the tx power to it
 	 */
-	l1if_trx_start_power_ramp(trx);
+	l1if_trx_start_power_ramp(trx, NULL);
 }
 
 static void l1if_getnompower_cb(struct trx_l1h *l1h, int nominal_power, int rc)
@@ -223,7 +226,8 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 
 			/* Begin to ramp up the power on all TRX associated with this phy */
 			llist_for_each_entry(pinst, &plink->instances, list) {
-				l1if_trx_start_power_ramp(pinst->trx);
+				if (pinst->trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
+					l1if_trx_start_power_ramp(pinst->trx, NULL);
 			}
 		} else if (rc != 0 && plink->state != PHY_LINK_SHUTDOWN) {
 			trx_sched_clock_stopped(pinst->trx->bts);
@@ -424,12 +428,6 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
 		lchan_set_state(&trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_INACTIVE);
 	}
-	/* FIXME: There's currently no way to communicate to osmo-trx through
-	 * TRXC that a specific TRX processing shall be paused. Let's simply
-	 * make sure that at least we don't transmit with power on it by setting
-	 * a rather low value:
-	 */
-	power_ramp_start(trx, to_mdB(-10), 1, NULL);
 
 	return 0;
 }
@@ -505,7 +503,8 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 	/* Begin to ramp up the power if power reduction is set by OML and TRX
 	   is already running. Otherwise skip, power ramping will be started
 	   after TRX is running */
-	if (plink->u.osmotrx.powered && l1h->config.forced_max_power_red == -1)
+	if (plink->u.osmotrx.powered && l1h->config.forced_max_power_red == -1 &&
+	    trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
 		power_ramp_start(pinst->trx, get_p_nominal_mdBm(pinst->trx), 0, NULL);
 
 	return 0;
@@ -866,12 +865,72 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	return rc;
 }
 
+static void bts_model_chg_adm_state_ramp_compl_cb(struct gsm_bts_trx *trx)
+{
+	LOGPTRX(trx, DL1C, LOGL_INFO, "power ramp due to ADM STATE change finished\n");
+	trx->mo.procedure_pending = 0;
+	if (trx->mo.nm_state.administrative == NM_STATE_LOCKED) {
+		bts_model_trx_deact_rf(trx);
+		pcu_tx_info_ind();
+	}
+}
+
 int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			    void *obj, uint8_t adm_state)
 {
-	/* blindly accept all state changes */
-	mo->nm_state.administrative = adm_state;
-	return oml_mo_statechg_ack(mo);
+	struct gsm_bts_trx *trx;
+	struct phy_instance *pinst;
+	int i, rc = 0;
+
+	switch (mo->obj_class) {
+	case NM_OC_RADIO_CARRIER:
+		trx = (struct gsm_bts_trx *) obj;
+		pinst = trx_phy_instance(trx);
+
+		/* Begin to ramp the power if TRX is already running. Otherwise
+		 * skip, power ramping will be started after TRX is running */
+		if (!pinst->phy_link->u.osmotrx.powered)
+			break;
+
+		if (mo->procedure_pending) {
+			LOGPTRX(trx, DL1C, LOGL_ERROR, "Discarding adm change command: "
+				"pending procedure on RC %d\n",
+				((struct gsm_bts_trx *)obj)->nr);
+			rc = -1;
+			break;
+		}
+		switch (adm_state) {
+		case NM_STATE_LOCKED:
+			mo->procedure_pending = 1;
+			rc = power_ramp_start(trx, RF_DISABLED_mdB, 1, bts_model_chg_adm_state_ramp_compl_cb);
+			break;
+		case NM_STATE_UNLOCKED:
+			mo->procedure_pending = 1;
+			/* Activate timeslots in scheduler and start power ramp up */
+			for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+				struct gsm_bts_trx_ts *ts = &trx->ts[i];
+				trx_set_ts(ts);
+			}
+			rc = l1if_trx_start_power_ramp(trx, bts_model_chg_adm_state_ramp_compl_cb);
+			if (rc == 0) {
+				mo->nm_state.administrative = adm_state;
+				pcu_tx_info_ind();
+				return oml_mo_statechg_ack(mo);
+			}
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
+	if (rc == 0) {
+		mo->nm_state.administrative = adm_state;
+		return oml_mo_statechg_ack(mo);
+	} else
+		return oml_mo_statechg_nack(mo, NM_NACK_REQ_NOT_GRANT);
 }
 
 int bts_model_oml_estab(struct gsm_bts *bts)
