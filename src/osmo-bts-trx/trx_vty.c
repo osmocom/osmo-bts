@@ -296,7 +296,7 @@ DEFUN(cfg_phyinst_slotmask, cfg_phyinst_slotmask_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
+DEFUN_DEPRECATED(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 	"osmotrx power (on|off)",
 	OSMOTRX_STR
 	"Change TRX state\n"
@@ -304,6 +304,10 @@ DEFUN(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+	vty_out (vty, "'osmotrx power' is deprecated, use OML's standard "
+		      "Administrative State instead to control each TRX "
+		      "('rf_locked' VTY cmd in osmo-bsc)%s", VTY_NEWLINE);
 
 	if (strcmp(argv[0], "on"))
 		vty_out(vty, "OFF: %d%s", trx_if_cmd_poweroff(l1h, NULL), VTY_NEWLINE);
