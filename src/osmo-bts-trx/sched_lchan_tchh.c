@@ -184,6 +184,20 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			break;
 		}
 
+		switch (chan_state->amr_last_dtx) {
+		case AHS_SID_FIRST_P1:
+		case AHS_SID_FIRST_P2:
+		case AHS_SID_UPDATE:
+		case AHS_SID_UPDATE_CN:
+		case AHS_SID_FIRST_INH:
+		case AHS_SID_UPDATE_INH:
+			meas_avg_mode = SCHED_MEAS_AVG_M6_FIRST_TWO;
+			break;
+		case AHS_ONSET:
+			meas_avg_mode = SCHED_MEAS_AVG_M6_MIDDLE_TWO;
+			break;
+		}
+
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,

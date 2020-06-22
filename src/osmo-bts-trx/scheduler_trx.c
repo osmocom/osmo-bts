@@ -517,6 +517,18 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 	case SCHED_MEAS_AVG_M_SIX:
 		n = 6; shift = n;
 		break;
+	/* first 4 of last 8 bursts */
+	case SCHED_MEAS_AVG_M8_FIRST_QUAD:
+		n = 4; shift = 8;
+		break;
+	/* first 2 of last 6 bursts */
+	case SCHED_MEAS_AVG_M6_FIRST_TWO:
+		n = 2; shift = 6;
+		break;
+	/* middle 2 of last 6 bursts */
+	case SCHED_MEAS_AVG_M6_MIDDLE_TWO:
+		n = 2; shift = 4;
+		break;
 	default:
 		/* Shall not happen */
 		OSMO_ASSERT(false);

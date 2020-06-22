@@ -276,6 +276,12 @@ enum sched_meas_avg_mode {
 	SCHED_MEAS_AVG_M_OCTO,
 	/* last 6 bursts (default for FACCH/H) */
 	SCHED_MEAS_AVG_M_SIX,
+	/* first 4 of last 8 bursts */
+	SCHED_MEAS_AVG_M8_FIRST_QUAD,
+	/* first 2 of last 6 bursts */
+	SCHED_MEAS_AVG_M6_FIRST_TWO,
+	/* middle 2 of last 6 bursts */
+	SCHED_MEAS_AVG_M6_MIDDLE_TWO,
 };
 
 void trx_sched_meas_push(struct l1sched_chan_state *chan_state,

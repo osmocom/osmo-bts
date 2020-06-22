@@ -173,6 +173,17 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			break;
 		}
 
+		switch (chan_state->amr_last_dtx) {
+		case AFS_SID_FIRST:
+		case AFS_SID_UPDATE_CN:
+			meas_avg_mode = SCHED_MEAS_AVG_M8_FIRST_QUAD;
+			break;
+		case AFS_SID_UPDATE:
+		case AFS_ONSET:
+			meas_avg_mode = SCHED_MEAS_AVG_M_QUAD;
+			break;
+		}
+
 		if (rc)
 			trx_loop_amr_input(l1t,
 				trx_chan_desc[chan].chan_nr | bi->tn, chan_state,
