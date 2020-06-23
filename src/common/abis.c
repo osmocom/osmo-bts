@@ -140,7 +140,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 static void sign_link_down(struct e1inp_line *line)
 {
 	struct gsm_bts_trx *trx;
-	LOGP(DABIS, LOGL_ERROR, "Signalling link down\n");
+	LOGPIL(line, DABIS, LOGL_ERROR, "Signalling link down\n");
 
 	/* First remove the OML signalling link */
 	if (g_bts->oml_link) {
