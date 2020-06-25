@@ -40,7 +40,8 @@ int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 {
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting FCCH\n");
 
-	memcpy(br->burst, _sched_fcch_burst, GSM_BURST_LEN);
+	/* A frequency correction burst is basically a sequence of zeros.
+	 * Since br->burst is already zero-initialized, just set the length. */
 	br->burst_len = GSM_BURST_LEN;
 
 	return 0;
