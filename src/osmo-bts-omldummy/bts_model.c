@@ -182,6 +182,9 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
+	struct trx_power_params *tpp = &trx->power_params;
+	/* Speed up shutdown, we don't care about power ramping in omldummy */
+	tpp->ramp.step_interval_sec = 0;
 	return 0;
 }
 
