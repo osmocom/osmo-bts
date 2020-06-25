@@ -175,6 +175,7 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 {
 	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	power_trx_change_compl(trx, p_trxout_mdBm);
 	return 0;
 }
 
