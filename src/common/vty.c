@@ -721,7 +721,7 @@ DEFUN(cfg_trx_user_gain,
 	return CMD_SUCCESS;
 }
 
-#define PR_STR "Power-Ramp settings"
+#define PR_STR "Power-Ramp settings\n"
 DEFUN(cfg_trx_pr_max_initial, cfg_trx_pr_max_initial_cmd,
 	"power-ramp max-initial <0-100000> (dBm|mdBm)",
 	PR_STR "Maximum initial power\n"
