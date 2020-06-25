@@ -56,10 +56,11 @@ int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 }
 
 /* schedule all frames of all TRX for given FN */
-static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
+static int trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
 	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
+	uint32_t sched_fn;
 	uint8_t tn;
 
 	/* send time indication */
@@ -74,7 +75,7 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 
 		/* advance frame number, so the transceiver has more
 		 * time until it must be transmitted. */
-		fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
+		sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
 
 		/* we don't schedule, if power is off */
 		if (!trx_if_powered(l1h))
@@ -83,11 +84,12 @@ static int trx_sched_fn(struct gsm_bts *bts, uint32_t fn)
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
 			/* ready-to-send */
-			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.rts_advance));
+			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
 
 			/* All other parameters to be set by _sched_dl_burst() */
 			br = (struct trx_dl_burst_req) {
-				.fn = fn, .tn = tn,
+				.fn = sched_fn,
+				.tn = tn,
 			};
 
 			/* get burst for FN */
