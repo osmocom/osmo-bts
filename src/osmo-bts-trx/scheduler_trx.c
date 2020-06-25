@@ -56,7 +56,7 @@ int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 }
 
 /* schedule all frames of all TRX for given FN */
-static int trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
+static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
 	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
@@ -102,8 +102,6 @@ static int trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 			trx_if_send_burst(l1h, &br);
 		}
 	}
-
-	return 0;
 }
 
 /*! maximum number of 'missed' frame periods we can tolerate of OS doesn't schedule us*/
