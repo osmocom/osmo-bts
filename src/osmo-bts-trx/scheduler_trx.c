@@ -73,13 +73,13 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		struct l1sched_trx *l1t = &l1h->l1s;
 
-		/* advance frame number, so the transceiver has more
-		 * time until it must be transmitted. */
-		sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
-
 		/* we don't schedule, if power is off */
 		if (!trx_if_powered(l1h))
 			continue;
+
+		/* advance frame number, so the transceiver has more
+		 * time until it must be transmitted. */
+		sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
 
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
