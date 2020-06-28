@@ -60,6 +60,7 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
 	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
+	uint8_t c0_mask = 0x00;
 	uint32_t sched_fn;
 	uint8_t tn;
 
@@ -99,8 +100,30 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				continue;
 			}
 
+			/* update dummy burst mask for C0 */
+			if (trx == bts->c0)
+				c0_mask |= (1 << tn);
+
 			trx_if_send_burst(l1h, &br);
 		}
+	}
+
+	/* send dummy bursts on inactive timeslots of C0 */
+	struct phy_instance *pinst = trx_phy_instance(bts->c0);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	struct phy_link *plink = pinst->phy_link;
+
+	br = (struct trx_dl_burst_req) {
+		.fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance),
+		.burst_len = GSM_BURST_LEN,
+	};
+
+	memcpy(br.burst, _sched_dummy_burst, GSM_BURST_LEN);
+
+	for (br.tn = 0; br.tn < TRX_NR_TS; br.tn++) {
+		if (c0_mask & (1 << br.tn))
+			continue;
+		trx_if_send_burst(l1h, &br);
 	}
 }
 

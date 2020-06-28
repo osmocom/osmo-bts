@@ -52,8 +52,9 @@ static int rts_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
 static int rts_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	enum trx_chan_type chan);
+
 /*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
-static const ubit_t dummy_burst[GSM_BURST_LEN] = {
+const ubit_t _sched_dummy_burst[GSM_BURST_LEN] = {
 	0,0,0,
 	1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,
 	0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,1,0,0,
@@ -1189,7 +1190,7 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	enum trx_chan_type chan;
 
 	if (!l1ts->mf_index)
-		goto no_data;
+		return;
 
 	/* get frame from multiframe */
 	period = l1ts->mf_period;
@@ -1204,11 +1205,11 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 
 	/* check if channel is active */
 	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
-		goto no_data;
+		return;
 
 	/* get burst from function */
 	if (func(l1t, chan, bid, br) != 0)
-		goto no_data;
+		return;
 
 	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
@@ -1224,19 +1225,6 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 			br->burst[i +  3] ^= ks[i];
 			br->burst[i + 88] ^= ks[i + 57];
 		}
-	}
-
-no_data:
-	/* in case of C0, we need a dummy burst to maintain RF power */
-	if (!br->burst_len && l1t->trx == l1t->trx->bts->c0) {
-#if 0
-		if (chan != TRXC_IDLE) // hack
-			LOGP(DL1C, LOGL_DEBUG, "No burst data for %s fn=%u ts=%u "
-			     "burst=%d on C0, so filling with dummy burst\n",
-			     trx_chan_desc[chan].name, fn, tn, bid);
-#endif
-		memcpy(br->burst, dummy_burst, ARRAY_SIZE(dummy_burst));
-		br->burst_len = ARRAY_SIZE(dummy_burst);
 	}
 }
 
