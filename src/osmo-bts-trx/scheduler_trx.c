@@ -158,7 +158,8 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 
 	if (expire_count > 1) {
 		LOGP(DL1C, LOGL_NOTICE, "FN timer expire_count=%"PRIu64": We missed %"PRIu64" timers\n",
-			expire_count, expire_count-1);
+		     expire_count, expire_count - 1);
+		rate_ctr_add(&bts_trx->ctrs->ctr[BTSTRX_CTR_SCHED_DL_MISS_FN], expire_count - 1);
 	}
 
 	/* check if transceiver is still alive */

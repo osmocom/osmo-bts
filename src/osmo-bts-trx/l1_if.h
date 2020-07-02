@@ -1,6 +1,8 @@
 #ifndef L1_IF_H_TRX
 #define L1_IF_H_TRX
 
+#include <osmocom/core/rate_ctr.h>
+
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/phy_link.h>
 #include "trx_if.h"
@@ -23,6 +25,11 @@
  * next interval timer accordingly.  If we were too slow, we immediately
  * send burst data for the missing frame numbers.
  */
+
+/* bts-trx specific rate counters */
+enum {
+	BTSTRX_CTR_SCHED_DL_MISS_FN,
+};
 
 /*! clock state of a given TRX */
 struct osmo_trx_clock_state {
@@ -47,6 +54,7 @@ struct osmo_trx_clock_state {
 /* gsm_bts->model_priv, specific to osmo-bts-trx */
 struct bts_trx_priv {
 	struct osmo_trx_clock_state clk_s;
+	struct rate_ctr_group *ctrs;		/* bts-trx specific rate counters */
 };
 
 struct trx_config {

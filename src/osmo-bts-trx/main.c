@@ -43,6 +43,8 @@
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/stats.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/phy_link.h>
@@ -58,6 +60,18 @@
 
 #include "l1_if.h"
 #include "trx_if.h"
+
+static const struct rate_ctr_desc btstrx_ctr_desc[] = {
+	[BTSTRX_CTR_SCHED_DL_MISS_FN] =	{"trx_clk:sched_dl_miss_fn",
+					 "Downlink frames scheduled later than expected due to missed timerfd event (due to high system load)"},
+};
+static const struct rate_ctr_group_desc btstrx_ctrg_desc = {
+	"bts-trx",
+	"osmo-bts-trx specific counters",
+	OSMO_STATS_CLASS_GLOBAL,
+	ARRAY_SIZE(btstrx_ctr_desc),
+	btstrx_ctr_desc
+};
 
 /* dummy, since no direct dsp support */
 uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
@@ -99,6 +113,7 @@ int bts_model_init(struct gsm_bts *bts)
 {
 	struct bts_trx_priv *bts_trx = talloc_zero(bts, struct bts_trx_priv);
 	bts_trx->clk_s.fn_timer_ofd.fd = -1;
+	bts_trx->ctrs = rate_ctr_group_alloc(bts_trx, &btstrx_ctrg_desc, 0);
 
 	bts->model_priv = bts_trx;
 	bts->variant = BTS_OSMO_TRX;
