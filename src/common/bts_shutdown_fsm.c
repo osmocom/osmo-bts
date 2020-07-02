@@ -22,6 +22,7 @@
 
 #include <osmocom/core/fsm.h>
 #include <osmocom/core/tdef.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmo-bts/bts_shutdown_fsm.h>
 #include <osmo-bts/logging.h>
@@ -38,11 +39,33 @@ static const struct osmo_tdef_state_timeout bts_shutdown_fsm_timeouts[32] = {
 #define bts_shutdown_fsm_state_chg(fi, NEXT_STATE) \
 	osmo_tdef_fsm_inst_state_chg(fi, NEXT_STATE, bts_shutdown_fsm_timeouts, ((struct gsm_bts *)fi->priv)->T_defs, -1)
 
+static unsigned int count_trx_operational(struct gsm_bts *bts) {
+	unsigned int count = 0;
+	struct gsm_bts_trx *trx;
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED)
+			count++;
+	}
+	return count;
+}
+
 static void st_none(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	unsigned int count;
 	switch(event) {
 	case BTS_SHUTDOWN_EV_START:
-		bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL);
+		count = count_trx_operational(bts);
+		if (count) {
+			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL);
+		} else {
+			/* we can skip ramp down since no TRX is running anyway.
+			 * Let's jump into WAIT_TRX_CLOSED to make sure we
+			 * tell lower layer to close all TRX in case there's some
+			 * open() WIP */
+			LOGPFSML(fi, LOGL_INFO, "No TRX is operational, skipping power ramp down\n");
+			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED);
+		}
 		break;
 	}
 }
@@ -56,8 +79,11 @@ static void st_wait_ramp_down_compl_on_enter(struct osmo_fsm_inst *fi, uint32_t 
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
 	struct gsm_bts_trx *trx;
 
-	llist_for_each_entry(trx, &bts->trx_list, list)
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
 		power_ramp_start(trx, to_mdB(-10), 1, ramp_down_compl_cb);
+	}
 }
 
 static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -72,7 +98,8 @@ static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, vo
 		src_trx = (struct gsm_bts_trx *)data;
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->power_params.p_total_cur_mdBm > 0)
+			if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED &&
+			    trx->power_params.p_total_cur_mdBm > 0)
 				remaining++;
 		}
 
@@ -100,17 +127,13 @@ static void st_wait_trx_closed_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_
 static void st_wait_trx_closed(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
-	struct gsm_bts_trx *src_trx, *trx;
-	unsigned int remaining = 0;
+	struct gsm_bts_trx *src_trx;
+	unsigned int remaining;
 
 	switch(event) {
 	case BTS_SHUTDOWN_EV_TRX_CLOSED:
 		src_trx = (struct gsm_bts_trx *)data;
-
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->mo.nm_state.operational != NM_OPSTATE_DISABLED)
-				remaining++;
-		}
+		remaining = count_trx_operational(bts);
 
 		LOGPFSML(fi, LOGL_INFO, "%s TRX closed, %u TRX remaining\n",
 			 gsm_trx_name(src_trx), remaining);
@@ -130,7 +153,9 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 	[BTS_SHUTDOWN_ST_NONE] = {
 		.in_event_mask =
 			X(BTS_SHUTDOWN_EV_START),
-		.out_state_mask = X(BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL),
+		.out_state_mask =
+			X(BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL) |
+			X(BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED),
 		.name = "NONE",
 		.action = st_none,
 	},
