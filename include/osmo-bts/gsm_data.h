@@ -83,9 +83,9 @@ struct smscb_msg;
 
 /* Network Management State */
 struct gsm_nm_state {
-	uint8_t operational;
-	uint8_t administrative;
-	uint8_t availability;
+	enum abis_nm_op_state operational;
+	enum abis_nm_adm_state administrative;
+	enum abis_nm_avail_state availability;
 };
 
 struct gsm_abis_mo {

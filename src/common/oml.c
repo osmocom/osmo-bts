@@ -314,6 +314,7 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 int oml_tx_state_changed(const struct gsm_abis_mo *mo)
 {
 	struct msgb *nmsg;
+	uint8_t avail_state;
 
 	nmsg = oml_msgb_alloc();
 	if (!nmsg)
@@ -323,7 +324,8 @@ int oml_tx_state_changed(const struct gsm_abis_mo *mo)
 	msgb_tv_put(nmsg, NM_ATT_OPER_STATE, mo->nm_state.operational);
 
 	/* 9.4.7 Availability Status */
-	msgb_tl16v_put(nmsg, NM_ATT_AVAIL_STATUS, 1, &mo->nm_state.availability);
+	avail_state = (uint8_t) mo->nm_state.availability;
+	msgb_tl16v_put(nmsg, NM_ATT_AVAIL_STATUS, 1, &avail_state);
 
 	/* 9.4.4 Administrative Status -- not in spec but also sent by nanobts */
 	msgb_tv_put(nmsg, NM_ATT_ADM_STATE, mo->nm_state.administrative);
