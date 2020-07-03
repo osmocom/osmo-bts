@@ -30,74 +30,13 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/fsm.h>
-#include <osmocom/core/tdef.h>
 
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/codec/ecu.h>
 
 #include <osmo-bts/gsm_data.h>
-#include <osmo-bts/bts_shutdown_fsm.h>
-
-static struct osmo_tdef bts_T_defs[] = {
-	/* T-1: FIXME: Ideally should be dynamically calculated per trx at
-	 * shutdown start based on params below, and highest trx value taken:
-	 * + VTY's power-ramp step-interval.
-	 * + Amount of steps needed (taking into account how many dB each step moves).
-	 * + Extra time to get response back for each step.
-	 * For now we simply give 5 mins, which should be enough for any
-	 * acceptable setup, while still ensuring will timeout at some point if
-	 * something fails in the ramp down procedure.
-	 */
-	{ .T=-1, .default_val=300, .desc="Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s)" },
-	{ .T=-2, .default_val=3, .desc="Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s)" },
-	{}
-};
-
-const struct value_string bts_attribute_names[] = {
-	OSMO_VALUE_STRING(BTS_TYPE_VARIANT),
-	OSMO_VALUE_STRING(BTS_SUB_MODEL),
-	OSMO_VALUE_STRING(TRX_PHY_VERSION),
-	{ 0, NULL }
-};
-
-enum bts_attribute str2btsattr(const char *s)
-{
-	return get_string_value(bts_attribute_names, s);
-}
-
-const char *btsatttr2str(enum bts_attribute v)
-{
-	return get_value_string(bts_attribute_names, v);
-}
-
-const struct value_string osmo_bts_variant_names[_NUM_BTS_VARIANT + 1] = {
-	{ BTS_UNKNOWN,		"unknown" },
-	{ BTS_OSMO_LITECELL15,	"osmo-bts-lc15" },
-	{ BTS_OSMO_OC2G,	"osmo-bts-oc2g" },
-	{ BTS_OSMO_OCTPHY,	"osmo-bts-octphy" },
-	{ BTS_OSMO_SYSMO,	"osmo-bts-sysmo" },
-	{ BTS_OSMO_TRX,		"osmo-bts-trx" },
-	{ BTS_OSMO_VIRTUAL,	"osmo-bts-virtual" },
-	{ BTS_OSMO_OMLDUMMY,	"osmo-bts-omldummy" },
-	{ 0, NULL }
-};
-
-enum gsm_bts_type_variant str2btsvariant(const char *arg)
-{
-	return get_string_value(osmo_bts_variant_names, arg);
-}
-
-const char *btsvariant2str(enum gsm_bts_type_variant v)
-{
-	return get_value_string(osmo_bts_variant_names, v);
-}
-
-const struct value_string bts_impl_flag_desc[] = {
-	{ BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP,	"DSP/HW based MS Power Control Loop" },
-	{ BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB,	"Measurement and Payload data combined" },
-	{ 0, NULL }
-};
+#include <osmo-bts/bts.h>
 
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
@@ -164,21 +103,6 @@ const char *gsm_lchans_name(enum gsm_lchan_state s)
 	return get_value_string(lchan_s_names, s);
 }
 
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
-{
-	struct gsm_bts *bts;
-
-	if (num >= net->num_bts)
-		return NULL;
-
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		if (bts->nr == num)
-			return bts;
-	}
-
-	return NULL;
-}
-
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
@@ -231,88 +155,6 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	llist_add_tail(&trx->list, &bts->trx_list);
 
 	return trx;
-}
-
-
-static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
-static const uint8_t bts_cell_timer_default[] =
-				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
-static const struct gprs_rlc_cfg rlc_cfg_default = {
-	.parameter = {
-		[RLC_T3142] = 20,
-		[RLC_T3169] = 5,
-		[RLC_T3191] = 5,
-		[RLC_T3193] = 160, /* 10ms */
-		[RLC_T3195] = 5,
-		[RLC_N3101] = 10,
-		[RLC_N3103] = 4,
-		[RLC_N3105] = 8,
-		[CV_COUNTDOWN] = 15,
-		[T_DL_TBF_EXT] = 250 * 10, /* ms */
-		[T_UL_TBF_EXT] = 250 * 10, /* ms */
-	},
-	.paging = {
-		.repeat_time = 5 * 50, /* ms */
-		.repeat_count = 3,
-	},
-	.cs_mask = 0x1fff,
-	.initial_cs = 2,
-	.initial_mcs = 6,
-};
-
-struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
-{
-	struct gsm_bts *bts = talloc_zero(ctx, struct gsm_bts);
-	int i;
-
-	if (!bts)
-		return NULL;
-
-	bts->nr = bts_num;
-	bts->num_trx = 0;
-	INIT_LLIST_HEAD(&bts->trx_list);
-	bts->ms_max_power = 15;	/* dBm */
-
-	bts->T_defs = bts_T_defs;
-	osmo_tdefs_reset(bts->T_defs);
-	bts->shutdown_fi = osmo_fsm_inst_alloc(&bts_shutdown_fsm, bts, bts,
-					       LOGL_INFO, NULL);
-	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);
-
-	gsm_mo_init(&bts->mo, bts, NM_OC_BTS,
-			bts->nr, 0xff, 0xff);
-	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
-			0xff, 0xff, 0xff);
-
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-		bts->gprs.nsvc[i].bts = bts;
-		bts->gprs.nsvc[i].id = i;
-		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts, NM_OC_GPRS_NSVC,
-				bts->nr, i, 0xff);
-	}
-	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
-		sizeof(bts->gprs.nse.timer));
-	gsm_mo_init(&bts->gprs.nse.mo, bts, NM_OC_GPRS_NSE,
-			bts->nr, 0xff, 0xff);
-	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
-		sizeof(bts->gprs.cell.timer));
-	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
-			bts->nr, 0xff, 0xff);
-	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default,
-		sizeof(bts->gprs.cell.rlc_cfg));
-
-	/* create our primary TRX. It will be initialized during bts_init() */
-	bts->c0 = gsm_bts_trx_alloc(bts);
-	if (!bts->c0) {
-		talloc_free(bts);
-		return NULL;
-	}
-	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
-
-	bts->features = bitvec_alloc(MAX_BTS_FEATURES / 8, bts);
-	OSMO_ASSERT(bts->features != NULL);
-
-	return bts;
 }
 
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num)
@@ -499,25 +341,12 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
 }
 
-/* return the gsm_lchan for the CBCH (if it exists at all) */
-struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
+uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
 {
-	struct gsm_lchan *lchan = NULL;
-	struct gsm_bts_trx *trx = bts->c0;
-
-	if (trx->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
-		lchan = &trx->ts[0].lchan[2];
-	else {
-		int i;
-		for (i = 0; i < 8; i++) {
-			if (trx->ts[i].pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH) {
-				lchan = &trx->ts[i].lchan[2];
-				break;
-			}
-		}
-	}
-
-	return lchan;
+	if (ts->tsc != -1)
+		return ts->tsc;
+	else
+		return ts->trx->bts->bsic & 7;
 }
 
 /* determine logical channel based on TRX and channel number IE */

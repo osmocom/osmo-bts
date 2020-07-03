@@ -43,6 +43,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/handover.h>
+#include <osmo-bts/bts.h>
 
 #include "l1_if.h"
 #include "l1_oml.h"

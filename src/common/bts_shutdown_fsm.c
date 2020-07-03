@@ -28,6 +28,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/bts.h>
 
 #define X(s) (1 << (s))
 

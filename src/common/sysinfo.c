@@ -25,6 +25,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/bts.h>
 
 /* properly increment SI2q index and return SI2q data for scheduling */
 static inline uint8_t *get_si2q_inc_index(struct gsm_bts *bts)

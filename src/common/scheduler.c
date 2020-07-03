@@ -42,6 +42,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
+#include <osmo-bts/bts.h>
 
 extern void *tall_bts_ctx;
 

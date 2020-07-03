@@ -42,6 +42,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/scheduler.h>
+#include <osmo-bts/bts.h>
 
 #include "l1_if.h"
 #include "trx_if.h"

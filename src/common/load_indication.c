@@ -27,6 +27,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/paging.h>
+#include <osmo-bts/bts.h>
 
 static void reset_load_counters(struct gsm_bts *bts)
 {

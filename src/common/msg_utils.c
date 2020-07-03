@@ -23,6 +23,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/amr.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/bts.h>
 
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
