@@ -8,6 +8,29 @@ struct gsm_abis_mo;
 struct msgb;
 struct gsm_lchan;
 
+/* Network Management State */
+struct gsm_nm_state {
+	enum abis_nm_op_state operational;
+	enum abis_nm_adm_state administrative;
+	enum abis_nm_avail_state availability;
+};
+
+struct gsm_abis_mo {
+	/* A-bis OML Object Class */
+	uint8_t obj_class;
+	/* is there still some procedure pending? */
+	uint8_t procedure_pending;
+	/* A-bis OML Object Instance */
+	struct abis_om_obj_inst obj_inst;
+	/* human-readable name */
+	const char *name;
+	/* NM State */
+	struct gsm_nm_state nm_state;
+	/* Attributes configured in this MO */
+	struct tlv_parsed *nm_attr;
+	/* BTS to which this MO belongs */
+	struct gsm_bts *bts;
+};
 
 int oml_init(struct gsm_abis_mo *mo);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
@@ -45,5 +68,16 @@ extern const unsigned int oml_default_t200_ms[7];
 /* Transmit failure event report */
 int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, enum abis_nm_severity severity,
 			     uint16_t cause_value, const char *fmt, ...);
+
+void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
+		 uint8_t obj_class, uint8_t p1, uint8_t p2, uint8_t p3);
+
+struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
+				    const struct abis_om_obj_inst *obj_inst);
+
+struct gsm_nm_state *gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
+					  const struct abis_om_obj_inst *obj_inst);
+void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
+		       const struct abis_om_obj_inst *obj_inst);
 
 #endif // _OML_H */

@@ -1503,3 +1503,136 @@ int oml_init(struct gsm_abis_mo *mo)
 
 	return 0;
 }
+
+void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
+		 uint8_t obj_class, uint8_t p1, uint8_t p2, uint8_t p3)
+{
+	mo->bts = bts;
+	mo->obj_class = obj_class;
+	mo->obj_inst.bts_nr = p1;
+	mo->obj_inst.trx_nr = p2;
+	mo->obj_inst.ts_nr = p3;
+	mo->nm_state.operational = NM_OPSTATE_NULL;
+	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
+	mo->nm_state.administrative = NM_STATE_LOCKED;
+}
+
+/* obtain the MO structure for a given object instance */
+struct gsm_abis_mo *
+gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
+	    const struct abis_om_obj_inst *obj_inst)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_abis_mo *mo = NULL;
+
+	switch (obj_class) {
+	case NM_OC_BTS:
+		mo = &bts->mo;
+		break;
+	case NM_OC_RADIO_CARRIER:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		mo = &trx->mo;
+		break;
+	case NM_OC_BASEB_TRANSC:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		mo = &trx->bb_transc.mo;
+		break;
+	case NM_OC_CHANNEL:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		if (obj_inst->ts_nr >= TRX_NR_TS)
+			return NULL;
+		mo = &trx->ts[obj_inst->ts_nr].mo;
+		break;
+	case NM_OC_SITE_MANAGER:
+		mo = &bts->site_mgr.mo;
+		break;
+	case NM_OC_GPRS_NSE:
+		mo = &bts->gprs.nse.mo;
+		break;
+	case NM_OC_GPRS_CELL:
+		mo = &bts->gprs.cell.mo;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		mo = &bts->gprs.nsvc[obj_inst->trx_nr].mo;
+		break;
+	}
+	return mo;
+}
+
+/* obtain the gsm_nm_state data structure for a given object instance */
+struct gsm_nm_state *
+gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
+		 const struct abis_om_obj_inst *obj_inst)
+{
+	struct gsm_abis_mo *mo;
+
+	mo = gsm_objclass2mo(bts, obj_class, obj_inst);
+	if (!mo)
+		return NULL;
+
+	return &mo->nm_state;
+}
+
+/* obtain the in-memory data structure of a given object instance */
+void *
+gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
+	     const struct abis_om_obj_inst *obj_inst)
+{
+	struct gsm_bts_trx *trx;
+	void *obj = NULL;
+
+	switch (obj_class) {
+	case NM_OC_BTS:
+		obj = bts;
+		break;
+	case NM_OC_RADIO_CARRIER:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		obj = trx;
+		break;
+	case NM_OC_BASEB_TRANSC:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		obj = &trx->bb_transc;
+		break;
+	case NM_OC_CHANNEL:
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			return NULL;
+		}
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		if (obj_inst->ts_nr >= TRX_NR_TS)
+			return NULL;
+		obj = &trx->ts[obj_inst->ts_nr];
+		break;
+	case NM_OC_SITE_MANAGER:
+		obj = &bts->site_mgr;
+		break;
+	case NM_OC_GPRS_NSE:
+		obj = &bts->gprs.nse;
+		break;
+	case NM_OC_GPRS_CELL:
+		obj = &bts->gprs.cell;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
+		break;
+	}
+	return obj;
+}

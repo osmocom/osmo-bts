@@ -28,6 +28,7 @@
 
 #include <osmo-bts/paging.h>
 #include <osmo-bts/tx_power.h>
+#include <osmo-bts/oml.h>
 
 #define GSM_FR_BITS	260
 #define GSM_EFR_BITS	244
@@ -80,30 +81,6 @@ struct gsm_lchan;
 struct osmo_rtp_socket;
 struct pcu_sock_state;
 struct smscb_msg;
-
-/* Network Management State */
-struct gsm_nm_state {
-	enum abis_nm_op_state operational;
-	enum abis_nm_adm_state administrative;
-	enum abis_nm_avail_state availability;
-};
-
-struct gsm_abis_mo {
-	/* A-bis OML Object Class */
-	uint8_t obj_class;
-	/* is there still some procedure pending? */
-	uint8_t procedure_pending;
-	/* A-bis OML Object Instance */
-	struct abis_om_obj_inst obj_inst;
-	/* human-readable name */
-	const char *name;
-	/* NM State */
-	struct gsm_nm_state nm_state;
-	/* Attributes configured in this MO */
-	struct tlv_parsed *nm_attr;
-	/* BTS to which this MO belongs */
-	struct gsm_bts *bts;
-};
 
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
@@ -761,19 +738,6 @@ static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 {
 	return lchan->name;
 }
-
-void gsm_abis_mo_reset(struct gsm_abis_mo *mo);
-
-struct gsm_abis_mo *
-gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
-	    const struct abis_om_obj_inst *obj_inst);
-
-struct gsm_nm_state *
-gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
-		 const struct abis_om_obj_inst *obj_inst);
-void *
-gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-	     const struct abis_om_obj_inst *obj_inst);
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
