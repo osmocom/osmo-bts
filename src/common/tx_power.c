@@ -29,6 +29,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/tx_power.h>
+#include <osmo-bts/bts_trx.h>
 
 static int get_pa_drive_level_mdBm(const struct power_amp *pa,
 		       int desired_p_out_mdBm, unsigned int arfcn)

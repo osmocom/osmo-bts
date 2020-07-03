@@ -383,40 +383,6 @@ int bts_init(struct gsm_bts *bts)
 	return rc;
 }
 
-/* Initialize the TRX data structures, called before config
- * file reading */
-int bts_trx_init(struct gsm_bts_trx *trx)
-{
-	/* initialize bts data structure */
-	struct trx_power_params *tpp = &trx->power_params;
-	int rc, i;
-
-	for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[i];
-		int k;
-
-		for (k = 0; k < ARRAY_SIZE(ts->lchan); k++) {
-			struct gsm_lchan *lchan = &ts->lchan[k];
-			INIT_LLIST_HEAD(&lchan->dl_tch_queue);
-		}
-	}
-	/* Default values for the power adjustments */
-	tpp->ramp.max_initial_pout_mdBm = to_mdB(0);
-	tpp->ramp.step_size_mdB = to_mdB(2);
-	tpp->ramp.step_interval_sec = 1;
-
-	/* IF BTS model doesn't DSP/HW support MS Power Control Loop, enable osmo algo by default: */
-	if (!bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP))
-		trx->ms_pwr_ctl_soft = true;
-
-	rc = bts_model_trx_init(trx);
-	if (rc < 0) {
-		llist_del(&trx->list);
-		return rc;
-	}
-	return 0;
-}
-
 /* main link is established, send status report */
 int bts_link_estab(struct gsm_bts *bts)
 {
@@ -449,55 +415,6 @@ int bts_link_estab(struct gsm_bts *bts)
 	}
 
 	return bts_model_oml_estab(bts);
-}
-
-/* RSL link is established, send status report */
-int trx_link_estab(struct gsm_bts_trx *trx)
-{
-	struct e1inp_sign_link *link = trx->rsl_link;
-	uint8_t radio_state = link ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
-	int rc;
-
-	LOGP(DSUM, LOGL_INFO, "RSL link (TRX %02x) state changed to %s, sending Status'.\n",
-		trx->nr, link ? "up" : "down");
-
-	oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
-
-	if (link)
-		rc = rsl_tx_rf_res(trx);
-	else
-		rc = bts_model_trx_deact_rf(trx);
-	if (rc < 0) {
-		oml_tx_failure_event_rep(&trx->bb_transc.mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_RSL_FAIL,
-					 link ?
-					 "Failed to establish RSL link (%d)" :
-					 "Failed to deactivate RF (%d)", rc);
-	}
-
-	return 0;
-}
-
-/* set the availability of the TRX (used by PHY driver) */
-int trx_set_available(struct gsm_bts_trx *trx, int avail)
-{
-	int tn;
-
-	LOGP(DSUM, LOGL_INFO, "TRX(%d): Setting available = %d\n",
-		trx->nr, avail);
-	if (avail) {
-		int op_state = trx->rsl_link ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
-		oml_mo_state_chg(&trx->mo, op_state, NM_AVSTATE_OK);
-		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
-		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
-			oml_mo_state_chg(&trx->ts[tn].mo, op_state, NM_AVSTATE_OK);
-	} else {
-		oml_mo_state_chg(&trx->mo,  NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_NOT_INSTALLED);
-
-		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
-			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-	}
-	return 0;
 }
 
 /* prepare the per-SAPI T200 arrays for a given lchan */
@@ -897,11 +814,6 @@ int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher)
 
 	sup =  (1 << (rsl_cipher - 2)) & bts->support.ciphers;
 	return sup > 0;
-}
-
-bool trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
-{
-	return trx->ms_pwr_ctl_soft;
 }
 
 struct gsm_time *get_time(struct gsm_bts *bts)

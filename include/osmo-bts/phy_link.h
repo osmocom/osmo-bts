@@ -5,11 +5,12 @@
 #include <osmocom/core/linuxlist.h>
 
 #include <osmo-bts/scheduler.h>
+#include <osmo-bts/bts_trx.h>
 
 #include <linux/if_packet.h>
 #include "btsconfig.h"
 
-struct gsm_bts_trx;
+
 struct virt_um_inst;
 
 enum phy_link_type {

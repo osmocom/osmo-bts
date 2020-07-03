@@ -14,6 +14,7 @@ libbts_a_SOURCES = \
 	abis.c \
 	oml.c \
 	bts.c \
+	bts_trx.c \
 	rsl.c \
 	vty.c \
 	paging.c \

@@ -49,6 +49,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/bts_trx.h>
 
 static struct gsm_bts *g_bts;
 

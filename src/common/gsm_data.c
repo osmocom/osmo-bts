@@ -37,6 +37,7 @@
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_trx.h>
 
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
@@ -103,87 +104,7 @@ const char *gsm_lchans_name(enum gsm_lchan_state s)
 	return get_value_string(lchan_s_names, s);
 }
 
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
-{
-	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
-	int k;
-
-	if (!trx)
-		return NULL;
-
-	trx->bts = bts;
-	trx->nr = bts->num_trx++;
-
-	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
-		    bts->nr, trx->nr, 0xff);
-
-	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
-		    bts->nr, trx->nr, 0xff);
-
-	for (k = 0; k < TRX_NR_TS; k++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[k];
-		int l;
-
-		ts->trx = trx;
-		ts->nr = k;
-		ts->pchan = GSM_PCHAN_NONE;
-		ts->dyn.pchan_is = GSM_PCHAN_NONE;
-		ts->dyn.pchan_want = GSM_PCHAN_NONE;
-		ts->tsc = -1;
-
-		gsm_mo_init(&ts->mo, bts, NM_OC_CHANNEL,
-			    bts->nr, trx->nr, ts->nr);
-
-		for (l = 0; l < TS_MAX_LCHAN; l++) {
-			struct gsm_lchan *lchan;
-			char *name;
-			lchan = &ts->lchan[l];
-
-			lchan->ts = ts;
-			lchan->nr = l;
-			lchan->type = GSM_LCHAN_NONE;
-
-			name = gsm_lchan_name_compute(lchan);
-			lchan->name = talloc_strdup(trx, name);
-			INIT_LLIST_HEAD(&lchan->sapi_cmds);
-		}
-	}
-
-	if (trx->nr != 0)
-		trx->nominal_power = bts->c0->nominal_power;
-
-	llist_add_tail(&trx->list, &bts->trx_list);
-
-	return trx;
-}
-
-struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num)
-{
-	struct gsm_bts_trx *trx;
-
-	if (num >= bts->num_trx)
-		return NULL;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->nr == num)
-			return trx;
-	}
-
-	return NULL;
-}
-
 static char ts2str[255];
-
-char *gsm_trx_name(const struct gsm_bts_trx *trx)
-{
-	if (!trx)
-		snprintf(ts2str, sizeof(ts2str), "(trx=NULL)");
-	else
-		snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d)",
-			 trx->bts->nr, trx->nr);
-
-	return ts2str;
-}
 
 
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
@@ -457,15 +378,6 @@ static bool pchan_is_tch(enum gsm_phys_chan_config pchan)
 bool ts_is_tch(struct gsm_bts_trx_ts *ts)
 {
 	return pchan_is_tch(ts_pchan(ts));
-}
-
-const char *gsm_trx_unit_id(struct gsm_bts_trx *trx)
-{
-	static char buf[23];
-
-	snprintf(buf, sizeof(buf), "%u/%u/%u", trx->bts->ip_access.site_id,
-		trx->bts->ip_access.bts_id, trx->nr);
-	return buf;
 }
 
 const struct value_string lchan_ciph_state_names[] = {

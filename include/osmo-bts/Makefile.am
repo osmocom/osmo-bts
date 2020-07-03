@@ -3,6 +3,7 @@ noinst_HEADERS = \
 	bts.h \
 	bts_model.h \
 	bts_shutdown_fsm.h \
+	bts_trx.h \
 	gsm_data.h \
 	logging.h \
 	measurement.h \

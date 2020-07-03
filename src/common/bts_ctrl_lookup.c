@@ -28,6 +28,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/control_if.h>
+#include <osmo-bts/bts_trx.h>
 
 extern vector ctrl_node_vec;
 

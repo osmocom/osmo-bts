@@ -43,7 +43,6 @@
 #define GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT 91
 
 #define LOGPLCHAN(lchan, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_lchan_name(lchan), ## args)
-#define LOGPTRX(trx, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_trx_name(trx), ## args)
 
 struct gsm_network {
 	struct llist_head bts_list;
@@ -339,53 +338,6 @@ struct gsm_bts_trx_ts {
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
-/* One TRX in a BTS */
-struct gsm_bts_trx {
-	/* list header in bts->trx_list */
-	struct llist_head list;
-
-	struct gsm_bts *bts;
-	/* number of this TRX in the BTS */
-	uint8_t nr;
-	/* human readable name / description */
-	char *description;
-	/* how do we talk RSL with this TRX? */
-	uint8_t rsl_tei;
-	struct e1inp_sign_link *rsl_link;
-
-	/* Some BTS (specifically Ericsson RBS) have a per-TRX OML Link */
-	struct e1inp_sign_link *oml_link;
-
-	struct gsm_abis_mo mo;
-	struct tlv_parsed nm_attr;
-	struct {
-		struct gsm_abis_mo mo;
-	} bb_transc;
-
-	uint16_t arfcn;
-	int nominal_power;		/* in dBm */
-	unsigned int max_power_red;	/* in actual dB */
-        uint8_t max_power_backoff_8psk; /* in actual dB OC-2G only */
-        uint8_t c0_idle_power_red;      /* in actual dB OC-2G only */
-
-
-	struct trx_power_params power_params;
-	bool ms_pwr_ctl_soft; /* is power control loop done by osmocom software? */
-
-	struct {
-		void *l1h;
-	} role_bts;
-
-	union {
-		struct {
-			unsigned int test_state;
-			uint8_t test_nr;
-			struct rxlev_stats rxlev_stat;
-		} ipaccess;
-	};
-	struct gsm_bts_trx_ts ts[TRX_NR_TS];
-};
-
 #define GSM_LCHAN_SI(lchan, i) (void *)((lchan)->si.buf[i][0])
 
 enum gprs_rlc_par {
@@ -424,16 +376,12 @@ enum gprs_cs {
  * OML connection will cause a special warning to be logged. */
 #define OSMO_BTS_OML_CONN_EARLY_DISCONNECT 10	 /* in seconds */
 
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
-struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
-
 
 extern const struct value_string gsm_pchant_names[13];
 extern const struct value_string gsm_pchant_descs[13];
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
-char *gsm_trx_name(const struct gsm_bts_trx *trx);
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_lchan_name_compute(const struct gsm_lchan *lchan);
@@ -458,7 +406,6 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts);
 uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
 bool ts_is_tch(struct gsm_bts_trx_ts *ts);
-const char *gsm_trx_unit_id(struct gsm_bts_trx *trx);
 
 int lchan2ecu_codec(const struct gsm_lchan *lchan);
 

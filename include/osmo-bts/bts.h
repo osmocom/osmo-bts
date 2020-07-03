@@ -3,6 +3,10 @@
 
 #include <osmocom/core/rate_ctr.h>
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/bts_trx.h>
+
+
+struct gsm_bts_trx;
 
 enum bts_global_status {
 	BTS_STATUS_RF_ACTIVE,
@@ -318,12 +322,9 @@ struct gsm_bts *gsm_bts_alloc(void *talloc_ctx, uint8_t bts_num);
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
 int bts_init(struct gsm_bts *bts);
-int bts_trx_init(struct gsm_bts_trx *trx);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);
 
 int bts_link_estab(struct gsm_bts *bts);
-int trx_link_estab(struct gsm_bts_trx *trx);
-int trx_set_available(struct gsm_bts_trx *trx, int avail);
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
@@ -337,10 +338,7 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);
-uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg);
 void bts_update_status(enum bts_global_status which, int on);
-
-bool trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx);
 
 struct gsm_time *get_time(struct gsm_bts *bts);
 
