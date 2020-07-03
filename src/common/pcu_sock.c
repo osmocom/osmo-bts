@@ -35,6 +35,7 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/gsm/gsm23003.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/pcu_if.h>
@@ -219,6 +220,13 @@ int pcu_tx_info_ind(void)
 		info_ind->trx[i].pdch_mask = 0;
 		info_ind->trx[i].arfcn = trx->arfcn;
 		info_ind->trx[i].hlayer1 = trx_get_hlayer1(trx);
+		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+		    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
+			    LOGPTRX(trx, DPCU, LOGL_INFO, "unavailable for PCU (op=%s adm=%s)\n",
+				    abis_nm_opstate_name(trx->mo.nm_state.operational),
+				    abis_nm_admin_name(trx->mo.nm_state.administrative));
+			continue;
+		}
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
