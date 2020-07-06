@@ -406,9 +406,6 @@ static int trx_init(struct gsm_bts_trx *trx)
 	if (trx == trx->bts->c0)
 		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
 
-	/* Set to Operational State: Enabled */
-	oml_mo_state_chg(&trx->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-
 	/* Send OPSTART ack */
 	return oml_mo_opstart_ack(&trx->mo);
 }
