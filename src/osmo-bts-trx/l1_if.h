@@ -120,7 +120,6 @@ struct trx_l1h {
 
 struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst);
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h);
-int l1if_provision_transceiver(struct gsm_bts *bts);
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
 void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, int nominal_power);
 

@@ -363,30 +363,6 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 	return 0;
 }
 
-int l1if_provision_transceiver(struct gsm_bts *bts)
-{
-	struct gsm_bts_trx *trx;
-	uint8_t tn;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-		l1h->config.trxd_hdr_ver_req = 0;
-		l1h->config.trxd_hdr_ver_use = 0;
-		l1h->config.setformat_sent = 0;
-		l1h->config.arfcn_sent = 0;
-		l1h->config.tsc_sent = 0;
-		l1h->config.bsic_sent = 0;
-		l1h->config.rxgain_sent = 0;
-		l1h->config.maxdly_sent = 0;
-		l1h->config.maxdlynb_sent = 0;
-		for (tn = 0; tn < TRX_NR_TS; tn++)
-			l1h->config.slottype_sent[tn] = 0;
-		l1if_provision_transceiver_trx(l1h);
-	}
-	return 0;
-}
-
 /*
  * activation/configuration/deactivation of transceiver's TRX
  */
