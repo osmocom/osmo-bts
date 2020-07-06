@@ -153,13 +153,10 @@ const char *gsm_trx_unit_id(struct gsm_bts_trx *trx)
 int trx_link_estab(struct gsm_bts_trx *trx)
 {
 	struct e1inp_sign_link *link = trx->rsl_link;
-	uint8_t radio_state = link ?  NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
 	int rc;
 
-	LOGP(DSUM, LOGL_INFO, "RSL link (TRX %02x) state changed to %s, sending Status'.\n",
-		trx->nr, link ? "up" : "down");
-
-	oml_mo_state_chg(&trx->mo, radio_state, NM_AVSTATE_OK);
+	LOGPTRX(trx, DSUM, LOGL_INFO, "RSL link %s\n",
+		link ? "up" : "down");
 
 	if (link)
 		rc = rsl_tx_rf_res(trx);
