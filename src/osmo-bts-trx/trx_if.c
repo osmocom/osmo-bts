@@ -39,6 +39,7 @@
 #include <osmocom/core/timer.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
+#include <osmocom/core/fsm.h>
 
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
@@ -47,6 +48,7 @@
 
 #include "l1_if.h"
 #include "trx_if.h"
+#include "trx_provision_fsm.h"
 
 /*
  * socket helper functions
@@ -1231,12 +1233,6 @@ static int trx_if_open(struct trx_l1h *l1h)
 	if (rc < 0)
 		goto err;
 
-	/* enable all slots */
-	l1h->config.slotmask = 0xff;
-
-	if (pinst->num == 0)
-		trx_if_cmd_poweroff(l1h, NULL);
-
 	return 0;
 
 err:
@@ -1301,8 +1297,10 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	/* open the individual instances with their ctrl+data sockets */
 	llist_for_each_entry(pinst, &plink->instances, list) {
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		if (trx_phy_inst_open(pinst) < 0)
 			goto cleanup;
+		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_OPEN, NULL);
 	}
 
 	return 0;

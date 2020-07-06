@@ -32,6 +32,7 @@ noinst_HEADERS = \
 	trx_if.h \
 	l1_if.h \
 	loops.h \
+	trx_provision_fsm.h \
 	$(NULL)
 
 bin_PROGRAMS = osmo-bts-trx
@@ -47,6 +48,7 @@ osmo_bts_trx_SOURCES = \
 	sched_lchan_pdtch.c \
 	sched_lchan_tchf.c \
 	sched_lchan_tchh.c \
+	trx_provision_fsm.c \
 	trx_vty.c \
 	loops.c \
 	$(NULL)
