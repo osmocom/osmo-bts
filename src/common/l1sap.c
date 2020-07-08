@@ -1729,8 +1729,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm48_chan_desc *cd;
 	int rc;
 
-	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activating channel chan_nr=%s trx=%d\n",
-		  rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activating channel %s\n", rsl_chan_nr_str(chan_nr));
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
 	 * need to make sure ew don't crash here */
