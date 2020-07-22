@@ -38,6 +38,7 @@ struct trx_prov_ev_cfg_ts_data {
 };
 
 enum trx_provision_fsm_events {
+	TRX_PROV_EV_OTHER_TRX_READY,
 	TRX_PROV_EV_OPEN,
 	TRX_PROV_EV_CFG_ENABLE,
 	TRX_PROV_EV_CFG_BSIC,

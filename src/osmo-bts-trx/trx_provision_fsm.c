@@ -205,7 +205,7 @@ static bool update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data* 
 }
 
 /* Whether a given TRX is fully configured and can be powered on */
-static bool trx_can_be_powered_on(struct trx_l1h *l1h)
+static bool trx_is_provisioned(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	if (l1h->config.enabled && l1h->config.rxtune_acked && l1h->config.txtune_acked &&
@@ -218,6 +218,37 @@ static bool trx_can_be_powered_on(struct trx_l1h *l1h)
 	return false;
 }
 
+
+static void trx_signal_ready_trx0(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct phy_instance *pinst_it;
+
+	llist_for_each_entry(pinst_it, &pinst->phy_link->instances, list) {
+		struct trx_l1h *l1h_it = pinst_it->u.osmotrx.hdl;
+		if (l1h_it->phy_inst->num != 0)
+			continue;
+		osmo_fsm_inst_dispatch(l1h_it->provision_fi, TRX_PROV_EV_OTHER_TRX_READY, NULL);
+		return;
+	}
+}
+
+/* Called from TRX0 to check if other TRX are already configured and powered so POWERON can be sent */
+static bool trx_other_trx0_ready(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct phy_instance *pinst_it;
+
+	/* Don't POWERON until all trx are ready */
+	llist_for_each_entry(pinst_it, &pinst->phy_link->instances, list) {
+		struct trx_l1h *l1h_it = pinst_it->u.osmotrx.hdl;
+		if (l1h_it->phy_inst->num == 0)
+			continue;
+		if (l1h_it->provision_fi->state != TRX_PROV_ST_OPEN_POWERON)
+			return false;
+	}
+	return true;
+}
 
 //////////////////////////
 // FSM STATE ACTIONS
@@ -256,6 +287,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	uint16_t tsc;
 	int nominal_power;
 	int status;
+	bool others_ready;
 
 	switch(event) {
 	case TRX_PROV_EV_CFG_ENABLE:
@@ -332,20 +364,34 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.setformat_sent = false;
 		}
 		break;
+	case TRX_PROV_EV_OTHER_TRX_READY:
+		OSMO_ASSERT(pinst->num == 0);
+		/* Do nothing here, we were triggered to see if we can finally poweron TRX0 below */
+		break;
 	default:
 		OSMO_ASSERT(0);
 	}
 
 	l1if_provision_transceiver_trx(l1h);
 
-	/* if we gathered all data and could go forward :*/
-	if (trx_can_be_powered_on(l1h)) {
-		if (l1h->phy_inst->num == 0)
-			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
-		else
+	if (l1h->phy_inst->num == 0)
+		others_ready = trx_other_trx0_ready(l1h);
+	else
+		others_ready = true; /* we don't care about others in TRX!=0 */
+
+	/* if we gathered all data and could go forward. For TRX0, only after
+	 * all other TRX are prepared, since it will send POWERON commad */
+	if (trx_is_provisioned(l1h) &&
+	    (l1h->phy_inst->num != 0 || others_ready)) {
+		if (l1h->phy_inst->num != 0) {
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWERON);
+			/* Once we are powered on, signal TRX0 in case it was waiting for us */
+			trx_signal_ready_trx0(l1h);
+		} else {
+			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
+		}
 	} else {
-		LOGPPHI(pinst, DL1C, LOGL_INFO, "Delaying poweron, TRX attributes not yet configured:%s%s%s%s%s%s\n",
+		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s\n",
 			l1h->config.enabled ? "" :" enable",
 			pinst->phy_link->u.osmotrx.use_legacy_setbsic ?
 				(l1h->config.bsic_valid ? (l1h->config.bsic_acked ? "" : " bsic-ack") : " bsic") :
@@ -353,7 +399,8 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.arfcn_valid ? "" : " arfcn",
 			l1h->config.rxtune_acked ? "" : " rxtune-ack",
 			l1h->config.nominal_power_set_by_vty ? "" : (l1h->config.nomtxpower_acked ? "" : " nomtxpower-ack"),
-			l1h->config.setformat_acked ? "" : " setformat-ack"
+			l1h->config.setformat_acked ? "" : " setformat-ack",
+			(l1h->phy_inst->num != 0 || others_ready) ? "" : " other-trx"
 			);
 	}
 }
@@ -505,6 +552,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 	},
 	[TRX_PROV_ST_OPEN_POWEROFF] = {
 		.in_event_mask =
+			X(TRX_PROV_EV_OTHER_TRX_READY) |
 			X(TRX_PROV_EV_CFG_ENABLE) |
 			X(TRX_PROV_EV_CFG_BSIC) |
 			X(TRX_PROV_EV_CFG_ARFCN) |
@@ -555,6 +603,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 };
 
 const struct value_string trx_prov_fsm_event_names[] = {
+	OSMO_VALUE_STRING(TRX_PROV_EV_OTHER_TRX_READY),
 	OSMO_VALUE_STRING(TRX_PROV_EV_OPEN),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_ENABLE),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_BSIC),
