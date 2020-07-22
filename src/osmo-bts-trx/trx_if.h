@@ -14,6 +14,7 @@ struct trx_ctrl_msg {
 	void 			*cb;
 };
 
+typedef void trx_if_cmd_generic_cb(struct trx_l1h *l1h, int rc);
 typedef void trx_if_cmd_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc);
 typedef void trx_if_cmd_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc);
 typedef void trx_if_cmd_getnompower_cb(struct trx_l1h *l1h, int nominal_power, int rc);
@@ -22,16 +23,16 @@ typedef void trx_if_cmd_setpower_att_cb(struct trx_l1h *l1h, int power_att_db, i
 void trx_if_init(struct trx_l1h *l1h);
 int trx_if_cmd_poweroff(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb);
 int trx_if_cmd_poweron(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb);
-int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc);
-int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic);
+int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc, trx_if_cmd_generic_cb *cb);
+int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic, trx_if_cmd_generic_cb *cb);
 int trx_if_cmd_setrxgain(struct trx_l1h *l1h, int db);
 int trx_if_cmd_getnompower(struct trx_l1h *l1h, trx_if_cmd_getnompower_cb *cb);
 int trx_if_cmd_setpower_att(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_att_cb *cb);
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly);
 int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly);
 int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb);
-int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn);
-int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn);
+int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb);
+int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br);
@@ -41,6 +42,6 @@ int trx_if_powered(struct trx_l1h *l1h);
 #define TRX_DATA_FORMAT_VER    1
 
 /* Format negotiation command */
-int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver);
+int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb);
 
 #endif /* TRX_IF_H */

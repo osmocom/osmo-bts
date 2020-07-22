@@ -270,32 +270,24 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb)
 }
 
 /*! Send "SETFORMAT" command to TRX: change TRXD header format version */
-int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver)
+int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb)
 {
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
 		"Requesting TRXD header format version %u\n", ver);
 
-	return trx_ctrl_cmd(l1h, 0, "SETFORMAT", "%u", ver);
+	return trx_ctrl_cmd_cb(l1h, 0, cb, "SETFORMAT", "%u", ver);
 }
 
 /*! Send "SETTSC" command to TRX */
-int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc)
+int trx_if_cmd_settsc(struct trx_l1h *l1h, uint8_t tsc, trx_if_cmd_generic_cb *cb)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	if (pinst->phy_link->u.osmotrx.use_legacy_setbsic)
-		return 0;
-
-	return trx_ctrl_cmd(l1h, 1, "SETTSC", "%d", tsc);
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "SETTSC", "%d", tsc);
 }
 
 /*! Send "SETBSIC" command to TRX */
-int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic)
+int trx_if_cmd_setbsic(struct trx_l1h *l1h, uint8_t bsic, trx_if_cmd_generic_cb *cb)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
-	if (!pinst->phy_link->u.osmotrx.use_legacy_setbsic)
-		return 0;
-
-	return trx_ctrl_cmd(l1h, 1, "SETBSIC", "%d", bsic);
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "SETBSIC", "%d", bsic);
 }
 
 /*! Send "SETRXGAIN" command to TRX */
@@ -335,7 +327,7 @@ int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd
 }
 
 /*! Send "RXTUNE" command to TRX: Tune Receiver to given ARFCN */
-int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
+int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	uint16_t freq10;
@@ -350,11 +342,11 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, 1, "RXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "RXTUNE", "%d", freq10 * 100);
 }
 
 /*! Send "TXTUNE" command to TRX: Tune Transmitter to given ARFCN */
-int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
+int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	uint16_t freq10;
@@ -369,7 +361,7 @@ int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn)
 		return -ENOTSUP;
 	}
 
-	return trx_ctrl_cmd(l1h, 1, "TXTUNE", "%d", freq10 * 100);
+	return trx_ctrl_cmd_cb(l1h, 1, cb, "TXTUNE", "%d", freq10 * 100);
 }
 
 /*! Send "HANDOVER" command to TRX: Enable handover RACH Detection on timeslot/sub-slot */
@@ -516,12 +508,17 @@ static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp
 static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 				     struct trx_ctrl_rsp *rsp)
 {
+	trx_if_cmd_generic_cb *cb;
+
 	/* Old transceivers reject 'SETFORMAT' with 'RSP ERR 1' */
 	if (strcmp(rsp->cmd, "SETFORMAT") != 0) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
 			"Transceiver rejected the format negotiation command, "
 			"using legacy TRXD header format version (0)\n");
-		l1h->config.trxd_hdr_ver_use = 0;
+		if (rsp->cb) {
+			cb = (trx_if_cmd_generic_cb*) rsp->cb;
+			cb(l1h, 0);
+		}
 		return 0;
 	}
 
@@ -534,19 +531,9 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 		return -EINVAL;
 	}
 
-	/* Transceiver may suggest a lower version (than requested) */
-	if (rsp->status == l1h->config.trxd_hdr_ver_req) {
-		l1h->config.trxd_hdr_ver_use = rsp->status;
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
-			"Using TRXD header format version %u\n",
-			l1h->config.trxd_hdr_ver_use);
-	} else {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-			"Transceiver suggests TRXD header version %u (requested %u)\n",
-			rsp->status, l1h->config.trxd_hdr_ver_req);
-		/* Send another SETFORMAT with suggested version */
-		l1h->config.trxd_hdr_ver_req = rsp->status;
-		trx_if_cmd_setformat(l1h, rsp->status);
+	if (rsp->cb) {
+		cb = (trx_if_cmd_generic_cb*) rsp->cb;
+		cb(l1h, rsp->status);
 	}
 
 	return 0;
@@ -595,6 +582,8 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 			   struct trx_ctrl_rsp *rsp,
 			   struct trx_ctrl_msg *tcm)
 {
+	trx_if_cmd_generic_cb *cb;
+
 	if (strcmp(rsp->cmd, "POWERON") == 0) {
 		return trx_ctrl_rx_rsp_poweron(l1h, rsp);
 	} else if (strcmp(rsp->cmd, "POWEROFF") == 0) {
@@ -609,6 +598,12 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 		return trx_ctrl_rx_rsp_nomtxpower(l1h, rsp);
 	} else if (strcmp(tcm->cmd, "SETPOWER") == 0) {
 		return trx_ctrl_rx_rsp_setpower(l1h, rsp);
+	}
+
+	/* Generic callback if available */
+	if (rsp->cb) {
+		cb = (trx_if_cmd_generic_cb*) rsp->cb;
+		cb(l1h, rsp->status);
 	}
 
 	if (rsp->status) {

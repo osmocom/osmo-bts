@@ -61,21 +61,27 @@ struct trx_config {
 	uint8_t			trxd_hdr_ver_req; /* requested TRXD header version */
 	uint8_t			trxd_hdr_ver_use; /* actual TRXD header version in use */
 	bool			setformat_sent;
+	bool			setformat_acked;
 
 	bool			enabled;
 
 
 	bool			arfcn_valid;
 	uint16_t		arfcn;
-	bool			arfcn_sent;
+	bool			rxtune_sent;
+	bool			rxtune_acked;
+	bool			txtune_sent;
+	bool			txtune_acked;
 
 	bool			tsc_valid;
 	uint8_t			tsc;
 	bool			tsc_sent;
+	bool			tsc_acked;
 
 	bool			bsic_valid;
 	uint8_t			bsic;
 	bool			bsic_sent;
+	bool			bsic_acked;
 
 	bool			rxgain_valid;
 	uint8_t			rxgain;
@@ -84,6 +90,8 @@ struct trx_config {
 	int			forced_max_power_red; /* -1 if not forced by VTY config (default) */
 
 	bool			nominal_power_set_by_vty; /* whether nominal trx power was enforced/retreived from VTY config "nominal-tx-power" */
+	bool			nomtxpower_sent;
+	bool			nomtxpower_acked;
 
 	bool			maxdly_valid;
 	int			maxdly;

@@ -56,14 +56,37 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_POWEROFF_CNF, (void*)(intptr_t)rc);
 }
 
+
+void l1if_rxtune_cb(struct trx_l1h *l1h, int rc)
+{
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_RXTUNE_CNF, (void*)(intptr_t)rc);
+}
+
+void l1if_txtune_cb(struct trx_l1h *l1h, int rc)
+{
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_TXTUNE_CNF, (void*)(intptr_t)rc);
+}
+
+void l1if_settsc_cb(struct trx_l1h *l1h, int rc)
+{
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETTSC_CNF, (void*)(intptr_t)rc);
+}
+
+void l1if_setbsic_cb(struct trx_l1h *l1h, int rc)
+{
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETBSIC_CNF, (void*)(intptr_t)rc);
+}
+
 static void l1if_getnompower_cb(struct trx_l1h *l1h, int nominal_power, int rc)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
-	struct gsm_bts_trx *trx = pinst->trx;
-
 	LOGPPHI(pinst, DL1C, LOGL_DEBUG, "l1if_getnompower_cb(nominal_power=%d, rc=%d)\n", nominal_power, rc);
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_NOMTXPOWER_CNF, (void*)(intptr_t)nominal_power);
+}
 
-	l1if_trx_set_nominal_power(trx, nominal_power);
+void l1if_setformat_cb(struct trx_l1h *l1h, int rc)
+{
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETFORMAT_CNF, (void*)(intptr_t)rc);
 }
 
 /*
@@ -87,59 +110,58 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		return -EIO;
 	}
 
-	if (l1h->config.enabled
-	 && l1h->config.tsc_valid
-	 && l1h->config.bsic_valid
-	 && l1h->config.arfcn_valid) {
-		/* before power on */
-		if (!l1h->config.arfcn_sent) {
-			trx_if_cmd_rxtune(l1h, l1h->config.arfcn);
-			trx_if_cmd_txtune(l1h, l1h->config.arfcn);
+	/* before power on */
+	if (l1h->config.arfcn_valid) {
+		if (!l1h->config.rxtune_sent) {
+			trx_if_cmd_rxtune(l1h, l1h->config.arfcn, l1if_rxtune_cb);
+			l1h->config.rxtune_sent = true;
+			l1h->config.rxtune_acked = false;
+		}
+		if (!l1h->config.txtune_sent) {
+			trx_if_cmd_txtune(l1h, l1h->config.arfcn, l1if_txtune_cb);
+			l1h->config.txtune_sent = true;
+			l1h->config.txtune_acked = false;
+		}
+		if (l1h->config.txtune_acked) {
 			/* After TXTUNE is sent to TRX, get the tx nominal power
 			 * (which may vary precisly on band/arfcn. Avoid sending
 			 * it if we are forced by VTY to use a specific nominal
 			 * power (because TRX may not support the command or
 			 * provide broken values) */
-			if (!l1h->config.nominal_power_set_by_vty)
+			if (!l1h->config.nominal_power_set_by_vty && !l1h->config.nomtxpower_sent) {
 				trx_if_cmd_getnompower(l1h, l1if_getnompower_cb);
-			l1h->config.arfcn_sent = true;
-		}
-		if (!l1h->config.tsc_sent) {
-			trx_if_cmd_settsc(l1h, l1h->config.tsc);
-			l1h->config.tsc_sent = true;
-		}
-		if (!l1h->config.bsic_sent) {
-			trx_if_cmd_setbsic(l1h, l1h->config.bsic);
-			l1h->config.bsic_sent = true;
-		}
-
-		/* Ask transceiver to use the newest TRXD header version if not using it yet */
-		if (!l1h->config.setformat_sent) {
-			if (l1h->config.trxd_hdr_ver_use != plink->u.osmotrx.trxd_hdr_ver_max) {
-				trx_if_cmd_setformat(l1h, plink->u.osmotrx.trxd_hdr_ver_max);
-				l1h->config.trxd_hdr_ver_req = plink->u.osmotrx.trxd_hdr_ver_max;
-			} else {
-				LOGPPHI(pinst, DL1C, LOGL_INFO,
-					"No need to negotiate TRXD version, "
-					"already using maximum configured one: %" PRIu8 "\n",
-					l1h->config.trxd_hdr_ver_use);
+				l1h->config.nomtxpower_sent = true;
+				l1h->config.nomtxpower_acked = false;
 			}
-			l1h->config.setformat_sent = true;
 		}
-
-		if (pinst->num == 0 && !plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
-			trx_if_cmd_poweron(l1h, l1if_poweronoff_cb);
-			plink->u.osmotrx.poweronoff_sent = true;
-		}
-
-		return 0;
 	}
-	LOGPPHI(pinst, DL1C, LOGL_INFO, "Delaying provision, TRX attributes not yet received from BSC:%s%s%s%s\n",
-		l1h->config.enabled ? "" :" enable",
-		l1h->config.tsc_valid ? "" : " tsc",
-		l1h->config.bsic_valid ? "" : " bsic",
-		l1h->config.arfcn_valid ? "" : " arfcn");
-	return 1;
+	if (!pinst->phy_link->u.osmotrx.use_legacy_setbsic &&
+	    l1h->config.tsc_valid && !l1h->config.tsc_sent) {
+		trx_if_cmd_settsc(l1h, l1h->config.tsc, l1if_settsc_cb);
+		l1h->config.tsc_sent = true;
+		l1h->config.tsc_acked = false;
+	}
+	if (pinst->phy_link->u.osmotrx.use_legacy_setbsic &&
+	    l1h->config.bsic_valid && !l1h->config.bsic_sent) {
+		trx_if_cmd_setbsic(l1h, l1h->config.bsic, l1if_setbsic_cb);
+		l1h->config.bsic_sent = true;
+		l1h->config.bsic_acked = false;
+	}
+
+	/* Ask transceiver to use the newest TRXD header version if not using it yet */
+	if (!l1h->config.setformat_sent) {
+		l1h->config.setformat_sent = true;
+		if (plink->u.osmotrx.trxd_hdr_ver_max == 0) {
+			LOGPPHI(pinst, DL1C, LOGL_INFO,
+				"No need to negotiate max TRXD version 0");
+			l1h->config.trxd_hdr_ver_use = 0;
+			l1h->config.setformat_acked = true;
+		} else {
+			trx_if_cmd_setformat(l1h, l1h->config.trxd_hdr_ver_req, l1if_setformat_cb);
+			l1h->config.setformat_acked = false;
+		}
+	}
+	return 0;
 }
 
 static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int rc)
@@ -182,6 +204,20 @@ static bool update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data* 
 	return false;
 }
 
+/* Whether a given TRX is fully configured and can be powered on */
+static bool trx_can_be_powered_on(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	if (l1h->config.enabled && l1h->config.rxtune_acked && l1h->config.txtune_acked &&
+	    (l1h->config.bsic_acked || !pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
+	    (l1h->config.tsc_acked || pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
+	    (l1h->config.nomtxpower_acked || l1h->config.nominal_power_set_by_vty) &&
+	    (l1h->config.setformat_acked)) {
+		    return true;
+	    }
+	return false;
+}
+
 
 //////////////////////////
 // FSM STATE ACTIONS
@@ -202,12 +238,24 @@ static void st_closed(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	}
 }
 
+static void st_open_poweroff_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
+	struct phy_instance *pinst = l1h->phy_inst;
+
+	l1h->config.trxd_hdr_ver_req = pinst->phy_link->u.osmotrx.trxd_hdr_ver_max;
+}
+
 static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
+	struct phy_instance *pinst = l1h->phy_inst;
+	struct gsm_bts_trx *trx = pinst->trx;
 	uint8_t bsic;
 	uint16_t arfcn;
 	uint16_t tsc;
+	int nominal_power;
+	int status;
 
 	switch(event) {
 	case TRX_PROV_EV_CFG_ENABLE:
@@ -226,7 +274,9 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		if (l1h->config.arfcn != arfcn || !l1h->config.arfcn_valid) {
 			l1h->config.arfcn = arfcn;
 			l1h->config.arfcn_valid = true;
-			l1h->config.arfcn_sent = false;
+			l1h->config.txtune_sent = false;
+			l1h->config.rxtune_sent = false;
+			l1h->config.nomtxpower_sent = false;
 		}
 		break;
 	case TRX_PROV_EV_CFG_TSC:
@@ -240,15 +290,82 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	case TRX_PROV_EV_CFG_TS:
 		update_ts_data(l1h, (struct trx_prov_ev_cfg_ts_data*)data);
 		break;
+
+	/* CONFIRMATIONS FROM TRXC */
+	case TRX_PROV_EV_RXTUNE_CNF:
+		if (l1h->config.rxtune_sent)
+			l1h->config.rxtune_acked = true;
+		break;
+	case TRX_PROV_EV_TXTUNE_CNF:
+		if (l1h->config.txtune_sent)
+			l1h->config.txtune_acked = true;
+		break;
+	case TRX_PROV_EV_NOMTXPOWER_CNF:
+		nominal_power = (int)(intptr_t)data;
+		if (l1h->config.nomtxpower_sent)
+			l1h->config.nomtxpower_acked = true;
+		l1if_trx_set_nominal_power(trx, nominal_power);
+		break;
+	case TRX_PROV_EV_SETBSIC_CNF:
+		if (l1h->config.bsic_sent)
+			l1h->config.bsic_acked = true;
+		break;
+	case TRX_PROV_EV_SETTSC_CNF:
+		if (l1h->config.tsc_sent)
+			l1h->config.tsc_acked = true;
+		break;
+	case TRX_PROV_EV_SETFORMAT_CNF:
+		status = (int)(intptr_t)data;
+		/* Transceiver may suggest a lower version (than requested) */
+		if (status == l1h->config.trxd_hdr_ver_req) {
+			l1h->config.trxd_hdr_ver_use = status;
+			l1h->config.setformat_acked = true;
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
+				"Using TRXD header format version %u\n",
+				l1h->config.trxd_hdr_ver_use);
+		} else {
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+				"Transceiver suggests TRXD header version %u (requested %u)\n",
+				status, l1h->config.trxd_hdr_ver_req);
+			/* Send another SETFORMAT with suggested version */
+			l1h->config.trxd_hdr_ver_req = status;
+			l1h->config.setformat_sent = false;
+		}
+		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 
-	/* 0 = if we gathered all date and could go forward :*/
-	if (l1if_provision_transceiver_trx(l1h) == 0) {
+	l1if_provision_transceiver_trx(l1h);
+
+	/* if we gathered all data and could go forward :*/
+	if (trx_can_be_powered_on(l1h)) {
 		if (l1h->phy_inst->num == 0)
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
 		else
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWERON);
+	} else {
+		LOGPPHI(pinst, DL1C, LOGL_INFO, "Delaying poweron, TRX attributes not yet configured:%s%s%s%s%s%s\n",
+			l1h->config.enabled ? "" :" enable",
+			pinst->phy_link->u.osmotrx.use_legacy_setbsic ?
+				(l1h->config.bsic_valid ? (l1h->config.bsic_acked ? "" : " bsic-ack") : " bsic") :
+				(l1h->config.tsc_valid ? (l1h->config.tsc_acked ? "" : " tsc-ack") : " tsc"),
+			l1h->config.arfcn_valid ? "" : " arfcn",
+			l1h->config.rxtune_acked ? "" : " rxtune-ack",
+			l1h->config.nominal_power_set_by_vty ? "" : (l1h->config.nomtxpower_acked ? "" : " nomtxpower-ack"),
+			l1h->config.setformat_acked ? "" : " setformat-ack"
+			);
 	}
+}
+
+
+static void st_open_wait_power_cnf_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
+	struct phy_instance *pinst = l1h->phy_inst;
+
+	trx_if_cmd_poweron(l1h, l1if_poweronoff_cb);
+	pinst->phy_link->u.osmotrx.poweronoff_sent = true;
 }
 
 static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -392,11 +509,18 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 			X(TRX_PROV_EV_CFG_BSIC) |
 			X(TRX_PROV_EV_CFG_ARFCN) |
 			X(TRX_PROV_EV_CFG_TSC) |
-			X(TRX_PROV_EV_CFG_TS),
+			X(TRX_PROV_EV_CFG_TS) |
+			X(TRX_PROV_EV_RXTUNE_CNF) |
+			X(TRX_PROV_EV_TXTUNE_CNF) |
+			X(TRX_PROV_EV_NOMTXPOWER_CNF) |
+			X(TRX_PROV_EV_SETBSIC_CNF) |
+			X(TRX_PROV_EV_SETTSC_CNF) |
+			X(TRX_PROV_EV_SETFORMAT_CNF),
 		.out_state_mask =
 			X(TRX_PROV_ST_OPEN_WAIT_POWERON_CNF) |
 			X(TRX_PROV_ST_OPEN_POWERON),
 		.name = "OPEN_POWEROFF",
+		.onenter = st_open_poweroff_on_enter,
 		.action = st_open_poweroff,
 	},
 	[TRX_PROV_ST_OPEN_WAIT_POWERON_CNF] = {
@@ -406,6 +530,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 		.out_state_mask =
 			X(TRX_PROV_ST_OPEN_POWERON),
 		.name = "OPEN_WAIT_POWERON_CNF",
+		.onenter = st_open_wait_power_cnf_on_enter,
 		.action = st_open_wait_power_cnf,
 	},
 	[TRX_PROV_ST_OPEN_POWERON] = {
@@ -438,6 +563,12 @@ const struct value_string trx_prov_fsm_event_names[] = {
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_TS),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_RXGAIN),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_SETMAXDLY),
+	OSMO_VALUE_STRING(TRX_PROV_EV_RXTUNE_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_TXTUNE_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_NOMTXPOWER_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_SETBSIC_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_SETTSC_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_SETFORMAT_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_POWERON_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_POWEROFF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_POWEROFF_CNF),
