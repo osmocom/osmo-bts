@@ -60,44 +60,44 @@ struct bts_trx_priv {
 struct trx_config {
 	uint8_t			trxd_hdr_ver_req; /* requested TRXD header version */
 	uint8_t			trxd_hdr_ver_use; /* actual TRXD header version in use */
-	int			setformat_sent;
+	bool			setformat_sent;
 
 	bool			enabled;
 
 
-	int			arfcn_valid;
+	bool			arfcn_valid;
 	uint16_t		arfcn;
-	int			arfcn_sent;
+	bool			arfcn_sent;
 
-	int			tsc_valid;
+	bool			tsc_valid;
 	uint8_t			tsc;
-	int			tsc_sent;
+	bool			tsc_sent;
 
-	int			bsic_valid;
+	bool			bsic_valid;
 	uint8_t			bsic;
-	int			bsic_sent;
+	bool			bsic_sent;
 
-	int			rxgain_valid;
+	bool			rxgain_valid;
 	uint8_t			rxgain;
-	int			rxgain_sent;
+	bool			rxgain_sent;
 
 	int			forced_max_power_red; /* -1 if not forced by VTY config (default) */
 
 	bool			nominal_power_set_by_vty; /* whether nominal trx power was enforced/retreived from VTY config "nominal-tx-power" */
 
-	int			maxdly_valid;
+	bool			maxdly_valid;
 	int			maxdly;
-	int			maxdly_sent;
+	bool			maxdly_sent;
 
-	int			maxdlynb_valid;
+	bool			maxdlynb_valid;
 	int			maxdlynb;
-	int			maxdlynb_sent;
+	bool			maxdlynb_sent;
 
 	uint8_t			slotmask;
 
-	int			slottype_valid[TRX_NR_TS];
+	bool			slottype_valid[TRX_NR_TS];
 	uint8_t			slottype[TRX_NR_TS];
-	int			slottype_sent[TRX_NR_TS];
+	bool			slottype_sent[TRX_NR_TS];
 };
 
 struct trx_l1h {

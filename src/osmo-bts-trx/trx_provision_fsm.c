@@ -102,15 +102,15 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 			 * provide broken values) */
 			if (!l1h->config.nominal_power_set_by_vty)
 				trx_if_cmd_getnompower(l1h, l1if_getnompower_cb);
-			l1h->config.arfcn_sent = 1;
+			l1h->config.arfcn_sent = true;
 		}
 		if (!l1h->config.tsc_sent) {
 			trx_if_cmd_settsc(l1h, l1h->config.tsc);
-			l1h->config.tsc_sent = 1;
+			l1h->config.tsc_sent = true;
 		}
 		if (!l1h->config.bsic_sent) {
 			trx_if_cmd_setbsic(l1h, l1h->config.bsic);
-			l1h->config.bsic_sent = 1;
+			l1h->config.bsic_sent = true;
 		}
 
 		/* Ask transceiver to use the newest TRXD header version if not using it yet */
@@ -124,7 +124,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 					"already using maximum configured one: %" PRIu8 "\n",
 					l1h->config.trxd_hdr_ver_use);
 			}
-			l1h->config.setformat_sent = 1;
+			l1h->config.setformat_sent = true;
 		}
 
 		if (pinst->num == 0 && !plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
@@ -175,8 +175,8 @@ static bool update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data* 
 	if (l1h->config.slottype[ts_data->tn] != ts_data->slottype ||
 	    !l1h->config.slottype_valid[ts_data->tn]) {
 		l1h->config.slottype[ts_data->tn] = ts_data->slottype;
-		l1h->config.slottype_valid[ts_data->tn] = 1;
-		l1h->config.slottype_sent[ts_data->tn] = 0;
+		l1h->config.slottype_valid[ts_data->tn] = true;
+		l1h->config.slottype_sent[ts_data->tn] = false;
 		return true;
 	}
 	return false;
@@ -217,24 +217,24 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		bsic = (uint8_t)(intptr_t)data;
 		if (l1h->config.bsic != bsic || !l1h->config.bsic_valid) {
 			l1h->config.bsic = bsic;
-			l1h->config.bsic_valid = 1;
-			l1h->config.bsic_sent = 0;
+			l1h->config.bsic_valid = true;
+			l1h->config.bsic_sent = false;
 		}
 		break;
 	case TRX_PROV_EV_CFG_ARFCN:
 		arfcn = (uint16_t)(intptr_t)data;
 		if (l1h->config.arfcn != arfcn || !l1h->config.arfcn_valid) {
 			l1h->config.arfcn = arfcn;
-			l1h->config.arfcn_valid = 1;
-			l1h->config.arfcn_sent = 0;
+			l1h->config.arfcn_valid = true;
+			l1h->config.arfcn_sent = false;
 		}
 		break;
 	case TRX_PROV_EV_CFG_TSC:
 		tsc = (uint16_t)(intptr_t)data;
 		if (l1h->config.tsc != tsc || !l1h->config.tsc_valid) {
 			l1h->config.tsc = tsc;
-			l1h->config.tsc_valid = 1;
-			l1h->config.tsc_sent = 0;
+			l1h->config.tsc_valid = true;
+			l1h->config.tsc_sent = false;
 		}
 		break;
 	case TRX_PROV_EV_CFG_TS:
@@ -291,15 +291,15 @@ static void st_open_poweron_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_sta
 	/* after power on */
 	if (l1h->config.rxgain_valid && !l1h->config.rxgain_sent) {
 		trx_if_cmd_setrxgain(l1h, l1h->config.rxgain);
-		l1h->config.rxgain_sent = 1;
+		l1h->config.rxgain_sent = true;
 	}
 	if (l1h->config.maxdly_valid && !l1h->config.maxdly_sent) {
 		trx_if_cmd_setmaxdly(l1h, l1h->config.maxdly);
-		l1h->config.maxdly_sent = 1;
+		l1h->config.maxdly_sent = true;
 	}
 	if (l1h->config.maxdlynb_valid && !l1h->config.maxdlynb_sent) {
 		trx_if_cmd_setmaxdlynb(l1h, l1h->config.maxdlynb);
-		l1h->config.maxdlynb_sent = 1;
+		l1h->config.maxdlynb_sent = true;
 	}
 
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
@@ -307,7 +307,7 @@ static void st_open_poweron_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_sta
 		 && !l1h->config.slottype_sent[tn]) {
 			trx_if_cmd_setslot(l1h, tn,
 				l1h->config.slottype[tn], l1if_setslot_cb);
-			l1h->config.slottype_sent[tn] = 1;
+			l1h->config.slottype_sent[tn] = true;
 		}
 	}
 }
@@ -328,11 +328,11 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 				trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
 				plink->u.osmotrx.poweronoff_sent = true;
 			}
-			l1h->config.rxgain_sent = 0;
-			l1h->config.maxdly_sent = 0;
-			l1h->config.maxdlynb_sent = 0;
+			l1h->config.rxgain_sent = false;
+			l1h->config.maxdly_sent = false;
+			l1h->config.maxdlynb_sent = false;
 			for (tn = 0; tn < TRX_NR_TS; tn++)
-				l1h->config.slottype_sent[tn] = 0;
+				l1h->config.slottype_sent[tn] = false;
 		} else if (!pinst->phy_link->u.osmotrx.poweronoff_sent) {
 			bts_model_trx_close_cb(pinst->trx, 0);
 		} /* else: poweroff in progress, cb will be called upon TRXC RSP */
@@ -347,7 +347,7 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 		if (update_ts_data(l1h, ts_data)) {
 			trx_if_cmd_setslot(l1h, ts_data->tn,
 				l1h->config.slottype[ ts_data->tn], l1if_setslot_cb);
-			l1h->config.slottype_sent[ ts_data->tn] = 1;
+			l1h->config.slottype_sent[ts_data->tn] = true;
 		}
 
 		break;

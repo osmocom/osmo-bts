@@ -245,7 +245,7 @@ DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 
 	l1h->config.maxdly = atoi(argv[0]);
 	l1h->config.maxdly_valid = 1;
-	l1h->config.maxdly_sent = 0;
+	l1h->config.maxdly_sent = false;
 	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
@@ -271,7 +271,7 @@ DEFUN(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
 
 	l1h->config.maxdlynb = atoi(argv[0]);
 	l1h->config.maxdlynb_valid = 1;
-	l1h->config.maxdlynb_sent = 0;
+	l1h->config.maxdlynb_sent = false;
 	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
@@ -358,7 +358,7 @@ DEFUN(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
 
 	l1h->config.rxgain = atoi(argv[0]);
 	l1h->config.rxgain_valid = 1;
-	l1h->config.rxgain_sent = 0;
+	l1h->config.rxgain_sent = false;
 	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
