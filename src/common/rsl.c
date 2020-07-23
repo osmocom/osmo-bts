@@ -771,7 +771,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 			break;
 		default:
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "PCU rel ack for unexpected lchan kind %s\n",
-				  gsm_pchan_name(lchan->rel_act_kind));
+				  gsm_pchan_name(lchan->ts->pchan));
 			/* Release certainly was not requested by the BSC via RSL, so don't ack. */
 			send_rel_ack = false;
 			break;
