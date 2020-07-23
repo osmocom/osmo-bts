@@ -678,6 +678,13 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			/* Activate timeslots in scheduler and start power ramp up */
 			for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
 				struct gsm_bts_trx_ts *ts = &trx->ts[i];
+				if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+					/* dyn.pchan_is is set to GSM_PCHAN_NONE when
+					 * internally deactivated during locking. Simply
+					 * internally restore the old status here.
+					 */
+					ts->dyn.pchan_is = ts->dyn.pchan_want;
+				}
 				trx_set_ts(ts);
 			}
 			rc = l1if_trx_start_power_ramp(trx, bts_model_chg_adm_state_ramp_compl_cb);
