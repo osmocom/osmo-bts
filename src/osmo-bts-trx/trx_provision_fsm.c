@@ -583,7 +583,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 	},
 	[TRX_PROV_ST_OPEN_POWERON] = {
 		.in_event_mask =
-			X(TRX_PROV_EV_POWEROFF) |
+			X(TRX_PROV_EV_CLOSE) |
 			X(TRX_PROV_EV_CFG_TS),
 		.out_state_mask =
 			X(TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF) |
@@ -619,7 +619,6 @@ const struct value_string trx_prov_fsm_event_names[] = {
 	OSMO_VALUE_STRING(TRX_PROV_EV_SETTSC_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_SETFORMAT_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_POWERON_CNF),
-	OSMO_VALUE_STRING(TRX_PROV_EV_POWEROFF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_POWEROFF_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CLOSE),
 	{ 0, NULL }

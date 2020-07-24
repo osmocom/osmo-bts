@@ -232,7 +232,7 @@ void bts_model_trx_close(struct gsm_bts_trx *trx)
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_POWEROFF, NULL);
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CLOSE, NULL);
 
 	/* Set to Operational State: Disabled */
 	check_transceiver_availability_trx(l1h, 0);
