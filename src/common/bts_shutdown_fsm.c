@@ -32,6 +32,8 @@
 
 #define X(s) (1 << (s))
 
+#define BTS_SHUTDOWN_POWER_RAMP_TGT -10
+
 static const struct osmo_tdef_state_timeout bts_shutdown_fsm_timeouts[32] = {
 	[BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL] = { .T = -1 },
 	[BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED] = { .T = -2 },
@@ -83,7 +85,7 @@ static void st_wait_ramp_down_compl_on_enter(struct osmo_fsm_inst *fi, uint32_t 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED)
 			continue;
-		power_ramp_start(trx, to_mdB(-10), 1, ramp_down_compl_cb);
+		power_ramp_start(trx, to_mdB(BTS_SHUTDOWN_POWER_RAMP_TGT), 1, ramp_down_compl_cb);
 	}
 }
 
@@ -100,7 +102,7 @@ static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, vo
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED &&
-			    trx->power_params.p_total_cur_mdBm > 0)
+			    trx->power_params.p_total_cur_mdBm > BTS_SHUTDOWN_POWER_RAMP_TGT)
 				remaining++;
 		}
 
