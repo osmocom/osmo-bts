@@ -1,3 +1,13 @@
+osmo-bts (1.2.1) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * fix compilation with gcc-10
+
+  [ Pau Espin Pedrol ]
+  * bts-trx: trx_if.c: Fix some printf formats
+
+ -- Harald Welte <laforge@osmocom.org>  Sun, 26 Jul 2020 20:50:12 +0200
+
 osmo-bts (1.2.0) unstable; urgency=medium
 
   [ Oliver Smith ]
