@@ -268,8 +268,8 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 	if (we_are_ramping_up(trx)) {
 		if (tpp->p_total_tgt_mdBm <= tpp->ramp.max_initial_pout_mdBm) {
 			LOGPTRX(trx, DL1C, LOGL_INFO,
-				"target_power(%d) is below max.initial power\n",
-				tpp->p_total_tgt_mdBm);
+				"target_power (%d mdBm) is below or equal to 'power ramp max-initial' power (%d mdBm)\n",
+				tpp->p_total_tgt_mdBm, tpp->ramp.max_initial_pout_mdBm);
 			/* new setting is below the maximum initial output
 			 * power, so we can directly jump to this level */
 			tpp->p_total_cur_mdBm = tpp->p_total_tgt_mdBm;
