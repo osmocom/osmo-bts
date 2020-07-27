@@ -662,11 +662,29 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			break;
 
 		if (mo->procedure_pending) {
-			LOGPTRX(trx, DL1C, LOGL_ERROR, "Discarding adm change command: "
-				"pending procedure on RC %d\n",
-				((struct gsm_bts_trx *)obj)->nr);
-			rc = -1;
-			break;
+			LOGPTRX(trx, DL1C, LOGL_INFO,
+				"ADM change received while previous one still WIP\n");
+
+			if (mo->nm_state.administrative == NM_STATE_LOCKED &&
+			    adm_state == NM_STATE_UNLOCKED) {
+				/* Previous change was UNLOCKED->LOCKED, so we
+				 * were ramping down and we didn't deactivate
+				 * yet, so now simply skip old ramp down compl
+				 * cb, skip TS activation and go for ramp up
+				 * directly. */
+				goto ramp_up;
+			} else if (mo->nm_state.administrative == NM_STATE_UNLOCKED &&
+			    adm_state == NM_STATE_LOCKED) {
+				/* Previous change was LOCKED->UNLOCKED, which
+				 * means TS were also enabled during start of
+				 * ramping up. So we simply need to skip
+				 * ramping up and start ramping down instead,
+				 * disabling TS at the end as usual. Fall
+				 * through usual procedure below.
+				 */
+			} else if (mo->nm_state.administrative == adm_state) {
+				OSMO_ASSERT(0);
+			}
 		}
 		switch (adm_state) {
 		case NM_STATE_LOCKED:
@@ -687,6 +705,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 				}
 				trx_set_ts(ts);
 			}
+ramp_up:
 			rc = l1if_trx_start_power_ramp(trx, bts_model_chg_adm_state_ramp_compl_cb);
 			if (rc == 0) {
 				mo->nm_state.administrative = adm_state;
