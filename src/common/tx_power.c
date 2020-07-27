@@ -276,8 +276,10 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 			tpp->ramp.attenuation_mdB = 0;
 			power_ramp_timer_cb(trx);
 		} else {
-			/* We need to step it up. Start from the current value */
+			/* We need to step it up. Start from the current value, shortcutting to max-initial. */
 			/* Set attenuation to cause no power change right now */
+			if (tpp->p_total_cur_mdBm + tpp->ramp.step_size_mdB < tpp->ramp.max_initial_pout_mdBm)
+				tpp->p_total_cur_mdBm = tpp->ramp.max_initial_pout_mdBm - tpp->ramp.step_size_mdB;
 			tpp->ramp.attenuation_mdB = tpp->p_total_tgt_mdBm - tpp->p_total_cur_mdBm;
 
 			/* start with the first step */
