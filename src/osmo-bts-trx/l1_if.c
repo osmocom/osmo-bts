@@ -702,6 +702,13 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 					 * internally restore the old status here.
 					 */
 					ts->dyn.pchan_is = ts->dyn.pchan_want;
+				} else if (ts->pchan == GSM_PCHAN_TCH_F_PDCH && ts->flags & TS_F_PDCH_PENDING_MASK) {
+					/* TS configuration already in progress,
+					 * waiting for PCU response, let it be
+					 * de/activated later by PCU ACT CNF as a
+					 * response to pcu_tx_info_ind()
+					 */
+					continue;
 				}
 				trx_set_ts(ts);
 			}
