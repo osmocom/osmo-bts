@@ -158,6 +158,12 @@ argument.
 OsmoBTS can ramp up the power of its trx over time. This helps reduce
 cell congestion in busy environments.
 
+Some models of OsmoBTS (such as osmo-bts-trx) also support ramping down the
+transmit power over time until finally ceasing broadcast, for instance due to a
+trx becoming administratively locked or due to the whole BTS being gracefully
+shut down. This allows for mobile stations camping on the cell to gradually move
+to other cells in the area once the signal drop is detected.
+
 In this example, the trx starts with 5dBm output power which increases by 1dB
 every two seconds until it reaches nominal power.
 Power ramping can use the power-ramp commands at the CONFIG TRX node of the
