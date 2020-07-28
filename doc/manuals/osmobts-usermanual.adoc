@@ -30,6 +30,8 @@ include::{srcdir}/chapters/bts-models.adoc[]
 
 include::{srcdir}/chapters/architecture.adoc[]
 
+include::./common/chapters/vty_cpu_sched.adoc[]
+
 include::./common/chapters/trx_if.adoc[]
 
 include::./common/chapters/control_if.adoc[]

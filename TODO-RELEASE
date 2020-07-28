@@ -1,1 +1,2 @@
-* update libosmocore dependency to > 1.3.x for lapdm_channel_init3()
+* update libosmocore dependency to > 1.3.x for lapdm_channel_init3(), osmo_cpu_sched_vty_init()
+* update osmo-gsm-manuals dependency to > 0.3.0 for vty_cpu_sched.adoc include.

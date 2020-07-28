@@ -38,6 +38,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/cpu_sched_vty.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/gsmtap.h>
 
@@ -74,7 +75,7 @@ static void print_help()
 		"  -T	--timestamp	Prefix every log line with a timestamp\n"
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
-		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority\n"
+		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority (deprecated, use VTY instead)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
 		);
 	bts_model_print_help();
@@ -145,6 +146,8 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'r':
 			rt_prio = atoi(optarg);
+			fprintf(stderr, "Parameter -r is deprecated, use VTY cpu-sched "
+				"node setting 'policy rr %d' instead\n", rt_prio);
 			break;
 		case 'i':
 			gsmtap_ip = optarg;
@@ -238,6 +241,7 @@ int bts_main(int argc, char **argv)
 	osmo_stats_init(tall_bts_ctx);
 	vty_init(&bts_vty_info);
 	ctrl_vty_init(tall_bts_ctx);
+	osmo_cpu_sched_vty_init(tall_bts_ctx);
 	rate_ctr_init(tall_bts_ctx);
 
 	handle_options(argc, argv);
