@@ -244,7 +244,8 @@ int pcu_tx_info_ind(void)
 		info_ind->nsvci[i] = nsvc->nsvci;
 		info_ind->local_port[i] = nsvc->local_port;
 		info_ind->remote_port[i] = nsvc->remote_port;
-		info_ind->remote_ip[i] = nsvc->remote_ip;
+		info_ind->remote_ip[i].v4.s_addr = htonl(nsvc->remote_ip);
+		info_ind->address_type[i] = PCU_IF_ADDR_TYPE_IPV4;
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {

@@ -2,10 +2,11 @@
 #define _PCUIF_PROTO_H
 
 #include <osmocom/gsm/l1sap.h>
+#include <arpa/inet.h>
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x09
+#define PCU_IF_VERSION		0x0a
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -49,6 +50,11 @@
 #define PCU_IF_FLAG_MCS7	(1 << 26)
 #define PCU_IF_FLAG_MCS8	(1 << 27)
 #define PCU_IF_FLAG_MCS9	(1 << 28)
+
+/* NSVC address type */
+#define PCU_IF_ADDR_TYPE_UNSPEC	0x00	/* No address - empty entry */
+#define PCU_IF_ADDR_TYPE_IPV4	0x04	/* IPv4 address */
+#define PCU_IF_ADDR_TYPE_IPV6	0x29	/* IPv6 address */
 
 enum gsm_pcu_if_text_type {
 	PCU_VERSION,
@@ -155,7 +161,11 @@ struct gsm_pcu_if_info_ind {
 	uint16_t	nsvci[2];
 	uint16_t	local_port[2];
 	uint16_t	remote_port[2];
-	uint32_t	remote_ip[2];
+	uint8_t		address_type[2];
+	union {
+		struct in_addr v4;
+		struct in6_addr v6;
+	} remote_ip[2];
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_act_req {
