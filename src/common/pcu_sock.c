@@ -84,7 +84,8 @@ struct msgb *pcu_msgb_alloc(uint8_t msg_type, uint8_t bts_nr)
 	return msg;
 }
 
-static bool ts_should_be_pdch(struct gsm_bts_trx_ts *ts) {
+static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
+{
 	if (ts->pchan == GSM_PCHAN_PDCH)
 		return true;
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
