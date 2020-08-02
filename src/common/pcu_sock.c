@@ -140,8 +140,8 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 		trx_info->pdch_mask |= (1 << tn);
 		trx_info->tsc[tn] = gsm_ts_tsc(ts);
 
-		LOGP(DPCU, LOGL_INFO, "(trx=%u,ts=%u) PDCH available (tsc=%u arfcn=%u)\n",
-			trx->nr, ts->nr, trx_info->tsc[tn], trx->arfcn);
+		LOGPTRX(trx, DPCU, LOGL_INFO, "PDCH on ts=%u is available "
+			"(tsc=%u arfcn=%u)\n", ts->nr, trx_info->tsc[tn], trx->arfcn);
 	}
 }
 
