@@ -215,13 +215,17 @@ int pcu_tx_info_ind(void)
 		info_ind->remote_ip[i] = nsvc->remote_ip;
 	}
 
-	for (i = 0; i < 8; i++) {
-		trx = gsm_bts_trx_num(bts, i);
-		if (!trx)
-			break;
-		info_ind->trx[i].pdch_mask = 0;
-		info_ind->trx[i].arfcn = trx->arfcn;
-		info_ind->trx[i].hlayer1 = trx_get_hlayer1(trx);
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->nr >= ARRAY_SIZE(info_ind->trx)) {
+			LOGPTRX(trx, DPCU, LOGL_NOTICE, "PCU interface (version %u) "
+				"cannot handle more than %zu transceivers => skipped\n",
+				PCU_IF_VERSION, ARRAY_SIZE(info_ind->trx));
+			continue;
+		}
+
+		info_ind->trx[trx->nr].pdch_mask = 0;
+		info_ind->trx[trx->nr].arfcn = trx->arfcn;
+		info_ind->trx[trx->nr].hlayer1 = trx_get_hlayer1(trx);
 		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
 		    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
 			    LOGPTRX(trx, DPCU, LOGL_INFO, "unavailable for PCU (op=%s adm=%s)\n",
@@ -233,14 +237,14 @@ int pcu_tx_info_ind(void)
 			ts = &trx->ts[j];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
 			    && ts_should_be_pdch(ts)) {
-				info_ind->trx[i].pdch_mask |= (1 << j);
-				info_ind->trx[i].tsc[j] = gsm_ts_tsc(ts);
+				info_ind->trx[trx->nr].pdch_mask |= (1 << j);
+				info_ind->trx[trx->nr].tsc[j] = gsm_ts_tsc(ts);
 
 				LOGP(DPCU, LOGL_INFO, "trx=%d ts=%d: "
 					"available (tsc=%d arfcn=%d)\n",
 					trx->nr, ts->nr,
-					info_ind->trx[i].tsc[j],
-					info_ind->trx[i].arfcn);
+					info_ind->trx[trx->nr].tsc[j],
+					info_ind->trx[trx->nr].arfcn);
 			}
 		}
 	}
