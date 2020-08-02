@@ -86,9 +86,10 @@ struct msgb *pcu_msgb_alloc(uint8_t msg_type, uint8_t bts_nr)
 
 static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 {
-	if (ts->pchan == GSM_PCHAN_PDCH)
+	switch (ts->pchan) {
+	case GSM_PCHAN_PDCH:
 		return true;
-	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH) {
+	case GSM_PCHAN_TCH_F_PDCH:
 		/* When we're busy deactivating the PDCH, we first set
 		 * DEACT_PENDING, tell the PCU about it and wait for a
 		 * response. So DEACT_PENDING means "no PDCH" to the PCU.
@@ -99,16 +100,16 @@ static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 			return !(ts->flags & TS_F_PDCH_DEACT_PENDING);
 		else
 			return (ts->flags & TS_F_PDCH_ACT_PENDING);
-	}
-	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		/*
 		 * When we're busy de-/activating the PDCH, we first set
 		 * ts->dyn.pchan_want, tell the PCU about it and wait for a
 		 * response. So only care about dyn.pchan_want here.
 		 */
 		return ts->dyn.pchan_want == GSM_PCHAN_PDCH;
+	default:
+		return false;
 	}
-	return false;
 }
 
 int pcu_tx_info_ind(void)
