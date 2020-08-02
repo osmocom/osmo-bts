@@ -115,6 +115,82 @@ static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 	}
 }
 
+/* As a BTS, we do not (and neither need to) know the Mobile Allocation, because
+ * in CS domain it's responsibility of the BSC to encode RR messages containing
+ * this IE.  However, a BTS co-located PCU needs to know all hopping parameters,
+ * including the Mobile Allocation, because it's responsible for encoding of the
+ * packet resource assignment messages.
+ *
+ * This function, similar to generate_ma_for_ts() in osmo-bsc, computes the
+ * Mobile Allocation bit-mask and populates the given part of INFO.ind with
+ * the hopping parameters for the given timeslot. */
+static void info_ind_fill_fhp(struct gsm_pcu_if_info_trx_ts *ts_info,
+			      const struct gsm_bts_trx_ts *ts)
+{
+	const struct gsm_bts *bts = ts->trx->bts;
+	const struct gsm_bts_trx *trx;
+	uint8_t ca_buf[1024 / 8] = { 0 };
+	uint8_t sa_buf[1024 / 8] = { 0 };
+	struct bitvec ca, sa, ma;
+	unsigned int i;
+
+	ts_info->maio = ts->hopping.maio;
+	ts_info->hsn = ts->hopping.hsn;
+	ts_info->hopping = 0x01;
+
+	/* Cell Allocation bit-mask */
+	ca = (struct bitvec) {
+		.data_len = sizeof(ca_buf),
+		.data = &ca_buf[0],
+	};
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		/* Skip non-provisioned transceivers */
+		if (trx->mo.nm_attr == NULL) {
+			LOGPTRX(trx, DPCU, LOGL_NOTICE, "not (yet) provisioned\n");
+			continue;
+		}
+
+		bitvec_set_bit_pos(&ca, trx->arfcn, ONE);
+		ts_info->ma_bit_len++;
+	}
+
+	/* Slot Allocation bit-mask */
+	sa = (struct bitvec) {
+		.data_len = sizeof(sa_buf),
+		.data = &sa_buf[0],
+	};
+
+	for (i = 0; i < ts->hopping.arfcn_num; i++) {
+		bitvec_set_bit_pos(&sa, ts->hopping.arfcn_list[i], ONE);
+		if (bitvec_get_bit_pos(&ca, ts->hopping.arfcn_list[i]) != ONE) {
+			LOGP(DPCU, LOGL_NOTICE, "A transceiver with ARFCN %u "
+			     "is not (yet) provisioned\n", ts->hopping.arfcn_list[i]);
+			bitvec_set_bit_pos(&ca, ts->hopping.arfcn_list[i], ONE);
+			ts_info->ma_bit_len++;
+		}
+	}
+
+	/* Mobile Allocation bit-mask */
+	ma = (struct bitvec) {
+		.cur_bit = sizeof(ts_info->ma) * 8 - 1,
+		.data_len = sizeof(ts_info->ma),
+		.data = &ts_info->ma[0],
+	};
+
+	/* Skip ARFCN 0, it goes to the end of MA bit-mask */
+	for (i = 1; i < sizeof(ca_buf) * 8; i++) {
+		if (bitvec_get_bit_pos(&ca, i) != ONE)
+			continue;
+		if (bitvec_get_bit_pos(&sa, i) == ONE)
+			bitvec_set_bit_pos(&ma, ma.cur_bit, ONE);
+		ma.cur_bit--;
+	}
+
+	if (bitvec_get_bit_pos(&sa, 0) == ONE)
+		bitvec_set_bit_pos(&ma, ma.cur_bit, ONE);
+}
+
 static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 			      const struct gsm_bts_trx *trx)
 {
@@ -141,10 +217,19 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 			continue;
 
 		trx_info->pdch_mask |= (1 << tn);
-		trx_info->tsc[tn] = gsm_ts_tsc(ts);
+		trx_info->ts[tn].tsc = gsm_ts_tsc(ts);
+
+		if (ts->hopping.enabled)
+			info_ind_fill_fhp(&trx_info->ts[tn], ts);
 
 		LOGPTRX(trx, DPCU, LOGL_INFO, "PDCH on ts=%u is available "
-			"(tsc=%u arfcn=%u)\n", ts->nr, trx_info->tsc[tn], trx->arfcn);
+			"(tsc=%u ", ts->nr, trx_info->ts[tn].tsc);
+		if (ts->hopping.enabled) {
+			LOGPC(DPCU, LOGL_INFO, "hopping=yes hsn=%u maio=%u ma_bit_len=%u)\n",
+			      ts->hopping.hsn, ts->hopping.maio, trx_info->ts[tn].ma_bit_len);
+		} else {
+			LOGPC(DPCU, LOGL_INFO, "hopping=no arfcn=%u)\n", trx->arfcn);
+		}
 	}
 }
 

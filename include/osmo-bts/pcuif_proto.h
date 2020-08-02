@@ -5,7 +5,7 @@
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x09
+#define PCU_IF_VERSION		0x0a
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -112,12 +112,21 @@ struct gsm_pcu_if_rach_ind {
 	uint8_t		ts_nr;
 } __attribute__ ((packed));
 
+struct gsm_pcu_if_info_trx_ts {
+	uint8_t		tsc;
+	uint8_t		hopping;
+	uint8_t		hsn;
+	uint8_t		maio;
+	uint8_t		ma_bit_len;
+	uint8_t		ma[8];
+} __attribute__ ((packed));
+
 struct gsm_pcu_if_info_trx {
 	uint16_t	arfcn;
-	uint8_t		pdch_mask;		/* PDCH channels per TS */
+	uint8_t		pdch_mask;		/* PDCH timeslot mask */
 	uint8_t		spare;
-	uint8_t		tsc[8];			/* TSC per channel */
 	uint32_t	hlayer1;
+	struct gsm_pcu_if_info_trx_ts ts[8];
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_info_ind {
