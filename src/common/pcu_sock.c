@@ -46,7 +46,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/oml.h>
 
-uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx);
+uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx);
 
 extern struct gsm_network bts_gsmnet;
 int pcu_direct = 0;

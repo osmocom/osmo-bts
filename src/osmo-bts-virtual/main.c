@@ -50,7 +50,7 @@
 #include "l1_if.h"
 
 /* dummy, since no direct dsp support */
-uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
+uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx)
 {
 	return 0;
 }

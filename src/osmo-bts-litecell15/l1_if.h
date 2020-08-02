@@ -133,14 +133,14 @@ int bts_check_for_ciph_cmd(struct lc15l1_hdl *fl1h,
 int l1if_ms_pwr_ctrl(struct gsm_lchan *lchan, const int uplink_target,
 			const uint8_t ms_power, const float rxLevel);
 
-static inline struct lc15l1_hdl *trx_lc15l1_hdl(struct gsm_bts_trx *trx)
+static inline struct lc15l1_hdl *trx_lc15l1_hdl(const struct gsm_bts_trx *trx)
 {
-	struct phy_instance *pinst = trx_phy_instance(trx);
+	const struct phy_instance *pinst = trx_phy_instance(trx);
 	OSMO_ASSERT(pinst);
 	return pinst->u.lc15.hdl;
 }
 
-static inline struct gsm_bts_trx *lc15l1_hdl_trx(struct lc15l1_hdl *fl1h)
+static inline struct gsm_bts_trx *lc15l1_hdl_trx(const struct lc15l1_hdl *fl1h)
 {
 	OSMO_ASSERT(fl1h->phy_inst);
 	return fl1h->phy_inst->trx;

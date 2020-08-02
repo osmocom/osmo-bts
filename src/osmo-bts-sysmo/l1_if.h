@@ -156,9 +156,9 @@ int l1if_rf_clock_info_correct(struct femtol1_hdl *fl1h);
 int bts_check_for_ciph_cmd(struct femtol1_hdl *fl1h,
 			      struct msgb *msg, struct gsm_lchan *lchan);
 
-static inline struct femtol1_hdl *trx_femtol1_hdl(struct gsm_bts_trx *trx)
+static inline struct femtol1_hdl *trx_femtol1_hdl(const struct gsm_bts_trx *trx)
 {
-	struct phy_instance *pinst = trx_phy_instance(trx);
+	const struct phy_instance *pinst = trx_phy_instance(trx);
 	OSMO_ASSERT(pinst);
 	return pinst->u.sysmobts.hdl;
 }

@@ -36,7 +36,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 __attribute__((weak)) int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 { return 0; }
 
-uint32_t trx_get_hlayer1(struct gsm_bts_trx *trx)
+uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx)
 { return 0; }
 
 __attribute__((weak)) int bts_model_oml_estab(struct gsm_bts *bts)
