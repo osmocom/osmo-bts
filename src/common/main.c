@@ -56,7 +56,7 @@
 #include <osmocom/ctrl/control_vty.h>
 #include <osmo-bts/oml.h>
 
-int quit = 0;
+static int quit = 0;
 static const char *config_file = "osmo-bts.cfg";
 static int daemonize = 0;
 static int rt_prio = -1;

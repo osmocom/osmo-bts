@@ -134,8 +134,6 @@ static inline void normalize_timespec(struct timespec *ts)
 	ts->tv_nsec = ts->tv_nsec % 1000000000;
 }
 
-extern int quit;
-
 /*! this is the timerfd-callback firing for every FN to be processed */
 static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 {
@@ -273,9 +271,6 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	int64_t elapsed_us, elapsed_us_since_clk, elapsed_fn_since_clk, error_us_since_clk;
 	unsigned int fn_caught_up = 0;
 	const struct timespec interval = { .tv_sec = 0, .tv_nsec = GSM_TDMA_FN_DURATION_nS };
-
-	if (quit)
-		return 0;
 
 	/* reset lost counter */
 	tcs->fn_without_clock_ind = 0;
