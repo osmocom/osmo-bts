@@ -196,7 +196,7 @@ int trx_set_available(struct gsm_bts_trx *trx, int avail)
 }
 
 
-bool trx_ms_pwr_ctrl_is_osmo(struct gsm_bts_trx *trx)
+bool trx_ms_pwr_ctrl_is_osmo(const struct gsm_bts_trx *trx)
 {
 	return trx->ms_pwr_ctl_soft;
 }
