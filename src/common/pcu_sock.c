@@ -112,6 +112,39 @@ static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 	}
 }
 
+static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
+			      const struct gsm_bts_trx *trx)
+{
+	unsigned int tn;
+
+	trx_info->pdch_mask = 0;
+	trx_info->arfcn = trx->arfcn;
+	trx_info->hlayer1 = trx_get_hlayer1(trx);
+
+	if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+	    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
+		LOGPTRX(trx, DPCU, LOGL_INFO, "unavailable for PCU (op=%s adm=%s)\n",
+		    abis_nm_opstate_name(trx->mo.nm_state.operational),
+		    abis_nm_admin_name(trx->mo.nm_state.administrative));
+		return;
+	}
+
+	for (tn = 0; tn < 8; tn++) {
+		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+
+		if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
+		if (!ts_should_be_pdch(ts))
+			continue;
+
+		trx_info->pdch_mask |= (1 << tn);
+		trx_info->tsc[tn] = gsm_ts_tsc(ts);
+
+		LOGP(DPCU, LOGL_INFO, "(trx=%u,ts=%u) PDCH available (tsc=%u arfcn=%u)\n",
+			trx->nr, ts->nr, trx_info->tsc[tn], trx->arfcn);
+	}
+}
+
 int pcu_tx_info_ind(void)
 {
 	struct gsm_network *net = &bts_gsmnet;
@@ -122,8 +155,7 @@ int pcu_tx_info_ind(void)
 	struct gprs_rlc_cfg *rlcc;
 	struct gsm_bts_gprs_nsvc *nsvc;
 	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
-	int i, j;
+	int i;
 
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
 
@@ -223,30 +255,7 @@ int pcu_tx_info_ind(void)
 			continue;
 		}
 
-		info_ind->trx[trx->nr].pdch_mask = 0;
-		info_ind->trx[trx->nr].arfcn = trx->arfcn;
-		info_ind->trx[trx->nr].hlayer1 = trx_get_hlayer1(trx);
-		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
-		    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
-			    LOGPTRX(trx, DPCU, LOGL_INFO, "unavailable for PCU (op=%s adm=%s)\n",
-				    abis_nm_opstate_name(trx->mo.nm_state.operational),
-				    abis_nm_admin_name(trx->mo.nm_state.administrative));
-			continue;
-		}
-		for (j = 0; j < 8; j++) {
-			ts = &trx->ts[j];
-			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
-			    && ts_should_be_pdch(ts)) {
-				info_ind->trx[trx->nr].pdch_mask |= (1 << j);
-				info_ind->trx[trx->nr].tsc[j] = gsm_ts_tsc(ts);
-
-				LOGP(DPCU, LOGL_INFO, "trx=%d ts=%d: "
-					"available (tsc=%d arfcn=%d)\n",
-					trx->nr, ts->nr,
-					info_ind->trx[trx->nr].tsc[j],
-					info_ind->trx[trx->nr].arfcn);
-			}
-		}
+		info_ind_fill_trx(&info_ind->trx[trx->nr], trx);
 	}
 
 	return pcu_sock_send(net, msg);
