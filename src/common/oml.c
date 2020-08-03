@@ -775,7 +775,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		memcpy(&_value, value, 2);
 		arfcn = ntohs(_value);
 		value += 2;
-		if (arfcn > 1024) {
+		if (arfcn >= 1024) { /* 0 .. 1023 (1024 channels total) */
 			oml_tx_failure_event_rep(&trx->bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is unsupported", arfcn);
 			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given ARFCN %u is unsupported.\n", arfcn);
