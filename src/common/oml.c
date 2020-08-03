@@ -552,7 +552,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* Test for globally unsupported stuff here */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2)) {
 		uint16_t arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
-		if (arfcn > 1024) {
+		if (arfcn >= 1024) { /* 0 .. 1023 (1024 channels total) */
 			oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is not supported",
 						 arfcn);
