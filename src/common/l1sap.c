@@ -1168,7 +1168,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 /* process radio link timeout counter S. Follows TS 05.08 Section 5.2
  * "MS Procedure" as the "BSS Procedure [...] shall be determined by the
  * network operator." */
-static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
+static void radio_link_timeout(struct gsm_lchan *lchan, bool bad_frame)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
@@ -1332,7 +1332,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			le = &lchan->lapdm_ch.lapdm_acch;
 			rsl_tx_meas_res(lchan, NULL, 0, le);
 
-			radio_link_timeout(lchan, 1);
+			radio_link_timeout(lchan, true);
 			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, data_ind->rssi);
 		}
 		return -EINVAL;
@@ -1343,7 +1343,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		handover_frame(lchan);
 
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
-		radio_link_timeout(lchan, 0);
+		radio_link_timeout(lchan, false);
 		le = &lchan->lapdm_ch.lapdm_acch;
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
 		if (len < 2) {
