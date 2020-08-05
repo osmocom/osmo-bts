@@ -894,7 +894,7 @@ int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
 }
 
 /* 8.4.4 sending CONNection FAILure */
-int rsl_tx_conn_fail(struct gsm_lchan *lchan, uint8_t cause)
+int rsl_tx_conn_fail(const struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
