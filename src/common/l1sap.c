@@ -1178,20 +1178,19 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 
 	/* if link loss criterion already reached */
 	if (lchan->s == 0) {
-		DEBUGP(DMEAS, "%s radio link counter S already 0.\n",
+		DEBUGP(DMEAS, "%s radio link timeout counter S is already 0\n",
 			gsm_lchan_name(lchan));
 		return;
 	}
 
 	if (bad_frame) {
-		/* count down radio link counter S */
-		lchan->s--;
-		DEBUGP(DMEAS, "%s counting down radio link counter S=%d\n",
-			gsm_lchan_name(lchan), lchan->s);
+		DEBUGP(DMEAS, "%s decreasing radio link timeout counter S=%d -> %d\n",
+			gsm_lchan_name(lchan), lchan->s, lchan->s - 1);
+		lchan->s--; /* count down radio link counter S */
 		if (lchan->s == 0) {
 			LOGPLCHAN(lchan, DMEAS, LOGL_NOTICE,
-				  "radio link counter timeout S=%d, dropping conn\n",
-				  lchan->s);
+				  "radio link timeout counter S reached zero, "
+				  "dropping connection\n");
 			rsl_tx_conn_fail(lchan, RSL_ERR_RADIO_LINK_FAIL);
 		}
 		return;
@@ -1199,11 +1198,12 @@ static void radio_link_timeout(struct gsm_lchan *lchan, int bad_frame)
 
 	if (lchan->s < bts->radio_link_timeout) {
 		/* count up radio link counter S */
-		lchan->s += 2;
-		if (lchan->s > bts->radio_link_timeout)
-			lchan->s = bts->radio_link_timeout;
-		DEBUGP(DMEAS, "%s counting up radio link counter S=%d\n",
-			gsm_lchan_name(lchan), lchan->s);
+		int s = lchan->s + 2;
+		if (s > bts->radio_link_timeout)
+			s = bts->radio_link_timeout;
+		DEBUGP(DMEAS, "%s increasing radio link timeout counter S=%d -> %d\n",
+			gsm_lchan_name(lchan), lchan->s, s);
+		lchan->s = s;
 	}
 }
 
