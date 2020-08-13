@@ -1,5 +1,5 @@
 Source: osmo-bts
-Maintainer: Holger Hans Peter Freyther <holger@moiji-mobile.com>
+Maintainer: Osmocom team <openbsc@lists.osmocom.org>
 Section: net
 Priority: optional
 Build-Depends: debhelper (>= 9),
