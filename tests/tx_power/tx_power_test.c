@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <errno.h>
 
 #include <osmocom/core/utils.h>
 #include <osmocom/core/talloc.h>
@@ -30,6 +31,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/tx_power.h>
 
+static bool power_ramp_finished = false;
 
 static const struct trx_power_params tpp_1002 = {
 	.trx_p_max_out_mdBm = to_mdB(23),
@@ -182,25 +184,56 @@ static void test_sbts2050(struct gsm_bts_trx *trx)
 
 int bts_model_change_power(struct gsm_bts_trx *trx, int p_trxout_mdBm)
 {
-	struct trx_power_params *tpp = &trx->power_params;
 
 	printf("CHANGE_POWER(%d)\n", p_trxout_mdBm);
-
-	if (tpp->ramp.attenuation_mdB == 0)
-		exit(0);
 
 	power_trx_change_compl(trx, p_trxout_mdBm);
 	return 0;
 }
 
-static void test_power_ramp(struct gsm_bts_trx *trx, int dBm)
+static void test_ramp_compl_cb(struct gsm_bts_trx *trx)
+{
+	power_ramp_finished = true;
+	printf("power_ramp finished\n");
+}
+
+static int test_power_ramp(struct gsm_bts_trx *trx, int dBm)
 {
 	printf("Testing tx_power ramping for sysmoBTS 1020\n");
+	int rc;
+
 	trx->power_params = tpp_1020;
 	trx->power_params.ramp.step_interval_sec = 0; /* speedup test */
 	trx->max_power_red = 0;
 
-	power_ramp_start(trx, to_mdB(dBm), 0, NULL);
+	power_ramp_finished = false;
+	if ((rc = power_ramp_start(trx, to_mdB(dBm), 0, test_ramp_compl_cb)))
+		return rc;
+	while (!power_ramp_finished)
+		osmo_select_main(0);
+	return 0;
+}
+
+
+static int test_power_ramp_from_minus10(struct gsm_bts_trx *trx, int dBm)
+{
+	printf("Testing tx_power ramping for osmo-bts-trx after lock\n");
+	int rc;
+
+	trx->power_params = tpp_1002;
+	trx->power_params.trx_p_max_out_mdBm = to_mdB(20);
+	trx->power_params.p_total_tgt_mdBm = to_mdB(-10);
+	trx->power_params.p_total_cur_mdBm = to_mdB(-10);
+	trx->power_params.ramp.max_initial_pout_mdBm = to_mdB(0);
+	trx->power_params.ramp.step_interval_sec = 0; /* speedup test */
+	trx->max_power_red = 10;
+
+	power_ramp_finished = false;
+	if ((rc = power_ramp_start(trx, to_mdB(dBm), 0, test_ramp_compl_cb)))
+		return rc;
+	while (!power_ramp_finished)
+		osmo_select_main(0);
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -239,11 +272,10 @@ int main(int argc, char **argv)
 	test_sbts2050(trx);
 
 	/* test error case / excess power (40 dBm is too much) */
-	test_power_ramp(trx, 40);
+	OSMO_ASSERT(test_power_ramp(trx, 40) == -ERANGE);
 	/* test actual ramping to full 33 dBm */
 	test_power_ramp(trx, 33);
+	/* Test ramp up from -10dBm (locked) to 10dBm */
+	test_power_ramp_from_minus10(trx, 10);
 
-	while (1) {
-		osmo_select_main(0);
-	}
 }
