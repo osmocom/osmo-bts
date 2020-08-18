@@ -36,14 +36,6 @@
 (bts=0,trx=1) ramp_timer_cb(cur_pout=33000, tgt_pout=33000, ramp_att=0, therm_att=0, user_gain=0)
 (bts=0,trx=1) ramping TRX board output power to 23000 mdBm.
 (bts=0,trx=1) power_ramp_start(cur=-10000, tgt=10000)
-(bts=0,trx=1) ramp_timer_cb(cur_pout=-8000, tgt_pout=10000, ramp_att=18000, therm_att=0, user_gain=0)
-(bts=0,trx=1) ramping TRX board output power to -8000 mdBm.
-(bts=0,trx=1) ramp_timer_cb(cur_pout=-6000, tgt_pout=10000, ramp_att=16000, therm_att=0, user_gain=0)
-(bts=0,trx=1) ramping TRX board output power to -6000 mdBm.
-(bts=0,trx=1) ramp_timer_cb(cur_pout=-4000, tgt_pout=10000, ramp_att=14000, therm_att=0, user_gain=0)
-(bts=0,trx=1) ramping TRX board output power to -4000 mdBm.
-(bts=0,trx=1) ramp_timer_cb(cur_pout=-2000, tgt_pout=10000, ramp_att=12000, therm_att=0, user_gain=0)
-(bts=0,trx=1) ramping TRX board output power to -2000 mdBm.
 (bts=0,trx=1) ramp_timer_cb(cur_pout=0, tgt_pout=10000, ramp_att=10000, therm_att=0, user_gain=0)
 (bts=0,trx=1) ramping TRX board output power to 0 mdBm.
 (bts=0,trx=1) ramp_timer_cb(cur_pout=2000, tgt_pout=10000, ramp_att=8000, therm_att=0, user_gain=0)
