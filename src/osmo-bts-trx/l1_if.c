@@ -651,9 +651,13 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		l1h = pinst->u.osmotrx.hdl;
 
 		/* Begin to ramp the power if TRX is already running. Otherwise
-		 * skip, power ramping will be started after TRX is running */
-		if (!pinst->phy_link->u.osmotrx.powered)
+		 * skip, power ramping will be started after TRX is running.
+		 * We still want to make sure to update RFMUTE status on the
+		 * other side. */
+		if (!pinst->phy_link->u.osmotrx.powered) {
+			trx_if_cmd_rfmute(l1h, adm_state != NM_STATE_UNLOCKED);
 			break;
+		}
 
 		if (mo->procedure_pending) {
 			LOGPTRX(trx, DL1C, LOGL_INFO,
