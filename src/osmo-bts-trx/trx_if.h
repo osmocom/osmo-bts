@@ -35,6 +35,7 @@ int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
 int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);
+int trx_if_cmd_rfmute(struct trx_l1h *l1h, bool mute);
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br);
 int trx_if_powered(struct trx_l1h *l1h);
 

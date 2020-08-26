@@ -215,18 +215,8 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-	enum gsm_phys_chan_config pchan = trx->ts[0].pchan;
 
-	/* close all logical channels and reset timeslots */
-	trx_sched_reset(&l1h->l1s);
-
-	/* deactivate lchan for CCCH */
-	if (pchan == GSM_PCHAN_CCCH || pchan == GSM_PCHAN_CCCH_SDCCH4 ||
-	    pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
-		lchan_set_state(&trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_INACTIVE);
-	}
-
-	return 0;
+	return trx_if_cmd_rfmute(l1h, true);
 }
 
 /* deactivate transceiver */
@@ -651,12 +641,14 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 {
 	struct gsm_bts_trx *trx;
 	struct phy_instance *pinst;
-	int i, rc = 0;
+	struct trx_l1h *l1h;
+	int rc = 0;
 
 	switch (mo->obj_class) {
 	case NM_OC_RADIO_CARRIER:
 		trx = (struct gsm_bts_trx *) obj;
 		pinst = trx_phy_instance(trx);
+		l1h = pinst->u.osmotrx.hdl;
 
 		/* Begin to ramp the power if TRX is already running. Otherwise
 		 * skip, power ramping will be started after TRX is running */
@@ -670,20 +662,18 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			if (mo->nm_state.administrative == NM_STATE_LOCKED &&
 			    adm_state == NM_STATE_UNLOCKED) {
 				/* Previous change was UNLOCKED->LOCKED, so we
-				 * were ramping down and we didn't deactivate
+				 * were ramping down and we didn't mute RF
 				 * yet, so now simply skip old ramp down compl
-				 * cb, skip TS activation and go for ramp up
+				 * cb, skip RF unmute and go for ramp up
 				 * directly. */
 				goto ramp_up;
 			} else if (mo->nm_state.administrative == NM_STATE_UNLOCKED &&
 			    adm_state == NM_STATE_LOCKED) {
-				/* Previous change was LOCKED->UNLOCKED, which
-				 * means TS were also enabled during start of
-				 * ramping up. So we simply need to skip
-				 * ramping up and start ramping down instead,
-				 * disabling TS at the end as usual. Fall
-				 * through usual procedure below.
-				 */
+				/* Previous change was LOCKED->UNLOCKED, so we
+				 * simply need to skip ramping up and start
+				 * ramping down instead, muting RF at the
+				 * end as usual. Fall through usual procedure
+				 * below. */
 			} else if (mo->nm_state.administrative == adm_state) {
 				OSMO_ASSERT(0);
 			}
@@ -695,25 +685,7 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 			break;
 		case NM_STATE_UNLOCKED:
 			mo->procedure_pending = 1;
-			/* Activate timeslots in scheduler and start power ramp up */
-			for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
-				struct gsm_bts_trx_ts *ts = &trx->ts[i];
-				if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
-					/* dyn.pchan_is is set to GSM_PCHAN_NONE when
-					 * internally deactivated during locking. Simply
-					 * internally restore the old status here.
-					 */
-					ts->dyn.pchan_is = ts->dyn.pchan_want;
-				} else if (ts->pchan == GSM_PCHAN_TCH_F_PDCH && ts->flags & TS_F_PDCH_PENDING_MASK) {
-					/* TS configuration already in progress,
-					 * waiting for PCU response, let it be
-					 * de/activated later by PCU ACT CNF as a
-					 * response to pcu_tx_info_ind()
-					 */
-					continue;
-				}
-				trx_set_ts(ts);
-			}
+			trx_if_cmd_rfmute(l1h, false);
 ramp_up:
 			rc = l1if_trx_start_power_ramp(trx, bts_model_chg_adm_state_ramp_compl_cb);
 			if (rc == 0) {

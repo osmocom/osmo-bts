@@ -376,6 +376,12 @@ int trx_if_cmd_nohandover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss)
 	return trx_ctrl_cmd(l1h, 1, "NOHANDOVER", "%d %d", tn, ss);
 }
 
+/*! Send "RFMUTE" command to TRX: Mute or Unmute RF transmission */
+int trx_if_cmd_rfmute(struct trx_l1h *l1h, bool mute)
+{
+	return trx_ctrl_cmd(l1h, 0, "RFMUTE", mute ? "1" : "0");
+}
+
 struct trx_ctrl_rsp {
 	char cmd[50];
 	char params[100];
