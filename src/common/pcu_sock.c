@@ -672,7 +672,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 
-	LOGP(DPCU, LOGL_INFO, "%s request received: TRX=%d TX=%d\n",
+	LOGP(DPCU, LOGL_INFO, "%s request received: TRX=%d TS=%d\n",
 		(act_req->activate) ? "Activate" : "Deactivate",
 		act_req->trx_nr, act_req->ts_nr);
 
