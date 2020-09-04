@@ -251,9 +251,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			bts->agch_queue.thresh_level, bts->agch_queue.low_level,
 			bts->agch_queue.high_level, VTY_NEWLINE);
 
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < sizeof(uint32_t) * 8; i++) {
 		if (gsmtap_sapi_mask & ((uint32_t) 1 << i)) {
-			sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, i));
+			sapi_buf = get_value_string_or_null(gsmtap_sapi_names, i);
+			if (sapi_buf == NULL)
+				continue;
+			sapi_buf = osmo_str_tolower(sapi_buf);
 			vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 		}
 	}
@@ -1410,6 +1413,23 @@ static struct gsm_lchan *resolve_lchan(struct gsm_network *net,
 	"logical channel commands\n"	\
 	"logical channel number\n"
 
+DEFUN(cfg_trx_gsmtap_sapi_all, cfg_trx_gsmtap_sapi_all_cmd,
+	"gsmtap-sapi (enable-all|disable-all)",
+	"Enable/disable sending of UL/DL messages over GSMTAP\n"
+	"Enable all kinds of messages (all SAPI)\n"
+	"Disable all kinds of messages (all SAPI)\n")
+{
+	if (argv[0][0] == 'e') {
+		gsmtap_sapi_mask = UINT32_MAX;
+		gsmtap_sapi_acch = 1;
+	} else {
+		gsmtap_sapi_mask = 0x00;
+		gsmtap_sapi_acch = 0;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
@@ -1721,6 +1741,7 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_smscb_tgt_qlen_cmd);
 	install_element(BTS_NODE, &cfg_bts_smscb_qhyst_cmd);
 
+	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_all_cmd);
 	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
 
