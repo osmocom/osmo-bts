@@ -1658,14 +1658,14 @@ int bts_vty_init(struct gsm_bts *bts)
 						"gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
 	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
-						"GSMTAP SAPI\n",
+						"Enable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
 	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
 						"no gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
 	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
-						NO_STR "GSMTAP SAPI\n",
+						NO_STR "Disable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
 	logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
