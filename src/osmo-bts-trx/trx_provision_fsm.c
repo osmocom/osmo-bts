@@ -266,6 +266,8 @@ static void st_closed(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 			trx_if_cmd_poweroff(l1h, NULL); /* TODO: jump to poweroff upon cb received */
 		trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWEROFF);
 		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 }
 
@@ -444,6 +446,8 @@ static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, voi
 	case TRX_PROV_EV_CFG_TS:
 		update_ts_data(l1h, (struct trx_prov_ev_cfg_ts_data*)data);
 		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 }
 
@@ -515,6 +519,8 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 		}
 
 		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 }
 
@@ -538,6 +544,8 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 			}
 		}
 		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 }
 
