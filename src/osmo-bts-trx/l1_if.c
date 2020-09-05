@@ -197,8 +197,11 @@ static int trx_init(struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	int rc;
 
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ENABLE, (void*)(intptr_t)true);
+	rc = osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ENABLE, (void*)(intptr_t)true);
+	if (rc != 0)
+		return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
 
 	if (trx == trx->bts->c0)
 		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
