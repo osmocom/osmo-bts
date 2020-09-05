@@ -258,7 +258,7 @@ static void st_closed(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
 
-	switch(event) {
+	switch (event) {
 	case TRX_PROV_EV_OPEN:
 		/* enable all slots */
 		l1h->config.slotmask = 0xff;
@@ -289,7 +289,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	int status;
 	bool others_ready;
 
-	switch(event) {
+	switch (event) {
 	case TRX_PROV_EV_CFG_ENABLE:
 		l1h->config.enabled =(bool)data;
 		break;
@@ -422,7 +422,7 @@ static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, voi
 	struct phy_link *plink = pinst->phy_link;
 	int rc;
 
-	switch(event) {
+	switch (event) {
 	case TRX_PROV_EV_POWERON_CNF:
 		rc = (uint16_t)(intptr_t)data;
 		if (rc == 0 && plink->state != PHY_LINK_CONNECTED) {
@@ -484,7 +484,7 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	struct trx_prov_ev_cfg_ts_data* ts_data;
 	uint8_t tn;
 
-	switch(event) {
+	switch (event) {
 	case TRX_PROV_EV_CLOSE:
 		/* power off transceiver, if not already */
 		if (l1h->config.enabled) {
@@ -525,7 +525,7 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 	struct phy_link *plink = pinst->phy_link;
 	int rc;
 
-	switch(event) {
+	switch (event) {
 	case TRX_PROV_EV_POWEROFF_CNF:
 		rc = (uint16_t)(intptr_t)data;
 		if (plink->state != PHY_LINK_SHUTDOWN) {
