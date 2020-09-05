@@ -1,4 +1,4 @@
-/* BTS shutdown FSM */
+/* TRX provision FSM */
 
 /* (C) 2020 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  * Author: Pau Espin Pedrol <pespin@sysmocom.de>
