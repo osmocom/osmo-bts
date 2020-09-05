@@ -611,8 +611,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj)
 {
 	int rc;
-	LOGP(DOML, LOGL_DEBUG, "bts_model_opstart: %s received\n",
-	     get_value_string(abis_nm_obj_class_names, mo->obj_class));
+
 	switch (mo->obj_class) {
 	case NM_OC_RADIO_CARRIER:
 		/* activate transceiver */
