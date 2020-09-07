@@ -192,10 +192,6 @@ int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmo
 int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
         int algo, uint8_t *key, int key_len);
 
-/* \brief close all logical channels and reset timeslots */
-void trx_sched_reset(struct l1sched_trx *l1t);
-
-
 /* frame structures */
 struct trx_sched_frame {
 	/*! \brief downlink TRX channel type */

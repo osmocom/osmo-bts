@@ -639,13 +639,6 @@ void trx_sched_exit(struct l1sched_trx *l1t)
 	}
 }
 
-/* close all logical channels and reset timeslots */
-void trx_sched_reset(struct l1sched_trx *l1t)
-{
-	trx_sched_exit(l1t);
-	trx_sched_init(l1t, l1t->trx);
-}
-
 struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn,
 				 enum trx_chan_type chan)
 {
