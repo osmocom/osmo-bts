@@ -1,3 +1,9 @@
+osmo-bts (1.2.2) unstable; urgency=medium
+
+  * tx_power_test: Disable using color in log output
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 09 Sep 2020 16:21:45 +0200
+
 osmo-bts (1.2.1) unstable; urgency=medium
 
   [ Harald Welte ]
