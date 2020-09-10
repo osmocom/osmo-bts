@@ -396,13 +396,14 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
 		}
 	} else {
-		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s\n",
+		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s%s\n",
 			l1h->config.enabled ? "" :" enable",
 			pinst->phy_link->u.osmotrx.use_legacy_setbsic ?
 				(l1h->config.bsic_valid ? (l1h->config.bsic_acked ? "" : " bsic-ack") : " bsic") :
 				(l1h->config.tsc_valid ? (l1h->config.tsc_acked ? "" : " tsc-ack") : " tsc"),
 			l1h->config.arfcn_valid ? "" : " arfcn",
 			l1h->config.rxtune_acked ? "" : " rxtune-ack",
+			l1h->config.txtune_acked ? "" : " txtune-ack",
 			l1h->config.nominal_power_set_by_vty ? "" : (l1h->config.nomtxpower_acked ? "" : " nomtxpower-ack"),
 			l1h->config.setformat_acked ? "" : " setformat-ack",
 			(l1h->phy_inst->num != 0 || others_ready) ? "" : " other-trx"
