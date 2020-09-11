@@ -14,7 +14,7 @@
 #define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */
 #define PCU_IF_MSG_SUSP_REQ	0x03	/* BTS forwards GPRS SUSP REQ to PCU */
-#define PCU_IF_MSG_APP_INFO_REQ	0x04	/* BTS asks PCU to tranmit APP INFO via PACCH */
+#define PCU_IF_MSG_APP_INFO_REQ	0x04	/* BTS asks PCU to transmit APP INFO via PACCH */
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
 #define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (with direct tlli) */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
