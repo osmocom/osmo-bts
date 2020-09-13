@@ -322,7 +322,6 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 	struct gsm_abis_mo mo;
-	struct tlv_parsed nm_attr;
 	uint8_t nm_chan_comb;
 	int tsc;		/* -1 == use BTS TSC */
 

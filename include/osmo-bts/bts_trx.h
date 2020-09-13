@@ -17,7 +17,6 @@ struct gsm_bts_trx {
 	struct e1inp_sign_link *rsl_link;
 
 	struct gsm_abis_mo mo;
-	struct tlv_parsed nm_attr;
 	struct {
 		struct gsm_abis_mo mo;
 	} bb_transc;
