@@ -50,7 +50,7 @@
 
 #define SCHED_FH_PARAMS_FMT "hsn=%u, maio=%u, ma_len=%u"
 #define SCHED_FH_PARAMS_VALS(ts) \
-	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.ma_len
+	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
 int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
@@ -77,7 +77,7 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 
 	/* The "cache" may not be filled yet, lookup the transceiver */
 	llist_for_each_entry(trx, &ts->trx->bts->trx_list, list) {
-		if (trx->arfcn == ts->hopping.ma[idx]) {
+		if (trx->arfcn == ts->hopping.arfcn_list[idx]) {
 			ts->fh_trx_list[idx] = trx;
 			return trx->role_bts.l1h;
 		}
@@ -188,7 +188,7 @@ static struct gsm_bts_trx *ulfh_route_bi(const struct trx_ul_burst_ind *bi,
 		if (!ts->hopping.enabled)
 			continue;
 
-		arfcn = gsm0502_hop_seq_gen(&time, SCHED_FH_PARAMS_VALS(ts), ts->hopping.ma);
+		arfcn = gsm0502_hop_seq_gen(&time, SCHED_FH_PARAMS_VALS(ts), ts->hopping.arfcn_list);
 		if (src_trx->arfcn == arfcn)
 			return trx;
 	}

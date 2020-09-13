@@ -903,7 +903,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
 		}
 
-		if (TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) > sizeof(ts->hopping.ma)) {
+		if (TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) > sizeof(ts->hopping.arfcn_list)) {
 			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: ARFCN list is too long\n");
 			return oml_fom_ack_nack(msg, NM_NACK_ATTRLIST_INCONSISTENT);
 		} else if (TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) % 2 != 0) {
@@ -915,9 +915,9 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		ts->hopping.hsn = *TLVP_VAL(&tp, NM_ATT_HSN);
 		ts->hopping.maio = *TLVP_VAL(&tp, NM_ATT_MAIO);
 
-		ts->hopping.ma_len = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) / sizeof(uint16_t);
-		for (i = 0; i < ts->hopping.ma_len; i++)
-			ts->hopping.ma[i] = osmo_load16be(TLVP_VAL(&tp, NM_ATT_ARFCN_LIST) + i * 2);
+		ts->hopping.arfcn_num = TLVP_LEN(&tp, NM_ATT_ARFCN_LIST) / sizeof(uint16_t);
+		for (i = 0; i < ts->hopping.arfcn_num; i++)
+			ts->hopping.arfcn_list[i] = osmo_load16be(TLVP_VAL(&tp, NM_ATT_ARFCN_LIST) + i * 2);
 	}
 
 	/* 9.4.52 Starting Time */
@@ -968,8 +968,8 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s",
 		ts->tsc, gsm_pchan_name(ts->pchan));
 	if (ts->hopping.enabled)
-		LOGPC(DOML, LOGL_INFO, " hsn=%u maio=%u ma_len=%u",
-		      ts->hopping.hsn, ts->hopping.maio, ts->hopping.ma_len);
+		LOGPC(DOML, LOGL_INFO, " hsn=%u maio=%u chan_num=%u",
+		      ts->hopping.hsn, ts->hopping.maio, ts->hopping.arfcn_num);
 	LOGPC(DOML, LOGL_INFO, ")\n");
 
 	/* call into BTS driver to apply new attributes to hardware */

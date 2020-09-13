@@ -330,8 +330,8 @@ struct gsm_bts_trx_ts {
 		bool enabled;
 		uint8_t maio;
 		uint8_t hsn;
-		uint16_t ma[64];
-		uint8_t ma_len;
+		uint16_t arfcn_list[64];
+		uint8_t arfcn_num;
 	} hopping;
 
 	/* Transceiver "cache" for frequency hopping */
