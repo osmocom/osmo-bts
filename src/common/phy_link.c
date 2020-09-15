@@ -57,28 +57,16 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 	        get_value_string(phy_link_state_vals, plink->state),
 	        get_value_string(phy_link_state_vals, state));
 
+	plink->state = state;
+
 	/* notify all TRX associated with this phy */
 	llist_for_each_entry(pinst, &plink->instances, list) {
 		struct gsm_bts_trx *trx = pinst->trx;
 		if (!trx)
 			continue;
 
-		switch (state) {
-		case PHY_LINK_CONNECTED:
-			LOGPPHI(pinst, DL1C, LOGL_INFO, "trx_set_avail(1)\n");
-			trx_set_available(trx, 1);
-			break;
-		case PHY_LINK_SHUTDOWN:
-			LOGPPHI(pinst, DL1C, LOGL_INFO, "trx_set_avail(0)\n");
-			trx_set_available(trx, 0);
-			break;
-		case PHY_LINK_CONNECTING:
-			/* nothing to do */
-			break;
-		}
+		trx_operability_update(trx);
 	}
-
-	plink->state = state;
 }
 
 enum phy_link_state phy_link_state_get(struct phy_link *plink)

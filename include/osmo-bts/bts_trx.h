@@ -57,7 +57,7 @@ char *gsm_trx_name(const struct gsm_bts_trx *trx);
 const char *gsm_trx_unit_id(struct gsm_bts_trx *trx);
 
 int trx_link_estab(struct gsm_bts_trx *trx);
-int trx_set_available(struct gsm_bts_trx *trx, int avail);
+void trx_operability_update(struct gsm_bts_trx *trx);
 
 uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg);
 bool trx_ms_pwr_ctrl_is_osmo(const struct gsm_bts_trx *trx);
