@@ -689,6 +689,14 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 		     gsm_lchant_name(lchan->type));
 		return -EINVAL;
 	}
+	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH &&
+	    lchan->ts->dyn.pchan_is != GSM_PCHAN_PDCH) {
+		LOGP(DPCU, LOGL_ERROR,
+		     "%s request, but lchan in dyn TS is not configured as PDCH in lower layers (is %s)\n",
+		     (act_req->activate) ? "Activate" : "Deactivate",
+		     gsm_pchan_name(lchan->ts->dyn.pchan_is));
+		return -EINVAL;
+	}
 	if (act_req->activate)
 		l1sap_chan_act(trx, gsm_lchan2chan_nr(lchan), NULL);
 	else
