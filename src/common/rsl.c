@@ -758,15 +758,29 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 				     gsm_ts_and_pchan_name(lchan->ts), lchan->nr);
 				/* well, what to do about it ... carry on and hope it's fine. */
 			}
-			/* remember the fact that the TS is now released */
-			lchan->ts->dyn.pchan_is = GSM_PCHAN_NONE;
-			/* Continue to ack the release below. (This is a non-standard rel ack invented
-			 * specifically for GSM_PCHAN_TCH_F_TCH_H_PDCH). */
-			send_rel_ack = true;
+			if (lchan->ts->dyn.pchan_want != GSM_PCHAN_PDCH) {
+				/* Continue to ack the release below. (This is a non-standard rel ack invented
+				 * specifically for GSM_PCHAN_TCH_F_TCH_H_PDCH). */
+				/* remember the fact that the TS is now released */
+				lchan->ts->dyn.pchan_is = GSM_PCHAN_NONE;
+				send_rel_ack = true;
+			} else {
+				/* Administrteively locked TRX, no need to
+				   inform BSC. Keep pchan_is for when we are
+				   unlocked again, since lower layers are stil
+				   lconfigured for PDCH but we simply annonced
+				   non-availability to PCU */
+				send_rel_ack = false;
+			}
 			break;
 		case GSM_PCHAN_TCH_F_PDCH:
 			/* GSM_PCHAN_TCH_F_PDCH, does not require a rel ack. The caller
 			 * l1sap_info_rel_cnf() will continue with bts_model_ts_disconnect(). */
+			send_rel_ack = false;
+			break;
+		case GSM_PCHAN_PDCH:
+			/* Release was instructed by the BTS, for instance because the TRX is
+			 * administrateively Locked */
 			send_rel_ack = false;
 			break;
 		default:
