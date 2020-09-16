@@ -38,6 +38,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_trx.h>
+#include <osmo-bts/logging.h>
 
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
@@ -219,7 +220,16 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_CCCH:
+		cbits = 0x10;
+		break;
+	case GSM_PCHAN_NONE:
+		LOGP(DRSL, LOGL_ERROR, "Physical channel %s not expected!\n",
+		     gsm_pchan_name(pchan));
+		cbits = 0x00;
+		break;
 	default:
+		LOGP(DRSL, LOGL_ERROR, "Physical channel %s (0x%02x) not expected!\n",
+		     gsm_pchan_name(pchan), (int)pchan);
 		/* OSMO_ASSERT(lchan_nr == 0);
 		 * FIXME: On octphy and litecell, we hit above assertion (see
 		 * Max's comment at https://gerrit.osmocom.org/589 ); disabled
