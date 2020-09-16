@@ -104,9 +104,12 @@ static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 		/*
 		 * When we're busy de-/activating the PDCH, we first set
 		 * ts->dyn.pchan_want, tell the PCU about it and wait for a
-		 * response. So only care about dyn.pchan_want here.
+		 * response. To make it available to PCU, we want to make sure
+		 * it's already configured by phy (pchan_is==PDCH) and that we
+		 * are not in progress of removing it (pchan_want=None).
 		 */
-		return ts->dyn.pchan_want == GSM_PCHAN_PDCH;
+
+		return ts->dyn.pchan_is == GSM_PCHAN_PDCH && ts->dyn.pchan_want == GSM_PCHAN_PDCH;
 	default:
 		return false;
 	}
