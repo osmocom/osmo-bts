@@ -383,8 +383,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			 * e.g. as a response to a channel req on RACH */
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
 				if ((chan_nr & 0xE0) == 0x80) {
-					LOGP(DL1C, LOGL_ERROR, "Cannot activate"
-						" chan_nr 0x%02x\n", chan_nr);
+					LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot activate"
+						  " channel %s\n", rsl_chan_nr_str(chan_nr));
 					break;
 				}
 				/* activate dedicated channel */
@@ -432,8 +432,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 			if ((chan_nr & 0xE0) == 0x80) {
-				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
-					"chan_nr 0x%02x\n", chan_nr);
+				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot deactivate"
+					  " channel %s\n", rsl_chan_nr_str(chan_nr));
 				break;
 			}
 			/* deactivate associated channel */

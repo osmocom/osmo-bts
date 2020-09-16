@@ -32,6 +32,7 @@
 #include <osmocom/core/fsm.h>
 #include <osmocom/codec/ecu.h>
 #include <osmocom/gsm/abis_nm.h>
+#include <osmocom/gsm/rsl.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts.h>
@@ -453,8 +454,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			lchan = get_lchan_by_chan_nr(trx, chan_nr);
 			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
 				if ((chan_nr & 0xE0) == 0x80) {
-					LOGP(DL1C, LOGL_ERROR, "Cannot activate"
-						" chan_nr 0x%02x\n", chan_nr);
+					LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot activate"
+						  " channel %s\n", rsl_chan_nr_str(chan_nr));
 					break;
 				}
 
@@ -524,8 +525,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			}
 			/* here, type == PRIM_INFO_DEACTIVATE */
 			if ((chan_nr & 0xE0) == 0x80) {
-				LOGP(DL1C, LOGL_ERROR, "Cannot deactivate "
-					"chan_nr 0x%02x\n", chan_nr);
+				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot deactivate"
+					  " channel %s\n", rsl_chan_nr_str(chan_nr));
 				break;
 			}
 			/* clear ECU state (if any) */
