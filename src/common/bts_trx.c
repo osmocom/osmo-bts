@@ -180,7 +180,6 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 /* set the availability of the TRX based on internal state (RSL + phy link) */
 void trx_operability_update(struct gsm_bts_trx *trx)
 {
-	int tn;
 	enum abis_nm_op_state op_st;
 	enum abis_nm_avail_state avail_st;
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -192,8 +191,6 @@ void trx_operability_update(struct gsm_bts_trx *trx)
 	LOGPTRX(trx, DSUM, LOGL_INFO, "Setting operative = %s\n", abis_nm_opstate_name(op_st));
 	oml_mo_state_chg(&trx->mo, op_st, avail_st);
 	oml_mo_state_chg(&trx->bb_transc.mo, -1, avail_st);
-	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
-		oml_mo_state_chg(&trx->ts[tn].mo, op_st, avail_st);
 }
 
 
