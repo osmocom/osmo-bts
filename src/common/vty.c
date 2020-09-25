@@ -848,9 +848,9 @@ static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  BTS model specific (internal) flags:%s", VTY_NEWLINE);
 
 	for (i = 0, no_features = true; i < sizeof(bts->flags) * 8; i++) {
-		if (bts_internal_flag_get(bts, i)) {
+		if (bts_internal_flag_get(bts, (1 << i))) {
 			vty_out(vty, "    %03u ", i);
-			vty_out(vty, "%-40s%s", get_value_string(bts_impl_flag_desc, i), VTY_NEWLINE);
+			vty_out(vty, "%-40s%s", get_value_string(bts_impl_flag_desc, (1 << i)), VTY_NEWLINE);
 			no_features = false;
 		}
 	}
