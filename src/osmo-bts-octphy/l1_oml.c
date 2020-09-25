@@ -28,6 +28,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/fsm.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -187,21 +188,14 @@ extern uint8_t rach_detected_Other_g;
 static int opstart_compl(struct gsm_abis_mo *mo)
 {
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr);
-	uint8_t tn;
 	/* TODO: Send NACK in case of error! */
+
+	/* We already have a FSM for Radio Carrier, handle it there */
+	if (mo->obj_class == NM_OC_RADIO_CARRIER)
+		return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_ACK, NULL);
 
 	/* Set to Operational State: Enabled */
 	oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-
-	if (mo->obj_class == NM_OC_RADIO_CARRIER) {
-		/* Mark Dependency TS as Offline (ready to be Opstarted) */
-		for (tn = 0; tn < TRX_NR_TS; tn++) {
-			if (trx->ts[tn].mo.nm_state.operational == NM_OPSTATE_DISABLED &&
-			    trx->ts[tn].mo.nm_state.availability ==  NM_AVSTATE_DEPENDENCY) {
-				oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
-			}
-		}
-	}
 
 	/* hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
@@ -1450,8 +1444,9 @@ static int trx_init(struct gsm_bts_trx *trx)
 				    ARRAY_SIZE(trx_rqd_attr))) {
 		/* HACK: spec says we need to decline, but openbsc
 		 * doesn't deal with this very well */
-		return oml_mo_opstart_ack(&trx->mo);
-		/* return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM); */
+		return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_ACK, NULL);
+		//return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_NACK,
+		//				(void*)(intptr_t)NM_NACK_CANT_PERFORM);
 	}
 
 	l1if_check_app_version(trx);
@@ -1763,8 +1758,10 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 /* callback from OML */
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 {
-	int rc = -1;
+	struct gsm_bts_bb_trx *bb_transc;
+	struct gsm_bts_trx* trx;
 	struct gsm_bts_trx_ts *ts;
+	int rc;
 
 	switch (mo->obj_class) {
 	case NM_OC_SITE_MANAGER:
@@ -1774,13 +1771,17 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 		rc = osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_OPSTART_ACK, NULL);
 		break;
 	case NM_OC_RADIO_CARRIER:
-		rc = trx_init(obj);
+		trx = (struct gsm_bts_trx*) obj;
+		rc = trx_init(trx);
+		break;
+	case NM_OC_BASEB_TRANSC:
+		bb_transc = (struct gsm_bts_bb_trx *) obj;
+		rc = osmo_fsm_inst_dispatch(bb_transc->mo.fi, NM_EV_OPSTART_ACK, NULL);
 		break;
 	case NM_OC_CHANNEL:
 		ts = (struct gsm_bts_trx_ts*) obj;
 		rc = ts_connect_as(ts, ts->pchan, pchan_act_compl_cb, NULL);
 		break;
-	case NM_OC_BASEB_TRANSC:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
 	case NM_OC_GPRS_NSVC:

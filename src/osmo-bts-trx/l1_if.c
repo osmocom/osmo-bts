@@ -97,11 +97,9 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 	 * transceiver */
 	if (avail) {
 		/* signal availability */
-		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
-		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
 		if (!pinst->u.osmotrx.sw_act_reported) {
-			oml_mo_tx_sw_act_rep(&trx->mo);
-			oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
 			pinst->u.osmotrx.sw_act_reported = true;
 		}
 
@@ -111,10 +109,8 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 					NM_AVSTATE_DEPENDENCY :
 					NM_AVSTATE_NOT_INSTALLED);
 	} else {
-		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED,
-			NM_AVSTATE_OFF_LINE);
-		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED,
-			NM_AVSTATE_OFF_LINE);
+		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
+		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
 
 		for (tn = 0; tn < TRX_NR_TS; tn++)
 			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED,
@@ -200,25 +196,17 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	int rc;
-	uint8_t tn;
 
 	rc = osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ENABLE, (void*)(intptr_t)true);
 	if (rc != 0)
-		return oml_mo_opstart_nack(&trx->mo, NM_NACK_CANT_PERFORM);
+		return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_NACK,
+					      (void*)(intptr_t)NM_NACK_CANT_PERFORM);
 
 	if (trx == trx->bts->c0)
 		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
 
-	/* Mark Dependency TS as Offline (ready to be Opstarted) */
-	for (tn = 0; tn < TRX_NR_TS; tn++) {
-		if (trx->ts[tn].mo.nm_state.operational == NM_OPSTATE_DISABLED &&
-		    trx->ts[tn].mo.nm_state.availability ==  NM_AVSTATE_DEPENDENCY) {
-			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
-		}
-	}
-
 	/* Send OPSTART ack */
-	return oml_mo_opstart_ack(&trx->mo);
+	return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_ACK, NULL);
 }
 
 /* Deact RF on transceiver */
@@ -614,6 +602,8 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj)
 {
+	struct gsm_bts_bb_trx *bb_transc;
+	struct gsm_bts_trx *trx;
 	int rc;
 
 	switch (mo->obj_class) {
@@ -625,10 +615,14 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		break;
 	case NM_OC_RADIO_CARRIER:
 		/* activate transceiver */
-		rc = trx_init(obj);
+		trx = (struct gsm_bts_trx *) obj;
+		rc = trx_init(trx);
+		break;
+	case NM_OC_BASEB_TRANSC:
+		bb_transc = (struct gsm_bts_bb_trx *) obj;
+		rc = osmo_fsm_inst_dispatch(bb_transc->mo.fi, NM_EV_OPSTART_ACK, NULL);
 		break;
 	case NM_OC_CHANNEL:
-	case NM_OC_BASEB_TRANSC:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
 	case NM_OC_GPRS_NSVC:

@@ -17,6 +17,8 @@
  *
  */
 
+#include <osmocom/core/fsm.h>
+
 #include <osmocom/gsm/abis_nm.h>
 
 #include <osmo-bts/logging.h>
@@ -26,6 +28,20 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/phy_link.h>
+#include <osmo-bts/nm_common_fsm.h>
+
+static int gsm_bts_trx_talloc_destructor(struct gsm_bts_trx *trx)
+{
+	if (trx->bb_transc.mo.fi) {
+		osmo_fsm_inst_free(trx->bb_transc.mo.fi);
+		trx->bb_transc.mo.fi = NULL;
+	}
+	if (trx->mo.fi) {
+		osmo_fsm_inst_free(trx->mo.fi);
+		trx->mo.fi = NULL;
+	}
+	return 0;
+}
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
@@ -35,12 +51,20 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	if (!trx)
 		return NULL;
 
+	talloc_set_destructor(trx, gsm_bts_trx_talloc_destructor);
+
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
 
+	trx->mo.fi = osmo_fsm_inst_alloc(&nm_rcarrier_fsm, trx, trx,
+						  LOGL_INFO, NULL);
+	osmo_fsm_inst_update_id_f(trx->mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
 	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
 		    bts->nr, trx->nr, 0xff);
 
+	trx->bb_transc.mo.fi = osmo_fsm_inst_alloc(&nm_bb_transc_fsm, trx, &trx->bb_transc,
+						  LOGL_INFO, NULL);
+	osmo_fsm_inst_update_id_f(trx->bb_transc.mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
 	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
 		    bts->nr, trx->nr, 0xff);
 
@@ -161,7 +185,7 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 	LOGPTRX(trx, DSUM, LOGL_INFO, "RSL link %s\n",
 		link ? "up" : "down");
 
-	trx_operability_update(trx);
+	osmo_fsm_inst_dispatch(trx->mo.fi, link ? NM_EV_RSL_UP : NM_EV_RSL_DOWN, NULL);
 
 	if (link)
 		rc = rsl_tx_rf_res(trx);
@@ -175,22 +199,6 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 	}
 
 	return 0;
-}
-
-/* set the availability of the TRX based on internal state (RSL + phy link) */
-void trx_operability_update(struct gsm_bts_trx *trx)
-{
-	enum abis_nm_op_state op_st;
-	enum abis_nm_avail_state avail_st;
-	struct phy_instance *pinst = trx_phy_instance(trx);
-
-	op_st = (trx->rsl_link && phy_link_state_get(pinst->phy_link) == PHY_LINK_CONNECTED) ?
-		NM_OPSTATE_ENABLED : NM_OPSTATE_DISABLED;
-	avail_st = (op_st == NM_OPSTATE_ENABLED) ? NM_AVSTATE_OK : NM_AVSTATE_NOT_INSTALLED;
-
-	LOGPTRX(trx, DSUM, LOGL_INFO, "Setting operative = %s\n", abis_nm_opstate_name(op_st));
-	oml_mo_state_chg(&trx->mo, op_st, avail_st);
-	oml_mo_state_chg(&trx->bb_transc.mo, -1, avail_st);
 }
 
 

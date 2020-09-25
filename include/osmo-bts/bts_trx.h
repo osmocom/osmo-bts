@@ -2,6 +2,10 @@
 
 #include <osmo-bts/gsm_data.h>
 
+struct gsm_bts_bb_trx {
+	struct gsm_abis_mo mo;
+};
+
 /* One TRX in a BTS */
 struct gsm_bts_trx {
 	/* list header in bts->trx_list */
@@ -16,10 +20,9 @@ struct gsm_bts_trx {
 	uint8_t rsl_tei;
 	struct e1inp_sign_link *rsl_link;
 
+	/* NM Radio Carrier and Baseband Transciever */
 	struct gsm_abis_mo mo;
-	struct {
-		struct gsm_abis_mo mo;
-	} bb_transc;
+	struct gsm_bts_bb_trx bb_transc;
 
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
@@ -45,6 +48,9 @@ struct gsm_bts_trx {
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
+static inline struct gsm_bts_trx *gsm_bts_bb_trx_get_trx(struct gsm_bts_bb_trx *bb_transc) {
+	return (struct gsm_bts_trx *)container_of(bb_transc, struct gsm_bts_trx, bb_transc);
+}
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 int bts_trx_init(struct gsm_bts_trx *trx);

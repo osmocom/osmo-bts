@@ -2,6 +2,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/fsm.h>
 
 #include <osmo-bts/bts.h>
 #include <osmo-bts/gsm_data.h>
@@ -9,6 +10,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 static LLIST_HEAD(g_phy_links);
 
@@ -65,7 +67,14 @@ void phy_link_state_set(struct phy_link *plink, enum phy_link_state state)
 		if (!trx)
 			continue;
 
-		trx_operability_update(trx);
+		osmo_fsm_inst_dispatch(trx->mo.fi,
+				       state == PHY_LINK_CONNECTED ? NM_EV_PHYLINK_UP :
+				                                     NM_EV_PHYLINK_DOWN,
+				       NULL);
+		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi,
+				       state == PHY_LINK_CONNECTED ? NM_EV_PHYLINK_UP :
+				                                     NM_EV_PHYLINK_DOWN,
+				       NULL);
 	}
 }
 

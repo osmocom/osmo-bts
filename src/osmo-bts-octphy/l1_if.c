@@ -36,6 +36,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/core/fsm.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
@@ -44,6 +45,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 #include "l1_if.h"
 #include "l1_oml.h"
@@ -311,19 +313,15 @@ int l1if_activate_rf(struct gsm_bts_trx *trx, int on)
 	int i;
 	if (on) {
 		/* signal availability */
-		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->mo);
-		oml_mo_state_chg(&trx->bb_transc.mo, -1, NM_AVSTATE_OK);
-		oml_mo_tx_sw_act_rep(&trx->bb_transc.mo);
+		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
 
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED,
 					 NM_AVSTATE_DEPENDENCY);
 	} else {
-		oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED,
-				 NM_AVSTATE_OFF_LINE);
-		oml_mo_state_chg(&trx->bb_transc.mo, NM_OPSTATE_DISABLED,
-				 NM_AVSTATE_OFF_LINE);
+		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
+		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
 	}
 
 	return 0;
