@@ -255,7 +255,7 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	return bts;
 }
 
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
+struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num)
 {
 	struct gsm_bts *bts;
 

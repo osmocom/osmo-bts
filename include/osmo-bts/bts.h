@@ -319,7 +319,7 @@ extern void *tall_bts_ctx;
 #define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx, uint8_t bts_num);
-struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
+struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num);
 
 int bts_init(struct gsm_bts *bts);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);
