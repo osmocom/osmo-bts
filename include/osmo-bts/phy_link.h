@@ -164,7 +164,7 @@ enum phy_link_state phy_link_state_get(struct phy_link *plink);
 const char *phy_link_state_name(enum phy_link_state state);
 int phy_links_open(void);
 
-struct phy_instance *phy_instance_by_num(struct phy_link *plink, int num);
+struct phy_instance *phy_instance_by_num(const struct phy_link *plink, int num);
 struct phy_instance *phy_instance_create(struct phy_link *plink, int num);
 void phy_instance_link_to_trx(struct phy_instance *pinst, struct gsm_bts_trx *trx);
 void phy_instance_destroy(struct phy_instance *pinst);

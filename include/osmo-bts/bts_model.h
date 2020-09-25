@@ -36,10 +36,10 @@ void bts_model_trx_close(struct gsm_bts_trx *trx);
 
 int bts_model_vty_init(struct gsm_bts *bts);
 
-void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts);
-void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx);
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink);
-void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst);
+void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts);
+void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx);
+void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink);
+void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst);
 
 int bts_model_oml_estab(struct gsm_bts *bts);
 

@@ -514,7 +514,7 @@ DEFUN(cfg_phy_trxd_max_version, cfg_phy_trxd_max_version_cmd,
 	return CMD_SUCCESS;
 }
 
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink)
 {
 	if (plink->u.osmotrx.local_ip)
 		vty_out(vty, " osmotrx ip local %s%s",
@@ -542,7 +542,7 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 		vty_out(vty, " osmotrx trxd-max-version %d%s", plink->u.osmotrx.trxd_hdr_ver_max, VTY_NEWLINE);
 }
 
-void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst)
 {
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
@@ -571,11 +571,11 @@ void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst
 			VTY_NEWLINE);
 }
 
-void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts)
 {
 }
 
-void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
+void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx)
 {
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;

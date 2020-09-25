@@ -360,7 +360,7 @@ DEFUN(show_clk_sync_stats, show_clk_sync_stats_cmd,
 	return CMD_SUCCESS;
 }
 
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink)
 {
 	if (plink->u.octphy.netdev_name)
 		vty_out(vty, " octphy net-device %s%s",
@@ -399,15 +399,15 @@ void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
 #endif
 }
 
-void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst)
 {
 }
 
-void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts)
 {
 }
 
-void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
+void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx)
 {
 }
 

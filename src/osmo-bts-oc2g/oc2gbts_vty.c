@@ -541,7 +541,7 @@ DEFUN(cfg_bts_rtp_drift_threshold, cfg_bts_rtp_drift_threshold_cmd,
 }
 */
 
-void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts)
 {
 	/* TODO(oramadan) MERGE
 	struct gsm_bts_role_bts *btsb = bts_role_bts(bts);
@@ -555,16 +555,16 @@ void bts_model_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 }
 
-void bts_model_config_write_trx(struct vty *vty, struct gsm_bts_trx *trx)
+void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "  nominal-tx-power %d%s", trx->nominal_power,VTY_NEWLINE);
 }
 
-void bts_model_config_write_phy(struct vty *vty, struct phy_link *plink)
+void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink)
 {
 }
 
-void bts_model_config_write_phy_inst(struct vty *vty, struct phy_instance *pinst)
+void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst)
 {
 	int i;
 

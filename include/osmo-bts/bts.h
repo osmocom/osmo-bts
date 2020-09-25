@@ -347,7 +347,7 @@ int bts_main(int argc, char **argv);
 int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 		    enum gsm48_chan_mode cm);
 
-int32_t bts_get_avg_fn_advance(struct gsm_bts *bts);
+int32_t bts_get_avg_fn_advance(const struct gsm_bts *bts);
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */
 struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);

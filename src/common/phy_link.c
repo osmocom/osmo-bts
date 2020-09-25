@@ -79,7 +79,7 @@ const char *phy_link_state_name(enum phy_link_state state)
 	return get_value_string(phy_link_state_vals, state);
 }
 
-struct phy_instance *phy_instance_by_num(struct phy_link *plink, int num)
+struct phy_instance *phy_instance_by_num(const struct phy_link *plink, int num)
 {
 	struct phy_instance *pinst;
 

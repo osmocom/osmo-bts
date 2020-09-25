@@ -216,9 +216,9 @@ DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
 	return CMD_SUCCESS;
 }
 
-static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
+static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
+	const struct gsm_bts_trx *trx;
 	const char *sapi_buf;
 	int i;
 
@@ -281,8 +281,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	bts_model_config_write_bts(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct trx_power_params *tpp = &trx->power_params;
-		struct phy_instance *pinst = trx_phy_instance(trx);
+		const struct trx_power_params *tpp = &trx->power_params;
+		const struct phy_instance *pinst = trx_phy_instance(trx);
 		vty_out(vty, " trx %u%s", trx->nr, VTY_NEWLINE);
 
 		if (trx->power_params.user_gain_mdB)
@@ -307,7 +307,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 static int config_write_bts(struct vty *vty)
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts;
+	const struct gsm_bts *bts;
 
 	llist_for_each_entry(bts, &net->bts_list, list)
 		config_write_bts_single(vty, bts);
@@ -315,7 +315,7 @@ static int config_write_bts(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-static void config_write_phy_single(struct vty *vty, struct phy_link *plink)
+static void config_write_phy_single(struct vty *vty, const struct phy_link *plink)
 {
 	int i;
 
@@ -323,7 +323,7 @@ static void config_write_phy_single(struct vty *vty, struct phy_link *plink)
 	bts_model_config_write_phy(vty, plink);
 
 	for (i = 0; i < 255; i++) {
-		struct phy_instance *pinst = phy_instance_by_num(plink, i);
+		const struct phy_instance *pinst = phy_instance_by_num(plink, i);
 		if (!pinst)
 			break;
 		vty_out(vty, " instance %u%s", pinst->num, VTY_NEWLINE);
@@ -336,7 +336,7 @@ static int config_write_phy(struct vty *vty)
 	int i;
 
 	for (i = 0; i < 255; i++) {
-		struct phy_link *plink = phy_link_by_num(i);
+		const struct phy_link *plink = phy_link_by_num(i);
 		if (!plink)
 			break;
 		config_write_phy_single(vty, plink);
@@ -815,7 +815,7 @@ DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
  * SHOW
  * ======================================================================*/
 
-static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
+static void net_dump_nmstate(struct vty *vty, const struct gsm_nm_state *nms)
 {
 	vty_out(vty,"Oper '%s', Admin '%s', Avail '%s'%s",
 		abis_nm_opstate_name(nms->operational),
@@ -823,7 +823,7 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 		abis_nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
-static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
+static void bts_dump_vty_features(struct vty *vty, const struct gsm_bts *bts)
 {
 	unsigned int i;
 	bool no_features;
@@ -855,9 +855,9 @@ static void bts_dump_vty_features(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "    (not available)%s", VTY_NEWLINE);
 }
 
-static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
+static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
+	const struct gsm_bts_trx *trx;
 
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u and %u TRX%s",
@@ -904,7 +904,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts_get_avg_fn_advance(bts), bts->fn_stats.min, bts->fn_stats.max, VTY_NEWLINE);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
+		const struct phy_instance *pinst = trx_phy_instance(trx);
 		vty_out(vty, "  TRX %u%s", trx->nr, VTY_NEWLINE);
 		if (pinst) {
 			vty_out(vty, "    phy %d %s", pinst->num, pinst->version);
@@ -923,7 +923,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 	SHOW_STR "Display information about a BTS\n"
 		BTS_NR_STR)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr;
 
 	if (argc != 0) {
@@ -948,9 +948,9 @@ DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test 
       "Various testing commands\n"
       "Send a test OML failure event report to the BSC\n" BTS_NR_STR)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
-	struct gsm_bts *bts;
+	const struct gsm_bts *bts;
 
 	if (bts_nr >= net->num_bts) {
 		vty_out(vty, "%% can't find BTS '%s'%s", argv[0], VTY_NEWLINE);
@@ -963,7 +963,7 @@ DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test 
 	return CMD_SUCCESS;
 }
 
-static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
+static void trx_dump_vty(struct vty *vty, const struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
 		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
@@ -994,8 +994,8 @@ DEFUN(show_trx,
 	SHOW_STR "Display information about a TRX\n"
 	BTS_TRX_STR)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts = NULL;
+	const struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_bts *bts = NULL;
 	int bts_nr, trx_nr;
 
 	if (argc >= 1) {
@@ -1031,7 +1031,7 @@ DEFUN(show_trx,
 }
 
 
-static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
+static void ts_dump_vty(struct vty *vty, const struct gsm_bts_trx_ts *ts)
 {
 	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s, TSC %u",
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
@@ -1050,10 +1050,10 @@ DEFUN(show_ts,
 	SHOW_STR "Display information about a TS\n"
 	BTS_TRX_TS_STR)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts = NULL;
-	struct gsm_bts_trx *trx = NULL;
-	struct gsm_bts_trx_ts *ts = NULL;
+	const struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_bts *bts = NULL;
+	const struct gsm_bts_trx *trx = NULL;
+	const struct gsm_bts_trx_ts *ts = NULL;
 	int bts_nr, trx_nr, ts_nr;
 
 	if (argc >= 1) {
@@ -1122,7 +1122,7 @@ DEFUN(show_ts,
 
 /* call vty_out() to print a string like " as TCH/H" for dynamic timeslots.
  * Don't do anything if the ts is not dynamic. */
-static void vty_out_dyn_ts_status(struct vty *vty, struct gsm_bts_trx_ts *ts)
+static void vty_out_dyn_ts_status(struct vty *vty, const struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
@@ -1152,7 +1152,7 @@ static void vty_out_dyn_ts_status(struct vty *vty, struct gsm_bts_trx_ts *ts)
 	}
 }
 
-static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
+static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	struct in_addr ia;
 
@@ -1228,7 +1228,7 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	/* TODO: MS Power Control */
 }
 
-static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
+static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	const struct gsm_meas_rep_unidir *mru = &lchan->meas.ul_res;
 
@@ -1244,12 +1244,12 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 		VTY_NEWLINE);
 }
 
-static int dump_lchan_trx_ts(struct gsm_bts_trx_ts *ts, struct vty *vty,
-			     void (*dump_cb)(struct vty *, struct gsm_lchan *))
+static int dump_lchan_trx_ts(const struct gsm_bts_trx_ts *ts, struct vty *vty,
+			     void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
 	int lchan_nr;
 	for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; lchan_nr++) {
-		struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+		const struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 		if (lchan->state == LCHAN_S_NONE)
 			continue;
 		dump_cb(vty, lchan);
@@ -1258,26 +1258,26 @@ static int dump_lchan_trx_ts(struct gsm_bts_trx_ts *ts, struct vty *vty,
 	return CMD_SUCCESS;
 }
 
-static int dump_lchan_trx(struct gsm_bts_trx *trx, struct vty *vty,
-			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+static int dump_lchan_trx(const struct gsm_bts_trx *trx, struct vty *vty,
+			  void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
 	int ts_nr;
 
 	for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+		const struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 		dump_lchan_trx_ts(ts, vty, dump_cb);
 	}
 
 	return CMD_SUCCESS;
 }
 
-static int dump_lchan_bts(struct gsm_bts *bts, struct vty *vty,
-			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+static int dump_lchan_bts(const struct gsm_bts *bts, struct vty *vty,
+			  void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
 	int trx_nr;
 
 	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
+		const struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
 		dump_lchan_trx(trx, vty, dump_cb);
 	}
 
@@ -1285,13 +1285,13 @@ static int dump_lchan_bts(struct gsm_bts *bts, struct vty *vty,
 }
 
 static int lchan_summary(struct vty *vty, int argc, const char **argv,
-			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
+			 void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
-	struct gsm_lchan *lchan;
+	const struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_bts *bts;
+	const struct gsm_bts_trx *trx;
+	const struct gsm_bts_trx_ts *ts;
+	const struct gsm_lchan *lchan;
 	int bts_nr, trx_nr, ts_nr, lchan_nr;
 
 	if (argc >= 1) {
@@ -1370,8 +1370,8 @@ DEFUN(show_lchan_summary,
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
-static struct gsm_lchan *resolve_lchan(struct gsm_network *net,
-					const char **argv, int idx)
+static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
+				       const char **argv, int idx)
 {
 	int bts_nr = atoi(argv[idx+0]);
 	int trx_nr = atoi(argv[idx+1]);

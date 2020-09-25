@@ -882,7 +882,7 @@ int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
 }
 
 /* return the measured average of frame numbers that the RTS clock is running in advance */
-int32_t bts_get_avg_fn_advance(struct gsm_bts *bts)
+int32_t bts_get_avg_fn_advance(const struct gsm_bts *bts)
 {
 	if (bts->fn_stats.avg_count == 0)
 		return 0;
