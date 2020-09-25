@@ -125,6 +125,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		memcpy(*bursts_p, *bursts_p + 232, 232);
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		ber10k = 0;
+		memset(&meas_avg, 0, sizeof(meas_avg));
 		goto bfi;
 	}
 
