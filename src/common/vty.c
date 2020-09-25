@@ -637,13 +637,9 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (bts->pcu.sock_path) {
-		/* FIXME: close the interface? */
-		talloc_free(bts->pcu.sock_path);
-	}
-	bts->pcu.sock_path = talloc_strdup(bts, argv[0]);
-	/* FIXME: re-open the interface? */
+	osmo_talloc_replace_string(bts, &bts->pcu.sock_path, argv[0]);
 
+	/* FIXME: re-open the interface? */
 	return CMD_SUCCESS;
 }
 
