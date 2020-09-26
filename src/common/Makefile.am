@@ -1,4 +1,4 @@
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
+AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)/include
 AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOTRAU_CFLAGS) $(LIBOSMOCODEC_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOTRAU_LIBS) $(LIBOSMOCODEC_LIBS)
 
@@ -44,6 +44,18 @@ libbts_a_SOURCES = \
 	nm_bb_transc_fsm.c \
 	nm_channel_fsm.c \
 	nm_radio_carrier_fsm.c \
+	probes.d \
 	$(NULL)
 
 libl1sched_a_SOURCES = scheduler.c
+
+if ENABLE_SYSTEMTAP
+probes.h: probes.d
+	$(DTRACE) -C -h -s $< -o $@
+
+probes.lo: probes.d
+	$(LIBTOOL) --mode=compile $(AM_V_lt) --tag=CC env CFLAGS="$(CFLAGS)" $(DTRACE) -C -G -s $< -o $@
+
+BUILT_SOURCES = probes.h probes.lo
+libbts_la_LDADD = probes.lo
+endif

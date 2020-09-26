@@ -51,6 +51,19 @@
 #include "trx_if.h"
 #include "trx_provision_fsm.h"
 
+#include "btsconfig.h"
+
+#ifdef HAVE_SYSTEMTAP
+/* include the generated probes header and put markers in code */
+#include "probes.h"
+#define TRACE(probe) probe
+#define TRACE_ENABLED(probe) probe ## _ENABLED()
+#else
+/* Wrap the probe to allow it to be removed when no systemtap available */
+#define TRACE(probe)
+#define TRACE_ENABLED(probe) (0)
+#endif /* HAVE_SYSTEMTAP */
+
 /*
  * socket helper functions
  */
@@ -1083,7 +1096,9 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		bi._num_pdus++;
 
 		/* feed received burst into scheduler code */
+		TRACE(OSMO_BTS_TRX_UL_DATA_START(l1h->phy_inst->trx->nr, bi.tn, bi.fn));
 		trx_sched_route_burst_ind(l1h->phy_inst->trx, &bi);
+		TRACE(OSMO_BTS_TRX_UL_DATA_DONE(l1h->phy_inst->trx->nr, bi.tn, bi.fn));
 	} while (bi.flags & TRX_BI_F_BATCH_IND);
 
 	return 0;

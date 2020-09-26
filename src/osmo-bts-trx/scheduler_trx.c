@@ -50,6 +50,19 @@
 #include "l1_if.h"
 #include "trx_if.h"
 
+#include "btsconfig.h"
+
+#ifdef HAVE_SYSTEMTAP
+/* include the generated probes header and put markers in code */
+#include "probes.h"
+#define TRACE(probe) probe
+#define TRACE_ENABLED(probe) probe ## _ENABLED()
+#else
+/* Wrap the probe to allow it to be removed when no systemtap available */
+#define TRACE(probe)
+#define TRACE_ENABLED(probe) (0)
+#endif /* HAVE_SYSTEMTAP */
+
 #define SCHED_FH_PARAMS_FMT "hsn=%u, maio=%u, ma_len=%u"
 #define SCHED_FH_PARAMS_VALS(ts) \
 	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
@@ -280,8 +293,10 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 			struct trx_dl_burst_req *br;
 
 			/* ready-to-send */
+			TRACE(OSMO_BTS_TRX_DL_RTS_START(trx->nr, tn, fn));
 			_sched_rts(l1ts, GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance
 							   + plink->u.osmotrx.rts_advance));
+			TRACE(OSMO_BTS_TRX_DL_RTS_DONE(trx->nr, tn, fn));
 
 			/* pre-initialized buffer for the Downlink burst */
 			br = &pinst->u.osmotrx.br[tn];
