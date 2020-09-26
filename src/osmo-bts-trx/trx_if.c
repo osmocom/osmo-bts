@@ -49,6 +49,7 @@
 #include "l1_if.h"
 #include "trx_if.h"
 #include "trx_provision_fsm.h"
+#include "probes.h"
 
 /*
  * socket helper functions
@@ -1094,7 +1095,9 @@ skip_burst:
 		hdr_ver, trx_data_desc_msg(&bi));
 
 	/* feed received burst into scheduler code */
+	OSMO_BTS_TRX_UL_DATA_START(l1h->phy_inst->trx->nr, bi.tn, bi.fn);
 	trx_sched_ul_burst(&l1h->l1s, &bi);
+	OSMO_BTS_TRX_UL_DATA_DONE(l1h->phy_inst->trx->nr, bi.tn, bi.fn);
 
 	return 0;
 }

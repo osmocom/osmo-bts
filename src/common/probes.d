@@ -1,0 +1,2 @@
+provider osmo_bts {
+};

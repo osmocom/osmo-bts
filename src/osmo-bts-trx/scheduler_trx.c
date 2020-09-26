@@ -46,6 +46,7 @@
 
 #include "l1_if.h"
 #include "trx_if.h"
+#include "probes.h"
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
 int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
@@ -84,7 +85,9 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
 			/* ready-to-send */
+			OSMO_BTS_TRX_DL_RTS_START(trx->nr, tn, sched_fn);
 			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
+			OSMO_BTS_TRX_DL_RTS_DONE(trx->nr, tn, sched_fn);
 
 			/* All other parameters to be set by _sched_dl_burst() */
 			br = (struct trx_dl_burst_req) {

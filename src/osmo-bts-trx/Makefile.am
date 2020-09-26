@@ -51,6 +51,7 @@ osmo_bts_trx_SOURCES = \
 	trx_provision_fsm.c \
 	trx_vty.c \
 	loops.c \
+	probes.d \
 	$(NULL)
 
 osmo_bts_trx_LDADD = \
@@ -58,3 +59,14 @@ osmo_bts_trx_LDADD = \
 	$(top_builddir)/src/common/libbts.a \
 	$(LDADD) \
 	$(NULL)
+
+if ENABLE_SYSTEMTAP
+probes.h: probes.d
+	$(DTRACE) -C -h -s $< -o $@
+
+probes.lo: probes.d
+	$(LIBTOOL) --mode=compile $(AM_V_lt) --tag=CC env CFLAGS="$(CFLAGS)" $(DTRACE) -C -G -s $< -o $@
+
+BUILT_SOURCES = probes.h probes.lo
+osmo_bts_trx_LDADD += probes.lo
+endif

@@ -37,6 +37,18 @@ libbts_a_SOURCES = \
 	dtx_dl_amr_fsm.c \
 	scheduler_mframe.c \
 	ta_control.c \
+	probes.d \
 	$(NULL)
 
 libl1sched_a_SOURCES = scheduler.c
+
+if ENABLE_SYSTEMTAP
+probes.h: probes.d
+	$(DTRACE) -C -h -s $< -o $@
+
+probes.lo: probes.d
+	$(LIBTOOL) --mode=compile $(AM_V_lt) --tag=CC env CFLAGS="$(CFLAGS)" $(DTRACE) -C -G -s $< -o $@
+
+BUILT_SOURCES = probes.h probes.lo
+libbts_la_LDADD = probes.lo
+endif
