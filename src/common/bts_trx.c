@@ -32,6 +32,8 @@
 
 static int gsm_bts_trx_talloc_destructor(struct gsm_bts_trx *trx)
 {
+	unsigned int i;
+
 	if (trx->bb_transc.mo.fi) {
 		osmo_fsm_inst_free(trx->bb_transc.mo.fi);
 		trx->bb_transc.mo.fi = NULL;
@@ -39,6 +41,13 @@ static int gsm_bts_trx_talloc_destructor(struct gsm_bts_trx *trx)
 	if (trx->mo.fi) {
 		osmo_fsm_inst_free(trx->mo.fi);
 		trx->mo.fi = NULL;
+	}
+	for (i = 0; i < TRX_NR_TS; i++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[i];
+		if (ts->mo.fi) {
+			osmo_fsm_inst_free(ts->mo.fi);
+			ts->mo.fi = NULL;
+		}
 	}
 	return 0;
 }
@@ -79,6 +88,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->dyn.pchan_want = GSM_PCHAN_NONE;
 		ts->tsc = -1;
 
+		ts->mo.fi = osmo_fsm_inst_alloc(&nm_chan_fsm, trx, ts,
+						     LOGL_INFO, NULL);
+		osmo_fsm_inst_update_id_f(ts->mo.fi, "bts%d-trx%d-ts%d",
+					  bts->nr, trx->nr, ts->nr);
 		gsm_mo_init(&ts->mo, bts, NM_OC_CHANNEL,
 			    bts->nr, trx->nr, ts->nr);
 

@@ -310,15 +310,10 @@ int l1if_req_compl(struct octphy_hdl *fl1h, struct msgb *msg,
 /* For OctPHY, this only about sending state changes to BSC */
 int l1if_activate_rf(struct gsm_bts_trx *trx, int on)
 {
-	int i;
 	if (on) {
 		/* signal availability */
 		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
 		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
-
-		for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
-			oml_mo_state_chg(&trx->ts[i].mo, NM_OPSTATE_DISABLED,
-					 NM_AVSTATE_DEPENDENCY);
 	} else {
 		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
 		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);

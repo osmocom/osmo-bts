@@ -36,6 +36,9 @@ enum nm_fsm_events {
 	NM_EV_PHYLINK_UP, /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_PHYLINK_DOWN,  /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_DISABLE,  /* RadioCarrier and BaseBand Transceiver only */
+	NM_EV_BBTRANSC_INSTALLED, /* Radio Channel only */
+	NM_EV_BBTRANSC_ENABLED, /* Radio Channel only */
+	NM_EV_BBTRANSC_DISABLED, /* Radio Channel only */
 
 };
 extern const struct value_string nm_fsm_event_names[];
@@ -72,3 +75,12 @@ enum nm_rcarrier_op_fsm_states {
 	NM_RCARRIER_ST_OP_ENABLED,
 };
 extern struct osmo_fsm nm_rcarrier_fsm;
+
+/* Radio channel */
+enum nm_chan_op_fsm_states {
+        NM_CHAN_ST_OP_DISABLED_NOTINSTALLED,
+        NM_CHAN_ST_OP_DISABLED_DEPENDENCY,
+        NM_CHAN_ST_OP_DISABLED_OFFLINE,
+        NM_CHAN_ST_OP_ENABLED,
+};
+extern struct osmo_fsm nm_chan_fsm;

@@ -136,16 +136,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 static void st_op_enabled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
-	uint8_t tn;
 	oml_mo_state_chg(&trx->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-
-	/* Mark Dependency TS as Offline (ready to be Opstarted) */
-	for (tn = 0; tn < TRX_NR_TS; tn++) {
-		if (trx->ts[tn].mo.nm_state.operational == NM_OPSTATE_DISABLED &&
-		    trx->ts[tn].mo.nm_state.availability ==  NM_AVSTATE_DEPENDENCY) {
-			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
-		}
-	}
 }
 
 static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)

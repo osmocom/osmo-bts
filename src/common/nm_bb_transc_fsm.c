@@ -55,11 +55,17 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	int i;
 
 	switch (event) {
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&bb_transc->mo);
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_OFFLINE);
+		for (i = 0; i < TRX_NR_TS; i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_BBTRANSC_INSTALLED, NULL);
+		}
 		return;
 	case NM_EV_RSL_UP:
 		return;
@@ -79,8 +85,18 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	int i;
+
 	bb_transc->mo.opstart_success = false;
 	oml_mo_state_chg(&bb_transc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+
+	if (prev_state == NM_BBTRANSC_ST_OP_ENABLED) {
+		for (i = 0; i < TRX_NR_TS; i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_BBTRANSC_DISABLED, NULL);
+		}
+	}
 }
 
 static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -138,7 +154,15 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 static void st_op_enabled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	uint8_t tn;
+
 	oml_mo_state_chg(&bb_transc->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+	/* Mark Dependency TS as Offline (ready to be Opstarted) */
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+		osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_BBTRANSC_ENABLED, NULL);
+	}
 }
 
 static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)

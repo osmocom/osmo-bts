@@ -83,13 +83,8 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 static uint8_t vbts_set_bts(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	uint8_t tn;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-
-		for (tn = 0; tn < TRX_NR_TS; tn++)
-			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
-
 		/* report availability of trx to the bts. this will trigger the rsl connection */
 		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
 		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
@@ -141,6 +136,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	int rc;
 	struct gsm_bts_bb_trx *bb_transc;
 	struct gsm_bts_trx* trx;
+	struct gsm_bts_trx_ts *ts;
 
 	switch (mo->obj_class) {
 	case NM_OC_SITE_MANAGER:
@@ -156,6 +152,10 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	case NM_OC_BASEB_TRANSC:
 		bb_transc = (struct gsm_bts_bb_trx *) obj;
 		rc = osmo_fsm_inst_dispatch(bb_transc->mo.fi, NM_EV_OPSTART_ACK, NULL);
+		break;
+	case NM_OC_CHANNEL:
+		ts = (struct gsm_bts_trx_ts *) obj;
+		rc = osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_OPSTART_ACK, NULL);
 		break;
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:

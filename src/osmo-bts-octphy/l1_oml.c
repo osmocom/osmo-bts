@@ -190,28 +190,28 @@ static int opstart_compl(struct gsm_abis_mo *mo)
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr);
 	/* TODO: Send NACK in case of error! */
 
-	/* We already have a FSM for Radio Carrier, handle it there */
-	if (mo->obj_class == NM_OC_RADIO_CARRIER)
+	switch (mo->obj_class) {
+	case NM_OC_RADIO_CARRIER:
 		return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_ACK, NULL);
-
-	/* Set to Operational State: Enabled */
-	oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
-
-	/* hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
-	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
-	    mo->obj_inst.ts_nr == 7) {
-		struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
-		mo->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
-			LCHAN_REL_ACT_OML;
-		lchan_activate(&mo->bts->c0->ts[0].lchan[CCCH_LCHAN]);
-		if (cbch) {
-			cbch->rel_act_kind = LCHAN_REL_ACT_OML;
-			lchan_activate(cbch);
+	case NM_OC_CHANNEL:
+		/* ugly hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
+		if (mo->obj_inst.trx_nr == 0 &&
+		    mo->obj_inst.ts_nr == 0) {
+			struct gsm_lchan *cbch = gsm_bts_get_cbch(mo->bts);
+			DEBUGP(DL1C, "====> trying to activate lchans of BCCH\n");
+			mo->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
+				LCHAN_REL_ACT_OML;
+			lchan_activate(&mo->bts->c0->ts[0].lchan[CCCH_LCHAN]);
+			if (cbch) {
+				cbch->rel_act_kind = LCHAN_REL_ACT_OML;
+				lchan_activate(cbch);
+			}
 		}
+		return osmo_fsm_inst_dispatch(trx->ts[mo->obj_inst.ts_nr].mo.fi,
+					      NM_EV_OPSTART_ACK, NULL);
+	default:
+		OSMO_ASSERT(0);
 	}
-
-	/* Send OPSTART ack */
-	return oml_mo_opstart_ack(mo);
 }
 
 static
