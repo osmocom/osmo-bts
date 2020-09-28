@@ -43,16 +43,16 @@ static int get_pa_drive_level_mdBm(const struct power_amp *pa,
 }
 
 /* maximum output power of the system */
-int get_p_max_out_mdBm(struct gsm_bts_trx *trx)
+int get_p_max_out_mdBm(const struct gsm_bts_trx *trx)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 	/* Add user gain, internal and external PA gain to TRX output power */
 	return tpp->trx_p_max_out_mdBm + tpp->user_gain_mdB +
 			tpp->pa.nominal_gain_mdB + tpp->user_pa.nominal_gain_mdB;
 }
 
 /* nominal output power, i.e. OML-reduced maximum output power */
-int get_p_nominal_mdBm(struct gsm_bts_trx *trx)
+int get_p_nominal_mdBm(const struct gsm_bts_trx *trx)
 {
 	/* P_max_out subtracted by OML maximum power reduction IE */
 	return get_p_max_out_mdBm(trx) - to_mdB(trx->max_power_red);
@@ -61,21 +61,21 @@ int get_p_nominal_mdBm(struct gsm_bts_trx *trx)
 /* calculate the target total output power required, reduced by both
  * OML and RSL, but ignoring the attenuation required for power ramping and
  * thermal management */
-int get_p_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red)
+int get_p_target_mdBm(const struct gsm_bts_trx *trx, uint8_t bs_power_red)
 {
 	/* Pn subtracted by RSL BS Power Recudtion (in 1 dB steps) */
 	return get_p_nominal_mdBm(trx) - to_mdB(bs_power_red);
 }
-int get_p_target_mdBm_lchan(struct gsm_lchan *lchan)
+int get_p_target_mdBm_lchan(const struct gsm_lchan *lchan)
 {
 	return get_p_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
 }
 
 /* calculate the actual total output power required, taking into account the
  * attenuation required for power ramping but not thermal management */
-int get_p_actual_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
+int get_p_actual_mdBm(const struct gsm_bts_trx *trx, int p_target_mdBm)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 
 	/* P_target subtracted by ramp attenuation */
 	return p_target_mdBm - tpp->ramp.attenuation_mdB;
@@ -83,9 +83,9 @@ int get_p_actual_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 
 /* calculate the effective total output power required, taking into account the
  * attenuation required for power ramping and thermal management */
-int get_p_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
+int get_p_eff_mdBm(const struct gsm_bts_trx *trx, int p_target_mdBm)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 
 	/* P_target subtracted by ramp attenuation */
 	return p_target_mdBm - tpp->ramp.attenuation_mdB - tpp->thermal_attenuation_mdB;
@@ -93,9 +93,9 @@ int get_p_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 
 /* calculate effect TRX output power required, taking into account the
  * attenuations required for power ramping and thermal management */
-int get_p_trxout_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
+int get_p_trxout_eff_mdBm(const struct gsm_bts_trx *trx, int p_target_mdBm)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 	int p_actual_mdBm, user_pa_drvlvl_mdBm, pa_drvlvl_mdBm;
 	unsigned int arfcn = trx->arfcn;
 
@@ -114,9 +114,9 @@ int get_p_trxout_eff_mdBm(struct gsm_bts_trx *trx, int p_target_mdBm)
 
 /* calculate target TRX output power required, ignoring the
  * attenuations required for power ramping but not thermal management */
-int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red)
+int get_p_trxout_target_mdBm(const struct gsm_bts_trx *trx, uint8_t bs_power_red)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 	int p_target_mdBm, user_pa_drvlvl_mdBm, pa_drvlvl_mdBm;
 	unsigned int arfcn = trx->arfcn;
 
@@ -132,7 +132,7 @@ int get_p_trxout_target_mdBm(struct gsm_bts_trx *trx, uint8_t bs_power_red)
 	/* internal PA input drive level is TRX output power */
 	return pa_drvlvl_mdBm;
 }
-int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan)
+int get_p_trxout_target_mdBm_lchan(const struct gsm_lchan *lchan)
 {
 	return get_p_trxout_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
 }
@@ -147,9 +147,9 @@ int get_p_trxout_target_mdBm_lchan(struct gsm_lchan *lchan)
  * attempting to register at the same time.  Rather, grow the cell slowly in
  * radius than start with the full radius at once.  */
 
-static int we_are_ramping_up(struct gsm_bts_trx *trx)
+static int we_are_ramping_up(const struct gsm_bts_trx *trx)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 
 	if (tpp->p_total_tgt_mdBm > tpp->p_total_cur_mdBm)
 		return 1;
@@ -298,9 +298,9 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 }
 
 /* determine the initial transceiver output power at start-up time */
-int power_ramp_initial_power_mdBm(struct gsm_bts_trx *trx)
+int power_ramp_initial_power_mdBm(const struct gsm_bts_trx *trx)
 {
-	struct trx_power_params *tpp = &trx->power_params;
+	const struct trx_power_params *tpp = &trx->power_params;
 	int pout_mdBm;
 
 	/* this is the maximum initial output on the antenna connector
