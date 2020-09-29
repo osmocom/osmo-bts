@@ -28,4 +28,10 @@ struct gsm_network *gsmnet_from_vty(struct vty *v);
 
 extern struct vty_app_info bts_vty_info;
 
+enum bts_vty_cmd_attr {
+	BTS_VTY_ATTR_NEW_LCHAN,
+	BTS_VTY_TRX_POWERCYCLE,
+	/* NOTE: up to 32 entries */
+};
+
 #endif

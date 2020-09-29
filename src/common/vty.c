@@ -66,6 +66,8 @@
 #define BTS_TRX_TS_STR BTS_TRX_STR TS_NR_STR
 #define BTS_TRX_TS_LCHAN_STR BTS_TRX_TS_STR LCHAN_NR_STR
 
+#define X(x) (1 << x)
+
 int g_vty_port_num = OSMO_VTY_PORT_BTS;
 
 struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_nr)
@@ -137,6 +139,16 @@ struct vty_app_info bts_vty_info = {
 	.copyright	= osmobts_copyright,
 	.go_parent_cb	= bts_vty_go_parent,
 	.is_config_node	= bts_vty_is_config_node,
+	.usr_attr_desc	= {
+		[BTS_VTY_ATTR_NEW_LCHAN] = \
+			"This command applies for newly created lchans",
+		[BTS_VTY_TRX_POWERCYCLE] = \
+			"This command applies when the TRX powercycles or restarts",
+	},
+	.usr_attr_letters = {
+		[BTS_VTY_ATTR_NEW_LCHAN] = 'l',
+		[BTS_VTY_TRX_POWERCYCLE] = 'p',
+	},
 };
 
 extern struct gsm_network bts_gsmnet;
@@ -178,10 +190,10 @@ gDEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	return CMD_SUCCESS;
 }
 
-
-DEFUN(cfg_bts_trx, cfg_bts_trx_cmd,
-	"trx <0-254>",
-	"Select a TRX to configure\n" "TRX number\n")
+DEFUN_ATTR(cfg_bts_trx, cfg_bts_trx_cmd,
+	   "trx <0-254>",
+	   "Select a TRX to configure\n" "TRX number\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	int trx_nr = atoi(argv[0]);
 	struct gsm_bts *bts = vty->index;
@@ -360,11 +372,12 @@ DEFUN(cfg_vty_telnet_port, cfg_vty_telnet_port_cmd,
 }
 
 /* per-BTS configuration */
-DEFUN(cfg_bts,
-      cfg_bts_cmd,
-      "bts BTS_NR",
-      "Select a BTS to configure\n"
-	"BTS Number\n")
+DEFUN_ATTR(cfg_bts,
+	   cfg_bts_cmd,
+	   "bts BTS_NR",
+	   "Select a BTS to configure\n"
+	   "BTS Number\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
@@ -457,10 +470,11 @@ DEFUN_DEPRECATED(cfg_bts_rtp_bind_ip,
 	return CMD_WARNING;
 }
 
-DEFUN(cfg_bts_rtp_jitbuf,
-	cfg_bts_rtp_jitbuf_cmd,
-	"rtp jitter-buffer <0-10000> [adaptive]",
-	RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
+DEFUN_USRATTR(cfg_bts_rtp_jitbuf,
+	      cfg_bts_rtp_jitbuf_cmd,
+	      X(BTS_VTY_ATTR_NEW_LCHAN),
+	      "rtp jitter-buffer <0-10000> [adaptive]",
+	      RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -508,10 +522,11 @@ DEFUN(cfg_bts_rtp_port_range,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_rtp_ip_dscp,
-	cfg_bts_rtp_ip_dscp_cmd,
-	"rtp ip-dscp <0-63>",
-	RTP_STR "Specify DSCP for RTP/IP packets\n" "The DSCP value (upper 6 bits of TOS)\n")
+DEFUN_USRATTR(cfg_bts_rtp_ip_dscp,
+	      cfg_bts_rtp_ip_dscp_cmd,
+	      X(BTS_VTY_ATTR_NEW_LCHAN),
+	      "rtp ip-dscp <0-63>",
+	      RTP_STR "Specify DSCP for RTP/IP packets\n" "The DSCP value (upper 6 bits of TOS)\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int dscp = atoi(argv[0]);
@@ -523,11 +538,12 @@ DEFUN(cfg_bts_rtp_ip_dscp,
 
 #define PAG_STR "Paging related parameters\n"
 
-DEFUN(cfg_bts_paging_queue_size,
-	cfg_bts_paging_queue_size_cmd,
-	"paging queue-size <1-1024>",
-	PAG_STR "Maximum length of BTS-internal paging queue\n"
-	        "Maximum length of BTS-internal paging queue\n")
+DEFUN_ATTR(cfg_bts_paging_queue_size,
+	   cfg_bts_paging_queue_size_cmd,
+	   "paging queue-size <1-1024>",
+	   PAG_STR "Maximum length of BTS-internal paging queue\n"
+	   "Maximum length of BTS-internal paging queue\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -536,11 +552,12 @@ DEFUN(cfg_bts_paging_queue_size,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_paging_lifetime,
-	cfg_bts_paging_lifetime_cmd,
-	"paging lifetime <0-60>",
-	PAG_STR "Maximum lifetime of a paging record\n"
-	        "Maximum lifetime of a paging record (secods)\n")
+DEFUN_ATTR(cfg_bts_paging_lifetime,
+	   cfg_bts_paging_lifetime_cmd,
+	   "paging lifetime <0-60>",
+	   PAG_STR "Maximum lifetime of a paging record\n"
+	   "Maximum lifetime of a paging record (secods)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -551,13 +568,14 @@ DEFUN(cfg_bts_paging_lifetime,
 
 #define AGCH_QUEUE_STR "AGCH queue mgmt\n"
 
-DEFUN(cfg_bts_agch_queue_mgmt_params,
-	cfg_bts_agch_queue_mgmt_params_cmd,
-	"agch-queue-mgmt threshold <0-100> low <0-100> high <0-100000>",
-	AGCH_QUEUE_STR
-	"Threshold to start cleanup\nin %% of the maximum queue length\n"
-	"Low water mark for cleanup\nin %% of the maximum queue length\n"
-	"High water mark for cleanup\nin %% of the maximum queue length\n")
+DEFUN_ATTR(cfg_bts_agch_queue_mgmt_params,
+	   cfg_bts_agch_queue_mgmt_params_cmd,
+	   "agch-queue-mgmt threshold <0-100> low <0-100> high <0-100000>",
+	   AGCH_QUEUE_STR
+	   "Threshold to start cleanup\nin %% of the maximum queue length\n"
+	   "Low water mark for cleanup\nin %% of the maximum queue length\n"
+	   "High water mark for cleanup\nin %% of the maximum queue length\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -568,11 +586,12 @@ DEFUN(cfg_bts_agch_queue_mgmt_params,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_agch_queue_mgmt_default,
-	cfg_bts_agch_queue_mgmt_default_cmd,
-	"agch-queue-mgmt default",
-	AGCH_QUEUE_STR
-	"Reset clean parameters to default values\n")
+DEFUN_ATTR(cfg_bts_agch_queue_mgmt_default,
+	   cfg_bts_agch_queue_mgmt_default_cmd,
+	   "agch-queue-mgmt default",
+	   AGCH_QUEUE_STR
+	   "Reset clean parameters to default values\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -583,10 +602,11 @@ DEFUN(cfg_bts_agch_queue_mgmt_default,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
-	"uplink-power-target <-110-0>",
-	"Set the nominal target Rx Level for uplink power control loop\n"
-	"Target uplink Rx level in dBm\n")
+DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
+	   "uplink-power-target <-110-0>",
+	   "Set the nominal target Rx Level for uplink power control loop\n"
+	   "Target uplink Rx level in dBm\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -595,10 +615,11 @@ DEFUN(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
-	"min-qual-rach <-100-100>",
-	"Set the minimum link quality level of Access Bursts to be accepted\n"
-	"C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n")
+DEFUN_ATTR(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
+	   "min-qual-rach <-100-100>",
+	   "Set the minimum link quality level of Access Bursts to be accepted\n"
+	   "C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -607,10 +628,11 @@ DEFUN(cfg_bts_min_qual_rach, cfg_bts_min_qual_rach_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
-	"min-qual-norm <-100-100>",
-	"Set the minimum link quality level of Normal Bursts to be accepted\n"
-	"C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n")
+DEFUN_ATTR(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
+	   "min-qual-norm <-100-100>",
+	   "Set the minimum link quality level of Normal Bursts to be accepted\n"
+	   "C/I (Carrier-to-Interference) ratio in centiBels (10e-2 B or 10e-1 dB)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -619,10 +641,11 @@ DEFUN(cfg_bts_min_qual_norm, cfg_bts_min_qual_norm_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
-	"max-ber10k-rach <0-10000>",
-	"Set the maximum BER for valid RACH requests\n"
-	"BER in 1/10000 units (0=no BER; 100=1% BER)\n")
+DEFUN_ATTR(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
+	   "max-ber10k-rach <0-10000>",
+	   "Set the maximum BER for valid RACH requests\n"
+	   "BER in 1/10000 units (0=no BER; 100=1% BER)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -643,10 +666,11 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_supp_meas_toa256, cfg_bts_supp_meas_toa256_cmd,
-	"supp-meas-info toa256",
-	"Configure the RSL Supplementary Measurement Info\n"
-	"Report the TOA in 1/256th symbol periods\n")
+DEFUN_ATTR(cfg_bts_supp_meas_toa256, cfg_bts_supp_meas_toa256_cmd,
+	   "supp-meas-info toa256",
+	   "Configure the RSL Supplementary Measurement Info\n"
+	   "Report the TOA in 1/256th symbol periods\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -654,10 +678,11 @@ DEFUN(cfg_bts_supp_meas_toa256, cfg_bts_supp_meas_toa256_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
-	"no supp-meas-info toa256",
-	NO_STR "Configure the RSL Supplementary Measurement Info\n"
-	"Report the TOA in 1/256th symbol periods\n")
+DEFUN_ATTR(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
+	   "no supp-meas-info toa256",
+	   NO_STR "Configure the RSL Supplementary Measurement Info\n"
+	   "Report the TOA in 1/256th symbol periods\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -665,27 +690,30 @@ DEFUN(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_smscb_max_qlen, cfg_bts_smscb_max_qlen_cmd,
-	"smscb queue-max-length <1-60>",
-	"Maximum queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 15)")
+DEFUN_ATTR(cfg_bts_smscb_max_qlen, cfg_bts_smscb_max_qlen_cmd,
+	   "smscb queue-max-length <1-60>",
+	   "Maximum queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 15)",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 	bts->smscb_queue_max_len = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_smscb_tgt_qlen, cfg_bts_smscb_tgt_qlen_cmd,
-	"smscb queue-target-length <1-30>",
-	"Target queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)")
+DEFUN_ATTR(cfg_bts_smscb_tgt_qlen, cfg_bts_smscb_tgt_qlen_cmd,
+	   "smscb queue-target-length <1-30>",
+	   "Target queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 	bts->smscb_queue_tgt_len = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_smscb_qhyst, cfg_bts_smscb_qhyst_cmd,
-	"smscb queue-hysteresis <0-30>",
-	"Hysteresis for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)")
+DEFUN_ATTR(cfg_bts_smscb_qhyst, cfg_bts_smscb_qhyst_cmd,
+	   "smscb queue-hysteresis <0-30>",
+	   "Hysteresis for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 	bts->smscb_queue_hyst = atoi(argv[0]);
@@ -707,11 +735,12 @@ static int parse_mdbm(const char *valstr, const char *unit)
 		return val;
 }
 
-DEFUN(cfg_trx_user_gain,
-	cfg_trx_user_gain_cmd,
-	"user-gain <-100000-100000> (dB|mdB)",
-	"Inform BTS about additional, user-provided gain or attenuation at TRX output\n"
-	"Value of user-provided external gain(+)/attenuation(-)\n" DB_MDB_STR)
+DEFUN_ATTR(cfg_trx_user_gain,
+	   cfg_trx_user_gain_cmd,
+	   "user-gain <-100000-100000> (dB|mdB)",
+	   "Inform BTS about additional, user-provided gain or attenuation at TRX output\n"
+	   "Value of user-provided external gain(+)/attenuation(-)\n" DB_MDB_STR,
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts_trx *trx = vty->index;
 
@@ -759,7 +788,7 @@ DEFUN(cfg_trx_pr_step_interval, cfg_trx_pr_step_interval_cmd,
 
 DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	"ms-power-control (dsp|osmo)",
-	"Mobile Station Power Level Control (change requires restart)\n"
+	"Mobile Station Power Level Control\n"
 	"Handled by DSP\n" "Handled by OsmoBTS\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
@@ -1516,9 +1545,10 @@ static struct cmd_node phy_inst_node = {
 	1,
 };
 
-DEFUN(cfg_phy, cfg_phy_cmd,
-	"phy <0-255>",
-	"Select a PHY to configure\n" "PHY number\n")
+DEFUN_ATTR(cfg_phy, cfg_phy_cmd,
+	   "phy <0-255>",
+	   "Select a PHY to configure\n" "PHY number\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	int phy_nr = atoi(argv[0]);
 	struct phy_link *plink;
@@ -1536,9 +1566,10 @@ DEFUN(cfg_phy, cfg_phy_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_inst, cfg_phy_inst_cmd,
-	"instance <0-255>",
-	"Select a PHY instance to configure\n" "PHY Instance number\n")
+DEFUN_ATTR(cfg_phy_inst, cfg_phy_inst_cmd,
+	   "instance <0-255>",
+	   "Select a PHY instance to configure\n" "PHY Instance number\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	int inst_nr = atoi(argv[0]);
 	struct phy_link *plink = vty->index;

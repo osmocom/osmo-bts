@@ -48,6 +48,8 @@
 #include "trx_if.h"
 #include "loops.h"
 
+#define X(x) (1 << x)
+
 #define OSMOTRX_STR	"OsmoTRX Transceiver configuration\n"
 
 static struct gsm_bts *vty_bts;
@@ -160,10 +162,11 @@ DEFUN(show_phy, show_phy_cmd, "show phy",
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
-	"nominal-tx-power <-10-100>",
-	"Manually set (force) the nominal transmit output power in dBm\n"
-	"Nominal transmit output power level in dBm\n")
+DEFUN_USRATTR(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "nominal-tx-power <-10-100>",
+	      "Manually set (force) the nominal transmit output power in dBm\n"
+	      "Nominal transmit output power level in dBm\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -176,10 +179,11 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_no_nominal_power, cfg_trx_no_nominal_power_cmd,
-	"no nominal-tx-power",
-	NO_STR
-	"Manually set (force) the nominal transmit output power; ask the TRX instead (default)\n")
+DEFUN_USRATTR(cfg_trx_no_nominal_power, cfg_trx_no_nominal_power_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no nominal-tx-power",
+	      NO_STR
+	      "Manually set (force) the nominal transmit output power; ask the TRX instead (default)\n")
 {
 	struct gsm_bts_trx *trx = vty->index;
 	struct phy_instance *pinst = trx_phy_instance(trx);
@@ -228,17 +232,18 @@ DEFUN_DEPRECATED(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
-	"osmotrx maxdly <0-31>",
-	OSMOTRX_STR
-	"Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
-	" Access Burst is the first burst a mobile transmits in order to establish"
-	" a connection and it is used to estimate Timing Advance (TA) which is"
-	" then applied to Normal Bursts to compensate for signal delay due to"
-	" distance. So changing this setting effectively changes maximum range of"
-	" the cell, because if we receive an Access Burst with a delay higher than"
-	" this value, it will be ignored and connection is dropped.\n"
-	"GSM symbols (approx. 1.1km per symbol)\n")
+DEFUN_ATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
+	   "osmotrx maxdly <0-31>",
+	   OSMOTRX_STR
+	   "Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
+	   " Access Burst is the first burst a mobile transmits in order to establish"
+	   " a connection and it is used to estimate Timing Advance (TA) which is"
+	   " then applied to Normal Bursts to compensate for signal delay due to"
+	   " distance. So changing this setting effectively changes maximum range of"
+	   " the cell, because if we receive an Access Burst with a delay higher than"
+	   " this value, it will be ignored and connection is dropped.\n"
+	   "GSM symbols (approx. 1.1km per symbol)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -251,20 +256,20 @@ DEFUN(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	return CMD_SUCCESS;
 }
 
-
-DEFUN(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
-	"osmotrx maxdlynb <0-31>",
-	OSMOTRX_STR
-	"Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
-	" USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
-	" During normal operation, Normal Bursts delay are controlled by a Timing"
-	" Advance control loop and thus Normal Bursts arrive to a BTS with no more"
-	" than a couple GSM symbols, which is already taken into account in osmo-trx."
-	" So changing this setting will have no effect in production installations"
-	" except increasing osmo-trx CPU load. This setting is only useful when"
-	" testing with a transmitter which can't precisely synchronize to the BTS"
-	" downlink signal, like e.g. R&S CMD57.\n"
-	"GSM symbols (approx. 1.1km per symbol)\n")
+DEFUN_ATTR(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
+	   "osmotrx maxdlynb <0-31>",
+	   OSMOTRX_STR
+	   "Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
+	   " USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
+	   " During normal operation, Normal Bursts delay are controlled by a Timing"
+	   " Advance control loop and thus Normal Bursts arrive to a BTS with no more"
+	   " than a couple GSM symbols, which is already taken into account in osmo-trx."
+	   " So changing this setting will have no effect in production installations"
+	   " except increasing osmo-trx CPU load. This setting is only useful when"
+	   " testing with a transmitter which can't precisely synchronize to the BTS"
+	   " downlink signal, like e.g. R&S CMD57.\n"
+	   "GSM symbols (approx. 1.1km per symbol)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -319,12 +324,13 @@ DEFUN_DEPRECATED(cfg_phyinst_power_on, cfg_phyinst_power_on_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_fn_advance, cfg_phy_fn_advance_cmd,
-	"osmotrx fn-advance <0-30>",
-	OSMOTRX_STR
-	"Set the number of frames to be transmitted to transceiver in advance "
-	"of current FN\n"
-	"Advance in frames\n")
+DEFUN_ATTR(cfg_phy_fn_advance, cfg_phy_fn_advance_cmd,
+	   "osmotrx fn-advance <0-30>",
+	   OSMOTRX_STR
+	   "Set the number of frames to be transmitted to transceiver in advance "
+	   "of current FN\n"
+	   "Advance in frames\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_link *plink = vty->index;
 
@@ -333,12 +339,13 @@ DEFUN(cfg_phy_fn_advance, cfg_phy_fn_advance_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_rts_advance, cfg_phy_rts_advance_cmd,
-	"osmotrx rts-advance <0-30>",
-	OSMOTRX_STR
-	"Set the number of frames to be requested (PCU) in advance of current "
-	"FN. Do not change this, unless you have a good reason!\n"
-	"Advance in frames\n")
+DEFUN_ATTR(cfg_phy_rts_advance, cfg_phy_rts_advance_cmd,
+	   "osmotrx rts-advance <0-30>",
+	   OSMOTRX_STR
+	   "Set the number of frames to be requested (PCU) in advance of current "
+	   "FN. Do not change this, unless you have a good reason!\n"
+	   "Advance in frames\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_link *plink = vty->index;
 
@@ -347,11 +354,12 @@ DEFUN(cfg_phy_rts_advance, cfg_phy_rts_advance_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
-	"osmotrx rx-gain <0-50>",
-	OSMOTRX_STR
-	"Set the receiver gain in dB\n"
-	"Gain in dB\n")
+DEFUN_ATTR(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
+	   "osmotrx rx-gain <0-50>",
+	   OSMOTRX_STR
+	   "Set the receiver gain in dB\n"
+	   "Gain in dB\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -382,9 +390,10 @@ DEFUN(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_no_rxgain, cfg_phyinst_no_rxgain_cmd,
-	"no osmotrx rx-gain",
-	NO_STR OSMOTRX_STR "Unset the receiver gain in dB\n")
+DEFUN_USRATTR(cfg_phyinst_no_rxgain, cfg_phyinst_no_rxgain_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no osmotrx rx-gain",
+	      NO_STR OSMOTRX_STR "Unset the receiver gain in dB\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -394,10 +403,11 @@ DEFUN(cfg_phyinst_no_rxgain, cfg_phyinst_no_rxgain_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
-	"no osmotrx maxdly",
-	NO_STR OSMOTRX_STR
-	"Unset the maximum delay of GSM symbols\n")
+DEFUN_USRATTR(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no osmotrx maxdly",
+	      NO_STR OSMOTRX_STR
+	      "Unset the maximum delay of GSM symbols\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -407,10 +417,11 @@ DEFUN(cfg_phyinst_no_maxdly, cfg_phyinst_no_maxdly_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_no_maxdlynb, cfg_phyinst_no_maxdlynb_cmd,
-	"no osmotrx maxdlynb",
-	NO_STR OSMOTRX_STR
-	"Unset the maximum delay of GSM symbols\n")
+DEFUN_USRATTR(cfg_phyinst_no_maxdlynb, cfg_phyinst_no_maxdlynb_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no osmotrx maxdlynb",
+	      NO_STR OSMOTRX_STR
+	      "Unset the maximum delay of GSM symbols\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -467,9 +478,10 @@ DEFUN(cfg_phy_base_port, cfg_phy_base_port_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
-	"osmotrx legacy-setbsic", OSMOTRX_STR
-	"Use SETBSIC to configure transceiver (use ONLY with OpenBTS Transceiver!)\n")
+DEFUN_USRATTR(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "osmotrx legacy-setbsic", OSMOTRX_STR
+	      "Use SETBSIC to configure transceiver (use ONLY with OpenBTS Transceiver!)\n")
 {
 	struct phy_link *plink = vty->index;
 	plink->u.osmotrx.use_legacy_setbsic = true;
@@ -481,9 +493,10 @@ DEFUN(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
-	"no osmotrx legacy-setbsic",
-	NO_STR OSMOTRX_STR "Disable Legacy SETBSIC to configure transceiver\n")
+DEFUN_USRATTR(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no osmotrx legacy-setbsic",
+	      NO_STR OSMOTRX_STR "Disable Legacy SETBSIC to configure transceiver\n")
 {
 	struct phy_link *plink = vty->index;
 	plink->u.osmotrx.use_legacy_setbsic = false;
@@ -491,11 +504,12 @@ DEFUN(cfg_phy_no_setbsic, cfg_phy_no_setbsic_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phy_trxd_max_version, cfg_phy_trxd_max_version_cmd,
-	"osmotrx trxd-max-version (latest|<0-15>)", OSMOTRX_STR
-	"Set maximum TRXD format version to negotiate with TRX\n"
-	"Use latest supported TRXD format version (default)\n"
-	"Maximum TRXD format version number\n")
+DEFUN_USRATTR(cfg_phy_trxd_max_version, cfg_phy_trxd_max_version_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "osmotrx trxd-max-version (latest|<0-15>)", OSMOTRX_STR
+	      "Set maximum TRXD format version to negotiate with TRX\n"
+	      "Use latest supported TRXD format version (default)\n"
+	      "Maximum TRXD format version number\n")
 {
 	struct phy_link *plink = vty->index;
 
