@@ -199,6 +199,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	int rc;
+	uint8_t tn;
 
 	rc = osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ENABLE, (void*)(intptr_t)true);
 	if (rc != 0)
@@ -206,6 +207,14 @@ static int trx_init(struct gsm_bts_trx *trx)
 
 	if (trx == trx->bts->c0)
 		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
+
+	/* Mark Dependency TS as Offline (ready to be Opstarted) */
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
+		if (trx->ts[tn].mo.nm_state.operational == NM_OPSTATE_DISABLED &&
+		    trx->ts[tn].mo.nm_state.availability ==  NM_AVSTATE_DEPENDENCY) {
+			oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+		}
+	}
 
 	/* Send OPSTART ack */
 	return oml_mo_opstart_ack(&trx->mo);

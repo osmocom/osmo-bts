@@ -185,10 +185,22 @@ extern uint8_t rach_detected_Other_g;
 
 static int opstart_compl(struct gsm_abis_mo *mo)
 {
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr);
+	uint8_t tn;
 	/* TODO: Send NACK in case of error! */
 
 	/* Set to Operational State: Enabled */
 	oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+
+	if (mo->obj_class == NM_OC_RADIO_CARRIER) {
+		/* Mark Dependency TS as Offline (ready to be Opstarted) */
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
+			if (trx->ts[tn].mo.nm_state.operational == NM_OPSTATE_DISABLED &&
+			    trx->ts[tn].mo.nm_state.availability ==  NM_AVSTATE_DEPENDENCY) {
+				oml_mo_state_chg(&trx->ts[tn].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+			}
+		}
+	}
 
 	/* hack to auto-activate all SAPIs for the BCCH/CCCH on TS0 */
 	if (mo->obj_class == NM_OC_CHANNEL && mo->obj_inst.trx_nr == 0 &&
