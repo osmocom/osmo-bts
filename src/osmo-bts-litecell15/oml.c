@@ -42,6 +42,7 @@
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 #include "l1_if.h"
 #include "lc15bts.h"
@@ -1887,6 +1888,9 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	int rc;
 
 	switch (mo->obj_class) {
+	case NM_OC_SITE_MANAGER:
+		rc = osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_OPSTART_ACK, NULL);
+		break;
 	case NM_OC_RADIO_CARRIER:
 		rc = trx_init(obj);
 		break;
@@ -1894,7 +1898,6 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		rc = ts_opstart(obj);
 		break;
 	case NM_OC_BTS:
-	case NM_OC_SITE_MANAGER:
 	case NM_OC_BASEB_TRANSC:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:

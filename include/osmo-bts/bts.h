@@ -101,6 +101,11 @@ enum ms_ul_pf_algo {
 	MS_UL_PF_ALGO_EWMA,
 };
 
+/* BTS Site Manager */
+struct gsm_bts_sm {
+	struct gsm_abis_mo mo;
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -150,9 +155,7 @@ struct gsm_bts {
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;
 
-	struct {
-		struct gsm_abis_mo mo;
-	} site_mgr;
+	struct gsm_bts_sm site_mgr;
 
 	/* bitmask of all SI that are present/valid in si_buf */
 	uint32_t si_valid;
@@ -344,6 +347,10 @@ extern void *tall_bts_ctx;
 #define GSM_BTS_SI2Q(bts, i)   (struct gsm48_system_information_type_2quater *)((bts)->si_buf[SYSINFO_TYPE_2quater][i])
 #define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
 #define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
+
+static inline struct gsm_bts *gsm_bts_sm_get_bts(struct gsm_bts_sm *site_mgr) {
+	return (struct gsm_bts *)container_of(site_mgr, struct gsm_bts, site_mgr);
+}
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx, uint8_t bts_num);
 struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num);

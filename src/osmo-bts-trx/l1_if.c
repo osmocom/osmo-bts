@@ -44,6 +44,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
@@ -616,13 +617,15 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	int rc;
 
 	switch (mo->obj_class) {
+	case NM_OC_SITE_MANAGER:
+		rc = osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_OPSTART_ACK, NULL);
+		break;
 	case NM_OC_RADIO_CARRIER:
 		/* activate transceiver */
 		rc = trx_init(obj);
 		break;
 	case NM_OC_CHANNEL:
 	case NM_OC_BTS:
-	case NM_OC_SITE_MANAGER:
 	case NM_OC_BASEB_TRANSC:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:

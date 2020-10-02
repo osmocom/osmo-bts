@@ -52,6 +52,7 @@
 #include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_shutdown_fsm.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 #define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
@@ -200,6 +201,15 @@ const struct value_string bts_impl_flag_desc[] = {
 	{ 0, NULL }
 };
 
+static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
+{
+	if (bts->site_mgr.mo.fi) {
+		osmo_fsm_inst_free(bts->site_mgr.mo.fi);
+		bts->site_mgr.mo.fi = NULL;
+	}
+	return 0;
+}
+
 struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 {
 	struct gsm_bts *bts = talloc_zero(ctx, struct gsm_bts);
@@ -207,6 +217,8 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 
 	if (!bts)
 		return NULL;
+
+	talloc_set_destructor(bts, gsm_bts_talloc_destructor);
 
 	bts->nr = bts_num;
 	bts->num_trx = 0;
@@ -219,10 +231,13 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 					       LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);
 
+	bts->site_mgr.mo.fi = osmo_fsm_inst_alloc(&nm_bts_sm_fsm, bts, &bts->site_mgr,
+						  LOGL_INFO, "bts_sm");
+	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
+		    0xff, 0xff, 0xff);
+
 	gsm_mo_init(&bts->mo, bts, NM_OC_BTS,
 			bts->nr, 0xff, 0xff);
-	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
-			0xff, 0xff, 0xff);
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
@@ -331,7 +346,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
 
 	/* Start with the site manager */
-	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	/* set BTS to dependency */
 	oml_mo_state_init(&bts->mo, -1, NM_AVSTATE_DEPENDENCY);
@@ -395,8 +410,8 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending NM Status.\n");
 
-	/* BTS and SITE MGR are EANBLED, BTS is DEPENDENCY */
-	oml_tx_state_changed(&bts->site_mgr.mo);
+	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS is DEPENDENCY */
+	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
 	oml_tx_state_changed(&bts->mo);
 
 	/* those should all be in DEPENDENCY */

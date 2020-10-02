@@ -30,6 +30,9 @@ struct gsm_abis_mo {
 	struct tlv_parsed *nm_attr;
 	/* BTS to which this MO belongs */
 	struct gsm_bts *bts;
+	/* NM BTS Site Manager FSM */
+	struct osmo_fsm_inst *fi;
+	bool opstart_success;
 };
 
 int oml_init(void);
