@@ -52,9 +52,6 @@ int osmo_amr_rtp_dec(const uint8_t *rtppayload, int payload_len, uint8_t *cmr,
 
 void bts_model_trx_close(struct gsm_bts_trx *trx)
 {
-	struct phy_instance *pinst = trx_phy_instance(trx);
-	phy_link_state_set(pinst->phy_link, PHY_LINK_SHUTDOWN);
-
 	bts_model_trx_close_cb(trx, 0);
 }
 
