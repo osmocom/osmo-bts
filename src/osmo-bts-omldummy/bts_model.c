@@ -150,7 +150,6 @@ int bts_model_chg_adm_state(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)
 {
-	LOGP(DL1C, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return 0;
 }
 
