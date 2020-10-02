@@ -147,6 +147,9 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	case NM_OC_SITE_MANAGER:
 		rc = osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_OPSTART_ACK, NULL);
 		break;
+	case NM_OC_BTS:
+		rc = osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_OPSTART_ACK, NULL);
+		break;
 	case NM_OC_RADIO_CARRIER:
 		trx = (struct gsm_bts_trx*) obj;
 		/* Mark Dependency TS as Offline (ready to be Opstarted) */
@@ -161,7 +164,6 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 		break;
 	case NM_OC_CHANNEL:
 	case NM_OC_BASEB_TRANSC:
-	case NM_OC_BTS:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
 	case NM_OC_GPRS_NSVC:
