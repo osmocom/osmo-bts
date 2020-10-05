@@ -324,7 +324,8 @@ int bts_init(struct gsm_bts *bts)
 		bts->t200_ms[i] = oml_default_t200_ms[i];
 
 	/* default RADIO_LINK_TIMEOUT */
-	bts->radio_link_timeout = 32;
+	bts->radio_link_timeout.oml = 32;
+	bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
 
 	/* Start with the site manager */
 	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);

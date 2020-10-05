@@ -1173,7 +1173,7 @@ static void radio_link_timeout(struct gsm_lchan *lchan, bool bad_frame)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	/* Bypass radio link timeout if set to -1 */
-	if (bts->radio_link_timeout < 0)
+	if (bts->radio_link_timeout.current < 0)
 		return;
 
 	/* if link loss criterion already reached */
@@ -1197,11 +1197,11 @@ static void radio_link_timeout(struct gsm_lchan *lchan, bool bad_frame)
 		return;
 	}
 
-	if (lchan->s < bts->radio_link_timeout) {
+	if (lchan->s < bts->radio_link_timeout.current) {
 		/* count up radio link counter S */
 		int s = lchan->s + 2;
-		if (s > bts->radio_link_timeout)
-			s = bts->radio_link_timeout;
+		if (s > bts->radio_link_timeout.current)
+			s = bts->radio_link_timeout.current;
 		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
 			  "increasing radio link timeout counter S=%d -> %d\n",
 			  lchan->s, s);
@@ -1750,7 +1750,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		}
 	}
 
-	lchan->s = lchan->ts->trx->bts->radio_link_timeout;
+	lchan->s = lchan->ts->trx->bts->radio_link_timeout.current;
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)

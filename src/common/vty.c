@@ -855,6 +855,16 @@ static void bts_dump_vty_features(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, "    (not available)%s", VTY_NEWLINE);
 }
 
+static const char *stringify_radio_link_timeout(int val)
+{
+	static char buf[32];
+	if (val == -1)
+		snprintf(buf, sizeof(buf), "%s", "infinite");
+	else
+		snprintf(buf, sizeof(buf), "%d SACCH blocks", val);
+	return buf;
+}
+
 static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 {
 	const struct gsm_bts_trx *trx;
@@ -902,6 +912,12 @@ static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 		bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
 	vty_out(vty, "  PH-RTS.ind FN advance average: %d, min: %d, max: %d%s",
 		bts_get_avg_fn_advance(bts), bts->fn_stats.min, bts->fn_stats.max, VTY_NEWLINE);
+	vty_out(vty, "  Radio Link Timeout (OML): %s%s",
+		stringify_radio_link_timeout(bts->radio_link_timeout.oml), VTY_NEWLINE);
+	if (bts->radio_link_timeout.vty_override) {
+		vty_out(vty, "  Radio Link Timeout (OVERRIDE): %s%s",
+			stringify_radio_link_timeout(bts->radio_link_timeout.current), VTY_NEWLINE);
+	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		const struct phy_instance *pinst = trx_phy_instance(trx);
@@ -959,6 +975,36 @@ DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test 
 
 	bts = gsm_bts_num(net, bts_nr);
 	oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MINOR, OSMO_EVT_WARN_SW_WARN, "test message sent from VTY");
+
+	return CMD_SUCCESS;
+}
+
+DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-timeout (oml|infinite|<4-64>)",
+		"BTS Specific Commands\n" BTS_NR_STR "Manually override Radio Link Timeout\n"
+		"Use value provided by BSC via A-bis OML (Connection Failure Criterion)\n"
+		"Use infinite timeout (DANGEROUS: only use during testing!)\n"
+		"Number of lost SACCH blocks\n")
+{
+	const struct gsm_network *net = gsmnet_from_vty(vty);
+	int bts_nr = atoi(argv[0]);
+	struct gsm_bts *bts = gsm_bts_num(net, bts_nr);
+
+	if (!bts) {
+		vty_out(vty, "%% can't find BTS '%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[1], "oml")) {
+		bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
+		bts->radio_link_timeout.vty_override = false;
+	} else if (!strcmp(argv[1], "infinite")) {
+		bts->radio_link_timeout.current = -1;
+		bts->radio_link_timeout.vty_override = true;
+		vty_out(vty, "%% INFINITE RADIO LINK TIMEOUT, USE ONLY FOR BTS RF TESTING%s", VTY_NEWLINE);
+	} else {
+		bts->radio_link_timeout.current = atoi(argv[1]);
+		bts->radio_link_timeout.vty_override = true;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -1756,6 +1802,7 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &test_send_failure_event_report_cmd);
+	install_element(ENABLE_NODE, &radio_link_timeout_cmd);
 
 	install_element(CONFIG_NODE, &cfg_phy_cmd);
 	install_node(&phy_node, config_write_phy);

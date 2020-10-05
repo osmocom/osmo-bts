@@ -605,12 +605,16 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		case 0xFF: /* Osmocom specific Extension of TS 12.21 */
 			LOGPFOH(DOML, LOGL_NOTICE, foh, "WARNING: Radio Link Timeout "
 				"explicitly disabled, only use this for lab testing!\n");
-			bts->radio_link_timeout = -1;
+			bts->radio_link_timeout.oml = -1;
+			if (!bts->radio_link_timeout.vty_override)
+				bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
 			break;
 		case 0x01: /* Based on uplink SACCH (radio link timeout) */
 			if (TLVP_LEN(&tp, NM_ATT_CONN_FAIL_CRIT) >= 2 &&
 			    val[1] >= 4 && val[1] <= 64) {
-				bts->radio_link_timeout = val[1];
+				bts->radio_link_timeout.oml = val[1];
+				if (!bts->radio_link_timeout.vty_override)
+					bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
 				break;
 			}
 			/* fall-through */

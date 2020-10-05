@@ -283,7 +283,11 @@ struct gsm_bts {
 	} fn_stats;
 	/* Radio Link Timeout counter. -1 disables timeout for
 	 * lab/measurement purpose */
-	int radio_link_timeout;
+	struct {
+		int oml;		/* value communicated by BSC in OML */
+		int current;		/* actual currently applied value */
+		bool vty_override;	/* OML value overridden by VTY */
+	} radio_link_timeout;
 
 	int ul_power_target;		/* Uplink Rx power target */
 
