@@ -344,6 +344,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* features implemented in 'common', available for all models */
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ETWS_PN);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_IPV6_NSVC);
 
 	rc = bts_model_init(bts);
 	if (rc < 0) {
