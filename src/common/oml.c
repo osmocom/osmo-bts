@@ -1277,12 +1277,13 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_OSMO_NS_LINK_CFG, 10)) {
 		const uint8_t *cur = TLVP_VAL(tp, NM_ATT_OSMO_NS_LINK_CFG);
-		uint16_t address_family;
+		uint8_t address_family;
 
 		memset(&nsvc->local, 0, sizeof(nsvc->local));
 		memset(&nsvc->remote, 0, sizeof(nsvc->remote));
 
-		address_family = osmo_load16be(cur);
+		address_family = *cur;
+		/* 1byte padding */
 		cur += 2;
 
 		memcpy(&nsvc->local.u.sin.sin_port, cur, 2);
