@@ -965,9 +965,9 @@ static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 }
 
 
-DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
-	SHOW_STR "Display information about a BTS\n"
-		BTS_NR_STR)
+DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
+      SHOW_STR "Display information about a BTS\n"
+      BTS_NR_STR)
 {
 	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr;
