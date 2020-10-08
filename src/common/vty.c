@@ -898,9 +898,10 @@ static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 {
 	const struct gsm_bts_trx *trx;
 
-	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
+	vty_out(vty, "BTS %u is of type '%s', in band %s, has CI %u LAC %u, "
 		"BSIC %u and %u TRX%s",
-		bts->nr, "FIXME", gsm_band_name(bts->band),
+		bts->nr, btsvariant2str(bts->variant),
+		gsm_band_name(bts->band),
 		bts->cell_identity,
 		bts->location_area_code, bts->bsic,
 		bts->num_trx, VTY_NEWLINE);
