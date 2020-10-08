@@ -329,8 +329,10 @@ int pcu_tx_info_ind(void)
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		const struct gsm_bts_gprs_nsvc *nsvc = &bts->gprs.nsvc[i];
 		info_ind->nsvci[i] = nsvc->nsvci;
-		info_ind->local_port[i] = nsvc->local.u.sin.sin_port;
-		info_ind->remote_port[i] = nsvc->remote.u.sin.sin_port;
+		/* PCUIF beauty: the NSVC addresses are sent in the network byte order,
+		 * while the port numbers need to be send in the host order.  Sigh. */
+		info_ind->local_port[i] = ntohs(nsvc->local.u.sin.sin_port);
+		info_ind->remote_port[i] = ntohs(nsvc->remote.u.sin.sin_port);
 		switch (nsvc->remote.u.sas.ss_family) {
 		case AF_INET:
 			info_ind->address_type[i] = PCU_IF_ADDR_TYPE_IPV4;
