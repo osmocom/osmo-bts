@@ -1272,7 +1272,7 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 		nsvc->remote.u.sin.sin_addr.s_addr = _cur_l;
 		cur += 4;
 		memcpy(&_cur_s, cur, 2);
-		nsvc->local.u.sin.sin_port = ntohs(_cur_s);
+		nsvc->local.u.sin.sin_port = _cur_s;
 	}
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_OSMO_NS_LINK_CFG, 10)) {
