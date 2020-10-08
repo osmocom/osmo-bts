@@ -883,7 +883,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
-	int i, j;
+	unsigned int tn;
 
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(state->net->bts_list.next, struct gsm_bts, list);
@@ -910,13 +910,10 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 #endif
 
-	/* release PDCH */
-	for (i = 0; i < 8; i++) {
-		trx = gsm_bts_trx_num(bts, i);
-		if (!trx)
-			break;
-		for (j = 0; j < 8; j++) {
-			ts = &trx->ts[j];
+	/* Deactivate all active PDCH timeslots */
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		for (tn = 0; tn < 8; tn++) {
+			ts = &trx->ts[tn];
 			if (ts->mo.nm_state.operational == NM_OPSTATE_ENABLED
 			 && ts->pchan == GSM_PCHAN_PDCH) {
 				ts->lchan[0].rel_act_kind = LCHAN_REL_ACT_PCU;
