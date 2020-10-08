@@ -327,7 +327,7 @@ int pcu_tx_info_ind(void)
 	info_ind->initial_mcs = rlcc->initial_mcs;
 
 	/* NSVC */
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		nsvc = &bts->gprs.nsvc[i];
 		info_ind->nsvci[i] = nsvc->nsvci;
 		info_ind->local_port[i] = nsvc->local.u.sin.sin_port;
