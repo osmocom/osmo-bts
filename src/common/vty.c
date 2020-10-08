@@ -39,6 +39,7 @@
 #include <osmocom/vty/ports.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/sockaddr_str.h>
 #include <osmocom/trau/osmo_ortp.h>
 
 
@@ -1104,6 +1105,73 @@ DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
 	return CMD_SUCCESS;
 }
 
+static void gprs_dump_vty(struct vty *vty, const struct gsm_bts *bts)
+{
+	unsigned int i;
+
+	/* GPRS parameters received from the BSC */
+	vty_out(vty, "BTS %u, RAC %u, NSEI %u, BVCI %u%s",
+		bts->nr, bts->gprs.rac,
+		bts->gprs.nse.nsei,
+		bts->gprs.cell.bvci,
+		VTY_NEWLINE);
+
+	vty_out(vty, "  Cell NM state: ");
+	net_dump_nmstate(vty, &bts->gprs.cell.mo.nm_state);
+	vty_out(vty, "  NSE NM state: ");
+	net_dump_nmstate(vty, &bts->gprs.nse.mo.nm_state);
+
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+		const struct gsm_bts_gprs_nsvc *nsvc = &bts->gprs.nsvc[i];
+
+		vty_out(vty, "  NSVC%u (NSVCI %u) NM state: ", i, nsvc->nsvci);
+		net_dump_nmstate(vty, &nsvc->mo.nm_state);
+
+		if (nsvc->mo.nm_state.operational == NM_OPSTATE_ENABLED) {
+			struct osmo_sockaddr_str remote;
+			struct osmo_sockaddr_str local;
+
+			if (osmo_sockaddr_str_from_sockaddr(&remote, &nsvc->remote.u.sas) != 0)
+				remote = (struct osmo_sockaddr_str) { .ip = "<INVALID>" };
+			if (osmo_sockaddr_str_from_sockaddr(&local, &nsvc->local.u.sas) != 0)
+				local = (struct osmo_sockaddr_str) { .ip = "<INVALID>" };
+
+			/* Work around for over-defensiveness of OSMO_SOCKADDR_STR_FMT_ARGS():
+			 *  error: the address of ‘remote’ will always evaluate as ‘true’
+			 *  error: the address of ‘local’ will always evaluate as ‘true’ */
+			const struct osmo_sockaddr_str *r = &remote;
+			const struct osmo_sockaddr_str *l = &local;
+
+			/* Getting remote/local address info has never been so easy, right? */
+			vty_out(vty, "    Address: r=" OSMO_SOCKADDR_STR_FMT
+					       "<->l=" OSMO_SOCKADDR_STR_FMT "%s",
+				OSMO_SOCKADDR_STR_FMT_ARGS(r),
+				OSMO_SOCKADDR_STR_FMT_ARGS(l),
+				VTY_NEWLINE);
+		}
+	}
+}
+
+DEFUN(show_bts_gprs, show_bts_gprs_cmd,
+      "show bts <0-255> gprs",
+      SHOW_STR "Display information about a BTS\n"
+      BTS_NR_STR "GPRS/EGPRS configuration\n")
+{
+	const struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_bts *bts;
+
+	bts = gsm_bts_num(net, atoi(argv[0]));
+	if (bts == NULL) {
+		vty_out(vty, "%% can't find BTS '%s'%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* TODO: also print info about PCUIF connection */
+	gprs_dump_vty(vty, bts);
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test send-failure-event-report <0-255>",
       "Various testing commands\n"
       "Send a test OML failure event report to the BSC\n" BTS_NR_STR)
@@ -2032,6 +2100,8 @@ int bts_vty_init(void *ctx)
 	install_element_ve(&show_ts_cmd);
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
+	install_element_ve(&show_bts_gprs_cmd);
+
 	install_element_ve(&logging_fltr_l1_sapi_cmd);
 	install_element_ve(&no_logging_fltr_l1_sapi_cmd);
 
