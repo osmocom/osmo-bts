@@ -32,7 +32,7 @@ struct gsm_abis_mo {
 	struct gsm_bts *bts;
 };
 
-int oml_init(struct gsm_abis_mo *mo);
+int oml_init(void);
 int down_oml(struct gsm_bts *bts, struct msgb *msg);
 
 struct msgb *oml_msgb_alloc(void);

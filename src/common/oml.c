@@ -1544,7 +1544,7 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 	return ret;
 }
 
-int oml_init(struct gsm_abis_mo *mo)
+int oml_init()
 {
 	DEBUGP(DOML, "Initializing OML attribute definitions\n");
 	tlv_def_patch(&abis_nm_att_tlvdef_ipa_local, &abis_nm_att_tlvdef_ipa);
