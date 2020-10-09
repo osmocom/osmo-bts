@@ -812,12 +812,10 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 	int rc = 0;
 	struct gsm_bts *bts;
 
-	/* FIXME: allow multiple BTS */
-	if (pcu_prim->bts_nr != 0) {
+	if ((bts = gsm_bts_num(net, pcu_prim->bts_nr)) == NULL) {
 		LOGP(DPCU, LOGL_ERROR, "Received PCU Prim for non-existent BTS %u\n", pcu_prim->bts_nr);
 		return -EINVAL;
 	}
-	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
 
 	switch (msg_type) {
 	case PCU_IF_MSG_DATA_REQ:
