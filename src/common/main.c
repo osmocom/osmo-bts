@@ -77,6 +77,7 @@ static void print_help()
 		"  -e 	--log-level	Set a global log-level\n"
 		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority (deprecated, use VTY instead)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
+		"    	--vty-ref-xml   Generate the VTY reference XML output and exit.\n"
 		);
 	bts_model_print_help();
 }
@@ -95,6 +96,7 @@ static void handle_options(int argc, char **argv)
 
 	while (1) {
 		int option_idx = 0, c;
+		static int long_option = 0;
 		static const struct option long_options[] = {
 			/* FIXME: all those are generic Osmocom app options */
 			{ "help", 0, 0, 'h' },
@@ -109,6 +111,7 @@ static void handle_options(int argc, char **argv)
 			{ "gsmtap-ip", 1, 0, 'i' },
 			{ "trx-num", 1, 0, 't' },
 			{ "realtime", 1, 0, 'r' },
+			{"vty-ref-xml", 0, &long_option, 1},
 			{ 0, 0, 0, 0 }
 		};
 
@@ -122,6 +125,15 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 			break;
+		case 0:
+			switch (long_option) {
+			case 1:
+				vty_dump_xml_ref(stdout);
+				exit(0);
+			default:
+				fprintf(stderr, "error parsing cmdline options\n");
+				exit(2);
+			}
 		case 's':
 			log_set_use_color(osmo_stderr_target, 0);
 			break;
