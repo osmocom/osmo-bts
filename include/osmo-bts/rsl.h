@@ -1,17 +1,6 @@
 #ifndef _RSL_H
 #define _RSL_H
 
-/**
- * What kind of release/activation is done? A silent one for
- * the PDCH or one triggered through RSL?
- */
-enum {
-	LCHAN_REL_ACT_RSL,
-	LCHAN_REL_ACT_PCU,
-	LCHAN_REL_ACT_OML,
-	LCHAN_REL_ACT_REACT, /* remove once auto-activation hack is removed from opstart_compl() */
-};
-
 #define LCHAN_FN_DUMMY 0xFFFFFFFF
 #define LCHAN_FN_WAIT 0xFFFFFFFE
 

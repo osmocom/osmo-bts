@@ -147,6 +147,15 @@ enum lchan_sapi_state {
 	LCHAN_SAPI_S_ERROR,
 };
 
+/* What kind of release/activation is done? A silent one for
+ * the PDCH or one triggered through RSL? */
+enum lchan_rel_act_kind {
+	LCHAN_REL_ACT_RSL,
+	LCHAN_REL_ACT_PCU,
+	LCHAN_REL_ACT_OML,
+	LCHAN_REL_ACT_REACT, /* remove once auto-activation hack is removed from opstart_compl() */
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -269,7 +278,7 @@ struct gsm_lchan {
 	/* S counter for link loss */
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
-	int rel_act_kind;
+	enum lchan_rel_act_kind rel_act_kind;
 	/* RTP header Marker bit to indicate beginning of speech after pause  */
 	bool rtp_tx_marker;
 	/* power handling */
