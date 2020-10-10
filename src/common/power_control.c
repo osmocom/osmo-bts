@@ -39,10 +39,11 @@
  /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
   *  \param lchan logical channel for which to compute (and in which to store) new power value.
   *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
-  *  \param[in] rxLevel Signal level of the received SACCH block, in dBm.
+  *  \param[in] ul_rssi_dbm Signal level of the received SACCH block, in dBm.
   */
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
-		      const uint8_t ms_power_lvl, const int rxLevel)
+		      const uint8_t ms_power_lvl,
+		      const int8_t ul_rssi_dbm)
 {
 	int diff;
 	struct gsm_bts_trx *trx = lchan->ts->trx;
@@ -73,7 +74,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	   to reach expected power. */
-	diff = bts->ul_power_target - rxLevel;
+	diff = bts->ul_power_target - ul_rssi_dbm;
 
 	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop
 	   iteration, i.e. reduce the speed at which the MS transmit power can
@@ -107,7 +108,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			  new_power_lvl, new_dbm,
 			  ms_power_lvl, lchan->ms_power_ctrl.max,
-			  rxLevel, bts->ul_power_target);
+			  ul_rssi_dbm, bts->ul_power_target);
 		return 0;
 	}
 
@@ -117,7 +118,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  lchan->ms_power_ctrl.current, current_dbm, new_power_lvl, new_dbm,
 		  ms_power_lvl, lchan->ms_power_ctrl.max,
-		  rxLevel, bts->ul_power_target);
+		  ul_rssi_dbm, bts->ul_power_target);
 
 	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power_lvl;
