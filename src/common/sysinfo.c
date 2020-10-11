@@ -197,17 +197,50 @@ void regenerate_si3_restoctets(struct gsm_bts *bts)
 	/* Create a temporary copy and patch that, if no PCU is around */
 	si3ro_tmp = bts->si3_ro_decoded;
 	if (!pcu_connected()) {
-		if (!bts->si3_gprs_ind_disabled)
-			LOGP(DPCU, LOGL_NOTICE, "Disabling GPRS Indicator in SI3 (No PCU connected)\n");
-		bts->si3_gprs_ind_disabled = true;
+		if (!bts->si_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Disabling GPRS Indicator in SI (No PCU connected)\n");
+		bts->si_gprs_ind_disabled = true;
 		si3ro_tmp.gprs_ind.present = 0;
 	} else {
-		if (bts->si3_gprs_ind_disabled)
-			LOGP(DPCU, LOGL_NOTICE, "Enabling GPRS Indicator in SI3 (PCU connected)\n");
-		bts->si3_gprs_ind_disabled = false;
+		if (bts->si_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Enabling GPRS Indicator in SI (PCU connected)\n");
+		bts->si_gprs_ind_disabled = false;
 		si3ro_tmp.gprs_ind.present = 1; /* is a no-op as we copy from bts->si3_ro_decoded */
 	}
 
 	/* re-generate the binary SI3 rest octets */
 	osmo_gsm48_rest_octets_si3_encode(si3_buf + si3_size, &si3ro_tmp);
+}
+
+/* re-generate SI4 restoctets with GPRS indicator depending on the PCU socket connection state */
+void regenerate_si4_restoctets(struct gsm_bts *bts)
+{
+	uint8_t *si4_buf = GSM_BTS_SI(bts, SYSINFO_TYPE_4);
+	size_t si4_size = offsetof(struct gsm48_system_information_type_4, data);
+	struct osmo_gsm48_si_ro_info si4ro_tmp;
+
+	/* If BSC has never set SI4, there's nothing to patch */
+	if (!GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_4))
+		return;
+
+	/* If SI4 from BSC doesn't have a GPRS indicator, we won't have anything to patch */
+	if (!bts->si4_ro_decoded.gprs_ind.present)
+		return;
+
+	/* Create a temporary copy and patch that, if no PCU is around */
+	si4ro_tmp = bts->si4_ro_decoded;
+	if (!pcu_connected()) {
+		if (!bts->si_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Disabling GPRS Indicator in SI (No PCU connected)\n");
+		bts->si_gprs_ind_disabled = true;
+		si4ro_tmp.gprs_ind.present = 0;
+	} else {
+		if (bts->si_gprs_ind_disabled)
+			LOGP(DPCU, LOGL_NOTICE, "Enabling GPRS Indicator in SI (PCU connected)\n");
+		bts->si_gprs_ind_disabled = false;
+		si4ro_tmp.gprs_ind.present = 1; /* is a no-op as we copy from bts->si4_ro_decoded */
+	}
+
+	/* re-generate the binary SI4 rest octets */
+	osmo_gsm48_rest_octets_si4_encode(si4_buf + si4_size, &si4ro_tmp, GSM_MACBLOCK_LEN - si4_size);
 }

@@ -158,10 +158,11 @@ struct gsm_bts {
 	/* offsets used while generating SI2quater */
 	size_t e_offset;
 	size_t u_offset;
-	/* decoded SI3 rest octets - *unmodified* as received from BSC */
+	/* decoded SI rest octets - *unmodified* as received from BSC */
 	struct osmo_gsm48_si_ro_info si3_ro_decoded;
-	/* is SI3 GPRS Indicator currently disabled due to lack of PCU connection? */
-	bool si3_gprs_ind_disabled;
+	struct osmo_gsm48_si_ro_info si4_ro_decoded;
+	/* is SI GPRS Indicator currently disabled due to lack of PCU connection? */
+	bool si_gprs_ind_disabled;
 
 	/* ip.access Unit ID's have Site/BTS/TRX layout */
 	union {
@@ -338,6 +339,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher);
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time);
 void regenerate_si3_restoctets(struct gsm_bts *bts);
+void regenerate_si4_restoctets(struct gsm_bts *bts);
 uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 

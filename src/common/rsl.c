@@ -378,6 +378,15 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
 			 * after PCU connects */
 			regenerate_si3_restoctets(bts);
+		} else if (SYSINFO_TYPE_4 == osmo_si) {
+			/* decode original SI4 Rest Octets as sent by BSC */
+			const uint8_t *si4_ro_buf = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
+			si4_ro_buf += offsetof(struct gsm48_system_information_type_4, data);
+			osmo_gsm48_rest_octets_si4_decode(&bts->si4_ro_decoded, si4_ro_buf,
+							  GSM_MACBLOCK_LEN - offsetof(struct gsm48_system_information_type_4, data));
+			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
+			 * after PCU connects */
+			regenerate_si4_restoctets(bts);
 		}
 
 		if (SYSINFO_TYPE_13 == osmo_si)

@@ -746,8 +746,9 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 		oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_CEASED, OSMO_EVT_PCU_VERS, txt->text);
 		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
 
-		/* patch SI3 to advertise GPRS, *if* the SI3 sent by BSC said so */
+		/* patch SI to advertise GPRS, *if* the SI sent by BSC said so */
 		regenerate_si3_restoctets(bts);
+		regenerate_si4_restoctets(bts);
 
 		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13))
 			return pcu_tx_si13(bts, true);
@@ -899,6 +900,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 
 	/* patch SI3 to remove GPRS indicator */
 	regenerate_si3_restoctets(bts);
+	regenerate_si4_restoctets(bts);
 
 	/* re-enable the generation of ACCEPT for new connections */
 	state->listen_bfd.when |= OSMO_FD_READ;
