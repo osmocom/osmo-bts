@@ -98,7 +98,7 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_2quater;
 			tc4_cnt += 1;
 		}
-		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13)) {
+		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13) && pcu_connected()) {
 			tc4_sub[tc4_cnt] = SYSINFO_TYPE_13;
 			tc4_cnt += 1;
 		}
