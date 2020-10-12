@@ -51,12 +51,12 @@ build_bts() {
     ./configure $conf_flags
     $MAKE $PARALLEL_MAKE
     $MAKE check || cat-testlogs.sh
-    DISTCHECK_CONFIGURE_FLAGS="$conf_flags" $MAKE distcheck || cat-testlogs.sh
+    DISTCHECK_CONFIGURE_FLAGS="$conf_flags" $MAKE $PARALLEL_MAKE distcheck || cat-testlogs.sh
 
     # Manuals: publish
     if [ "$WITH_MANUALS" = "1" ] && [ "$PUBLISH" = "1" ]; then
         $MAKE -C "$base/doc/manuals" publish
     fi
 
-    $MAKE maintainer-clean
+    $MAKE $PARALLEL_MAKE maintainer-clean
 }
