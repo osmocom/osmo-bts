@@ -27,6 +27,32 @@
 
 #include <stdio.h>
 
+static struct gsm_bts *g_bts = NULL;
+static struct gsm_bts_trx *g_trx = NULL;
+
+static void init_test(const char *name)
+{
+	if (g_trx != NULL)
+		talloc_free(g_trx);
+	if (g_bts != NULL)
+		talloc_free(g_bts);
+
+	g_bts = talloc_zero(tall_bts_ctx, struct gsm_bts);
+	OSMO_ASSERT(g_bts != NULL);
+
+	INIT_LLIST_HEAD(&g_bts->trx_list);
+	g_trx = gsm_bts_trx_alloc(g_bts);
+	OSMO_ASSERT(g_trx != NULL);
+
+	g_trx->ms_pwr_ctl_soft = true;
+
+	g_bts->ul_power_target = -75,
+	g_bts->band = GSM_BAND_1800,
+	g_bts->c0 = g_trx;
+
+	printf("\nStarting test case '%s'\n", name);
+}
+
 static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_ret, uint8_t exp_current)
 {
 	int ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
@@ -38,24 +64,11 @@ static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_
 
 static void test_power_loop(void)
 {
-	struct gsm_bts bts;
-	struct gsm_bts_trx trx;
-	struct gsm_bts_trx_ts ts;
 	struct gsm_lchan *lchan;
 
-	memset(&bts, 0, sizeof(bts));
-	memset(&trx, 0, sizeof(trx));
-	memset(&ts, 0, sizeof(ts));
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
 
-	lchan = &ts.lchan[0];
-	lchan->ts = &ts;
-	ts.trx = &trx;
-	trx.bts = &bts;
-	bts.band = GSM_BAND_1800;
-	trx.ms_pwr_ctl_soft = true;
-	bts.ul_power_target = -75;
-
-	lchan->state = LCHAN_S_NONE;
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
@@ -76,7 +89,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 1, 5);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, bts.ul_power_target, 0, 5);
+	apply_power_test(lchan, g_bts->ul_power_target, 0, 5);
 
 	apply_power_test(lchan, -90, 1, 3);
 	apply_power_test(lchan, -90, 1, 2); /* .max is pwr lvl 2 */
@@ -94,7 +107,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 0, 29);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, bts.ul_power_target, 0, 29);
+	apply_power_test(lchan, g_bts->ul_power_target, 0, 29);
 
 	/* Now go down, steps are double size in this direction: */
 	apply_power_test(lchan, -45, 1, 1);
@@ -102,13 +115,13 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -45, 1, 9);
 
 	/* Go down only one level down and up: */
-	apply_power_test(lchan, bts.ul_power_target + 2, 1, 10);
-	apply_power_test(lchan, bts.ul_power_target - 2, 1, 9);
+	apply_power_test(lchan, g_bts->ul_power_target + 2, 1, 10);
+	apply_power_test(lchan, g_bts->ul_power_target - 2, 1, 9);
 
 	/* Check if BSC requesting a low max power is applied after loop calculation: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 2);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 14);
-	apply_power_test(lchan, bts.ul_power_target + 2, 1, 14);
+	apply_power_test(lchan, g_bts->ul_power_target + 2, 1, 14);
 	/* Set back a more normal max: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);

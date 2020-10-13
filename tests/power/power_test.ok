@@ -1,4 +1,6 @@
 Testing power loop...
+
+Starting test case 'test_power_loop'
 power control [0]: MS current power 15
 power control [1]: MS current power 13
 power control [1]: MS current power 11
