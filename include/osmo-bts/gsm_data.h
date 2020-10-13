@@ -286,6 +286,9 @@ struct gsm_lchan {
 		uint8_t current;
 		uint8_t max;
 		bool fixed;
+
+		/* Scaled up (100 times) average UL RSSI */
+		int avg100_ul_rssi;
 	} ms_power_ctrl;
 
 	/* BTS power reduction (in dB) */

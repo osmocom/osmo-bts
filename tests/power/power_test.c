@@ -61,6 +61,9 @@ static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_
 	old = lchan->ms_power_ctrl.current;
 	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
 
+	/* Keep the measurement counter updated */
+	lchan->meas.res_nr++;
+
 	printf("lchan_ms_pwr_ctrl(RxLvl=%d dBm) returns %d (expected %d)\n",
 	       rxlev, ret, exp_ret);
 	printf("\tMS current power %u -> %u (expected %u)\n",
@@ -140,6 +143,68 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -40, 1, 15);
 }
 
+static void test_pf_algo_ewma(void)
+{
+	struct gsm_lchan *lchan;
+	const int *avg100;
+
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
+	avg100 = &lchan->ms_power_ctrl.avg100_ul_rssi;
+
+	g_bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
+	g_bts->ul_power_ctrl.pf.ewma.alpha = 20; /* 80% smoothing */
+
+	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
+
+#define CHECK_UL_RSSI_AVG100(exp) \
+	printf("\tAvg[t] is %2.2f dBm (expected %2.2f dBm)\n", \
+	       ((float) *avg100) / 100, exp);
+
+	/* UL RSSI remains constant => no UL power change */
+	apply_power_test(lchan, -75, 0, 15);
+	CHECK_UL_RSSI_AVG100(-75.00);
+
+	/* Avg[t] = (0.2 * -90) + (0.8 * -75) = -78.0 dBm */
+	apply_power_test(lchan, -90, 1, 13);
+	CHECK_UL_RSSI_AVG100(-78.00);
+
+	/* Avg[t] = (0.2 * -90) + (0.8 * -78) = -80.4 dBm */
+	apply_power_test(lchan, -90, 1, 11);
+	CHECK_UL_RSSI_AVG100(-80.40);
+
+	/* Avg[t] = (0.2 * -70) + (0.8 * -80.4) = -78.32 dBm,
+	 * but due to up-/down-scaling artefacts we get the following:
+	 *   Avg100[t] = Avg100[t - 1] + A * (Pwr - Avg[t] / 100)
+	 *   Avg100[t] = -8040 + 20 * (-70 - (-8040 / 100))
+	 *   Avg100[t] = -8040 + 20 * (-70 - (-8040 / 100))
+	 *   Avg100[t] = -8040 + 20 * (-70 + 80)
+	 *   Avg100[t] = -8040 + 200 = -7840
+	 *   Avg[t] = -7840 / 100 = -78.4 */
+	apply_power_test(lchan, -70, 1, 9);
+	CHECK_UL_RSSI_AVG100(-78.40);
+
+	g_bts->ul_power_ctrl.pf.ewma.alpha = 70; /* 30% smoothing */
+	lchan->ms_power_ctrl.current = 15;
+	lchan->meas.res_nr = 0;
+
+	/* This is the first sample, the filter outputs it as-is */
+	apply_power_test(lchan, -50, 0, 15);
+	CHECK_UL_RSSI_AVG100(-50.00);
+
+	/* Avg[t] = (0.7 * -50) + (0.3 * -50) = -50.0 dBm */
+	apply_power_test(lchan, -50, 0, 15);
+	CHECK_UL_RSSI_AVG100(-50.0);
+
+	/* Simulate SACCH block loss (-110 dBm):
+	 * Avg[t] = (0.7 * -110) + (0.3 * -50) = -92.0 dBm */
+	apply_power_test(lchan, -110, 1, 13);
+	CHECK_UL_RSSI_AVG100(-92.0);
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing power loop...\n");
@@ -154,6 +219,7 @@ int main(int argc, char **argv)
 	log_set_use_color(osmo_stderr_target, 0);
 
 	test_power_loop();
+	test_pf_algo_ewma();
 
 	printf("Power loop test OK\n");
 

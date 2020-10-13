@@ -1,6 +1,7 @@
 /* MS Power Control Loop L1 */
 
 /* (C) 2014 by Holger Hans Peter Freyther
+ * Contributions by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -36,6 +37,60 @@
 #define MS_RAISE_MAX_DB 4
 #define MS_LOWER_MAX_DB 8
 
+/* We don't want to deal with floating point, so we scale up */
+#define EWMA_SCALE_FACTOR 100
+
+/* Base Low-Pass Single-Pole IIR Filter (EWMA) formula:
+ *
+ *   Avg[n] = a * Pwr[n] + (1 - a) * Avg[n - 1]
+ *
+ * where parameter 'a' determines how much weight of the latest UL RSSI measurement
+ * result 'Pwr[n]' carries vs the weight of the average 'Avg[n - 1]'.  The value of
+ * 'a' is usually a float in range 0 .. 1, so:
+ *
+ *  - value 0.5 gives equal weight to both 'Pwr[n]' and 'Avg[n - 1]';
+ *  - value 1.0 means no filtering at all (pass through);
+ *  - value 0.0 makes no sense.
+ *
+ * Further optimization:
+ *
+ *   Avg[n] = a * Pwr[n] + Avg[n - 1] - a * Avg[n - 1]
+ *   ^^^^^^                ^^^^^^^^^^
+ *
+ * a) this can be implemented in C using '+=' operator:
+ *
+ *   Avg += a * Pwr - a * Avg
+ *   Avg += a * (Pwr - Avg)
+ *
+ * b) everything is scaled up by 100 to avoid floating point stuff:
+ *
+ *   Avg100 += A * (Pwr - Avg)
+ *
+ * where 'Avg100' is 'Avg * 100' and 'A' is 'a * 100'.
+ *
+ * For more details, see:
+ *
+ *   https://en.wikipedia.org/wiki/Moving_average
+ *   https://en.wikipedia.org/wiki/Low-pass_filter#Simple_infinite_impulse_response_filter
+ *   https://tomroelandts.com/articles/low-pass-single-pole-iir-filter
+ */
+static int8_t lchan_ul_pf_ewma(const struct gsm_bts *bts,
+			       struct gsm_lchan *lchan,
+			       const int8_t Pwr)
+{
+	const uint8_t A = bts->ul_power_ctrl.pf.ewma.alpha;
+	int *Avg100 = &lchan->ms_power_ctrl.avg100_ul_rssi;
+
+	/* We don't have 'Avg[n - 1]' if this is the first run */
+	if (lchan->meas.res_nr == 0) {
+		*Avg100 = Pwr * EWMA_SCALE_FACTOR;
+		return Pwr;
+	}
+
+	*Avg100 += A * (Pwr - *Avg100 / EWMA_SCALE_FACTOR);
+	return *Avg100 / EWMA_SCALE_FACTOR;
+}
+
  /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
   *  \param lchan logical channel for which to compute (and in which to store) new power value.
   *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
@@ -51,6 +106,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
+	int8_t avg_ul_rssi_dbm;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
 		return 0;
@@ -72,9 +128,20 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
+	/* Filter UL RSSI to reduce unnecessary Tx power oscillations */
+	switch (bts->ul_power_ctrl.pf_algo) {
+	case MS_UL_PF_ALGO_EWMA:
+		avg_ul_rssi_dbm = lchan_ul_pf_ewma(bts, lchan, ul_rssi_dbm);
+		break;
+	case MS_UL_PF_ALGO_NONE:
+	default:
+		/* No filtering (pass through) */
+		avg_ul_rssi_dbm = ul_rssi_dbm;
+	}
+
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	   to reach expected power. */
-	diff = bts->ul_power_target - ul_rssi_dbm;
+	diff = bts->ul_power_target - avg_ul_rssi_dbm;
 
 	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop
 	   iteration, i.e. reduce the speed at which the MS transmit power can
@@ -108,7 +175,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			  new_power_lvl, new_dbm,
 			  ms_power_lvl, lchan->ms_power_ctrl.max,
-			  ul_rssi_dbm, bts->ul_power_target);
+			  avg_ul_rssi_dbm, bts->ul_power_target);
 		return 0;
 	}
 
@@ -118,7 +185,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  lchan->ms_power_ctrl.current, current_dbm, new_power_lvl, new_dbm,
 		  ms_power_lvl, lchan->ms_power_ctrl.max,
-		  ul_rssi_dbm, bts->ul_power_target);
+		  avg_ul_rssi_dbm, bts->ul_power_target);
 
 	/* store the resulting new MS power level in the lchan */
 	lchan->ms_power_ctrl.current = new_power_lvl;

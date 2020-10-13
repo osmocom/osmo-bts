@@ -95,6 +95,12 @@ struct bts_smscb_state {
 	struct smscb_msg *default_msg; /* default broadcast message; NULL if none */
 };
 
+/* Tx power filtering algorithm */
+enum ms_ul_pf_algo {
+	MS_UL_PF_ALGO_NONE = 0,
+	MS_UL_PF_ALGO_EWMA,
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -290,7 +296,22 @@ struct gsm_bts {
 		bool vty_override;	/* OML value overridden by VTY */
 	} radio_link_timeout;
 
+	/* TODO: move it to bts->ul_power_ctrl struct */
 	int ul_power_target;		/* Uplink Rx power target */
+
+	/* Uplink power control */
+	struct {
+		/* UL RSSI filtering algorithm */
+		enum ms_ul_pf_algo pf_algo;
+		/* (Optional) filtering parameters */
+		union {
+			/* Exponentially Weighted Moving Average */
+			struct {
+				/* Smoothing factor: higher the value - less smoothing */
+				uint8_t alpha; /* 1 .. 99 (in %) */
+			} ewma;
+		} pf;
+	} ul_power_ctrl;
 
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;

@@ -256,6 +256,19 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " uplink-power-target %d%s", bts->ul_power_target, VTY_NEWLINE);
+
+	/* MS Tx power filtering algorithm and parameters */
+	switch (bts->ul_power_ctrl.pf_algo) {
+	case MS_UL_PF_ALGO_EWMA:
+		vty_out(vty, " uplink-power-filtering algo ewma beta %u%s",
+			100 - bts->ul_power_ctrl.pf.ewma.alpha, VTY_NEWLINE);
+		break;
+	case MS_UL_PF_ALGO_NONE:
+	default:
+		vty_out(vty, " no uplink-power-filtering%s", VTY_NEWLINE);
+		break;
+	}
+
 	if (bts->agch_queue.thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
 		 || bts->agch_queue.low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
 		 || bts->agch_queue.high_level != GSM_BTS_AGCH_QUEUE_HIGH_LEVEL_DEFAULT)
@@ -611,6 +624,37 @@ DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	struct gsm_bts *bts = vty->index;
 
 	bts->ul_power_target = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_no_bts_ul_power_filter,
+	   cfg_bts_no_ul_power_filter_cmd,
+	   "no uplink-power-filtering",
+	   NO_STR "Disable filtering for uplink power control loop\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_NONE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_ul_power_filter_ewma,
+	   cfg_bts_ul_power_filter_ewma_cmd,
+	   "uplink-power-filtering algo ewma beta <1-99>",
+	   "Configure filtering for uplink power control loop\n"
+	   "Select the filtering algorithm\n"
+	   "Exponentially Weighted Moving Average (EWMA)\n"
+	   "Smoothing factor (in %%): beta = (100 - alpha)\n"
+	   "1%% - lowest smoothing, 99%% - highest smoothing\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
+	bts->ul_power_ctrl.pf.ewma.alpha = 100 - atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1805,6 +1849,8 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
 	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_ul_power_filter_cmd);
+	install_element(BTS_NODE, &cfg_bts_ul_power_filter_ewma_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
 	install_element(BTS_NODE, &cfg_bts_max_ber_rach_cmd);
