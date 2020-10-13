@@ -55,11 +55,16 @@ static void init_test(const char *name)
 
 static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_ret, uint8_t exp_current)
 {
-	int ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
+	uint8_t old;
+	int ret;
 
-	printf("power control [%d]: MS current power %u\n", ret, lchan->ms_power_ctrl.current);
-	OSMO_ASSERT(ret == exp_ret);
-	OSMO_ASSERT(lchan->ms_power_ctrl.current == exp_current);
+	old = lchan->ms_power_ctrl.current;
+	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
+
+	printf("lchan_ms_pwr_ctrl(RxLvl=%d dBm) returns %d (expected %d)\n",
+	       rxlev, ret, exp_ret);
+	printf("\tMS current power %u -> %u (expected %u)\n",
+	       old, lchan->ms_power_ctrl.current, exp_current);
 }
 
 static void test_power_loop(void)

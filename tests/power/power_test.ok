@@ -1,28 +1,52 @@
 Testing power loop...
 
 Starting test case 'test_power_loop'
-power control [0]: MS current power 15
-power control [1]: MS current power 13
-power control [1]: MS current power 11
-power control [1]: MS current power 9
-power control [1]: MS current power 7
-power control [1]: MS current power 5
-power control [0]: MS current power 5
-power control [1]: MS current power 3
-power control [1]: MS current power 2
-power control [0]: MS current power 2
-power control [1]: MS current power 0
-power control [0]: MS current power 0
-power control [1]: MS current power 30
-power control [1]: MS current power 29
-power control [0]: MS current power 29
-power control [0]: MS current power 29
-power control [1]: MS current power 1
-power control [1]: MS current power 5
-power control [1]: MS current power 9
-power control [1]: MS current power 10
-power control [1]: MS current power 9
-power control [1]: MS current power 14
-power control [0]: MS current power 14
-power control [1]: MS current power 15
+lchan_ms_pwr_ctrl(RxLvl=-60 dBm) returns 0 (expected 0)
+	MS current power 15 -> 15 (expected 15)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 15 -> 13 (expected 13)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 13 -> 11 (expected 11)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 11 -> 9 (expected 9)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 9 -> 7 (expected 7)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 7 -> 5 (expected 5)
+lchan_ms_pwr_ctrl(RxLvl=-75 dBm) returns 0 (expected 0)
+	MS current power 5 -> 5 (expected 5)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 5 -> 3 (expected 3)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 3 -> 2 (expected 2)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 0 (expected 0)
+	MS current power 2 -> 2 (expected 2)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 2 -> 0 (expected 0)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 0 (expected 0)
+	MS current power 0 -> 0 (expected 0)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 0 -> 30 (expected 30)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 1 (expected 1)
+	MS current power 30 -> 29 (expected 29)
+lchan_ms_pwr_ctrl(RxLvl=-90 dBm) returns 0 (expected 0)
+	MS current power 29 -> 29 (expected 29)
+lchan_ms_pwr_ctrl(RxLvl=-75 dBm) returns 0 (expected 0)
+	MS current power 29 -> 29 (expected 29)
+lchan_ms_pwr_ctrl(RxLvl=-45 dBm) returns 1 (expected 1)
+	MS current power 29 -> 1 (expected 1)
+lchan_ms_pwr_ctrl(RxLvl=-45 dBm) returns 1 (expected 1)
+	MS current power 1 -> 5 (expected 5)
+lchan_ms_pwr_ctrl(RxLvl=-45 dBm) returns 1 (expected 1)
+	MS current power 5 -> 9 (expected 9)
+lchan_ms_pwr_ctrl(RxLvl=-73 dBm) returns 1 (expected 1)
+	MS current power 9 -> 10 (expected 10)
+lchan_ms_pwr_ctrl(RxLvl=-77 dBm) returns 1 (expected 1)
+	MS current power 10 -> 9 (expected 9)
+lchan_ms_pwr_ctrl(RxLvl=-73 dBm) returns 1 (expected 1)
+	MS current power 9 -> 14 (expected 14)
+lchan_ms_pwr_ctrl(RxLvl=-60 dBm) returns 0 (expected 0)
+	MS current power 14 -> 14 (expected 14)
+lchan_ms_pwr_ctrl(RxLvl=-40 dBm) returns 1 (expected 1)
+	MS current power 14 -> 15 (expected 15)
 Power loop test OK
