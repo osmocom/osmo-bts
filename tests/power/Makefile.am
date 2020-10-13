@@ -3,7 +3,7 @@ AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOCODEC_CFLAGS) $(LIBOSMOGSM_CFLA
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOCODEC_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS)
 
 noinst_PROGRAMS = power_test
-EXTRA_DIST = power_test.ok
+EXTRA_DIST = power_test.ok power_test.err
 
 power_test_SOURCES = power_test.c $(srcdir)/../stubs.c
 power_test_LDADD = $(top_builddir)/src/common/libbts.a $(LIBOSMOABIS_LIBS) $(LDADD)

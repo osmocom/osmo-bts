@@ -34,7 +34,8 @@ AT_CLEANUP
 AT_SETUP([power])
 AT_KEYWORDS([power])
 cat $abs_srcdir/power/power_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/power/power_test], [], [expout], [ignore])
+cat $abs_srcdir/power/power_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/power/power_test], [], [expout], [experr])
 AT_CLEANUP
 
 AT_SETUP([tx_power])
