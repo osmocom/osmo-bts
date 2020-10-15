@@ -244,53 +244,6 @@ static void tx_tch_common(struct l1sched_ts *l1ts,
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
-#if 0
-	/* handle loss detection of received TCH frames */
-	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
-	 && ++(chan_state->lost_frames) > 5) {
-		uint8_t tch_data[GSM_FR_BYTES];
-		int len;
-
-		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Missing TCH bursts detected, sending "
-			"BFI for %s\n", trx_chan_desc[br->chan].name);
-
-		/* indicate bad frame */
-		switch (tch_mode) {
-		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
-			if (br->chan != TRXC_TCHF) { /* HR */
-				tch_data[0] = 0x70; /* F = 0, FT = 111 */
-				memset(tch_data + 1, 0, 14);
-				len = 15;
-				break;
-			}
-			memset(tch_data, 0, GSM_FR_BYTES);
-			len = GSM_FR_BYTES;
-			break;
-		case GSM48_CMODE_SPEECH_EFR: /* EFR */
-			if (br->chan != TRXC_TCHF)
-				goto inval_mode1;
-			memset(tch_data, 0, GSM_EFR_BYTES);
-			len = GSM_EFR_BYTES;
-			break;
-		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-			len = amr_compose_payload(tch_data,
-				chan_state->codec[chan_state->dl_cmr],
-				chan_state->codec[chan_state->dl_ft], 1);
-			if (len < 2)
-				break;
-			memset(tch_data + 2, 0, len - 2);
-			_sched_compose_tch_ind(l1ts, 0, br->chan, tch_data, len);
-			break;
-		default:
-inval_mode1:
-			LOGP(DL1P, LOGL_ERROR, "TCH mode invalid, please "
-				"fix!\n");
-			len = 0;
-		}
-		if (len)
-			_sched_compose_tch_ind(l1ts, 0, br->chan, tch_data, len);
-	}
-#endif
 
 	/* get frame and unlink from queue */
 	msg1 = _sched_dequeue_prim(l1ts, br);

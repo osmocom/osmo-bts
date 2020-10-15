@@ -207,21 +207,6 @@ got_msg:
 
 	/* BURST BYPASS */
 
-	/* handle loss detection of SACCH */
-	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[br->chan].link_id)) {
-		/* count and send BFI */
-		if (++(l1ts->chan_state[br->chan].lost_frames) > 1) {
-			/* TODO: Should we pass old TOA here? Otherwise we risk
-			 * unnecessary decreasing TA */
-
-			/* Note: RSSI is set to 0 to indicate to the higher
-			 * layers that this is a faked ph_data_ind */
-			_sched_compose_ph_data_ind(l1ts, 0, br->chan, NULL, 0,
-						   0, 0, 0, 10000,
-						   PRES_INFO_INVALID);
-		}
-	}
-
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(l1ts, 464);

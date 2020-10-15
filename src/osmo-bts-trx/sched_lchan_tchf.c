@@ -332,59 +332,6 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
 
-	/* handle loss detection of received TCH frames */
-	if (rsl_cmode == RSL_CMOD_SPD_SPEECH
-	    && ++(chan_state->lost_frames) > 5) {
-		uint8_t tch_data[GSM_FR_BYTES];
-		int len;
-
-		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Missing TCH bursts detected, sending BFI\n");
-
-		/* indicate bad frame */
-		switch (tch_mode) {
-		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
-			if (br->chan != TRXC_TCHF) { /* HR */
-				tch_data[0] = 0x70; /* F = 0, FT = 111 */
-				memset(tch_data + 1, 0, 14);
-				len = 15;
-				break;
-			}
-			memset(tch_data, 0, GSM_FR_BYTES);
-			len = GSM_FR_BYTES;
-			break;
-		case GSM48_CMODE_SPEECH_EFR: /* EFR */
-			if (br->chan != TRXC_TCHF)
-				goto inval_mode1;
-			memset(tch_data, 0, GSM_EFR_BYTES);
-			len = GSM_EFR_BYTES;
-			break;
-		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-			len = osmo_amr_rtp_enc(tch_data,
-				chan_state->codec[chan_state->dl_cmr],
-				chan_state->codec[chan_state->dl_ft], AMR_BAD);
-			if (len < 2) {
-				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
-					"Failed to encode AMR_BAD frame (rc=%d), "
-					"not sending BFI\n", len);
-				len = 0;
-				break;
-			}
-			memset(tch_data + 2, 0, len - 2);
-			break;
-		default:
-inval_mode1:
-			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "TCH mode invalid, please fix!\n");
-			len = 0;
-		}
-
-		if (len) {
-			/* Note: RSSI/ToA256 is set to 0 to indicate to the higher
-			 * layers that this is a faked tch_ind */
-			_sched_compose_tch_ind(l1ts, br->fn, br->chan,
-					       tch_data, len, 0, 10000, 0, 0, 0);
-		}
-	}
-
 	/* get frame and unlink from queue */
 	msg1 = _sched_dequeue_prim(l1ts, br);
 	msg2 = _sched_dequeue_prim(l1ts, br);

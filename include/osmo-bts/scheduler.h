@@ -103,7 +103,6 @@ struct l1sched_chan_state {
 	uint8_t			ul_mask;	/* mask of received bursts */
 
 	/* loss detection */
-	uint8_t			lost_frames;	/* how many L2 frames were lost */
 	uint32_t		last_tdma_fn;	/* last processed TDMA frame number */
 	uint32_t		proc_tdma_fs;	/* how many TDMA frames were processed */
 	uint32_t		lost_tdma_fs;	/* how many TDMA frames were lost */
