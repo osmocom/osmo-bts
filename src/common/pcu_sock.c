@@ -407,6 +407,10 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 		return -EINVAL;
 	}
 
+	/* Do not send INFO.ind if PCU is not connected */
+	if (!pcu_connected())
+		return 0;
+
 	/* If all infos have been received, of if one info is updated after
 	 * all infos have been received, transmit info update. */
 	if (avail_lai && avail_nse && avail_cell && avail_nsvc[0])
