@@ -968,6 +968,37 @@ int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
 	return 0;
 }
 
+/* Remove all matching (by chan_nr & link_id) primitives from the given queue */
+static void trx_sched_queue_filter(struct llist_head *q, uint8_t chan_nr, uint8_t link_id)
+{
+	struct msgb *msg, *_msg;
+
+	llist_for_each_entry_safe(msg, _msg, q, list) {
+		struct osmo_phsap_prim *l1sap = msgb_l1sap_prim(msg);
+		switch (l1sap->oph.primitive) {
+		case PRIM_PH_DATA:
+			if (l1sap->u.data.chan_nr != chan_nr)
+				continue;
+			if (l1sap->u.data.link_id != link_id)
+				continue;
+			break;
+		case PRIM_TCH:
+			if (l1sap->u.tch.chan_nr != chan_nr)
+				continue;
+			if (link_id != 0x00)
+				continue;
+			break;
+		default:
+			/* Shall not happen */
+			OSMO_ASSERT(0);
+		}
+
+		/* Unlink and free() */
+		llist_del(&msg->list);
+		talloc_free(msg);
+	}
+}
+
 /* setting all logical channels given attributes to active/inactive */
 int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id, bool active)
 {
@@ -1011,6 +1042,9 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			OSMO_ASSERT(chan_state->lchan != NULL);
 		} else {
 			chan_state->ho_rach_detect = 0;
+
+			/* Remove pending Tx prims belonging to this lchan */
+			trx_sched_queue_filter(&l1ts->dl_prims, chan_nr, link_id);
 		}
 
 		chan_state->active = active;
