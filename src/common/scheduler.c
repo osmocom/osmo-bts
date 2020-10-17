@@ -988,7 +988,7 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 		if ((trx_sched_multiframes[l1ts->mf_index].pchan == GSM_PCHAN_PDCH)
 		    && !(trx_chan_desc[i].flags & TRX_CHAN_FLAG_PDCH))
 			continue;
-		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
+		if (trx_chan_desc[i].chan_nr == (chan_nr & RSL_CHAN_NR_MASK)
 		 && trx_chan_desc[i].link_id == link_id) {
 			rc = 0;
 			if (chan_state->active == active)
