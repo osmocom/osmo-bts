@@ -651,10 +651,6 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 	/* get prim of current fn from queue */
 	llist_for_each_entry_safe(msg, msg2, &l1ts->dl_prims, list) {
 		l1sap = msgb_l1sap_prim(msg);
-		if (l1sap->oph.operation != PRIM_OP_REQUEST) {
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
-			goto free_msg;
-		}
 		switch (l1sap->oph.primitive) {
 		case PRIM_PH_DATA:
 			chan_nr = l1sap->u.data.chan_nr;
@@ -806,6 +802,7 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
 		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
+	OSMO_ASSERT(l1sap->oph.operation == PRIM_OP_REQUEST);
 	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
@@ -827,6 +824,7 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
 		l1sap->u.tch.chan_nr);
 
+	OSMO_ASSERT(l1sap->oph.operation == PRIM_OP_REQUEST);
 	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
