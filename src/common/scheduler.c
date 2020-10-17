@@ -643,14 +643,13 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 				 enum trx_chan_type chan)
 {
 	struct msgb *msg, *msg2;
-	struct osmo_phsap_prim *l1sap;
 	uint32_t prim_fn, l1sap_fn;
 	uint8_t chan_nr, link_id;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 
 	/* get prim of current fn from queue */
 	llist_for_each_entry_safe(msg, msg2, &l1ts->dl_prims, list) {
-		l1sap = msgb_l1sap_prim(msg);
+		struct osmo_phsap_prim *l1sap = msgb_l1sap_prim(msg);
 		switch (l1sap->oph.primitive) {
 		case PRIM_PH_DATA:
 			chan_nr = l1sap->u.data.chan_nr;
