@@ -1002,16 +1002,18 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			chan_state->ul_bursts = NULL;
 		}
 
-		if (active)
-			memset(chan_state, 0, sizeof(*chan_state));
-		else
-			chan_state->ho_rach_detect = 0;
-		chan_state->active = active;
-
 		if (active) {
+			/* Clean up everything */
+			memset(chan_state, 0, sizeof(*chan_state));
+
+			/* Bind to generic 'struct gsm_lchan' */
 			chan_state->lchan = get_lchan_by_chan_nr(l1t->trx, chan_nr);
 			OSMO_ASSERT(chan_state->lchan != NULL);
+		} else {
+			chan_state->ho_rach_detect = 0;
 		}
+
+		chan_state->active = active;
 	}
 
 	/* disable handover detection (on deactivation) */
