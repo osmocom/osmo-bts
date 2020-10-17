@@ -983,11 +983,6 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		struct l1sched_chan_state *chan_state;
 		chan_state = &l1ts->chan_state[i];
-		/* Skip if pchan type does not match pdch flag.
-		 * FIXME: Is it possible at all? Clarify if so. */
-		if ((trx_sched_multiframes[l1ts->mf_index].pchan == GSM_PCHAN_PDCH)
-		    && !(trx_chan_desc[i].flags & TRX_CHAN_FLAG_PDCH))
-			continue;
 		if (trx_chan_desc[i].chan_nr == (chan_nr & RSL_CHAN_NR_MASK)
 		 && trx_chan_desc[i].link_id == link_id) {
 			rc = 0;
