@@ -974,8 +974,8 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	uint8_t ss = l1sap_chan2ss(chan_nr);
+	bool found = false;
 	int i;
-	int rc = -EINVAL;
 
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
@@ -985,10 +985,10 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			continue;
 		if (trx_chan_desc[i].link_id != link_id)
 			continue;
-
-		rc = 0;
 		if (chan_state->active == active)
 			continue;
+		found = true;
+
 		LOGP(DL1C, LOGL_NOTICE, "%s %s on trx=%d ts=%d\n",
 			(active) ? "Activating" : "Deactivating",
 			trx_chan_desc[i].name, l1t->trx->nr, tn);
@@ -1018,7 +1018,7 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 	if (!active)
 		_sched_act_rach_det(l1t, tn, ss, 0);
 
-	return rc;
+	return found ? 0 : -EINVAL;
 }
 
 /* setting all logical channels given attributes to active/inactive */
