@@ -99,7 +99,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		struct msgb *msg, *tmp;
 		int written, count = 0;
 
-		fd->when &= ~OSMO_FD_WRITE;
+		osmo_fd_write_disable(fd);
 
 		llist_for_each_entry(msg, &queue->msg_queue, list) {
 			/* more writes than we have */
@@ -117,7 +117,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		/* Nothing scheduled? This should not happen. */
 		if (count == 0) {
 			if (!llist_empty(&queue->msg_queue))
-				fd->when |= OSMO_FD_WRITE;
+				osmo_fd_write_enable(fd);
 			return 0;
 		}
 
@@ -125,7 +125,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		if (written < 0) {
 			/* nothing written?! */
 			if (!llist_empty(&queue->msg_queue))
-				fd->when |= OSMO_FD_WRITE;
+				osmo_fd_write_enable(fd);
 			return 0;
 		}
 
@@ -144,7 +144,7 @@ static int wqueue_vector_cb(struct osmo_fd *fd, unsigned int what)
 		}
 
 		if (!llist_empty(&queue->msg_queue))
-			fd->when |= OSMO_FD_WRITE;
+			osmo_fd_write_enable(fd);
 	}
 
 	return 0;

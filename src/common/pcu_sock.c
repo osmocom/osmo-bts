@@ -926,7 +926,7 @@ static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 		return -EIO;
 	}
 	msgb_enqueue(&state->upqueue, msg);
-	conn_bfd->when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(conn_bfd);
 
 	return 0;
 }
@@ -956,7 +956,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	regenerate_si4_restoctets(bts);
 
 	/* re-enable the generation of ACCEPT for new connections */
-	state->listen_bfd.when |= OSMO_FD_READ;
+	osmo_fd_read_enable(&state->listen_bfd);
 
 #if 0
 	/* remove si13, ... */
@@ -1045,7 +1045,7 @@ static int pcu_sock_write(struct osmo_fd *bfd)
 		msg = llist_entry(state->upqueue.next, struct msgb, list);
 		pcu_prim = (struct gsm_pcu_if *)msg->data;
 
-		bfd->when &= ~OSMO_FD_WRITE;
+		osmo_fd_write_disable(bfd);
 
 		/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
 		if (!msgb_length(msg)) {
@@ -1060,7 +1060,7 @@ static int pcu_sock_write(struct osmo_fd *bfd)
 			goto close;
 		if (rc < 0) {
 			if (errno == EAGAIN) {
-				bfd->when |= OSMO_FD_WRITE;
+				osmo_fd_write_enable(bfd);
 				break;
 			}
 			goto close;

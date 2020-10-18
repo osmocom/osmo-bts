@@ -457,7 +457,7 @@ static void bts_recon_timer_cb(void *data)
 	struct sysmobts_mgr_instance *mgr = data;
 
 	/* The connection failures are to be expected during boot */
-	mgr->calib.bts_conn->ofd->when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(mgr->calib.bts_conn->ofd);
 	rc = ipa_client_conn_open(mgr->calib.bts_conn);
 	if (rc < 0) {
 		LOGP(DLCTRL, LOGL_NOTICE, "Failed to connect to BTS.\n");

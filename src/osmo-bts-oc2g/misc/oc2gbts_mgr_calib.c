@@ -605,7 +605,7 @@ static void bts_recon_timer_cb(void *data)
 	select_led_pattern(mgr);
 
 	/* The connection failures are to be expected during boot */
-	mgr->oc2gbts_ctrl.bts_conn->ofd->when |= OSMO_FD_WRITE;
+	osmo_fd_write_enable(mgr->oc2gbts_ctrl.bts_conn->ofd);
 	rc = ipa_client_conn_open(mgr->oc2gbts_ctrl.bts_conn);
 	if (rc < 0) {
 		LOGP(DLCTRL, LOGL_NOTICE, "Failed to connect to BTS.\n");
