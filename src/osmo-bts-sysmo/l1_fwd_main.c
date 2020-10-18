@@ -213,9 +213,7 @@ int main(int argc, char **argv)
 		wq->write_cb = udp_write_cb;
 		wq->read_cb = udp_read_cb;
 
-		wq->bfd.when |= OSMO_FD_READ;
-		wq->bfd.data = l1fh;
-		wq->bfd.priv_nr = i;
+		osmo_fd_setup(&wq->bfd, -1, OSMO_FD_READ, osmo_wqueue_bfd_cb, l1fh, i);
 		rc = osmo_sock_init_ofd(&wq->bfd, AF_UNSPEC, SOCK_DGRAM,
 					IPPROTO_UDP, NULL, fwd_udp_ports[i],
 					OSMO_SOCK_F_BIND);

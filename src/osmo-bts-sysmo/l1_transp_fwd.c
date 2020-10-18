@@ -126,10 +126,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *fl1h)
 	wq->write_cb = prim_write_cb;
 	wq->read_cb = fwd_read_cb;
 
-	ofd->data = fl1h;
-	ofd->priv_nr = q;
-	ofd->when |= OSMO_FD_READ;
-
+	osmo_fd_setup(ofd, -1, OSMO_FD_READ, osmo_wqueue_bfd_cb, fl1h, q);
 	rc = osmo_sock_init_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
 				bts_host, fwd_udp_ports[q],
 				OSMO_SOCK_F_CONNECT);

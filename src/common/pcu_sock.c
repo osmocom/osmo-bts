@@ -1071,10 +1071,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 		return 0;
 	}
 
-	conn_bfd->fd = rc;
-	conn_bfd->when = OSMO_FD_READ;
-	conn_bfd->cb = pcu_sock_cb;
-	conn_bfd->data = state;
+	osmo_fd_setup(conn_bfd, rc, OSMO_FD_READ, pcu_sock_cb, state, 0);
 
 	if (osmo_fd_register(conn_bfd) != 0) {
 		LOGP(DPCU, LOGL_ERROR, "Failed to register new connection "
@@ -1108,18 +1105,15 @@ int pcu_sock_init(const char *path)
 
 	bfd = &state->listen_bfd;
 
-	bfd->fd = osmo_sock_unix_init(SOCK_SEQPACKET, 0, path,
-		OSMO_SOCK_F_BIND);
-	if (bfd->fd < 0) {
+	rc = osmo_sock_unix_init(SOCK_SEQPACKET, 0, path, OSMO_SOCK_F_BIND);
+	if (rc < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Could not create %s unix socket: %s\n",
 		     path, strerror(errno));
 		talloc_free(state);
 		return -1;
 	}
 
-	bfd->when = OSMO_FD_READ;
-	bfd->cb = pcu_sock_accept;
-	bfd->data = state;
+	osmo_fd_setup(bfd, rc, OSMO_FD_READ, pcu_sock_accept, state, 0);
 
 	rc = osmo_fd_register(bfd);
 	if (rc < 0) {

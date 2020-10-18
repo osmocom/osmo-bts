@@ -271,11 +271,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 		     q, rd_devnames[q], strerror(errno));
 		return rc;
 	}
-	read_ofd->fd = rc;
-	read_ofd->priv_nr = q;
-	read_ofd->data = hdl;
-	read_ofd->cb = l1if_fd_cb;
-	read_ofd->when = OSMO_FD_READ;
+	osmo_fd_setup(read_ofd, rc, OSMO_FD_READ, l1if_fd_cb, hdl, q);
 	rc = osmo_fd_register(read_ofd);
 	if (rc < 0) {
 		close(read_ofd->fd);
@@ -291,11 +287,7 @@ int l1if_transport_open(int q, struct femtol1_hdl *hdl)
 	}
 	osmo_wqueue_init(wq, 10);
 	wq->write_cb = l1fd_write_cb;
-	write_ofd->cb = wqueue_vector_cb;
-	write_ofd->fd = rc;
-	write_ofd->priv_nr = q;
-	write_ofd->data = hdl;
-	write_ofd->when = OSMO_FD_WRITE;
+	osmo_fd_setup(write_ofd, rc, OSMO_FD_WRITE, wqueue_vector_cb, hdl, q);
 	rc = osmo_fd_register(write_ofd);
 	if (rc < 0) {
 		close(write_ofd->fd);

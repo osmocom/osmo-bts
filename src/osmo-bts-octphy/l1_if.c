@@ -1826,10 +1826,7 @@ struct octphy_hdl *l1if_open(struct phy_link *plink)
 	osmo_wqueue_init(&fl1h->phy_wq, 10);
 	fl1h->phy_wq.write_cb = octphy_write_cb;
 	fl1h->phy_wq.read_cb = octphy_read_cb;
-	fl1h->phy_wq.bfd.fd = sfd;
-	fl1h->phy_wq.bfd.when = OSMO_FD_READ;
-	fl1h->phy_wq.bfd.cb = osmo_wqueue_bfd_cb;
-	fl1h->phy_wq.bfd.data = fl1h;
+	osmo_fd_setup(&fl1h->phy_wq.bfd, sfd, OSMO_FD_READ, osmo_wqueue_bfd_cb, fl1h, 0);
 	rc = osmo_fd_register(&fl1h->phy_wq.bfd);
 	if (rc < 0) {
 		close(sfd);

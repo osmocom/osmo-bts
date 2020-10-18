@@ -220,10 +220,8 @@ static void mgr_gps_open(struct oc2gbts_mgr_instance *mgr)
 	mgr->gps.gps_open = 1;
 	gps_stream(&mgr->gps.gpsdata, WATCH_ENABLE, NULL);
 
-	mgr->gps.gpsfd.data = mgr;
-	mgr->gps.gpsfd.cb = mgr_gps_read;
-	mgr->gps.gpsfd.when = OSMO_FD_READ | OSMO_FD_EXCEPT;
-	mgr->gps.gpsfd.fd = mgr->gps.gpsdata.gps_fd;
+	osmo_fd_setup(&mgr->gps.gpsfd, mgr->gps.gpsdata.gps_fd, OSMO_FD_READ | OSMO_FD_EXCEPT,
+			mgr_gps_read, mgr, 0);
 	if (osmo_fd_register(&mgr->gps.gpsfd) < 0) {
 		LOGP(DCALIB, LOGL_ERROR, "Failed to register GPSD fd\n");
 		calib_state_reset(mgr, CALIB_FAIL_GPSFIX);
