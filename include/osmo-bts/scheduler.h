@@ -8,8 +8,6 @@
 
 /* Whether a logical channel must be activated automatically */
 #define TRX_CHAN_FLAG_AUTO_ACTIVE	(1 << 0)
-/* Whether a logical channel belongs to PDCH (packet switched data) */
-#define TRX_CHAN_FLAG_PDCH		(1 << 1)
 
 /* FIXME: we should actually activate 'auto-active' channels */
 #define TRX_CHAN_IS_ACTIVE(state, chan) \

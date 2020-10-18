@@ -524,7 +524,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		 * 05.03, chapter 5), regular interleaving as specified for xCCH.
 		 * NOTE: the burst buffer is three times bigger because the
 		 * payload of EDGE bursts is three times longer. */
-		.flags = TRX_CHAN_FLAG_PDCH,
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_pdtch_fn,
 		.ul_fn = rx_pdtch_fn,
@@ -539,7 +538,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		 * transfer mode. On Downlink, the network sends timing advance
 		 * updates for several mobile stations. The coding scheme used
 		 * for PTCCH/D messages is the same as for PDTCH CS-1. */
-		.flags = TRX_CHAN_FLAG_PDCH,
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_pdtch_fn,
 		.ul_fn = rx_rach_fn,
