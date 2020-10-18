@@ -302,17 +302,14 @@ static uint8_t modulus_by_lchan(struct gsm_lchan *lchan)
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
 		return 104;
-		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 		return 102;
-		break;
 	default:
 		/* Invalid */
 		return 1;
-		break;
 	}
 }
 
