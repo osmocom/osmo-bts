@@ -1110,7 +1110,7 @@ int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
 		/* skip if pchan type */
 		if (trx_chan_desc[i].flags & TRX_CHAN_FLAG_PDCH)
 			continue;
-		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)) {
+		if (trx_chan_desc[i].chan_nr == (chan_nr & RSL_CHAN_NR_MASK)) {
 			chan_state = &l1ts->chan_state[i];
 			LOGP(DL1C, LOGL_NOTICE, "Set a5/%d %s for %s on trx=%d "
 				"ts=%d\n", algo,
