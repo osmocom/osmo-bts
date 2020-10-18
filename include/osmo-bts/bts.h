@@ -298,6 +298,7 @@ struct gsm_bts {
 
 	/* TODO: move it to bts->ul_power_ctrl struct */
 	int ul_power_target;		/* Uplink Rx power target */
+	int ul_power_hysteresis;	/* Tolerable Uplink Rx power deviation */
 
 	/* Uplink power control */
 	struct {

@@ -144,12 +144,12 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	diff = bts->ul_power_target - avg_ul_rssi_dbm;
 
 
-	/* TODO: introduce 'hysteresis' defining a range of tolerable deviation */
-	if (diff == 0) {
+	/* Tolerate small deviations from 'rx-target' */
+	if (abs(diff) <= bts->ul_power_hysteresis) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 			  "Keeping MS power at control level %d (%d dBm) because diff %d dBm "
-			  "from 'rx-target' %d dBm is not significant\n",
-			  ms_power_lvl, ms_dbm, diff, bts->ul_power_target);
+			  "from 'rx-target' %d dBm is not significant (hysteresis %d dBm)\n",
+			  ms_power_lvl, ms_dbm, diff, bts->ul_power_target, bts->ul_power_hysteresis);
 		/* Keep the current power level in sync (just to be sure) */
 		lchan->ms_power_ctrl.current = ms_power_lvl;
 		bts_model_adjst_ms_pwr(lchan);

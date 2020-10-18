@@ -1,5 +1,6 @@
 /*
  * (C) 2013,2014 by Holger Hans Peter Freyther
+ * Contributions by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -205,6 +206,32 @@ static void test_pf_algo_ewma(void)
 	CHECK_UL_RSSI_AVG100(-92.0);
 }
 
+static void test_power_hysteresis(void)
+{
+	struct gsm_lchan *lchan;
+
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
+
+	/* Tolerate power deviations in range -80 .. -70 */
+	g_bts->ul_power_hysteresis = 5;
+
+	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
+
+	apply_power_test(lchan, g_bts->ul_power_target, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_target + 3, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_target - 3, 0, 15);
+
+	apply_power_test(lchan, g_bts->ul_power_target, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_target + 5, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_target - 5, 0, 15);
+
+	apply_power_test(lchan, g_bts->ul_power_target - 10, 1, 13);
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing power loop...\n");
@@ -220,6 +247,7 @@ int main(int argc, char **argv)
 
 	test_power_loop();
 	test_pf_algo_ewma();
+	test_power_hysteresis();
 
 	printf("Power loop test OK\n");
 

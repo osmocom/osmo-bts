@@ -255,7 +255,10 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " uplink-power-target %d%s", bts->ul_power_target, VTY_NEWLINE);
+	vty_out(vty, " uplink-power-target %d", bts->ul_power_target);
+	if (bts->ul_power_hysteresis > 0)
+		vty_out(vty, " hysteresis %d", bts->ul_power_hysteresis);
+	vty_out(vty, "%s", VTY_NEWLINE);
 
 	/* MS Tx power filtering algorithm and parameters */
 	switch (bts->ul_power_ctrl.pf_algo) {
@@ -615,15 +618,37 @@ DEFUN_ATTR(cfg_bts_agch_queue_mgmt_default,
 	return CMD_SUCCESS;
 }
 
+#define UL_POWER_TARGET_CMD \
+	"uplink-power-target <-110-0>"
+#define UL_POWER_TARGET_CMD_DESC \
+	"Set the nominal target Rx Level for uplink power control loop\n" \
+	"Target uplink Rx level in dBm\n"
+
 DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
-	   "uplink-power-target <-110-0>",
-	   "Set the nominal target Rx Level for uplink power control loop\n"
-	   "Target uplink Rx level in dBm\n",
+	   UL_POWER_TARGET_CMD, UL_POWER_TARGET_CMD_DESC,
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
 
 	bts->ul_power_target = atoi(argv[0]);
+	bts->ul_power_hysteresis = 0;
+
+	return CMD_SUCCESS;
+}
+
+/* FIXME: libosmovty is unable to handle 'foo <-110-0> [bar <1-25>]' */
+DEFUN_ATTR(cfg_bts_ul_power_target_hysteresis,
+	   cfg_bts_ul_power_target_hysteresis_cmd,
+	   UL_POWER_TARGET_CMD " hysteresis <1-25>",
+	   UL_POWER_TARGET_CMD_DESC
+	   "Target Rx Level hysteresis\n"
+	   "Tolerable deviation in dBm\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ul_power_target = atoi(argv[0]);
+	bts->ul_power_hysteresis = atoi(argv[1]);
 
 	return CMD_SUCCESS;
 }
@@ -1849,6 +1874,7 @@ int bts_vty_init(struct gsm_bts *bts)
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_default_cmd);
 	install_element(BTS_NODE, &cfg_bts_agch_queue_mgmt_params_cmd);
 	install_element(BTS_NODE, &cfg_bts_ul_power_target_cmd);
+	install_element(BTS_NODE, &cfg_bts_ul_power_target_hysteresis_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_ul_power_filter_cmd);
 	install_element(BTS_NODE, &cfg_bts_ul_power_filter_ewma_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
