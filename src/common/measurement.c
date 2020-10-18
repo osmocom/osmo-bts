@@ -556,8 +556,8 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	if (!is_meas_complete(lchan, fn))
 		return 0;
 
-	LOGP(DMEAS, LOGL_DEBUG, "%s Calculating measurement results for physical channel:%s\n",
-	     gsm_lchan_name(lchan), gsm_pchan_name(ts_pchan(lchan->ts)));
+	LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG, "Calculating measurement results "
+		  "for physical channel: %s\n", gsm_pchan_name(ts_pchan(lchan->ts)));
 
 	/* Note: Some phys will send no measurement indication at all
 	 * when a block is lost. Also in DTX mode blocks are left out
@@ -579,11 +579,11 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		num_ul_meas_excess = lchan->meas.num_ul_meas - num_ul_meas_expect;
 	num_ul_meas = num_ul_meas_expect;
 
-	LOGP(DMEAS, LOGL_DEBUG, "%s received %u UL measurements, expected %u\n", gsm_lchan_name(lchan),
-	     lchan->meas.num_ul_meas, num_ul_meas_expect);
+	LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG, "Received %u UL measurements, expected %u\n",
+		  lchan->meas.num_ul_meas, num_ul_meas_expect);
 	if (num_ul_meas_excess)
-		LOGP(DMEAS, LOGL_DEBUG, "%s received %u excess UL measurements\n", gsm_lchan_name(lchan),
-		     num_ul_meas_excess);
+		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG, "Received %u excess UL measurements\n",
+			  num_ul_meas_excess);
 
 	/* Measurement computation step 1: add up */
 	for (i = 0; i < num_ul_meas; i++) {
@@ -639,19 +639,17 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	}
 
 	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
-		LOGP(DMEAS, LOGL_DEBUG,
-		     "%s received UL measurements contain %u SUB measurements, expected %u\n",
-		     gsm_lchan_name(lchan), num_meas_sub_actual,
-		     num_meas_sub_expect);
+		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
+			  "Received UL measurements contain %u SUB measurements, expected %u\n",
+			  num_meas_sub_actual, num_meas_sub_expect);
 	} else {
-		LOGP(DMEAS, LOGL_DEBUG,
-		     "%s received UL measurements contain %u SUB measurements, expected at least %u\n",
-		     gsm_lchan_name(lchan), num_meas_sub_actual,
-		     num_meas_sub_expect);
+		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
+			  "Received UL measurements contain %u SUB measurements, expected at least %u\n",
+			  num_meas_sub_actual, num_meas_sub_expect);
 	}
 
-	LOGP(DMEAS, LOGL_DEBUG, "%s replaced %u measurements with dummy values, from which %u were SUB measurements\n",
-	     gsm_lchan_name(lchan), num_ul_meas_subst, num_meas_sub_subst);
+	LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG, "Replaced %u measurements with dummy values, "
+		  "from which %u were SUB measurements\n", num_ul_meas_subst, num_meas_sub_subst);
 
 	/* Normally the logic above should make sure that there is
 	 * always the exact amount of SUB measurements taken into
@@ -662,17 +660,15 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	 * measurements when there is no more room in the interval. */
 	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
 		if (num_meas_sub != num_meas_sub_expect) {
-			LOGP(DMEAS, LOGL_ERROR,
-			     "%s Incorrect number of SUB measurements detected! (%u vs exp %u)\n",
-			     gsm_lchan_name(lchan), num_meas_sub,
-			     num_meas_sub_expect);
+			LOGPLCHAN(lchan, DMEAS, LOGL_ERROR,
+				  "Incorrect number of SUB measurements detected! "
+				  "(%u vs exp %u)\n", num_meas_sub, num_meas_sub_expect);
 		}
 	} else {
 		if (num_meas_sub < num_meas_sub_expect) {
-			LOGP(DMEAS, LOGL_ERROR,
-			     "%s Incorrect number of SUB measurements detected! (%u vs exp >=%u)\n",
-			     gsm_lchan_name(lchan), num_meas_sub,
-			     num_meas_sub_expect);
+			LOGPLCHAN(lchan, DMEAS, LOGL_ERROR,
+				  "Incorrect number of SUB measurements detected! "
+				  "(%u vs exp >=%u)\n", num_meas_sub, num_meas_sub_expect);
 		}
 	}
 
@@ -699,10 +695,12 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	else
 		irssi_sub_sum = irssi_sub_sum / num_meas_sub_actual;
 
-	LOGP(DMEAS, LOGL_INFO, "%s Computed TA256(% 4d) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
-	     "BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n", gsm_lchan_name(lchan),
-	     ta256b_sum, ber_full_sum / 100,
-	     ber_full_sum % 100, irssi_full_sum, ber_sub_sum / 100, ber_sub_sum % 100, irssi_sub_sum);
+	LOGPLCHAN(lchan, DMEAS, LOGL_INFO,
+		  "Computed TA256(% 4d) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
+		  "BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n",
+		  ta256b_sum, ber_full_sum / 100, ber_full_sum % 100,
+		  irssi_full_sum, ber_sub_sum / 100, ber_sub_sum % 100,
+		  irssi_sub_sum);
 
 	/* store results */
 	mru = &lchan->meas.ul_res;
@@ -712,10 +710,12 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
 	lchan->meas.ms_toa256 = ta256b_sum;
 
-	LOGP(DMEAS, LOGL_INFO, "%s UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u),"
-	     "RXQUAL_FULL(%u), RXQUAL_SUB(%u), num_meas_sub(%u), num_ul_meas(%u) \n",
-	     gsm_lchan_name(lchan),
-	     mru->full.rx_lev, mru->sub.rx_lev, mru->full.rx_qual, mru->sub.rx_qual, num_meas_sub, num_ul_meas_expect);
+	LOGPLCHAN(lchan, DMEAS, LOGL_INFO,
+		  "UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u), RXQUAL_FULL(%u), RXQUAL_SUB(%u), "
+		  "num_meas_sub(%u), num_ul_meas(%u)\n",
+		  mru->full.rx_lev, mru->sub.rx_lev,
+		  mru->full.rx_qual, mru->sub.rx_qual,
+		  num_meas_sub, num_ul_meas_expect);
 
 	lchan->meas.flags |= LC_UL_M_F_RES_VALID;
 
