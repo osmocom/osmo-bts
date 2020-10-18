@@ -46,8 +46,8 @@ static void init_test(const char *name)
 
 	g_trx->ms_pwr_ctl_soft = true;
 
-	g_bts->ul_power_target = -75,
-	g_bts->band = GSM_BAND_1800,
+	g_bts->ul_power_target = -75;
+	g_bts->band = GSM_BAND_1800;
 	g_bts->c0 = g_trx;
 
 	printf("\nStarting test case '%s'\n", name);
