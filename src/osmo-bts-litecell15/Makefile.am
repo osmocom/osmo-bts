@@ -9,12 +9,12 @@ AM_CFLAGS += -DENABLE_LC15BTS
 EXTRA_DIST = misc/lc15bts_mgr.h misc/lc15bts_misc.h misc/lc15bts_par.h misc/lc15bts_led.h \
 	misc/lc15bts_temp.h misc/lc15bts_power.h misc/lc15bts_clock.h \
 	misc/lc15bts_bid.h misc/lc15bts_nl.h misc/lc15bts_bts.h misc/lc15bts_swd.h \
-	hw_misc.h l1_if.h l1_transp.h lc15bts.h oml_router.h utils.h
+	hw_misc.h l1_if.h l1_transp.h lc15bts.h utils.h
 
 bin_PROGRAMS = osmo-bts-lc15 lc15bts-mgr lc15bts-util
 
 COMMON_SOURCES = main.c lc15bts.c l1_if.c oml.c lc15bts_vty.c tch.c hw_misc.c calib_file.c \
-		 utils.c misc/lc15bts_par.c misc/lc15bts_bid.c oml_router.c
+		 utils.c misc/lc15bts_par.c misc/lc15bts_bid.c
 
 osmo_bts_lc15_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
 osmo_bts_lc15_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)

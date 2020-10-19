@@ -76,7 +76,6 @@ static int write_status_file(char *status_file, char *status_str)
 #include "utils.h"
 #include "l1_if.h"
 #include "hw_misc.h"
-#include "oml_router.h"
 #include "misc/oc2gbts_bid.h"
 
 unsigned int dsp_trace = 0x00000000;
@@ -84,8 +83,6 @@ unsigned int dsp_trace = 0x00000000;
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct stat st;
-	static struct osmo_fd accept_fd, read_fd;
-	int rc;
 
 	struct bts_oc2g_priv *bts_oc2g = talloc(bts, struct bts_oc2g_priv);
 	bts->model_priv = bts_oc2g;
@@ -98,13 +95,6 @@ int bts_model_init(struct gsm_bts *bts)
 	*/
 	/* RTP drift threshold default */
 	/* bts_oc2g->rtp_drift_thres_ms = OC2G_BTS_RTP_DRIFT_THRES_DEFAULT; */
-
-	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
-	if (rc < 0) {
-		fprintf(stderr, "Error creating the OML router: %s rc=%d\n",
-			OML_ROUTER_PATH, rc);
-		exit(1);
-	}
 
 	if (stat(OC2GBTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");

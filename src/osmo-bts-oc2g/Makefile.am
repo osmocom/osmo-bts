@@ -9,12 +9,12 @@ AM_CFLAGS += -DENABLE_OC2GBTS
 EXTRA_DIST = misc/oc2gbts_mgr.h misc/oc2gbts_misc.h misc/oc2gbts_par.h misc/oc2gbts_led.h \
 	misc/oc2gbts_temp.h misc/oc2gbts_power.h misc/oc2gbts_clock.h \
 	misc/oc2gbts_bid.h misc/oc2gbts_bts.h misc/oc2gbts_nl.h misc/oc2gbts_swd.h \
-	hw_misc.h l1_if.h l1_transp.h oc2gbts.h oml_router.h utils.h
+	hw_misc.h l1_if.h l1_transp.h oc2gbts.h utils.h
 
 bin_PROGRAMS = osmo-bts-oc2g oc2gbts-mgr oc2gbts-util
 
 COMMON_SOURCES = main.c oc2gbts.c l1_if.c oml.c oc2gbts_vty.c tch.c hw_misc.c calib_file.c \
-		 utils.c misc/oc2gbts_par.c misc/oc2gbts_bid.c oml_router.c
+		 utils.c misc/oc2gbts_par.c misc/oc2gbts_bid.c
 
 osmo_bts_oc2g_SOURCES = $(COMMON_SOURCES) l1_transp_hw.c
 osmo_bts_oc2g_LDADD = $(top_builddir)/src/common/libbts.a $(COMMON_LDADD)

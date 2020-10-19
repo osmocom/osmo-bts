@@ -53,23 +53,13 @@
 #include "eeprom.h"
 #include "l1_if.h"
 #include "hw_misc.h"
-#include "oml_router.h"
 
 int bts_model_init(struct gsm_bts *bts)
 {
 	struct stat st;
-	static struct osmo_fd accept_fd, read_fd;
-	int rc;
 
 	bts->variant = BTS_OSMO_SYSMO;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
-
-	rc = oml_router_init(bts, OML_ROUTER_PATH, &accept_fd, &read_fd);
-	if (rc < 0) {
-		fprintf(stderr, "Error creating the OML router: %s rc=%d\n",
-			OML_ROUTER_PATH, rc);
-		exit(1);
-	}
 
 	if (stat(SYSMOBTS_RF_LOCK_PATH, &st) == 0) {
 		LOGP(DL1C, LOGL_NOTICE, "Not starting BTS due to RF_LOCK file present\n");
