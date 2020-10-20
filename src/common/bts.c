@@ -326,7 +326,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->ul_power_target = -75;	/* dBm default */
 	bts->ul_power_hysteresis = 3;	/* -78 .. -72 dBm */
 	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
-	bts->ul_power_ctrl.pf.ewma.alpha = 20; /* 80% smoothing */
+	bts->ul_power_ctrl.pf.ewma.alpha = 50; /* 50% smoothing */
 	bts->rtp_jitter_adaptive = false;
 	bts->rtp_port_range_start = 16384;
 	bts->rtp_port_range_end = 17407;
