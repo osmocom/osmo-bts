@@ -1562,7 +1562,7 @@ void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	mo->obj_inst.bts_nr = p1;
 	mo->obj_inst.trx_nr = p2;
 	mo->obj_inst.ts_nr = p3;
-	mo->nm_state.operational = NM_OPSTATE_NULL;
+	mo->nm_state.operational = NM_OPSTATE_DISABLED;
 	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
 	mo->nm_state.administrative = NM_STATE_LOCKED;
 }
