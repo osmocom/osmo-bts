@@ -199,6 +199,7 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 		link ? "up" : "down");
 
 	osmo_fsm_inst_dispatch(trx->mo.fi, link ? NM_EV_RSL_UP : NM_EV_RSL_DOWN, NULL);
+	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, link ? NM_EV_RSL_UP : NM_EV_RSL_DOWN, NULL);
 
 	if (link)
 		rc = rsl_tx_rf_res(trx);
