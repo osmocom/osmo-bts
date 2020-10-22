@@ -241,6 +241,16 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			meas_avg.rssi, meas_avg.toa256,
 			meas_avg.ci_cb, ber10k,
 			PRES_INFO_UNKNOWN);
+
+		/* If we are in SPEECH mode we will generate a fake (BFI) TCH
+		 * indication as well. This indication is needed by the higher
+		 * layers, however we already have reported the measurement
+		 * result for the current block together with the FACCH.
+		 * To avoid reporting the same measurement result again with
+		 * the fake (BFI) TCH indication we set meas_avg.rssi to zero.
+		 * Doing so tells l1sap.c to ignore the measurement result. */
+		meas_avg.rssi = 0;
+
 bfi:
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
