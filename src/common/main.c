@@ -75,7 +75,6 @@ static void print_help()
 		"  -T	--timestamp	Prefix every log line with a timestamp\n"
 		"  -V	--version	Print version information and exit\n"
 		"  -e 	--log-level	Set a global log-level\n"
-		"  -r	--realtime PRIO	Use SCHED_RR with the specified priority (deprecated, use VTY instead)\n"
 		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
 		"    	--vty-ref-xml   Generate the VTY reference XML output and exit.\n"
 		);
