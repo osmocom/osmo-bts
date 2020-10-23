@@ -55,7 +55,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	switch (lchan->type) {
 	case GSM_LCHAN_TCH_F:
 		switch (lchan->tch_mode) {
-		case GSM48_CMODE_SIGN:
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_EFR:
 			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
@@ -67,6 +66,10 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
 				return true;
 			break;
+		case GSM48_CMODE_SIGN:
+			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
+			 * SUB */
+			return true;
 		default:
 			LOGPFN(DMEAS, LOGL_ERROR, fn, "%s: Unsupported lchan->tch_mode %u\n",
 				gsm_lchan_name(lchan), lchan->tch_mode);
