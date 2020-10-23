@@ -84,6 +84,7 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 
 	lchan = &trx->ts[mtc->ts].lchan[0];
 	lchan->ts->pchan = mtc->pchan;
+	lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
 	reset_lchan_meas(lchan);
 
 	/* feed uplink measurements into the code */

@@ -397,11 +397,16 @@ static unsigned int lchan_meas_num_expected(const struct gsm_lchan *lchan)
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-		/* 24 for TCH + 1 for SACCH */
+		/* 24 blocks for TCH + 1 for SACCH */
 		return 25;
 	case GSM_PCHAN_TCH_H:
-		/* 24 half-blocks for TCH + 1 for SACCH */
-		return 25;
+		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
+			/* 12 blocks for TCH + 1 for SACCH */
+			return 13;
+		} else {
+			/* 24 blocks for TCH + 1 for SACCH */
+			return 25;
+		}
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		/* 2 for SDCCH + 1 for SACCH */
@@ -428,11 +433,21 @@ static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-		/* 1 block SDCCH, 2 blocks TCH */
-		return 3;
+		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
+			/* 1 block SACCH, 24 blocks TCH (see note 1) */
+			return 25;
+		} else {
+			/* 1 block SACCH, 2 blocks TCH */
+			return 3;
+		}
 	case GSM_PCHAN_TCH_H:
-		/* 1 block SDCCH, 4 half-blocks TCH */
-		return 5;
+		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
+			/* 1 block SACCH, 12 blocks TCH (see ynote 1) */
+			return 13;
+		} else {
+			/* 1 block SACCH, 4 blocks TCH */
+			return 5;
+		}
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		/* no DTX here, all blocks must be present! */
@@ -444,6 +459,8 @@ static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 	default:
 		return 0;
 	}
+
+	/* Note 1: In signalling mode all blocks count as SUB blocks. */
 }
 
 /* if we clip the TOA value to 12 bits, i.e. toa256=3200,
