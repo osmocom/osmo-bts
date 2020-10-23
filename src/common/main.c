@@ -67,16 +67,16 @@ extern int g_vty_port_num;
 static void print_help()
 {
 	printf( "Some useful options:\n"
-		"  -h	--help		this text\n"
-		"  -d	--debug MASK	Enable debugging (e.g. -d DRSL:DOML:DLAPDM)\n"
-		"  -D	--daemonize	For the process into a background daemon\n"
-		"  -c	--config-file 	Specify the filename of the config file\n"
-		"  -s	--disable-color	Don't use colors in stderr log output\n"
-		"  -T	--timestamp	Prefix every log line with a timestamp\n"
-		"  -V	--version	Print version information and exit\n"
-		"  -e 	--log-level	Set a global log-level\n"
-		"  -i	--gsmtap-ip	The destination IP used for GSMTAP.\n"
-		"    	--vty-ref-xml   Generate the VTY reference XML output and exit.\n"
+		"  -h	--help			this text\n"
+		"  -d	--debug MASK		Enable debugging (e.g. -d DRSL:DOML:DLAPDM)\n"
+		"  -D	--daemonize		For the process into a background daemon\n"
+		"  -c	--config-file 		Specify the filename of the config file\n"
+		"  -s	--disable-color		Don't use colors in stderr log output\n"
+		"  -T	--timestamp		Prefix every log line with a timestamp\n"
+		"  -V	--version		Print version information and exit\n"
+		"  -e 	--log-level		Set a global log-level\n"
+		"  -i	--gsmtap-ip		The destination IP used for GSMTAP.\n"
+		"    	--vty-ref-xml   	Generate the VTY reference XML output and exit.\n"
 		);
 	bts_model_print_help();
 }
