@@ -421,7 +421,7 @@ static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 	/* AMR is using a more elaborated model with a dymanic amount of
 	 * DTX blocks so this function is not applicable to determine the
 	 * amount of expected SUB Measurements when AMR is used */
-	OSMO_ASSERT(lchan->tch_mode != GSM48_CMODE_SPEECH_AMR)
+	OSMO_ASSERT(lchan->tch_mode != GSM48_CMODE_SPEECH_AMR);
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
