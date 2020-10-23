@@ -55,6 +55,7 @@ extern bool no_fw_check;
 
 int bts_model_print_help()
 {
+	printf("\nModel specific options:\n");
 	printf("  -I	--no-fw-check		Override firmware version check\n");
 	return 0;
 }

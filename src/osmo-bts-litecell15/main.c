@@ -158,7 +158,8 @@ void bts_update_status(enum bts_global_status which, int on)
 
 void bts_model_print_help()
 {
-	printf( "  -w	--hw-version		Print the targeted HW Version\n"
+	printf( "\nModel specific options:\n"
+		"  -w	--hw-version		Print the targeted HW Version\n"
 		"  -M	--pcu-direct		Force PCU to access message queue for "
 						"PDCH dchannel directly\n"
 		"  -p	--dsp-trace		Set DSP trace flags\n"
