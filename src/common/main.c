@@ -76,9 +76,36 @@ static void print_help()
 		"  -V	--version		Print version information and exit\n"
 		"  -e 	--log-level		Set a global log-level\n"
 		"  -i	--gsmtap-ip		The destination IP used for GSMTAP.\n"
-		"    	--vty-ref-xml   	Generate the VTY reference XML output and exit.\n"
+		"\nVTY reference generation:\n"
+		"	--vty-ref-mode MODE	VTY reference generation mode (e.g. 'expert').\n"
+		"	--vty-ref-xml		Generate the VTY reference XML output and exit.\n"
 		);
 	bts_model_print_help();
+}
+
+static void handle_long_options(const char *prog_name, const int long_option)
+{
+	static int vty_ref_mode = VTY_REF_GEN_MODE_DEFAULT;
+
+	switch (long_option) {
+	case 1:
+		vty_ref_mode = get_string_value(vty_ref_gen_mode_names, optarg);
+		if (vty_ref_mode < 0) {
+			fprintf(stderr, "%s: Unknown VTY reference generation "
+				"mode '%s'\n", prog_name, optarg);
+			exit(2);
+		}
+		break;
+	case 2:
+		fprintf(stderr, "Generating the VTY reference in mode '%s' (%s)\n",
+			get_value_string(vty_ref_gen_mode_names, vty_ref_mode),
+			get_value_string(vty_ref_gen_mode_desc, vty_ref_mode));
+		vty_dump_xml_ref_mode(stdout, (enum vty_ref_gen_mode) vty_ref_mode);
+		exit(0);
+	default:
+		fprintf(stderr, "%s: error parsing cmdline options\n", prog_name);
+		exit(2);
+	}
 }
 
 /* FIXME: finally get some option parsing code into libosmocore */
@@ -110,7 +137,8 @@ static void handle_options(int argc, char **argv)
 			{ "gsmtap-ip", 1, 0, 'i' },
 			{ "trx-num", 1, 0, 't' },
 			{ "realtime", 1, 0, 'r' },
-			{"vty-ref-xml", 0, &long_option, 1},
+			{ "vty-ref-mode", 1, &long_option, 1 },
+			{ "vty-ref-xml", 0, &long_option, 2 },
 			{ 0, 0, 0, 0 }
 		};
 
@@ -125,14 +153,8 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 			break;
 		case 0:
-			switch (long_option) {
-			case 1:
-				vty_dump_xml_ref(stdout);
-				exit(0);
-			default:
-				fprintf(stderr, "error parsing cmdline options\n");
-				exit(2);
-			}
+			handle_long_options(argv[0], long_option);
+			break;
 		case 's':
 			log_set_use_color(osmo_stderr_target, 0);
 			break;
