@@ -264,8 +264,6 @@ int bts_main(int argc, char **argv)
 	struct e1inp_line *line;
 	int rc;
 
-	printf("((*))\n  |\n / \\ OsmoBTS\n");
-
 	/* Track the use of talloc NULL memory contexts */
 	talloc_enable_null_tracking();
 
@@ -288,6 +286,8 @@ int bts_main(int argc, char **argv)
 	e1inp_vty_init();
 
 	handle_options(argc, argv);
+
+	fprintf(stderr, "((*))\n  |\n / \\ OsmoBTS\n");
 
 	g_bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (!g_bts) {
