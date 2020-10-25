@@ -18,8 +18,31 @@ if BUILD_MANUALS
   osmobts-abis.pdf: $(srcdir)/abis/*.adoc $(srcdir)/abis/*.msc
   rtp-amr.pdf: $(srcdir)/dtx.dot
 
-  VTY_REFERENCE = osmobts-vty-reference.xml
-  include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
+  VARIANTS = $(NULL)
+
+if ENABLE_SYSMOBTS
+  VARIANTS += sysmo
+endif
+
+if ENABLE_TRX
+  VARIANTS += trx
+endif
+
+if ENABLE_OCTPHY
+  VARIANTS += octphy
+endif
+
+if ENABLE_LC15BTS
+  VARIANTS += lc15
+endif
+
+if ENABLE_OC2GBTS
+  VARIANTS += oc2g
+endif
+
+  # This is a significantly modified, multi-target adopted copy of
+  # $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
+  include $(srcdir)/vty/Makefile.vty-reference.inc
 
   OSMO_REPOSITORY = osmo-bts
   include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.common.inc

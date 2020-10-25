@@ -6,7 +6,7 @@
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML 5.0//EN"
 "http://docbook.org/xml/5.0/dtd/docbook.dtd" [
 <!ENTITY chapter-vty      SYSTEM      "./common/chapters/vty.xml" >
-<!ENTITY sections-vty     SYSTEM      "generated/docbook_vty.xml"  >
+<!ENTITY sections-vty     SYSTEM      "@@GENERATED@@" >
 ]>
 
 <book>
@@ -18,12 +18,19 @@
             <authorinitials>hw</authorinitials>
             <revremark>Initial</revremark>
         </revision>
+        <revision>
+            <revnumber>v2</revnumber>
+            <date>@@REV_DATE@@</date>
+            <authorinitials>s.f.m.c.</authorinitials>
+            <revremark>Automatic build (@@REV_NUMBER@@)</revremark>
+        </revision>
     </revhistory>
 
     <title>OsmoBTS VTY Reference</title>
+    <subtitle>@@VARIANT@@</subtitle>
 
     <copyright>
-      <year>2016</year>
+      <year>@@CR_YEAR@@</year>
     </copyright>
 
     <legalnotice>

@@ -94,6 +94,9 @@ doc/manuals/*.pdf
 doc/manuals/*__*.png
 doc/manuals/*.check
 doc/manuals/generated/
+doc/manuals/vty/osmobts-*-vty-reference.xml
+doc/manuals/vty/osmobts-*-vty-reference.xml.inc.gen
+doc/manuals/vty/osmobts-*-vty-reference.xml.inc.merged
 doc/manuals/osmomsc-usermanual.xml
 doc/manuals/common
 doc/manuals/build
