@@ -22,7 +22,7 @@ struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_
 int bts_vty_go_parent(struct vty *vty);
 int bts_vty_is_config_node(struct vty *vty, int node);
 
-int bts_vty_init(struct gsm_bts *bts);
+int bts_vty_init(void *ctx);
 
 struct gsm_network *gsmnet_from_vty(struct vty *v);
 

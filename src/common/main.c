@@ -277,6 +277,9 @@ int bts_main(int argc, char **argv)
 	osmo_cpu_sched_vty_init(tall_bts_ctx);
 	rate_ctr_init(tall_bts_ctx);
 
+	bts_vty_init(tall_bts_ctx);
+	e1inp_vty_init();
+
 	handle_options(argc, argv);
 
 	bts = gsm_bts_alloc(tall_bts_ctx, 0);
@@ -284,9 +287,6 @@ int bts_main(int argc, char **argv)
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
 	}
-
-	e1inp_vty_init();
-	bts_vty_init(bts);
 
 	/* enable realtime priority for us */
 	if (rt_prio != -1) {

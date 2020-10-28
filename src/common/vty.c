@@ -1815,33 +1815,33 @@ DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	return CMD_SUCCESS;
 }
 
-int bts_vty_init(struct gsm_bts *bts)
+int bts_vty_init(void *ctx)
 {
-	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
-	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"Enable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
-	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"no gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
-	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, gsmtap_sapi_names,
+	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						NO_STR "Disable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
-	logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+	logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, l1sap_common_sapi_names,
 						"logging filter l1-sapi (",
 						"|", ")", VTY_DO_LOWER);
-	logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+	logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, l1sap_common_sapi_names,
 						LOGGING_STR FILTER_STR "L1 SAPI\n",
 						"\n", "", 0);
 
-	no_logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+	no_logging_fltr_l1_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, l1sap_common_sapi_names,
 						"no logging filter l1-sapi (",
 						"|", ")", VTY_DO_LOWER);
-	no_logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(bts, l1sap_common_sapi_names,
+	no_logging_fltr_l1_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, l1sap_common_sapi_names,
 						NO_STR LOGGING_STR FILTER_STR "L1 SAPI\n",
 						"\n", "", 0);
 
