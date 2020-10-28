@@ -13,7 +13,7 @@ SUBDIRS += osmo-bts-octphy
 endif
 
 if ENABLE_LC15BTS
-SUBDIRS += osmo-bts-litecell15
+SUBDIRS += osmo-bts-lc15
 endif
 
 if ENABLE_OC2GBTS

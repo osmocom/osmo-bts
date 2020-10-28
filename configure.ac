@@ -374,7 +374,7 @@ AC_OUTPUT(
     src/osmo-bts-virtual/Makefile
     src/osmo-bts-omldummy/Makefile
     src/osmo-bts-sysmo/Makefile
-    src/osmo-bts-litecell15/Makefile
+    src/osmo-bts-lc15/Makefile
     src/osmo-bts-oc2g/Makefile
     src/osmo-bts-trx/Makefile
     src/osmo-bts-octphy/Makefile

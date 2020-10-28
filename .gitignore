@@ -35,10 +35,10 @@ src/osmo-bts-sysmo/osmo-bts-sysmo-remote
 src/osmo-bts-sysmo/sysmobts-mgr
 src/osmo-bts-sysmo/sysmobts-util
 
-src/osmo-bts-litecell15/lc15bts-mgr
-src/osmo-bts-litecell15/lc15bts-util
-src/osmo-bts-litecell15/misc/.dirstamp
-src/osmo-bts-litecell15/osmo-bts-lc15
+src/osmo-bts-lc15/lc15bts-mgr
+src/osmo-bts-lc15/lc15bts-util
+src/osmo-bts-lc15/misc/.dirstamp
+src/osmo-bts-lc15/osmo-bts-lc15
 
 src/osmo-bts-trx/osmo-bts-trx
 
