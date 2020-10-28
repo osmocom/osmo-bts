@@ -642,7 +642,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 			 * negotiated in AMR, so we can not know if and how many
 			 * SUB frames are missing. */
 			if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
-				if (num_ul_meas_expect - i <= num_meas_sub_expect - num_meas_sub) {
+				if (num_meas_sub <= i) {
 					num_meas_sub_subst++;
 					is_sub = true;
 				}
