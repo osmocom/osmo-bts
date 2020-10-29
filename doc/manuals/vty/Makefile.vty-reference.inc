@@ -17,7 +17,7 @@ vty/osmobts-%-vty-reference.xml: $(top_srcdir)/src/osmo-bts-% $(INC_DIR)
 	    -e "s|@@REV_NUMBER@@|$(VERSION)|" \
 	    -e "s|@@REV_DATE@@|$(shell date +"%dth %B %Y")|" \
 	    -e "s|@@CR_YEAR@@|$(shell date +"%Y")|" \
-		$(srcdir)/osmobts-vty-reference.xml > $@
+		$(srcdir)/vty/osmobts-vty-reference.xml > $@
 
 vty/osmobts-%-vty-reference.xml.inc: $(top_builddir)/src/osmo-bts-*/osmo-bts-% \
 				     $(OSMO_GSM_MANUALS_DIR)/common/vty_additions.xml \

@@ -3,7 +3,6 @@ EXTRA_DIST = dtx.dot \
     osmobts-abis-docinfo.xml \
     osmobts-usermanual.adoc \
     osmobts-usermanual-docinfo.xml \
-    osmobts-vty-reference.xml \
     rtp-amr.adoc \
     rtp-amr-docinfo.xml \
     regen_doc.sh \
