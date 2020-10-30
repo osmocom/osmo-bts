@@ -119,11 +119,13 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 	*mask = 0x0;
 
-	/* skip second of two TCH frames of FACCH was received */
+	/* skip decoding of the last 4 bursts of FACCH/H */
 	if (chan_state->ul_ongoing_facch) {
 		chan_state->ul_ongoing_facch = 0;
 		memcpy(*bursts_p, *bursts_p + 232, 232);
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+		/* we have already sent the first BFI when a FACCH/H frame
+		 * was decoded (see below), now send the second one. */
 		ber10k = 0;
 		memset(&meas_avg, 0, sizeof(meas_avg));
 		goto bfi;
@@ -266,8 +268,8 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			meas_avg.ci_cb, ber10k,
 			PRES_INFO_UNKNOWN);
 bfi:
-		/* FIXME: a FACCH/H frame replaces two speech frames,
-		 * so we actually need to send two bad frame indications! */
+		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
+		 * One is sent here, another will be sent two bursts later (see above). */
 		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
 			/* indicate bad frame */
 			if (lchan->tch.dtx.ul_sid) {
