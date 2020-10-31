@@ -60,8 +60,6 @@ extern int lchan_activate(struct gsm_lchan *lchan);
 	TRX_STR
 #define DSP_TRACE_F_STR		"DSP Trace Flag\n"
 
-static struct gsm_bts *vty_bts;
-
 /* configuration */
 
 DEFUN(cfg_phy_clkcal_eeprom, cfg_phy_clkcal_eeprom_cmd,
@@ -221,7 +219,7 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
 {
 	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct femtol1_hdl *fl1h;
 	int i;
 
@@ -341,7 +339,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[3]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -361,7 +359,7 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 {
 	int trx_nr = atoi(argv[0]);
 	int power = atoi(argv[1]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 
 	power_ramp_start(trx, to_mdB(power), 1, NULL);
 
@@ -374,7 +372,7 @@ DEFUN(reset_rf_clock_ctr, reset_rf_clock_ctr_cmd,
       "RF Clock Information\n" "Reset the counter\n")
 {
 	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	l1if_rf_clock_info_reset(fl1h);
@@ -387,7 +385,7 @@ DEFUN(correct_rf_clock_ctr, correct_rf_clock_ctr_cmd,
       "RF Clock Information\n" "Apply\n")
 {
 	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 
 	l1if_rf_clock_info_correct(fl1h);
@@ -404,7 +402,7 @@ DEFUN(loopback, loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -423,7 +421,7 @@ DEFUN(no_loopback, no_loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -475,39 +473,37 @@ void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance 
 					 pinst->u.sysmobts.clk_src), VTY_NEWLINE);
 }
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	/* runtime-patch the command strings with debug levels */
-	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, femtobts_tracef_names,
 						"trx <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, femtobts_tracef_docs,
 						TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, femtobts_tracef_names,
 						"no trx <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, femtobts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
 	cfg_phy_dsp_trace_f_cmd.string =
-		vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+		vty_cmd_string_from_valstr(ctx, femtobts_tracef_names,
 					   "dsp-trace-flag (", "|", ")",
 					   VTY_DO_LOWER);
 	cfg_phy_dsp_trace_f_cmd.doc =
-		vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+		vty_cmd_string_from_valstr(ctx, femtobts_tracef_docs,
 					   DSP_TRACE_F_STR, "\n", "", 0);
 
 	cfg_phy_no_dsp_trace_f_cmd.string =
-		vty_cmd_string_from_valstr(bts, femtobts_tracef_names,
+		vty_cmd_string_from_valstr(ctx, femtobts_tracef_names,
 					   "no dsp-trace-flag (", "|", ")",
 					   VTY_DO_LOWER);
 	cfg_phy_no_dsp_trace_f_cmd.doc =
-		vty_cmd_string_from_valstr(bts, femtobts_tracef_docs,
+		vty_cmd_string_from_valstr(ctx, femtobts_tracef_docs,
 					   NO_STR DSP_TRACE_F_STR, "\n",
 					   "", 0);
 

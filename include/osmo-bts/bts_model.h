@@ -34,7 +34,7 @@ int bts_model_trx_deact_rf(struct gsm_bts_trx *trx);
 /* Implementation should call bts_model_trx_close_cb when done */
 void bts_model_trx_close(struct gsm_bts_trx *trx);
 
-int bts_model_vty_init(struct gsm_bts *bts);
+int bts_model_vty_init(void *ctx);
 
 void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts);
 void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx);

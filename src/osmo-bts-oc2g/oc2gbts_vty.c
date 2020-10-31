@@ -69,8 +69,6 @@ extern int rsl_tx_preproc_meas_res(struct gsm_lchan *lchan);
 	TRX_STR
 #define DSP_TRACE_F_STR		"DSP Trace Flag\n"
 
-static struct gsm_bts *vty_bts;
-
 static const struct value_string oc2g_pedestal_mode_strs[] = {
 	{ OC2G_PEDESTAL_OFF, "off" },
 	{ OC2G_PEDESTAL_ON, "on" },
@@ -139,7 +137,7 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
 {
 	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct oc2gl1_hdl *fl1h;
 	int i;
 
@@ -261,7 +259,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[3]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -282,7 +280,7 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 {
 	int trx_nr = atoi(argv[0]);
 	int power = atoi(argv[1]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 
 	power_ramp_start(trx, to_mdB(power), 1, NULL);
 
@@ -299,7 +297,7 @@ DEFUN(loopback, loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -318,7 +316,7 @@ DEFUN(no_loopback, no_loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -599,44 +597,42 @@ void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance 
 			pinst->u.oc2g.tx_c0_idle_pwr_red, VTY_NEWLINE);
 }
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	/* runtime-patch the command strings with debug levels */
-	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, oc2gbts_tracef_names,
+	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, oc2gbts_tracef_names,
 						"phy <0-1> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, oc2gbts_tracef_docs,
+	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, oc2gbts_tracef_docs,
 						TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, oc2gbts_tracef_names,
+	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, oc2gbts_tracef_names,
 						"no phy <0-1> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, oc2gbts_tracef_docs,
+	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, oc2gbts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	cfg_phy_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+	cfg_phy_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx,
 						oc2gbts_tracef_names,
 						"dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	cfg_phy_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+	cfg_phy_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx,
 						oc2gbts_tracef_docs,
 						DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	cfg_phy_no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+	cfg_phy_no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx,
 						oc2gbts_tracef_names,
 						"no dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	cfg_phy_no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+	cfg_phy_no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx,
 						oc2gbts_tracef_docs,
 						NO_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	trigger_ho_cause_cmd.string = vty_cmd_string_from_valstr(bts,
+	trigger_ho_cause_cmd.string = vty_cmd_string_from_valstr(ctx,
 						oc2gbts_rsl_ho_causes,
 						"trigger-ho-cause trx <0-1> ts <0-7> lchan <0-1> cause (",
 						"|",")", VTY_DO_LOWER);

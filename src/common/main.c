@@ -211,7 +211,8 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
-static struct gsm_bts *bts;
+/* FIXME: remove this once we add multi-BTS support */
+struct gsm_bts *g_bts = NULL;
 
 static void signal_handler(int signal)
 {
@@ -221,10 +222,10 @@ static void signal_handler(int signal)
 	case SIGINT:
 	case SIGTERM:
 		if (!quit) {
-			oml_tx_failure_event_rep(&bts->mo,
+			oml_tx_failure_event_rep(&g_bts->mo,
 						 NM_SEVER_CRITICAL, OSMO_EVT_CRIT_PROC_STOP,
 						 "BTS: SIGINT received -> shutdown");
-			bts_shutdown(bts, "SIGINT");
+			bts_shutdown(g_bts, "SIGINT");
 		}
 		quit++;
 		break;
@@ -288,8 +289,8 @@ int bts_main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-	bts = gsm_bts_alloc(tall_bts_ctx, 0);
-	if (!bts) {
+	g_bts = gsm_bts_alloc(tall_bts_ctx, 0);
+	if (!g_bts) {
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);
 	}
@@ -317,12 +318,12 @@ int bts_main(int argc, char **argv)
 		gsmtap_source_add_sink(gsmtap);
 	}
 
-	if (bts_init(bts) < 0) {
+	if (bts_init(g_bts) < 0) {
 		fprintf(stderr, "unable to open bts\n");
 		exit(1);
 	}
 
-	abis_init(bts);
+	abis_init(g_bts);
 
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
@@ -336,7 +337,7 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
+	llist_for_each_entry(trx, &g_bts->trx_list, list) {
 		if (!trx->role_bts.l1h) {
 			fprintf(stderr, "TRX %u has no associated PHY instance\n",
 				trx->nr);
@@ -346,7 +347,7 @@ int bts_main(int argc, char **argv)
 
 	write_pid_file("osmo-bts");
 
-	bts_controlif_setup(bts, ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BTS);
+	bts_controlif_setup(g_bts, ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BTS);
 
 	rc = telnet_init_dynif(tall_bts_ctx, NULL, vty_get_bind_addr(),
 			       g_vty_port_num);
@@ -355,7 +356,7 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (pcu_sock_init(bts->pcu.sock_path)) {
+	if (pcu_sock_init(g_bts->pcu.sock_path)) {
 		fprintf(stderr, "PCU L1 socket failed\n");
 		exit(1);
 	}
@@ -367,12 +368,12 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	if (!bts->bsc_oml_host) {
+	if (!g_bts->bsc_oml_host) {
 		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
 		exit(1);
 	}
 
-	line = abis_open(bts, bts->bsc_oml_host, "sysmoBTS");
+	line = abis_open(g_bts, g_bts->bsc_oml_host, "sysmoBTS");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(2);

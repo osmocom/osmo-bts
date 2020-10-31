@@ -69,8 +69,6 @@ extern int rsl_tx_preproc_meas_res(struct gsm_lchan *lchan);
 	TRX_STR
 #define DSP_TRACE_F_STR		"DSP Trace Flag\n"
 
-static struct gsm_bts *vty_bts;
-
 static const struct value_string lc15_diversity_mode_strs[] = {
 	{ LC15_DIVERSITY_SISO_A, "siso-a" },
 	{ LC15_DIVERSITY_SISO_B, "siso-b" },
@@ -146,7 +144,7 @@ DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
 	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
 {
 	int trx_nr = atoi(argv[0]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct lc15l1_hdl *fl1h;
 	int i;
 
@@ -268,7 +266,7 @@ DEFUN(activate_lchan, activate_lchan_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[3]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -289,7 +287,7 @@ DEFUN(set_tx_power, set_tx_power_cmd,
 {
 	int trx_nr = atoi(argv[0]);
 	int power = atoi(argv[1]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 
 	power_ramp_start(trx, to_mdB(power), 1, NULL);
 
@@ -306,7 +304,7 @@ DEFUN(loopback, loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -325,7 +323,7 @@ DEFUN(no_loopback, no_loopback_cmd,
 	int trx_nr = atoi(argv[0]);
 	int ts_nr = atoi(argv[1]);
 	int lchan_nr = atoi(argv[2]);
-	struct gsm_bts_trx *trx = gsm_bts_trx_num(vty_bts, trx_nr);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(g_bts, trx_nr);
 	struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 	struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 
@@ -565,39 +563,37 @@ void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance 
 #endif
 }
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	/* runtime-patch the command strings with debug levels */
-	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
+	dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, lc15bts_tracef_names,
 						"phy <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
+	dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, lc15bts_tracef_docs,
 						TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts, lc15bts_tracef_names,
+	no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx, lc15bts_tracef_names,
 						"no phy <0-0> dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts, lc15bts_tracef_docs,
+	no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx, lc15bts_tracef_docs,
 						NO_STR TRX_STR DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	cfg_phy_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+	cfg_phy_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx,
 						lc15bts_tracef_names,
 						"dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	cfg_phy_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+	cfg_phy_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx,
 						lc15bts_tracef_docs,
 						DSP_TRACE_F_STR,
 						"\n", "", 0);
 
-	cfg_phy_no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(bts,
+	cfg_phy_no_dsp_trace_f_cmd.string = vty_cmd_string_from_valstr(ctx,
 						lc15bts_tracef_names,
 						"no dsp-trace-flag (",
 						"|",")", VTY_DO_LOWER);
-	cfg_phy_no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(bts,
+	cfg_phy_no_dsp_trace_f_cmd.doc = vty_cmd_string_from_valstr(ctx,
 						lc15bts_tracef_docs,
 						NO_STR DSP_TRACE_F_STR,
 						"\n", "", 0);

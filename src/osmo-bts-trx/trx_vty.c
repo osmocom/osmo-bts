@@ -52,16 +52,13 @@
 
 #define OSMOTRX_STR	"OsmoTRX Transceiver configuration\n"
 
-static struct gsm_bts *vty_bts;
-
 DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 	SHOW_STR "Display information about transceivers\n")
 {
-	struct gsm_bts *bts = vty_bts;
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
+	llist_for_each_entry(trx, &g_bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct phy_link *plink = pinst->phy_link;
 		char *sname = osmo_sock_get_name(NULL, plink->u.osmotrx.trx_ofd_clk.fd);
@@ -201,7 +198,7 @@ DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 {
 	vty_out (vty, "'osmotrx ms-power-loop' is deprecated, use 'uplink-power-target' instead%s", VTY_NEWLINE);
 
-	vty_bts->ul_power_target = atoi(argv[0]);
+	g_bts->ul_power_target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -599,10 +596,8 @@ void bts_model_config_write_trx(struct vty *vty, const struct gsm_bts_trx *trx)
 			VTY_NEWLINE);
 }
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	install_element_ve(&show_transceiver_cmd);
 	install_element_ve(&show_phy_cmd);
 

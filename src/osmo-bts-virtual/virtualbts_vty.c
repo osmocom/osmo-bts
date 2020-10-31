@@ -50,8 +50,6 @@
 	SHOW_STR				\
 	TRX_STR
 
-static struct gsm_bts *vty_bts;
-
 void bts_model_config_write_bts(struct vty *vty, const struct gsm_bts *bts)
 {
 }
@@ -191,10 +189,8 @@ DEFUN(cfg_phy_mcast_ttl, cfg_phy_mcast_ttl_cmd,
 	return CMD_SUCCESS;
 }
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	install_element(PHY_NODE, &cfg_phy_ms_mcast_group_cmd);
 	install_element(PHY_NODE, &cfg_phy_ms_mcast_port_cmd);
 	install_element(PHY_NODE, &cfg_phy_bts_mcast_group_cmd);

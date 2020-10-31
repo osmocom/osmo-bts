@@ -27,6 +27,7 @@ int bts_vty_init(void *ctx);
 struct gsm_network *gsmnet_from_vty(struct vty *v);
 
 extern struct vty_app_info bts_vty_info;
+extern struct gsm_bts *g_bts;
 
 enum bts_vty_cmd_attr {
 	BTS_VTY_ATTR_NEW_LCHAN,

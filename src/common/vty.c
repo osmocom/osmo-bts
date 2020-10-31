@@ -1921,5 +1921,6 @@ int bts_vty_init(void *ctx)
 
 	install_node(&phy_inst_node, config_write_dummy);
 
-	return 0;
+	/* Install variant-specific VTY options */
+	return bts_model_vty_init(ctx);
 }

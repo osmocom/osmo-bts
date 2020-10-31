@@ -54,8 +54,6 @@
 
 #define OCT_STR	"OCTPHY Um interface\n"
 
-static struct gsm_bts *vty_bts;
-
 /* configuration */
 
 DEFUN(cfg_phy_hwaddr, cfg_phy_hwaddr_cmd,
@@ -437,10 +435,8 @@ DEFUN(show_sys_info, show_sys_info_cmd,
 }
 
 
-int bts_model_vty_init(struct gsm_bts *bts)
+int bts_model_vty_init(void *ctx)
 {
-	vty_bts = bts;
-
 	install_element(PHY_NODE, &cfg_phy_hwaddr_cmd);
 	install_element(PHY_NODE, &cfg_phy_netdev_cmd);
 	install_element(PHY_NODE, &cfg_phy_rf_port_idx_cmd);
