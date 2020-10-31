@@ -1853,10 +1853,6 @@ int bts_vty_init(void *ctx)
 	install_element_ve(&logging_fltr_l1_sapi_cmd);
 	install_element_ve(&no_logging_fltr_l1_sapi_cmd);
 
-	logging_vty_add_cmds();
-	osmo_talloc_vty_add_cmds();
-	osmo_stats_vty_add_cmds();
-
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_element(CONFIG_NODE, &cfg_vty_telnet_port_cmd);

@@ -38,6 +38,8 @@
 #include <osmocom/core/application.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/stats.h>
+#include <osmocom/vty/misc.h>
 #include <osmocom/vty/cpu_sched_vty.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/gsmtap.h>
@@ -276,6 +278,10 @@ int bts_main(int argc, char **argv)
 	ctrl_vty_init(tall_bts_ctx);
 	osmo_cpu_sched_vty_init(tall_bts_ctx);
 	rate_ctr_init(tall_bts_ctx);
+
+	logging_vty_add_cmds();
+	osmo_talloc_vty_add_cmds();
+	osmo_stats_vty_add_cmds();
 
 	bts_vty_init(tall_bts_ctx);
 	e1inp_vty_init();
