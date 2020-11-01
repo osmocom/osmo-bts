@@ -490,7 +490,9 @@ DEFUN_USRATTR(cfg_bts_rtp_jitbuf,
 	      cfg_bts_rtp_jitbuf_cmd,
 	      X(BTS_VTY_ATTR_NEW_LCHAN),
 	      "rtp jitter-buffer <0-10000> [adaptive]",
-	      RTP_STR "RTP jitter buffer\n" "jitter buffer in ms\n")
+	      RTP_STR "RTP jitter buffer\n"
+	      "Jitter buffer in ms\n"
+	      "Enable adaptive RTP jitter buffering\n")
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -502,9 +504,10 @@ DEFUN_USRATTR(cfg_bts_rtp_jitbuf,
 }
 
 DEFUN(cfg_bts_rtp_port_range,
-	cfg_bts_rtp_port_range_cmd,
-	"rtp port-range <1-65534> <1-65534>",
-      RTP_STR "Range of local ports to use for RTP/RTCP traffic\n")
+      cfg_bts_rtp_port_range_cmd,
+      "rtp port-range <1-65534> <1-65534>",
+      RTP_STR "Range of local ports to use for RTP/RTCP traffic\n"
+      "Port range start (inclusive)\n" "Port range end (inclusive)\n")
 {
 	struct gsm_bts *bts = vty->index;
 	unsigned int start;
@@ -725,7 +728,8 @@ DEFUN_ATTR(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
 
 DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	"pcu-socket PATH",
-	"Configure the PCU socket file/path name\n")
+	"Configure the PCU socket file/path name\n"
+	"UNIX socket path\n")
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -759,9 +763,13 @@ DEFUN_ATTR(cfg_bts_no_supp_meas_toa256, cfg_bts_no_supp_meas_toa256_cmd,
 	return CMD_SUCCESS;
 }
 
+#define SMSCB_STR \
+	"SMSCB (SMS Cell Broadcast) / CBCH configuration\n"
+
 DEFUN_ATTR(cfg_bts_smscb_max_qlen, cfg_bts_smscb_max_qlen_cmd,
 	   "smscb queue-max-length <1-60>",
-	   "Maximum queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 15)",
+	   SMSCB_STR "Maximum length of the SMSCB (CBCH) queue\n"
+	   "Length in count of messages/pages (default: 15)\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
@@ -771,7 +779,8 @@ DEFUN_ATTR(cfg_bts_smscb_max_qlen, cfg_bts_smscb_max_qlen_cmd,
 
 DEFUN_ATTR(cfg_bts_smscb_tgt_qlen, cfg_bts_smscb_tgt_qlen_cmd,
 	   "smscb queue-target-length <1-30>",
-	   "Target queue length for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)",
+	   SMSCB_STR "Target length of the SMSCB (CBCH) queue\n"
+	   "Length in count of messages/pages (default: 2)\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
@@ -781,7 +790,8 @@ DEFUN_ATTR(cfg_bts_smscb_tgt_qlen, cfg_bts_smscb_tgt_qlen_cmd,
 
 DEFUN_ATTR(cfg_bts_smscb_qhyst, cfg_bts_smscb_qhyst_cmd,
 	   "smscb queue-hysteresis <0-30>",
-	   "Hysteresis for SMSCB (CBCH) queue. In count of messages/pages (Default: 2)",
+	   SMSCB_STR "Hysteresis of the SMSCB (CBCH) queue\n"
+	   "In count of messages/pages (default: 2)\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
