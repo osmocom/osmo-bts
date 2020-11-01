@@ -588,9 +588,9 @@ DEFUN_ATTR(cfg_bts_agch_queue_mgmt_params,
 	   cfg_bts_agch_queue_mgmt_params_cmd,
 	   "agch-queue-mgmt threshold <0-100> low <0-100> high <0-100000>",
 	   AGCH_QUEUE_STR
-	   "Threshold to start cleanup\nin %% of the maximum queue length\n"
-	   "Low water mark for cleanup\nin %% of the maximum queue length\n"
-	   "High water mark for cleanup\nin %% of the maximum queue length\n",
+	   "Threshold to start cleanup\nin % of the maximum queue length\n"
+	   "Low water mark for cleanup\nin % of the maximum queue length\n"
+	   "High water mark for cleanup\nin % of the maximum queue length\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
@@ -672,8 +672,8 @@ DEFUN_ATTR(cfg_bts_ul_power_filter_ewma,
 	   "Configure filtering for uplink power control loop\n"
 	   "Select the filtering algorithm\n"
 	   "Exponentially Weighted Moving Average (EWMA)\n"
-	   "Smoothing factor (in %%): beta = (100 - alpha)\n"
-	   "1%% - lowest smoothing, 99%% - highest smoothing\n",
+	   "Smoothing factor (in %): beta = (100 - alpha)\n"
+	   "1% - lowest smoothing, 99% - highest smoothing\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
