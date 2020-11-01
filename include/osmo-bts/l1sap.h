@@ -144,4 +144,7 @@ int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
 
 int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn);
 
+void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
+				       const uint8_t *l3, size_t l3_len);
+
 #endif /* L1SAP_H */

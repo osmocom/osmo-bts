@@ -156,6 +156,11 @@ enum lchan_rel_act_kind {
 	LCHAN_REL_ACT_REACT, /* remove once auto-activation hack is removed from opstart_compl() */
 };
 
+struct gsm_rep_facch {
+	struct msgb *msg;
+	uint32_t fn;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -272,6 +277,10 @@ struct gsm_lchan {
 		} dtx;
 		uint8_t last_cmr;
 		uint32_t last_fn;
+
+		/* SLOT #0 and #1 to store FACCH for repetition */
+		struct gsm_rep_facch rep_facch[2];
+
 	} tch;
 
 	/* 3GPP TS 48.058 § 9.3.37: [0; 255] ok, -1 means invalid*/
@@ -314,6 +323,9 @@ struct gsm_lchan {
 
 	/* ECU (Error Concealment Unit) state */
 	struct osmo_ecu_state *ecu_state;
+
+	struct abis_rsl_osmo_rep_acch_cap repeated_acch_capability;
+	bool repeated_dl_facch_active;
 };
 
 static inline uint8_t lchan_get_ta(const struct gsm_lchan *lchan)

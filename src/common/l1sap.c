@@ -908,6 +908,112 @@ static void l1sap_update_fnstats(struct gsm_bts *bts, uint32_t rts_fn)
 	}
 }
 
+/* Common dequeueing function */
+static inline struct msgb *lapdm_phsap_dequeue_msg(struct lapdm_entity *le)
+{
+	struct osmo_phsap_prim pp;
+	if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+		return NULL;
+	return pp.oph.msg;
+}
+
+/* Special dequeueing function with FACCH repetition (3GPP TS 44.006, section 10) */
+static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan, struct lapdm_entity *le, uint32_t fn)
+{
+	struct osmo_phsap_prim pp;
+	struct msgb *msg;
+
+	/* Note: The repeated version of the FACCH block must be scheduled 8 or 9 bursts after the original
+	 * transmission. see 3GPP TS 44.006, section 10.2 for a more detailed explaination. */
+	if (lchan->tch.rep_facch[0].msg && GSM_TDMA_FN_SUB(fn, lchan->tch.rep_facch[0].fn) >= 8) {
+		/* Re-use stored FACCH message buffer from SLOT #0 for repetition. */
+		msg = lchan->tch.rep_facch[0].msg;
+		lchan->tch.rep_facch[0].msg = NULL;
+	} else if (lchan->tch.rep_facch[1].msg && GSM_TDMA_FN_SUB(fn, lchan->tch.rep_facch[1].fn) >= 8) {
+		/* Re-use stored FACCH message buffer from SLOT #1 for repetition. */
+		msg = lchan->tch.rep_facch[1].msg;
+		lchan->tch.rep_facch[1].msg = NULL;
+	} else {
+		/* Fetch new FACCH from queue ... */
+		if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+			return NULL;
+		msg = pp.oph.msg;
+
+		/* Check if the LAPDm frame is a command frame,
+		 * see also: 3GPP TS 04.06 section 3.2 and 3.3.2.
+		 * If the MS explicitly indicated that repeated ACCH is
+		 * supported, than all FACCH frames may be repeated
+		 * see also: 3GPP TS 44.006, section 10.3). */
+		if (!(lchan->repeated_acch_capability.dl_facch_all || msg->data[0] & 0x02))
+			return msg;
+
+		/* ... and store the message buffer for repetition. */
+		if (lchan->tch.rep_facch[0].msg == NULL) {
+			lchan->tch.rep_facch[0].msg = msgb_copy(msg, "rep_facch_0");
+			lchan->tch.rep_facch[0].fn = fn;
+		} else if (lchan->tch.rep_facch[1].msg == NULL) {
+			lchan->tch.rep_facch[1].msg = msgb_copy(msg, "rep_facch_1");
+			lchan->tch.rep_facch[1].fn = fn;
+		} else {
+			/* By definition 3GPP TS 05.02 does not allow more than two (for TCH/H only one) FACCH blocks
+			 * to be transmitted simultaniously. */
+			OSMO_ASSERT(false);
+		}
+	}
+
+	return msg;
+}
+
+/* Decide if repeated FACCH should be applied or not. If RXQUAL level, that the
+ * MS reports is high enough, FACCH repetition is not needed. */
+void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l3,
+				       size_t l3_len)
+{
+	const struct gsm48_meas_res *meas_res;
+	uint8_t upper;
+	uint8_t lower;
+
+	if (!lchan->repeated_acch_capability.dl_facch_cmd
+	    && !lchan->repeated_acch_capability.dl_facch_all)
+		return;
+
+	/* Threshold disabled (always on) */
+	if (lchan->repeated_acch_capability.rxqual == 0) {
+		lchan->repeated_dl_facch_active = true;
+		return;
+	}
+
+	/* When the MS sets the SRR bit in the UL-SACCH L1 header
+	 * (repeated SACCH requested) then it makes sense to enable
+	 * FACCH repetition too. */
+	if ((lchan->meas.l1_info[0] >> 1) & 1) {
+		lchan->repeated_dl_facch_active = true;
+		return;
+	}
+
+	/* Parse MS measurement results */
+	if (l3_len <= sizeof(struct gsm48_meas_res *) + 2)
+		return;
+	if (l3[0] != GSM48_PDISC_RR)
+		return;
+	if (l3[1] != GSM48_MT_RR_MEAS_REP)
+		return;
+	l3 += 2;
+	meas_res = (struct gsm48_meas_res *)l3;
+
+	/* If the RXQUAL level at the MS drops under a certain threshold
+	 * we enable FACCH repetition. */
+	upper = lchan->repeated_acch_capability.rxqual;
+	if (upper > 2)
+		lower = lchan->repeated_acch_capability.rxqual - 2;
+	else
+		lower = 0;
+	if (meas_res->rxqual_sub >= upper)
+		lchan->repeated_dl_facch_active = true;
+	else if (meas_res->rxqual_sub <= lower)
+		lchan->repeated_dl_facch_active = false;
+}
+
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -921,7 +1027,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	uint8_t *p = NULL;
 	uint8_t *si;
 	struct lapdm_entity *le;
-	struct osmo_phsap_prim pp;
+	struct msgb *pp_msg;
 	bool dtxd_facch = false;
 	int rc;
 	int is_ag_res;
@@ -989,13 +1095,17 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p[0] = lchan->ms_power_ctrl.current;
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
+			pp_msg = lapdm_phsap_dequeue_msg(le);
 		} else {
 			if (lchan->ts->trx->bts->dtxd)
 				dtxd_facch = true;
 			le = &lchan->lapdm_ch.lapdm_dcch;
+			if (lchan->repeated_dl_facch_active && lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
+				pp_msg = lapdm_phsap_dequeue_msg_facch(lchan, le, fn);
+			else
+				pp_msg = lapdm_phsap_dequeue_msg(le);
 		}
-		rc = lapdm_phsap_dequeue_prim(le, &pp);
-		if (rc < 0) {
+		if (!pp_msg) {
 			if (L1SAP_IS_LINK_SACCH(link_id)) {
 				/* No SACCH data from LAPDM pending, send SACCH filling */
 				uint8_t *si = lchan_sacch_get(lchan);
@@ -1020,16 +1130,16 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		} else {
 			/* The +2 is empty space where the DSP inserts the L1 hdr */
 			if (L1SAP_IS_LINK_SACCH(link_id))
-				memcpy(p + 2, pp.oph.msg->data + 2, GSM_MACBLOCK_LEN - 2);
+				memcpy(p + 2, pp_msg->data + 2, GSM_MACBLOCK_LEN - 2);
 			else {
 				p = msgb_put(msg, GSM_MACBLOCK_LEN);
-				memcpy(p, pp.oph.msg->data, GSM_MACBLOCK_LEN);
+				memcpy(p, pp_msg->data, GSM_MACBLOCK_LEN);
 				/* check if it is a RR CIPH MODE CMD. if yes, enable RX ciphering */
-				check_for_ciph_cmd(pp.oph.msg, lchan, chan_nr);
+				check_for_ciph_cmd(pp_msg, lchan, chan_nr);
 				if (dtxd_facch)
 					dtx_dispatch(lchan, E_FACCH);
 			}
-			msgb_free(pp.oph.msg);
+			msgb_free(pp_msg);
 		}
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);

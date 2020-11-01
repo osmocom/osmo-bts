@@ -823,6 +823,13 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	 */
 	lapdm_channel_exit(&lchan->lapdm_ch);
 
+	/* Also ensure that there are no leftovers from repeated FACCH
+	 * that might cause memory leakage. */
+	msgb_free(lchan->tch.rep_facch[0].msg);
+	msgb_free(lchan->tch.rep_facch[1].msg);
+	lchan->tch.rep_facch[0].msg = NULL;
+	lchan->tch.rep_facch[1].msg = NULL;
+
 	return tx_rf_rel_ack(lchan, chan_nr);
 }
 
@@ -1085,6 +1092,26 @@ static enum gsm_phys_chan_config dyn_pchan_from_chan_nr(uint8_t chan_nr)
 	}
 }
 
+/* Parse RSL_IE_OSMO_REP_ACCH_CAP */
+static void parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_parsed *tp)
+{
+	/* 3GPP TS 24.008, section 10.5.1.7 defines a Repeated ACCH Capability
+	 * bit that indicates if REPEATED FACCH/SACCH is supported or not.
+	 * Unfortunately there is not 3gpp spec that describes how this bit
+	 * should be communicated in the RSL CHANNEL ACTIVATION. For osmo-bts
+	 * we will use a propritary IE. */
+
+	memset(&lchan->repeated_acch_capability, 0, sizeof(lchan->repeated_acch_capability));
+
+	if (!TLVP_PRESENT(tp, RSL_IE_OSMO_REP_ACCH_CAP))
+		return;
+	if (TLVP_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP) != sizeof(lchan->repeated_acch_capability))
+		return;
+
+	memcpy(&lchan->repeated_acch_capability, TLVP_VAL(tp, RSL_IE_OSMO_REP_ACCH_CAP),
+	       sizeof(lchan->repeated_acch_capability));
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
@@ -1326,6 +1353,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* Remember to send an RSL ACK once the lchan is active */
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+
+	parse_repeated_acch_capability(lchan, &tp);
 
 	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
@@ -1652,6 +1681,8 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	}
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
+
+	parse_repeated_acch_capability(lchan, &tp);
 
 	l1sap_chan_modify(lchan->ts->trx, dch->chan_nr);
 
@@ -3007,6 +3038,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 			return 0;
 		}
 
+		repeated_dl_facch_active_decision(lchan, msgb_l3(msg), msgb_l3len(msg));
 		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), le);
 		msgb_free(msg);
 		return rc;
