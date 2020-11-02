@@ -781,8 +781,6 @@ int bts_model_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
 
-	bts_model_vty_init(bts);
-
 	return 0;
 }
 

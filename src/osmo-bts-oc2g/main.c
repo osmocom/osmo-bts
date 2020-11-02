@@ -113,8 +113,6 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP);
 
-	bts_model_vty_init(bts);
-
 	return 0;
 }
 
