@@ -18,7 +18,8 @@ if BUILD_MANUALS
   osmobts-abis.pdf: $(srcdir)/abis/*.adoc $(srcdir)/abis/*.msc
   rtp-amr.pdf: $(srcdir)/dtx.dot
 
-  VARIANTS = $(NULL)
+  # NOTE: osmo-bts-omldummy has no VTY interface
+  VARIANTS = virtual
 
 if ENABLE_SYSMOBTS
   VARIANTS += sysmo
