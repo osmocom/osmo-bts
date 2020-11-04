@@ -1095,6 +1095,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t type;
 	int rc;
+	bool ms_power_present = false;
 
 	if (lchan->state != LCHAN_S_NONE) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "error: lchan is not available, but in state: %s.\n",
@@ -1188,6 +1189,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
 		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
+		ms_power_present = true;
 	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
@@ -1308,6 +1310,18 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return rsl_tx_chan_act_acknack(lchan, RSL_ERR_NORMAL_UNSPEC);
 		}
 		return 0;
+	}
+
+	/* Indicate which SAPIs should be enabled before the first RACH is received, for handover. See 3GPP TS 48.058
+	 * 4.1.3 and 4.1.4. */
+	switch (type) {
+	case RSL_ACT_INTER_ASYNC:
+	case RSL_ACT_INTER_SYNC:
+		lchan->want_dl_sacch_active = ms_power_present;
+		break;
+	default:
+		lchan->want_dl_sacch_active = true;
+		break;
 	}
 
 	/* Remember to send an RSL ACK once the lchan is active */

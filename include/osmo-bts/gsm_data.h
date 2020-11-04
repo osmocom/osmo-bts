@@ -194,6 +194,22 @@ struct gsm_lchan {
 
 	char *name;
 
+	/* For handover, activation is described in 3GPP TS 48.058 4.1.3 and 4.1.4:
+	 *
+	 *          |          | Access ||  transmit         |  activate
+	 *          | MS Power | Delay  ||  on main channel  |  dl SACCH
+	 * ----------------------------------------------------------------------
+	 * async ho   no         *     -->  yes                 no
+	 * async ho   yes        *     -->  yes                 may be started
+	 * sync ho    no         no    -->  yes                 no
+	 * sync ho    yes        no    -->  yes                 may be started
+	 * sync ho    yes        yes   -->  yes                 shall be started
+	 *
+	 * Always start the main channel immediately.
+	 * want_dl_sacch_active indicates whether dl SACCH should be activated on CHAN ACT.
+	 */
+	bool want_dl_sacch_active;
+
 	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.
 	 * Currently we don't share these headers so this is a magic number. */
 	struct llist_head sapi_cmds;

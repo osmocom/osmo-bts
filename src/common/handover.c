@@ -112,6 +112,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 
 	/* Set timing advance */
 	lchan->rqd_ta = acc_delay;
+	lchan->want_dl_sacch_active = true;
 
 	/* Stop handover detection, wait for valid frame */
 	lchan->ho.active = HANDOVER_WAIT_FRAME;
