@@ -858,6 +858,12 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		return -ENODEV;
 	}
 
+	/* For handover detection, there are cases where the SACCH should remain inactive until the first RACH
+	 * indicating the TA is received. */
+	if (L1SAP_IS_LINK_SACCH(link_id)
+	    && !l1t->ts[tn].chan_state[chan].lchan->want_dl_sacch_active)
+		return 0;
+
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
 		"PH-RTS.ind: chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
 
