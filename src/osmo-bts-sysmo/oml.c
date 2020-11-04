@@ -657,10 +657,6 @@ static const struct sapi_dir pdtch_sapis[] = {
 #endif
 };
 
-static const struct sapi_dir ho_sapis[] = {
-	{ GsmL1_Sapi_Rach,	GsmL1_Dir_RxUplink },
-};
-
 struct lchan_sapis {
 	const struct sapi_dir *sapis;
 	unsigned int num_sapis;
@@ -691,11 +687,6 @@ static const struct lchan_sapis sapis_for_lchan[_GSM_LCHAN_MAX] = {
 		.sapis = cbch_sapis,
 		.num_sapis = ARRAY_SIZE(cbch_sapis),
 	},
-};
-
-static const struct lchan_sapis sapis_for_ho = {
-	.sapis = ho_sapis,
-	.num_sapis = ARRAY_SIZE(ho_sapis),
 };
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd);
@@ -1176,10 +1167,10 @@ int lchan_activate(struct gsm_lchan *lchan)
 			"%s Trying to activate lchan, but commands in queue\n",
 			gsm_lchan_name(lchan));
 
-	/* override the regular SAPIs if this is the first hand-over
-	 * related activation of the LCHAN */
+	/* For handover, always start the main channel immediately. lchan->want_dl_sacch_active indicates whether dl
+	 * SACCH should be activated. Also, for HO, start the RACH SAPI. */
 	if (lchan->ho.active == HANDOVER_ENABLED)
-		s4l = &sapis_for_ho;
+		enqueue_sapi_act_cmd(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
 
 	for (i = 0; i < s4l->num_sapis; i++) {
 		int sapi = s4l->sapis[i].sapi;
@@ -1192,6 +1183,11 @@ int lchan_activate(struct gsm_lchan *lchan)
 			fl1h->alive_prim_cnt = 0;
 			osmo_timer_schedule(&fl1h->alive_timer, 5, 0);
 		}
+
+		/* For handover, possibly postpone activating the dl SACCH until the HO RACH is received. */
+		if (sapi == GsmL1_Sapi_Sacch && dir == GsmL1_Dir_TxDownlink
+		    && !lchan->want_dl_sacch_active)
+			continue;
 		enqueue_sapi_act_cmd(lchan, sapi, dir);
 	}
 
@@ -1868,9 +1864,6 @@ int l1if_rsl_chan_act(struct gsm_lchan *lchan)
  */
 int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 {
-	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
-	unsigned int i;
-
 	if (lchan->ho.active == HANDOVER_NONE)
 		return -1;
 
@@ -1880,12 +1873,18 @@ int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 	/* Give up listening to RACH bursts */
 	release_sapi_ul_rach(lchan);
 
-	/* Activate the normal SAPIs */
-	for (i = 0; i < s4l->num_sapis; i++) {
-		int sapi = s4l->sapis[i].sapi;
-		int dir = s4l->sapis[i].dir;
-		enqueue_sapi_act_cmd(lchan, sapi, dir);
-	}
+	/* All the normal SAPIs have already been activated, only DL SACCH may still be missing.
+	 *
+	 * Note: theoretically, it would only be necessary to activate the DL SACCH when it is not active yet.  With
+	 * repeated HO RACH received, we shouldn't need to re-send the SAPI activation every time. However, tests with
+	 * sysmoBTS show that when sending this SAPI activation only once, the lchan will release some seconds after a
+	 * handover, with error messages indicating "Lost SACCH block, faking meas reports and ms pwr".  When re-sending
+	 * the SAPI activation for every RACH received, the problem goes away.
+	 * Before introducing lchan->want_dl_sacch_active, this code here would activate all SAPIs for the main channel,
+	 * which would also repeat for each RACH received. Now we only activate DL SACCH here.
+	 */
+	if (lchan->want_dl_sacch_active)
+		enqueue_sapi_act_cmd(lchan, GsmL1_Sapi_Sacch, GsmL1_Dir_TxDownlink);
 
 	return 0;
 }
