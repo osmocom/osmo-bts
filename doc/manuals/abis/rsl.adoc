@@ -842,6 +842,7 @@ addition to those indicated in 3GPP TS 08.58 Section 9.3:
 |===
 | IEI  | Name | This document §
 | 0x01 | RSL_IE_CHAN_NR | <<RSL_IE_CHAN_NR>>
+| 0x60 | RSL_IE_OSMO_REP_ACCH_CAP | <<RSL_IE_OSMO_REP_ACCH_CAP>>
 | 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>> 
 | 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
 | 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
@@ -952,6 +953,15 @@ connection ID in network byte order.
 This information element contains the RTP payload identifier, which is
 used in the PT (Payload Type) field of the RTP header in subsequent
 transmissions of the RTP flow.
+
+[[RSL_IE_OSMO_REP_ACCH_CAP]]
+==== RSL_IE_OSMO_REP_ACCH_CAP
+
+This is a one byte length TLV IE that is used to enable or disable repeated ACCH
+capabilities on the BTS side during Channel Activation and Mode Modify. If the
+IE is present and its value byte is set to 0x01, then the BTS will enable
+repeated ACCH capabilities, otherwise the channel is activated without repeated
+ACCH capabilities present.
 
 === A-bis RSL Initialization / BTS bring-up
 
