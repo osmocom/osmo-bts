@@ -1463,10 +1463,11 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		}
 		/* Some brilliant engineer decided that the ordering of
 		 * fields on the Um interface is different from the
-		 * order of fields in RSL. See TS 04.04 (Chapter 7.2)
-		 * vs. TS 08.58 (Chapter 9.3.10). */
+		 * order of fields in RSL. See 3GPP TS 44.004 (section 7.2)
+		 * vs. 3GPP TS 48.058 (section 9.3.10). */
 		lchan->meas.l1_info[0] = data[0] << 3;
-		lchan->meas.l1_info[0] |= ((data[0] >> 5) & 1) << 2;
+		lchan->meas.l1_info[0] |= ((data[0] >> 5) & 1) << 2; /* FPC/EPC */
+		lchan->meas.l1_info[0] |= ((data[0] >> 6) & 1) << 1; /* SRR */
 		lchan->meas.l1_info[1] = data[1];
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
 
