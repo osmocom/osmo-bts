@@ -823,12 +823,14 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	 */
 	lapdm_channel_exit(&lchan->lapdm_ch);
 
-	/* Also ensure that there are no leftovers from repeated FACCH
-	 * that might cause memory leakage. */
+	/* Also ensure that there are no leftovers from repeated FACCH or
+	 * repeated SACCH that might cause memory leakage. */
 	msgb_free(lchan->tch.rep_facch[0].msg);
 	msgb_free(lchan->tch.rep_facch[1].msg);
 	lchan->tch.rep_facch[0].msg = NULL;
 	lchan->tch.rep_facch[1].msg = NULL;
+	msgb_free(lchan->rep_sacch);
+	lchan->rep_sacch = NULL;
 
 	return tx_rf_rel_ack(lchan, chan_nr);
 }

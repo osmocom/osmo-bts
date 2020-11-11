@@ -1014,6 +1014,44 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 		lchan->repeated_dl_facch_active = false;
 }
 
+/* Special dequeueing function with SACCH repetition (3GPP TS 44.006, section 11) */
+static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan, struct lapdm_entity *le)
+{
+	struct osmo_phsap_prim pp;
+	struct msgb *msg;
+	uint8_t sapi;
+
+	/* Note: When the MS disables SACCH repetition, we still must collect
+	 * possible candidates in order to have one ready in case the MS enables
+	 * SACCH repetition. */
+
+	if (lchan->rep_sacch) {
+		if (((lchan->meas.l1_info[0] >> 1) & 1) == 0) {
+			/* Toss previous repetition candidate */
+			msgb_free(lchan->rep_sacch);
+			lchan->rep_sacch = NULL;
+		} else {
+			/* Use previous repetition candidate */
+			msg = lchan->rep_sacch;
+			lchan->rep_sacch = NULL;
+			return msg;
+		}
+	}
+
+	/* Fetch new repetition candidate from queue */
+	if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+		return NULL;
+	msg = pp.oph.msg;
+	sapi = (msg->data[0] >> 2) & 0x07;
+
+	/* Only LAPDm frames for SAPI may become a repetition
+	 * candidate. */
+	if (sapi == 0)
+		lchan->rep_sacch = msgb_copy(msg, "rep_sacch");
+
+	return msg;
+}
+
 /* PH-RTS-IND prim received from bts model */
 static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_data_param *rts_ind)
@@ -1095,7 +1133,10 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p[0] = lchan->ms_power_ctrl.current;
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
-			pp_msg = lapdm_phsap_dequeue_msg(le);
+			if (lchan->repeated_acch_capability.dl_sacch)
+				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le);
+			else
+				pp_msg = lapdm_phsap_dequeue_msg(le);
 		} else {
 			if (lchan->ts->trx->bts->dtxd)
 				dtxd_facch = true;
