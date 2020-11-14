@@ -1131,6 +1131,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
 			p[0] = lchan->ms_power_ctrl.current;
+			if (lchan->repeated_ul_sacch_active)
+				p[0] |= 0x40; /* See also: 3GPP TS 44.004, section 7.1 */
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
 			if (lchan->repeated_acch_capability.dl_sacch)
@@ -1394,6 +1396,34 @@ int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
 	return check_for_first_ciphrd(lchan, data, len);
 }
 
+/* Decide if repeated UL-SACCH should be applied or not. If the BER level, of
+ * the received SACCH blocks rises above a certain threshold UL-SACCH
+ * repetition is enabled */
+static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
+					      uint16_t ber10k)
+{
+	uint16_t upper = 0;
+	uint16_t lower = 0;
+
+	if (!lchan->repeated_acch_capability.ul_sacch)
+		return;
+
+	/* convert from RXQUAL value to ber10k vale,
+	 * see also GSM 05.08, section 8.2.4 */
+	static const uint16_t ber10k_by_rxqual_upper[] =
+	    { 0, 26, 51, 100, 190, 380, 760, 1500 };
+	static const uint16_t ber10k_by_rxqual_lower[] =
+	    { 0, 10, 10, 30, 64, 130, 270, 540 };
+	upper = ber10k_by_rxqual_upper[lchan->repeated_acch_capability.rxqual];
+	lower = ber10k_by_rxqual_lower[lchan->repeated_acch_capability.rxqual];
+
+	/* If upper/rxqual == 0, then repeated UL-SACCH is always on */
+	if (ber10k >= upper)
+		lchan->repeated_ul_sacch_active = true;
+	else if (ber10k <= lower)
+		lchan->repeated_ul_sacch_active = false;
+}
+
 /* DATA received from bts model */
 static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct ph_data_param *data_ind)
@@ -1471,6 +1501,9 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
+
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		repeated_ul_sacch_active_decision(lchan, data_ind->ber10k);
 
 	/* bad frame */
 	if (len == 0) {

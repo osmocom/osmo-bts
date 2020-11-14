@@ -87,6 +87,7 @@ struct l1sched_chan_state {
 	ubit_t			*dl_bursts;	/* burst buffer for TX */
 	enum trx_burst_type	dl_burst_type;  /* GMSK or 8PSK burst type */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
+	sbit_t			*ul_bursts_prev;/* previous burst buffer for RX (repeated SACCH) */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint8_t			ul_mask;	/* mask of received bursts */
 

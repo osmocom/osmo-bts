@@ -34,6 +34,17 @@
 
 #include <sched_utils.h>
 
+/* Add two arrays of sbits */
+static void add_sbits(sbit_t * current, const sbit_t * previous)
+{
+	unsigned int i;
+	for (i = 0; i < 464; i++) {
+		*current = (*current) / 2 + (*previous) / 2;
+		current++;
+		previous++;
+	}
+}
+
 /*! \brief a single (SDCCH/SACCH) burst was received by the PHY, process it */
 int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	       uint8_t bid, const struct trx_ul_burst_ind *bi)
@@ -49,6 +60,8 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int n_bits_total = 0;
 	uint16_t ber10k;
 	int rc;
+	struct gsm_lchan *lchan = chan_state->lchan;
+	bool rep_sacch = L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id) && lchan->repeated_ul_sacch_active;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
@@ -62,6 +75,14 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(tall_bts_ctx, 464);
 		if (!*bursts_p)
+			return -ENOMEM;
+	}
+
+	/* UL-SACCH requires additional memory to keep a copy of each previous
+	 * burst set. */
+	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id) && !chan_state->ul_bursts_prev) {
+		chan_state->ul_bursts_prev = talloc_zero_size(tall_bts_ctx, 464);
+		if (!chan_state->ul_bursts_prev)
 			return -ENOMEM;
 	}
 
@@ -115,10 +136,34 @@ int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			"Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		l2_len = 0;
+
+		/* When SACCH Repetition is active, we may try to decode the
+		 * current SACCH block by including the information from the
+		 * information from the previous SACCH block. See also:
+		 * 3GPP TS 44.006, section 11.2 */
+		if (rep_sacch) {
+			add_sbits(*bursts_p, chan_state->ul_bursts_prev);
+			rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
+			if (rc) {
+				LOGL1S(DL1P, LOGL_NOTICE, l1t, bi->tn, chan, bi->fn,
+				       "Combining current SACCH block with previous SACCH block also yields bad data (%u/%u)\n",
+				       bi->fn % l1ts->mf_period, l1ts->mf_period);
+			} else {
+				LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+				       "Combining current SACCH block with previous SACCH block yields good data (%u/%u)\n",
+				       bi->fn % l1ts->mf_period, l1ts->mf_period);
+				l2_len = GSM_MACBLOCK_LEN;
+			}
+		}
 	} else
 		l2_len = GSM_MACBLOCK_LEN;
 
 	ber10k = compute_ber10k(n_bits_total, n_errors);
+
+	/* Keep a copy to ease decoding in the next repetition pass */
+	if (rep_sacch)
+		memcpy(chan_state->ul_bursts_prev, *bursts_p, 464);
+
 	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
 					  chan, l2, l2_len,
 					  meas_avg.rssi, meas_avg.toa256,
