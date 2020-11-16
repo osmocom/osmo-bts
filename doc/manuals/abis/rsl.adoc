@@ -958,10 +958,26 @@ transmissions of the RTP flow.
 ==== RSL_IE_OSMO_REP_ACCH_CAP
 
 This is a one byte length TLV IE that is used to enable or disable repeated ACCH
-capabilities on the BTS side during Channel Activation and Mode Modify. If the
-IE is present and its value byte is set to 0x01, then the BTS will enable
-repeated ACCH capabilities, otherwise the channel is activated without repeated
-ACCH capabilities present.
+capabilities on the BTS side during Channel Activation and Mode Modify.
+
+The IE contains a bitfield in the lower nibble in order to set the ACCH repetition
+policy for each of the two channel types individually. Depending on the state of the
+bits (see table below) the ACCH repetition mode is either enabled or disabled completely.
+
+The lower 3 bit of the higher nibble are used to signal an RXQUAL threshold to set the
+BER on which UL-SACCH or DL-FACCH repetition shall be turned on. If the field is set
+to 0, then UL-SACCH and DL-FACCH will be always on. DL-FACCH will also be turned on
+automatically as soon as the MS requests a DL-SACCH repetition.
+
+If the IE is not present, then ACCH repetition completely is disabled.
+
+[options="header"]
+|===
+| *bit*            |  7  |  6  -  4  | 3        | 2        | 1            | 0
+| byte at offset 0 |  0  |  RXQUAL   | UL-SACCH | DL-SACCH | DL-FACCH/ALL | DL-FACCH/CMD
+|===
+
+(Bits 7 is reserved for future use and must be set to zero.)
 
 === A-bis RSL Initialization / BTS bring-up
 
