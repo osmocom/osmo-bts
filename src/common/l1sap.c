@@ -918,7 +918,8 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	uint8_t chan_nr, link_id;
 	uint8_t tn;
 	uint32_t fn;
-	uint8_t *p, *si;
+	uint8_t *p = NULL;
+	uint8_t *si;
 	struct lapdm_entity *le;
 	struct osmo_phsap_prim pp;
 	bool dtxd_facch = false;
