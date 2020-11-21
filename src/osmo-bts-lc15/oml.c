@@ -1736,17 +1736,9 @@ static int check_sapi_release(struct gsm_lchan *lchan, int sapi, int dir)
 	return enqueue_sapi_deact_cmd(lchan, sapi, dir);
 }
 
-static int release_sapis_for_ho(struct gsm_lchan *lchan)
+static int release_sapi_ul_rach(struct gsm_lchan *lchan)
 {
-	int res = 0;
-	int i;
-
-	const struct lchan_sapis *s4l = &sapis_for_ho;
-
-	for (i = s4l->num_sapis-1; i >= 0; i--)
-		res |= check_sapi_release(lchan,
-				s4l->sapis[i].sapi, s4l->sapis[i].dir);
-	return res;
+	return check_sapi_release(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
 }
 
 static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
@@ -1768,7 +1760,7 @@ static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 	}
 
 	/* always attempt to disable the RACH burst */
-	res |= release_sapis_for_ho(lchan);
+	res |= release_sapi_ul_rach(lchan);
 
 	/* nothing was queued */
 	if (res == 0) {
@@ -2002,7 +1994,7 @@ int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 		gsm_lchan_name(lchan));
 
 	/* Give up listening to RACH bursts */
-	release_sapis_for_ho(lchan);
+	release_sapi_ul_rach(lchan);
 
 	/* Activate the normal SAPIs */
 	for (i = 0; i < s4l->num_sapis; i++) {
