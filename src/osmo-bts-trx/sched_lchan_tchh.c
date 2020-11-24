@@ -68,9 +68,11 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_QUAD;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
+	unsigned int fn_tch_end;
 	uint16_t ber10k;
 	uint8_t is_sub = 0;
 	uint8_t ft;
+	bool mask_stolen_tch_block = false;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
@@ -128,6 +130,10 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		 * was decoded (see below), now send the second one. */
 		ber10k = 0;
 		memset(&meas_avg, 0, sizeof(meas_avg));
+		/* In order to provide an even stream of measurement reports
+		 * we ask the code below to mask the missing TCH/H block
+		 * measurement report with the FACCH measurement results. */
+		mask_stolen_tch_block = true;
 		goto bfi;
 	}
 
@@ -267,6 +273,18 @@ int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 			meas_avg.rssi, meas_avg.toa256,
 			meas_avg.ci_cb, ber10k,
 			PRES_INFO_UNKNOWN);
+
+		/* Keep a copy of the measurement results of the last FACCH
+		 * transmission in order to be able to create a replacement
+		 * measurement result for the one missing TCH block
+		 * measurement */
+		memcpy(&chan_state->meas_avg_facch, &meas_avg, sizeof(meas_avg));
+		chan_state->ber10k_facch = ber10k;
+
+		/* Invalidate the current measurement result to prevent the
+		 * code below from handing up the current measurement a second
+		 * time. */
+		memset(&meas_avg, 0, sizeof(meas_avg));
 bfi:
 		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
 		 * One is sent here, another will be sent two bursts later (see above). */
@@ -317,15 +335,38 @@ bfi:
 
 compose_l1sap:
 	/* TCH or BFI */
-	/* Note on FN 19 or 20: If we received the last burst of a frame,
-	 * it actually starts at FN 8 or 9. A burst starting there, overlaps
-	 * with the slot 12, so an extra FN must be subtracted to get correct
-	 * start of frame.
-	 */
-	if (lchan->nr == 0)
-		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H0);
+
+	/* The input to gsm0502_fn_remap() needs to get the frame number we
+	 * got two bursts ago. The reason for this is that the burst shift
+	 * buffer we use for decoding is 6 bursts wide (one SACCH block) but
+	 * TCH/H blocks are only 4 bursts wide. The decoder functions look
+	 * at the beginning of the buffer while we shift into it at the end,
+	 * this means that TCH/H blocks always decode delayed by two frame
+	 * number positions late. To calculatue the ending frame number of
+	 * the TCH/H we need to subtract 4 or 5 frames if there was a SACCH
+	 * in between. (Note: this is TCH/H, 4 frames ==> 2 bursts) */
+	if (bi->fn % 13 < 4)
+		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 5);
 	else
-		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_H1);
+		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 4);
+	
+	if (lchan->nr == 0)
+		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
+	else
+		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H1);
+
+	/* A FACCH/H transmission takes out two TCH/H voice blocks and the
+	 * related measurement results. The first measurement result is handed
+	 * up directly with the FACCH (see above), the second one needs to be
+	 * compensated by filling the gap with the measurement result we got
+	 * from the FACCH transmission. */
+	if (mask_stolen_tch_block) {
+		memcpy(&meas_avg, &chan_state->meas_avg_facch, sizeof(meas_avg));
+		ber10k = chan_state->ber10k_facch;
+		memset(&chan_state->meas_avg_facch, 0, sizeof(meas_avg));
+		chan_state->ber10k_facch = 0;
+	}
+
 	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, chan, tch_data, rc,
 				      /* FIXME: what should we use for BFI here? */
 				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,

@@ -115,6 +115,8 @@ struct l1sched_chan_state {
 	/* TCH/H */
 	uint8_t			dl_ongoing_facch; /* FACCH/H on downlink */
 	uint8_t			ul_ongoing_facch; /* FACCH/H on uplink */
+	struct l1sched_meas_set meas_avg_facch;   /* measurement results for last FACCH */
+	uint16_t		ber10k_facch;	  /* bit error rate for last FACCH */
 
 	/* encryption */
 	int			ul_encr_algo;	/* A5/x encry algo downlink */
