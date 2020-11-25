@@ -363,7 +363,7 @@ int bts_main(int argc, char **argv)
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGTERM, &signal_handler);
-	//signal(SIGABRT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
