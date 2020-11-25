@@ -1,7 +1,7 @@
 /* Main program for NuRAN Wireless OC-2G BTS management daemon */
 
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
- * 
+ *
  * Based on sysmoBTS:
  *     sysmobts_mgr.c
  *     (C) 2012 by Harald Welte <laforge@gnumonks.org>
@@ -201,11 +201,11 @@ static int parse_options(int argc, char **argv)
 	return 0;
 }
 
-static void signal_handler(int signal)
+static void signal_handler(int signum)
 {
-	fprintf(stderr, "signal %u received\n", signal);
+	fprintf(stderr, "signal %u received\n", signum);
 
-	switch (signal) {
+	switch (signum) {
 	case SIGINT:
 		oc2gbts_check_temp(no_rom_write);
 		oc2gbts_check_power(no_rom_write);
@@ -214,6 +214,16 @@ static void signal_handler(int signal)
 		exit(0);
 		break;
 	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report and
+		 * then run default SIGABRT handler, who will generate coredump
+		 * and abort the process. abort() should do this for us after we
+		 * return, but program wouldn't exit if an external SIGABRT is
+		 * received.
+		 */
+		talloc_report_full(tall_mgr_ctx, stderr);
+		signal(SIGABRT, SIG_DFL);
+		raise(SIGABRT);
+		break;
 	case SIGUSR1:
 	case SIGUSR2:
 		talloc_report_full(tall_mgr_ctx, stderr);
@@ -280,6 +290,7 @@ int main(int argc, char **argv)
 
 	osmo_init_ignore_signals();
 	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 
