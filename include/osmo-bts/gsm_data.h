@@ -316,11 +316,9 @@ struct gsm_lchan {
 	/* RTP header Marker bit to indicate beginning of speech after pause  */
 	bool rtp_tx_marker;
 
-	/* MS power control */
+	/* MS/BS power control */
 	struct lchan_power_ctrl_state ms_power_ctrl;
-
-	/* BTS power reduction (in dB) */
-	uint8_t bs_power_red;
+	struct lchan_power_ctrl_state bs_power_ctrl;
 
 	struct msgb *pending_rel_ind_msg;
 

@@ -1237,7 +1237,7 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 
 	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
-		br->att = l1cs->lchan->bs_power_red;
+		br->att = l1cs->lchan->bs_power_ctrl.current;
 
 	/* encrypt */
 	if (br->burst_len && l1cs->dl_encr_algo) {

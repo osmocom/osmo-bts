@@ -64,6 +64,7 @@ tests/handover/handover_test
 tests/tx_power/tx_power_test
 tests/ta_control/ta_control_test
 tests/power/ms_power_loop_test
+tests/power/bs_power_loop_test
 tests/testsuite
 tests/testsuite.log
 

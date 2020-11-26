@@ -68,7 +68,7 @@ int get_p_target_mdBm(const struct gsm_bts_trx *trx, uint8_t bs_power_red)
 }
 int get_p_target_mdBm_lchan(const struct gsm_lchan *lchan)
 {
-	return get_p_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
+	return get_p_target_mdBm(lchan->ts->trx, lchan->bs_power_ctrl.current);
 }
 
 /* calculate the actual total output power required, taking into account the
@@ -134,7 +134,7 @@ int get_p_trxout_target_mdBm(const struct gsm_bts_trx *trx, uint8_t bs_power_red
 }
 int get_p_trxout_target_mdBm_lchan(const struct gsm_lchan *lchan)
 {
-	return get_p_trxout_target_mdBm(lchan->ts->trx, lchan->bs_power_red);
+	return get_p_trxout_target_mdBm(lchan->ts->trx, lchan->bs_power_ctrl.current);
 }
 
 

@@ -1036,8 +1036,8 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	lchan->tch_mode = 0;
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
-	lchan->bs_power_red = 0;
 	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
+	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
 	lchan->rqd_ta = 0;
 	copy_sacch_si_to_lchan(lchan);
 	memset(&lchan->tch, 0, sizeof(lchan->tch));
@@ -1153,10 +1153,15 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "rx Channel Activation in state: %s.\n",
 		  gsm_lchans_name(lchan->state));
 
-	/* Initialize channel defaults */
+	/* Initialize MS Power Control defaults */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
 	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 	lchan->ms_power_ctrl.fixed = true;
+
+	/* Initialize BS Power Control defaults */
+	lchan->bs_power_ctrl.max = 2 * 15;
+	lchan->bs_power_ctrl.current = 0;
+	lchan->bs_power_ctrl.fixed = true;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1209,9 +1214,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_SERV_OPT_UNIMPL);
 		}
 
-		lchan->bs_power_red = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
+		lchan->bs_power_ctrl.max = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
+		lchan->bs_power_ctrl.current = lchan->bs_power_ctrl.max;
+
 		LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "BS Power attenuation %u dB\n",
-			  lchan->bs_power_red);
+			  lchan->bs_power_ctrl.current);
 	}
 
 	/* 9.3.13 MS Power */
@@ -1224,7 +1231,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
 
-	/* 9.3.32 BS Power Parameters */
 	/* 9.3.31 MS Power Parameters */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
 		/* Spec explicitly states BTS should only perform
@@ -1232,6 +1238,14 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		* Parameters' IE is present! */
 		lchan->ms_power_ctrl.fixed = false;
 	}
+
+	/* 9.3.32 BS Power Parameters */
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
+		/* NOTE: it's safer to start from 0 */
+		lchan->bs_power_ctrl.current = 0;
+		lchan->bs_power_ctrl.fixed = false;
+	}
+
 	/* 9.3.16 Physical Context */
 
 	/* 9.3.29 SACCH Information */
@@ -1753,7 +1767,7 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct tlv_parsed tp;
-	uint8_t old_bs_power_red;
+	uint8_t old, new;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
@@ -1766,18 +1780,24 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL, &dch->chan_nr, NULL, msg);
 	}
 
-	old_bs_power_red = lchan->bs_power_red;
-	lchan->bs_power_red = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
-
-	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "BS POWER CONTROL Attenuation %d -> %d dB\n",
-		  old_bs_power_red, lchan->bs_power_red);
+	new = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
+	old = lchan->bs_power_ctrl.current;
 
 	/* 9.3.31 MS Power Parameters (O) */
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
-		/* Spec explicitly states BTS should perform autonomous
-		 * BS power control loop in BTS if 'BS Power Parameters'
-		 * IE is present!  WE don't support that. */
-		return rsl_tx_error_report(msg->trx, RSL_ERR_OPT_IE_ERROR, &dch->chan_nr, NULL, msg);
+		/* NOTE: it's safer to start from 0 */
+		lchan->bs_power_ctrl.current = 0;
+		lchan->bs_power_ctrl.max = new;
+		lchan->bs_power_ctrl.fixed = false;
+	} else {
+		lchan->bs_power_ctrl.current = new;
+		lchan->bs_power_ctrl.fixed = true;
+	}
+
+	if (lchan->bs_power_ctrl.current != old) {
+		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "BS POWER CONTROL: "
+			  "attenuation change %u -> %u dB\n",
+			  old, lchan->bs_power_ctrl.current);
 	}
 
 	return 0;
@@ -2975,7 +2995,7 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
 		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
 	}
-	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power_red / 2);
+	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power_ctrl.current / 2);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
 		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
 		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;

@@ -1,0 +1,214 @@
+Testing BS Power loop...
+
+Starting test case 'TC_fixed_mode'
+#00 exec_power_step() <- State (re)set (current 10 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(63), RXQUAL-FULL(0), RXLEV-SUB(63), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(00), RXQUAL-FULL(7), RXLEV-SUB(00), RXQUAL-SUB(7)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 00 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(1), RXLEV-SUB(30), RXQUAL-SUB(1)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(50), RXQUAL-FULL(1), RXLEV-SUB(50), RXQUAL-SUB(1)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 32 32 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_rxlev_target'
+#00 exec_power_step() <- State (re)set (current 0 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_rxlev_max_min'
+#00 exec_power_step() <- State (re)set (current 0 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 8 (expected 4)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 8 -> 16 (expected 8)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 20 (expected 12)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 20 -> 20 (expected 16)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 20 -> 20 (expected 20)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 20 -> 20 (expected 20)
+#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0)
+#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3c 3c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#07 lchan_bs_pwr_ctrl() -> BS power reduction: 20 -> 20 (expected 20)
+#08 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0)
+#08 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 0a 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#08 lchan_bs_pwr_ctrl() -> BS power reduction: 20 -> 16 (expected 12)
+#09 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0)
+#09 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 0a 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#09 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 12 (expected 4)
+#10 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0)
+#10 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 0a 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#10 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 8 (expected 0)
+#11 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0)
+#11 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 0a 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#11 lchan_bs_pwr_ctrl() -> BS power reduction: 8 -> 4 (expected 0)
+#12 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0)
+#12 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 0a 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#12 lchan_bs_pwr_ctrl() -> BS power reduction: 4 -> 0 (expected 0)
+Test case verdict: FAIL
+
+Starting test case 'TC_dtxd_mode'
+#00 exec_power_step() <- State (re)set (current 0 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#03 exec_power_step() <- Enable DTXd
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(00), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 1e 70 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(3), RXLEV-SUB(30), RXQUAL-SUB(0)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 30 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(63), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_rxqual_ber'
+#00 exec_power_step() <- State (re)set (current 16 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 8 (expected 8)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(4), RXLEV-SUB(30), RXQUAL-SUB(4)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 48 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 8 -> 4 (expected 4)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(1), RXLEV-SUB(30), RXQUAL-SUB(1)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 4 -> 2 (expected 2)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 2 -> 2 (expected 2)
+#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#07 lchan_bs_pwr_ctrl() -> BS power reduction: 2 -> 2 (expected 2)
+#08 exec_power_step() <- State (re)set (current 16 dB, max 20 dB)
+#09 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#09 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#09 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 8 (expected 8)
+#10 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#10 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#10 lchan_bs_pwr_ctrl() -> BS power reduction: 8 -> 4 (expected 4)
+#11 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#11 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#11 lchan_bs_pwr_ctrl() -> BS power reduction: 4 -> 2 (expected 2)
+#12 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#12 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#12 lchan_bs_pwr_ctrl() -> BS power reduction: 2 -> 1 (expected 1)
+#13 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7)
+#13 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#13 lchan_bs_pwr_ctrl() -> BS power reduction: 1 -> 0 (expected 0)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_inval_dummy'
+#00 exec_power_step() <- State (re)set (current 16 dB, max 20 dB)
+#01 enc_meas_rep() -> Measurement Results (invalid): RXLEV-FULL(63), RXQUAL-FULL(7), RXLEV-SUB(63), RXQUAL-SUB(7)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 7f 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#02 enc_meas_rep() -> Measurement Results (invalid): RXLEV-FULL(00), RXQUAL-FULL(0), RXLEV-SUB(00), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#04 exec_power_step() <- Dummy block
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#06 exec_power_step() <- Dummy block
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#07 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_rxlev_hyst'
+#00 exec_power_step() <- State (re)set (current 12 dB, max 16 dB)
+#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(31), RXQUAL-FULL(0), RXLEV-SUB(31), RXQUAL-SUB(0)
+#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1f 1f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 13 (expected 13)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(28), RXQUAL-FULL(0), RXLEV-SUB(28), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1c 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 13 -> 11 (expected 11)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(33), RXQUAL-FULL(0), RXLEV-SUB(33), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 21 21 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 11 -> 14 (expected 14)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(28), RXQUAL-FULL(0), RXLEV-SUB(28), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1c 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 14 -> 12 (expected 12)
+#05 exec_power_step() <- Param (re)set (target -80 dBm, hysteresis 3 dB, filtering is disabled)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(31), RXQUAL-FULL(0), RXLEV-SUB(31), RXQUAL-SUB(0)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1f 1f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 12 (expected 12)
+#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(28), RXQUAL-FULL(0), RXLEV-SUB(28), RXQUAL-SUB(0)
+#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1c 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#07 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 12 (expected 12)
+#08 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(33), RXQUAL-FULL(0), RXLEV-SUB(33), RXQUAL-SUB(0)
+#08 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 21 21 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#08 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 12 (expected 12)
+#09 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(28), RXQUAL-FULL(0), RXLEV-SUB(28), RXQUAL-SUB(0)
+#09 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1c 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#09 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 12 (expected 12)
+Test case verdict: SUCCESS
+
+Starting test case 'TC_rxlev_pf_ewma'
+#00 exec_power_step() <- State (re)set (current 16 dB, max 30 dB)
+#01 exec_power_step() <- Param (re)set (target -80 dBm, hysteresis 0 dB, filtering is enabled)
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#02 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(26), RXQUAL-FULL(0), RXLEV-SUB(26), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1a 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 14 (expected 14)
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(26), RXQUAL-FULL(0), RXLEV-SUB(26), RXQUAL-SUB(0)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1a 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 lchan_bs_pwr_ctrl() -> BS power reduction: 14 -> 11 (expected 11)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(35), RXQUAL-FULL(0), RXLEV-SUB(35), RXQUAL-SUB(0)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 23 23 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 11 -> 12 (expected 12)
+#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(35), RXQUAL-FULL(0), RXLEV-SUB(35), RXQUAL-SUB(0)
+#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 23 23 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#07 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 15 (expected 15)
+Test case verdict: SUCCESS

@@ -209,3 +209,105 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	return 1;
 }
+
+ /*! compute the new Downlink attenuation value for the given logical channel.
+  *  \param lchan logical channel for which to compute (and in which to store) new power value.
+  *  \param[in] gh pointer to the beginning of (presumably) a Measurement Report.
+  */
+int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
+		      const struct gsm48_hdr *gh)
+{
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+	struct gsm_bts *bts = trx->bts;
+	uint8_t rxqual_full, rxqual_sub;
+	uint8_t rxlev_full, rxlev_sub;
+	uint8_t rxqual, rxlev;
+	int delta, new;
+
+	const struct bts_power_ctrl_params *params = &bts->dl_power_ctrl;
+	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
+
+	/* Check if BS Power Control is enabled */
+	if (state->fixed)
+		return 0;
+	/* Check if this is a Measurement Report */
+	if (gh->proto_discr != GSM48_PDISC_RR)
+		return 0;
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		return 0;
+
+	/* Check if the measurement results are valid */
+	if ((gh->data[1] & 0x40) == 0x40) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG,
+			  "The measurement results are not valid\n");
+		return 0;
+	}
+
+	/* See 3GPP TS 44.018, section 10.5.2.20 */
+	rxqual_full = (gh->data[2] >> 4) & 0x7;
+	rxqual_sub = (gh->data[2] >> 1) & 0x7;
+
+	rxlev_full = gh->data[0] & 0x3f;
+	rxlev_sub = gh->data[1] & 0x3f;
+
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Rx DL Measurement Report: "
+		  "RXLEV-FULL(%02u), RXQUAL-FULL(%u), "
+		  "RXLEV-SUB(%02u), RXQUAL-SUB(%u), "
+		  "DTx is %s => using %s\n",
+		  rxlev_full, rxqual_full, rxlev_sub, rxqual_sub,
+		  lchan->tch.dtx.dl_active ? "enabled" : "disabled",
+		  lchan->tch.dtx.dl_active ? "SUB" : "FULL");
+
+	/* If DTx is active on Downlink, use the '-SUB' */
+	if (lchan->tch.dtx.dl_active) {
+		rxqual = rxqual_sub;
+		rxlev = rxlev_sub;
+	} else { /* ... otherwise use the '-FULL' */
+		rxqual = rxqual_full;
+		rxlev = rxlev_full;
+	}
+
+	/* Bit Error Rate > 0 => reduce by 2 */
+	if (rxqual > 0) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Reducing Downlink attenuation "
+			  "by half: %u -> %u dB due to RXQUAL %u > 0\n",
+			  state->current, state->current / 2, rxqual);
+		state->current /= 2;
+		return 1;
+	}
+
+	/* Calculate a 'delta' for the current attenuation level */
+	delta = calc_delta(params, state, rxlev2dbm(rxlev));
+
+	/* Basic signal transmission / reception formula:
+	 *
+	 *   RxLev = TxPwr - (PathLoss + TxAtt)
+	 *
+	 * Here we want to change RxLev at the MS side, so:
+	 *
+	 *   RxLev + Delta = TxPwr - (PathLoss + TxAtt) + Delta
+	 *
+	 * The only parameter we can change here is TxAtt, so:
+	 *
+	 *   RxLev + Delta = TxPwr - PathLoss -  TxAtt + Delta
+	 *   RxLev + Delta = TxPwr - PathLoss - (TxAtt - Delta)
+	 */
+	new = state->current - delta;
+	if (new > state->max)
+		new = state->max;
+	if (new < 0)
+		new = 0;
+
+	if (state->current != new) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
+			  "%u -> %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
+			  state->current, new, state->max, params->target, delta);
+		state->current = new;
+		return 1;
+	} else {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
+			  "at %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
+			  state->current, state->max, params->target, delta);
+		return 0;
+	}
+}
