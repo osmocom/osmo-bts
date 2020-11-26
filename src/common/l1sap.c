@@ -1531,8 +1531,8 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		radio_link_timeout(lchan, false);
 		le = &lchan->lapdm_ch.lapdm_acch;
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
-		if (len < 2) {
-			LOGPGT(DL1P, LOGL_NOTICE, &g_time, "SACCH with size %u<2 !?!\n", len);
+		if (len != GSM_MACBLOCK_LEN) {
+			LOGPGT(DL1P, LOGL_NOTICE, &g_time, "SACCH with odd len=%u!?!\n", len);
 			return -EINVAL;
 		}
 		/* Some brilliant engineer decided that the ordering of
