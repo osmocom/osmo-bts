@@ -198,7 +198,7 @@ DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 {
 	vty_out (vty, "'osmotrx ms-power-loop' is deprecated, use 'uplink-power-target' instead%s", VTY_NEWLINE);
 
-	g_bts->ul_power_target = atoi(argv[0]);
+	g_bts->ul_power_ctrl.target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }

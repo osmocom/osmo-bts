@@ -47,7 +47,7 @@ static void init_test(const char *name)
 
 	g_trx->ms_pwr_ctl_soft = true;
 
-	g_bts->ul_power_target = -75;
+	g_bts->ul_power_ctrl.target = -75;
 	g_bts->band = GSM_BAND_1800;
 	g_bts->c0 = g_trx;
 
@@ -98,7 +98,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 1, 5);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, g_bts->ul_power_target, 0, 5);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target, 0, 5);
 
 	apply_power_test(lchan, -90, 1, 3);
 	apply_power_test(lchan, -90, 1, 2); /* .max is pwr lvl 2 */
@@ -116,7 +116,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 0, 29);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, g_bts->ul_power_target, 0, 29);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target, 0, 29);
 
 	/* Now go down, steps are double size in this direction: */
 	apply_power_test(lchan, -45, 1, 1);
@@ -124,13 +124,13 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -45, 1, 9);
 
 	/* Go down only one level down and up: */
-	apply_power_test(lchan, g_bts->ul_power_target + 2, 1, 10);
-	apply_power_test(lchan, g_bts->ul_power_target - 2, 1, 9);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target + 2, 1, 10);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target - 2, 1, 9);
 
 	/* Check if BSC requesting a low max power is applied after loop calculation: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 2);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 14);
-	apply_power_test(lchan, g_bts->ul_power_target + 2, 1, 14);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target + 2, 1, 14);
 	/* Set back a more normal max: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
@@ -214,22 +214,22 @@ static void test_power_hysteresis(void)
 	lchan = &g_trx->ts[0].lchan[0];
 
 	/* Tolerate power deviations in range -80 .. -70 */
-	g_bts->ul_power_hysteresis = 5;
+	g_bts->ul_power_ctrl.hysteresis = 5;
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
-	apply_power_test(lchan, g_bts->ul_power_target, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_target + 3, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_target - 3, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target + 3, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target - 3, 0, 15);
 
-	apply_power_test(lchan, g_bts->ul_power_target, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_target + 5, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_target - 5, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target + 5, 0, 15);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target - 5, 0, 15);
 
-	apply_power_test(lchan, g_bts->ul_power_target - 10, 1, 13);
+	apply_power_test(lchan, g_bts->ul_power_ctrl.target - 10, 1, 13);
 }
 
 int main(int argc, char **argv)

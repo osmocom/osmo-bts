@@ -299,12 +299,12 @@ struct gsm_bts {
 		bool vty_override;	/* OML value overridden by VTY */
 	} radio_link_timeout;
 
-	/* TODO: move it to bts->ul_power_ctrl struct */
-	int ul_power_target;		/* Uplink Rx power target */
-	int ul_power_hysteresis;	/* Tolerable Uplink Rx power deviation */
-
 	/* Uplink power control */
 	struct {
+		/* Target value to strive to */
+		int target;
+		/* Tolerated deviation from target */
+		int hysteresis;
 		/* UL RSSI filtering algorithm */
 		enum ms_ul_pf_algo pf_algo;
 		/* (Optional) filtering parameters */

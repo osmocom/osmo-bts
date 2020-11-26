@@ -154,7 +154,7 @@ DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 {
 	struct gsm_bts_trx *trx = vty->index;
 
-	trx->bts->ul_power_target = atoi(argv[0]);
+	trx->bts->ul_power_ctrl.target = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
