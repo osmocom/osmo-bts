@@ -325,7 +325,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->paging_state = paging_init(bts, 200, 0);
 	bts->ul_power_ctrl.target = -75;	/* dBm default */
 	bts->ul_power_ctrl.hysteresis = 3;	/* -78 .. -72 dBm */
-	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
+	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
 	bts->ul_power_ctrl.pf.ewma.alpha = 50; /* 50% smoothing */
 	bts->rtp_jitter_adaptive = false;
 	bts->rtp_port_range_start = 16384;

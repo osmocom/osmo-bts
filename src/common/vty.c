@@ -262,11 +262,11 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 
 	/* MS Tx power filtering algorithm and parameters */
 	switch (bts->ul_power_ctrl.pf_algo) {
-	case MS_UL_PF_ALGO_EWMA:
+	case BTS_PF_ALGO_EWMA:
 		vty_out(vty, " uplink-power-filtering algo ewma beta %u%s",
 			100 - bts->ul_power_ctrl.pf.ewma.alpha, VTY_NEWLINE);
 		break;
-	case MS_UL_PF_ALGO_NONE:
+	case BTS_PF_ALGO_NONE:
 	default:
 		vty_out(vty, " no uplink-power-filtering%s", VTY_NEWLINE);
 		break;
@@ -664,7 +664,7 @@ DEFUN_ATTR(cfg_no_bts_ul_power_filter,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_NONE;
+	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_NONE;
 
 	return CMD_SUCCESS;
 }
@@ -681,7 +681,7 @@ DEFUN_ATTR(cfg_bts_ul_power_filter_ewma,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
+	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
 	bts->ul_power_ctrl.pf.ewma.alpha = 100 - atoi(argv[0]);
 
 	return CMD_SUCCESS;

@@ -153,7 +153,7 @@ static void test_pf_algo_ewma(void)
 	lchan = &g_trx->ts[0].lchan[0];
 	avg100 = &lchan->ms_power_ctrl.avg100_ul_rssi;
 
-	g_bts->ul_power_ctrl.pf_algo = MS_UL_PF_ALGO_EWMA;
+	g_bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
 	g_bts->ul_power_ctrl.pf.ewma.alpha = 20; /* 80% smoothing */
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);

@@ -130,10 +130,10 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* Filter UL RSSI to reduce unnecessary Tx power oscillations */
 	switch (bts->ul_power_ctrl.pf_algo) {
-	case MS_UL_PF_ALGO_EWMA:
+	case BTS_PF_ALGO_EWMA:
 		avg_ul_rssi_dbm = lchan_ul_pf_ewma(bts, lchan, ul_rssi_dbm);
 		break;
-	case MS_UL_PF_ALGO_NONE:
+	case BTS_PF_ALGO_NONE:
 	default:
 		/* No filtering (pass through) */
 		avg_ul_rssi_dbm = ul_rssi_dbm;

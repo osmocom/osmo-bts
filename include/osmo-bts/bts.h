@@ -96,9 +96,9 @@ struct bts_smscb_state {
 };
 
 /* Tx power filtering algorithm */
-enum ms_ul_pf_algo {
-	MS_UL_PF_ALGO_NONE = 0,
-	MS_UL_PF_ALGO_EWMA,
+enum bts_pf_algo {
+	BTS_PF_ALGO_NONE = 0,
+	BTS_PF_ALGO_EWMA,
 };
 
 /* BTS Site Manager */
@@ -306,7 +306,7 @@ struct gsm_bts {
 		/* Tolerated deviation from target */
 		int hysteresis;
 		/* UL RSSI filtering algorithm */
-		enum ms_ul_pf_algo pf_algo;
+		enum bts_pf_algo pf_algo;
 		/* (Optional) filtering parameters */
 		union {
 			/* Exponentially Weighted Moving Average */
