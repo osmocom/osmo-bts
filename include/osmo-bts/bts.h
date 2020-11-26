@@ -101,6 +101,24 @@ enum bts_pf_algo {
 	BTS_PF_ALGO_EWMA,
 };
 
+/* UL/DL power control parameters */
+struct bts_power_ctrl_params {
+	/* Target value to strive to */
+	int target;
+	/* Tolerated deviation from target */
+	int hysteresis;
+	/* RxLev filtering algorithm */
+	enum bts_pf_algo pf_algo;
+	/* (Optional) filtering parameters */
+	union {
+		/* Exponentially Weighted Moving Average */
+		struct {
+			/* Smoothing factor: higher the value - less smoothing */
+			uint8_t alpha; /* 1 .. 99 (in %) */
+		} ewma;
+	} pf;
+};
+
 /* BTS Site Manager */
 struct gsm_bts_sm {
 	struct gsm_abis_mo mo;
@@ -300,22 +318,7 @@ struct gsm_bts {
 	} radio_link_timeout;
 
 	/* Uplink power control */
-	struct {
-		/* Target value to strive to */
-		int target;
-		/* Tolerated deviation from target */
-		int hysteresis;
-		/* UL RSSI filtering algorithm */
-		enum bts_pf_algo pf_algo;
-		/* (Optional) filtering parameters */
-		union {
-			/* Exponentially Weighted Moving Average */
-			struct {
-				/* Smoothing factor: higher the value - less smoothing */
-				uint8_t alpha; /* 1 .. 99 (in %) */
-			} ewma;
-		} pf;
-	} ul_power_ctrl;
+	struct bts_power_ctrl_params ul_power_ctrl;
 
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
