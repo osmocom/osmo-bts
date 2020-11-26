@@ -317,8 +317,9 @@ struct gsm_bts {
 		bool vty_override;	/* OML value overridden by VTY */
 	} radio_link_timeout;
 
-	/* Uplink power control */
+	/* Uplink/Downlink power control */
 	struct bts_power_ctrl_params ul_power_ctrl;
+	struct bts_power_ctrl_params dl_power_ctrl;
 
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;

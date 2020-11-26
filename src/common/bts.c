@@ -323,15 +323,25 @@ int bts_init(struct gsm_bts *bts)
 
 	/* configurable via VTY */
 	bts->paging_state = paging_init(bts, 200, 0);
-	bts->ul_power_ctrl.target = -75;	/* dBm default */
-	bts->ul_power_ctrl.hysteresis = 3;	/* -78 .. -72 dBm */
-	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
-	bts->ul_power_ctrl.pf.ewma.alpha = 50; /* 50% smoothing */
 	bts->rtp_jitter_adaptive = false;
 	bts->rtp_port_range_start = 16384;
 	bts->rtp_port_range_end = 17407;
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
 	bts->rtp_ip_dscp = -1;
+
+	/* Default UL/DL power control parameters */
+	bts->ul_power_ctrl = bts->dl_power_ctrl = \
+	(struct bts_power_ctrl_params) {
+		.target = -75,		/* dBm default */
+		.hysteresis = 3,	/* -78 .. -72 dBm */
+		.pf_algo = BTS_PF_ALGO_EWMA,
+		.pf = {
+			.ewma = {
+				/* 50% smoothing */
+				.alpha = 50
+			}
+		}
+	};
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;
