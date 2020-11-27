@@ -74,12 +74,12 @@
  *   https://en.wikipedia.org/wiki/Low-pass_filter#Simple_infinite_impulse_response_filter
  *   https://tomroelandts.com/articles/low-pass-single-pole-iir-filter
  */
-static int8_t lchan_ul_pf_ewma(const struct gsm_bts *bts,
-			       struct gsm_lchan *lchan,
-			       const int8_t Pwr)
+static int8_t do_pf_ewma(const struct bts_power_ctrl_params *params,
+			 struct lchan_power_ctrl_state *state,
+			 const int8_t Pwr)
 {
-	const uint8_t A = bts->ul_power_ctrl.pf.ewma.alpha;
-	int *Avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
+	const uint8_t A = params->pf.ewma.alpha;
+	int *Avg100 = &state->avg100_rxlev_dbm;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
 	if (*Avg100 == 0) {
@@ -108,6 +108,9 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
 	int8_t avg_ul_rssi_dbm;
 
+	const struct bts_power_ctrl_params *params = &bts->ul_power_ctrl;
+	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
+
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
 	if (lchan->ms_power_ctrl.fixed)
@@ -131,7 +134,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	/* Filter UL RSSI to reduce unnecessary Tx power oscillations */
 	switch (bts->ul_power_ctrl.pf_algo) {
 	case BTS_PF_ALGO_EWMA:
-		avg_ul_rssi_dbm = lchan_ul_pf_ewma(bts, lchan, ul_rssi_dbm);
+		avg_ul_rssi_dbm = do_pf_ewma(params, state, ul_rssi_dbm);
 		break;
 	case BTS_PF_ALGO_NONE:
 	default:
