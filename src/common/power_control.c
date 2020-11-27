@@ -108,7 +108,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
 	int8_t avg_ul_rssi_dbm;
 
-	if (!trx_ms_pwr_ctrl_is_osmo(lchan->ts->trx))
+	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
 	if (lchan->ms_power_ctrl.fixed)
 		return 0;
