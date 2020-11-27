@@ -79,7 +79,7 @@ static int8_t lchan_ul_pf_ewma(const struct gsm_bts *bts,
 			       const int8_t Pwr)
 {
 	const uint8_t A = bts->ul_power_ctrl.pf.ewma.alpha;
-	int *Avg100 = &lchan->ms_power_ctrl.avg100_ul_rssi;
+	int *Avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
 	if (lchan->meas.res_nr == 0) {

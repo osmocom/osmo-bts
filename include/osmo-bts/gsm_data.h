@@ -161,6 +161,15 @@ struct gsm_rep_facch {
 	uint32_t fn;
 };
 
+struct lchan_power_ctrl_state {
+	uint8_t current;
+	uint8_t max;
+	bool fixed;
+
+	/* Scaled up (100 times) average UL/DL RxLev (in dBm) */
+	int avg100_rxlev_dbm;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -306,15 +315,9 @@ struct gsm_lchan {
 	enum lchan_rel_act_kind rel_act_kind;
 	/* RTP header Marker bit to indicate beginning of speech after pause  */
 	bool rtp_tx_marker;
-	/* power handling */
-	struct {
-		uint8_t current;
-		uint8_t max;
-		bool fixed;
 
-		/* Scaled up (100 times) average UL RSSI */
-		int avg100_ul_rssi;
-	} ms_power_ctrl;
+	/* MS power control */
+	struct lchan_power_ctrl_state ms_power_ctrl;
 
 	/* BTS power reduction (in dB) */
 	uint8_t bs_power_red;

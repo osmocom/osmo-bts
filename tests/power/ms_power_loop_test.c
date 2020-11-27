@@ -152,7 +152,7 @@ static void test_pf_algo_ewma(void)
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
-	avg100 = &lchan->ms_power_ctrl.avg100_ul_rssi;
+	avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
 
 	g_bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
 	g_bts->ul_power_ctrl.pf.ewma.alpha = 20; /* 80% smoothing */
