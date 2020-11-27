@@ -113,7 +113,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
-	if (lchan->ms_power_ctrl.fixed)
+	if (state->fixed)
 		return 0;
 
 	ms_dbm = ms_pwr_dbm(band, ms_power_lvl);
@@ -123,16 +123,16 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 			  ms_power_lvl, gsm_band_name(band));
 		return 0;
 	}
-	bsc_max_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.max);
+	bsc_max_dbm = ms_pwr_dbm(band, state->max);
 	if (bsc_max_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
 			  "Failed to calculate dBm for power ctl level %" PRIu8 " on band %s\n",
-			  lchan->ms_power_ctrl.max, gsm_band_name(band));
+			  state->max, gsm_band_name(band));
 		return 0;
 	}
 
 	/* Filter UL RSSI to reduce unnecessary Tx power oscillations */
-	switch (bts->ul_power_ctrl.pf_algo) {
+	switch (params->pf_algo) {
 	case BTS_PF_ALGO_EWMA:
 		avg_ul_rssi_dbm = do_pf_ewma(params, state, ul_rssi_dbm);
 		break;
@@ -144,17 +144,17 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	   to reach expected power. */
-	diff = bts->ul_power_ctrl.target - avg_ul_rssi_dbm;
+	diff = params->target - avg_ul_rssi_dbm;
 
 
 	/* Tolerate small deviations from 'rx-target' */
-	if (abs(diff) <= bts->ul_power_ctrl.hysteresis) {
+	if (abs(diff) <= params->hysteresis) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 			  "Keeping MS power at control level %d (%d dBm) because diff %d dBm "
 			  "from 'rx-target' %d dBm is not significant (hysteresis %d dBm)\n",
-			  ms_power_lvl, ms_dbm, diff, bts->ul_power_ctrl.target, bts->ul_power_ctrl.hysteresis);
+			  ms_power_lvl, ms_dbm, diff, params->target, params->hysteresis);
 		/* Keep the current power level in sync (just to be sure) */
-		lchan->ms_power_ctrl.current = ms_power_lvl;
+		state->current = ms_power_lvl;
 		bts_model_adjst_ms_pwr(lchan);
 		return 0;
 	}
@@ -186,25 +186,23 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	if (lchan->ms_power_ctrl.current == new_power_lvl) {
+	if (state->current == new_power_lvl) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
-			  new_power_lvl, new_dbm,
-			  ms_power_lvl, lchan->ms_power_ctrl.max,
-			  avg_ul_rssi_dbm, bts->ul_power_ctrl.target);
+			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
+			  avg_ul_rssi_dbm, params->target);
 		return 0;
 	}
 
-	current_dbm = ms_pwr_dbm(band, lchan->ms_power_ctrl.current);
+	current_dbm = ms_pwr_dbm(band, state->current);
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power from control level %d (%d dBm) to %d, %d dBm "
 		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
-		  lchan->ms_power_ctrl.current, current_dbm, new_power_lvl, new_dbm,
-		  ms_power_lvl, lchan->ms_power_ctrl.max,
-		  avg_ul_rssi_dbm, bts->ul_power_ctrl.target);
+		  state->current, current_dbm, new_power_lvl, new_dbm,
+		  ms_power_lvl, state->max, avg_ul_rssi_dbm, params->target);
 
 	/* store the resulting new MS power level in the lchan */
-	lchan->ms_power_ctrl.current = new_power_lvl;
+	state->current = new_power_lvl;
 	bts_model_adjst_ms_pwr(lchan);
 
 	return 1;
