@@ -82,7 +82,7 @@ static int8_t lchan_ul_pf_ewma(const struct gsm_bts *bts,
 	int *Avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
-	if (lchan->meas.res_nr == 0) {
+	if (*Avg100 == 0) {
 		*Avg100 = Pwr * EWMA_SCALE_FACTOR;
 		return Pwr;
 	}

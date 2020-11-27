@@ -191,7 +191,7 @@ static void test_pf_algo_ewma(void)
 
 	g_bts->ul_power_ctrl.pf.ewma.alpha = 70; /* 30% smoothing */
 	lchan->ms_power_ctrl.current = 15;
-	lchan->meas.res_nr = 0;
+	lchan->ms_power_ctrl.avg100_rxlev_dbm = 0;
 
 	/* This is the first sample, the filter outputs it as-is */
 	apply_power_test(lchan, -50, 0, 15);
