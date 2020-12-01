@@ -1154,14 +1154,18 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		  gsm_lchans_name(lchan->state));
 
 	/* Initialize MS Power Control defaults */
-	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
-	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
-	lchan->ms_power_ctrl.fixed = true;
+	lchan->ms_power_ctrl = (struct lchan_power_ctrl_state) {
+		.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0),
+		.current = lchan->ms_power_ctrl.max,
+		.fixed = true,
+	};
 
 	/* Initialize BS Power Control defaults */
-	lchan->bs_power_ctrl.max = 2 * 15;
-	lchan->bs_power_ctrl.current = 0;
-	lchan->bs_power_ctrl.fixed = true;
+	lchan->bs_power_ctrl = (struct lchan_power_ctrl_state) {
+		.max = 2 * 15, /* maximum defined in 9.3.4 */
+		.current = 0,
+		.fixed = true,
+	};
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
