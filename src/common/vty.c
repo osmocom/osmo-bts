@@ -1449,7 +1449,15 @@ static int dump_lchan_trx_ts(const struct gsm_bts_trx_ts *ts, struct vty *vty,
 		const struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
 		if (lchan->state == LCHAN_S_NONE)
 			continue;
-		dump_cb(vty, lchan);
+		switch (lchan->type) {
+		case GSM_LCHAN_SDCCH:
+		case GSM_LCHAN_TCH_F:
+		case GSM_LCHAN_TCH_H:
+			dump_cb(vty, lchan);
+			break;
+		default:
+			continue;
+		}
 	}
 
 	return CMD_SUCCESS;
