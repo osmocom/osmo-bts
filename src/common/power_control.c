@@ -130,11 +130,11 @@ static int calc_delta(const struct bts_power_ctrl_params *params,
 	return delta;
 }
 
- /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
-  *  \param lchan logical channel for which to compute (and in which to store) new power value.
-  *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
-  *  \param[in] ul_rssi_dbm Signal level of the received SACCH block, in dBm.
-  */
+/*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
+ *  \param lchan logical channel for which to compute (and in which to store) new power value.
+ *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
+ *  \param[in] ul_rssi_dbm Signal level of the received SACCH block, in dBm.
+ */
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power_lvl,
 		      const int8_t ul_rssi_dbm)
@@ -210,10 +210,10 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	return 1;
 }
 
- /*! compute the new Downlink attenuation value for the given logical channel.
-  *  \param lchan logical channel for which to compute (and in which to store) new power value.
-  *  \param[in] gh pointer to the beginning of (presumably) a Measurement Report.
-  */
+/*! compute the new Downlink attenuation value for the given logical channel.
+ *  \param lchan logical channel for which to compute (and in which to store) new power value.
+ *  \param[in] gh pointer to the beginning of (presumably) a Measurement Report.
+ */
 int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		      const struct gsm48_hdr *gh)
 {
