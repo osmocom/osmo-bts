@@ -1307,6 +1307,49 @@ static void vty_out_dyn_ts_status(struct vty *vty, const struct gsm_bts_trx_ts *
 	}
 }
 
+static void lchan_bs_power_ctrl_state_dump(struct vty *vty, const char *prefix,
+					   const struct gsm_lchan *lchan)
+{
+	const struct lchan_power_ctrl_state *st = &lchan->bs_power_ctrl;
+	const struct gsm_bts_trx *trx = lchan->ts->trx;
+
+	vty_out(vty, "%sBS (Downlink) Power Control (%s):%s",
+		prefix, st->fixed ? "fixed" : "autonomous",
+		VTY_NEWLINE);
+
+	vty_out(vty, "%s  Channel reduction: %u dB", prefix, st->current);
+	if (!st->fixed)
+		vty_out(vty, " (max %u dB)", st->max);
+	vty_out(vty, "%s", VTY_NEWLINE);
+
+	vty_out(vty, "%s  TRX reduction: %u dB%s",
+		prefix, trx->max_power_red, VTY_NEWLINE);
+
+	int actual = trx->nominal_power - (trx->max_power_red + st->current);
+	vty_out(vty, "%s  Actual / Nominal power: %d dBm / %d dBm%s",
+		prefix, actual, trx->nominal_power, VTY_NEWLINE);
+}
+
+static void lchan_ms_power_ctrl_state_dump(struct vty *vty, const char *prefix,
+					   const struct gsm_lchan *lchan)
+{
+	const struct lchan_power_ctrl_state *st = &lchan->ms_power_ctrl;
+	const struct gsm_bts_trx *trx = lchan->ts->trx;
+
+	vty_out(vty, "%sMS (Uplink) Power Control (%s):%s",
+		prefix, st->fixed ? "fixed" : "autonomous",
+		VTY_NEWLINE);
+
+	int current_dbm = ms_pwr_dbm(trx->bts->band, st->current);
+	int max_dbm = ms_pwr_dbm(trx->bts->band, st->max);
+
+	vty_out(vty, "%s  Current power level: %u, -%d dBm",
+		prefix, st->current, current_dbm);
+	if (!st->fixed)
+		vty_out(vty, " (max %u, -%d dBm)", st->max, max_dbm);
+	vty_out(vty, "%s", VTY_NEWLINE);
+}
+
 static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	struct in_addr ia;
@@ -1335,13 +1378,6 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 		lchan->state == LCHAN_S_BROKEN ? " Error reason: " : "",
 		lchan->state == LCHAN_S_BROKEN ? lchan->broken_reason : "",
 		VTY_NEWLINE);
-#if 0
-	/* TODO: print more info about MS/BS Power Control */
-	vty_out(vty, "  BS Power: %d dBm, MS Power: %u dBm%s",
-		lchan->ts->trx->nominal_power - (lchan->ts->trx->max_power_red + lchan->bs_power_red),
-		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max),
-		VTY_NEWLINE);
-#endif
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
 		gsm48_chan_mode_name(lchan->tch_mode),
 		VTY_NEWLINE);
@@ -1383,6 +1419,10 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	if (lchan->loopback)
 		vty_out(vty, "  RTP/PDCH Loopback Enabled%s", VTY_NEWLINE);
 	vty_out(vty, "  Radio Link Failure Counter 'S': %d%s", lchan->s, VTY_NEWLINE);
+
+	/* BS/MS Power Control state */
+	lchan_bs_power_ctrl_state_dump(vty, "  ", lchan);
+	lchan_ms_power_ctrl_state_dump(vty, "  ", lchan);
 }
 
 static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)
