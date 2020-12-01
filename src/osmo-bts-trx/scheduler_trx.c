@@ -146,9 +146,12 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				l1h = pinst->u.osmotrx.hdl;
 			}
 
-			/* update dummy burst mask for C0 */
-			if (pinst->trx == bts->c0)
+			if (pinst->trx == bts->c0) {
+				/* update dummy burst mask for C0 */
 				c0_mask |= (1 << tn);
+				/* ensure no attenuation on C0 */
+				br.att = 0;
+			}
 
 			trx_if_send_burst(l1h, &br);
 		}
