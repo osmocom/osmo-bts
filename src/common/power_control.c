@@ -34,8 +34,8 @@
 #include <osmo-bts/power_control.h>
 
 /* how many dB do we raise/lower as maximum (1 ms power level = 2 dB) */
-#define MS_RAISE_MAX_DB 4
-#define MS_LOWER_MAX_DB 8
+#define PWR_RAISE_MAX_DB 4
+#define PWR_LOWER_MAX_DB 8
 
 /* We don't want to deal with floating point, so we scale up */
 #define EWMA_SCALE_FACTOR 100
@@ -91,6 +91,45 @@ static int8_t do_pf_ewma(const struct bts_power_ctrl_params *params,
 	return *Avg100 / EWMA_SCALE_FACTOR;
 }
 
+/* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
+ * to be applied to the current Tx power level to approach the target level. */
+static int calc_delta(const struct bts_power_ctrl_params *params,
+		      struct lchan_power_ctrl_state *state,
+		      const int rxlev_dbm)
+{
+	int rxlev_dbm_avg;
+	int delta;
+
+	/* Filter input value(s) to reduce unnecessary Tx power oscillations */
+	switch (params->pf_algo) {
+	case BTS_PF_ALGO_EWMA:
+		rxlev_dbm_avg = do_pf_ewma(params, state, rxlev_dbm);
+		break;
+	case BTS_PF_ALGO_NONE:
+	default:
+		/* No filtering (pass through) */
+		rxlev_dbm_avg = rxlev_dbm;
+	}
+
+	/* How many dBs measured power should be increased (+) or decreased (-)
+	 * to reach expected power. */
+	delta = params->target - rxlev_dbm_avg;
+
+	/* Tolerate small deviations from 'rx-target' */
+	if (abs(delta) <= params->hysteresis)
+		return 0;
+
+	/* Don't ever change more than PWR_{LOWER,RAISE}_MAX_DBM during one loop
+	 * iteration, i.e. reduce the speed at which the MS transmit power can
+	 * change. A higher value means a lower level (and vice versa) */
+	if (delta > PWR_RAISE_MAX_DB)
+		delta = PWR_RAISE_MAX_DB;
+	else if (delta < -PWR_LOWER_MAX_DB)
+		delta = -PWR_LOWER_MAX_DB;
+
+	return delta;
+}
+
  /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
   *  \param lchan logical channel for which to compute (and in which to store) new power value.
   *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
@@ -100,13 +139,11 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power_lvl,
 		      const int8_t ul_rssi_dbm)
 {
-	int diff;
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsm_bts *bts = trx->bts;
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
-	int8_t avg_ul_rssi_dbm;
 
 	const struct bts_power_ctrl_params *params = &bts->ul_power_ctrl;
 	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
@@ -131,35 +168,8 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	/* Filter UL RSSI to reduce unnecessary Tx power oscillations */
-	switch (params->pf_algo) {
-	case BTS_PF_ALGO_EWMA:
-		avg_ul_rssi_dbm = do_pf_ewma(params, state, ul_rssi_dbm);
-		break;
-	case BTS_PF_ALGO_NONE:
-	default:
-		/* No filtering (pass through) */
-		avg_ul_rssi_dbm = ul_rssi_dbm;
-	}
-
-	/* How many dBs measured power should be increased (+) or decreased (-)
-	   to reach expected power. */
-	diff = params->target - avg_ul_rssi_dbm;
-
-
-	/* Tolerate small deviations from 'rx-target' */
-	if (abs(diff) <= params->hysteresis)
-		diff = 0;
-
-	/* don't ever change more than MS_{LOWER,RAISE}_MAX_DBM during one loop
-	   iteration, i.e. reduce the speed at which the MS transmit power can
-	   change. A higher value means a lower level (and vice versa) */
-	if (diff > MS_RAISE_MAX_DB)
-		diff = MS_RAISE_MAX_DB;
-	else if (diff < -MS_LOWER_MAX_DB)
-		diff = -MS_LOWER_MAX_DB;
-
-	new_dbm = ms_dbm + diff;
+	/* Calculate the new Tx power value (in dBm) */
+	new_dbm = ms_dbm + calc_delta(params, state, ul_rssi_dbm);
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
 	   cope with any unsigned dbm value, regardless of band minimal value. */
