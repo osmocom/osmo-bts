@@ -31,11 +31,11 @@ cat $abs_srcdir/handover/handover_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/handover/handover_test], [], [expout], [ignore])
 AT_CLEANUP
 
-AT_SETUP([power])
+AT_SETUP([ms_power_loop])
 AT_KEYWORDS([power])
-cat $abs_srcdir/power/power_test.ok > expout
-cat $abs_srcdir/power/power_test.err > experr
-AT_CHECK([$abs_top_builddir/tests/power/power_test], [], [expout], [experr])
+cat $abs_srcdir/power/ms_power_loop_test.ok > expout
+cat $abs_srcdir/power/ms_power_loop_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/power/ms_power_loop_test], [], [expout], [experr])
 AT_CLEANUP
 
 AT_SETUP([tx_power])

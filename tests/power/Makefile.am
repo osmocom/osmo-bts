@@ -2,8 +2,8 @@ AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOCODEC_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOCODEC_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS)
 
-noinst_PROGRAMS = power_test
-EXTRA_DIST = power_test.ok power_test.err
+noinst_PROGRAMS = ms_power_loop_test
+EXTRA_DIST = ms_power_loop_test.ok ms_power_loop_test.err
 
-power_test_SOURCES = power_test.c $(srcdir)/../stubs.c
-power_test_LDADD = $(top_builddir)/src/common/libbts.a $(LIBOSMOABIS_LIBS) $(LDADD)
+ms_power_loop_test_SOURCES = ms_power_loop_test.c $(srcdir)/../stubs.c
+ms_power_loop_test_LDADD = $(top_builddir)/src/common/libbts.a $(LIBOSMOABIS_LIBS) $(LDADD)
