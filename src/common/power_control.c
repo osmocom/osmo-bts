@@ -182,7 +182,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
-			  avg_ul_rssi_dbm, params->target);
+			  ul_rssi_dbm, params->target);
 		return 0;
 	}
 
@@ -191,7 +191,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  state->current, current_dbm, new_power_lvl, new_dbm,
-		  ms_power_lvl, state->max, avg_ul_rssi_dbm, params->target);
+		  ms_power_lvl, state->max, ul_rssi_dbm, params->target);
 
 	/* store the resulting new MS power level in the lchan */
 	state->current = new_power_lvl;
