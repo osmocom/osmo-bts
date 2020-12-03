@@ -161,6 +161,9 @@ struct gsm_rep_facch {
 	uint32_t fn;
 };
 
+/* Depending on the context (MS or BS power control), fields 'current' and 'max'
+ * reflect either the MS power level (magic numbers), or BS Power reduction level
+ * (attenuation, in dB).  Field 'avg100_rxlev_dbm' is always in dBm. */
 struct lchan_power_ctrl_state {
 	uint8_t current;
 	uint8_t max;
