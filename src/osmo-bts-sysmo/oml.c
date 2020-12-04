@@ -429,7 +429,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
 	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
-					? 0.0 : trx->bts->ul_power_ctrl.target;
+					? 0.0 : trx->bts->ul_power_ctrl.target_dbm;
 
 	dev_par->fTxPowerLevel = ((float) initial_mdBm) / 1000;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (ARFCN %u, TSC %u, RxPower % 2f dBm, "

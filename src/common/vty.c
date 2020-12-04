@@ -255,9 +255,9 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " uplink-power-target %d", bts->ul_power_ctrl.target);
-	if (bts->ul_power_ctrl.hysteresis > 0)
-		vty_out(vty, " hysteresis %d", bts->ul_power_ctrl.hysteresis);
+	vty_out(vty, " uplink-power-target %d", bts->ul_power_ctrl.target_dbm);
+	if (bts->ul_power_ctrl.hysteresis_db > 0)
+		vty_out(vty, " hysteresis %d", bts->ul_power_ctrl.hysteresis_db);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
 	/* MS Tx power filtering algorithm and parameters */
@@ -633,8 +633,8 @@ DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.target = atoi(argv[0]);
-	bts->ul_power_ctrl.hysteresis = 0;
+	bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
+	bts->ul_power_ctrl.hysteresis_db = 0;
 
 	return CMD_SUCCESS;
 }
@@ -650,8 +650,8 @@ DEFUN_ATTR(cfg_bts_ul_power_target_hysteresis,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.target = atoi(argv[0]);
-	bts->ul_power_ctrl.hysteresis = atoi(argv[1]);
+	bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
+	bts->ul_power_ctrl.hysteresis_db = atoi(argv[1]);
 
 	return CMD_SUCCESS;
 }

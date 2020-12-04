@@ -113,10 +113,10 @@ static int calc_delta(const struct bts_power_ctrl_params *params,
 
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	 * to reach expected power. */
-	delta = params->target - rxlev_dbm_avg;
+	delta = params->target_dbm - rxlev_dbm_avg;
 
 	/* Tolerate small deviations from 'rx-target' */
-	if (abs(delta) <= params->hysteresis)
+	if (abs(delta) <= params->hysteresis_db)
 		return 0;
 
 	/* Don't ever change more than PWR_{LOWER,RAISE}_MAX_DBM during one loop
@@ -192,7 +192,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
-			  ul_rssi_dbm, params->target);
+			  ul_rssi_dbm, params->target_dbm);
 		return 0;
 	}
 
@@ -201,7 +201,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  state->current, current_dbm, new_power_lvl, new_dbm,
-		  ms_power_lvl, state->max, ul_rssi_dbm, params->target);
+		  ms_power_lvl, state->max, ul_rssi_dbm, params->target_dbm);
 
 	/* store the resulting new MS power level in the lchan */
 	state->current = new_power_lvl;
@@ -301,13 +301,13 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	if (state->current != new) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
 			  "%u -> %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, new, state->max, params->target, delta);
+			  state->current, new, state->max, params->target_dbm, delta);
 		state->current = new;
 		return 1;
 	} else {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
 			  "at %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, state->max, params->target, delta);
+			  state->current, state->max, params->target_dbm, delta);
 		return 0;
 	}
 }

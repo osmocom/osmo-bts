@@ -332,8 +332,8 @@ int bts_init(struct gsm_bts *bts)
 	/* Default UL/DL power control parameters */
 	bts->ul_power_ctrl = bts->dl_power_ctrl = \
 	(struct bts_power_ctrl_params) {
-		.target = -75,		/* dBm default */
-		.hysteresis = 3,	/* -78 .. -72 dBm */
+		.target_dbm = -75,
+		.hysteresis_db = 3,	/* -78 .. -72 dBm */
 		.pf_algo = BTS_PF_ALGO_EWMA,
 		.pf = {
 			.ewma = {

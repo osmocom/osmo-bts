@@ -104,9 +104,9 @@ enum bts_pf_algo {
 /* UL/DL power control parameters */
 struct bts_power_ctrl_params {
 	/* Target value to strive to */
-	int target;
+	int target_dbm;
 	/* Tolerated deviation from target */
-	int hysteresis;
+	int hysteresis_db;
 	/* RxLev filtering algorithm */
 	enum bts_pf_algo pf_algo;
 	/* (Optional) filtering parameters */

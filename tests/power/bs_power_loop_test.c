@@ -95,7 +95,7 @@ static void init_test(const char *name)
 	g_trx = gsm_bts_trx_alloc(g_bts);
 	OSMO_ASSERT(g_trx != NULL);
 
-	g_bts->dl_power_ctrl.target = rxlev2dbm(PWR_TEST_RXLEV_TARGET);
+	g_bts->dl_power_ctrl.target_dbm = rxlev2dbm(PWR_TEST_RXLEV_TARGET);
 	g_bts->band = GSM_BAND_900;
 	g_bts->c0 = g_trx;
 
@@ -147,7 +147,7 @@ static int exec_power_step(struct gsm_lchan *lchan,
 	case PWR_TEST_ST_SET_PARAMS:
 		printf("#%02u %s() <- Param (re)set (target %d dBm, hysteresis %u dB, "
 						    "filtering is %sabled)\n",
-		       n, __func__, step->params.target, step->params.hysteresis,
+		       n, __func__, step->params.target_dbm, step->params.hysteresis_db,
 		       step->params.pf_algo != BTS_PF_ALGO_NONE ? "en" : "dis");
 		g_bts->dl_power_ctrl = step->params;
 		return 0; /* we're done */
@@ -326,8 +326,8 @@ static const struct power_test_step TC_rxlev_hyst[] = {
 	/* Enable hysteresis */
 	{ .type = PWR_TEST_ST_SET_PARAMS,
 	  .params = {
-		.target = -110 + PWR_TEST_RXLEV_TARGET,
-		.hysteresis = 3,
+		.target_dbm = -110 + PWR_TEST_RXLEV_TARGET,
+		.hysteresis_db = 3,
 	  }
 	},
 
@@ -347,7 +347,7 @@ static const struct power_test_step TC_rxlev_pf_ewma[] = {
 	/* Enable EWMA based power filtering */
 	{ .type = PWR_TEST_ST_SET_PARAMS,
 	  .params = {
-		.target = -110 + PWR_TEST_RXLEV_TARGET, /* RxLev 30 */
+		.target_dbm = -110 + PWR_TEST_RXLEV_TARGET, /* RxLev 30 */
 		.pf_algo = BTS_PF_ALGO_EWMA,
 		.pf.ewma.alpha = 50,
 	  }
