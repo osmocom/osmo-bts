@@ -33,10 +33,6 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/power_control.h>
 
-/* how many dB do we raise/lower as maximum (1 ms power level = 2 dB) */
-#define PWR_RAISE_MAX_DB 4
-#define PWR_LOWER_MAX_DB 8
-
 /* We don't want to deal with floating point, so we scale up */
 #define EWMA_SCALE_FACTOR 100
 
@@ -122,10 +118,10 @@ static int calc_delta(const struct bts_power_ctrl_params *params,
 	/* Don't ever change more than PWR_{LOWER,RAISE}_MAX_DBM during one loop
 	 * iteration, i.e. reduce the speed at which the MS transmit power can
 	 * change. A higher value means a lower level (and vice versa) */
-	if (delta > PWR_RAISE_MAX_DB)
-		delta = PWR_RAISE_MAX_DB;
-	else if (delta < -PWR_LOWER_MAX_DB)
-		delta = -PWR_LOWER_MAX_DB;
+	if (delta > params->raise_step_max_db)
+		delta = params->raise_step_max_db;
+	else if (delta < -params->lower_step_max_db)
+		delta = -params->lower_step_max_db;
 
 	return delta;
 }

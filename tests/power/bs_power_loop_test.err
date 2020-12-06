@@ -7,29 +7,29 @@
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL
 (bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 0 dB (maximum 20 dB, target -80 dBm, delta 0 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 0 -> 8 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 0 -> 4 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 8 -> 16 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 4 -> 8 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 16 -> 20 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 8 -> 12 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 12 -> 16 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 16 -> 20 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -8 dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 20 dB (maximum 20 dB, target -80 dBm, delta -4 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 20 -> 16 dB (maximum 20 dB, target -80 dBm, delta 4 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 20 -> 12 dB (maximum 20 dB, target -80 dBm, delta 8 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 16 -> 12 dB (maximum 20 dB, target -80 dBm, delta 4 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 12 -> 4 dB (maximum 20 dB, target -80 dBm, delta 8 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 12 -> 8 dB (maximum 20 dB, target -80 dBm, delta 4 dB)
+(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 4 -> 0 dB (maximum 20 dB, target -80 dBm, delta 8 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 8 -> 4 dB (maximum 20 dB, target -80 dBm, delta 4 dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 0 dB (maximum 20 dB, target -80 dBm, delta 8 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(10), RXQUAL-FULL(0), RXLEV-SUB(10), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Changing Downlink attenuation: 4 -> 0 dB (maximum 20 dB, target -80 dBm, delta 4 dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 0 dB (maximum 20 dB, target -80 dBm, delta 8 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL
 (bts=0,trx=0,ts=0,ss=0) Keeping Downlink attenuation at 0 dB (maximum 20 dB, target -80 dBm, delta 0 dB)
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL

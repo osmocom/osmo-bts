@@ -47,10 +47,15 @@ static void init_test(const char *name)
 
 	g_trx->ms_pwr_ctl_soft = true;
 
-	g_bts->ul_power_ctrl.target_dbm = -75;
-	g_bts->dl_power_ctrl.target_dbm = -75;
 	g_bts->band = GSM_BAND_1800;
 	g_bts->c0 = g_trx;
+
+	g_bts->ul_power_ctrl = g_bts->dl_power_ctrl = \
+	(struct bts_power_ctrl_params) {
+		.target_dbm = -75,
+		.raise_step_max_db = PWR_RAISE_MAX_DB,
+		.lower_step_max_db = PWR_LOWER_MAX_DB,
+	};
 
 	printf("\nStarting test case '%s'\n", name);
 }

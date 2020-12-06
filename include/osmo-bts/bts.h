@@ -107,6 +107,10 @@ struct bts_power_ctrl_params {
 	int target_dbm;
 	/* Tolerated deviation from target */
 	int hysteresis_db;
+	/* How many dB do we raise power at maximum */
+	int raise_step_max_db;
+	/* How many dB do we lower power at maximum */
+	int lower_step_max_db;
 	/* RxLev filtering algorithm */
 	enum bts_pf_algo pf_algo;
 	/* (Optional) filtering parameters */

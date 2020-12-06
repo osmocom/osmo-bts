@@ -31,6 +31,15 @@
 
 #define PWR_TEST_RXLEV_TARGET	30
 
+#define PWR_TEST_CFG_RXLEV_TARGET \
+	.target_dbm = -110 + PWR_TEST_RXLEV_TARGET
+
+/* NOTE: raise/lower values are intentionally swapped here,
+ * as it makes more sense in the context of BS Power Control. */
+#define PWR_TEST_CFG_RAISE_LOWER_MAX \
+	.raise_step_max_db = PWR_LOWER_MAX_DB, \
+	.lower_step_max_db = PWR_RAISE_MAX_DB
+
 #define DL_MEAS_FULL(rxqual, rxlev) \
 	.rxqual_full = rxqual, \
 	.rxlev_full = rxlev
@@ -95,9 +104,14 @@ static void init_test(const char *name)
 	g_trx = gsm_bts_trx_alloc(g_bts);
 	OSMO_ASSERT(g_trx != NULL);
 
-	g_bts->dl_power_ctrl.target_dbm = rxlev2dbm(PWR_TEST_RXLEV_TARGET);
 	g_bts->band = GSM_BAND_900;
 	g_bts->c0 = g_trx;
+
+	g_bts->dl_power_ctrl = g_bts->ul_power_ctrl = \
+	(struct bts_power_ctrl_params) {
+		PWR_TEST_CFG_RXLEV_TARGET,
+		PWR_TEST_CFG_RAISE_LOWER_MAX,
+	};
 
 	printf("\nStarting test case '%s'\n", name);
 }
@@ -326,7 +340,8 @@ static const struct power_test_step TC_rxlev_hyst[] = {
 	/* Enable hysteresis */
 	{ .type = PWR_TEST_ST_SET_PARAMS,
 	  .params = {
-		.target_dbm = -110 + PWR_TEST_RXLEV_TARGET,
+		PWR_TEST_CFG_RXLEV_TARGET,
+		PWR_TEST_CFG_RAISE_LOWER_MAX,
 		.hysteresis_db = 3,
 	  }
 	},
@@ -347,7 +362,8 @@ static const struct power_test_step TC_rxlev_pf_ewma[] = {
 	/* Enable EWMA based power filtering */
 	{ .type = PWR_TEST_ST_SET_PARAMS,
 	  .params = {
-		.target_dbm = -110 + PWR_TEST_RXLEV_TARGET, /* RxLev 30 */
+		PWR_TEST_CFG_RXLEV_TARGET,
+		PWR_TEST_CFG_RAISE_LOWER_MAX,
 		.pf_algo = BTS_PF_ALGO_EWMA,
 		.pf.ewma.alpha = 50,
 	  }

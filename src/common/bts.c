@@ -53,6 +53,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/bts_shutdown_fsm.h>
 #include <osmo-bts/nm_common_fsm.h>
+#include <osmo-bts/power_control.h>
 
 #define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
@@ -334,6 +335,8 @@ int bts_init(struct gsm_bts *bts)
 	(struct bts_power_ctrl_params) {
 		.target_dbm = -75,
 		.hysteresis_db = 3,	/* -78 .. -72 dBm */
+		.raise_step_max_db = PWR_RAISE_MAX_DB,
+		.lower_step_max_db = PWR_LOWER_MAX_DB,
 		.pf_algo = BTS_PF_ALGO_EWMA,
 		.pf = {
 			.ewma = {
