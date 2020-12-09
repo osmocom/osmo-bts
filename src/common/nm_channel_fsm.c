@@ -92,7 +92,7 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 		oml_mo_opstart_nack(&ts->mo, (int)(intptr_t)data);
 		return;
 	case NM_EV_BBTRANSC_ENABLED:
-		oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
 		return;
 	default:
 		OSMO_ASSERT(0);
@@ -121,7 +121,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		oml_mo_opstart_nack(&ts->mo, (int)(intptr_t)data);
 		return;
 	case NM_EV_BBTRANSC_DISABLED:
-		oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
 		return;
 	default:
 		OSMO_ASSERT(0);
