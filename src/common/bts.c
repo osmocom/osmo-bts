@@ -330,7 +330,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
 	bts->rtp_ip_dscp = -1;
 
-	/* Default UL/DL power control parameters */
+	/* Default UL/DL power control parameters (legacy) */
 	bts->ul_power_ctrl = bts->dl_power_ctrl = \
 	(struct bts_power_ctrl_params) {
 		.target_dbm = -75,
@@ -345,6 +345,10 @@ int bts_init(struct gsm_bts *bts)
 			}
 		}
 	};
+
+	/* Default (fall-back) MS/BS Power control parameters */
+	bts->bs_dpc_params = power_ctrl_params_def;
+	bts->ms_dpc_params = power_ctrl_params_def;
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;

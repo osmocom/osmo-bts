@@ -113,6 +113,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	if (trx->nr != 0)
 		trx->nominal_power = bts->c0->nominal_power;
 
+	/* Default (fall-back) Dynamic Power Control parameters */
+	trx->bs_dpc_params = &bts->bs_dpc_params;
+	trx->ms_dpc_params = &bts->ms_dpc_params;
+
 	llist_add_tail(&trx->list, &bts->trx_list);
 
 	return trx;

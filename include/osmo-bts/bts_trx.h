@@ -32,6 +32,8 @@ struct gsm_bts_trx {
 
 
 	struct trx_power_params power_params;
+	struct gsm_power_ctrl_params *bs_dpc_params; /* BS Dynamic Power Control */
+	struct gsm_power_ctrl_params *ms_dpc_params; /* MS Dynamic Power Control */
 	bool ms_pwr_ctl_soft; /* is power control loop done by osmocom software? */
 
 	struct {

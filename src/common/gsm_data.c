@@ -420,3 +420,31 @@ int lchan2ecu_codec(const struct gsm_lchan *lchan)
 		return -1;
 	}
 }
+
+/* Default MS/BS Power Control parameters (see 3GPP TS 45.008, table A.1) */
+const struct gsm_power_ctrl_params power_ctrl_params_def = {
+	/* Power increasing/reducing step size */
+	.inc_step_size_db = 4, /* FIXME: PWR_RAISE_MAX_DB */
+	.red_step_size_db = 8, /* FIXME: PWR_LOWER_MAX_DB */
+
+	/* RxLev measurement parameters */
+	.rxlev_meas = {
+		/* Thresholds for RxLev (see 3GPP TS 45.008, A.3.2.1) */
+		.lower_thresh = 32, /* L_RXLEV_XX_P (-78 dBm) */
+		.upper_thresh = 38, /* U_RXLEV_XX_P (-72 dBm) */
+
+		/* NOTE: only Osmocom specific EWMA is supported */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA,
+		.ewma.alpha = 50, /* Smoothing factor 50% */
+	},
+
+	/* RxQual measurement parameters */
+	.rxqual_meas = {
+		/* Thresholds for RxQual (see 3GPP TS 45.008, A.3.2.1) */
+		.lower_thresh = 3, /* U_RXQUAL_XX_P (0.8% <= BER < 1.6%) */
+		.upper_thresh = 0, /* L_RXQUAL_XX_P (BER < 0.2%) */
+
+		/* FIXME: RxQual averaging is not yet implemented */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+	},
+};
