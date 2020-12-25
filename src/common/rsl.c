@@ -2,6 +2,7 @@
 
 /* (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2011-2019 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2020 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -698,6 +699,167 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 
 }
 
+/* Parser for ip.access specific MS/BS Power parameters */
+static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
+				   const uint8_t *data, size_t data_len)
+{
+	const struct tlv_p_entry *ie;
+	struct tlv_parsed tp[2];
+	unsigned int i;
+	int rc;
+
+	/* There can be multiple RSL_IPAC_EIE_MEAS_AVG_CFG, so we use tlv_parse2() */
+	rc = tlv_parse2(&tp[0], ARRAY_SIZE(tp), &rsl_ipac_eie_tlvdef,
+			data, data_len, 0, 0);
+	if (rc < 0)
+		return rc;
+
+	/* Either of RSL_IPAC_EIE_{BS,MS}_PWR_CTL must be present */
+	if (TLVP_PRESENT(&tp[0], RSL_IPAC_EIE_BS_PWR_CTL) &&
+	    TLVP_PRESENT(&tp[0], RSL_IPAC_EIE_MS_PWR_CTL))
+		return -EINVAL;
+
+	/* (TV) Thresholds: {L,U}_RXLEV_XX_P and {L,U}_RXQUAL_XX_P */
+	if ((ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_BS_PWR_CTL)) != NULL ||
+	    (ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_MS_PWR_CTL)) != NULL) {
+		const struct ipac_preproc_pc_thresh *thresh;
+
+		thresh = (const struct ipac_preproc_pc_thresh *) ie->val;
+
+		params->rxlev_meas.lower_thresh = thresh->l_rxlev;
+		params->rxlev_meas.upper_thresh = thresh->u_rxlev;
+
+		params->rxqual_meas.lower_thresh = thresh->l_rxqual;
+		params->rxqual_meas.upper_thresh = thresh->u_rxqual;
+	}
+
+	/* (TV) PC Threshold Comparators */
+	if ((ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_PC_THRESH_COMP)) != NULL) {
+		const struct ipac_preproc_pc_comp *thresh_comp;
+
+		thresh_comp = (const struct ipac_preproc_pc_comp *) ie->val;
+
+		/* RxLev: P1, N1, P2, N2 (see 3GPP TS 45.008, A.3.2.1, a & b) */
+		params->rxlev_meas.lower_cmp_p = thresh_comp->p1;
+		params->rxlev_meas.lower_cmp_n = thresh_comp->n1;
+		params->rxlev_meas.upper_cmp_p = thresh_comp->p2;
+		params->rxlev_meas.upper_cmp_n = thresh_comp->n2;
+
+		/* RxQual: P3, N3, P4, N4 (see 3GPP TS 45.008, A.3.2.1, c & d) */
+		params->rxqual_meas.lower_cmp_p = thresh_comp->p3;
+		params->rxqual_meas.lower_cmp_n = thresh_comp->n3;
+		params->rxqual_meas.upper_cmp_p = thresh_comp->p4;
+		params->rxqual_meas.upper_cmp_n = thresh_comp->n4;
+
+		/* FIXME: TIMER_PWR_CON_INTERVAL (P_Con_INTERVAL) */
+
+		/* Power increase / reduce step size: POWER_{INC,RED}_STEP_SIZE */
+		params->inc_step_size_db = thresh_comp->inc_step_size;
+		params->red_step_size_db = thresh_comp->red_step_size;
+	}
+
+	/* (TLV) Measurement Averaging parameters for RxLev/RxQual */
+	for (i = 0; i < ARRAY_SIZE(tp); i++) {
+		const struct ipac_preproc_ave_cfg *ave_cfg;
+		struct gsm_power_ctrl_meas_params *mp;
+
+		ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_MEAS_AVG_CFG);
+		if (ie == NULL)
+			break;
+
+		if (ie->len < sizeof(*ave_cfg))
+			return -EINVAL;
+
+		ave_cfg = (const struct ipac_preproc_ave_cfg *) ie->val;
+
+		switch (ave_cfg->param_id) {
+		case IPAC_RXQUAL_AVE:
+			mp = &params->rxqual_meas;
+			break;
+		case IPAC_RXLEV_AVE:
+			mp = &params->rxlev_meas;
+			break;
+		default:
+			/* Skip unknown parameters */
+			continue;
+		}
+
+		mp->h_reqave = ave_cfg->h_reqave;
+		mp->h_reqt = ave_cfg->h_reqt;
+
+		mp->algo = ave_cfg->ave_method + 1;
+		switch (ave_cfg->ave_method) {
+		case IPAC_OSMO_EWMA_AVE:
+			if (ie->len > sizeof(*ave_cfg))
+				mp->ewma.alpha = ave_cfg->params[0];
+			break;
+
+		/* FIXME: not implemented */
+		case IPAC_UNWEIGHTED_AVE:
+		case IPAC_WEIGHTED_AVE:
+		case IPAC_MEDIAN_AVE:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+/* ip.access specific Measurement Pre-processing Defaults for MS/BS Power control */
+static int rsl_rx_meas_preproc_dft(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	const struct gsm_bts *bts = trx->bts;
+	struct gsm_power_ctrl_params *params;
+	const struct tlv_p_entry *ie;
+	struct tlv_parsed tp;
+	int rc;
+
+	LOGPTRX(trx, DRSL, LOGL_INFO, "Rx Measurement Pre-processing Defaults\n");
+
+	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rc < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "Failed to parse ip.access specific "
+			"Measurement Pre-processing Defaults for MS/BS Power control\n");
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
+	}
+
+	/* TLV (O) BS Power Parameters IE */
+	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
+		/* Allocate a new chunk and initialize with default values */
+		params = talloc_memdup(trx, &power_ctrl_params_def, sizeof(*params));
+
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) == 0) {
+			/* Initially it points to the global defaults */
+			if (trx->bs_dpc_params != &bts->bs_dpc_params)
+				talloc_free(trx->bs_dpc_params);
+			trx->bs_dpc_params = params;
+		} else {
+			LOGPTRX(trx, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
+			rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+			talloc_free(params);
+		}
+	}
+
+	/* TLV (O) MS Power Parameters IE */
+	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
+		/* Allocate a new chunk and initialize with default values */
+		params = talloc_memdup(trx, &power_ctrl_params_def, sizeof(*params));
+
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) == 0) {
+			/* Initially it points to the global defaults */
+			if (trx->ms_dpc_params != &bts->ms_dpc_params)
+				talloc_free(trx->ms_dpc_params);
+			trx->ms_dpc_params = params;
+		} else {
+			LOGPTRX(trx, DRSL, LOGL_ERROR, "Failed to parse MS Power Parameters IE\n");
+			rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, NULL, NULL, msg);
+			talloc_free(params);
+		}
+	}
+
+	return 0;
+}
+
 /* 8.5.6 IMMEDIATE ASSIGN COMMAND is received */
 static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 {
@@ -1125,6 +1287,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
+	const struct tlv_p_entry *ie;
 	uint8_t type;
 	int rc;
 
@@ -1236,19 +1399,42 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
 		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
 
-	/* 9.3.31 MS Power Parameters */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
+	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
+	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
+		struct gsm_power_ctrl_params *params = &lchan->ms_dpc_params;
+
+		/* Parsed parameters will override per-TRX defaults */
+		memcpy(params, ts->trx->ms_dpc_params, sizeof(*params));
+
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse MS Power Parameters IE\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
+		}
+
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
 		lchan->ms_power_ctrl.fixed = false;
+		lchan->ms_power_ctrl.dpc_params = params;
 	}
 
-	/* 9.3.32 BS Power Parameters */
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
+	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
+	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
+		struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
+
+		/* Parsed parameters will override per-TRX defaults */
+		memcpy(params, ts->trx->bs_dpc_params, sizeof(*params));
+
+		/* Parsed parameters will override per-TRX defaults */
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
+		}
+
 		/* NOTE: it's safer to start from 0 */
 		lchan->bs_power_ctrl.current = 0;
 		lchan->bs_power_ctrl.fixed = false;
+		lchan->bs_power_ctrl.dpc_params = params;
 	}
 
 	/* 9.3.16 Physical Context */
@@ -1721,6 +1907,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
+	const struct tlv_p_entry *ie;
 	struct tlv_parsed tp;
 	uint8_t pwr;
 	int max_pwr, curr_pwr;
@@ -1736,14 +1923,25 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Rx MS POWER CONTROL %" PRIu8 "\n", pwr);
 
-	/* 9.3.31 MS Power Parameters (O) */
-	if (TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM)) {
-		/* Spec explicitly states BTS should only perform
-		* autonomous MS power control loop in BTS if 'MS Power
-		* Parameters' IE is present! */
-		lchan->ms_power_ctrl.fixed = false;
-	} else {
-		lchan->ms_power_ctrl.fixed = true;
+	/* Spec explicitly states BTS should only perform autonomous MS Power
+	 * control loop in BTS if 'MS Power Parameters' IE is present! */
+	lchan->ms_power_ctrl.fixed = !TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM);
+	lchan->ms_power_ctrl.dpc_params = NULL;
+
+	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
+	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
+		struct gsm_power_ctrl_params *params = &lchan->ms_dpc_params;
+
+		/* Parsed parameters will override per-TRX defaults */
+		memcpy(params, msg->trx->ms_dpc_params, sizeof(*params));
+
+		/* Parsed parameters will override per-TRX defaults */
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse MS Power Parameters IE\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
+		}
+
+		lchan->ms_power_ctrl.dpc_params = params;
 	}
 
 	/* Only set current to max if actual value of current
@@ -1773,6 +1971,7 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	const struct tlv_p_entry *ie;
 	struct tlv_parsed tp;
 	uint8_t old, new;
 
@@ -1790,13 +1989,26 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 	new = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
 	old = lchan->bs_power_ctrl.current;
 
-	/* 9.3.31 MS Power Parameters (O) */
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER_PARAM)) {
+	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
+	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
+		struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
+
+		/* Parsed parameters will override per-TRX defaults */
+		memcpy(params, msg->trx->bs_dpc_params, sizeof(*params));
+
+		/* Parsed parameters will override per-TRX defaults */
+		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
+		}
+
 		/* NOTE: it's safer to start from 0 */
 		lchan->bs_power_ctrl.current = 0;
 		lchan->bs_power_ctrl.max = new;
 		lchan->bs_power_ctrl.fixed = false;
+		lchan->bs_power_ctrl.dpc_params = params;
 	} else {
+		lchan->bs_power_ctrl.dpc_params = NULL;
 		lchan->bs_power_ctrl.current = new;
 		lchan->bs_power_ctrl.fixed = true;
 	}
@@ -3241,6 +3453,9 @@ static int rsl_rx_trx(struct gsm_bts_trx *trx, struct msgb *msg)
 	switch (th->msg_type) {
 	case RSL_MT_SACCH_FILL:
 		ret = rsl_rx_sacch_fill(trx, msg);
+		break;
+	case RSL_MT_IPAC_MEAS_PREPROC_DFT:
+		ret = rsl_rx_meas_preproc_dft(trx, msg);
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "undefined RSL TRX msg_type 0x%02x\n",
