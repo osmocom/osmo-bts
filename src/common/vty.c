@@ -1118,6 +1118,66 @@ DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-t
 	return CMD_SUCCESS;
 }
 
+/* TODO: generalize and move indention handling to libosmocore */
+#define cfg_out(vty, fmt, args...) \
+	vty_out(vty, "%*s" fmt, indent, "", ##args);
+
+static void dump_dpc_meas_params(struct vty *vty, const unsigned int indent,
+				 const struct gsm_power_ctrl_meas_params *mp,
+				 const char *pname, const unsigned int pn)
+{
+	cfg_out(vty, "Lower threshold (L_%s_XX_P): %u%s",
+		pname, mp->lower_thresh, VTY_NEWLINE);
+	cfg_out(vty, "Upper threshold (U_%s_XX_P): %u%s",
+		pname, mp->upper_thresh, VTY_NEWLINE);
+
+	cfg_out(vty, "Lower threshold comparators: P%u=%02u / N%u=%02u%s",
+		pn, mp->lower_cmp_p, pn, mp->lower_cmp_n, VTY_NEWLINE);
+	cfg_out(vty, "Upper threshold comparators: P%u=%02u / N%u=%02u%s",
+		pn + 1, mp->upper_cmp_p, pn + 1, mp->upper_cmp_n, VTY_NEWLINE);
+
+	cfg_out(vty, "Pre-processing algorithm: ");
+	switch (mp->algo) {
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_UNWEIGHTED:
+		vty_out(vty, "unweighted average%s", VTY_NEWLINE);
+		break;
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_WEIGHTED:
+		vty_out(vty, "weighted average%s", VTY_NEWLINE);
+		break;
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_MOD_MEDIAN:
+		vty_out(vty, "modified median%s", VTY_NEWLINE);
+		break;
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA:
+		vty_out(vty, "EWMA (alpha=%u)%s",
+			mp->ewma.alpha, VTY_NEWLINE);
+		break;
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE:
+		vty_out(vty, "disabled (pass-through)%s", VTY_NEWLINE);
+		return;
+	default:
+		vty_out(vty, "unknown%s", VTY_NEWLINE);
+		return;
+	}
+
+	cfg_out(vty, "Pre-processing parameters: Hreqave=%u / Hreqt=%u%s",
+		mp->h_reqave, mp->h_reqt, VTY_NEWLINE);
+}
+
+static void dump_dpc_params(struct vty *vty, const unsigned int indent,
+			    const struct gsm_power_ctrl_params *cp)
+{
+	cfg_out(vty, "Power increase step size: %u%s",
+		cp->inc_step_size_db, VTY_NEWLINE);
+	cfg_out(vty, "Power reduce step size: %u%s",
+		cp->red_step_size_db, VTY_NEWLINE);
+
+	cfg_out(vty, "RxLev measurement processing:%s", VTY_NEWLINE);
+	dump_dpc_meas_params(vty, indent + 2, &cp->rxlev_meas, "RXLEV", 1);
+
+	cfg_out(vty, "RxQual measurement processing:%s", VTY_NEWLINE);
+	dump_dpc_meas_params(vty, indent + 2, &cp->rxqual_meas, "RXQUAL", 3);
+}
+
 static void trx_dump_vty(struct vty *vty, const struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
@@ -1128,6 +1188,19 @@ static void trx_dump_vty(struct vty *vty, const struct gsm_bts_trx *trx)
 		"resulting BS power: %d dBm%s",
 		trx->nominal_power, trx->max_power_red,
 		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
+
+	vty_out(vty, "  BS Power control parameters (%s):%s",
+		trx->bs_dpc_params == &trx->bts->bs_dpc_params ?
+			"fall-back" : "from BSC",
+		VTY_NEWLINE);
+	dump_dpc_params(vty, 4, trx->bs_dpc_params);
+
+	vty_out(vty, "  MS Power control parameters (%s):%s",
+		trx->ms_dpc_params == &trx->bts->ms_dpc_params ?
+			"fall-back" : "from BSC",
+		VTY_NEWLINE);
+	dump_dpc_params(vty, 4, trx->ms_dpc_params);
+
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &trx->mo.nm_state);
 	vty_out(vty, "  RSL State: %s%s", trx->rsl_link? "connected" : "disconnected", VTY_NEWLINE);
@@ -1307,47 +1380,61 @@ static void vty_out_dyn_ts_status(struct vty *vty, const struct gsm_bts_trx_ts *
 	}
 }
 
-static void lchan_bs_power_ctrl_state_dump(struct vty *vty, const char *prefix,
+static void lchan_bs_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 					   const struct gsm_lchan *lchan)
 {
 	const struct lchan_power_ctrl_state *st = &lchan->bs_power_ctrl;
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
-	vty_out(vty, "%sBS (Downlink) Power Control (%s):%s",
-		prefix, st->fixed ? "fixed" : "autonomous",
+	cfg_out(vty, "BS (Downlink) Power Control (%s):%s",
+		st->fixed ? "fixed" : "autonomous",
 		VTY_NEWLINE);
+	indent += 2;
 
-	vty_out(vty, "%s  Channel reduction: %u dB", prefix, st->current);
+	cfg_out(vty, "Channel reduction: %u dB", st->current);
 	if (!st->fixed)
 		vty_out(vty, " (max %u dB)", st->max);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
-	vty_out(vty, "%s  TRX reduction: %u dB%s",
-		prefix, trx->max_power_red, VTY_NEWLINE);
+	cfg_out(vty, "TRX reduction: %u dB%s",
+		trx->max_power_red, VTY_NEWLINE);
 
 	int actual = trx->nominal_power - (trx->max_power_red + st->current);
-	vty_out(vty, "%s  Actual / Nominal power: %d dBm / %d dBm%s",
-		prefix, actual, trx->nominal_power, VTY_NEWLINE);
+	cfg_out(vty, "Actual / Nominal power: %d dBm / %d dBm%s",
+		actual, trx->nominal_power, VTY_NEWLINE);
+
+	if (st->dpc_params == NULL)
+		return;
+
+	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
+	dump_dpc_params(vty, indent + 2, st->dpc_params);
 }
 
-static void lchan_ms_power_ctrl_state_dump(struct vty *vty, const char *prefix,
+static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 					   const struct gsm_lchan *lchan)
 {
 	const struct lchan_power_ctrl_state *st = &lchan->ms_power_ctrl;
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
-	vty_out(vty, "%sMS (Uplink) Power Control (%s):%s",
-		prefix, st->fixed ? "fixed" : "autonomous",
+	cfg_out(vty, "MS (Uplink) Power Control (%s):%s",
+		st->fixed ? "fixed" : "autonomous",
 		VTY_NEWLINE);
+	indent += 2;
 
 	int current_dbm = ms_pwr_dbm(trx->bts->band, st->current);
 	int max_dbm = ms_pwr_dbm(trx->bts->band, st->max);
 
-	vty_out(vty, "%s  Current power level: %u, -%d dBm",
-		prefix, st->current, current_dbm);
+	cfg_out(vty, "Current power level: %u, -%d dBm",
+		st->current, current_dbm);
 	if (!st->fixed)
 		vty_out(vty, " (max %u, -%d dBm)", st->max, max_dbm);
 	vty_out(vty, "%s", VTY_NEWLINE);
+
+	if (st->dpc_params == NULL)
+		return;
+
+	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
+	dump_dpc_params(vty, indent + 2, st->dpc_params);
 }
 
 static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
@@ -1420,9 +1507,9 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 		vty_out(vty, "  RTP/PDCH Loopback Enabled%s", VTY_NEWLINE);
 	vty_out(vty, "  Radio Link Failure Counter 'S': %d%s", lchan->s, VTY_NEWLINE);
 
-	/* BS/MS Power Control state */
-	lchan_bs_power_ctrl_state_dump(vty, "  ", lchan);
-	lchan_ms_power_ctrl_state_dump(vty, "  ", lchan);
+	/* BS/MS Power Control state and parameters */
+	lchan_bs_power_ctrl_state_dump(vty, 2, lchan);
+	lchan_ms_power_ctrl_state_dump(vty, 2, lchan);
 }
 
 static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)
