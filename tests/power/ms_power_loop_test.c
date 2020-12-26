@@ -164,7 +164,7 @@ static void test_pf_algo_ewma(void)
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
-	avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
+	avg100 = &lchan->ms_power_ctrl.rxlev_meas_proc.ewma.Avg100;
 
 	struct gsm_power_ctrl_meas_params *mp = &lchan->ms_dpc_params.rxlev_meas;
 	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA;
@@ -204,7 +204,8 @@ static void test_pf_algo_ewma(void)
 
 	mp->ewma.alpha = 70; /* 30% smoothing */
 	lchan->ms_power_ctrl.current = 15;
-	lchan->ms_power_ctrl.avg100_rxlev_dbm = 0;
+	lchan->ms_power_ctrl.rxlev_meas_proc = \
+		(struct gsm_power_ctrl_meas_proc_state) { 0 };
 
 	/* This is the first sample, the filter outputs it as-is */
 	apply_power_test(lchan, -50, 0, 15);

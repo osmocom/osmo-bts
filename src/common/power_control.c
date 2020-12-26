@@ -38,29 +38,29 @@
 
 /* Base Low-Pass Single-Pole IIR Filter (EWMA) formula:
  *
- *   Avg[n] = a * Pwr[n] + (1 - a) * Avg[n - 1]
+ *   Avg[n] = a * Val[n] + (1 - a) * Avg[n - 1]
  *
- * where parameter 'a' determines how much weight of the latest UL RSSI measurement
- * result 'Pwr[n]' carries vs the weight of the average 'Avg[n - 1]'.  The value of
- * 'a' is usually a float in range 0 .. 1, so:
+ * where parameter 'a' determines how much weight of the latest measurement value
+ * 'Val[n]' carries vs the weight of the accumulated average 'Avg[n - 1]'.  The
+ * value of 'a' is usually a float in range 0 .. 1, so:
  *
- *  - value 0.5 gives equal weight to both 'Pwr[n]' and 'Avg[n - 1]';
+ *  - value 0.5 gives equal weight to both 'Val[n]' and 'Avg[n - 1]';
  *  - value 1.0 means no filtering at all (pass through);
  *  - value 0.0 makes no sense.
  *
  * Further optimization:
  *
- *   Avg[n] = a * Pwr[n] + Avg[n - 1] - a * Avg[n - 1]
+ *   Avg[n] = a * Val[n] + Avg[n - 1] - a * Avg[n - 1]
  *   ^^^^^^                ^^^^^^^^^^
  *
  * a) this can be implemented in C using '+=' operator:
  *
- *   Avg += a * Pwr - a * Avg
- *   Avg += a * (Pwr - Avg)
+ *   Avg += a * Val - a * Avg
+ *   Avg += a * (Val - Avg)
  *
  * b) everything is scaled up by 100 to avoid floating point stuff:
  *
- *   Avg100 += A * (Pwr - Avg)
+ *   Avg100 += A * (Val - Avg)
  *
  * where 'Avg100' is 'Avg * 100' and 'A' is 'a * 100'.
  *
@@ -70,20 +70,20 @@
  *   https://en.wikipedia.org/wiki/Low-pass_filter#Simple_infinite_impulse_response_filter
  *   https://tomroelandts.com/articles/low-pass-single-pole-iir-filter
  */
-static int8_t do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
-			 struct lchan_power_ctrl_state *state,
-			 const int8_t Pwr)
+static int do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
+		      struct gsm_power_ctrl_meas_proc_state *mps,
+		      const int Val)
 {
 	const uint8_t A = mp->ewma.alpha;
-	int *Avg100 = &state->avg100_rxlev_dbm;
+	int *Avg100 = &mps->ewma.Avg100;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
 	if (*Avg100 == 0) {
-		*Avg100 = Pwr * EWMA_SCALE_FACTOR;
-		return Pwr;
+		*Avg100 = Val * EWMA_SCALE_FACTOR;
+		return Val;
 	}
 
-	*Avg100 += A * (Pwr - *Avg100 / EWMA_SCALE_FACTOR);
+	*Avg100 += A * (Val - *Avg100 / EWMA_SCALE_FACTOR);
 	return *Avg100 / EWMA_SCALE_FACTOR;
 }
 
@@ -104,7 +104,9 @@ static int calc_delta(const struct gsm_power_ctrl_params *params,
 	/* Filter RxLev value to reduce unnecessary Tx power oscillations */
 	switch (params->rxlev_meas.algo) {
 	case GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA:
-		rxlev_dbm_avg = do_pf_ewma(&params->rxlev_meas, state, rxlev_dbm);
+		rxlev_dbm_avg = do_pf_ewma(&params->rxlev_meas,
+					   &state->rxlev_meas_proc,
+					   rxlev_dbm);
 		break;
 	/* TODO: implement other pre-processing methods */
 	case GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE:

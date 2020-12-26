@@ -213,18 +213,28 @@ struct gsm_power_ctrl_params {
 /* Default MS/BS Power Control parameters */
 extern const struct gsm_power_ctrl_params power_ctrl_params_def;
 
+/* Measurement pre-processing state */
+struct gsm_power_ctrl_meas_proc_state {
+	/* Algorithm specific data */
+	union {
+		struct {
+			/* Scaled up 100 times average value */
+			int Avg100;
+		} ewma;
+	};
+};
+
 struct lchan_power_ctrl_state {
 	/* Dynamic Power Control parameters (NULL in static mode) */
 	const struct gsm_power_ctrl_params *dpc_params;
+	/* Measurement pre-processing state (for dynamic mode) */
+	struct gsm_power_ctrl_meas_proc_state rxlev_meas_proc;
 
 	/* Depending on the context (MS or BS power control), fields 'current' and 'max'
 	 * reflect either the MS power level (magic numbers), or BS Power reduction level
 	 * (attenuation, in dB). */
 	uint8_t current;
 	uint8_t max;
-
-	/* Scaled up (100 times) average UL/DL RxLev (in dBm) */
-	int avg100_rxlev_dbm;
 };
 
 struct gsm_lchan {
