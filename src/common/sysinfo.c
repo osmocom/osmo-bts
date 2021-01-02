@@ -1,4 +1,4 @@
-/* (C) 2011-2019 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2011-2020 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -18,6 +18,7 @@
  */
 
 #include <stdint.h>
+#include <errno.h>
 
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/sysinfo.h>
@@ -212,11 +213,34 @@ void regenerate_si3_restoctets(struct gsm_bts *bts)
 	osmo_gsm48_rest_octets_si3_encode(si3_buf + si3_size, &si3ro_tmp);
 }
 
+/* get the offset of the SI4 rest octets */
+int get_si4_ro_offset(const uint8_t *si4_buf)
+{
+	const struct gsm48_system_information_type_4 *si4 =
+					(const struct gsm48_system_information_type_4 *) si4_buf;
+	int si4_size;
+
+	/* start with the length of the mandatory part */
+	si4_size = offsetof(struct gsm48_system_information_type_4, data);
+	/* then add optional parts, if any */
+	if (si4->data[0] == GSM48_IE_CBCH_CHAN_DESC) {
+		/* fixed 4-byte TV IE, see Table 9.1.36.1 of TS 44.018 */
+		si4_size += 4;
+		if (si4->data[4] == GSM48_IE_CBCH_MOB_AL)
+			si4_size += TLV_GROSS_LEN(si4->data[5]);
+	}
+
+	if (si4_size >= GSM_MACBLOCK_LEN)
+		return -EINVAL;
+
+	return si4_size;
+}
+
 /* re-generate SI4 restoctets with GPRS indicator depending on the PCU socket connection state */
 void regenerate_si4_restoctets(struct gsm_bts *bts)
 {
 	uint8_t *si4_buf = GSM_BTS_SI(bts, SYSINFO_TYPE_4);
-	size_t si4_size = offsetof(struct gsm48_system_information_type_4, data);
+	size_t si4_size;
 	struct osmo_gsm48_si_ro_info si4ro_tmp;
 
 	/* If BSC has never set SI4, there's nothing to patch */
@@ -226,6 +250,12 @@ void regenerate_si4_restoctets(struct gsm_bts *bts)
 	/* If SI4 from BSC doesn't have a GPRS indicator, we won't have anything to patch */
 	if (!bts->si4_ro_decoded.gprs_ind.present)
 		return;
+
+	si4_size = get_si4_ro_offset(si4_buf);
+	if (si4_size < 0) {
+		LOGP(DPCU, LOGL_ERROR, "Cannot parse SI4, hence not patching GPRS indicator\n");
+		return;
+	}
 
 	/* Create a temporary copy and patch that, if no PCU is around */
 	si4ro_tmp = bts->si4_ro_decoded;
