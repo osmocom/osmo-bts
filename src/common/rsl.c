@@ -382,7 +382,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			/* decode original SI4 Rest Octets as sent by BSC */
 			const uint8_t *si4 = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
 			int si4_ro_offset = get_si4_ro_offset(si4);
-			if (si4_ro_offset < GSM_MACBLOCK_LEN) {
+			if (si4_ro_offset > 0) {
 				osmo_gsm48_rest_octets_si4_decode(&bts->si4_ro_decoded,
 								  si4 + si4_ro_offset,
 								  GSM_MACBLOCK_LEN - si4_ro_offset);
