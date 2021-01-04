@@ -1408,6 +1408,12 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 	if (!lchan->repeated_acch_capability.ul_sacch)
 		return;
 
+	/* Threshold disabled (repetition is always on) */
+	if (lchan->repeated_acch_capability.rxqual == 0) {
+		lchan->repeated_ul_sacch_active = true;
+		return;
+	}
+
 	/* convert from RXQUAL value to ber10k vale,
 	 * see also GSM 05.08, section 8.2.4 */
 	static const uint16_t ber10k_by_rxqual_upper[] =
