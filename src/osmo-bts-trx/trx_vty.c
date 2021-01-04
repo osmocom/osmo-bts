@@ -199,7 +199,9 @@ DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 	vty_out(vty, "'%s' is deprecated, MS Power Control is now managed by BSC%s",
 		self->string, VTY_NEWLINE);
 
-	g_bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
+	uint8_t rxlev = dbm2rxlev(atoi(argv[0]));
+	g_bts->ms_dpc_params.rxlev_meas.lower_thresh = rxlev;
+	g_bts->ms_dpc_params.rxlev_meas.upper_thresh = rxlev;
 
 	return CMD_SUCCESS;
 }

@@ -70,11 +70,11 @@
  *   https://en.wikipedia.org/wiki/Low-pass_filter#Simple_infinite_impulse_response_filter
  *   https://tomroelandts.com/articles/low-pass-single-pole-iir-filter
  */
-static int8_t do_pf_ewma(const struct bts_power_ctrl_params *params,
+static int8_t do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
 			 struct lchan_power_ctrl_state *state,
 			 const int8_t Pwr)
 {
-	const uint8_t A = params->pf.ewma.alpha;
+	const uint8_t A = mp->ewma.alpha;
 	int *Avg100 = &state->avg100_rxlev_dbm;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
@@ -87,41 +87,51 @@ static int8_t do_pf_ewma(const struct bts_power_ctrl_params *params,
 	return *Avg100 / EWMA_SCALE_FACTOR;
 }
 
+/* Calculate target RxLev value from lower/upper thresholds */
+#define CALC_TARGET(mp) \
+	(mp.lower_thresh + mp.upper_thresh) / 2
+
 /* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
  * to be applied to the current Tx power level to approach the target level. */
-static int calc_delta(const struct bts_power_ctrl_params *params,
+static int calc_delta(const struct gsm_power_ctrl_params *params,
 		      struct lchan_power_ctrl_state *state,
 		      const int rxlev_dbm)
 {
 	int rxlev_dbm_avg;
+	uint8_t rxlev_avg;
 	int delta;
 
-	/* Filter input value(s) to reduce unnecessary Tx power oscillations */
-	switch (params->pf_algo) {
-	case BTS_PF_ALGO_EWMA:
-		rxlev_dbm_avg = do_pf_ewma(params, state, rxlev_dbm);
+	/* Filter RxLev value to reduce unnecessary Tx power oscillations */
+	switch (params->rxlev_meas.algo) {
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA:
+		rxlev_dbm_avg = do_pf_ewma(&params->rxlev_meas, state, rxlev_dbm);
 		break;
-	case BTS_PF_ALGO_NONE:
+	/* TODO: implement other pre-processing methods */
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE:
 	default:
 		/* No filtering (pass through) */
 		rxlev_dbm_avg = rxlev_dbm;
 	}
 
+	/* FIXME: avoid this conversion, accept RxLev as-is */
+	rxlev_avg = dbm2rxlev(rxlev_dbm_avg);
+
+	/* Check if RxLev is within the threshold window */
+	if (rxlev_avg >= params->rxlev_meas.lower_thresh &&
+	    rxlev_avg <= params->rxlev_meas.upper_thresh)
+		return 0;
+
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	 * to reach expected power. */
-	delta = params->target_dbm - rxlev_dbm_avg;
-
-	/* Tolerate small deviations from 'rx-target' */
-	if (abs(delta) <= params->hysteresis_db)
-		return 0;
+	delta = CALC_TARGET(params->rxlev_meas) - rxlev_avg;
 
 	/* Don't ever change more than PWR_{LOWER,RAISE}_MAX_DBM during one loop
 	 * iteration, i.e. reduce the speed at which the MS transmit power can
 	 * change. A higher value means a lower level (and vice versa) */
-	if (delta > params->raise_step_max_db)
-		delta = params->raise_step_max_db;
-	else if (delta < -params->lower_step_max_db)
-		delta = -params->lower_step_max_db;
+	if (delta > params->inc_step_size_db)
+		delta = params->inc_step_size_db;
+	else if (delta < -params->red_step_size_db)
+		delta = -params->red_step_size_db;
 
 	return delta;
 }
@@ -135,18 +145,17 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power_lvl,
 		      const int8_t ul_rssi_dbm)
 {
+	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
+	const struct gsm_power_ctrl_params *params = state->dpc_params;
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsm_bts *bts = trx->bts;
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
 
-	const struct bts_power_ctrl_params *params = &bts->ul_power_ctrl;
-	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
-
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
-	if (state->fixed)
+	if (params == NULL)
 		return 0;
 
 	ms_dbm = ms_pwr_dbm(band, ms_power_lvl);
@@ -184,11 +193,14 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
+	/* FIXME: this is only needed for logging, print thresholds instead */
+	int target_dbm = rxlev2dbm(CALC_TARGET(params->rxlev_meas));
+
 	if (state->current == new_power_lvl) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
 			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
-			  ul_rssi_dbm, params->target_dbm);
+			  ul_rssi_dbm, target_dbm);
 		return 0;
 	}
 
@@ -197,7 +209,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  state->current, current_dbm, new_power_lvl, new_dbm,
-		  ms_power_lvl, state->max, ul_rssi_dbm, params->target_dbm);
+		  ms_power_lvl, state->max, ul_rssi_dbm, target_dbm);
 
 	/* store the resulting new MS power level in the lchan */
 	state->current = new_power_lvl;
@@ -213,18 +225,15 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		      const struct gsm48_hdr *gh)
 {
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-	struct gsm_bts *bts = trx->bts;
+	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
+	const struct gsm_power_ctrl_params *params = state->dpc_params;
 	uint8_t rxqual_full, rxqual_sub;
 	uint8_t rxlev_full, rxlev_sub;
 	uint8_t rxqual, rxlev;
 	int delta, new;
 
-	const struct bts_power_ctrl_params *params = &bts->dl_power_ctrl;
-	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
-
-	/* Check if BS Power Control is enabled */
-	if (state->fixed)
+	/* Check if dynamic BS Power Control is enabled */
+	if (params == NULL)
 		return 0;
 	/* Check if this is a Measurement Report */
 	if (gh->proto_discr != GSM48_PDISC_RR)
@@ -264,7 +273,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	}
 
 	/* Bit Error Rate > 0 => reduce by 2 */
-	if (rxqual > 0) {
+	if (rxqual > 0) { /* FIXME: take RxQual threshold into account */
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Reducing Downlink attenuation "
 			  "by half: %u -> %u dB due to RXQUAL %u > 0\n",
 			  state->current, state->current / 2, rxqual);
@@ -294,16 +303,19 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	if (new < 0)
 		new = 0;
 
+	/* FIXME: this is only needed for logging, print thresholds instead */
+	int target_dbm = rxlev2dbm(CALC_TARGET(params->rxlev_meas));
+
 	if (state->current != new) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
 			  "%u -> %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, new, state->max, params->target_dbm, delta);
+			  state->current, new, state->max, target_dbm, delta);
 		state->current = new;
 		return 1;
 	} else {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
 			  "at %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, state->max, params->target_dbm, delta);
+			  state->current, state->max, target_dbm, delta);
 		return 0;
 	}
 }

@@ -1489,13 +1489,12 @@ static void lchan_bs_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	const struct lchan_power_ctrl_state *st = &lchan->bs_power_ctrl;
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
-	cfg_out(vty, "BS (Downlink) Power Control (%s):%s",
-		st->fixed ? "fixed" : "autonomous",
-		VTY_NEWLINE);
+	cfg_out(vty, "BS (Downlink) Power Control (%s mode):%s",
+		st->dpc_params ? "dynamic" : "static", VTY_NEWLINE);
 	indent += 2;
 
 	cfg_out(vty, "Channel reduction: %u dB", st->current);
-	if (!st->fixed)
+	if (st->dpc_params != NULL)
 		vty_out(vty, " (max %u dB)", st->max);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
@@ -1520,8 +1519,7 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	cfg_out(vty, "MS (Uplink) Power Control (%s):%s",
-		st->fixed ? "fixed" : "autonomous",
-		VTY_NEWLINE);
+		st->dpc_params ? "dynamic" : "static", VTY_NEWLINE);
 	indent += 2;
 
 	int current_dbm = ms_pwr_dbm(trx->bts->band, st->current);
@@ -1529,7 +1527,7 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 
 	cfg_out(vty, "Current power level: %u, -%d dBm",
 		st->current, current_dbm);
-	if (!st->fixed)
+	if (st->dpc_params != NULL)
 		vty_out(vty, " (max %u, -%d dBm)", st->max, max_dbm);
 	vty_out(vty, "%s", VTY_NEWLINE);
 

@@ -152,9 +152,20 @@ DEFUN_DEPRECATED(cfg_trx_ul_power_target, cfg_trx_ul_power_target_cmd,
 	"Obsolete alias for bts uplink-power-target\n"
 	"Target uplink Rx level in dBm\n")
 {
+	struct gsm_power_ctrl_meas_params *mp;
 	struct gsm_bts_trx *trx = vty->index;
+	int rxlev_dbm = atoi(argv[0]);
 
-	trx->bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
+	mp = &trx->bts->ms_dpc_params.rxlev_meas;
+	mp->lower_thresh = mp->upper_thresh = dbm2rxlev(rxlev_dbm);
+
+	vty_out(vty, "%% Command '%s' has been deprecated.%s"
+		"%% MS/BS Power control parameters should be configured in osmo-bsc: "
+		"use 'rxlev-thresh lower %u upper %u'.%s",
+		self->string, VTY_NEWLINE,
+		mp->lower_thresh,
+		mp->upper_thresh,
+		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }

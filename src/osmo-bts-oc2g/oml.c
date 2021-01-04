@@ -448,8 +448,15 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->u16Arfcn = trx->arfcn;
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
 	dev_par->u8NbTsc = trx->bts->bsic & 7;
-	dev_par->fRxPowerLevel = trx_ms_pwr_ctrl_is_osmo(trx)
-					? 0.0 : trx->bts->ul_power_ctrl.target_dbm;
+
+	if (!trx_ms_pwr_ctrl_is_osmo(trx)) {
+		/* Target is in the middle between lower and upper RxLev thresholds */
+		int lower_dbm = rxlev2dbm(trx->ms_dpc_params->rxlev_meas.lower_thresh);
+		int upper_dbm = rxlev2dbm(trx->ms_dpc_params->rxlev_meas.upper_thresh);
+		dev_par->fRxPowerLevel = (float) (lower_dbm + upper_dbm) / 2;
+	} else {
+		dev_par->fRxPowerLevel = 0.0;
+	}
 
 	dev_par->fTxPowerLevel = 0.0;
 	LOGP(DL1C, LOGL_NOTICE, "Init TRX (Band %d, ARFCN %u, TSC %u, RxPower % 2f dBm, "

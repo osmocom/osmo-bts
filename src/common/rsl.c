@@ -1322,14 +1322,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	lchan->ms_power_ctrl = (struct lchan_power_ctrl_state) {
 		.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0),
 		.current = lchan->ms_power_ctrl.max,
-		.fixed = true,
 	};
 
 	/* Initialize BS Power Control defaults */
 	lchan->bs_power_ctrl = (struct lchan_power_ctrl_state) {
 		.max = 2 * 15, /* maximum defined in 9.3.4 */
 		.current = 0,
-		.fixed = true,
 	};
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
@@ -1414,7 +1412,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		/* Spec explicitly states BTS should only perform
 		* autonomous MS power control loop in BTS if 'MS Power
 		* Parameters' IE is present! */
-		lchan->ms_power_ctrl.fixed = false;
 		lchan->ms_power_ctrl.dpc_params = params;
 	}
 
@@ -1433,7 +1430,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 		/* NOTE: it's safer to start from 0 */
 		lchan->bs_power_ctrl.current = 0;
-		lchan->bs_power_ctrl.fixed = false;
 		lchan->bs_power_ctrl.dpc_params = params;
 	}
 
@@ -1925,7 +1921,6 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 
 	/* Spec explicitly states BTS should only perform autonomous MS Power
 	 * control loop in BTS if 'MS Power Parameters' IE is present! */
-	lchan->ms_power_ctrl.fixed = !TLVP_PRESENT(&tp, RSL_IE_MS_POWER_PARAM);
 	lchan->ms_power_ctrl.dpc_params = NULL;
 
 	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
@@ -1946,7 +1941,7 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 
 	/* Only set current to max if actual value of current
 	   in dBm > value in dBm from max, or if fixed. */
-	if (lchan->ms_power_ctrl.fixed) {
+	if (lchan->ms_power_ctrl.dpc_params == NULL) {
 		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 	} else {
 		max_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.max);
@@ -2005,12 +2000,10 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 		/* NOTE: it's safer to start from 0 */
 		lchan->bs_power_ctrl.current = 0;
 		lchan->bs_power_ctrl.max = new;
-		lchan->bs_power_ctrl.fixed = false;
 		lchan->bs_power_ctrl.dpc_params = params;
 	} else {
 		lchan->bs_power_ctrl.dpc_params = NULL;
 		lchan->bs_power_ctrl.current = new;
-		lchan->bs_power_ctrl.fixed = true;
 	}
 
 	if (lchan->bs_power_ctrl.current != old) {

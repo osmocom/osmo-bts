@@ -2,21 +2,22 @@ Testing BS Power loop...
 
 Starting test case 'TC_fixed_mode'
 #00 exec_power_step() <- State (re)set (current 10 dB, max 20 dB)
-#01 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(63), RXQUAL-FULL(0), RXLEV-SUB(63), RXQUAL-SUB(0)
-#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#01 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
-#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(00), RXQUAL-FULL(7), RXLEV-SUB(00), RXQUAL-SUB(7)
-#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 00 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#01 exec_power_step() <- Dynamic power control is disabled
+#02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(63), RXQUAL-FULL(0), RXLEV-SUB(63), RXQUAL-SUB(0)
+#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #02 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
-#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
-#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(00), RXQUAL-FULL(7), RXLEV-SUB(00), RXQUAL-SUB(7)
+#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 00 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #03 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
-#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(1), RXLEV-SUB(30), RXQUAL-SUB(1)
-#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
+#04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #04 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
-#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(50), RXQUAL-FULL(1), RXLEV-SUB(50), RXQUAL-SUB(1)
-#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 32 32 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(1), RXLEV-SUB(30), RXQUAL-SUB(1)
+#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #05 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
+#06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(50), RXQUAL-FULL(1), RXLEV-SUB(50), RXQUAL-SUB(1)
+#06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 32 32 12 00 00 00 00 00 00 00 00 00 00 00 00 00 
+#06 lchan_bs_pwr_ctrl() -> BS power reduction: 10 -> 10 (expected 10)
 Test case verdict: SUCCESS
 
 Starting test case 'TC_rxlev_target'
@@ -175,7 +176,7 @@ Starting test case 'TC_rxlev_hyst'
 #04 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(28), RXQUAL-FULL(0), RXLEV-SUB(28), RXQUAL-SUB(0)
 #04 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1c 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #04 lchan_bs_pwr_ctrl() -> BS power reduction: 14 -> 12 (expected 12)
-#05 exec_power_step() <- Param (re)set (target -80 dBm, hysteresis 3 dB, filtering is disabled)
+#05 exec_power_step() <- (Re)set RxLev params (thresh 27 .. 33, averaging is disabled)
 #06 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(31), RXQUAL-FULL(0), RXLEV-SUB(31), RXQUAL-SUB(0)
 #06 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1f 1f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #06 lchan_bs_pwr_ctrl() -> BS power reduction: 12 -> 12 (expected 12)
@@ -192,7 +193,7 @@ Test case verdict: SUCCESS
 
 Starting test case 'TC_rxlev_pf_ewma'
 #00 exec_power_step() <- State (re)set (current 16 dB, max 30 dB)
-#01 exec_power_step() <- Param (re)set (target -80 dBm, hysteresis 0 dB, filtering is enabled)
+#01 exec_power_step() <- (Re)set RxLev params (thresh 30 .. 30, averaging is enabled)
 #02 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
 #02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 #02 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)

@@ -321,10 +321,6 @@ struct gsm_bts {
 		bool vty_override;	/* OML value overridden by VTY */
 	} radio_link_timeout;
 
-	/* Uplink/Downlink power control (legacy parameters) */
-	struct bts_power_ctrl_params ul_power_ctrl;
-	struct bts_power_ctrl_params dl_power_ctrl;
-
 	/* Default (fall-back) Dynamic Power Control parameters for all transceivers */
 	struct gsm_power_ctrl_params bs_dpc_params; /* BS Dynamic Power Control */
 	struct gsm_power_ctrl_params ms_dpc_params; /* MS Dynamic Power Control */

@@ -28,6 +28,10 @@
 
 #include <stdio.h>
 
+#define PWR_TEST_RXLEV_TARGET_DBM	-75
+#define PWR_TEST_RXLEV_TARGET \
+	dbm2rxlev(PWR_TEST_RXLEV_TARGET_DBM)
+
 static struct gsm_bts *g_bts = NULL;
 static struct gsm_bts_trx *g_trx = NULL;
 
@@ -50,12 +54,15 @@ static void init_test(const char *name)
 	g_bts->band = GSM_BAND_1800;
 	g_bts->c0 = g_trx;
 
-	g_bts->ul_power_ctrl = g_bts->dl_power_ctrl = \
-	(struct bts_power_ctrl_params) {
-		.target_dbm = -75,
-		.raise_step_max_db = PWR_RAISE_MAX_DB,
-		.lower_step_max_db = PWR_LOWER_MAX_DB,
-	};
+	/* Init default MS power control parameters, enable dynamic power control */
+	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].ms_dpc_params;
+	g_trx->ts[0].lchan[0].ms_power_ctrl.dpc_params = params;
+	*params = power_ctrl_params_def;
+
+	/* Disable RxLev pre-processing and hysteresis by default */
+	struct gsm_power_ctrl_meas_params *mp = &params->rxlev_meas;
+	mp->lower_thresh = mp->upper_thresh = PWR_TEST_RXLEV_TARGET;
+	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE;
 
 	printf("\nStarting test case '%s'\n", name);
 }
@@ -104,7 +111,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 1, 5);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm, 0, 5);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 5);
 
 	apply_power_test(lchan, -90, 1, 3);
 	apply_power_test(lchan, -90, 1, 2); /* .max is pwr lvl 2 */
@@ -122,7 +129,7 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -90, 0, 29);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm, 0, 29);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 29);
 
 	/* Now go down, steps are double size in this direction: */
 	apply_power_test(lchan, -45, 1, 1);
@@ -130,23 +137,23 @@ static void test_power_loop(void)
 	apply_power_test(lchan, -45, 1, 9);
 
 	/* Go down only one level down and up: */
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm + 2, 1, 10);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm - 2, 1, 9);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, 1, 10);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 2, 1, 9);
 
 	/* Check if BSC requesting a low max power is applied after loop calculation: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 2);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 14);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm + 2, 1, 14);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, 1, 14);
 	/* Set back a more normal max: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
 
-	/* Fix it and jump down */
-	lchan->ms_power_ctrl.fixed = true;
+	/* Disable dynamic power control and jump down */
+	lchan->ms_power_ctrl.dpc_params = NULL;
 	apply_power_test(lchan, -60, 0, 14);
 
-	/* And leave it again */
-	lchan->ms_power_ctrl.fixed = false;
+	/* Enable and leave it again */
+	lchan->ms_power_ctrl.dpc_params = &lchan->ms_dpc_params;
 	apply_power_test(lchan, -40, 1, 15);
 }
 
@@ -159,8 +166,9 @@ static void test_pf_algo_ewma(void)
 	lchan = &g_trx->ts[0].lchan[0];
 	avg100 = &lchan->ms_power_ctrl.avg100_rxlev_dbm;
 
-	g_bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
-	g_bts->ul_power_ctrl.pf.ewma.alpha = 20; /* 80% smoothing */
+	struct gsm_power_ctrl_meas_params *mp = &lchan->ms_dpc_params.rxlev_meas;
+	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA;
+	mp->ewma.alpha = 20; /* 80% smoothing */
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
@@ -194,7 +202,7 @@ static void test_pf_algo_ewma(void)
 	apply_power_test(lchan, -70, 1, 9);
 	CHECK_UL_RSSI_AVG100(-78.40);
 
-	g_bts->ul_power_ctrl.pf.ewma.alpha = 70; /* 30% smoothing */
+	mp->ewma.alpha = 70; /* 30% smoothing */
 	lchan->ms_power_ctrl.current = 15;
 	lchan->ms_power_ctrl.avg100_rxlev_dbm = 0;
 
@@ -220,22 +228,23 @@ static void test_power_hysteresis(void)
 	lchan = &g_trx->ts[0].lchan[0];
 
 	/* Tolerate power deviations in range -80 .. -70 */
-	g_bts->ul_power_ctrl.hysteresis_db = 5;
+	lchan->ms_dpc_params.rxlev_meas.lower_thresh = 30;
+	lchan->ms_dpc_params.rxlev_meas.upper_thresh = 40;
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm + 3, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm - 3, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 3, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 3, 0, 15);
 
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm + 5, 0, 15);
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm - 5, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 5, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 5, 0, 15);
 
-	apply_power_test(lchan, g_bts->ul_power_ctrl.target_dbm - 10, 1, 13);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 10, 1, 13);
 }
 
 int main(int argc, char **argv)

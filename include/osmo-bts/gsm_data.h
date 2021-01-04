@@ -222,7 +222,6 @@ struct lchan_power_ctrl_state {
 	 * (attenuation, in dB). */
 	uint8_t current;
 	uint8_t max;
-	bool fixed;
 
 	/* Scaled up (100 times) average UL/DL RxLev (in dBm) */
 	int avg100_rxlev_dbm;

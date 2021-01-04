@@ -31,14 +31,9 @@
 
 #define PWR_TEST_RXLEV_TARGET	30
 
-#define PWR_TEST_CFG_RXLEV_TARGET \
-	.target_dbm = -110 + PWR_TEST_RXLEV_TARGET
-
-/* NOTE: raise/lower values are intentionally swapped here,
- * as it makes more sense in the context of BS Power Control. */
-#define PWR_TEST_CFG_RAISE_LOWER_MAX \
-	.raise_step_max_db = PWR_LOWER_MAX_DB, \
-	.lower_step_max_db = PWR_RAISE_MAX_DB
+#define PWR_TEST_CFG_RXLEV_THRESH(hyst) \
+	.lower_thresh = PWR_TEST_RXLEV_TARGET - hyst, \
+	.upper_thresh = PWR_TEST_RXLEV_TARGET + hyst
 
 #define DL_MEAS_FULL(rxqual, rxlev) \
 	.rxqual_full = rxqual, \
@@ -61,8 +56,9 @@ enum power_test_step_type {
 	PWR_TEST_ST_IND_MEAS = 0,
 	PWR_TEST_ST_IND_DUMMY,
 	PWR_TEST_ST_SET_STATE,
-	PWR_TEST_ST_SET_PARAMS,
+	PWR_TEST_ST_SET_RXLEV_PARAMS,
 	PWR_TEST_ST_ENABLE_DTXD,
+	PWR_TEST_ST_DISABLE_DPC,
 };
 
 struct power_test_step {
@@ -72,8 +68,8 @@ struct power_test_step {
 	union {
 		/* Power Control state */
 		struct lchan_power_ctrl_state state;
-		/* Power Control parameters */
-		struct bts_power_ctrl_params params;
+		/* Measurement pre-processing parameters */
+		struct gsm_power_ctrl_meas_params mp;
 		/* Indicated DL measurements */
 		struct {
 			uint8_t rxqual_full;
@@ -106,12 +102,6 @@ static void init_test(const char *name)
 
 	g_bts->band = GSM_BAND_900;
 	g_bts->c0 = g_trx;
-
-	g_bts->dl_power_ctrl = g_bts->ul_power_ctrl = \
-	(struct bts_power_ctrl_params) {
-		PWR_TEST_CFG_RXLEV_TARGET,
-		PWR_TEST_CFG_RAISE_LOWER_MAX,
-	};
 
 	printf("\nStarting test case '%s'\n", name);
 }
@@ -157,13 +147,18 @@ static int exec_power_step(struct gsm_lchan *lchan,
 		printf("#%02u %s() <- State (re)set (current %u dB, max %u dB)\n",
 		       n, __func__, step->state.current, step->state.max);
 		lchan->bs_power_ctrl = step->state;
+		lchan->bs_power_ctrl.dpc_params = &lchan->bs_dpc_params;
 		return 0; /* we're done */
-	case PWR_TEST_ST_SET_PARAMS:
-		printf("#%02u %s() <- Param (re)set (target %d dBm, hysteresis %u dB, "
-						    "filtering is %sabled)\n",
-		       n, __func__, step->params.target_dbm, step->params.hysteresis_db,
-		       step->params.pf_algo != BTS_PF_ALGO_NONE ? "en" : "dis");
-		g_bts->dl_power_ctrl = step->params;
+	case PWR_TEST_ST_DISABLE_DPC:
+		printf("#%02u %s() <- Dynamic power control is disabled\n", n, __func__);
+		lchan->bs_power_ctrl.dpc_params = NULL;
+		return 0; /* we're done */
+	case PWR_TEST_ST_SET_RXLEV_PARAMS:
+		printf("#%02u %s() <- (Re)set RxLev params (thresh %u .. %u, "
+							   "averaging is %sabled)\n",
+		       n, __func__, step->mp.lower_thresh, step->mp.upper_thresh,
+		       step->mp.algo != GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE ? "en" : "dis");
+		lchan->bs_dpc_params.rxlev_meas = step->mp;
 		return 0; /* we're done */
 	case PWR_TEST_ST_ENABLE_DTXD:
 		printf("#%02u %s() <- Enable DTXd\n", n, __func__);
@@ -202,6 +197,17 @@ static void exec_power_test(const struct power_test_step *steps,
 	init_test(name);
 
 	struct gsm_lchan *lchan = &g_trx->ts[0].lchan[0];
+
+	lchan->bs_dpc_params = (struct gsm_power_ctrl_params) {
+		/* NOTE: raise/lower values are intentionally swapped here,
+		 * as it makes more sense in the context of BS Power Control. */
+		.inc_step_size_db = PWR_LOWER_MAX_DB,
+		.red_step_size_db = PWR_RAISE_MAX_DB,
+
+		/* RxLev pre-processing parameters */
+		.rxlev_meas = { PWR_TEST_CFG_RXLEV_THRESH(0) },
+	};
+
 	for (n = 0; n < num_steps; n++)
 		rc |= exec_power_step(lchan, n, &steps[n]);
 
@@ -212,7 +218,8 @@ static void exec_power_test(const struct power_test_step *steps,
 static const struct power_test_step TC_fixed_mode[] = {
 	/* Initial state: 10 dB, up to 20 dB */
 	{ .type = PWR_TEST_ST_SET_STATE,
-	  .state = { .current = 10, .max = 2 * 10, .fixed = true } },
+	  .state = { .current = 10, .max = 2 * 10 } },
+	{ .type = PWR_TEST_ST_DISABLE_DPC },
 
 	/* MS indicates random RxQual/RxLev values, which must be ignored */
 	{ .meas = DL_MEAS_FULL_SUB(0, 63),	.exp_txred = 10 },
@@ -338,12 +345,8 @@ static const struct power_test_step TC_rxlev_hyst[] = {
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 12 },
 
 	/* Enable hysteresis */
-	{ .type = PWR_TEST_ST_SET_PARAMS,
-	  .params = {
-		PWR_TEST_CFG_RXLEV_TARGET,
-		PWR_TEST_CFG_RAISE_LOWER_MAX,
-		.hysteresis_db = 3,
-	  }
+	{ .type = PWR_TEST_ST_SET_RXLEV_PARAMS,
+	  .mp = { PWR_TEST_CFG_RXLEV_THRESH(3) }
 	},
 
 	/* Hysteresis is enabled, so small deviations do not trigger any changes */
@@ -359,13 +362,12 @@ static const struct power_test_step TC_rxlev_pf_ewma[] = {
 	{ .type = PWR_TEST_ST_SET_STATE,
 	  .state = { .current = 16, .max = 2 * 15 } },
 
-	/* Enable EWMA based power filtering */
-	{ .type = PWR_TEST_ST_SET_PARAMS,
-	  .params = {
-		PWR_TEST_CFG_RXLEV_TARGET,
-		PWR_TEST_CFG_RAISE_LOWER_MAX,
-		.pf_algo = BTS_PF_ALGO_EWMA,
-		.pf.ewma.alpha = 50,
+	/* Enable EWMA based pre-processing for RxLev */
+	{ .type = PWR_TEST_ST_SET_RXLEV_PARAMS,
+	  .mp = {
+		PWR_TEST_CFG_RXLEV_THRESH(0),
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA,
+		.ewma.alpha = 50,
 	  }
 	},
 
