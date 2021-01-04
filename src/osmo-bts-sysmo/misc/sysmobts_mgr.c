@@ -326,7 +326,7 @@ int main(int argc, char **argv)
 		LOGP(DLCTRL, LOGL_NOTICE, "CTRL connected to localhost:%u\n",
 		     OSMO_CTRL_PORT_BTS);
 
-        sysmobts_mgr_temp_init(&manager, ccon);
+	sysmobts_mgr_temp_init(&manager, ccon);
 
 	if (sysmobts_mgr_calib_init(&manager) != 0)
 		exit(3);
