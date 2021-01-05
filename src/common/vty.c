@@ -228,6 +228,37 @@ DEFUN_ATTR(cfg_bts_trx, cfg_bts_trx_cmd,
 	return CMD_SUCCESS;
 }
 
+static void config_write_dpc_params(struct vty *vty, const char *prefix,
+				    const struct gsm_power_ctrl_params *params)
+{
+	const struct gsm_power_ctrl_meas_params *mp = &params->rxlev_meas;
+
+	if (mp->lower_thresh != power_ctrl_params_def.rxlev_meas.lower_thresh ||
+	    mp->upper_thresh != power_ctrl_params_def.rxlev_meas.upper_thresh) {
+		int target = (mp->lower_thresh + mp->upper_thresh) / 2;
+		int hyst = (mp->upper_thresh - mp->lower_thresh) / 2;
+
+		vty_out(vty, " %s-power-target %d", prefix, rxlev2dbm(target));
+		if (hyst > 0)
+			vty_out(vty, " hysteresis %d", hyst);
+		vty_out(vty, "%s", VTY_NEWLINE);
+	}
+
+	/* MS Tx power filtering algorithm and parameters */
+	switch (mp->algo) {
+	case GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA: /* EWMA is the default */
+		if (mp->ewma.alpha != power_ctrl_params_def.rxlev_meas.ewma.alpha)
+			vty_out(vty, " %s-power-filtering algo ewma beta %u%s",
+				prefix, 100 - mp->ewma.alpha, VTY_NEWLINE);
+		break;
+	/* Other algorithm cannot be set via the VTY */
+	case BTS_PF_ALGO_NONE:
+	default:
+		vty_out(vty, " no %s-power-filtering%s", prefix, VTY_NEWLINE);
+		break;
+	}
+}
+
 static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 {
 	const struct gsm_bts_trx *trx;
@@ -255,22 +286,9 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
 		VTY_NEWLINE);
-	vty_out(vty, " uplink-power-target %d", bts->ul_power_ctrl.target_dbm);
-	if (bts->ul_power_ctrl.hysteresis_db > 0)
-		vty_out(vty, " hysteresis %d", bts->ul_power_ctrl.hysteresis_db);
-	vty_out(vty, "%s", VTY_NEWLINE);
 
-	/* MS Tx power filtering algorithm and parameters */
-	switch (bts->ul_power_ctrl.pf_algo) {
-	case BTS_PF_ALGO_EWMA:
-		vty_out(vty, " uplink-power-filtering algo ewma beta %u%s",
-			100 - bts->ul_power_ctrl.pf.ewma.alpha, VTY_NEWLINE);
-		break;
-	case BTS_PF_ALGO_NONE:
-	default:
-		vty_out(vty, " no uplink-power-filtering%s", VTY_NEWLINE);
-		break;
-	}
+	/* Fall-back MS Power Control parameters may be changed by the user */
+	config_write_dpc_params(vty, "uplink", &bts->ms_dpc_params);
 
 	if (bts->agch_queue.thresh_level != GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT
 		 || bts->agch_queue.low_level != GSM_BTS_AGCH_QUEUE_LOW_LEVEL_DEFAULT
@@ -627,10 +645,16 @@ DEFUN_ATTR(cfg_bts_agch_queue_mgmt_default,
 	"Set the nominal target Rx Level for uplink power control loop\n" \
 	"Target uplink Rx level in dBm\n"
 
+#define UL_POWER_DEPR_MSG(fmt, args...) \
+	vty_out(vty, "%% Command '%s' has been deprecated.%s" \
+		     "%% MS/BS Power control parameters should be configured in osmo-bsc: " \
+		     fmt, self->string, VTY_NEWLINE, ##args)
+
 DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	   UL_POWER_TARGET_CMD, UL_POWER_TARGET_CMD_DESC,
-	   CMD_ATTR_IMMEDIATE)
+	   CMD_ATTR_DEPRECATED)
 {
+	struct gsm_power_ctrl_meas_params *mp;
 	struct gsm_bts *bts = vty->index;
 	int rxlev_dbm = atoi(argv[0]);
 	int hyst = 0;
@@ -638,8 +662,13 @@ DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	if (argc > 1) /* optional argument */
 		hyst = atoi(argv[1]);
 
-	bts->ul_power_ctrl.target_dbm = rxlev_dbm;
-	bts->ul_power_ctrl.hysteresis_db = hyst;
+	mp = &bts->ms_dpc_params.rxlev_meas;
+	mp->lower_thresh = dbm2rxlev(rxlev_dbm - hyst);
+	mp->upper_thresh = dbm2rxlev(rxlev_dbm + hyst);
+
+	UL_POWER_DEPR_MSG("use 'rxlev-thresh lower %u upper %u'.%s",
+			  mp->lower_thresh, mp->upper_thresh,
+			  VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -651,17 +680,21 @@ DEFUN_CMD_ELEMENT(cfg_bts_ul_power_target,
 		  UL_POWER_TARGET_CMD_DESC
 		  "Target Rx Level hysteresis\n"
 		  "Tolerable deviation in dBm\n",
-		  CMD_ATTR_IMMEDIATE, 0);
+		  CMD_ATTR_DEPRECATED, 0);
 
 DEFUN_ATTR(cfg_no_bts_ul_power_filter,
 	   cfg_bts_no_ul_power_filter_cmd,
 	   "no uplink-power-filtering",
 	   NO_STR "Disable filtering for uplink power control loop\n",
-	   CMD_ATTR_IMMEDIATE)
+	   CMD_ATTR_DEPRECATED)
 {
+	struct gsm_power_ctrl_meas_params *mp;
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_NONE;
+	mp = &bts->ms_dpc_params.rxlev_meas;
+	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE;
+
+	UL_POWER_DEPR_MSG("use 'no rxlev-avg'.%s", VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -674,12 +707,17 @@ DEFUN_ATTR(cfg_bts_ul_power_filter_ewma,
 	   "Exponentially Weighted Moving Average (EWMA)\n"
 	   "Smoothing factor (in %): beta = (100 - alpha)\n"
 	   "1% - lowest smoothing, 99% - highest smoothing\n",
-	   CMD_ATTR_IMMEDIATE)
+	   CMD_ATTR_DEPRECATED)
 {
+	struct gsm_power_ctrl_meas_params *mp;
 	struct gsm_bts *bts = vty->index;
 
-	bts->ul_power_ctrl.pf_algo = BTS_PF_ALGO_EWMA;
-	bts->ul_power_ctrl.pf.ewma.alpha = 100 - atoi(argv[0]);
+	mp = &bts->ms_dpc_params.rxlev_meas;
+	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA;
+	mp->ewma.alpha = 100 - atoi(argv[0]);
+
+	UL_POWER_DEPR_MSG("use 'rxlev-avg algo osmo-ewma beta %s'.%s",
+			  argv[0], VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
