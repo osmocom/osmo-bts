@@ -632,29 +632,26 @@ DEFUN_ATTR(cfg_bts_ul_power_target, cfg_bts_ul_power_target_cmd,
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;
+	int rxlev_dbm = atoi(argv[0]);
+	int hyst = 0;
 
-	bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
-	bts->ul_power_ctrl.hysteresis_db = 0;
+	if (argc > 1) /* optional argument */
+		hyst = atoi(argv[1]);
+
+	bts->ul_power_ctrl.target_dbm = rxlev_dbm;
+	bts->ul_power_ctrl.hysteresis_db = hyst;
 
 	return CMD_SUCCESS;
 }
 
 /* FIXME: libosmovty is unable to handle 'foo <-110-0> [bar <1-25>]' */
-DEFUN_ATTR(cfg_bts_ul_power_target_hysteresis,
-	   cfg_bts_ul_power_target_hysteresis_cmd,
-	   UL_POWER_TARGET_CMD " hysteresis <1-25>",
-	   UL_POWER_TARGET_CMD_DESC
-	   "Target Rx Level hysteresis\n"
-	   "Tolerable deviation in dBm\n",
-	   CMD_ATTR_IMMEDIATE)
-{
-	struct gsm_bts *bts = vty->index;
-
-	bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
-	bts->ul_power_ctrl.hysteresis_db = atoi(argv[1]);
-
-	return CMD_SUCCESS;
-}
+DEFUN_CMD_ELEMENT(cfg_bts_ul_power_target,
+		  cfg_bts_ul_power_target_hysteresis_cmd,
+		  UL_POWER_TARGET_CMD " hysteresis <1-25>",
+		  UL_POWER_TARGET_CMD_DESC
+		  "Target Rx Level hysteresis\n"
+		  "Tolerable deviation in dBm\n",
+		  CMD_ATTR_IMMEDIATE, 0);
 
 DEFUN_ATTR(cfg_no_bts_ul_power_filter,
 	   cfg_bts_no_ul_power_filter_cmd,
