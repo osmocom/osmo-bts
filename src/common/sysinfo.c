@@ -240,8 +240,8 @@ int get_si4_ro_offset(const uint8_t *si4_buf)
 void regenerate_si4_restoctets(struct gsm_bts *bts)
 {
 	uint8_t *si4_buf = GSM_BTS_SI(bts, SYSINFO_TYPE_4);
-	size_t si4_size;
 	struct osmo_gsm48_si_ro_info si4ro_tmp;
+	int si4_size;
 
 	/* If BSC has never set SI4, there's nothing to patch */
 	if (!GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_4))
