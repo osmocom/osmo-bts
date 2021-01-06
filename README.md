@@ -20,6 +20,7 @@ Several kinds of BTS hardware are supported:
  * sysmocom sysmoBTS
  * Octasic octphy
  * Nutaq litecell 1.5
+ * OpenCellular 2G (OC-2G)
  * software-defined radio based osmo-bts-trx (e.g. USRP B210, UmTRX, LimeSDR)
 
 Homepage
@@ -35,17 +36,25 @@ You can clone from the official osmo-bts.git repository using
 
 	git clone git://git.osmocom.org/osmo-bts.git
 
-There is a cgit interface at http://git.osmocom.org/osmo-bts/
+There is a cgit interface at https://git.osmocom.org/osmo-bts/
 
 Documentation
 -------------
 
-We provide a 
-[User Manual](http://ftp.osmocom.org/docs/latest/osmobts-usermanual.pdf)
-as well as a
-[VTY Reference Manual](http://ftp.osmocom.org/docs/latest/osmobsc-vty-reference.pdf)
-and a
-[Abis reference MAnual](http://ftp.osmocom.org/docs/latest/osmobts-abis.pdf)
+User Manuals and VTY reference manuals are [optionally] built in PDF form
+as part of the build process.
+
+Pre-rendered PDF version of the current "master" can be found at
+[User Manual](https://ftp.osmocom.org/docs/latest/osmobts-usermanual.pdf)
+as well as the VTY reference manuals
+* [VTY Reference Manual for osmo-bts-sysmo](https://ftp.osmocom.org/docs/latest/osmobts-sysmo-vty-reference.pdf)
+* [VTY Reference Manual for osmo-bts-trx](https://ftp.osmocom.org/docs/latest/osmobts-trx-vty-reference.pdf)
+* [VTY Reference Manual for osmo-bts-lc15](https://ftp.osmocom.org/docs/latest/osmobts-lc15-vty-reference.pdf)
+* [VTY Reference Manual for osmo-bts-oc2g](https://ftp.osmocom.org/docs/latest/osmobts-oc2g-vty-reference.pdf)
+* [VTY Reference Manual for osmo-bts-octphy](https://ftp.osmocom.org/docs/latest/osmobts-octphy-vty-reference.pdf)
+
+There also is an
+[Abis reference Manual](https://ftp.osmocom.org/docs/latest/osmobts-abis.pdf)
 describing the OsmoBTS specific A-bis dialect.
 
 Mailing List
@@ -77,7 +86,7 @@ https://gerrit.osmocom.org/#/q/project:osmo-bts+status:open
 Known Limitations
 =================
 
-As of March 17, 2017, the following known limitations exist in this
+As of January 2021, the following known limitations exist in this
 implementation:
 
 Common Core
@@ -87,10 +96,7 @@ Common Core
  * System Information limited to 1,2,2bis,2ter,2quater,3,4,5,6,9,13
  * No RATSCCH in AMR
  * Will reject TS 12.21 STARTING TIME in SET BTS ATTR / SET CHAN ATTR
- * No support for frequency hopping
  * No reporting of interference levels as part of TS 08.58 RF RES IND
- * No error reporting in case PAGING COMMAND fails due to queue overflow
- * No use of TS 08.58 BS Power and MS Power parameters
  * No support of TS 08.58 MultiRate Control
  * No support of TS 08.58 Supported Codec Types
  * No support of Bter frame / ENHANCED MEASUREMENT REPORT
