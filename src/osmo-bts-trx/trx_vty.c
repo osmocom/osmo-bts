@@ -196,7 +196,8 @@ DEFUN_DEPRECATED(cfg_phy_ms_power_loop, cfg_phy_ms_power_loop_cmd,
 	"Enable MS power control loop\nTarget RSSI value (transceiver specific, "
 	"should be 6dB or more above noise floor)\n")
 {
-	vty_out (vty, "'osmotrx ms-power-loop' is deprecated, use 'uplink-power-target' instead%s", VTY_NEWLINE);
+	vty_out(vty, "'%s' is deprecated, MS Power Control is now managed by BSC%s",
+		self->string, VTY_NEWLINE);
 
 	g_bts->ul_power_ctrl.target_dbm = atoi(argv[0]);
 
@@ -207,7 +208,8 @@ DEFUN_DEPRECATED(cfg_phy_no_ms_power_loop, cfg_phy_no_ms_power_loop_cmd,
 	"no osmotrx ms-power-loop",
 	NO_STR OSMOTRX_STR "Disable MS power control loop\n")
 {
-	vty_out (vty, "'no osmotrx ms-power-loop' is deprecated, use of BTS control loop is managed by BSC%s", VTY_NEWLINE);
+	vty_out(vty, "'%s' is deprecated, MS Power Control is now managed by BSC%s",
+		self->string, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -216,7 +218,8 @@ DEFUN_DEPRECATED(cfg_phy_timing_advance_loop, cfg_phy_timing_advance_loop_cmd,
 	"osmotrx timing-advance-loop", OSMOTRX_STR
 	"Enable timing advance control loop\n")
 {
-	vty_out (vty, "'osmotrx timing-advance-loop' is deprecated, ta control is now active by default%s", VTY_NEWLINE);
+	vty_out(vty, "'%s' is deprecated, Timing Advance loop is now active by default%s",
+		self->string, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -224,7 +227,8 @@ DEFUN_DEPRECATED(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_
 	"no osmotrx timing-advance-loop",
 	NO_STR OSMOTRX_STR "Disable timing advance control loop\n")
 {
-	vty_out (vty, "'no osmotrx timing-advance-loop' is deprecated, ta control is now active by default%s", VTY_NEWLINE);
+	vty_out(vty, "'%s' is deprecated, Timing Advance loop is now active by default%s",
+		self->string, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
