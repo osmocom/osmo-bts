@@ -215,6 +215,8 @@ extern const struct gsm_power_ctrl_params power_ctrl_params_def;
 
 /* Measurement pre-processing state */
 struct gsm_power_ctrl_meas_proc_state {
+	/* Number of measurements processed */
+	unsigned int meas_num;
 	/* Algorithm specific data */
 	union {
 		struct {

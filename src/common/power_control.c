@@ -78,7 +78,7 @@ static int do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
 	int *Avg100 = &mps->ewma.Avg100;
 
 	/* We don't have 'Avg[n - 1]' if this is the first run */
-	if (*Avg100 == 0) {
+	if (mps->meas_num++ == 0) {
 		*Avg100 = Val * EWMA_SCALE_FACTOR;
 		return Val;
 	}
