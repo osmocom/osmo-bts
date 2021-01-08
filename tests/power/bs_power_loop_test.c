@@ -291,7 +291,7 @@ static const struct power_test_step TC_dtxd_mode[] = {
 	{ .meas = { DL_MEAS_FULL(0, 63), DL_MEAS_SUB(0, PWR_TEST_RXLEV_TARGET) } },
 };
 
-/* Verify that RxQual > 0 reduces the current attenuation value. */
+/* Verify that high RxQual reduces the current attenuation value. */
 static const struct power_test_step TC_rxqual_ber[] = {
 	/* Initial state: 16 dB, up to 20 dB */
 	{ .type = PWR_TEST_ST_SET_STATE,
@@ -301,25 +301,30 @@ static const struct power_test_step TC_rxqual_ber[] = {
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
 
-	/* MS indicates target RxLev, but RxQual values > 0 */
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 2 },
-	{ .meas = DL_MEAS_FULL_SUB(4, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 4 },
-	{ .meas = DL_MEAS_FULL_SUB(1, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 8 },
+	/* MS indicates target RxLev, but RxQual values better than L_RXQUAL_XX_P=3 */
+	{ .meas = DL_MEAS_FULL_SUB(1, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
+	{ .meas = DL_MEAS_FULL_SUB(2, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
+	{ .meas = DL_MEAS_FULL_SUB(3, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
 
-	/* MS indicates target RxLev, and no bit errors anymore */
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 8 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 8 },
+	/* MS indicates target RxLev, but RxQual values worse than L_RXQUAL_XX_P=3 */
+	{ .meas = DL_MEAS_FULL_SUB(4, PWR_TEST_RXLEV_TARGET +  0),  .exp_txred = 16 -  4 },
+	{ .meas = DL_MEAS_FULL_SUB(5, PWR_TEST_RXLEV_TARGET +  4),  .exp_txred = 16 -  8 },
+	{ .meas = DL_MEAS_FULL_SUB(6, PWR_TEST_RXLEV_TARGET +  8),  .exp_txred = 16 - 12 },
+	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET + 12),  .exp_txred = 16 - 16 }, /* max */
+	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET + 16),  .exp_txred = 16 - 16 }, /* max */
 
-	/* Reset state: 16 dB, up to 20 dB */
+	/* MS indicates target RxLev, but no bit errors anymore => reducing Tx power */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 16),  .exp_txred = 2 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 14),  .exp_txred = 4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 12),  .exp_txred = 6 },
+
+	/* Reset state: 0 dB, up to 20 dB */
 	{ .type = PWR_TEST_ST_SET_STATE,
-	  .state = { .current = 16, .max = 2 * 10 } },
+	  .state = { .current = 0, .max = 2 * 10 } },
 
-	/* MS indicates target RxLev, but RxQual values > 0 again */
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 /  2 },
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 /  4 },
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 /  8 },
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 16 },
-	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 / 32 },
+	/* MS indicates target RxLev, but RxQual values worse than L_RXQUAL_XX_P=3 */
+	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET) }, /* max */
+	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET) }, /* max */
 };
 
 /* Verify that invalid and dummy SACCH blocks are ignored. */

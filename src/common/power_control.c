@@ -274,12 +274,23 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		rxlev = rxlev_full;
 	}
 
-	/* Bit Error Rate > 0 => reduce by 2 */
-	if (rxqual > 0) { /* FIXME: take RxQual threshold into account */
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Reducing Downlink attenuation "
-			  "by half: %u -> %u dB due to RXQUAL %u > 0\n",
-			  state->current, state->current / 2, rxqual);
-		state->current /= 2;
+	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
+	if (rxqual > params->rxqual_meas.lower_thresh) {
+		uint8_t old = state->current;
+
+		/* Tx power has reached the maximum, nothing to do */
+		if (state->current == 0)
+			return 0;
+
+		/* Increase Tx power by reducing Tx attenuation */
+		if (state->current >= params->inc_step_size_db)
+			state->current -= params->inc_step_size_db;
+		else
+			state->current = 0;
+
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Reducing Downlink attenuation: "
+			  "%u -> %d dB due to RxQual %u worse than L_RXQUAL_XX_P %u\n",
+			  old, state->current, rxqual, params->rxqual_meas.lower_thresh);
 		return 1;
 	}
 
