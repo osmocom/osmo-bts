@@ -197,16 +197,17 @@ static void exec_power_test(const struct power_test_step *steps,
 	init_test(name);
 
 	struct gsm_lchan *lchan = &g_trx->ts[0].lchan[0];
+	struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
 
-	lchan->bs_dpc_params = (struct gsm_power_ctrl_params) {
-		/* NOTE: raise/lower values are intentionally swapped here,
-		 * as it makes more sense in the context of BS Power Control. */
-		.inc_step_size_db = PWR_LOWER_MAX_DB,
-		.red_step_size_db = PWR_RAISE_MAX_DB,
+	/* Default BS power control parameters */
+	memcpy(params, &power_ctrl_params_def, sizeof(*params));
 
-		/* RxLev pre-processing parameters */
-		.rxlev_meas = { PWR_TEST_CFG_RXLEV_THRESH(0) },
-	};
+	/* No RxLev hysteresis: lower == upper */
+	params->rxlev_meas.lower_thresh = PWR_TEST_RXLEV_TARGET;
+	params->rxlev_meas.upper_thresh = PWR_TEST_RXLEV_TARGET;
+
+	/* No RxLev pre-processing by default */
+	params->rxlev_meas.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE;
 
 	for (n = 0; n < num_steps; n++)
 		rc |= exec_power_step(lchan, n, &steps[n]);
@@ -249,17 +250,24 @@ static const struct power_test_step TC_rxlev_max_min[] = {
 	{ .type = PWR_TEST_ST_SET_STATE,
 	  .state = { .current = 0, .max = 2 * 10 } },
 
-	/* MS indicates high RxLev values (-50 dBm) */
+	/* MS indicates high RxLev values (-50 dBm), inc step is 2 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  2 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  6 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  8 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 10 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 12 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 14 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 16 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 18 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 20 }, /* max */
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 20 }, /* max */
 	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 20 }, /* max */
 
-	/* MS indicates low RxLev values (-100 dBm) */
+	/* MS indicates low RxLev values (-100 dBm), red step is 4 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred = 16 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred = 12 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  8 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 },
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
@@ -341,8 +349,8 @@ static const struct power_test_step TC_rxlev_hyst[] = {
 	/* Hysteresis is not enabled, so small deviations trigger oscillations */
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 1),	.exp_txred = 13 },
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 11 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 3),	.exp_txred = 14 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 12 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 3),	.exp_txred = 13 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 11 },
 
 	/* Enable hysteresis */
 	{ .type = PWR_TEST_ST_SET_RXLEV_PARAMS,
@@ -350,10 +358,10 @@ static const struct power_test_step TC_rxlev_hyst[] = {
 	},
 
 	/* Hysteresis is enabled, so small deviations do not trigger any changes */
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 1),	.exp_txred = 12 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 12 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 3),	.exp_txred = 12 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 12 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 1),	.exp_txred = 11 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 11 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 3),	.exp_txred = 11 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 2),	.exp_txred = 11 },
 };
 
 /* Verify EWMA based power filtering. */
@@ -381,8 +389,8 @@ static const struct power_test_step TC_rxlev_pf_ewma[] = {
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 4),	.exp_txred = 11 },
 	/* Avg[t] = (0.5 * 35) + (0.5 * 27) = 31, so delta is 1 */
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 5),	.exp_txred = 12 },
-	/* Avg[t] = (0.5 * 35) + (0.5 * 31) = 33, so delta is 3 */
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 5),	.exp_txred = 15 },
+	/* Avg[t] = (0.5 * 35) + (0.5 * 31) = 33, so delta is 3, but red step size is 2 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 5),	.exp_txred = 14 },
 };
 
 int main(int argc, char **argv)
