@@ -316,19 +316,24 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	if (new < 0)
 		new = 0;
 
-	/* FIXME: this is only needed for logging, print thresholds instead */
-	int target_dbm = rxlev2dbm(CALC_TARGET(params->rxlev_meas));
-
 	if (state->current != new) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
-			  "%u -> %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, new, state->max, target_dbm, delta);
+			  "%u -> %u dB (maximum %u dB, delta %d dB, "
+			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
+			  state->current, new, state->max,
+			  delta, rxlev, rxlev2dbm(rxlev),
+			  params->rxlev_meas.lower_thresh,
+			  params->rxlev_meas.upper_thresh);
 		state->current = new;
 		return 1;
 	} else {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
-			  "at %u dB (maximum %u dB, target %d dBm, delta %d dB)\n",
-			  state->current, state->max, target_dbm, delta);
+			  "at %u dB (maximum %u dB, delta %d dB, "
+			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
+			  state->current, state->max,
+			  delta, rxlev, rxlev2dbm(rxlev),
+			  params->rxlev_meas.lower_thresh,
+			  params->rxlev_meas.upper_thresh);
 		return 0;
 	}
 }
