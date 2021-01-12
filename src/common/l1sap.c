@@ -1414,12 +1414,16 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 		return;
 	}
 
-	/* convert from RXQUAL value to ber10k vale,
-	 * see also GSM 05.08, section 8.2.4 */
+	/* convert from RXQUAL value to ber10k value.
+	 * see also GSM 05.08, section 8.2.4 (first table, without frame */
 	static const uint16_t ber10k_by_rxqual_upper[] =
-	    { 0, 26, 51, 100, 190, 380, 760, 1500 };
+	    { 0, 20, 40, 80, 160, 320, 640, 1280 };
 	static const uint16_t ber10k_by_rxqual_lower[] =
-	    { 0, 10, 10, 30, 64, 130, 270, 540 };
+	    { 0, 0, 0, 20, 40, 80, 160, 320 };
+	/* Note: The values in the upper vector are taken from the left side
+	 * of the table in GSM 05.08, section 8.2.4. The lower vector is just
+	 * the upper vector shifted by 2. */
+
 	upper = ber10k_by_rxqual_upper[lchan->repeated_acch_capability.rxqual];
 	lower = ber10k_by_rxqual_lower[lchan->repeated_acch_capability.rxqual];
 
