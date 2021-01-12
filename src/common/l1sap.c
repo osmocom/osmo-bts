@@ -972,6 +972,7 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	const struct gsm48_meas_res *meas_res;
 	uint8_t upper;
 	uint8_t lower;
+	uint8_t rxqual;
 
 	if (!lchan->repeated_acch_capability.dl_facch_cmd
 	    && !lchan->repeated_acch_capability.dl_facch_all)
@@ -1008,10 +1009,19 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 		lower = lchan->repeated_acch_capability.rxqual - 2;
 	else
 		lower = 0;
-	if (meas_res->rxqual_sub >= upper)
+
+	/* When downlink DTX is applied, use RXQUAL-SUB, otherwise use
+	 * RXQUAL-FULL. */
+	if (meas_res->dtx_used)
+		rxqual = meas_res->rxqual_sub;
+	else
+		rxqual = meas_res->rxqual_full;
+
+	if (rxqual >= upper)
 		lchan->repeated_dl_facch_active = true;
 	else if (meas_res->rxqual_sub <= lower)
 		lchan->repeated_dl_facch_active = false;
+
 }
 
 /* Special dequeueing function with SACCH repetition (3GPP TS 44.006, section 11) */
