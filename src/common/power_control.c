@@ -321,7 +321,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 			  "%u -> %u dB (maximum %u dB, delta %d dB, "
 			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
 			  state->current, new, state->max,
-			  delta, rxlev, rxlev2dbm(rxlev),
+			  -delta, rxlev, rxlev2dbm(rxlev),
 			  params->rxlev_meas.lower_thresh,
 			  params->rxlev_meas.upper_thresh);
 		state->current = new;
@@ -331,7 +331,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 			  "at %u dB (maximum %u dB, delta %d dB, "
 			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
 			  state->current, state->max,
-			  delta, rxlev, rxlev2dbm(rxlev),
+			  -delta, rxlev, rxlev2dbm(rxlev),
 			  params->rxlev_meas.lower_thresh,
 			  params->rxlev_meas.upper_thresh);
 		return 0;
