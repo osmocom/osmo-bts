@@ -43,7 +43,6 @@ build_bts() {
     conf_flags="$*"
     if [ "$WITH_MANUALS" = "1" ]; then
         conf_flags="$conf_flags --enable-manuals"
-        osmo-build-dep.sh osmo-gsm-manuals
         export PATH="$inst/bin:$PATH"
     fi
 
