@@ -352,34 +352,36 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan2, const struct p1_rest_octets *p1ro)
 {
 	struct gsm48_paging1 *pt1 = (struct gsm48_paging1 *) out_buf;
-	struct bitvec bv;
-	unsigned int paging_len;
+	unsigned int ro_len;
 	uint8_t *cur;
 
-	memset(out_buf, 0, sizeof(*pt1));
+	*pt1 = (struct gsm48_paging1) {
+		.proto_discr = GSM48_PDISC_RR,
+		.msg_type = GSM48_MT_RR_PAG_REQ_1,
+		.pag_mode = GSM48_PM_NORMAL,
+		.cneed1 = chan1 & 3,
+		.cneed2 = chan2 & 3,
+	};
 
-	pt1->proto_discr = GSM48_PDISC_RR;
-	pt1->msg_type = GSM48_MT_RR_PAG_REQ_1;
-	pt1->pag_mode = GSM48_PM_NORMAL;
-	pt1->cneed1 = chan1 & 3;
-	pt1->cneed2 = chan2 & 3;
 	cur = lv_put(pt1->data, identity1_lv[0], identity1_lv+1);
 	if (identity2_lv)
 		cur = tlv_put(cur, GSM48_IE_MOBILE_ID, identity2_lv[0], identity2_lv+1);
 
 	pt1->l2_plen = L2_PLEN(cur - out_buf);
 
-	paging_len = cur - out_buf;
+	/* Pad remaining octets with constant '2B'O */
+	ro_len = GSM_MACBLOCK_LEN - (cur - out_buf);
+	memset(cur, GSM_MACBLOCK_PADDING, ro_len);
 
-	memset(&bv, 0, sizeof(bv));
-	bv.data = cur;
-	bv.data_len = GSM_MACBLOCK_LEN - paging_len;
+	/* Optional P1 Rest Octets */
+	if (p1ro) {
+		struct bitvec bv = {
+			.data_len = ro_len,
+			.data = cur,
+		};
 
-	if (p1ro)
 		append_p1_rest_octets(&bv, p1ro);
-
-	/* pad to the end of the MAC block */
-	bitvec_spare_padding(&bv, bv.data_len *8);
+	}
 
 	return GSM_MACBLOCK_LEN;
 }
