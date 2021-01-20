@@ -1793,7 +1793,7 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 }
 
 #define BTS_T_T_L_CMD \
-	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1>"
+	"bts <0-0> trx <0-255> ts <0-7> lchan <0-7>"
 #define BTS_T_T_L_STR			\
 	"BTS related commands\n"	\
 	"BTS number\n"			\
