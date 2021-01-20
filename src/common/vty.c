@@ -1988,10 +1988,11 @@ DEFUN(bts_t_t_l_jitter_buf,
 	return CMD_SUCCESS;
 }
 
-DEFUN(bts_t_t_l_loopback,
-	bts_t_t_l_loopback_cmd,
-	BTS_T_T_L_CMD " loopback",
-	BTS_T_T_L_STR "Set loopback\n")
+DEFUN_ATTR(bts_t_t_l_loopback,
+	   bts_t_t_l_loopback_cmd,
+	   BTS_T_T_L_CMD " loopback",
+	   BTS_T_T_L_STR "Set loopback\n",
+	   CMD_ATTR_HIDDEN)
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
@@ -2006,10 +2007,11 @@ DEFUN(bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
-DEFUN(no_bts_t_t_l_loopback,
-	no_bts_t_t_l_loopback_cmd,
-	"no " BTS_T_T_L_CMD " loopback",
-	NO_STR BTS_T_T_L_STR "Set loopback\n")
+DEFUN_ATTR(no_bts_t_t_l_loopback,
+	   no_bts_t_t_l_loopback_cmd,
+	   "no " BTS_T_T_L_CMD " loopback",
+	   NO_STR BTS_T_T_L_STR "Set loopback\n",
+	   CMD_ATTR_HIDDEN)
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
