@@ -1965,7 +1965,7 @@ DEFUN(bts_t_t_l_jitter_buf,
 
 	lchan = resolve_lchan(net, argv, 0);
 	if (!lchan) {
-		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 	if (!lchan->abis_ip.rtp_socket) {
@@ -1996,7 +1996,7 @@ DEFUN(bts_t_t_l_loopback,
 
 	lchan = resolve_lchan(net, argv, 0);
 	if (!lchan) {
-		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 	lchan->loopback = 1;
@@ -2014,7 +2014,7 @@ DEFUN(no_bts_t_t_l_loopback,
 
 	lchan = resolve_lchan(net, argv, 0);
 	if (!lchan) {
-		vty_out(vty, "%% can't find BTS%s", VTY_NEWLINE);
+		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 	lchan->loopback = 0;
