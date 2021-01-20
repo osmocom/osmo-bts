@@ -1792,6 +1792,8 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	return &ts->lchan[lchan_nr];
 }
 
+#define BTS_T_T_L_CMD \
+	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1>"
 #define BTS_T_T_L_STR			\
 	"BTS related commands\n"	\
 	"BTS number\n"			\
@@ -1955,7 +1957,7 @@ DEFUN(cfg_phy_type, cfg_phy_type_cmd,
 
 DEFUN(bts_t_t_l_jitter_buf,
 	bts_t_t_l_jitter_buf_cmd,
-	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> rtp jitter-buffer <0-10000>",
+	BTS_T_T_L_CMD " rtp jitter-buffer <0-10000>",
 	BTS_T_T_L_STR "RTP settings\n"
 	"Jitter buffer\n" "Size of jitter buffer in (ms)\n")
 {
@@ -1988,7 +1990,7 @@ DEFUN(bts_t_t_l_jitter_buf,
 
 DEFUN(bts_t_t_l_loopback,
 	bts_t_t_l_loopback_cmd,
-	"bts <0-0> trx <0-0> ts <0-7> lchan <0-1> loopback",
+	BTS_T_T_L_CMD " loopback",
 	BTS_T_T_L_STR "Set loopback\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
@@ -2006,7 +2008,7 @@ DEFUN(bts_t_t_l_loopback,
 
 DEFUN(no_bts_t_t_l_loopback,
 	no_bts_t_t_l_loopback_cmd,
-	"no bts <0-0> trx <0-0> ts <0-7> lchan <0-1> loopback",
+	"no " BTS_T_T_L_CMD " loopback",
 	NO_STR BTS_T_T_L_STR "Set loopback\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
