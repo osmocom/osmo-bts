@@ -2026,6 +2026,80 @@ DEFUN_ATTR(no_bts_t_t_l_loopback,
 	return CMD_SUCCESS;
 }
 
+#define LCHAN_PWR_CTRL_CMD \
+	BTS_T_T_L_CMD " (bs-power-ctrl|ms-power-ctrl)"
+#define LCHAN_PWR_CTRL_STR \
+	BTS_T_T_L_STR "BS power control\n" "MS power control\n"
+
+DEFUN_ATTR(bts_t_t_l_power_ctrl_mode,
+	   bts_t_t_l_power_ctrl_mode_cmd,
+	   LCHAN_PWR_CTRL_CMD " mode (static|dynamic)",
+	   LCHAN_PWR_CTRL_STR "Change power control mode\n"
+	   "Disable the power control loop\n"
+	   "Enable the power control loop\n",
+	   CMD_ATTR_HIDDEN)
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	const struct gsm_power_ctrl_params *params;
+	struct lchan_power_ctrl_state *state;
+	const char **args = argv + 4;
+	struct gsm_lchan *lchan;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (strcmp(args[0], "bs-power-ctrl") == 0) {
+		params = &lchan->bs_dpc_params;
+		state = &lchan->bs_power_ctrl;
+	} else { /* ms-power-ctrl */
+		params = &lchan->ms_dpc_params;
+		state = &lchan->ms_power_ctrl;
+	}
+
+	if (strcmp(args[1], "dynamic") == 0)
+		state->dpc_params = params;
+	else
+		state->dpc_params = NULL;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(bts_t_t_l_power_ctrl_current_max,
+	   bts_t_t_l_power_ctrl_current_max_cmd,
+	   LCHAN_PWR_CTRL_CMD " value (current|max) <0-255>",
+	   LCHAN_PWR_CTRL_STR "Change current power value\n"
+	   "Current value (for both dynamic and static modes)\n"
+	   "Maximum value (for dynamic mode only)\n"
+	   "BS power reduction (in dB) or MS power level\n",
+	   CMD_ATTR_HIDDEN)
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct lchan_power_ctrl_state *state;
+	const char **args = argv + 4;
+	struct gsm_lchan *lchan;
+
+	lchan = resolve_lchan(net, argv, 0);
+	if (!lchan) {
+		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (strcmp(args[0], "bs-power-ctrl") == 0)
+		state = &lchan->bs_power_ctrl;
+	else /* ms-power-ctrl */
+		state = &lchan->ms_power_ctrl;
+
+	if (strcmp(args[1], "current") == 0)
+		state->current = atoi(args[2]);
+	else
+		state->max = atoi(args[2]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 {
 	int sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
@@ -2155,6 +2229,8 @@ int bts_vty_init(void *ctx)
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);
 	install_element(ENABLE_NODE, &bts_t_t_l_loopback_cmd);
 	install_element(ENABLE_NODE, &no_bts_t_t_l_loopback_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_power_ctrl_mode_cmd);
+	install_element(ENABLE_NODE, &bts_t_t_l_power_ctrl_current_max_cmd);
 	install_element(ENABLE_NODE, &test_send_failure_event_report_cmd);
 	install_element(ENABLE_NODE, &radio_link_timeout_cmd);
 
