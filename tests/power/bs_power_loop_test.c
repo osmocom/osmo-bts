@@ -56,6 +56,7 @@ enum power_test_step_type {
 	PWR_TEST_ST_IND_MEAS = 0,
 	PWR_TEST_ST_IND_DUMMY,
 	PWR_TEST_ST_SET_STATE,
+	PWR_TEST_ST_SET_STEP_SIZE,
 	PWR_TEST_ST_SET_RXLEV_PARAMS,
 	PWR_TEST_ST_ENABLE_DTXD,
 	PWR_TEST_ST_DISABLE_DPC,
@@ -78,6 +79,11 @@ struct power_test_step {
 			uint8_t rxlev_sub;
 			bool invalid;
 		} meas;
+		/* Increase / reduce step size */
+		struct {
+			uint8_t inc;
+			uint8_t red;
+		} step_size;
 	};
 	/* Expected Tx power reduction */
 	uint8_t exp_txred;
@@ -152,6 +158,12 @@ static int exec_power_step(struct gsm_lchan *lchan,
 	case PWR_TEST_ST_DISABLE_DPC:
 		printf("#%02u %s() <- Dynamic power control is disabled\n", n, __func__);
 		lchan->bs_power_ctrl.dpc_params = NULL;
+		return 0; /* we're done */
+	case PWR_TEST_ST_SET_STEP_SIZE:
+		printf("#%02u %s() <- Set step size: inc %u dB, red %u dB\n",
+		       n, __func__, step->step_size.inc, step->step_size.red);
+		lchan->bs_dpc_params.inc_step_size_db = step->step_size.inc;
+		lchan->bs_dpc_params.red_step_size_db = step->step_size.red;
 		return 0; /* we're done */
 	case PWR_TEST_ST_SET_RXLEV_PARAMS:
 		printf("#%02u %s() <- (Re)set RxLev params (thresh %u .. %u, "
@@ -272,6 +284,60 @@ static const struct power_test_step TC_rxlev_max_min[] = {
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
 	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
+};
+
+/* Verify that delta values never exceed the corresponding step size,
+ * but still can be smaller than the step size if the target is close. */
+static const struct power_test_step TC_inc_red_step_size[] = {
+	/* Initial state: 0 dB, up to 20 dB */
+	{ .type = PWR_TEST_ST_SET_STATE,
+	  .state = { .current = 0, .max = 2 * 10 } },
+
+	{ .type = PWR_TEST_ST_SET_STEP_SIZE,
+	  .step_size = { .inc = 6, .red = 4 } },
+
+	/* MS indicates high RxLev values (-50 dBm), red step is 4 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  8 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 12 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 16 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 20 }, /* max */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred = 20 }, /* max */
+
+	/* MS indicates low RxLev values (-100 dBm), inc step is 6 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred = 14 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  8 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  2 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 }, /* min */
+
+	/* Reset state: current 10 dB, up to 20 dB */
+	{ .type = PWR_TEST_ST_SET_STATE,
+	  .state = { .current = 10, .max = 2 * 10 } },
+
+	/* Let's say the current value is now 1 dB greater than the target (current red 10 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 1),	.exp_txred = 10 + 1 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 0),	.exp_txred = 10 + 1 },
+	/* Let's say the current value is now 2 dB greater than the target (current red 11 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 2),	.exp_txred = 11 + 2 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 0),	.exp_txred = 11 + 2 },
+	/* Let's say the current value is now 3 dB greater than the target (current red 13 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 3),	.exp_txred = 13 + 3 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET + 0),	.exp_txred = 13 + 3 },
+
+	/* Reset state: current 10 dB, up to 20 dB */
+	{ .type = PWR_TEST_ST_SET_STATE,
+	  .state = { .current = 10, .max = 2 * 10 } },
+
+	/* Let's say the current value is now 1 dB lower than the target (current red 10 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 1),	.exp_txred = 10 - 1 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 0),	.exp_txred = 10 - 1 },
+	/* Let's say the current value is now 3 dB lower than the target (current red 9 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 3),	.exp_txred = 9 - 3 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 0),	.exp_txred = 9 - 3 },
+	/* Let's say the current value is now 5 dB lower than the target (current red 6 dB) */
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 5),	.exp_txred = 6 - 5 },
+	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET - 0),	.exp_txred = 6 - 5 },
 };
 
 /* Verify that the logic picks the 'SUB' values in DTXd mode. */
@@ -417,6 +483,7 @@ int main(int argc, char **argv)
 	exec_test(TC_fixed_mode);
 	exec_test(TC_rxlev_target);
 	exec_test(TC_rxlev_max_min); /* FIXME */
+	exec_test(TC_inc_red_step_size);
 
 	exec_test(TC_dtxd_mode);
 	exec_test(TC_rxqual_ber);
