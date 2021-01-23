@@ -368,8 +368,9 @@ const struct value_string gsmtap_sapi_names[] = {
 };
 
 /* send primitive as gsmtap */
-static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-			  uint8_t *ss, uint32_t fn, uint8_t **data, unsigned int *len,
+static int gsmtap_ph_data(const struct osmo_phsap_prim *l1sap,
+			  uint8_t *chan_type, uint8_t *ss, uint32_t fn,
+			  uint8_t **data, unsigned int *len,
 			  uint8_t num_agch)
 {
 	struct msgb *msg = l1sap->oph.msg;
@@ -411,8 +412,9 @@ static int gsmtap_ph_data(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	return 0;
 }
 
-static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-		       uint8_t *ss, uint32_t fn, uint8_t **data, unsigned int *len)
+static int gsmtap_pdch(const struct osmo_phsap_prim *l1sap,
+		       uint8_t *chan_type, uint8_t *ss, uint32_t fn,
+		       uint8_t **data, unsigned int *len)
 {
 	struct msgb *msg = l1sap->oph.msg;
 
@@ -430,8 +432,9 @@ static int gsmtap_pdch(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
 	return 0;
 }
 
-static int gsmtap_ph_rach(struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
-	uint8_t *tn, uint8_t *ss, uint32_t *fn, uint8_t **data, unsigned int *len)
+static int gsmtap_ph_rach(const struct osmo_phsap_prim *l1sap, uint8_t *chan_type,
+			  uint8_t *tn, uint8_t *ss, uint32_t *fn,
+			  uint8_t **data, unsigned int *len)
 {
 	uint8_t chan_nr = l1sap->u.rach_ind.chan_nr;
 	static uint8_t ra_buf[2];
