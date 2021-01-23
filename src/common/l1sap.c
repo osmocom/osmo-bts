@@ -505,6 +505,7 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	uint8_t chan_type = 0, tn = 0, ss = 0;
 	uint32_t fn;
 	uint16_t uplink = GSMTAP_ARFCN_F_UPLINK;
+	int8_t signal_dbm;
 	int rc;
 
 	if (!gsmtap)
@@ -523,10 +524,12 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		else
 			rc = gsmtap_ph_data(l1sap, &chan_type, &ss, fn, &data,
 					    &len, num_agch(trx, "GSMTAP"));
+		signal_dbm = l1sap->u.data.rssi;
 		break;
 	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
 		rc = gsmtap_ph_rach(l1sap, &chan_type, &tn, &ss, &fn, &data,
 			&len);
+		signal_dbm = l1sap->u.rach_ind.rssi;
 		break;
 	default:
 		rc = -ENOTSUP;
@@ -550,8 +553,8 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	if (is_fill_frame(chan_type, data, len))
 		return 0;
 
-	gsmtap_send(gsmtap, trx->arfcn | uplink, tn, chan_type, ss, fn, 0, 0,
-		data, len);
+	gsmtap_send(gsmtap, trx->arfcn | uplink, tn, chan_type, ss, fn,
+		    signal_dbm, 0 /* TODO: SNR */, data, len);
 
 	return 0;
 }
