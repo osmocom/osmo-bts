@@ -318,7 +318,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 
 	if (state->current != new) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
-			  "%u -> %u dB (maximum %u dB, delta %d dB, "
+			  "%u -> %u dB (maximum %u dB, suggested delta %d dB, "
 			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
 			  state->current, new, state->max,
 			  -delta, rxlev, rxlev2dbm(rxlev),
@@ -328,7 +328,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		return 1;
 	} else {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
-			  "at %u dB (maximum %u dB, delta %d dB, "
+			  "at %u dB (maximum %u dB, suggested delta %d dB, "
 			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
 			  state->current, state->max,
 			  -delta, rxlev, rxlev2dbm(rxlev),
