@@ -4,7 +4,7 @@
 extern int pcu_direct;
 
 int pcu_tx_info_ind(void);
-int pcu_tx_si13(const struct gsm_bts *bts, bool enable);
+int pcu_tx_si(const struct gsm_bts *bts, enum osmo_sysinfo_type si_type, bool enable);
 int pcu_tx_app_info_req(struct gsm_bts *bts, uint8_t app_type, uint8_t len, const uint8_t *app_data);
 int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	uint16_t arfcn, uint8_t block_nr);

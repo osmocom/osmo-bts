@@ -725,17 +725,64 @@ static int pcu_rx_pag_req(struct gsm_bts *bts, uint8_t msg_type,
 	return rc;
 }
 
-int pcu_tx_si13(const struct gsm_bts *bts, bool enable)
+int pcu_tx_si(const struct gsm_bts *bts, enum osmo_sysinfo_type si_type,
+	      bool enable)
 {
 	/* the SI is per-BTS so it doesn't matter which TRX we use */
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, 0);
 
-	/* The low-level data like FN, ARFCN etc will be ignored but we have to set lqual high enough to bypass
-	   the check at lower levels */
-	int rc = pcu_tx_data_ind(&trx->ts[0], PCU_IF_SAPI_BCCH, 0, 0, 0, GSM_BTS_SI(bts, SYSINFO_TYPE_13),
-				 enable ? GSM_MACBLOCK_LEN : 0, 0, 0, 0, INT16_MAX);
+	uint8_t si_buf[GSM_MACBLOCK_LEN];
+	uint8_t len;
+	int rc;
+
+	if (enable) {
+		memcpy(si_buf, GSM_BTS_SI(bts, si_type), GSM_MACBLOCK_LEN);
+		len = GSM_MACBLOCK_LEN;
+		LOGP(DPCU, LOGL_DEBUG, "Updating SI%s to PCU: %s\n",
+		     get_value_string(osmo_sitype_strs, si_type),
+		     osmo_hexdump_nospc(si_buf, GSM_MACBLOCK_LEN));
+	} else {
+		si_buf[0] = si_type;
+		len = 1;
+
+		/* Note: SI13 is the only system information type that is revked
+		 * by just sending a completely empty message. This is due to
+		 * historical reasons */
+		if (si_type != SYSINFO_TYPE_13)
+			len = 0;
+
+		LOGP(DPCU, LOGL_DEBUG, "Revoking SI%s from PCU\n",
+		     get_value_string(osmo_sitype_strs, si_buf[0]));
+	}
+
+	/* The low-level data like FN, ARFCN etc will be ignored but we have to
+	 * set lqual high enough to bypass the check at lower levels */
+	rc = pcu_tx_data_ind(&trx->ts[0], PCU_IF_SAPI_BCCH, 0, 0, 0, si_buf, len,
+			     0, 0, 0, INT16_MAX);
 	if (rc < 0)
-		LOGP(DPCU, LOGL_NOTICE, "Failed to send SI13 to PCU: %d\n", rc);
+		LOGP(DPCU, LOGL_NOTICE, "Failed to send SI%s to PCU: rc=%d\n",
+		     get_value_string(osmo_sitype_strs, si_type), rc);
+
+	return rc;
+}
+
+static int pcu_tx_si_all(struct gsm_bts *bts)
+{
+	enum osmo_sysinfo_type si_types[3] =
+	    { SYSINFO_TYPE_1, SYSINFO_TYPE_3, SYSINFO_TYPE_13 };
+	unsigned int i;
+	int rc;
+
+	for (i = 0; i < ARRAY_SIZE(si_types); i++) {
+		if (GSM_BTS_HAS_SI(bts, si_types[i])) {
+			rc = pcu_tx_si(bts, si_types[i], true);
+			if (rc < 0)
+				rc = -EINVAL;
+		} else
+			LOGP(DPCU, LOGL_INFO,
+			     "SI%s is not available on PCU connection\n",
+			     get_value_string(osmo_sitype_strs, si_types[i]));
+	}
 
 	return rc;
 }
@@ -743,6 +790,8 @@ int pcu_tx_si13(const struct gsm_bts *bts, bool enable)
 static int pcu_rx_txt_ind(struct gsm_bts *bts,
 			  struct gsm_pcu_if_txt_ind *txt)
 {
+	int rc;
+
 	switch (txt->type) {
 	case PCU_VERSION:
 		LOGP(DPCU, LOGL_INFO, "OsmoPCU version %s connected\n",
@@ -754,10 +803,10 @@ static int pcu_rx_txt_ind(struct gsm_bts *bts,
 		regenerate_si3_restoctets(bts);
 		regenerate_si4_restoctets(bts);
 
-		if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_13))
-			return pcu_tx_si13(bts, true);
+		rc = pcu_tx_si_all(bts);
+		if (rc < 0)
+			return -EINVAL;
 
-		LOGP(DPCU, LOGL_INFO, "SI13 is not available on PCU connection\n");
 		break;
 	case PCU_OML_ALERT:
 		oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_INDETERMINATE, OSMO_EVT_EXT_ALARM,

@@ -379,6 +379,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
 			 * after PCU connects */
 			regenerate_si3_restoctets(bts);
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_3, true);
 		} else if (SYSINFO_TYPE_4 == osmo_si) {
 			/* decode original SI4 Rest Octets as sent by BSC */
 			const uint8_t *si4 = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
@@ -391,10 +392,11 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 				 * enabled after PCU connects */
 				regenerate_si4_restoctets(bts);
 			}
+		} else if (SYSINFO_TYPE_13 == osmo_si) {
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_13, true);
+		} else if (SYSINFO_TYPE_1 == osmo_si) {
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_1, true);
 		}
-
-		if (SYSINFO_TYPE_13 == osmo_si)
-			pcu_tx_si13(trx->bts, true);
 
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		uint16_t len = TLVP_LEN(&tp, RSL_IE_L3_INFO);
@@ -410,10 +412,20 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		bts->si_valid &= ~(1 << osmo_si);
 		LOGP(DRSL, LOGL_INFO, " RX RSL Disabling BCCH INFO (SI%s)\n",
 			get_value_string(osmo_sitype_strs, osmo_si));
-		if (SYSINFO_TYPE_13 == osmo_si)
-			pcu_tx_si13(trx->bts, false);
-		if (SYSINFO_TYPE_3 == osmo_si)
+		switch (osmo_si) {
+		case SYSINFO_TYPE_13:
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_13, false);
+			break;
+		case SYSINFO_TYPE_3:
 			memset(&bts->si3_ro_decoded, 0, sizeof(bts->si3_ro_decoded));
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_3, false);
+			break;
+		case SYSINFO_TYPE_1:
+			pcu_tx_si(trx->bts, SYSINFO_TYPE_1, false);
+			break;
+		default:
+			break;
+		}
 	}
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_SYSINFO, bts);
 
