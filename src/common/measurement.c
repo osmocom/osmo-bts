@@ -24,7 +24,7 @@ static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
  * the missing measurements */
 #define MEASUREMENT_DUMMY_BER 10000 /* 100% BER */
 #define MEASUREMENT_DUMMY_IRSSI 109 /* noise floor in -dBm */
-static const struct bts_ul_meas measurement_dummy = (struct bts_ul_meas) {
+static const struct bts_ul_meas measurement_dummy = {
 	.ber10k = MEASUREMENT_DUMMY_BER,
 	.ta_offs_256bits = 0,
 	.c_i = 0,
