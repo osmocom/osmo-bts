@@ -771,7 +771,7 @@ static int pcu_tx_si_all(struct gsm_bts *bts)
 	const enum osmo_sysinfo_type si_types[3] =
 	    { SYSINFO_TYPE_1, SYSINFO_TYPE_3, SYSINFO_TYPE_13 };
 	unsigned int i;
-	int rc;
+	int rc = 0;
 
 	for (i = 0; i < ARRAY_SIZE(si_types); i++) {
 		if (GSM_BTS_HAS_SI(bts, si_types[i])) {
