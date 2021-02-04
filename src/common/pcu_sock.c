@@ -778,10 +778,11 @@ static int pcu_tx_si_all(struct gsm_bts *bts)
 			rc = pcu_tx_si(bts, si_types[i], true);
 			if (rc < 0)
 				rc = -EINVAL;
-		} else
+		} else {
 			LOGP(DPCU, LOGL_INFO,
 			     "SI%s is not available on PCU connection\n",
 			     get_value_string(osmo_sitype_strs, si_types[i]));
+		}
 	}
 
 	return rc;
