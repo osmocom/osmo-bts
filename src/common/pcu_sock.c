@@ -777,7 +777,7 @@ static int pcu_tx_si_all(struct gsm_bts *bts)
 		if (GSM_BTS_HAS_SI(bts, si_types[i])) {
 			rc = pcu_tx_si(bts, si_types[i], true);
 			if (rc < 0)
-				rc = -EINVAL;
+				return rc;
 		} else {
 			LOGP(DPCU, LOGL_INFO,
 			     "SI%s is not available on PCU connection\n",
@@ -785,7 +785,7 @@ static int pcu_tx_si_all(struct gsm_bts *bts)
 		}
 	}
 
-	return rc;
+	return 0;
 }
 
 static int pcu_rx_txt_ind(struct gsm_bts *bts,
