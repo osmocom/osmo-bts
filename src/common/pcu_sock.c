@@ -768,7 +768,7 @@ int pcu_tx_si(const struct gsm_bts *bts, enum osmo_sysinfo_type si_type,
 
 static int pcu_tx_si_all(struct gsm_bts *bts)
 {
-	enum osmo_sysinfo_type si_types[3] =
+	const enum osmo_sysinfo_type si_types[3] =
 	    { SYSINFO_TYPE_1, SYSINFO_TYPE_3, SYSINFO_TYPE_13 };
 	unsigned int i;
 	int rc;
