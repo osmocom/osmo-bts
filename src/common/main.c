@@ -291,6 +291,7 @@ int bts_main(int argc, char **argv)
 	logging_vty_add_cmds();
 	osmo_talloc_vty_add_cmds();
 	osmo_stats_vty_add_cmds();
+	osmo_fsm_vty_add_cmds();
 
 	bts_vty_init(tall_bts_ctx);
 	e1inp_vty_init();
