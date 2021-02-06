@@ -442,13 +442,14 @@ int oml_fom_ack_nack(struct msgb *msg, uint8_t cause)
 		foh->msg_type += 2; /* nack */
 		/* add cause */
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
-		/* update the length as we just made the message larger */
-		struct abis_om_hdr *omh = (struct abis_om_hdr *) msgb_l2(msg);
-		omh->length = msgb_l3len(msg);
 	} else {
 		LOGPFOH(DOML, LOGL_DEBUG, foh, "Sending FOM ACK.\n");
 		foh->msg_type++; /* ack */
 	}
+
+	/* ensure that the message length is up to date */
+	struct abis_om_hdr *omh = (struct abis_om_hdr *) msgb_l2(msg);
+	omh->length = msgb_l3len(msg);
 
 	/* we cannot use oml_send_msg() as we already have the OML header */
 	if (abis_oml_sendmsg(msg) != 0)
@@ -1406,6 +1407,16 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 		trx->rsl_tei = stream_id;
 		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port, trx->nr);
 	}
+
+	/* The ACK/NACK is expected to contain all IEs */
+	if (!TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP)) /* TV32 */
+		msgb_tv_fixed_put(msg, NM_ATT_IPACC_DST_IP, sizeof(in),
+				  (const uint8_t *) &in);
+	if (!TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP_PORT)) /* TV16 */
+		msgb_tv16_put(msg, NM_ATT_IPACC_DST_IP_PORT, port);
+	if (!TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID)) /* TV */
+		msgb_tv_put(msg, NM_ATT_IPACC_STREAM_ID, stream_id);
+
 	if (rc < 0) {
 		LOGP(DOML, LOGL_ERROR, "%s: Error in abis_open(RSL): %d\n", trx_name, rc);
 		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
