@@ -424,22 +424,14 @@ int oml_mo_opstart_nack(const struct gsm_abis_mo *mo, uint8_t nack_cause)
 	return oml_mo_fom_ack_nack(mo, NM_MT_OPSTART, nack_cause);
 }
 
-/* Send an ACK or NACK response for 'msg' to BSC, deriving message
- * type, obj class, obj inst from 'msg' and copying all attributes
- * contained in 'msg'. ACK is sent if cause == 0; NACK otherwise */
-int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
+/* Send an ACK or NACK response to BSC for the given OML message,
+ * reusing it.  ACK is sent if cause == 0; NACK otherwise. */
+int oml_fom_ack_nack(struct msgb *msg, uint8_t cause)
 {
-	struct msgb *msg;
 	struct abis_om_fom_hdr *foh;
 
-	msg = msgb_copy(old_msg, "OML_fom_ack_nack");
-	if (!msg)
-		return -ENOMEM;
-
-	/* remove any l2/l1 that may be present in copy */
+	/* remove any l2/l1 that may be already present */
 	msgb_pull_to_l2(msg);
-
-	msg->trx = old_msg->trx;
 
 	foh = (struct abis_om_fom_hdr *) msg->l3h;
 
@@ -459,7 +451,11 @@ int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause)
 	}
 
 	/* we cannot use oml_send_msg() as we already have the OML header */
-	return abis_oml_sendmsg(msg);
+	if (abis_oml_sendmsg(msg) != 0)
+		LOGPFOH(DOML, LOGL_ERROR, foh, "Failed to send ACK/NACK\n");
+
+	/* msgb was reused, do not free() */
+	return 1;
 }
 
 /*
@@ -1536,6 +1532,10 @@ int down_oml(struct gsm_bts *bts, struct msgb *msg)
 					 "unknown O&M msg_disc 0x%02x\n", oh->mdisc);
 		ret = -EINVAL;
 	}
+
+	/* msgb was reused, do not free() */
+	if (ret == 1)
+		return 0;
 
 	msgb_free(msg);
 
