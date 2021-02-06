@@ -1155,7 +1155,7 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
  * manufacturer related messages
  */
 
-static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_nse(void *obj, const struct tlv_parsed *tp)
 {
 	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.nse);
 
@@ -1178,7 +1178,7 @@ static int oml_ipa_mo_set_attr_nse(void *obj, struct tlv_parsed *tp)
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_cell(void *obj, const struct tlv_parsed *tp)
 {
 	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.cell);
 	struct gprs_rlc_cfg *rlcc = &bts->gprs.cell.rlc_cfg;
@@ -1249,7 +1249,7 @@ static int oml_ipa_mo_set_attr_cell(void *obj, struct tlv_parsed *tp)
 }
 
 static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
-				    struct tlv_parsed *tp)
+				    const struct tlv_parsed *tp)
 {
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSVCI, 2))
 		nsvc->nsvci = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_NSVCI));
@@ -1319,7 +1319,7 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 }
 
 static int oml_ipa_mo_set_attr(struct gsm_bts *bts, const struct gsm_abis_mo *mo,
-				void *obj, struct tlv_parsed *tp)
+				void *obj, const struct tlv_parsed *tp)
 {
 	int rc;
 
@@ -1380,7 +1380,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 }
 
 static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
-				  struct tlv_parsed *tp)
+				  const struct tlv_parsed *tp)
 {
 	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
 	uint16_t port = IPA_TCP_PORT_RSL;
