@@ -1391,15 +1391,12 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	uint8_t stream_id = 0;
 
-	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP, 4)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP, 4))
 		ip = ntohl(tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP));
-	}
-	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP_PORT, 2)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP_PORT, 2))
 		port = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_DST_IP_PORT));
-	}
-	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_STREAM_ID, 1)) {
+	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_STREAM_ID, 1))
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
-	}
 
 	in.s_addr = htonl(ip);
 	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
