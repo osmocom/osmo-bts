@@ -1384,7 +1384,6 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 {
 	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
 	uint16_t port = IPA_TCP_PORT_RSL;
-	uint32_t ip = get_signlink_remote_ip(oml_link);
 	const char *trx_name = gsm_trx_name(trx);
 	struct in_addr in;
 	int rc;
@@ -1392,13 +1391,15 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	uint8_t stream_id = 0;
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP, 4))
-		ip = ntohl(tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP));
+		in.s_addr = tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP);
+	else
+		in.s_addr = htonl(get_signlink_remote_ip(oml_link));
+
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_DST_IP_PORT, 2))
 		port = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_DST_IP_PORT));
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_STREAM_ID, 1))
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
 
-	in.s_addr = htonl(ip);
 	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
 	     trx_name, inet_ntoa(in), port, stream_id);
 
