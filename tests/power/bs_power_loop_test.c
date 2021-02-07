@@ -1,5 +1,5 @@
 /*
- * (C) 2020 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2020-2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  * Author: Vadim Yanitskiy <vyanitskiy@sysmocom.de>
  *
  * All Rights Reserved
@@ -56,6 +56,7 @@ enum power_test_step_type {
 	PWR_TEST_ST_IND_MEAS = 0,
 	PWR_TEST_ST_IND_DUMMY,
 	PWR_TEST_ST_SET_STATE,
+	PWR_TEST_ST_SET_CTRL_INTERVAL,
 	PWR_TEST_ST_SET_STEP_SIZE,
 	PWR_TEST_ST_SET_RXLEV_PARAMS,
 	PWR_TEST_ST_ENABLE_DTXD,
@@ -84,6 +85,8 @@ struct power_test_step {
 			uint8_t inc;
 			uint8_t red;
 		} step_size;
+		/* Power control interval */
+		uint8_t ctrl_interval;
 	};
 	/* Expected Tx power reduction */
 	uint8_t exp_txred;
@@ -158,6 +161,11 @@ static int exec_power_step(struct gsm_lchan *lchan,
 	case PWR_TEST_ST_DISABLE_DPC:
 		printf("#%02u %s() <- Dynamic power control is disabled\n", n, __func__);
 		lchan->bs_power_ctrl.dpc_params = NULL;
+		return 0; /* we're done */
+	case PWR_TEST_ST_SET_CTRL_INTERVAL:
+		printf("#%02u %s() <- (Re)set power control interval: %u -> %u\n",
+		       n, __func__, lchan->bs_dpc_params.ctrl_interval, step->ctrl_interval);
+		lchan->bs_dpc_params.ctrl_interval = step->ctrl_interval;
 		return 0; /* we're done */
 	case PWR_TEST_ST_SET_STEP_SIZE:
 		printf("#%02u %s() <- Set step size: inc %u dB, red %u dB\n",
@@ -411,6 +419,49 @@ static const struct power_test_step TC_inval_dummy[] = {
 	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
 };
 
+/* Verify handling of optional power control interval (P_Con_INTERVAL). */
+static const struct power_test_step TC_ctrl_interval[] = {
+	/* Initial state: 0 dB, up to 20 dB */
+	{ .type = PWR_TEST_ST_SET_STATE,
+	  .state = { .current = 0, .max = 2 * 10 } },
+
+	/* P_Con_INTERVAL=0 (480 ms): every SACCH block is handled */
+	{ .type = PWR_TEST_ST_SET_CTRL_INTERVAL, .ctrl_interval = 0 },
+
+	/* MS indicates high RxLev values (-50 dBm), red step is 2 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  2 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  6 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  8 },
+
+	/* MS indicates low RxLev values (-100 dBm), inc step is 4 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 },
+
+	/* P_Con_INTERVAL=1 (960 ms): 1 out of 2 SACCH blocks is handled */
+	{ .type = PWR_TEST_ST_SET_CTRL_INTERVAL, .ctrl_interval = 1 },
+
+	/* MS indicates high RxLev values (-50 dBm), red step is 2 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  2 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  2 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  4 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  6 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  6 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  8 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 60),	.exp_txred =  8 }, /* skipped */
+
+	/* P_Con_INTERVAL=2 (1920 ms): 1 out of 4 SACCH blocks is handled */
+	{ .type = PWR_TEST_ST_SET_CTRL_INTERVAL, .ctrl_interval = 2 },
+
+	/* MS indicates low RxLev values (-100 dBm), inc step is 4 dB */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 },
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  4 }, /* skipped */
+	{ .meas = DL_MEAS_FULL_SUB(0, 10),	.exp_txred =  0 },
+};
+
 /* Verify that small deviations from the target do not trigger any changes. */
 static const struct power_test_step TC_rxlev_hyst[] = {
 	/* Initial state: 16 dB, up to 20 dB */
@@ -488,6 +539,7 @@ int main(int argc, char **argv)
 	exec_test(TC_dtxd_mode);
 	exec_test(TC_rxqual_ber);
 	exec_test(TC_inval_dummy);
+	exec_test(TC_ctrl_interval);
 
 	exec_test(TC_rxlev_hyst);
 	exec_test(TC_rxlev_pf_ewma);

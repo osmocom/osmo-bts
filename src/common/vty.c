@@ -1269,6 +1269,11 @@ static void dump_dpc_meas_params(struct vty *vty, const unsigned int indent,
 static void dump_dpc_params(struct vty *vty, const unsigned int indent,
 			    const struct gsm_power_ctrl_params *cp)
 {
+	cfg_out(vty, "Power control interval: %u ms (every %u SACCH block(s))%s",
+		cp->ctrl_interval ? cp->ctrl_interval * 2 * 480 : 480,
+		cp->ctrl_interval ? cp->ctrl_interval * 2 : 1,
+		VTY_NEWLINE);
+
 	cfg_out(vty, "Power increase step size: %u%s",
 		cp->inc_step_size_db, VTY_NEWLINE);
 	cfg_out(vty, "Power reduce step size: %u%s",

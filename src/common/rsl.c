@@ -763,7 +763,8 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 		params->rxqual_meas.upper_cmp_p = thresh_comp->p4;
 		params->rxqual_meas.upper_cmp_n = thresh_comp->n4;
 
-		/* FIXME: TIMER_PWR_CON_INTERVAL (P_Con_INTERVAL) */
+		/* Minimum interval between power level changes (P_Con_INTERVAL) */
+		params->ctrl_interval = thresh_comp->pc_interval;
 
 		/* Power increase / reduce step size: POWER_{INC,RED}_STEP_SIZE */
 		params->inc_step_size_db = thresh_comp->inc_step_size;

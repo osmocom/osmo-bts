@@ -201,6 +201,9 @@ struct gsm_power_ctrl_meas_params {
 
 /* MS/BS Power Control parameters */
 struct gsm_power_ctrl_params {
+	/* Minimum interval between power level changes */
+	uint8_t ctrl_interval; /* 1 step is 2 SACCH periods */
+
 	/* Power change step size (maximum) */
 	uint8_t inc_step_size_db; /* increasing direction */
 	uint8_t red_step_size_db; /* reducing direction */
@@ -231,6 +234,8 @@ struct lchan_power_ctrl_state {
 	const struct gsm_power_ctrl_params *dpc_params;
 	/* Measurement pre-processing state (for dynamic mode) */
 	struct gsm_power_ctrl_meas_proc_state rxlev_meas_proc;
+	/* Number of SACCH blocks to skip (for dynamic mode) */
+	int skip_block_num;
 
 	/* Depending on the context (MS or BS power control), fields 'current' and 'max'
 	 * reflect either the MS power level (magic numbers), or BS Power reduction level

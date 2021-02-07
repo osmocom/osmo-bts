@@ -1,7 +1,8 @@
 /* MS Power Control Loop L1 */
 
 /* (C) 2014 by Holger Hans Peter Freyther
- * Contributions by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2020-2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * Author: Vadim Yanitskiy <vyanitskiy@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -160,6 +161,17 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (params == NULL)
 		return 0;
 
+	/* Power control interval: how many blocks do we skip? */
+	if (state->skip_block_num-- > 0)
+		return 0;
+
+	/* Reset the number of SACCH blocks to be skipped:
+	 *   ctrl_interval=0 => 0 blocks to skip,
+	 *   ctrl_interval=1 => 1 blocks to skip,
+	 *   ctrl_interval=2 => 3 blocks to skip,
+	 *     so basically ctrl_interval * 2 - 1. */
+	state->skip_block_num = params->ctrl_interval * 2 - 1;
+
 	ms_dbm = ms_pwr_dbm(band, ms_power_lvl);
 	if (ms_dbm < 0) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
@@ -264,6 +276,17 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		  rxlev_full, rxqual_full, rxlev_sub, rxqual_sub,
 		  lchan->tch.dtx.dl_active ? "enabled" : "disabled",
 		  lchan->tch.dtx.dl_active ? "SUB" : "FULL");
+
+	/* Power control interval: how many blocks do we skip? */
+	if (state->skip_block_num-- > 0)
+		return 0;
+
+	/* Reset the number of SACCH blocks to be skipped:
+	 *   ctrl_interval=0 => 0 blocks to skip,
+	 *   ctrl_interval=1 => 1 blocks to skip,
+	 *   ctrl_interval=2 => 3 blocks to skip,
+	 *     so basically ctrl_interval * 2 - 1. */
+	state->skip_block_num = params->ctrl_interval * 2 - 1;
 
 	/* If DTx is active on Downlink, use the '-SUB' */
 	if (lchan->tch.dtx.dl_active) {

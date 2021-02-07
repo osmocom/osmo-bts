@@ -248,6 +248,71 @@ static void test_power_hysteresis(void)
 	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 10, 1, 13);
 }
 
+static void test_power_ctrl_interval(void)
+{
+	struct gsm_lchan *lchan;
+	unsigned int i, j;
+
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
+
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
+
+	static const int script[][8][3] = {
+		{ /* P_Con_INTERVAL=0 (480 ms) */
+			/* { UL RxLev, expected rc, expected Tx power level } */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 9 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 7 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 5 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 3 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 2 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 2 },
+		},
+		{ /* P_Con_INTERVAL=1 (960 ms) */
+			/* { UL RxLev, expected rc, expected Tx power level } */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 9 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	 9 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 7 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	 7 }, /* skipped */
+		},
+		{ /* P_Con_INTERVAL=2 (1920 ms) */
+			/* { UL RxLev, expected rc, expected Tx power level } */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
+		},
+	};
+
+	for (i = 0; i < ARRAY_SIZE(script); i++) {
+		lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
+		OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+
+		/* Set the corresponding power control interval */
+		printf("%s(): power control interval is now %u\n", __func__, i);
+		lchan->ms_dpc_params.ctrl_interval = i;
+
+		for (j = 0; j < ARRAY_SIZE(script[i]); j++) {
+			apply_power_test(lchan, script[i][j][0],  /* UL RxLev */
+						script[i][j][1],  /* expected rc */
+						script[i][j][2]); /* expected Tx power level */
+		}
+
+		printf("\n");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing power loop...\n");
@@ -264,6 +329,7 @@ int main(int argc, char **argv)
 	test_power_loop();
 	test_pf_algo_ewma();
 	test_power_hysteresis();
+	test_power_ctrl_interval();
 
 	printf("Power loop test OK\n");
 
