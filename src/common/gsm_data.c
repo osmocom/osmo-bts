@@ -441,8 +441,8 @@ const struct gsm_power_ctrl_params power_ctrl_params_def = {
 	/* RxQual measurement parameters */
 	.rxqual_meas = {
 		/* Thresholds for RxQual (see 3GPP TS 45.008, A.3.2.1) */
-		.lower_thresh = 3, /* U_RXQUAL_XX_P (0.8% <= BER < 1.6%) */
-		.upper_thresh = 0, /* L_RXQUAL_XX_P (BER < 0.2%) */
+		.lower_thresh = 3, /* L_RXQUAL_XX_P (0.8% <= BER < 1.6%) */
+		.upper_thresh = 0, /* U_RXQUAL_XX_P (BER < 0.2%) */
 
 		/* FIXME: RxQual averaging is not yet implemented */
 		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
