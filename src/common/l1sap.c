@@ -1427,8 +1427,14 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 	uint16_t upper = 0;
 	uint16_t lower = 0;
 
-	if (!lchan->repeated_acch_capability.ul_sacch)
+	/* This is an optimization so that we exit as quickly as possible if
+	 * there are no uplink SACCH repetition capabilities present.
+	 * However If the repeated UL-SACCH capabilities vanish for whatever
+	 * reason, we must be sure that UL-SACCH repetition is disabled. */
+	if (!lchan->repeated_acch_capability.ul_sacch) {
+		lchan->repeated_ul_sacch_active = false;
 		return;
+	}
 
 	/* Threshold disabled (repetition is always on) */
 	if (lchan->repeated_acch_capability.rxqual == 0) {
