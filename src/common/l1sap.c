@@ -1025,7 +1025,7 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 
 	if (rxqual >= upper)
 		lchan->repeated_dl_facch_active = true;
-	else if (meas_res->rxqual_sub <= lower)
+	else if (rxqual <= lower)
 		lchan->repeated_dl_facch_active = false;
 
 }
