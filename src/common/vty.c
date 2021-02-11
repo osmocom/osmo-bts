@@ -1564,6 +1564,63 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	dump_dpc_params(vty, indent + 2, st->dpc_params);
 }
 
+static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
+				      const struct gsm_lchan *lchan)
+{
+	cfg_out(vty, "ACCH repetition:%s", VTY_NEWLINE);
+	indent += 2;
+	if (lchan->repeated_acch_capability.rxqual)
+		cfg_out(vty, "Enable RXQUAL threshold: %u%s",
+			lchan->repeated_acch_capability.rxqual, VTY_NEWLINE);
+	else
+		cfg_out(vty, "Enable RXQUAL threshold: (none, alway on)%s",
+			VTY_NEWLINE);
+
+	cfg_out(vty, "DL-FACCH:%s", VTY_NEWLINE);
+	indent += 2;
+	if (lchan->repeated_acch_capability.dl_facch_all)
+		cfg_out(vty, "retramsit all LAPDM block types%s", VTY_NEWLINE);
+	else if (lchan->repeated_acch_capability.dl_facch_cmd)
+		cfg_out(vty, "retramsit only LAPDM command blocks%s",
+			VTY_NEWLINE);
+	else
+		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
+	if (lchan->repeated_dl_facch_active)
+		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
+	else
+		cfg_out(vty, "retransmission currently inactive%s",
+			VTY_NEWLINE);
+	indent -= 2;
+
+	cfg_out(vty, "DL-SACCH:%s", VTY_NEWLINE);
+	indent += 2;
+	if (lchan->repeated_acch_capability.ul_sacch)
+		cfg_out(vty, "retramsit all SACCH blocks for SAPI=0%s",
+			VTY_NEWLINE);
+	else
+		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
+	if (lchan->repeated_dl_sacch_active)
+		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
+	else
+		cfg_out(vty, "retransmission currently inactive%s",
+			VTY_NEWLINE);
+	indent -= 2;
+
+	cfg_out(vty, "UL-SACCH:%s", VTY_NEWLINE);
+	indent += 2;
+	if (lchan->repeated_acch_capability.dl_sacch)
+		cfg_out(vty, "retramsit all SACCH blocks for SAPI=0%s",
+			VTY_NEWLINE);
+	else
+		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
+	if (lchan->repeated_ul_sacch_active)
+		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
+	else
+		cfg_out(vty, "retransmission currently inactive%s",
+			VTY_NEWLINE);
+	indent -= 2;
+}
+
 static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	struct in_addr ia;
@@ -1637,6 +1694,7 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	/* BS/MS Power Control state and parameters */
 	lchan_bs_power_ctrl_state_dump(vty, 2, lchan);
 	lchan_ms_power_ctrl_state_dump(vty, 2, lchan);
+	lchan_acch_rep_state_dump(vty, 2, lchan);
 }
 
 static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)

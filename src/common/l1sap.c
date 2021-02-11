@@ -960,6 +960,7 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	uint8_t upper;
 	uint8_t lower;
 	uint8_t rxqual;
+	bool prev_repeated_dl_facch_active = lchan->repeated_dl_facch_active;
 
 	/* This is an optimization so that we exit as quickly as possible if
 	 * there are no FACCH repetition capabilities present. However If the
@@ -968,13 +969,13 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	if (!lchan->repeated_acch_capability.dl_facch_cmd
 	    && !lchan->repeated_acch_capability.dl_facch_all) {
 		lchan->repeated_dl_facch_active = false;
-		return;
+		goto out;
 	}
 
 	/* Threshold disabled (always on) */
 	if (lchan->repeated_acch_capability.rxqual == 0) {
 		lchan->repeated_dl_facch_active = true;
-		return;
+		goto out;
 	}
 
 	/* When the MS sets the SRR bit in the UL-SACCH L1 header
@@ -982,16 +983,16 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	 * FACCH repetition too. */
 	if (lchan->meas.l1_info.srr_sro) {
 		lchan->repeated_dl_facch_active = true;
-		return;
+		goto out;
 	}
 
 	/* Parse MS measurement results */
 	if (l3_len <= sizeof(struct gsm48_meas_res *) + 2)
-		return;
+		goto out;
 	if (l3[0] != GSM48_PDISC_RR)
-		return;
+		goto out;
 	if (l3[1] != GSM48_MT_RR_MEAS_REP)
-		return;
+		goto out;
 	l3 += 2;
 	meas_res = (struct gsm48_meas_res *)l3;
 
@@ -1015,6 +1016,13 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	else if (rxqual <= lower)
 		lchan->repeated_dl_facch_active = false;
 
+out:
+	if (lchan->repeated_dl_facch_active == prev_repeated_dl_facch_active)
+		return;
+	if (lchan->repeated_dl_facch_active)
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: inactive => active\n");
+	else
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: active => inactive\n");
 }
 
 /* Special dequeueing function with SACCH repetition (3GPP TS 44.006, section 11) */
@@ -1140,10 +1148,15 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			le = &lchan->lapdm_ch.lapdm_acch;
 			if (lchan->repeated_acch_capability.dl_sacch) {
 				/* Check if MS requests SACCH repetition and update state accordingly */
-				if (lchan->meas.l1_info.srr_sro)
+				if (lchan->meas.l1_info.srr_sro) {
+					if (lchan->repeated_dl_sacch_active == false)
+						LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-SACCH repetition: inactive => active\n");
 					lchan->repeated_dl_sacch_active = true;
-				else
+				} else {
+					if (lchan->repeated_dl_sacch_active == true)
+						LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-SACCH repetition: active => inactive\n");
 					lchan->repeated_dl_sacch_active = false;
+				}
 				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le);
 			} else {
 				pp_msg = lapdm_phsap_dequeue_msg(le);
@@ -1413,6 +1426,7 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 {
 	uint16_t upper = 0;
 	uint16_t lower = 0;
+	bool prev_repeated_ul_sacch_active = lchan->repeated_ul_sacch_active;
 
 	/* This is an optimization so that we exit as quickly as possible if
 	 * there are no uplink SACCH repetition capabilities present.
@@ -1420,13 +1434,13 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 	 * reason, we must be sure that UL-SACCH repetition is disabled. */
 	if (!lchan->repeated_acch_capability.ul_sacch) {
 		lchan->repeated_ul_sacch_active = false;
-		return;
+		goto out;
 	}
 
 	/* Threshold disabled (repetition is always on) */
 	if (lchan->repeated_acch_capability.rxqual == 0) {
 		lchan->repeated_ul_sacch_active = true;
-		return;
+		goto out;
 	}
 
 	/* convert from RXQUAL value to ber10k value.
@@ -1447,6 +1461,14 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 		lchan->repeated_ul_sacch_active = true;
 	else if (ber10k <= lower)
 		lchan->repeated_ul_sacch_active = false;
+
+out:
+	if (lchan->repeated_ul_sacch_active == prev_repeated_ul_sacch_active)
+		return;
+	if (lchan->repeated_ul_sacch_active)
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "UL-SACCH repetition: inactive => active\n");
+	else
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "UL-SACCH repetition: active => inactive\n");
 }
 
 /* DATA received from bts model */
