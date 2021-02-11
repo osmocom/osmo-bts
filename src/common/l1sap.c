@@ -980,9 +980,15 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	uint8_t lower;
 	uint8_t rxqual;
 
+	/* This is an optimization so that we exit as quickly as possible if
+	 * there are no FACCH repetition capabilities present. However If the
+	 * repeated FACCH capabilities vanish for whatever reason, we must be
+	 * sure that FACCH repetition is disabled. */
 	if (!lchan->repeated_acch_capability.dl_facch_cmd
-	    && !lchan->repeated_acch_capability.dl_facch_all)
+	    && !lchan->repeated_acch_capability.dl_facch_all) {
+		lchan->repeated_dl_facch_active = false;
 		return;
+	}
 
 	/* Threshold disabled (always on) */
 	if (lchan->repeated_acch_capability.rxqual == 0) {
