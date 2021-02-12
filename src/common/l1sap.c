@@ -1046,7 +1046,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan
 	msg = pp.oph.msg;
 	sapi = (msg->data[0] >> 2) & 0x07;
 
-	/* Only LAPDm frames for SAPI may become a repetition
+	/* Only LAPDm frames for SAPI 0 may become a repetition
 	 * candidate. */
 	if (sapi == 0)
 		lchan->rep_sacch = msgb_copy(msg, "rep_sacch");
