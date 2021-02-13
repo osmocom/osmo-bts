@@ -1860,7 +1860,8 @@ static void fill_trx_power_params(struct gsm_bts_trx *trx,
 		LOGP(DL1C, LOGL_NOTICE, "Assuming 1002 for sysmoBTS "
 			"Model number %u\n", fl1h->hw_info.model_nr);
 		/* fall-through */
-	case 1002:
+	case 1002:	/* sysmoBTS 1002 */
+	case 1003:	/* sysmoBTS 1002 with GPS and PoE */
 		set_power_param(&trx->power_params, 23, 0);
 	}
 }

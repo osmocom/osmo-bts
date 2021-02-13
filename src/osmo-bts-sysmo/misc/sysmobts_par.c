@@ -341,6 +341,8 @@ char *sysmobts_model(int bts_type, int trx_num)
 		case 0xffff:
 		case 1002:
 			return "sysmoBTS 1002";
+		case 1003:
+			return "sysmoBTS 1002+GPS+PoE";
 		case 2050:
 			switch(trx_num) {
 			case 0:

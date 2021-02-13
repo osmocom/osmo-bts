@@ -32,6 +32,7 @@ struct sysmobts_eeprom {		/* offset */
 
 enum sysmobts_model_number {
 	MODEL_SYSMOBTS_1002	= 1002,
+	MODEL_SYSMOBTS_1003	= 1003,
 	MODEL_SYSMOBTS_1020	= 1020,
 	MODEL_SYSMOBTS_2050	= 2050,
 };
