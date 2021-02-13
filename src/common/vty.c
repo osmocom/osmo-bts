@@ -1826,7 +1826,7 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	"logical channel commands\n"	\
 	"logical channel number\n"
 
-DEFUN(cfg_trx_gsmtap_sapi_all, cfg_trx_gsmtap_sapi_all_cmd,
+DEFUN(cfg_bts_gsmtap_sapi_all, cfg_bts_gsmtap_sapi_all_cmd,
 	"gsmtap-sapi (enable-all|disable-all)",
 	"Enable/disable sending of UL/DL messages over GSMTAP\n"
 	"Enable all kinds of messages (all SAPI)\n"
@@ -1843,7 +1843,7 @@ DEFUN(cfg_trx_gsmtap_sapi_all, cfg_trx_gsmtap_sapi_all_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
+DEFUN(cfg_bts_gsmtap_sapi, cfg_bts_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
 	int sapi;
@@ -1859,7 +1859,7 @@ DEFUN(cfg_trx_gsmtap_sapi, cfg_trx_gsmtap_sapi_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_no_gsmtap_sapi, cfg_trx_no_gsmtap_sapi_cmd,
+DEFUN(cfg_trx_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
 	int sapi;
@@ -2165,17 +2165,17 @@ DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 
 int bts_vty_init(void *ctx)
 {
-	cfg_trx_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
+	cfg_bts_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
-	cfg_trx_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
+	cfg_bts_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"Enable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
-	cfg_trx_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
+	cfg_bts_no_gsmtap_sapi_cmd.string = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						"no gsmtap-sapi (",
 						"|",")", VTY_DO_LOWER);
-	cfg_trx_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
+	cfg_bts_no_gsmtap_sapi_cmd.doc = vty_cmd_string_from_valstr(ctx, gsmtap_sapi_names,
 						NO_STR "Disable sending of UL/DL messages over GSMTAP\n",
 						"\n", "", 0);
 
@@ -2233,9 +2233,9 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_smscb_tgt_qlen_cmd);
 	install_element(BTS_NODE, &cfg_bts_smscb_qhyst_cmd);
 
-	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_all_cmd);
-	install_element(BTS_NODE, &cfg_trx_gsmtap_sapi_cmd);
-	install_element(BTS_NODE, &cfg_trx_no_gsmtap_sapi_cmd);
+	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_all_cmd);
+	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_gsmtap_sapi_cmd);
 
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
