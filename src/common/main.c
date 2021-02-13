@@ -321,12 +321,12 @@ int bts_main(int argc, char **argv)
 	}
 
         if (gsmtap_ip) {
-		gsmtap = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
-		if (!gsmtap) {
+		g_bts->gsmtap.inst = gsmtap_source_init(gsmtap_ip, GSMTAP_UDP_PORT, 1);
+		if (g_bts->gsmtap.inst == NULL) {
 			fprintf(stderr, "Failed during gsmtap_init()\n");
 			exit(1);
 		}
-		gsmtap_source_add_sink(gsmtap);
+		gsmtap_source_add_sink(g_bts->gsmtap.inst);
 	}
 
 	if (bts_init(g_bts) < 0) {

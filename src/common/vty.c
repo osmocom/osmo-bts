@@ -316,7 +316,7 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 			bts->agch_queue.high_level, VTY_NEWLINE);
 
 	for (i = 0; i < sizeof(uint32_t) * 8; i++) {
-		if (gsmtap_sapi_mask & ((uint32_t) 1 << i)) {
+		if (bts->gsmtap.sapi_mask & ((uint32_t) 1 << i)) {
 			sapi_buf = get_value_string_or_null(gsmtap_sapi_names, i);
 			if (sapi_buf == NULL)
 				continue;
@@ -324,7 +324,7 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 			vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 		}
 	}
-	if (gsmtap_sapi_acch) {
+	if (bts->gsmtap.sapi_acch) {
 		sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
 		vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 	}
@@ -1832,12 +1832,14 @@ DEFUN(cfg_bts_gsmtap_sapi_all, cfg_bts_gsmtap_sapi_all_cmd,
 	"Enable all kinds of messages (all SAPI)\n"
 	"Disable all kinds of messages (all SAPI)\n")
 {
+	struct gsm_bts *bts = vty->index;
+
 	if (argv[0][0] == 'e') {
-		gsmtap_sapi_mask = UINT32_MAX;
-		gsmtap_sapi_acch = 1;
+		bts->gsmtap.sapi_mask = UINT32_MAX;
+		bts->gsmtap.sapi_acch = 1;
 	} else {
-		gsmtap_sapi_mask = 0x00;
-		gsmtap_sapi_acch = 0;
+		bts->gsmtap.sapi_mask = 0x00;
+		bts->gsmtap.sapi_acch = 0;
 	}
 
 	return CMD_SUCCESS;
@@ -1846,15 +1848,16 @@ DEFUN(cfg_bts_gsmtap_sapi_all, cfg_bts_gsmtap_sapi_all_cmd,
 DEFUN(cfg_bts_gsmtap_sapi, cfg_bts_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
+	struct gsm_bts *bts = vty->index;
 	int sapi;
 
 	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
 	OSMO_ASSERT(sapi >= 0);
 
 	if (sapi == GSMTAP_CHANNEL_ACCH)
-		gsmtap_sapi_acch = 1;
+		bts->gsmtap.sapi_acch = 1;
 	else
-		gsmtap_sapi_mask |= (1 << sapi);
+		bts->gsmtap.sapi_mask |= (1 << sapi);
 
 	return CMD_SUCCESS;
 }
@@ -1862,15 +1865,16 @@ DEFUN(cfg_bts_gsmtap_sapi, cfg_bts_gsmtap_sapi_cmd,
 DEFUN(cfg_trx_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
+	struct gsm_bts *bts = vty->index;
 	int sapi;
 
 	sapi = get_string_value(gsmtap_sapi_names, argv[0]);
 	OSMO_ASSERT(sapi >= 0);
 
 	if (sapi == GSMTAP_CHANNEL_ACCH)
-		gsmtap_sapi_acch = 0;
+		bts->gsmtap.sapi_acch = 0;
 	else
-		gsmtap_sapi_mask &= ~(1 << sapi);
+		bts->gsmtap.sapi_mask &= ~(1 << sapi);
 
 	return CMD_SUCCESS;
 }

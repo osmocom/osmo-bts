@@ -346,10 +346,6 @@ static enum l1sap_common_sapi get_common_sapi_by_trx_prim(struct gsm_bts_trx *tr
 	}
 }
 
-struct gsmtap_inst *gsmtap = NULL;
-uint32_t gsmtap_sapi_mask = 0;
-uint8_t gsmtap_sapi_acch = 0;
-
 /* send primitive as gsmtap */
 static int gsmtap_ph_data(const struct osmo_phsap_prim *l1sap,
 			  uint8_t *chan_type, uint8_t *ss, uint32_t fn,
@@ -491,7 +487,8 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	int8_t signal_dbm;
 	int rc;
 
-	if (!gsmtap)
+	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
+	if (!inst)
 		return 0;
 
 	switch (OSMO_PRIM_HDR(&l1sap->oph)) {
@@ -524,10 +521,10 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	if (len == 0)
 		return 0;
 	if ((chan_type & GSMTAP_CHANNEL_ACCH)) {
-		if (!gsmtap_sapi_acch)
+		if (!trx->bts->gsmtap.sapi_acch)
 			return 0;
 	} else {
-		if (!((1 << (chan_type & 31)) & gsmtap_sapi_mask))
+		if (!((1 << (chan_type & 31)) & trx->bts->gsmtap.sapi_mask))
 			return 0;
 	}
 
@@ -536,7 +533,7 @@ static int to_gsmtap(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 	if (is_fill_frame(chan_type, data, len))
 		return 0;
 
-	gsmtap_send(gsmtap, trx->arfcn | uplink, tn, chan_type, ss, fn,
+	gsmtap_send(inst, trx->arfcn | uplink, tn, chan_type, ss, fn,
 		    signal_dbm, 0 /* TODO: SNR */, data, len);
 
 	return 0;

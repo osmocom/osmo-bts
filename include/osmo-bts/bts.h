@@ -343,6 +343,13 @@ struct gsm_bts {
 		char *sock_path;
 	} pcu;
 
+	/* GSMTAP Um logging (disabled by default) */
+	struct {
+		struct gsmtap_inst *inst;
+		uint32_t sapi_mask;
+		uint8_t sapi_acch;
+	} gsmtap;
+
 	struct osmo_fsm_inst *shutdown_fi; /* FSM instance to manage shutdown procedure during process exit */
 	struct osmo_tdef *T_defs; /* Timer defines */
 
