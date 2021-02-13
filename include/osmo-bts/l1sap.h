@@ -127,7 +127,6 @@ enum l1sap_common_sapi {
 extern uint16_t l1sap_log_ctx_sapi;
 extern const struct value_string l1sap_common_sapi_names[];
 
-extern const struct value_string gsmtap_sapi_names[];
 extern struct gsmtap_inst *gsmtap;
 extern uint32_t gsmtap_sapi_mask;
 extern uint8_t gsmtap_sapi_acch;

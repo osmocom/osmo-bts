@@ -71,6 +71,23 @@
 
 int g_vty_port_num = OSMO_VTY_PORT_BTS;
 
+static const struct value_string gsmtap_sapi_names[] = {
+	{ GSMTAP_CHANNEL_BCCH,	"BCCH" },
+	{ GSMTAP_CHANNEL_CCCH,	"CCCH" },
+	{ GSMTAP_CHANNEL_RACH,	"RACH" },
+	{ GSMTAP_CHANNEL_AGCH,	"AGCH" },
+	{ GSMTAP_CHANNEL_PCH,	"PCH" },
+	{ GSMTAP_CHANNEL_SDCCH,	"SDCCH" },
+	{ GSMTAP_CHANNEL_TCH_F,	"TCH/F" },
+	{ GSMTAP_CHANNEL_TCH_H,	"TCH/H" },
+	{ GSMTAP_CHANNEL_PACCH,	"PACCH" },
+	{ GSMTAP_CHANNEL_PDCH,	"PDTCH" },
+	{ GSMTAP_CHANNEL_PTCCH,	"PTCCH" },
+	{ GSMTAP_CHANNEL_CBCH51,"CBCH" },
+	{ GSMTAP_CHANNEL_ACCH,  "SACCH" },
+	{ 0, NULL }
+};
+
 struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_nr)
 {
 	struct phy_link *plink = phy_link_by_num(phy_nr);

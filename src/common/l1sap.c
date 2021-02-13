@@ -350,23 +350,6 @@ struct gsmtap_inst *gsmtap = NULL;
 uint32_t gsmtap_sapi_mask = 0;
 uint8_t gsmtap_sapi_acch = 0;
 
-const struct value_string gsmtap_sapi_names[] = {
-	{ GSMTAP_CHANNEL_BCCH,	"BCCH" },
-	{ GSMTAP_CHANNEL_CCCH,	"CCCH" },
-	{ GSMTAP_CHANNEL_RACH,	"RACH" },
-	{ GSMTAP_CHANNEL_AGCH,	"AGCH" },
-	{ GSMTAP_CHANNEL_PCH,	"PCH" },
-	{ GSMTAP_CHANNEL_SDCCH,	"SDCCH" },
-	{ GSMTAP_CHANNEL_TCH_F,	"TCH/F" },
-	{ GSMTAP_CHANNEL_TCH_H,	"TCH/H" },
-	{ GSMTAP_CHANNEL_PACCH,	"PACCH" },
-	{ GSMTAP_CHANNEL_PDCH,	"PDTCH" },
-	{ GSMTAP_CHANNEL_PTCCH,	"PTCCH" },
-	{ GSMTAP_CHANNEL_CBCH51,"CBCH" },
-	{ GSMTAP_CHANNEL_ACCH,  "SACCH" },
-	{ 0, NULL }
-};
-
 /* send primitive as gsmtap */
 static int gsmtap_ph_data(const struct osmo_phsap_prim *l1sap,
 			  uint8_t *chan_type, uint8_t *ss, uint32_t fn,
