@@ -181,15 +181,15 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'r':
 			rt_prio = atoi(optarg);
-			fprintf(stderr, "Parameter -r is deprecated, use VTY cpu-sched "
-				"node setting 'policy rr %d' instead\n", rt_prio);
+			fprintf(stderr, "Command line argument '-r' is deprecated, use VTY "
+				"cpu-sched node setting 'policy rr %d' instead.\n", rt_prio);
 			break;
 		case 'i':
 			gsmtap_ip = optarg;
 			break;
 		case 't':
-			fprintf(stderr, "Parameter -t is deprecated and does nothing, "
-					"TRX num is calculated from VTY\n");
+			fprintf(stderr, "Command line argument '-t' is deprecated and does nothing, "
+				"TRX number is calculated from the VTY automatically.\n");
 			break;
 		case '?':
 		case 1:
