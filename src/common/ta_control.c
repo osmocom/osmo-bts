@@ -26,8 +26,8 @@
 #define TOA256_9OPERCENT	230
 
 /* rqd_ta value range */
-#define TOA_MIN 0
-#define TOA_MAX 63
+#define TA_MIN 0
+#define TA_MAX 63
 
 void lchan_ms_ta_ctrl(struct gsm_lchan *lchan)
 {
@@ -38,12 +38,12 @@ void lchan_ms_ta_ctrl(struct gsm_lchan *lchan)
 	if (lchan->meas.num_ul_meas < 4)
 		return;
 
-	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > TOA_MIN) {
+	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > TA_MIN) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 			  "TOA is too early (%d), now lowering TA from %d to %d\n",
 			  toa256, lchan->rqd_ta, lchan->rqd_ta - 1);
 		lchan->rqd_ta--;
-	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < TOA_MAX) {
+	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < TA_MAX) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 			  "TOA is too late (%d), now raising TA from %d to %d\n",
 			  toa256, lchan->rqd_ta, lchan->rqd_ta + 1);
