@@ -1138,10 +1138,16 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				p[0] |= 0x40; /* See also: 3GPP TS 44.004, section 7.1 */
 			p[1] = lchan->rqd_ta;
 			le = &lchan->lapdm_ch.lapdm_acch;
-			if (lchan->repeated_acch_capability.dl_sacch)
+			if (lchan->repeated_acch_capability.dl_sacch) {
+				/* Check if MS requests SACCH repetition and update state accordingly */
+				if (lchan->meas.l1_info.srr_sro)
+					lchan->repeated_dl_sacch_active = true;
+				else
+					lchan->repeated_dl_sacch_active = false;
 				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le);
-			else
+			} else {
 				pp_msg = lapdm_phsap_dequeue_msg(le);
+			}
 		} else {
 			if (lchan->ts->trx->bts->dtxd)
 				dtxd_facch = true;

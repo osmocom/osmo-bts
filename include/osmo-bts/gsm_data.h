@@ -406,6 +406,7 @@ struct gsm_lchan {
 	struct abis_rsl_osmo_rep_acch_cap repeated_acch_capability;
 	bool repeated_dl_facch_active;
 	bool repeated_ul_sacch_active;
+	bool repeated_dl_sacch_active;
 
 	/* Message buffer to store DL-SACCH repeation candidate */
 	struct msgb *rep_sacch;
