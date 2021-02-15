@@ -1240,7 +1240,7 @@ DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-t
 
 /* TODO: generalize and move indention handling to libosmocore */
 #define cfg_out(vty, fmt, args...) \
-	vty_out(vty, "%*s" fmt, indent, "", ##args);
+	vty_out(vty, "%*s" fmt, indent, "", ##args)
 
 static void dump_dpc_meas_params(struct vty *vty, const unsigned int indent,
 				 const struct gsm_power_ctrl_meas_params *mp,
