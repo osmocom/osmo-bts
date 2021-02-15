@@ -318,9 +318,12 @@ static uint8_t modulus_by_lchan(struct gsm_lchan *lchan)
 
 /* receive a L1 uplink measurement from L1 (this function is only used
  * internally, it is public to call it from unit-tests)  */
-int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
+int lchan_new_ul_meas(struct gsm_lchan *lchan,
+		      const struct bts_ul_meas *ulm,
+		      uint32_t fn)
 {
 	uint32_t fn_mod = fn % modulus_by_lchan(lchan);
+	struct bts_ul_meas *dest;
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
 		LOGPFN(DMEAS, LOGL_NOTICE, fn,
@@ -336,18 +339,18 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t
 		return -ENOSPC;
 	}
 
+	dest = &lchan->meas.uplink[lchan->meas.num_ul_meas++];
+	memcpy(dest, ulm, sizeof(*ulm));
+
 	/* We expect the lower layers to mark AMR SID_UPDATE frames already as such.
 	 * In this function, we only deal with the common logic as per the TS 45.008 tables */
 	if (!ulm->is_sub)
-		ulm->is_sub = ts45008_83_is_sub(lchan, fn);
+		dest->is_sub = ts45008_83_is_sub(lchan, fn);
 
 	DEBUGPFN(DMEAS, fn, "%s adding measurement (ber10k=%u, ta_offs=%d, ci=%0.2f, is_sub=%u, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
 		 gsm_lchan_name(lchan), ulm->ber10k, ulm->ta_offs_256bits,
-		 ulm->c_i, ulm->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
+		 ulm->c_i, dest->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
 		 fn_mod);
-
-	memcpy(&lchan->meas.uplink[lchan->meas.num_ul_meas++], ulm,
-		sizeof(*ulm));
 
 	lchan->meas.last_fn = fn;
 
@@ -757,7 +760,9 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
  * l1sap.c every time a measurement indication is received. It collects the
  * measurement samples and automatically detects the end of the measurement
  * interval. */
-int lchan_meas_process_measurement(struct gsm_lchan *lchan, struct bts_ul_meas *ulm, uint32_t fn)
+int lchan_meas_process_measurement(struct gsm_lchan *lchan,
+				   const struct bts_ul_meas *ulm,
+				   uint32_t fn)
 {
 	lchan_new_ul_meas(lchan, ulm, fn);
 	return lchan_meas_check_compute(lchan, fn);

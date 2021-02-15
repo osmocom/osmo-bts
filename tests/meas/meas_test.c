@@ -89,7 +89,7 @@ static void test_meas_compute(const struct meas_testcase *mtc)
 
 	/* feed uplink measurements into the code */
 	for (i = 0; i < mtc->ulm_count; i++) {
-		lchan_new_ul_meas(lchan, (struct bts_ul_meas *) &mtc->ulm[i], fn);
+		lchan_new_ul_meas(lchan, &mtc->ulm[i], fn);
 		fn += 1;
 	}
 
