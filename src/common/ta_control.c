@@ -33,11 +33,6 @@ void lchan_ms_ta_ctrl(struct gsm_lchan *lchan)
 {
 	int16_t toa256 = lchan->meas.ms_toa256;
 
-	/* Do not perform any computation when the amount of measurement
-	 * results is too little. */
-	if (lchan->meas.num_ul_meas < 4)
-		return;
-
 	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > TA_MIN) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 			  "TOA is too early (%d), now lowering TA from %d to %d\n",
