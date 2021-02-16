@@ -33,6 +33,7 @@
 #include <osmocom/gsm/l1sap.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/rsl.h>
+#include <osmocom/gsm/protocol/gsm_44_004.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
@@ -979,7 +980,7 @@ void repeated_dl_facch_active_decision(struct gsm_lchan *lchan, const uint8_t *l
 	/* When the MS sets the SRR bit in the UL-SACCH L1 header
 	 * (repeated SACCH requested) then it makes sense to enable
 	 * FACCH repetition too. */
-	if ((lchan->meas.l1_info[0] >> 1) & 1) {
+	if (lchan->meas.l1_info.srr_sro) {
 		lchan->repeated_dl_facch_active = true;
 		return;
 	}
@@ -1028,7 +1029,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan
 	 * SACCH repetition. */
 
 	if (lchan->rep_sacch) {
-		if (((lchan->meas.l1_info[0] >> 1) & 1) == 0) {
+		if (lchan->meas.l1_info.srr_sro == 0) {
 			/* Toss previous repetition candidate */
 			msgb_free(lchan->rep_sacch);
 			lchan->rep_sacch = NULL;
@@ -1457,6 +1458,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint32_t fn;
 	int8_t rssi;
 	enum osmo_ph_pres_info_type pr_info = data_ind->pdch_presence_info;
+	struct gsm_sacch_l1_hdr *l1_hdr;
 
 	rssi = data_ind->rssi;
 	chan_nr = data_ind->chan_nr;
@@ -1557,10 +1559,11 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		 * fields on the Um interface is different from the
 		 * order of fields in RSL. See 3GPP TS 44.004 (section 7.2)
 		 * vs. 3GPP TS 48.058 (section 9.3.10). */
-		lchan->meas.l1_info[0] = data[0] << 3;
-		lchan->meas.l1_info[0] |= ((data[0] >> 5) & 1) << 2; /* FPC/EPC */
-		lchan->meas.l1_info[0] |= ((data[0] >> 6) & 1) << 1; /* SRR */
-		lchan->meas.l1_info[1] = data[1];
+		l1_hdr = (struct gsm_sacch_l1_hdr*)data;
+		lchan->meas.l1_info.ms_pwr = l1_hdr->ms_pwr;
+		lchan->meas.l1_info.fpc_epc = l1_hdr->fpc_epc;
+		lchan->meas.l1_info.srr_sro = l1_hdr->srr_sro;
+		lchan->meas.l1_info.ta = l1_hdr->ta;
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
 
 		lchan_ms_pwr_ctrl(lchan, data[0] & 0x1f, data_ind->rssi);

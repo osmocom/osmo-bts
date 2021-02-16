@@ -323,7 +323,7 @@ struct gsm_lchan {
 		uint8_t num_ul_meas;
 		struct bts_ul_meas uplink[MAX_NUM_UL_MEAS];
 		/* last L1 header from the MS */
-		uint8_t l1_info[2];
+	        struct rsl_l1_info l1_info;
 		struct gsm_meas_rep_unidir ul_res;
 		int16_t ms_toa256;
 		/* Frame number of the last measurement indication receceived */
@@ -410,11 +410,6 @@ struct gsm_lchan {
 	/* Message buffer to store DL-SACCH repeation candidate */
 	struct msgb *rep_sacch;
 };
-
-static inline uint8_t lchan_get_ta(const struct gsm_lchan *lchan)
-{
-	return lchan->meas.l1_info[1];
-}
 
 extern const struct value_string lchan_ciph_state_names[];
 static inline const char *lchan_ciph_state_name(uint8_t state) {

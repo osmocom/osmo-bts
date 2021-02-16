@@ -3202,8 +3202,8 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 	     lchan->meas.ul_res.sub.rx_lev,
 	     lchan->meas.ul_res.full.rx_qual,
 	     lchan->meas.ul_res.sub.rx_qual,
-	     lchan->meas.l1_info[0],
-	     lchan->meas.l1_info[1], l3_len, ms_to2rsl(lchan, le) - MEAS_MAX_TIMING_ADVANCE);
+	     lchan->meas.l1_info.ms_pwr,
+	     lchan->meas.l1_info.ta, l3_len, ms_to2rsl(lchan, le) - MEAS_MAX_TIMING_ADVANCE);
 
 	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
 	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res,
@@ -3222,7 +3222,7 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 			 * to know the total propagation time between MS and BTS, we need to add
 			 * the actual TA value applied by the MS plus the respective toa256 value in
 			 * 1/256 symbol periods. */
-			int16_t ta256 = lchan_get_ta(lchan) * 256;
+			int16_t ta256 = lchan->meas.l1_info.ta * 256;
 			smi->toa256_mean = htons(ta256 + lchan->meas.ms_toa256);
 			smi->toa256_min = htons(ta256 + lchan->meas.ext.toa256_min);
 			smi->toa256_max = htons(ta256 + lchan->meas.ext.toa256_max);
@@ -3234,7 +3234,7 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 	}
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power_ctrl.current / 2);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
-		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, 2, lchan->meas.l1_info);
+		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, sizeof(lchan->meas.l1_info), (uint8_t*)&lchan->meas.l1_info);
 		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
 	}
 

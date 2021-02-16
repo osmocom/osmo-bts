@@ -329,7 +329,7 @@ static int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t f
 	DEBUGPFN(DMEAS, fn, "RX L1 frame %s chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
 		"ber=%.2f%% (%d/%d bits) L1_ta=%d rqd_ta=%d toa=%.2f\n",
 		gsm_lchan_name(lchan), chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max),
-		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info[1], lchan->rqd_ta, toa);
+		rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info.ta, lchan->rqd_ta, toa);
 
 	l1if_fill_meas_res(&l1sap, chan_nr, lchan->rqd_ta + toa, ber, rssi, fn);
 
