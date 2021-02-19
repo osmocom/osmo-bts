@@ -525,7 +525,7 @@ int main(int argc, char **argv)
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
 	osmo_stderr_target->categories[DLOOP].loglevel = LOGL_DEBUG;
 	osmo_stderr_target->categories[DL1C].loglevel = LOGL_DEBUG;
-	log_set_print_filename(osmo_stderr_target, 0);
+	log_set_print_filename2(osmo_stderr_target, LOG_FILENAME_NONE);
 	log_set_use_color(osmo_stderr_target, 0);
 	log_set_print_category(osmo_stderr_target, 0);
 	log_set_print_category_hex(osmo_stderr_target, 0);
