@@ -527,6 +527,8 @@ int main(int argc, char **argv)
 	osmo_stderr_target->categories[DL1C].loglevel = LOGL_DEBUG;
 	log_set_print_filename(osmo_stderr_target, 0);
 	log_set_use_color(osmo_stderr_target, 0);
+	log_set_print_category(osmo_stderr_target, 0);
+	log_set_print_category_hex(osmo_stderr_target, 0);
 
 #define exec_test(test) \
 	exec_power_test(test, ARRAY_SIZE(test), #test)
