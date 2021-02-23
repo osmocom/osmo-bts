@@ -1,3 +1,475 @@
+osmo-bts (1.3.0) unstable; urgency=medium
+
+  [ Michael McTernan ]
+  * measurement: use signed integer for division of ta256b_sum
+
+  [ Vadim Yanitskiy ]
+  * common/vty.c: get rid of generic exit / end commands
+  * common/abis.c: make use of RSL TEI from OML IPA RSL Connect
+  * L1SAP: use LOGL_DEBUG for logging from rach_pass_filter()
+  * osmo-bts-sysmo/Makefile.am: fix: do not overwrite bin_PROGRAMS
+  * vty: fix left shift by 31 cannot be represented in type 'int'
+  * common/sysinfo: reduce criticality of a logging message
+  * osmo-bts-virtual: fix wrong endianness in gsmtap_hdr_stringify()
+  * osmo-bts-virtual: do not print redundant info in tx_to_virt_um()
+  * osmo-bts-virtual: do not log GSMTAP message sending failure twice
+  * l1sap: fix gsmtap_ph_rach(): properly pack 8-bit and 11-bit RA
+  * osmo-bts-{sysmo,oc2g,lc15}: fix segfault on 'dsp-trace-flag'
+  * osmo-bts-trx/scheduler: remove a left-over from UL TCH handlers
+  * oml: fix oml_mo_tx_sw_act_rep(): do not allocate FOM header twice
+  * fix typo in osmo_bts_variant_names: s/omso/osmo/g
+  * doc/manuals: fix typo in interfaces.adoc: s/Omsocom/Osmocom/g
+  * osmo-bts-omldummy: print a brief usage statement if argc < 3
+  * osmo-bts-omldummy: make number of transceivers configurable
+  * vty: get rid of unused ournode_{exit,end}_cmd declarations
+  * vty: cosmetic: make an error message more informative
+  * vty: use gsm48_chan_mode_name() from libosmocore
+  * gsm_data_shared: drop unused supports_egprs_11bit_rach
+  * gsm_data_shared: drop unused enum bts_gprs_mode
+  * gsm_data_shared: drop unused channel request reason definitions
+  * gsm_data_shared: get rid of unused HARDCODED_{ARFCN,BSIC}
+  * gsm_data_shared: get rid of unused HARDCODED_BTS{0,1,2}_TS
+  * gsm_data_shared: get rid of unused enum gsm_hooks
+  * gsm_data_shared: drop declaration of non-existing gsm_parse_reg()
+  * gsm_data_shared: drop unused A38_XOR_{MIN,MAX,COMP128}_KEY_LEN
+  * gsm_data_shared: drop unused MAX_EARFCN_LIST
+  * gsm_data_shared: drop unused LCHAN_SAPI_{UNUSED,MS,NET,REL}
+  * gsm_data_shared: drop unused struct bts_codec_conf
+  * gsm_data_shared: drop meaningless comments
+  * gsm_data_shared: drop unused sacch_deact from struct gsm_lchan
+  * gsm_data_shared: drop forward declaration of struct vty
+  * gsm_data_shared: drop unused *nmh from struct gsm_bts
+  * gsm_data_shared: drop unused dtxu from struct gsm_bts
+  * gsm_data_shared: drop unused ctrl_ack_type_use_block & net_ctrl_ord
+  * gsm_data_shared: drop unused rach_b_thresh & rach_ldavg_slots
+  * gsm_data_shared: drop force_combined_si & bcch_change_mark
+  * scheduler: drop non-existing extern declarations
+  * vty: fix bts_dump_vty(): properly print OML stream ID (TEI)
+  * rsl: refactor handling of RSL_IE_MR_CONFIG
+  * osmo-bts-trx: prettify Makefile.am: make it git friendly
+  * osmo-bts-trx: fix: use noinst_HEADERS instead of EXTRA_DIST
+  * osmo-bts-virtual: cosmetic: use LID_{SACCH,DEDIC} macros
+  * doc/examples: remove virtual/openbsc-virtual.cfg
+  * common/scheduler: fix unreachable code in trx_sched_set_lchan()
+  * common/scheduler: use boolean for channel activation state
+  * osmo-bts-trx/trx_if: fix memleak in trx_ctrl_cmd_cb()
+  * osmo-bts-trx/trx_if: cosmetic: s/ocommand/command/
+  * oml: fix TL16V length calculation in add_bts_feat()
+  * osmo-bts-trx: indicate BTS_FEAT_EGPRS support to BSC
+  * gsm_data_shared: use bitvec API to allocate the feature vector
+  * Do not mix public and private BTS features, use libosmocore's API
+  * osmo-bts-trx/scheduler: properly handle NOPE.ind during handover
+  * osmo-bts-trx: use osmo_store32be() in trx_if_send_burst()
+  * osmo-bts-trx: move logical channel handlers to separate files
+  * osmo-bts-trx: introduce and use struct trx_dl_burst_req
+  * osmo-bts-trx: store pointer to gsm_lchan in l1sched_chan_state
+  * osmo-bts-trx: include BS Power reduction in Downlink bursts
+  * A-bis/RSL: refactor handling of BS Power IE (power reduction)
+  * A-bis/OML: fix logging: do not print A-bis MO name twice
+  * Use libosmocore's TDMA frame number API (constatns & arithmetic)
+  * osmo-bts-trx: fix trx_sched_fn(): properly advance frame number
+  * osmo-bts-trx/scheduler: make mark trx_sched_fn() return void
+  * vty: fix missing separator in help for power ramp commands
+  * osmo-bts-trx/scheduler: get rid of _sched_fcch_burst
+  * A-bis/OML: handle hopping params in Set Channel Attributes
+  * osmo-bts-trx/scheduler: cosmetic: move trx_if_powered() check
+  * osmo-bts-trx/scheduler: get rid of unused 'meas' in l1sched_chan_state
+  * l1sap: do not print redundant info in l1sap_chan_act()
+  * Constify the 'trx' argument of trx_get_hlayer1() everywhere
+  * common: constify the argument of trx_ms_pwr_ctrl_is_osmo()
+  * pcu_sock: constify the argument of ts_should_be_pdch()
+  * osmo-bts-trx/scheduler: fix CLCK.ind handling during ramping down
+  * osmo-bts-trx/scheduler: refactor dummy burst scheduling
+  * oml: fix ARFCN range check in oml_rx_set_radio_attr()
+  * oml: fix ARFCN range check in oml_rx_set_bts_attr()
+  * pcu_sock: use a 'switch' statement in ts_should_be_pdch()
+  * pcu_sock: warn about maximum transceiver number constraints
+  * pcu_sock: separate trx / ts filling from pcu_tx_info_ind()
+  * pcu_sock: use LOGPTRX() in info_ind_fill_trx()
+  * osmo-bts-trx/scheduler: implement baseband frequency hopping
+  * osmo-bts-trx: indicate support of BTS_FEAT_HOPPING
+  * l1sap: radio_link_timeout(): clarify logging messages
+  * l1sap: radio_link_timeout(): use LOGPLCHAN() macro
+  * l1sap: radio_link_timeout(): bad_frame is a boolean
+  * rsl: constify the 'lchan' argument of rsl_tx_conn_fail()
+  * debian/control: change maintainer to the Osmocom team / mailing list
+  * osmo-bts-omldummy: enable BTS_FEAT_{CBCH,HOPPING} support
+  * vty: clarify documentation of '[no] gsmtap-sapi' command
+  * vty: add 'gsmtap-sapi (enable-all|disable-all)' command
+  * osmo-bts-trx/trx_provision_fsm: fix misleading comment in header
+  * osmo-bts-trx/trx_provision_fsm: cosmetic: switch is not a function
+  * osmo-bts-trx/l1_if: drop redundant logging message
+  * osmo-bts-trx: fix trx_init(): do not send OPSTART ACK blindly
+  * osmo-bts-trx/trx_provision_fsm: add missing default labels
+  * osmo-bts-trx: also print 'txtune-ack' in st_open_poweroff()
+  * struct gsm_bts_trx: remove unused per-TRX OML Link pointer
+  * struct gsm_bts_trx[_ts]: remove unused parsed NM attribute list
+  * gsm_data: rename hopping.{ma,ma_len} to hopping.arfcn_{list,num}
+  * pcuif_proto: version 10: add frequency hopping parameters
+  * osmo-bts-trx/scheduler: refactor UL burst measurement processing
+  * vty: fix bts_dump_vty_features(): properly check BTS model flags
+  * bts: cosmetic: make param 'net' of gsm_bts_num() const
+  * vty: cosmetic: use osmo_talloc_replace_string()
+  * tx_power: make trx/lchan struct pointers const where possible
+  * vty: make most struct pointers const in show/write commands
+  * osmo-bts-omldummy: fix: do not crash on OML connection drop/failure
+  * osmo-bts-omldummy: suppress 'Unimplemented bts_model_trx_deact_rf'
+  * vty: fix 'show bts' command: print proper BTS variant
+  * vty: fix 'show bts' command: BTS number is optional
+  * pcu_sock: cosmetic: use ARRAY_SIZE() in pcu_tx_info_ind()
+  * pcu_sock: cosmetic: make *nsvc a scoped and const variable
+  * pcu_sock: use llist_for_each_entry() in pcu_sock_close()
+  * pcu_sock: fix pcu_sock_close(): deactivate dynamic timeslots too
+  * oml: fix handling of NSVC local port in oml_ipa_mo_set_attr_nsvc()
+  * pcu_sock: fix {local,remote}_port byte ordering in pcu_tx_info_ind()
+  * pcu_sock: support handling multiple BTS instances in pcu_rx()
+  * gsm_data: check in and use enum lchan_rel_act_kind
+  * tests/power_test: also match stderr, not only stdout
+  * tests/power_test: move bts/trx/ts/lchan init to init_test()
+  * tests/power_test: do not assert in apply_power_test()
+  * power_control: clarify argument names of lchan_ms_pwr_ctrl()
+  * power_control: implement EWMA based Uplink power filtering
+  * fix pcu_if_signal_cb(): do not send INFO.ind if PCU is not connected
+  * scheduler: ensure PRIM_OP_REQUEST when adding to the queue
+  * scheduler: _sched_dequeue_prim(): make 'l1sap' a scoped pointer
+  * scheduler: use RSL_CHAN_NR_MASK in trx_sched_set_lchan()
+  * measurement: remove redundant 'break' statements in modulus_by_lchan()
+  * measurement: use LOGPLCHAN() macro in lchan_meas_check_compute()
+  * power_test: fix incorrect line termination in init_test()
+  * power_control: do nothing if 'rx-current' equals 'rx-target'
+  * power_control: tolerate small deviations from 'rx-target'
+  * scheduler: use RSL_CHAN_NR_MASK in trx_sched_set_cipher()
+  * scheduler: drop meaningless check in trx_sched_set_lchan()
+  * scheduler: drop redundant check in trx_sched_set_cipher()
+  * scheduler: get rid of useless TRX_CHAN_FLAG_PDCH
+  * scheduler: reduce nesting in trx_sched_set_lchan()
+  * scheduler: treat subsequent lchan (de)activation as error
+  * scheduler: join conditions in trx_sched_set_lchan()
+  * scheduler: remove pending Tx prims on lchan deactivation
+  * power_control: fix default EWMA smoothing coefficient (80% -> 50%)
+  * main: do not print deprecated '-r' / '--realtime' in help
+  * main: increase spacing between commands and description
+  * main: separate model-specific arguments in help
+  * main: add --vty-ref-mode, use vty_dump_xml_ref_mode()
+  * osmo-bts-trx/scheduler: fix comments related to FACCH/H and BFI
+  * main: register VTY commands before handle_options()
+  * main: move general options from bts_vty_init()
+  * vty: fix double '%' in description of some commands
+  * vty: fix missing / wrong documentation for some commands
+  * vty: call bts_model_vty_init() from bts_vty_init()
+  * fixup: vty: call bts_model_vty_init() from bts_vty_init()
+  * main: do not print asciiart to stdout, use stderr instead
+  * osmo-bts-lc15: use consistent name for containing directory
+  * doc/manuals: generate XML VTY reference at build-time
+  * doc/manuals: also generate VTY reference for osmo-bts-virtual
+  * doc/manuals: move osmobts-vty-reference.xml to vty/
+  * osmo-bts-trx/scheduler: ensure no DL power attenuation on C0
+  * struct gsm_bts: move ul_power_{target,hysteresis} to ul_power_ctrl
+  * bts: rename MS_UL_PF_ALGO_{NONE,EWMA} to BTS_PF_ALGO_{NONE,EWMA}
+  * bts: generalize a struct for UL/DL power control parameters
+  * bts: add Downlink power control parameters
+  * l1sap: make sure that UL SACCH is always 23 octets long
+  * tests/power: rename s/power_test/ms_power_loop_test/
+  * power_control: generalize power control state structure
+  * power_control: lchan_ul_pf_ewma(): do not use lchan->meas.res_nr
+  * power_control: lchan_ms_pwr_ctrl(): use existing 'trx' pointer
+  * power_control: generalize and rename lchan_ul_pf_ewma()
+  * power_control: lchan_ms_pwr_ctrl(): make use of params/state pointers
+  * power_control: remove a logging statement and early return
+  * power_control: do not log averaged RSSI values as 'rx-current'
+  * power_control: derive calc_delta() from lchan_ms_pwr_ctrl()
+  * power_control: implement BS (Downlink) Power Control
+  * power_control: cosmetic: fix weird spacing
+  * power_control: clarify units in 'struct bts_power_ctrl_params'
+  * power_control: clarify units in 'struct lchan_power_ctrl_state'
+  * rsl: properly initialize MS/BS Power Control state
+  * power_control: make raise/lower step limitation configurable
+  * vty: resurrect per-lchan BS/MS Power Control information
+  * vty: fix dump_lchan_trx_ts(): dump dedicated channels only
+  * rsl: remove redundant boolean flag in rsl_rx_chan_activ()
+  * power_control: check-in new parameters and default values
+  * power_control: add VTY introspection commands for MS/BS params
+  * l1sap: fix: enable UL SACCH repetition if RxQual threshold is 0
+  * sysinfo: fix less-than-zero comparison of an unsigned value
+  * osmo-bts-trx: vty: clarify and improve some deprecation messages
+  * power_control: vty: re-use cfg_bts_ul_power_target()
+  * power_control: vty: deprecate 'uplink-power-control' commands
+  * power_control: handle MS/BS Power control params on A-bis/RSL
+  * vty: add a command to show GPRS related info
+  * power_control: migrate MS/BS control loops to the new params
+  * power_control: generalize measurement pre-processing state
+  * power_control: properly track the first initial state
+  * power_control: use more reasonable reduce step size
+  * power_control: rework handling of DL RxQual measurements
+  * power_control: BS power shall not be reduced on C0
+  * paging: refactor and optimize fill_paging_type_1()
+  * power_control: print current RxLev and lower/upper thresholds
+  * power_control: fix: properly print 'delta' applied to attenuation
+  * vty: fix error messages in lchan specific commands
+  * vty: add macro for 'bts <0-0> trx <0-0> ts <0-7> lchan <0-1>'
+  * vty: extend trx / lchan number range in BTS_T_T_L_CMD
+  * vty: make commands related to the loopback mode hidden
+  * vty: add expert commands for MS/BS power control
+  * power_control: add test for inc / red step size limitations
+  * l1sap: fix gsmtap_ph_{data,pdch,rach}(): use 'const'
+  * l1sap: include Uplink RSSI in GSMTAP packets
+  * power_control: clarify the meaning of 'delta' in logging messages
+  * pcu_sock: pcu_tx_si_all(): make 'si_types' const
+  * pcu_sock: pcu_tx_si_all(): cosmetic coding style change
+  * pcu_sock: pcu_tx_si_all(): fix returning ununitialized rc
+  * osmo-bts-trx/scheduler: use DMEAS in trx_sched_meas_avg()
+  * oml: cosmetic code style changes in rx_oml_ipa_rsl_connect()
+  * vty: register libosmocore's FSM introspection commands
+  * oml: avoid redundant ntohl() / htonl() conversion
+  * oml: make 'struct tlv_parsed' pointer const where possible
+  * oml: use regular TLVP_PRES() in rx_oml_ipa_rsl_connect()
+  * power_control: cosmetic: fix swapped {L,U}_RXQUAL_XX_P comments
+  * power_control: implement handling of P_Con_INTERVAL parameter
+  * oml: reuse the given msgb in oml_fom_ack_nack()
+  * oml: ensure that IPA RSL Connect ACK/NACK contains all IEs
+  * main: cosmetic: tweak deprecation warning messages
+  * GSMTAP: move 'gsmtap_sapi_names' from l1sap.c to vty.c
+  * GSMTAP: fix wrong naming of per-BTS SAPI commands
+  * GSMTAP: move 'struct gsmtap_inst' and masks to 'struct gsm_bts'
+  * ta_control: cosmetic: use correct naming for MIN/MAX constraints
+  * ta_control: make 'struct bts_ul_meas' parameters const
+  * ta_control: fix Timing Advance control for SDCCH channels
+
+  [ Harald Welte ]
+  * rsl.c: Fix compiler error on gcc-9.2.1
+  * virtual: Fix VTY commands to specify GSMTAP multicast groups
+  * l1sap: Use msgb_pull_l2() and unify l1sap_tch_ind + l1sap_ph_data_ind
+  * osmo-bts-virtual: implement GSMTAP_CHANNEL_VOICE
+  * osmo-bts-virtual: Add "virtual-um ttl <0-255>" VTY option
+  * osmo-bts-virtual: Fix "virtual-um net-device NETDEV"
+  * cosmetic: remove dead code from logging.c
+  * fix compilation with gcc-10
+  * osmo-bts-virtual: Avoid rejecting AMR in uplink
+  * virtual/scheduler: log unknown GSMTAP chan
+  * Ensure we include lchan name in all LAPDm log lines
+  * osmo-bts.spec.in: Use %config(noreplace) to retain current config file
+  * bts: Add VTY command to manually override Radio Link Timeout
+  * sysinfo: Only send SI13 if PCU is connected
+  * sysinfo: Don't broadcast SI4 GPRS INDICATOR if PCU is disconnected
+  * use osmo_fd_setup() everywhere
+  * remove dead oml_router code
+  * sysinfo.c: Fix SI4 GPRS patching which overwrote CBCH IE
+  * fix-up missed review comment in CBCH SI4 patching fix
+  * major README uppdate
+  * Use osmo_fd_*_{disable,enable}
+  * add support for sysmoBTS 1003 aka "1002 with GPS and PoE"
+
+  [ Philipp Maier ]
+  * ta_control: move timing advance code from osmo-bts-trx to common
+  * measurment: write irssi_full_sum variable correctly
+  * l1sap: merge MEAS IND into PRIM PH DATA / PRIM TCH
+  * Do not depend on pcu_direct flag when populating ph_data_ind
+  * osmo-bts-sysmo: merge measurement data and payload
+  * osmo-bts-trx: do not set rx-gain to 1 by default
+  * scheduler: always call Uplink burst handler on NOPE.ind
+  * logging: use only LOGL_NOTICE as defualt loglevel
+  * dtx: add detection of AMR DTX frames for osmo-bts-trx
+  * measurement: remove unecessary is_amr_sid_update parameter
+  * measurement: make measurements more debugable
+  * measurement: expect at least 1 SUB frame for AMR
+  * osmo-bts-trx/scheduler: fix measurement handling for SUB frames
+  * vty: add attributes to VTY commands indicating when they apply
+  * sched_lchan_tchh: initialize meas_avg with zeros
+  * main: add commandline option --vty-ref-xml
+  * cosmetic: add missing semicolon after OSMO_ASSERT()
+  * sched_lchan_tchf: count measurements for FACCH/F only once
+  * measurement: count all blocks as SUB for TCH/F in signalling mode
+  * measurement: fix expected number of measurements
+  * measurement.c: fix integer overflow problem
+  * rsl.adoc: add info about RSL_IE_OSMO_REP_ACCH_CAP
+  * l1sap: pre-initalize pointer with NULL to avoid gcc warning
+  * l1sap: add repeated downlink FACCH
+  * rsl.adoc: update documentation for RSL_IE_OSMO_REP_ACCH_CAP
+  * l1sap: also include SRR bit in RSL l1 info field.
+  * l1sap: add repeated downlink SACCH
+  * l1sap: add repeated uplink SACCH
+  * l1sap: acch_repetition fix hysthereis threshold table
+  * l1sap: use rxlev_full when no DTX was used
+  * pcu_sock: send SI1, SI3 and SI13 via PCUIF
+  * pcu_sock: fix uninitalized returncode value
+  * l1sap: fix repeated_dl_facch_active_decision()
+  * l1sap.c: be sure that FACCH repetition is turned off
+  * l1sap: be sure that UL-SACCH repetition is turned off
+  * l1sap: fix comment: sapi number is missing
+  * vty: dont put a colon after vty_out in cfg_out macro
+  * gsm_data: handle l1_info with structs
+
+  [ Pau Espin Pedrol ]
+  * l1_if: Fix strange formatting of Meas info logging
+  * l1sap: Change loglevel of Rx TCH.ind INFO->DEBUG
+  * bts-trx: trx_if.c: Fix some printf formats
+  * cosmetic: Fix some typos with codespell
+  * lc15: Fix returning values on void function
+  * lc15: Fix mismatching signature in callback provided
+  * oc2g: Fix returning values on void function
+  * oc2g: Fix mismatching signature in callback provided
+  * Use OSMO_FD_* instead of deprecated BSC_FD_*
+  * l1_utils.h: Avoid redefinition of global vars defined in l1_utils.c
+  * vty: Fix misleading define name
+  * tests/tx_power: Speed up test
+  * doc: Update vty reference xml file
+  * bts-trx: vty: Add 'nominal-tx-power' cmd
+  * bts-trx: phy_link: Improve logging fmt in phy_link_state_set()
+  * oml.c: Fix whitespace in log line
+  * oml.c: Log ADM STATE change locked/unlocked
+  * scheduler.c: Fix trailing whitespace
+  * pcu_sock: Change log about tx PCH confirm INFO->DEBUG
+  * bts-trx: Implement power ramping during BTS bring up
+  * bts-trx: Rename setpower TRXC functions to describe they use power attenuation
+  * bts-trx: Introduce helper func l1if_trx_set_nominal_power
+  * bts-trx: Use TRXC cmd NOMTXPOWER to retrieve nominal tx power from osmo-trx
+  * bts-trx: Re-apply tx power if nominal power is received after POWERON
+  * scheduler: Fix reading out of buffer during tx of dummy burst on PDCH TS with EGPRS enabled
+  * abis.c: Grab reference to e1inp_line_get if already created
+  * doc: Fix typos in bts-models.adoc
+  * scheduler: Improve logging about prim being out of range
+  * scheduler: Early return in _sched_dequeue_prim() and clarify FN cases
+  * scheduler: _sched_dequeue_prim(): Refactor goto paths
+  * scheduler: _sched_dequeue_prim(): Refactor found_msg goto path
+  * cosmetic: common/Makefile.am: split each source file in one line
+  * cosmetic: include/osmo-bts/Makefile.am: split each header file in one line
+  * Merge gsm_data_shared.h into gsm_data.h
+  * scheduler: Add rate_ctr informing about too low rts-advance
+  * scheduler: Add rate_ctr informing about Dl block not found
+  * handover_tests: Avoid redefining all bts_model stubs
+  * meas_tests: Avoid redefining all bts_model stubs
+  * tests/stubs.c: Add missing stub for bts_model_change_power
+  * cosmetic: {oc2g,lc15}bts_bty.c: Fix trailing whitespace
+  * Fix missing bts_model implementations in stubs.c and bts_model.c
+  * Introduce LOGPTRX macro and use it in tx_power.c
+  * power_ramp: Add support to get callback when ramping process completes
+  * bts-trx: Instruct user to set manually nominal-tx-power if NOMTXPOWER not supported
+  * tx_power: Log bypass param in power_ramp_start
+  * phy_link.h: Drop unimplemented function definition
+  * bts.c: Fix typo in log line and improve it
+  * abis.c: Use LOGPIL when logging signalling link down
+  * Introduce bts_shutdown FSM
+  * Implement tx power ramp down during BTS shutdown
+  * bts-trx: Split part of bts_model_trx_close() steps into bts_model_deact_rf
+  * bts_shutdown: First deact RF on all TRX, finally close them
+  * bts_model: Convert bts_model_trx_close() to return asynchronously
+  * bts_shutdown: Wait until all TRX are closed
+  * bts-virtual: Implement bts_model_trx_close
+  * bts-trx: Mark 'osmotrx power' VTY cmd as deprecated
+  * Fix shutdown in osmo-bts-{omldummy,virtual}
+  * bts-omldummy: Implement bts_model_trx_close
+  * bts-omldummy: Speed up shutdown (instantaneous ramp)
+  * tx_power: Support controlling BTS with nominal tx pwr < 0dBm
+  * bts-trx: Introduce rate counter for scheduler timerfd missed FNs
+  * bts_shutdown: Speed up shutdown if no TRX is operational
+  * pcu_sock: Avoid presenting TS from disabled TRX as available to PCU
+  * bts-trx: Implement ramp up/down during ADM state change
+  * gsm_data.h: Use enum type for NM state fields
+  * Move nm_state and Mo related code gsm_data.* => oml.*
+  * Move gsm_bts code gsm-data.* => bts.*
+  * bts-virt: Don't rely on gsmtap_makemsg() returning NULL for GSMTAP_CHANNEL_UNKNOWN
+  * Move struct gsm_bts_trx: gsm_data.* & bts.* => bts_trx.*
+  * bts-trx: Don't set OPSTATE enabled during trx_init
+  * common: Avoid changing OPSTATE to Enabled upon RSL up
+  * bts-trx: Remove unused function l1if_provision_transceiver()
+  * bts-trx: introduce TRX provisioning FSM
+  * tx_power_test: Disable using color in log output
+  * bts-trx: Use bool type for on/off state variables
+  * bts-trx: Integrate TRX provisioning logic more tightly into the FSM
+  * bts-trx: Delay TRXC POWERON cmd until all TRXs are provisioned
+  * rsl: Fix wrong param passed to gsm_pchan_name() in log line
+  * bts-trx: Fix osmocom dyn ts assert hit during Adm State Unlock
+  * bts-trx: prov_fsm: Fix mess with 1 event having 2 names
+  * bts_shutdown_fsm: Fix switching too quickly to state WAIT_TRX_CLOSED
+  * common: Avoid call to bts_model_chg_adm_state() if there's no ADM state change
+  * bts-trx: Fix handling ADM state change while previous one WIP
+  * vty: Allow setting power-ramp max-initial to negative values
+  * bts-trx: Fix assert hit when rf_locked in .cfg and TS TCH/F_PDCH
+  * tx_power: Take into account max-initial when ramping up bigger power lvl intervals
+  * doc: configuration.adoc: Document ramping down feature
+  * common: Support setting rt prio through new libosmovty sched VTY cmds
+  * tests: tx_power: Extend and add extra power_ramp buggy case
+  * common: tx_power: Fix bug in power ramp up below max-initial value
+  * Update dependency on libosmocore 1.4.0
+  * configure.ac: Fix trailing whitespace
+  * pcu_sock: Fix typo in log message
+  * bts-trx: Use TRXC RFMUTE instead of resetting the scheduler
+  * bts-trx: Ensure RFMUTE state is set properly at startup
+  * scheduler: Drop unused function trx_sched_reset()
+  * Fix RadioCarrier OML Operative State Change report not sent on some scenarios
+  * Improve logging around failing to (de)activate chan_nr
+  * Improve error handling and logging in gsm_pchan2chan_nr()
+  * Improve logging and error handling receiving act_req for dyn TS not yet configured
+  * pcu_sock: Only announce dyn TS already configured by lower layers
+  * Avoid sending RSL RF REL ACK if PDCH chan is disabled by administrative lock
+  * oml: Set RadioChannel operational state to Enabled only during OPSTART
+  * gsm_data.h: Drop unused struct field
+  * contrib/jenkins: Enable parallel make in make distcheck
+  * Drop unused param in oml_init()
+  * Change NM Channel availability Dependency->Offline when RadioCarrier becomes enabled
+  * Introduce NM BTS Site Manager FSM
+  * Introduce NM BTS FSM
+  * Introduce NM Radio Carrier and Baseband Transceiver FSMs
+  * Introduce NM Channel FSM
+  * bts_trx.c: Dispatch missing NM_EV_RSL_UP/DOWN to the bb_transc object
+  * oml: Set NM_OPSTATE_DISABLED by default
+  * common: Enable SIGABRT signal handler
+  * common: generate coredump and exit upon SIGABRT received
+  * sysmobts-mgr: generate coredump and exit upon SIGABRT received
+  * oc2g-mgr: generate coredump and exit upon SIGABRT received
+  * lc15-mgr: generate coredump and exit upon SIGABRT received
+  * nm_channel_fsm: Fix several FSM internal transitions not being made
+  * cosmetic: sysmobts-mgr: fix whitespace indentation
+  * tests: Explicitly drop category from log
+  * tests: Replace deprecated API log_set_print_filename
+
+  [ Oliver Smith ]
+  * rsl: make IP DSCP configurable
+  * VTY: add "test send-failure-event-report"
+  * contrib: import RPM spec
+  * contrib: integrate RPM spec
+  * Makefile.am: EXTRA_DIST: debian, contrib/*.spec.in
+  * contrib/jenkins: don't build osmo-gsm-manuals
+  * configure.ac: set -std=gnu11
+  * common/measurement.c: fix gcc 4 + -std=gnu11 error
+
+  [ Harld Welte ]
+  * trx: Fix reported BER for TCH/H
+  * trx: Use NOPE indications from OsmoTRX for TCH/F and TCH/H
+  * trx: Use NOPE indications on SDCCH
+
+  [ Eric ]
+  * configure.ac: fix libtool issue  with clang and sanitizer
+
+  [ Rafael Diniz ]
+  * osmo-bts-litecell15: Implement missing features.
+
+  [ Alexander Couzens ]
+  * measurement: replace u_int64_t with uint64_t
+  * pcuif_proto: version 0xa: add support for IPv6 NSVCs
+  * pcuif_proto: fix typo in comment
+  * Revert "pcuif_proto: version 0xa: add support for IPv6 NSVCs"
+  * pcuif_proto: version 10: add support for IPv6 NSVCs
+  * Introduce the new OML NM_ATT_OSMO_NS_LINK_CFG to configure IPv6 NSVC for PCU
+  * common/bts: set feature IPV6_NSVC
+  * OML: correct parse the NM_ATT_OSMO_NS_LINK_CFG field address_family
+
+  [ Daniel Willmann ]
+  * osmo-bts-trx: Use much lower clock advance values towards PCU and TRX
+
+  [ Neels Hofmeyr ]
+  * rename to release_sapi_ul_rach(), simplify
+  * part 1 of: fix SAPIs for handover to match 48.058 4.1.{3,4}
+  * part 2 of: fix SAPIs for handover, osmo-bts-sysmo
+  * part 3 of: fix SAPIs for handover, osmo-bts-trx
+  * part 4 of: fix SAPIs for handover, osmo-bts-lc15
+  * part 5 of: fix SAPIs for handover, osmo-bts-oc2g
+  * log: rsl_rx_chan_activ: show chan type as human readable string
+  * chan activ: activate DL SACCH only when TA is known
+  * GSMTAP: make remote host for Um logging configurable via VTY
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 23 Feb 2021 16:35:17 +0100
+
 osmo-bts (1.2.0) unstable; urgency=medium
 
   [ Oliver Smith ]

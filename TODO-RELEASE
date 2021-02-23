@@ -1,2 +1,0 @@
-* update osmo-gsm-manuals dependency to > 0.3.0 for vty_cpu_sched.adoc include.
-* update libosmocore dependency for osmo_fd_{read,write}_{enable,disable}()
