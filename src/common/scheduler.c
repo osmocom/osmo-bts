@@ -1411,7 +1411,6 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	/* handle NOPE indications */
 	if (bi->flags & TRX_BI_F_NOPE_IND) {
 		switch (chan) {
-		case TRXC_PDTCH:
 		case TRXC_PTCCH:
 		case TRXC_RACH:
 			/* For some logical channel types NOPE.ind is valueless. */

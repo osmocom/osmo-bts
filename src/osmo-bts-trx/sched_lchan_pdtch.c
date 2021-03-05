@@ -53,6 +53,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	int n_bits_total = 0;
 	uint16_t ber10k;
 	int rc;
+	enum osmo_ph_pres_info_type presence_info;
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
 		"Received PDTCH bid=%u\n", bid);
@@ -79,15 +80,23 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	trx_sched_meas_push(chan_state, bi);
 
 	/* copy burst to buffer of 4 bursts */
-	if (bi->burst_len == EGPRS_BURST_LEN) {
+	switch (bi->burst_len) {
+	case EGPRS_BURST_LEN:
 		burst = *bursts_p + bid * 348;
 		memcpy(burst, bi->burst + 9, 174);
 		memcpy(burst + 174, bi->burst + 261, 174);
 		n_bursts_bits = GSM0503_EGPRS_BURSTS_NBITS;
-	} else {
+		break;
+	case GSM_BURST_LEN:
 		burst = *bursts_p + bid * 116;
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
+		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
+		break;
+	case 0:
+		/* NOPE.ind, assume GPRS? */
+		burst = *bursts_p + bid * 116;
+		memset(burst, 0, 116);
 		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
 	}
 
@@ -120,19 +129,23 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 				  &n_errors, &n_bits_total);
 	}
 
-	if (rc <= 0) {
+	if (rc > 0) {
+		presence_info = PRES_INFO_BOTH;
+	} else {
 		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
 			"Received bad PDTCH (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
-		return 0;
+		rc = 0;
+		presence_info = PRES_INFO_INVALID;
 	}
 
 	ber10k = compute_ber10k(n_bits_total, n_errors);
+
 	return _sched_compose_ph_data_ind(l1t, bi->tn,
 					  *first_fn, chan, l2, rc,
 					  meas_avg.rssi, meas_avg.toa256,
 					  meas_avg.ci_cb, ber10k,
-					  PRES_INFO_BOTH);
+					  presence_info);
 }
 
 /* obtain a to-be-transmitted PDTCH (packet data) burst */
