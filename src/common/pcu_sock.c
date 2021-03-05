@@ -501,7 +501,8 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 	data_ind->ber10k = ber10k;
 	data_ind->ta_offs_qbits = bto;
 	data_ind->lqual_cb = lqual;
-	memcpy(data_ind->data, data, len);
+	if (len)
+		memcpy(data_ind->data, data, len);
 	data_ind->len = len;
 
 	return pcu_sock_send(&bts_gsmnet, msg);

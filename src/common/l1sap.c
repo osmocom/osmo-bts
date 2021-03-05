@@ -1530,12 +1530,9 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			return 1;
 		}
 
-		/* don't send bad frames to PCU */
-		if (len == 0)
-			return -EINVAL;
-		/* drop incomplete UL block */
+		/* Drop all data from incomplete UL block */
 		if (pr_info != PRES_INFO_BOTH)
-			return 0;
+			len = 0;
 
 		/* PDTCH / PACCH frame handling */
 		pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, trx->arfcn,
