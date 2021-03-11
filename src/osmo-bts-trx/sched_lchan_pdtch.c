@@ -44,7 +44,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
-	uint32_t *first_fn = &chan_state->ul_first_fn;
+	uint32_t first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	struct l1sched_meas_set meas_avg;
 	uint8_t l2[EGPRS_0503_MAX_BYTES];
@@ -70,7 +70,6 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	if (bid == 0) {
 		memset(*bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
 		*mask = 0x0;
-		*first_fn = bi->fn;
 	}
 
 	/* update mask */
@@ -141,8 +140,9 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
+	first_fn = GSM_TDMA_FN_SUB(bi->fn, 3);
 	return _sched_compose_ph_data_ind(l1t, bi->tn,
-					  *first_fn, chan, l2, rc,
+					  first_fn, chan, l2, rc,
 					  meas_avg.rssi, meas_avg.toa256,
 					  meas_avg.ci_cb, ber10k,
 					  presence_info);
