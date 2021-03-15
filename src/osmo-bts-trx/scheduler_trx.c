@@ -378,8 +378,6 @@ static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs
 	osmo_timerfd_schedule(&tcs->fn_timer_ofd, NULL, interval);
 
 	tcs->last_fn_timer.tv = *tv_now;
-	tcs->last_clk_ind.tv = *tv_now;
-	tcs->last_clk_ind.fn = fn;
 
 	return 0;
 }
