@@ -369,15 +369,14 @@ int trx_sched_clock_stopped(struct gsm_bts *bts)
 static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs,
 	struct timespec *tv_now, const struct timespec *interval, uint32_t fn)
 {
-	tcs->last_fn_timer.fn = fn;
-	/* call trx cheduler function for new 'last' FN */
-	trx_sched_fn(bts, tcs->last_fn_timer.fn);
-
 	/* schedule first FN clock timer */
 	osmo_timerfd_setup(&tcs->fn_timer_ofd, trx_fn_timer_cb, bts);
 	osmo_timerfd_schedule(&tcs->fn_timer_ofd, NULL, interval);
 
+	tcs->last_fn_timer.fn = fn;
 	tcs->last_fn_timer.tv = *tv_now;
+	/* call trx scheduler function for new 'last' FN */
+	trx_sched_fn(bts, tcs->last_fn_timer.fn);
 
 	return 0;
 }
