@@ -1225,20 +1225,16 @@ static int trx_if_open(struct trx_l1h *l1h)
 			  plink->u.osmotrx.remote_ip,
 			  compute_port(pinst, 1, 0), trx_ctrl_read_cb);
 	if (rc < 0)
-		goto err;
+		return rc;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
 			  plink->u.osmotrx.local_ip,
 			  compute_port(pinst, 0, 1),
 			  plink->u.osmotrx.remote_ip,
 			  compute_port(pinst, 1, 1), trx_data_read_cb);
 	if (rc < 0)
-		goto err;
+		return rc;
 
 	return 0;
-
-err:
-	trx_if_close(l1h);
-	return rc;
 }
 
 /*! close the control + burst data sockets for one phy_instance */
