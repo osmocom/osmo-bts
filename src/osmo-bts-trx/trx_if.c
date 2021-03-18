@@ -193,6 +193,12 @@ void trx_if_init(struct trx_l1h *l1h)
 {
 	l1h->trx_ctrl_timer.cb = trx_ctrl_timer_cb;
 	l1h->trx_ctrl_timer.data = l1h;
+
+	/* initialize ctrl queue */
+	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
+
+	l1h->trx_ofd_ctrl.fd = -1;
+	l1h->trx_ofd_data.fd = -1;
 }
 
 /*! Send a new TRX control command.
@@ -1214,9 +1220,6 @@ static int trx_if_open(struct trx_l1h *l1h)
 	int rc;
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Open transceiver\n");
-
-	/* initialize ctrl queue */
-	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
 
 	/* open sockets */
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
