@@ -14,19 +14,24 @@
 
 static void print_usage(const char *prog_name)
 {
-	printf("Usage: %s [-h] dst_host site_id [trx_num]\n", prog_name);
+	printf("Usage: %s [-h] [--features FOO,BAR,BAZ] dst_host site_id [trx_num]\n", prog_name);
 }
 
 static void print_help(const char *prog_name)
 {
 	print_usage(prog_name);
 	printf("  -h --help			This text.\n");
+	printf("  -f --features	FOO,BAR,BAZ	BTS features to issue on OML startup.\n"
+	       "				The names correspond to BTS_FEAT_* constants\n"
+	       "				as defined in osmocom/gsm/bts_features.h,\n"
+	       "				e.g. '-f VAMOS'\n");
 }
 
 struct {
 	char *dst_host;
 	int site_id;
 	int trx_num;
+	char *features;
 } cmdline = {
 	.trx_num = 8,
 };
@@ -37,10 +42,11 @@ void parse_cmdline(int argc, char **argv)
 		int option_index = 0, c;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
+			{"features", 1, 0, 'f'},
 			{0}
 		};
 
-		c = getopt_long(argc, argv, "h", long_options, &option_index);
+		c = getopt_long(argc, argv, "hf:", long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -48,6 +54,9 @@ void parse_cmdline(int argc, char **argv)
 		case 'h':
 			print_help(argv[0]);
 			exit(0);
+		case 'f':
+			cmdline.features = optarg;
+			break;
 		default:
 			/* catch unknown options *as well as* missing arguments. */
 			fprintf(stderr, "Error in command line options. Exiting.\n");
@@ -68,6 +77,29 @@ void parse_cmdline(int argc, char **argv)
 	if (optind + 3 < argc) {
 		print_usage(argv[0]);
 		exit(1);
+	}
+}
+
+void set_bts_features(struct bitvec *features, char *features_str)
+{
+	char *saveptr = NULL;
+	char *token;
+
+	if (!features_str)
+		return;
+
+	while ((token = strtok_r(features_str, ",", &saveptr))) {
+		enum osmo_bts_features feat;
+		features_str = NULL;
+
+		feat = get_string_value(osmo_bts_features_names, token);
+
+		if ((int)feat < 0) {
+			fprintf(stderr, "Unknown BTS feature: '%s'\n", token);
+			exit(-1);
+		}
+
+		osmo_bts_set_feature(features, feat);
 	}
 }
 
@@ -100,6 +132,9 @@ int main(int argc, char **argv)
 
 	if (bts_init(bts) < 0)
 		exit(1);
+
+	set_bts_features(bts->features, cmdline.features);
+
 	//btsb = bts_role_bts(bts);
 	abis_init(bts);
 
