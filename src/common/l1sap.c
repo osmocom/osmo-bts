@@ -1962,16 +1962,16 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
-	struct gsm48_chan_desc *cd;
+	const struct gsm48_chan_desc *cd;
 	int rc;
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activating channel %s\n", rsl_chan_nr_str(chan_nr));
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
 	 * need to make sure ew don't crash here */
-	if (tp && TLVP_PRES_LEN(tp, GSM48_IE_CHANDESC_2, sizeof(*cd))) {
-		cd = (struct gsm48_chan_desc *)
-		TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
+	if (tp && TLVP_PRES_LEN(tp, RSL_IE_CHAN_IDENT, sizeof(*cd) + 1)) {
+		/* Channel Description IE comes together with its IEI (see 9.3.5) */
+		cd = (const struct gsm48_chan_desc *) TLVP_VAL(tp, RSL_IE_CHAN_IDENT) + 1;
 
 		/* The PHY may not support using different TSCs */
 		if (!osmo_bts_has_feature(trx->bts->features, BTS_FEAT_MULTI_TSC)
