@@ -1973,11 +1973,11 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		cd = (struct gsm48_chan_desc *)
 		TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
 
-		/* our L1 only supports one global TSC for all channels
-		 * one one TRX, so we need to make sure not to activate
-		 * channels with a different TSC!! */
-		if (cd->h0.tsc != (trx->bts->bsic & 7)) {
-			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
+		/* The PHY may not support using different TSCs */
+		if (!osmo_bts_has_feature(trx->bts->features, BTS_FEAT_MULTI_TSC)
+		    && cd->h0.tsc != (trx->bts->bsic & 7)) {
+			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "This PHY does not support "
+				  "lchan TSC %u != BSIC-TSC %u, sending NACK\n",
 				  cd->h0.tsc, trx->bts->bsic & 7);
 			return -RSL_ERR_SERV_OPT_UNIMPL;
 		}
