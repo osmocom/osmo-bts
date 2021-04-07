@@ -1977,14 +1977,14 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 		/* our L1 only supports one global TSC for all channels
 		 * one one TRX, so we need to make sure not to activate
 		 * channels with a different TSC!! */
-		if (cd->h0.tsc != (lchan->ts->trx->bts->bsic & 7)) {
+		if (cd->h0.tsc != (trx->bts->bsic & 7)) {
 			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "lchan TSC %u != BSIC-TSC %u\n",
-				  cd->h0.tsc, lchan->ts->trx->bts->bsic & 7);
+				  cd->h0.tsc, trx->bts->bsic & 7);
 			return -RSL_ERR_SERV_OPT_UNIMPL;
 		}
 	}
 
-	lchan->s = lchan->ts->trx->bts->radio_link_timeout.current;
+	lchan->s = trx->bts->radio_link_timeout.current;
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)
@@ -1993,8 +1993,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	/* Init DTX DL FSM if necessary */
 	if (trx->bts->dtxd && lchan->type != GSM_LCHAN_SDCCH) {
 		char name[32];
-		snprintf(name, sizeof(name), "bts%u-trx%u-ts%u-ss%u", lchan->ts->trx->bts->nr,
-			 lchan->ts->trx->nr, lchan->ts->nr, lchan->nr);
+		snprintf(name, sizeof(name), "bts%u-trx%u-ts%u-ss%u",
+			 trx->bts->nr, trx->nr, lchan->ts->nr, lchan->nr);
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
 								tall_bts_ctx,
 								lchan,
