@@ -1969,8 +1969,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 	/* osmo-pcu calls this without a valid 'tp' parameter, so we
 	 * need to make sure ew don't crash here */
-	if (tp && TLVP_PRESENT(tp, GSM48_IE_CHANDESC_2) &&
-	    TLVP_LEN(tp, GSM48_IE_CHANDESC_2) >= sizeof(*cd)) {
+	if (tp && TLVP_PRES_LEN(tp, GSM48_IE_CHANDESC_2, sizeof(*cd))) {
 		cd = (struct gsm48_chan_desc *)
 		TLVP_VAL(tp, GSM48_IE_CHANDESC_2);
 
