@@ -1583,6 +1583,7 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_abis_mo *mo = NULL;
+	uint8_t primary_trx_nr;
 
 	switch (obj_class) {
 	case NM_OC_BTS:
@@ -1596,10 +1597,15 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		mo = &trx->mo;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		primary_trx_nr = obj_inst->trx_nr;
+		if (osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS)) {
+			/* For shadow TRX, also use the primary TRX number */
+			primary_trx_nr &= 0x7f;
+		}
+		if (primary_trx_nr >= bts->num_trx) {
 			return NULL;
 		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
+		trx = gsm_bts_trx_num(bts, primary_trx_nr);
 		mo = &trx->bb_transc.mo;
 		break;
 	case NM_OC_CHANNEL:
