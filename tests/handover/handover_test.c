@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	trx = gsm_bts_trx_alloc(bts);
+	trx = gsm_bts_trx_alloc(bts, NULL);
 	if (!trx) {
 		fprintf(stderr, "Failed to alloc TRX structure\n");
 		exit(1);

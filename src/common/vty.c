@@ -227,7 +227,7 @@ DEFUN_ATTR(cfg_bts_trx, cfg_bts_trx_cmd,
 		 * Remark: TRX0 was already created during gsm_bts_alloc() and
 		 * 	   initialized in bts_init(), not here.
 		 */
-		trx = gsm_bts_trx_alloc(bts);
+		trx = gsm_bts_trx_alloc(bts, NULL);
 		if (trx)
 			bts_trx_init(trx);
 	} else

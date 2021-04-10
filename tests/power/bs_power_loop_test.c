@@ -106,7 +106,7 @@ static void init_test(const char *name)
 	OSMO_ASSERT(g_bts != NULL);
 
 	INIT_LLIST_HEAD(&g_bts->trx_list);
-	g_trx = gsm_bts_trx_alloc(g_bts);
+	g_trx = gsm_bts_trx_alloc(g_bts, NULL);
 	OSMO_ASSERT(g_trx != NULL);
 
 	g_bts->band = GSM_BAND_900;

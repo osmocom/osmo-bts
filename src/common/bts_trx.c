@@ -52,7 +52,7 @@ static int gsm_bts_trx_talloc_destructor(struct gsm_bts_trx *trx)
 	return 0;
 }
 
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts, struct gsm_bts_trx *shadow_for_primary_trx)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
 	int k;
@@ -63,13 +63,23 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	talloc_set_destructor(trx, gsm_bts_trx_talloc_destructor);
 
 	trx->bts = bts;
-	trx->nr = bts->num_trx++;
 
-	trx->mo.fi = osmo_fsm_inst_alloc(&nm_rcarrier_fsm, trx, trx,
-						  LOGL_INFO, NULL);
-	osmo_fsm_inst_update_id_f(trx->mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
-	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
-		    bts->nr, trx->nr, 0xff);
+	if (!shadow_for_primary_trx) {
+		trx->nr = bts->num_trx++;
+	} else {
+		trx->nr = TRX_SHADOW_NR(shadow_for_primary_trx->nr);
+		shadow_for_primary_trx->vamos.shadow_trx = trx;
+		trx->vamos.primary_trx = shadow_for_primary_trx;
+	}
+
+	/* Skip Radio Carrier FSM for shadow TRXes */
+	if (!shadow_for_primary_trx) {
+		trx->mo.fi = osmo_fsm_inst_alloc(&nm_rcarrier_fsm, trx, trx,
+							  LOGL_INFO, NULL);
+		osmo_fsm_inst_update_id_f(trx->mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
+		gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
+			    bts->nr, trx->nr, 0xff);
+	}
 
 	trx->bb_transc.mo.fi = osmo_fsm_inst_alloc(&nm_bb_transc_fsm, trx, &trx->bb_transc,
 						  LOGL_INFO, NULL);

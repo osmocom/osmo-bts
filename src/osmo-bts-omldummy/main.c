@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
 	/* Additional TRXs */
 	for (i = 1; i < cmdline.trx_num; i++) {
-		trx = gsm_bts_trx_alloc(bts);
+		trx = gsm_bts_trx_alloc(bts, NULL);
 		if (!trx)
 			exit(1);
 	}
