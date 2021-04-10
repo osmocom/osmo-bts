@@ -135,6 +135,12 @@ int main(int argc, char **argv)
 
 	set_bts_features(bts->features, cmdline.features);
 
+	/* VAMOS: allocate shadow timeslots for each TRX */
+	if (osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS)) {
+		llist_for_each_entry(trx, &bts->trx_list, list)
+			gsm_bts_trx_init_shadow_ts(trx);
+	}
+
 	//btsb = bts_role_bts(bts);
 	abis_init(bts);
 
