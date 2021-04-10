@@ -135,6 +135,22 @@ int main(int argc, char **argv)
 
 	set_bts_features(bts->features, cmdline.features);
 
+	/* VAMOS: set up shadow TRXes */
+	if (osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS)) {
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			/* Does this TRX already have a shadow TRX set up? */
+			if (trx->vamos.shadow_trx)
+				continue;
+			/* Is this TRX itself a shadow TRX? */
+			if (trx->vamos.primary_trx)
+				continue;
+
+			/* This is a primary TRX that should have a shadow TRX, and the shadow TRX still needs to be set
+			 * up. */
+			gsm_bts_trx_alloc(bts, trx);
+		}
+	}
+
 	//btsb = bts_role_bts(bts);
 	abis_init(bts);
 
