@@ -7,6 +7,9 @@
  * only a single timeslot FSM handling both the "normal" and the secondary VAMOS lchans. */
 #define TRX_SHADOW_NR(NR) (0x80 + (NR))
 
+/* For any shadow TRX number (see TRX_SHADOW_NR()), return the primary TRX number */
+#define TRX_PRIMARY_NR(NR) ((NR) & 0x7f)
+
 /* For any gsm_bts_trx (VAMOS shadow or primary trx), return the primary gsm_bts_trx pointer. Useful for all code that
  * handles CCHAN and TRXMGMT, which is always done on the primary TRX's RSL link. */
 #define TRX_PRIMARY(TRX) ((TRX)->vamos.primary_trx ? : (TRX))

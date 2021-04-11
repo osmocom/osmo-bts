@@ -76,7 +76,8 @@ static uint8_t vbts_set_bts(struct gsm_bts *bts)
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		/* report availability of trx to the bts. this will trigger the rsl connection */
-		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+		if (trx->mo.fi)
+			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
 		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
 	}
 	return 0;
