@@ -414,6 +414,7 @@ int bts_init(struct gsm_bts *bts)
 int bts_link_estab(struct gsm_bts *bts)
 {
 	int i, j;
+	bool has_vamos = osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS);
 
 	LOGP(DSUM, LOGL_INFO, "Main link established, sending NM Status.\n");
 
@@ -430,6 +431,18 @@ int bts_link_estab(struct gsm_bts *bts)
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
+
+		/* For VAMOS shadow TRXs, skip all initial status reports. The existence of shadow TRXes is indicated by
+		 * BTS_FEAT_VAMOS. (If osmo-bts sent status reports for shadow TRXes, these would appear as full primary
+		 * TRXes to non-Osmocom BSCs.) */
+		if (has_vamos && TRX_IS_SHADOW(trx)) {
+			LOGP(DLGLOBAL, LOGL_ERROR, "Skipping TRX %d\n", trx->nr);
+			printf("Skipping TRX %d\n", trx->nr);
+			continue;
+		} else {
+			LOGP(DLGLOBAL, LOGL_ERROR, "NOT Skipping TRX %d\n", trx->nr);
+			printf("NOT Skipping TRX %d\n", trx->nr);
+		}
 
 		oml_tx_state_changed(&trx->mo);
 		oml_tx_state_changed(&trx->bb_transc.mo);

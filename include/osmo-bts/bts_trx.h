@@ -14,6 +14,12 @@
  * handles CCHAN and TRXMGMT, which is always done on the primary TRX's RSL link. */
 #define TRX_PRIMARY(TRX) ((TRX)->vamos.primary_trx ? : (TRX))
 
+/* Return true if TRX is a plain primary TRX (with or without VAMOS operation). */
+#define TRX_IS_PRIMARY(TRX) ((TRX)->vamos.primary_trx == NULL)
+
+/* Return true if TRX is a VAMOS shadow TRX. */
+#define TRX_IS_SHADOW(TRX) ((TRX)->vamos.primary_trx != NULL)
+
 struct gsm_bts_bb_trx {
 	struct gsm_abis_mo mo;
 };

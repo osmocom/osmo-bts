@@ -406,6 +406,10 @@ int oml_mo_statechg_ack(const struct gsm_abis_mo *mo)
 		return rc;
 
 	/* Emulate behaviour of ipaccess nanobts: Send a 'State Changed Event Report' as well. */
+	LOGP(DLGLOBAL, LOGL_ERROR, "XXX oml_mo_statechg_ack()  oml_tx_state_changed(%u %u %u)\n",
+	     mo->obj_inst.bts_nr,
+	     mo->obj_inst.trx_nr,
+	     mo->obj_inst.ts_nr);
 	return oml_tx_state_changed(mo);
 }
 

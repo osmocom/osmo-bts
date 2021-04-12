@@ -116,6 +116,12 @@ int main(int argc, char **argv)
 	msgb_talloc_ctx_init(tall_bts_ctx, 10*1024);
 
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
+	log_set_print_category(osmo_stderr_target, 1);
+	log_set_print_category_hex(osmo_stderr_target, 0);
+	log_set_print_level(osmo_stderr_target, 1);
+	log_set_print_filename2(osmo_stderr_target, LOG_FILENAME_BASENAME);
+	log_set_print_filename_pos(osmo_stderr_target, LOG_FILENAME_POS_LINE_END);
+	log_set_print_extended_timestamp(osmo_stderr_target, 1);
 
 	bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (!bts)

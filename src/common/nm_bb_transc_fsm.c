@@ -60,7 +60,12 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 
 	switch (event) {
 	case NM_EV_SW_ACT:
-		oml_mo_tx_sw_act_rep(&bb_transc->mo);
+		/* For VAMOS shadow TRXs, do not send the initial Software Activated Report. The primary TRX's Software
+		 * Activated Report implies the shadow TRX. (The main reason is to not confuse non-osmocom BSCs into
+		 * thinking a shadow TRX were an independent primary TRX.) */
+		if (!osmo_bts_has_feature(trx->bts->features, BTS_FEAT_VAMOS)
+		    || TRX_PRIMARY(trx) == trx)
+			oml_mo_tx_sw_act_rep(&bb_transc->mo);
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_OFFLINE);
 		for (i = 0; i < TRX_NR_TS; i++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[i];
