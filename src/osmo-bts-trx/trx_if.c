@@ -945,8 +945,18 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	/* Pre-clean (initialize) the flags */
 	bi.flags = 0x00;
 
-	/* Parse header depending on the PDU version */
+	/* Parse PDU version first */
 	pdu_ver = buf[0] >> 4;
+
+	/* Make sure that PDU version matches our expectations */
+	if (pdu_ver != l1h->config.trxd_pdu_ver_use) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Rx TRXD PDU with unexpected version %u (expected %u)\n",
+			pdu_ver, l1h->config.trxd_pdu_ver_use);
+		return -EIO;
+	}
+
+	/* Parse header depending on the PDU version */
 	switch (pdu_ver) {
 	case 0:
 		/* Legacy protocol has no version indicator */
@@ -956,9 +966,8 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		hdr_len = trx_data_handle_hdr_v1(l1h, &bi, buf, buf_len);
 		break;
 	default:
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"TRXD PDU version %u is not supported\n", pdu_ver);
-		return -ENOTSUP;
+		/* Shall not happen */
+		OSMO_ASSERT(0);
 	}
 
 	/* Header parsing error */
