@@ -148,16 +148,16 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		l1h->config.bsic_acked = false;
 	}
 
-	/* Ask transceiver to use the newest TRXD header version if not using it yet */
+	/* Ask transceiver to use the newest TRXD PDU version if not using it yet */
 	if (!l1h->config.setformat_sent) {
 		l1h->config.setformat_sent = true;
-		if (plink->u.osmotrx.trxd_hdr_ver_max == 0) {
+		if (plink->u.osmotrx.trxd_pdu_ver_max == 0) {
 			LOGPPHI(pinst, DL1C, LOGL_INFO,
 				"No need to negotiate max TRXD version 0");
-			l1h->config.trxd_hdr_ver_use = 0;
+			l1h->config.trxd_pdu_ver_use = 0;
 			l1h->config.setformat_acked = true;
 		} else {
-			trx_if_cmd_setformat(l1h, l1h->config.trxd_hdr_ver_req, l1if_setformat_cb);
+			trx_if_cmd_setformat(l1h, l1h->config.trxd_pdu_ver_req, l1if_setformat_cb);
 			l1h->config.setformat_acked = false;
 		}
 	}
@@ -276,7 +276,7 @@ static void st_open_poweroff_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_st
 	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
 	struct phy_instance *pinst = l1h->phy_inst;
 
-	l1h->config.trxd_hdr_ver_req = pinst->phy_link->u.osmotrx.trxd_hdr_ver_max;
+	l1h->config.trxd_pdu_ver_req = pinst->phy_link->u.osmotrx.trxd_pdu_ver_max;
 
 	/* Apply initial RFMUTE state */
 	trx_if_cmd_rfmute(l1h, pinst->trx->mo.nm_state.administrative != NM_STATE_UNLOCKED);
@@ -354,18 +354,18 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	case TRX_PROV_EV_SETFORMAT_CNF:
 		status = (int)(intptr_t)data;
 		/* Transceiver may suggest a lower version (than requested) */
-		if (status == l1h->config.trxd_hdr_ver_req) {
-			l1h->config.trxd_hdr_ver_use = status;
+		if (status == l1h->config.trxd_pdu_ver_req) {
+			l1h->config.trxd_pdu_ver_use = status;
 			l1h->config.setformat_acked = true;
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
-				"Using TRXD header format version %u\n",
-				l1h->config.trxd_hdr_ver_use);
+				"Using TRXD PDU version %u\n",
+				l1h->config.trxd_pdu_ver_use);
 		} else {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-				"Transceiver suggests TRXD header version %u (requested %u)\n",
-				status, l1h->config.trxd_hdr_ver_req);
+				"Transceiver suggests TRXD PDU version %u (requested %u)\n",
+				status, l1h->config.trxd_pdu_ver_req);
 			/* Send another SETFORMAT with suggested version */
-			l1h->config.trxd_hdr_ver_req = status;
+			l1h->config.trxd_pdu_ver_req = status;
 			l1h->config.setformat_sent = false;
 		}
 		break;

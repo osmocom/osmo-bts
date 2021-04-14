@@ -48,7 +48,7 @@ struct phy_link {
 			uint32_t clock_advance;
 			uint32_t rts_advance;
 			bool use_legacy_setbsic;
-			uint8_t	 trxd_hdr_ver_max; /* Maximum TRXD header version to negotiate */
+			uint8_t trxd_pdu_ver_max; /* Maximum TRXD PDU version to negotiate */
 			bool powered; /* last POWERON (true) or POWEROFF (false) confirmed */
 			bool poweronoff_sent; /* is there a POWERON/POWEROFF in transit? (one or the other based on ->powered) */
 		} osmotrx;

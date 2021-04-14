@@ -60,8 +60,8 @@ struct bts_trx_priv {
 };
 
 struct trx_config {
-	uint8_t			trxd_hdr_ver_req; /* requested TRXD header version */
-	uint8_t			trxd_hdr_ver_use; /* actual TRXD header version in use */
+	uint8_t			trxd_pdu_ver_req; /* requested TRXD PDU version */
+	uint8_t			trxd_pdu_ver_use; /* actual TRXD PDU version in use */
 	bool			setformat_sent;
 	bool			setformat_acked;
 

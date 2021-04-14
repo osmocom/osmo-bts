@@ -517,15 +517,15 @@ DEFUN_USRATTR(cfg_phy_trxd_max_version, cfg_phy_trxd_max_version_cmd,
 
 	int max_ver;
 	if (strcmp(argv[0], "latest") == 0)
-		max_ver = TRX_DATA_FORMAT_VER;
+		max_ver = TRX_DATA_PDU_VER;
 	else
 		max_ver = atoi(argv[0]);
-	if (max_ver > TRX_DATA_FORMAT_VER) {
+	if (max_ver > TRX_DATA_PDU_VER) {
 		vty_out(vty, "%% Format version %d is not supported, maximum supported is %d%s",
-			max_ver, TRX_DATA_FORMAT_VER, VTY_NEWLINE);
+			max_ver, TRX_DATA_PDU_VER, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	plink->u.osmotrx.trxd_hdr_ver_max = max_ver;
+	plink->u.osmotrx.trxd_pdu_ver_max = max_ver;
 
 	return CMD_SUCCESS;
 }
@@ -554,8 +554,8 @@ void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink)
 	if (plink->u.osmotrx.use_legacy_setbsic)
 		vty_out(vty, " osmotrx legacy-setbsic%s", VTY_NEWLINE);
 
-	if (plink->u.osmotrx.trxd_hdr_ver_max != TRX_DATA_FORMAT_VER)
-		vty_out(vty, " osmotrx trxd-max-version %d%s", plink->u.osmotrx.trxd_hdr_ver_max, VTY_NEWLINE);
+	if (plink->u.osmotrx.trxd_pdu_ver_max != TRX_DATA_PDU_VER)
+		vty_out(vty, " osmotrx trxd-max-version %d%s", plink->u.osmotrx.trxd_pdu_ver_max, VTY_NEWLINE);
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst)

@@ -169,7 +169,7 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 	plink->u.osmotrx.clock_advance = 2;
 	plink->u.osmotrx.rts_advance = 3;
 	/* attempt use newest TRXD version by default: */
-	plink->u.osmotrx.trxd_hdr_ver_max = TRX_DATA_FORMAT_VER;
+	plink->u.osmotrx.trxd_pdu_ver_max = TRX_DATA_PDU_VER;
 }
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)

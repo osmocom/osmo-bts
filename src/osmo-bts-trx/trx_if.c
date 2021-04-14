@@ -275,11 +275,11 @@ int trx_if_cmd_poweron(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb)
 	return trx_ctrl_cmd_cb(l1h, 1, cb, "POWERON", "");
 }
 
-/*! Send "SETFORMAT" command to TRX: change TRXD header format version */
+/*! Send "SETFORMAT" command to TRX: change TRXD PDU version */
 int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb)
 {
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO,
-		"Requesting TRXD header format version %u\n", ver);
+		"Requesting TRXD PDU version %u\n", ver);
 
 	return trx_ctrl_cmd_cb(l1h, 0, cb, "SETFORMAT", "%u", ver);
 }
@@ -510,7 +510,7 @@ static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp
 	return rsp->status == 0 ? 0 : -EINVAL;
 }
 
-/* TRXD header format negotiation handler.
+/* TRXD PDU format negotiation handler.
  *
  * If the transceiver does not support the format negotiation, it would
  * reject SETFORMAT with 'RSP ERR 1'. If the requested version is not
@@ -526,7 +526,7 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 	if (strcmp(rsp->cmd, "SETFORMAT") != 0) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
 			"Transceiver rejected the format negotiation command, "
-			"using legacy TRXD header format version (0)\n");
+			"using legacy TRXD PDU version (0)\n");
 		if (rsp->cb) {
 			cb = (trx_if_cmd_generic_cb*) rsp->cb;
 			cb(l1h, 0);
@@ -535,11 +535,11 @@ static int trx_ctrl_rx_rsp_setformat(struct trx_l1h *l1h,
 	}
 
 	/* Status shall indicate a proper version supported by the transceiver */
-	if (rsp->status < 0 || rsp->status > l1h->config.trxd_hdr_ver_req) {
+	if (rsp->status < 0 || rsp->status > l1h->config.trxd_pdu_ver_req) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Transceiver indicated an out of range "
-			"header format version %d (requested %u)\n",
-			rsp->status, l1h->config.trxd_hdr_ver_req);
+			"PDU version %d (requested %u)\n",
+			rsp->status, l1h->config.trxd_pdu_ver_req);
 		return -EINVAL;
 	}
 
@@ -814,7 +814,7 @@ skip_mts:
 	return TRX_UL_V1HDR_LEN;
 }
 
-/* TRXD burst handler for header version 0 */
+/* TRXD burst handler for PDU version 0 */
 static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
 				    struct trx_ul_burst_ind *bi,
 				    const uint8_t *buf, size_t buf_len)
@@ -850,7 +850,7 @@ static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
 	return 0;
 }
 
-/* TRXD burst handler for header version 1 */
+/* TRXD burst handler for PDU version 1 */
 static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 				    struct trx_ul_burst_ind *bi,
 				    const uint8_t *buf, size_t buf_len)
@@ -869,7 +869,7 @@ static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 		return -EINVAL;
 	}
 
-	/* The burst format is the same as for version 0.
+	/* The PDU format is the same as for version 0.
 	 * NOTE: other modulation types to be handled separately. */
 	return trx_data_handle_burst_v0(l1h, bi, buf, buf_len);
 }
@@ -937,7 +937,7 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
  *   +-----------------+------------------------+
  *   | 7 6 5 4 3 2 1 0 | bit numbers            |
  *   +-----------------+------------------------+
- *   | X X X X . . . . | header version (0..15) |
+ *   | X X X X . . . . | PDU version (0..15)    |
  *   +-----------------+------------------------+
  *   | . . . . . X X X | TDMA TN (0..7)         |
  *   +-----------------+------------------------+
@@ -1040,7 +1040,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
-	uint8_t hdr_ver;
+	uint8_t pdu_ver;
 	int rc;
 
 	buf_len = recv(ofd->fd, buf, sizeof(buf), 0);
@@ -1054,9 +1054,9 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	/* Pre-clean (initialize) the flags */
 	bi.flags = 0x00;
 
-	/* Parse the header depending on its version */
-	hdr_ver = buf[0] >> 4;
-	switch (hdr_ver) {
+	/* Parse header depending on the PDU version */
+	pdu_ver = buf[0] >> 4;
+	switch (pdu_ver) {
 	case 0:
 		/* Legacy protocol has no version indicator */
 		hdr_len = trx_data_handle_hdr_v0(l1h, &bi, buf, buf_len);
@@ -1066,7 +1066,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		break;
 	default:
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"TRXD header version %u is not supported\n", hdr_ver);
+			"TRXD PDU version %u is not supported\n", pdu_ver);
 		return -ENOTSUP;
 	}
 
@@ -1083,7 +1083,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	buf_len -= hdr_len;
 
 	/* Handle burst bits */
-	switch (hdr_ver) {
+	switch (pdu_ver) {
 	case 0:
 		rc = trx_data_handle_burst_v0(l1h, &bi, buf + hdr_len, buf_len);
 		break;
@@ -1101,9 +1101,9 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 skip_burst:
 	/* Print header & burst info */
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (hdr_ver=%u): %s\n",
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (pdu_ver=%u): %s\n",
 		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
-		hdr_ver, trx_data_desc_msg(&bi));
+		pdu_ver, trx_data_desc_msg(&bi));
 
 	/* feed received burst into scheduler code */
 	trx_sched_route_burst_ind(&bi, &l1h->l1s);
@@ -1118,7 +1118,7 @@ skip_burst:
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	ssize_t snd_len;
-	uint8_t hdr_ver = l1h->config.trxd_hdr_ver_use;
+	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
 	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
 
 	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
@@ -1128,22 +1128,22 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	}
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Tx burst (hdr_ver=%u): tn=%u fn=%u att=%u\n",
-		hdr_ver, br->tn, br->fn, br->att);
+		"Tx burst (pdu_ver=%u): tn=%u fn=%u att=%u\n",
+		pdu_ver, br->tn, br->fn, br->att);
 
-	switch (hdr_ver) {
+	switch (pdu_ver) {
 	case 0:
 	case 1:
-		/* Both versions have the same header format */
+		/* Both versions have the same PDU format */
 		break;
 
 	default:
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Requested TRXD header version %u is not supported\n", hdr_ver);
+			"Requested TRXD PDU version %u is not supported\n", pdu_ver);
 		return -ENOTSUP;
 	}
 
-	buf[0] = ((hdr_ver & 0x0f) << 4) | br->tn;
+	buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
 	osmo_store32be(br->fn, buf + 1);
 	buf[5] = br->att;
 
