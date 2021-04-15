@@ -1,5 +1,10 @@
 #pragma once
 
+/* TRXC read/send buffer size */
+#define TRXC_MSG_BUF_SIZE	1500
+/* TRXD read/send buffer size */
+#define TRXD_MSG_BUF_SIZE	512
+
 struct trx_dl_burst_req;
 struct trx_l1h;
 

@@ -95,7 +95,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct phy_link *plink = ofd->data;
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
-	char buf[1500];
+	char buf[TRXC_MSG_BUF_SIZE];
 	ssize_t len;
 	uint32_t fn;
 
@@ -148,7 +148,7 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 static void trx_ctrl_send(struct trx_l1h *l1h)
 {
 	struct trx_ctrl_msg *tcm;
-	char buf[1500];
+	char buf[TRXC_MSG_BUF_SIZE];
 	int len;
 	ssize_t snd_len;
 
@@ -634,7 +634,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
 	struct phy_instance *pinst = l1h->phy_inst;
-	char buf[1500];
+	char buf[TRXC_MSG_BUF_SIZE];
 	struct trx_ctrl_rsp rsp;
 	int len, rc;
 	struct trx_ctrl_msg *tcm;
@@ -717,9 +717,6 @@ rsp_error:
 /*
  * TRX burst data socket
  */
-
-/* Maximum DATA message length (header + burst) */
-#define TRX_DATA_MSG_MAX_LEN	512
 
 /* Common header length: 1/2 VER + 1/2 TDMA TN + 4 TDMA FN */
 #define TRX_CHDR_LEN		(1 + 4)
@@ -920,7 +917,7 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
 	struct trx_l1h *l1h = ofd->data;
-	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
+	uint8_t buf[TRXD_MSG_BUF_SIZE];
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
 	uint8_t pdu_ver;
@@ -1002,7 +999,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	ssize_t snd_len;
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
-	uint8_t buf[TRX_DATA_MSG_MAX_LEN];
+	uint8_t buf[TRXD_MSG_BUF_SIZE];
 
 	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %zu invalid\n",
