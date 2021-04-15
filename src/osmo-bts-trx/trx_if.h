@@ -1,5 +1,4 @@
-#ifndef TRX_IF_H
-#define TRX_IF_H
+#pragma once
 
 struct trx_dl_burst_req;
 struct trx_l1h;
@@ -44,5 +43,3 @@ int trx_if_powered(struct trx_l1h *l1h);
 
 /* Format negotiation command */
 int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb);
-
-#endif /* TRX_IF_H */
