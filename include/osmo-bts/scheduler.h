@@ -63,9 +63,9 @@ enum trx_chan_type {
 #define GPRS_BURST_LEN		GSM_BURST_LEN
 #define EGPRS_BURST_LEN		444
 
-enum trx_burst_type {
-	TRX_BURST_GMSK,
-	TRX_BURST_8PSK,
+enum trx_mod_type {
+	TRX_MOD_T_GMSK,
+	TRX_MOD_T_8PSK,
 };
 
 /* A set of measurements belonging to one Uplink burst */
@@ -85,7 +85,7 @@ struct l1sched_chan_state {
 	/* scheduler */
 	bool			active;		/* Channel is active */
 	ubit_t			*dl_bursts;	/* burst buffer for TX */
-	enum trx_burst_type	dl_burst_type;  /* GMSK or 8PSK burst type */
+	enum trx_mod_type	dl_mod_type;	/* Downlink modulation type */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	sbit_t			*ul_bursts_prev;/* previous burst buffer for RX (repeated SACCH) */
 	uint32_t		ul_first_fn;	/* fn of first burst */
@@ -244,7 +244,7 @@ struct trx_ul_burst_ind {
 	int8_t rssi;		/*!< Received Signal Strength Indication */
 
 	/* Optional fields (defined by flags) */
-	enum trx_burst_type bt;	/*!< Modulation type */
+	enum trx_mod_type mod;	/*!< Modulation type */
 	uint8_t tsc_set;	/*!< Training Sequence Set */
 	uint8_t tsc;		/*!< Training Sequence Code */
 	int16_t ci_cb;		/*!< Carrier-to-Interference ratio (in centiBels) */

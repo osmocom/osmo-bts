@@ -786,11 +786,11 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 	/* Modulation info and TSC set */
 	mts = (buf[0] >> 3) & 0b1111;
 	if ((mts & 0b1100) == 0x00) {
-		bi->bt = TRX_BURST_GMSK;
+		bi->mod = TRX_MOD_T_GMSK;
 		bi->tsc_set = mts & 0b11;
 		bi->flags |= TRX_BI_F_MOD_TYPE;
 	} else if ((mts & 0b0100) == 0b0100) {
-		bi->bt = TRX_BURST_8PSK;
+		bi->mod = TRX_MOD_T_8PSK;
 		bi->tsc_set = mts & 0b1;
 		bi->flags |= TRX_BI_F_MOD_TYPE;
 	} else {
@@ -854,15 +854,15 @@ static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 {
 	/* Modulation types defined in 3GPP TS 45.002 */
 	static const size_t bl[] = {
-		[TRX_BURST_GMSK] = 148, /* 1 bit per symbol */
-		[TRX_BURST_8PSK] = 444, /* 3 bits per symbol */
+		[TRX_MOD_T_GMSK] = 148, /* 1 bit per symbol */
+		[TRX_MOD_T_8PSK] = 444, /* 3 bits per symbol */
 	};
 
 	/* Verify burst length */
-	if (bl[bi->bt] != buf_len) {
+	if (bl[bi->mod] != buf_len) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
 			"Rx TRXD message with odd burst length %zu, "
-			"expected %zu\n", buf_len, bl[bi->bt]);
+			"expected %zu\n", buf_len, bl[bi->mod]);
 		return -EINVAL;
 	}
 
@@ -878,8 +878,8 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 
 	/* Modulation types defined in 3GPP TS 45.002 */
 	static const char *mod_names[] = {
-		[TRX_BURST_GMSK] = "GMSK",
-		[TRX_BURST_8PSK] = "8-PSK",
+		[TRX_MOD_T_GMSK] = "GMSK",
+		[TRX_MOD_T_8PSK] = "8-PSK",
 	};
 
 	/* Initialize the string buffer */
@@ -901,7 +901,7 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 
 	/* Modulation and TSC set */
 	if (bi->flags & TRX_BI_F_MOD_TYPE)
-		OSMO_STRBUF_PRINTF(sb, " mod=%s", mod_names[bi->bt]);
+		OSMO_STRBUF_PRINTF(sb, " mod=%s", mod_names[bi->mod]);
 
 	/* Training Sequence Code */
 	if (bi->flags & TRX_BI_F_TS_INFO)

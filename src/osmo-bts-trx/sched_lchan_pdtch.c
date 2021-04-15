@@ -156,7 +156,7 @@ int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct msgb *msg = NULL; /* make GCC happy */
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[chan].dl_bursts;
-	enum trx_burst_type *burst_type = &l1ts->chan_state[chan].dl_burst_type;
+	enum trx_mod_type *mod = &l1ts->chan_state[chan].dl_mod_type;
 	int rc = 0;
 
 	/* send burst, if we already got a frame */
@@ -205,9 +205,9 @@ got_msg:
 		msgb_free(msg);
 		goto no_msg;
 	} else if (rc == GSM0503_EGPRS_BURSTS_NBITS) {
-		*burst_type = TRX_BURST_8PSK;
+		*mod = TRX_MOD_T_8PSK;
 	} else {
-		*burst_type = TRX_BURST_GMSK;
+		*mod = TRX_MOD_T_GMSK;
 	}
 
 	/* free message */
@@ -215,7 +215,7 @@ got_msg:
 
 send_burst:
 	/* compose burst */
-	if (*burst_type == TRX_BURST_8PSK) {
+	if (*mod == TRX_MOD_T_8PSK) {
 		burst = *bursts_p + bid * 348;
 		memset(br->burst, 1, 9);
 		memcpy(br->burst + 9, burst, 174);
