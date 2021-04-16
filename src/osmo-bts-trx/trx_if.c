@@ -752,12 +752,45 @@ static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 	return TRX_UL_V0HDR_LEN;
 }
 
+/* Parser for MTS (Modulation and Training Sequence) */
+static inline int trx_data_parse_mts(struct trx_l1h *l1h,
+				     struct trx_ul_burst_ind *bi,
+				     const uint8_t mts)
+{
+	if (mts & (1 << 7)) {
+		bi->flags |= TRX_BI_F_NOPE_IND;
+		return 0;
+	}
+
+	/* | 7 6 5 4 3 2 1 0 | Bitmask / description
+	 * | . 0 0 X X . . . | GMSK, 4 TSC sets (0..3)
+	 * | . 0 1 0 X . . . | 8-PSK, 2 TSC sets (0..1) */
+	if ((mts >> 5) == 0x00) {
+		bi->mod = TRX_MOD_T_GMSK;
+		bi->tsc_set = (mts >> 3) & 0x03;
+	} else if ((mts >> 4) == 0x02) {
+		bi->mod = TRX_MOD_T_8PSK;
+		bi->tsc_set = (mts >> 3) & 0x01;
+	} else {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Rx TRXD PDU with unknown or not supported "
+			"modulation (MTS=0x%02x)\n", mts);
+		return -ENOTSUP;
+	}
+
+	/* Training Sequence Code */
+	bi->tsc = mts & 0x07;
+
+	bi->flags |= (TRX_BI_F_MOD_TYPE | TRX_BI_F_TS_INFO);
+
+	return 0;
+}
+
 /* TRXD header dissector for version 0x01 */
 static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 				  struct trx_ul_burst_ind *bi,
 				  const uint8_t *buf, size_t buf_len)
 {
-	uint8_t mts;
 	int rc;
 
 	/* Make sure we have enough data */
@@ -777,33 +810,11 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 	buf_len -= rc;
 	buf += rc;
 
-	/* IDLE / NOPE frame indication */
-	if (buf[0] & (1 << 7)) {
-		bi->flags |= TRX_BI_F_NOPE_IND;
-		goto skip_mts;
-	}
+	/* MTS (Modulation and Training Sequence) */
+	rc = trx_data_parse_mts(l1h, bi, buf[0]);
+	if (rc < 0)
+		return rc;
 
-	/* Modulation info and TSC set */
-	mts = (buf[0] >> 3) & 0b1111;
-	if ((mts & 0b1100) == 0x00) {
-		bi->mod = TRX_MOD_T_GMSK;
-		bi->tsc_set = mts & 0b11;
-		bi->flags |= TRX_BI_F_MOD_TYPE;
-	} else if ((mts & 0b0100) == 0b0100) {
-		bi->mod = TRX_MOD_T_8PSK;
-		bi->tsc_set = mts & 0b1;
-		bi->flags |= TRX_BI_F_MOD_TYPE;
-	} else {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Indicated modulation 0x%02x is not supported\n", mts & 0b1110);
-		return -ENOTSUP;
-	}
-
-	/* Training Sequence Code */
-	bi->tsc = buf[0] & 0b111;
-	bi->flags |= TRX_BI_F_TS_INFO;
-
-skip_mts:
 	/* C/I: Carrier-to-Interference ratio (in centiBels) */
 	bi->ci_cb = (int16_t) osmo_load16be(buf + 1);
 	bi->flags |= TRX_BI_F_CI_CB;
