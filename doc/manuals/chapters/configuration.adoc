@@ -147,6 +147,20 @@ only in the current session of OsmoBTS.
 De-activation can be performed similarly by using the `no gsmtap-sapi
 sdcch` command at the `bts` node of the OsmoBTS VTY.
 
+It may be useful to enable all SAPIs with a few exceptions, or vice versa
+disable everything using one command.  For this purpose, the VTY provides
+`gsmtap-sapi enable-all` and `gsmtap-sapi disable-all` commands.
+
+.Example: Enabling all SAPIs except PDTCH and PTCCH
+----
+bts 0
+ gsmtap-sapi enable-all <1>
+ no gsmtap-sapi pdtch <2>
+ no gsmtap-sapi ptcch <2>
+----
+<1> Enable all available SAPIs
+<2> Exclude PDTCH and PTCCH SAPIs
+
 From the moment they are enabled via VTY, GSMTAP messages will be
 generated and sent in UDP encapsulation to the IANA-registered UDP port
 for GSMTAP (4729) at the IP address specified in the command line
