@@ -265,18 +265,12 @@ DEFUN_DEPRECATED(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_
 	return CMD_SUCCESS;
 }
 
-DEFUN_ATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
-	   "osmotrx maxdly <0-63>",
-	   OSMOTRX_STR
-	   "Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
-	   " Access Burst is the first burst a mobile transmits in order to establish"
-	   " a connection and it is used to estimate Timing Advance (TA) which is"
-	   " then applied to Normal Bursts to compensate for signal delay due to"
-	   " distance. So changing this setting effectively changes maximum range of"
-	   " the cell, because if we receive an Access Burst with a delay higher than"
-	   " this value, it will be ignored and connection is dropped.\n"
-	   "GSM symbols (550m distance between UE and BTS per symbol)\n",
-	   CMD_ATTR_IMMEDIATE)
+DEFUN_USRATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "osmotrx maxdly <0-63>",
+	      OSMOTRX_STR
+	      "Set the maximum acceptable delay of an Access Burst\n"
+	      "Delay in GSMK symbol periods (approx. 550m per symbol)\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -284,25 +278,17 @@ DEFUN_ATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	l1h->config.maxdly = atoi(argv[0]);
 	l1h->config.maxdly_valid = 1;
 	l1h->config.maxdly_sent = false;
-	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN_ATTR(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
-	   "osmotrx maxdlynb <0-31>",
-	   OSMOTRX_STR
-	   "Set the maximum acceptable delay of a Normal Burst (in GSM symbols)."
-	   " USE FOR TESTING ONLY, DON'T CHANGE IN PRODUCTION USE!"
-	   " During normal operation, Normal Bursts delay are controlled by a Timing"
-	   " Advance control loop and thus Normal Bursts arrive to a BTS with no more"
-	   " than a couple GSM symbols, which is already taken into account in osmo-trx."
-	   " So changing this setting will have no effect in production installations"
-	   " except increasing osmo-trx CPU load. This setting is only useful when"
-	   " testing with a transmitter which can't precisely synchronize to the BTS"
-	   " downlink signal, like e.g. R&S CMD57.\n"
-	   "GSM symbols (approx. 1.1km per symbol)\n",
-	   CMD_ATTR_IMMEDIATE)
+DEFUN_ATTR_USRATTR(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
+		   CMD_ATTR_HIDDEN, /* expert mode command */
+		   X(BTS_VTY_TRX_POWERCYCLE),
+		   "osmotrx maxdlynb <0-63>",
+		   OSMOTRX_STR
+		   "Set the maximum acceptable delay of a Normal Burst\n"
+		   "Delay in GMSK symbol periods (approx. 550m per symbol)\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -310,7 +296,6 @@ DEFUN_ATTR(cfg_phyinst_maxdlynb, cfg_phyinst_maxdlynb_cmd,
 	l1h->config.maxdlynb = atoi(argv[0]);
 	l1h->config.maxdlynb_valid = 1;
 	l1h->config.maxdlynb_sent = false;
-	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }

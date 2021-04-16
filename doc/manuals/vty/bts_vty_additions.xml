@@ -1,1 +1,26 @@
-<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'/>
+<!-- ex:ts=2:sw=2:et -->
+<vtydoc xmlns='urn:osmocom:xml:libosmocore:vty:doc:1.0'>
+  <node id='phy-inst'>
+    <!-- FIXME: This command appears twice for some reason. -->
+    <command id='osmotrx maxdly &lt;0-63&gt;'>
+      <description>
+        Access Burst is the first burst a mobile transmits in order to establish a connection and it
+        is used to estimate Timing Advance (TA) which is then applied to Normal Bursts to compensate
+        for signal delay due to distance. So changing this setting effectively changes maximum range
+        of the cell, because Access Bursts with a delay higher than this value will be ignored.
+      </description>
+    </command>
+    <!-- FIXME: This command appears unconditionally, despite being hidden. -->
+    <command id='osmotrx maxdlynb &lt;0-63&gt;'>
+      <description>
+        USE FOR TESTING ONLY, DO NOT CHANGE IN PRODUCTION USE!
+        During the normal operation, delay of Normal Bursts is controlled by the Timing Advance loop
+        and thus Normal Bursts arrive to a BTS with no more than a couple GSM symbols, which is
+        already taken into account in osmo-trx. Changing this setting will have no effect in
+        production installations except increasing osmo-trx CPU load. This setting is only useful
+        when testing with a transmitter which cannot precisely synchronize to the BTS downlink
+        signal, like R&amp;S CMD57.
+      </description>
+    </command>
+  </node>
+</vtydoc>
