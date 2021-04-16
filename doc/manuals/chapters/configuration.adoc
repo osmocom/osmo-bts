@@ -19,7 +19,7 @@ The OsmoBTS executables (`osmo-bts-sysmo`, `osmo-bts-trx`,
 generic command line options:
 
 ==== SYNOPSIS
-*osmo-bts-sysmo* [-h|-V] [-d 'DBGMASK'] [-D] [-c 'CONFIGFILE' ] [-s] [-T] [-e 'LOGLEVEL'] [-r 'PRIO'] [-i 'GSMTAP-IP'] [-t <1-255>]
+*osmo-bts-sysmo* [-h|-V] [-d 'DBGMASK'] [-D] [-c 'CONFIGFILE' ] [-s] [-T] [-e 'LOGLEVEL']
 
 ==== OPTIONS
 *-h, --help*::
@@ -48,16 +48,6 @@ generic command line options:
 	Set the global log level for logging to stderr. This has mostly
 	been deprecated by VTY based logging configuration, see
 	<<logging>> for further information.
-*-r, --realtime 'PRIO'*::
-	Enable use of the Linux kernel realtime priority scheduler with
-	the specified priority.
-	It is recommended you use this option on low-performance
-	embedded systems or systems that encounter high non-GSM/GPRS
-	load.
-*-i, --gsmtap-ip 'GSMTAP-IP'*::
-	Specify the destination IP address for GSMTAP messages.
-*-t, --trx-num <1-255>*::
-	Specify the number of TRX supported by this BTS.
 
 There may be additional, hardware specific command line options by the
 different bts_model implementations.
