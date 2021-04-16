@@ -108,11 +108,22 @@ them via UDP/IP. At that point, they can be captured with utilities like
 *tcpdump* or *tshark* for further analysis by the *wireshark* protocol
 analyzer.
 
-In order to activate this feature, you first need to make sure to start
-OsmoBTS using the `-i` or `--gsmtap-ip` command line option, specifying
-the destination IP address for the GSMTAP messages.  In most cases,
-using 127.0.0.1 for passing the messages over the loopback (`lo`) device
-will be sufficient.
+In order to activate this feature, you first need to make sure to specify
+the remote address of _GSMTAP_ host in the configuration file.  In most
+cases, using 127.0.0.1 for passing the messages over the loopback (`lo`)
+device will be sufficient:
+
+.Example: Enabling GSMTAP Um-frame logging to localhost
+----
+bts 0
+ gsmtap-remote-host 127.0.0.1 <1>
+----
+<1> Destination address for _GSMTAP_ Um-frames
+
+NOTE: Changing this parameter at run-time will not affect the existing
+_GSMTAP_ connection, full program restart is required.
+
+NOTE: Command line parameters `-i` and `--gsmtap-ip` have been deprecated.
 
 OsmoBTS can selectively trace such messages by their L1 SAPI, for both
 Rx and Tx. For a complete list of L1 SAPI values, please refer to the
@@ -153,8 +164,7 @@ bts 0
 
 From the moment they are enabled via VTY, GSMTAP messages will be
 generated and sent in UDP encapsulation to the IANA-registered UDP port
-for GSMTAP (4729) at the IP address specified in the command line
-argument.
+for GSMTAP (4729) of the specified remote address.
 
 ==== Configuring power ramping
 
