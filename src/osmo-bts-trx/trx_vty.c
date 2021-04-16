@@ -357,12 +357,12 @@ DEFUN_ATTR(cfg_phy_rts_advance, cfg_phy_rts_advance_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN_ATTR(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
-	   "osmotrx rx-gain <0-50>",
-	   OSMOTRX_STR
-	   "Set the receiver gain in dB\n"
-	   "Gain in dB\n",
-	   CMD_ATTR_IMMEDIATE)
+DEFUN_USRATTR(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "osmotrx rx-gain <0-50>",
+	      OSMOTRX_STR
+	      "Set the receiver gain in dB\n"
+	      "Gain in dB\n")
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -370,7 +370,6 @@ DEFUN_ATTR(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
 	l1h->config.rxgain = atoi(argv[0]);
 	l1h->config.rxgain_valid = 1;
 	l1h->config.rxgain_sent = false;
-	l1if_provision_transceiver_trx(l1h);
 
 	return CMD_SUCCESS;
 }
