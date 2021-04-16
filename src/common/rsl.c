@@ -112,8 +112,8 @@ void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
 }
 
 /* compute lchan->rsl_cmode and lchan->tch_mode from RSL CHAN MODE IE */
-static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
-				     struct rsl_ie_chan_mode *cm)
+static int lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
+				    const struct rsl_ie_chan_mode *cm)
 {
 	lchan->rsl_cmode = cm->spd_ind;
 	lchan->ts->trx->bts->dtxd = (cm->dtx_dtu & RSL_CMOD_DTXd) ? true : false;
@@ -137,7 +137,11 @@ static void lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
 	case RSL_CMOD_SP_NT_6k0:
 		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
 		break;
+	default:
+		return -ENOTSUP;
 	}
+
+	return 0;
 }
 
 
@@ -1359,7 +1363,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 		}
 		cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
-		lchan_tchmode_from_cmode(lchan, cm);
+		if (lchan_tchmode_from_cmode(lchan, cm) != 0) {
+			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Unhandled RSL Channel Mode\n");
+			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
+		}
 	}
 
 	/* 9.3.7 Encryption Information */
@@ -1874,7 +1881,10 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_MAND_IE_ERROR);
 	}
 	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
-	lchan_tchmode_from_cmode(lchan, cm);
+	if (lchan_tchmode_from_cmode(lchan, cm) != 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Unhandled RSL Channel Mode\n");
+		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_IE_CONTENT);
+	}
 
 	if (bts_supports_cm(lchan->ts->trx->bts, ts_pchan(lchan->ts), lchan->tch_mode) != 1) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s: invalid mode: %s (wrong BSC configuration?)\n",
