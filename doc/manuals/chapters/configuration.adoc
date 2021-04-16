@@ -137,8 +137,7 @@ node of the OsmoBTS VTY.
 OsmoBTS> enable
 OsmoBTS# configure terminal
 OsmoBTS(config)# bts 0
-OsmoBTS(bts)# trx 0
-OsmoBTS(trx)# gsmtap-sapi sdcch
+OsmoBTS(bts)# gsmtap-sapi sdcch
 OsmoBTS(trx)# write <1>
 ----
 <1> the `write` command will make the configuration persistent in the
@@ -146,7 +145,7 @@ configuration file.  This is not required if you wish to enable GSMTAP
 only in the current session of OsmoBTS.
 
 De-activation can be performed similarly by using the `no gsmtap-sapi
-sdcch` command at the `trx` node of the OsmoBTS VTY.
+sdcch` command at the `bts` node of the OsmoBTS VTY.
 
 From the moment they are enabled via VTY, GSMTAP messages will be
 generated and sent in UDP encapsulation to the IANA-registered UDP port
