@@ -743,12 +743,6 @@ static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 	bi->rssi = -(int8_t)buf[5];
 	bi->toa256 = (int16_t) osmo_load16be(buf + 6);
 
-	if (bi->fn >= GSM_TDMA_HYPERFRAME) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Illegal TDMA fn=%u\n", bi->fn);
-		return -EINVAL;
-	}
-
 	return TRX_UL_V0HDR_LEN;
 }
 
@@ -973,6 +967,13 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	/* Header parsing error */
 	if (hdr_len < 0)
 		return hdr_len;
+
+	if (bi.fn >= GSM_TDMA_HYPERFRAME) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Rx malformed TRXDv%u PDU: illegal TDMA fn=%u\n",
+			pdu_ver, bi.fn);
+		return -EINVAL;
+	}
 
 	if (bi.flags & TRX_BI_F_NOPE_IND) {
 		bi.burst_len = 0;
