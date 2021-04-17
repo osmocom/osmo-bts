@@ -729,15 +729,41 @@ static const uint8_t trx_data_rx_hdr_len[] = {
 	TRX_UL_V1HDR_LEN, /* TRXDv1 */
 };
 
-/* TRXD header dissector for version 0 */
-static int trx_data_handle_hdr_v0(struct phy_instance *phy_inst,
-				  struct trx_ul_burst_ind *bi,
-				  const uint8_t *buf, size_t buf_len)
+/* Header dissector for TRXDv0 (and part of TRXDv1) */
+static inline void trx_data_handle_hdr_v0_part(struct trx_ul_burst_ind *bi,
+					       const uint8_t *buf)
 {
 	bi->tn = buf[0] & 0b111;
 	bi->fn = osmo_load32be(buf + 1);
 	bi->rssi = -(int8_t)buf[5];
 	bi->toa256 = (int16_t) osmo_load16be(buf + 6);
+}
+
+/* TRXD header dissector for version 0x00 */
+static int trx_data_handle_hdr_v0(struct phy_instance *phy_inst,
+				  struct trx_ul_burst_ind *bi,
+				  const uint8_t *buf, size_t buf_len)
+{
+	/* Parse TRXDv0 specific header part */
+	trx_data_handle_hdr_v0_part(bi, buf);
+	buf_len -= TRX_UL_V0HDR_LEN;
+
+	/* Guess modulation and burst length by the rest octets.
+	 * NOTE: a legacy transceiver may append two garbage bytes. */
+	switch (buf_len) {
+	case EGPRS_BURST_LEN + 2:
+	case EGPRS_BURST_LEN:
+		bi->mod = TRX_MOD_T_8PSK;
+		break;
+	case GSM_BURST_LEN + 2:
+	case GSM_BURST_LEN:
+		bi->mod = TRX_MOD_T_GMSK;
+		break;
+	default:
+		LOGPPHI(phy_inst, DTRX, LOGL_NOTICE,
+			"Rx TRXD PDU with odd burst length %zu\n", buf_len);
+		return -EINVAL;
+	}
 
 	return TRX_UL_V0HDR_LEN;
 }
@@ -783,14 +809,9 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 {
 	int rc;
 
-	/* Parse v0 specific part */
-	rc = trx_data_handle_hdr_v0(phy_inst, bi, buf, buf_len);
-	if (rc < 0)
-		return rc;
-
-	/* Move closer to the v1 specific part */
-	buf_len -= rc;
-	buf += rc;
+	/* Parse TRXDv0 specific header part */
+	trx_data_handle_hdr_v0_part(bi, buf);
+	buf += TRX_UL_V0HDR_LEN;
 
 	/* MTS (Modulation and Training Sequence) */
 	rc = trx_data_parse_mts(phy_inst, bi, buf[0]);
@@ -804,30 +825,27 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 	return TRX_UL_V1HDR_LEN;
 }
 
-/* TRXD burst handler for PDU version 0 */
-static int trx_data_handle_burst_v0(struct phy_instance *phy_inst,
-				    struct trx_ul_burst_ind *bi,
-				    const uint8_t *buf, size_t buf_len)
+/* TRXD burst handler (version independent) */
+static int trx_data_handle_burst(struct trx_ul_burst_ind *bi,
+				 const uint8_t *buf, size_t buf_len)
 {
 	size_t i;
 
-	/* Verify burst length */
-	switch (buf_len) {
-	/* Legacy transceivers append two padding bytes */
-	case EGPRS_BURST_LEN + 2:
-	case GSM_BURST_LEN + 2:
-		bi->burst_len = buf_len - 2;
-		break;
-	case EGPRS_BURST_LEN:
-	case GSM_BURST_LEN:
-		bi->burst_len = buf_len;
-		break;
-
-	default:
-		LOGPPHI(phy_inst, DTRX, LOGL_NOTICE,
-			"Rx TRXD message with odd burst length %zu\n", buf_len);
-		return -EINVAL;
+	/* NOPE.ind contains no burst */
+	if (bi->flags & TRX_BI_F_NOPE_IND) {
+		bi->burst_len = 0;
+		return 0;
 	}
+
+	/* Modulation types defined in 3GPP TS 45.002 */
+	static const size_t bl[] = {
+		[TRX_MOD_T_GMSK] = 148, /* 1 bit per symbol */
+		[TRX_MOD_T_8PSK] = 444, /* 3 bits per symbol */
+	};
+
+	bi->burst_len = bl[bi->mod];
+	if (buf_len < bi->burst_len)
+		return -EINVAL;
 
 	/* Convert unsigned soft-bits [254..0] to soft-bits [-127..127] */
 	for (i = 0; i < bi->burst_len; i++) {
@@ -838,30 +856,6 @@ static int trx_data_handle_burst_v0(struct phy_instance *phy_inst,
 	}
 
 	return 0;
-}
-
-/* TRXD burst handler for PDU version 1 */
-static int trx_data_handle_burst_v1(struct phy_instance *phy_inst,
-				    struct trx_ul_burst_ind *bi,
-				    const uint8_t *buf, size_t buf_len)
-{
-	/* Modulation types defined in 3GPP TS 45.002 */
-	static const size_t bl[] = {
-		[TRX_MOD_T_GMSK] = 148, /* 1 bit per symbol */
-		[TRX_MOD_T_8PSK] = 444, /* 3 bits per symbol */
-	};
-
-	/* Verify burst length */
-	if (bl[bi->mod] != buf_len) {
-		LOGPPHI(phy_inst, DTRX, LOGL_NOTICE,
-			"Rx TRXD message with odd burst length %zu, "
-			"expected %zu\n", buf_len, bl[bi->mod]);
-		return -EINVAL;
-	}
-
-	/* The PDU format is the same as for version 0.
-	 * NOTE: other modulation types to be handled separately. */
-	return trx_data_handle_burst_v0(phy_inst, bi, buf, buf_len);
 }
 
 static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
@@ -914,7 +908,6 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
 	uint8_t pdu_ver;
-	int rc;
 
 	buf_len = recv(ofd->fd, buf, sizeof(buf), 0);
 	if (buf_len <= 0) {
@@ -948,11 +941,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* Parse header depending on the PDU version */
 	switch (pdu_ver) {
-	case 0:
-		/* Legacy protocol has no version indicator */
+	case 0: /* TRXDv0 */
 		hdr_len = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
 		break;
-	case 1:
+	case 1: /* TRXDv1 */
 		hdr_len = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
 		break;
 	default:
@@ -971,32 +963,17 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EINVAL;
 	}
 
-	if (bi.flags & TRX_BI_F_NOPE_IND) {
-		bi.burst_len = 0;
-		goto skip_burst;
-	}
-
 	/* We're done with the header now */
 	buf_len -= hdr_len;
 
-	/* Handle burst bits */
-	switch (pdu_ver) {
-	case 0:
-		rc = trx_data_handle_burst_v0(l1h->phy_inst, &bi, buf + hdr_len, buf_len);
-		break;
-	case 1:
-		rc = trx_data_handle_burst_v1(l1h->phy_inst, &bi, buf + hdr_len, buf_len);
-		break;
-	default:
-		/* Shall not happen, just to make GCC happy */
-		OSMO_ASSERT(0);
+	/* Calculate burst length and parse it (if present) */
+	if (trx_data_handle_burst(&bi, buf + hdr_len, buf_len) != 0) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Rx malformed TRXDv%u PDU: odd burst length=%zd\n",
+			pdu_ver, buf_len);
+		return -EINVAL;
 	}
 
-	/* Burst parsing error */
-	if (rc < 0)
-		return rc;
-
-skip_burst:
 	/* Print header & burst info */
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (pdu_ver=%u): %s\n",
 		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
