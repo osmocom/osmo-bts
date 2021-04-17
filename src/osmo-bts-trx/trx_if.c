@@ -718,11 +718,9 @@ rsp_error:
  * TRX burst data socket
  */
 
-/* Common header length: 1/2 VER + 1/2 TDMA TN + 4 TDMA FN */
-#define TRX_CHDR_LEN		(1 + 4)
-/* Uplink v0 header length: 1 RSSI + 2 ToA256 */
-#define TRX_UL_V0HDR_LEN	(TRX_CHDR_LEN + 1 + 2)
-/* Uplink v1 header length: + 1 MTS + 2 C/I */
+/* Uplink TRXDv0 header length: TDMA TN + FN + RSSI + ToA256 */
+#define TRX_UL_V0HDR_LEN	(1 + 4 + 1 + 2)
+/* Uplink TRXDv1 header length: additional MTS + C/I */
 #define TRX_UL_V1HDR_LEN	(TRX_UL_V0HDR_LEN + 1 + 2)
 
 /* TRXD header dissector for version 0 */
