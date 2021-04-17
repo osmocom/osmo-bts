@@ -231,6 +231,8 @@ extern const struct trx_sched_multiframe trx_sched_multiframes[];
 #define TRX_BI_F_MOD_TYPE	(1 << 1)
 #define TRX_BI_F_TS_INFO	(1 << 2)
 #define TRX_BI_F_CI_CB		(1 << 3)
+#define TRX_BI_F_TRX_NUM	(1 << 4)
+#define TRX_BI_F_BATCH_IND	(1 << 5)
 
 /*! UL burst indication with the corresponding meta info */
 struct trx_ul_burst_ind {
@@ -248,6 +250,10 @@ struct trx_ul_burst_ind {
 	uint8_t tsc_set;	/*!< Training Sequence Set */
 	uint8_t tsc;		/*!< Training Sequence Code */
 	int16_t ci_cb;		/*!< Carrier-to-Interference ratio (in centiBels) */
+	uint8_t trx_num;	/*!< TRX (RF channel) number */
+
+	/* Used internally by the PDU parser */
+	uint8_t _num_pdus;	/*!< Number of processed PDUs */
 
 	/* Internally used by the scheduler */
 	enum trx_chan_type chan;
@@ -258,11 +264,19 @@ struct trx_ul_burst_ind {
 	size_t burst_len;
 };
 
+#define TRX_BR_F_MORE_PDUS	(1 << 0)
+
 /*! DL burst request with the corresponding meta info */
 struct trx_dl_burst_req {
+	uint8_t flags;		/*!< see TRX_BR_F_* */
+
+	/* Mandatory fields */
 	uint32_t fn;		/*!< TDMA frame number */
 	uint8_t tn;		/*!< TDMA timeslot number */
 	uint8_t att;		/*!< Tx power attenuation */
+	uint8_t mts;		/*!< MTS (Modulation and Training Sequence) */
+	int8_t scpir;		/*!< SCPIR (for AQPSK only) */
+	uint8_t trx_num;	/*!< TRX (RF channel) number */
 
 	/* Internally used by the scheduler */
 	enum trx_chan_type chan;

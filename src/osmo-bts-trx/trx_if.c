@@ -730,11 +730,14 @@ rsp_error:
 #define TRX_UL_V0HDR_LEN	(1 + 4 + 1 + 2)
 /* Uplink TRXDv1 header length: additional MTS + C/I */
 #define TRX_UL_V1HDR_LEN	(TRX_UL_V0HDR_LEN + 1 + 2)
+/* Uplink TRXDv2 header length: TDMA TN + TRXN + MTS + RSSI + ToA256 + C/I */
+#define TRX_UL_V2HDR_LEN	(1 + 1 + 1 + 1 + 2 + 2)
 
 /* Minimum Uplink TRXD header length for all PDU versions */
 static const uint8_t trx_data_rx_hdr_len[] = {
 	TRX_UL_V0HDR_LEN, /* TRXDv0 */
 	TRX_UL_V1HDR_LEN, /* TRXDv1 */
+	TRX_UL_V2HDR_LEN, /* TRXDv2 */
 };
 
 /* Header dissector for TRXDv0 (and part of TRXDv1) */
@@ -833,6 +836,48 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 	return TRX_UL_V1HDR_LEN;
 }
 
+/* TRXD header dissector for version 0x01 */
+static int trx_data_handle_pdu_v2(struct phy_instance *phy_inst,
+				  struct trx_ul_burst_ind *bi,
+				  const uint8_t *buf, size_t buf_len)
+{
+	int rc;
+
+	/* TDMA timeslot number (other bits are RFU) */
+	bi->tn = buf[0] & 0x07;
+
+	/* TRX (RF channel) number and BATCH.ind */
+	if (buf[1] & (1 << 7))
+		bi->flags |= TRX_BI_F_BATCH_IND;
+	bi->trx_num = buf[1] & 0x3f;
+	bi->flags |= TRX_BI_F_TRX_NUM;
+
+	/* MTS (Modulation and Training Sequence) */
+	rc = trx_data_parse_mts(phy_inst, bi, buf[2]);
+	if (rc < 0)
+		return rc;
+
+	bi->rssi = -(int8_t)buf[3];
+	bi->toa256 = (int16_t) osmo_load16be(&buf[4]);
+	bi->ci_cb = (int16_t) osmo_load16be(&buf[6]);
+	bi->flags |= TRX_BI_F_CI_CB;
+
+	/* TDMA frame number is absent in batched PDUs */
+	if (bi->_num_pdus == 0) {
+		if (buf_len < sizeof(bi->fn) + TRX_UL_V2HDR_LEN) {
+			LOGPPHI(phy_inst, DTRX, LOGL_ERROR,
+				"Rx malformed TRXDv2 PDU: not enough bytes "
+				"to parse TDMA frame number\n");
+			return -EINVAL;
+		}
+
+		bi->fn = osmo_load32be(buf + TRX_UL_V2HDR_LEN);
+		return TRX_UL_V2HDR_LEN + sizeof(bi->fn);
+	}
+
+	return TRX_UL_V2HDR_LEN;
+}
+
 /* TRXD burst handler (version independent) */
 static int trx_data_handle_burst(struct trx_ul_burst_ind *bi,
 				 const uint8_t *buf, size_t buf_len)
@@ -883,6 +928,10 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	/* Common TDMA parameters */
 	OSMO_STRBUF_PRINTF(sb, "tn=%u fn=%u", bi->tn, bi->fn);
 
+	/* TRX (RF channel number) */
+	if (bi->flags & TRX_BI_F_TRX_NUM)
+		OSMO_STRBUF_PRINTF(sb, " trx_num=%u", bi->trx_num);
+
 	/* RSSI and ToA256 */
 	OSMO_STRBUF_PRINTF(sb, " rssi=%d toa256=%d", bi->rssi, bi->toa256);
 
@@ -929,9 +978,6 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return buf_len;
 	}
 
-	/* Pre-clean (initialize) the flags */
-	bi.flags = 0x00;
-
 	/* Parse PDU version first */
 	pdu_ver = buf[0] >> 4;
 
@@ -943,56 +989,76 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		return -EIO;
 	}
 
-	/* Make sure that we have enough bytes to parse the header */
-	if (buf_len < trx_data_rx_hdr_len[pdu_ver]) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
-			pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
-		return -EINVAL;
-	}
+	/* We're about to parse the first PDU */
+	bi._num_pdus = 0;
 
-	/* Parse header depending on the PDU version */
-	switch (pdu_ver) {
-	case 0: /* TRXDv0 */
-		hdr_len = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
-		break;
-	case 1: /* TRXDv1 */
-		hdr_len = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
-		break;
-	default:
-		/* Shall not happen */
-		OSMO_ASSERT(0);
-	}
+	/* Starting from TRXDv2, there can be batched PDUs */
+	do {
+		/* (Re)initialize the flags */
+		bi.flags = 0x00;
 
-	/* Header parsing error */
-	if (hdr_len < 0)
-		return hdr_len;
+		/* Make sure that we have enough bytes to parse the header */
+		if (buf_len < trx_data_rx_hdr_len[pdu_ver]) {
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+				"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
+				pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
+			return -EINVAL;
+		}
 
-	if (bi.fn >= GSM_TDMA_HYPERFRAME) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Rx malformed TRXDv%u PDU: illegal TDMA fn=%u\n",
-			pdu_ver, bi.fn);
-		return -EINVAL;
-	}
+		/* Parse header depending on the PDU version */
+		switch (pdu_ver) {
+		case 0: /* TRXDv0 */
+			hdr_len = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
+			break;
+		case 1: /* TRXDv1 */
+			hdr_len = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
+			break;
+		case 2: /* TRXDv2 */
+			hdr_len = trx_data_handle_pdu_v2(l1h->phy_inst, &bi, buf, buf_len);
+			break;
+		default:
+			/* Shall not happen */
+			OSMO_ASSERT(0);
+		}
 
-	/* We're done with the header now */
-	buf_len -= hdr_len;
+		/* Header parsing error */
+		if (hdr_len < 0)
+			return hdr_len;
 
-	/* Calculate burst length and parse it (if present) */
-	if (trx_data_handle_burst(&bi, buf + hdr_len, buf_len) != 0) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Rx malformed TRXDv%u PDU: odd burst length=%zd\n",
-			pdu_ver, buf_len);
-		return -EINVAL;
-	}
+		if (bi.fn >= GSM_TDMA_HYPERFRAME) {
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+				"Rx malformed TRXDv%u PDU: illegal TDMA fn=%u\n",
+				pdu_ver, bi.fn);
+			return -EINVAL;
+		}
 
-	/* Print header & burst info */
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (pdu_ver=%u): %s\n",
-		(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
-		pdu_ver, trx_data_desc_msg(&bi));
+		/* We're done with the header now */
+		buf_len -= hdr_len;
+		buf += hdr_len;
 
-	/* feed received burst into scheduler code */
-	trx_sched_route_burst_ind(&bi, &l1h->l1s);
+		/* Calculate burst length and parse it (if present) */
+		if (trx_data_handle_burst(&bi, buf, buf_len) != 0) {
+			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+				"Rx malformed TRXDv%u PDU: odd burst length=%zd\n",
+				pdu_ver, buf_len);
+			return -EINVAL;
+		}
+
+		/* We're done with the burst bits now */
+		buf_len -= bi.burst_len;
+		buf += bi.burst_len;
+
+		/* Print header & burst info */
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Rx %s (pdu_ver=%u): %s\n",
+			(bi.flags & TRX_BI_F_NOPE_IND) ? "NOPE.ind" : "UL burst",
+			pdu_ver, trx_data_desc_msg(&bi));
+
+		/* Number of processed PDUs */
+		bi._num_pdus++;
+
+		/* feed received burst into scheduler code */
+		trx_sched_route_burst_ind(&bi, &l1h->l1s);
+	} while (bi.flags & TRX_BI_F_BATCH_IND);
 
 	return 0;
 }
@@ -1003,9 +1069,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
  *  \returns 0 on success; negative on error */
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
-	ssize_t snd_len;
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
-	uint8_t *buf = &trx_data_buf[0];
+	static uint8_t *buf = &trx_data_buf[0];
+	static unsigned int pdu_num = 0;
+	ssize_t snd_len, buf_len;
 
 	/* Make sure that the PHY is powered on */
 	if (!trx_if_powered(l1h)) {
@@ -1014,35 +1081,55 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		return -ENODEV;
 	}
 
-	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %zu invalid\n",
-			br->burst_len);
-		return -1;
-	}
-
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Tx burst (pdu_ver=%u): tn=%u fn=%u att=%u\n",
-		pdu_ver, br->tn, br->fn, br->att);
-
 	switch (pdu_ver) {
-	case 0:
-	case 1:
-		/* Both versions have the same PDU format */
+	/* Both versions have the same PDU format */
+	case 0: /* TRXDv0 */
+	case 1: /* TRXDv1 */
+		buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
+		osmo_store32be(br->fn, buf + 1);
+		buf[5] = br->att;
+		buf += 6;
 		break;
-
+	case 2: /* TRXDv2 */
+		buf[0] = br->tn;
+		buf[1] = (br->trx_num & 0x3f) | (br->flags << 7);
+		buf[2] = br->mts;
+		buf[3] = br->att;
+		buf[4] = (uint8_t) br->scpir;
+		buf[5] = buf[6] = buf[7] = 0x00; /* Spare */
+		/* Some fields are not present in batched PDUs */
+		if (pdu_num == 0) {
+			buf[0] |= (pdu_ver & 0x0f) << 4;
+			osmo_store32be(br->fn, buf + 8);
+			buf += 4;
+		}
+		buf += 8;
+		break;
 	default:
 		/* Shall not happen */
 		OSMO_ASSERT(0);
 	}
 
-	buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
-	osmo_store32be(br->fn, buf + 1);
-	buf[5] = br->att;
-
 	/* copy ubits {0,1} */
-	memcpy(buf + 6, br->burst, br->burst_len);
+	memcpy(buf, br->burst, br->burst_len);
+	buf += br->burst_len;
 
-	snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, br->burst_len + 6, 0);
+	/* One more PDU in the buffer */
+	pdu_num++;
+
+	/* More PDUs to send? Batch them! */
+	if (pdu_ver >= 2 && br->flags & TRX_BR_F_MORE_PDUS)
+		return 0;
+
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
+		"Tx TRXDv%u datagram with %u PDU(s): fn=%u\n",
+		pdu_ver, pdu_num, br->fn);
+
+	buf_len = buf - &trx_data_buf[0];
+	buf = &trx_data_buf[0];
+	pdu_num = 0;
+
+	snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, buf_len, 0);
 	if (snd_len <= 0) {
 		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,

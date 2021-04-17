@@ -44,7 +44,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br);
 int trx_if_powered(struct trx_l1h *l1h);
 
 /* The latest supported TRXD PDU version */
-#define TRX_DATA_PDU_VER    1
+#define TRX_DATA_PDU_VER    2
 
 /* Format negotiation command */
 int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb);
