@@ -1971,7 +1971,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	 * need to make sure ew don't crash here */
 	if (tp && TLVP_PRES_LEN(tp, RSL_IE_CHAN_IDENT, sizeof(*cd) + 1)) {
 		/* Channel Description IE comes together with its IEI (see 9.3.5) */
-		cd = (const struct gsm48_chan_desc *) TLVP_VAL(tp, RSL_IE_CHAN_IDENT) + 1;
+		cd = (const struct gsm48_chan_desc *) (TLVP_VAL(tp, RSL_IE_CHAN_IDENT) + 1);
 
 		/* The PHY may not support using different TSCs */
 		if (!osmo_bts_has_feature(trx->bts->features, BTS_FEAT_MULTI_TSC)
