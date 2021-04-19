@@ -111,35 +111,107 @@ void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
 	out[1] = (gtime->t3 << 5) | gtime->t2;
 }
 
-/* compute lchan->rsl_cmode and lchan->tch_mode from RSL CHAN MODE IE */
-static int lchan_tchmode_from_cmode(struct gsm_lchan *lchan,
-				    const struct rsl_ie_chan_mode *cm)
+/* Handle RSL Channel Mode IE (see section 9.3.6) */
+static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
+				  const struct tlv_parsed *tp,
+				  uint8_t *cause)
 {
+	const struct rsl_ie_chan_mode *cm;
+
+	if (!TLVP_PRES_LEN(tp, RSL_IE_CHAN_MODE, sizeof(*cm))) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE is not present\n");
+		*cause = RSL_ERR_MAND_IE_ERROR;
+		return -ENODEV;
+	}
+
+	cm = (const struct rsl_ie_chan_mode *) TLVP_VAL(tp, RSL_IE_CHAN_MODE);
 	lchan->rsl_cmode = cm->spd_ind;
 	lchan->ts->trx->bts->dtxd = (cm->dtx_dtu & RSL_CMOD_DTXd) ? true : false;
 
-	switch (cm->chan_rate) {
-	case RSL_CMOD_SP_GSM1:
-		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
-		break;
-	case RSL_CMOD_SP_GSM2:
-		lchan->tch_mode = GSM48_CMODE_SPEECH_EFR;
-		break;
-	case RSL_CMOD_SP_GSM3:
-		lchan->tch_mode = GSM48_CMODE_SPEECH_AMR;
-		break;
-	case RSL_CMOD_SP_NT_14k5:
-		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
-		break;
-	case RSL_CMOD_SP_NT_12k0:
-		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
-		break;
-	case RSL_CMOD_SP_NT_6k0:
-		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+	/* Octet 5: Channel rate and type */
+	switch (cm->chan_rt) {
+	case RSL_CMOD_CRT_SDCCH:
+	case RSL_CMOD_CRT_TCH_Bm:
+	case RSL_CMOD_CRT_TCH_Lm:
 		break;
 	default:
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
+			  "unknown 'Channel rate and type' value 0x%02x\n",
+			  cm->chan_rate);
+		*cause = RSL_ERR_IE_CONTENT;
 		return -ENOTSUP;
 	}
+
+#define RSL_CMODE(spd_ind, chan_rate) \
+	((spd_ind << 8) | chan_rate)
+
+	/* Octet 6: Speech coding algorithm/data rate + transparency indicator.
+	 * NOTE: coding of this octet depends on 'Speech or data indicator' */
+	switch (RSL_CMODE(cm->spd_ind, cm->chan_rate)) {
+	/* If octet 4 indicates signalling */
+	case RSL_CMODE(RSL_CMOD_SPD_SIGN, 0x00):
+		/* No resources required, all other values are reserved */
+		lchan->tch_mode = GSM48_CMODE_SIGN;
+		break;
+
+	/* If octet 4 indicates speech */
+	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM1):
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
+		break;
+	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM2):
+		lchan->tch_mode = GSM48_CMODE_SPEECH_EFR;
+		break;
+	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM3):
+		lchan->tch_mode = GSM48_CMODE_SPEECH_AMR;
+		break;
+	/* TODO: also handle RSL_CMOD_SP_{GSM4,GSM5,GSM6} */
+
+	/* If octet 4 indicates non-transparent data */
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_14k5):
+		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
+		break;
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_12k0):
+		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
+		break;
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_6k0):
+		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+		break;
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_43k5):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_28k8):
+	/* TODO: also handle non-transparent asymmetric data rates */
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
+			  "unhandled non-transparent CSD data rate 0x%02x\n",
+			  cm->chan_rate & 0x3f);
+		*cause = RSL_ERR_IE_CONTENT;
+		return -ENOTSUP;
+
+	/* If octet 4 indicates transparent data */
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_32000):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_29000):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_14400):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_9600):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_4800):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_2400):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_600):
+	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200_75):
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
+			  "unhandled transparent CSD data rate 0x%02x\n",
+			  cm->chan_rate & 0x3f);
+		*cause = RSL_ERR_IE_CONTENT;
+		return -ENOTSUP;
+
+	default:
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
+			  "an unknown/unhandled combination of "
+			  "'Speech or data indicator' 0x%02x and "
+			  "'Speech coding algorithm/data rate' 0x%02x\n",
+			  cm->spd_ind, cm->chan_rate);
+		*cause = RSL_ERR_IE_CONTENT;
+		return -ENOPROTOOPT;
+	}
+
+#undef RSL_CMODE
 
 	return 0;
 }
@@ -1302,10 +1374,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts_trx_ts *ts = lchan->ts;
-	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
 	const struct tlv_p_entry *ie;
-	uint8_t type;
+	uint8_t type, cause;
 	int rc;
 
 	if (lchan->state != LCHAN_S_NONE) {
@@ -1358,15 +1429,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* 9.3.6 Channel Mode */
 	if (type != RSL_ACT_OSMO_PDCH) {
-		if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
-			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-			return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
-		}
-		cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
-		if (lchan_tchmode_from_cmode(lchan, cm) != 0) {
-			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Unhandled RSL Channel Mode\n");
-			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
-		}
+		if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
+			return rsl_tx_chan_act_nack(lchan, cause);
 	}
 
 	/* 9.3.7 Encryption Information */
@@ -1869,22 +1933,15 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
-	struct rsl_ie_chan_mode *cm;
 	struct tlv_parsed tp;
+	uint8_t cause;
 	int rc;
 
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.6 Channel Mode */
-	if (!TLVP_PRESENT(&tp, RSL_IE_CHAN_MODE)) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "missing Channel Mode\n");
-		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_MAND_IE_ERROR);
-	}
-	cm = (struct rsl_ie_chan_mode *) TLVP_VAL(&tp, RSL_IE_CHAN_MODE);
-	if (lchan_tchmode_from_cmode(lchan, cm) != 0) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Unhandled RSL Channel Mode\n");
-		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_IE_CONTENT);
-	}
+	if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
+		return rsl_tx_mode_modif_nack(lchan, cause);
 
 	if (bts_supports_cm(lchan->ts->trx->bts, ts_pchan(lchan->ts), lchan->tch_mode) != 1) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s: invalid mode: %s (wrong BSC configuration?)\n",
