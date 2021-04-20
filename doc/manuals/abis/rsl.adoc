@@ -843,6 +843,7 @@ addition to those indicated in 3GPP TS 08.58 Section 9.3:
 | IEI  | Name | This document §
 | 0x01 | RSL_IE_CHAN_NR | <<RSL_IE_CHAN_NR>>
 | 0x60 | RSL_IE_OSMO_REP_ACCH_CAP | <<RSL_IE_OSMO_REP_ACCH_CAP>>
+| 0x61 | RSL_IE_OSMO_TRAINING_SEQUENCE | <<RSL_IE_OSMO_TRAINING_SEQUENCE>>
 | 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>> 
 | 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
 | 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
@@ -978,6 +979,79 @@ If the IE is not present, then ACCH repetition completely is disabled.
 |===
 
 (Bits 7 is reserved for future use and must be set to zero.)
+
+[[RSL_IE_OSMO_TRAINING_SEQUENCE]]
+==== RSL_IE_OSMO_TRAINING_SEQUENCE
+
+This TLV IE instructs the BTS to use a specific training sequence set and
+training sequence code for a given lchan. It is sent by OsmoBSC in RSL CHANNEL
+ACTIVATION and MODE MODIFY messages to the BTS, iff the BTS is VAMOS-capable,
+i.e. if an Abis-over-IP connected BTS indicated BTS_FEAT_VAMOS in the OML BTS
+features (Manufacturer Id information element, see <<NM_ATT_MANUF_ID>>).
+
+If this information element is present, the receiver shall ignore any other
+training sequence set and training sequence code bits from other information
+elements of the same RSL message.
+
+This is an Osmocom-specific extension of the RSL layer, which was added to
+express more than two TSC sets. For VAMOS operation, OsmoBSC selects from one
+of four separate training sequence codings per modulation scheme, while usual
+RSL IEs are only able to express a single-bit TSC set number. For clarity, this
+IE contains both the TSC set and the TSC in one IE, and is defined as
+overruling any other IEs containing TSC or TSC set numbers.
+
+The first value octet indicates the training sequence set, and the second octet
+indicates the training sequence code to be used. Receiving values from a
+reserved value range should be considered an error condition.
+
+.RSL_IE_OSMO_TRAINING_SEQUENCE
+[options="header",width="80%",cols="20%,80%"]
+|===
+| IE octet | value
+| octet 1 |  RSL_IE_OSMO_TRAINING_SEQUENCE IEI (0x61)
+| octet 2 |  length of the value part (2)
+| octet 3 |  TSC set
+| octet 4 |  TSC
+|===
+
+The training sequence set (TSC set) is coded like the 'CS Domain TSC Set' bits,
+as defined in the 'Extended TSC Set' IE in 3GPP TS 44.018 10.5.2.82
+<<3gpp-ts-44-018>>, and corresponds to the 'TSC Set' as defined in 3GPP TS
+45.002 <<3gpp-ts-45-002>>. The encoded training sequence set number ranges from
+0 to 3, any other values are reserved for future use. The encoded 0 corresponds
+to TSC Set 1, see <<RSL_IE_OSMO_TRAINING_SEQUENCE__TSC_set_coding>>.
+
+[[RSL_IE_OSMO_TRAINING_SEQUENCE__TSC_set_coding]]
+.TSC set (octet 3) coding
+[options="header",width="80%",cols="20%,80%"]
+|===
+| octet 3 value | interpretation
+| 0 | 'TSC Set 1' as in 3GPP TS 45.002
+| 1 | 'TSC Set 2'
+| 2 | 'TSC Set 3'
+| 3 | 'TSC Set 4'
+| 4..255 | reserved values
+|===
+
+The training sequence code (TSC) corresponds to the 'TSC' bits as defined in
+the 'Channel Description 2' IE in 3GPP TS 44.018 10.5.2.5a <<3gpp-ts-44-018>>.
+The training sequence code ranges from 0 to 7, any other values are reserved
+for future use.
+
+.TSC (octet 4) coding
+[options="header",width="80%",cols="20%,80%"]
+|===
+| octet 4 value | interpretation
+| 0 | 'Training Sequence Code (TSC) 0' as in 3GPP TS 45.002
+| 1 | 'Training Sequence Code (TSC) 1'
+| 2 | 'Training Sequence Code (TSC) 2'
+| 3 | 'Training Sequence Code (TSC) 3'
+| 4 | 'Training Sequence Code (TSC) 4'
+| 5 | 'Training Sequence Code (TSC) 5'
+| 6 | 'Training Sequence Code (TSC) 6'
+| 7 | 'Training Sequence Code (TSC) 7'
+| 8..255 | reserved values
+|===
 
 === A-bis RSL Initialization / BTS bring-up
 
