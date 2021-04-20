@@ -935,7 +935,7 @@ static void set_payload_format(GsmL1_LogChParam_t *lch_par)
 	lch_par->tch.tchPlFmt = GsmL1_TchPlFmt_Rtp;
 }
 
-static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
+static int lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 	struct gsm48_multi_rate_conf *mr_conf =
@@ -1020,10 +1020,13 @@ static void lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 	case GSM48_CMODE_DATA_12k0:
 	case GSM48_CMODE_DATA_6k0:
 	case GSM48_CMODE_DATA_3k6:
-		LOGP(DL1C, LOGL_ERROR, "%s: CSD not supported!\n",
-			gsm_lchan_name(lchan));
-		break;
+	default:
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Channel mode %s is not supported!\n",
+			  gsm48_chan_mode_name(lchan->tch_mode));
+		return -ENOTSUP;
 	}
+
+	return 0;
 }
 
 static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
@@ -1032,6 +1035,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	struct msgb *msg = l1p_msgb_alloc();
 	int sapi = cmd->sapi;
 	int dir = cmd->dir;
+	int rc;
 	GsmL1_MphActivateReq_t *act_req;
 	GsmL1_LogChParam_t *lch_par;
 
@@ -1054,7 +1058,10 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		break;
 	case GsmL1_Sapi_TchH:
 	case GsmL1_Sapi_TchF:
-		lchan2lch_par(lch_par, lchan);
+		if ((rc = lchan2lch_par(lch_par, lchan)) != 0) {
+			talloc_free(msg);
+			return rc;
+		}
 		/*
 		 * Be sure that every packet is received, even if it
 		 * fails. In this case the length might be lower or 0.
@@ -1390,6 +1397,7 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 	struct msgb *msg = l1p_msgb_alloc();
 	GsmL1_MphConfigReq_t *conf_req;
 	GsmL1_LogChParam_t *lch_par;
+	int rc;
 
 	/* channel mode, encryption and/or multirate have changed */
 
@@ -1404,7 +1412,10 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 	conf_req->hLayer3 = (HANDLE)l1if_lchan_to_hLayer(lchan);
 
 	lch_par = &conf_req->cfgParams.setLogChParams.logChParams;
-	lchan2lch_par(lch_par, lchan);
+	if ((rc = lchan2lch_par(lch_par, lchan)) != 0) {
+		talloc_free(msg);
+		return rc;
+	}
 
 	/* Update the MS Power Level */
 	if (cmd->sapi == GsmL1_Sapi_Sacch && trx_ms_pwr_ctrl_is_osmo(trx))

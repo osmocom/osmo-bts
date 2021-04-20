@@ -250,7 +250,7 @@ static void clear_amr_params(tOCTVC1_GSM_LOGICAL_CHANNEL_CONFIG * p_Config)
 		p_Config->abyRate[i] = cOCTVC1_GSM_AMR_CODEC_MODE_ENUM_UNSET;
 }
 
-static void lchan2lch_par(struct gsm_lchan *lchan,
+static int lchan2lch_par(struct gsm_lchan *lchan,
 		   tOCTVC1_GSM_LOGICAL_CHANNEL_CONFIG * p_Config)
 {
 	struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
@@ -348,11 +348,13 @@ static void lchan2lch_par(struct gsm_lchan *lchan,
 	case GSM48_CMODE_DATA_12k0:
 	case GSM48_CMODE_DATA_6k0:
 	case GSM48_CMODE_DATA_3k6:
-		LOGP(DL1C, LOGL_ERROR, "%s: CSD not supported!\n",
-		     gsm_lchan_name(lchan));
-		break;
-
+	default:
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Channel mode %s is not supported!\n",
+			  gsm48_chan_mode_name(lchan->tch_mode));
+		return -ENOTSUP;
 	}
+
+	return 0;
 }
 
 /***********************************************************************
@@ -444,6 +446,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
 	tOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_CMD *lac;
+	int rc;
 
 	lac = (tOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_CMD *)
 			msgb_put(msg, sizeof(*lac));
@@ -458,8 +461,10 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 
 	lac->Config.byTimingAdvance = lchan->rqd_ta;
 	lac->Config.byBSIC = lchan->ts->trx->bts->bsic;
-
-	lchan2lch_par(lchan, &lac->Config);
+	if ((rc = lchan2lch_par(lchan, &lac->Config)) != 0) {
+		talloc_free(msg);
+		return rc;
+	}
 
 	mOCTVC1_GSM_MSG_TRX_ACTIVATE_LOGICAL_CHANNEL_CMD_SWAP(lac);
 
