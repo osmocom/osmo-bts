@@ -35,6 +35,10 @@ Specific limitations apply, see the linked sections.
 .3+.| 8.9.2 | 0x74 .3+.| <<opstart>> | Opstart | <- | Received
             | 0x75                   | Opstart Ack | -> | Sent
             | 0x76                   | Opstart Nack | -> | Sent
+6+<| *Other Messages:*
+.3+.| 8.11.1 | 0x81     | <<get_attributes>> | Get Attributes         | <- | Received
+    | 8.11.3 | 0x82     | <<get_attr_resp>>  | Get Attribute Response | -> | Sent
+    | 8.11.1 | 0x83     |                    | Get Attributes Nack    | -> | Sent
 |===
 
 
@@ -137,9 +141,6 @@ Specific limitations apply, see the linked sections.
     | 8.10.3 | 0x8C | Stop Measurement
     | 8.10.4 | 0x8D | Start Measurement
 3+<| *Other Messages:*
-    | 8.11.1 | 0x81 | Get Attributes
-    | 8.11.3 | 0x82 | Get Attribute(s) Response
-    | 8.11.1 | 0x83 | Get Attributes Nack
 .3+.| 8.11.2 | 0x84 | Set Alarm Threshold
              | 0x85 | Set Alarm Threshold Ack
              | 0x86 | Set Alarm Threshold Nack
@@ -236,6 +237,26 @@ This message is compliant with 3GPP TS 52.021 § 8.9.2. It applies to all of the
 Object Classes defined in 3GPP TS 52.021 § 9.2 as well as
 <<addnl_obj_classes>>.
 
+[[get_attributes]]
+==== Get Attributes
+
+This message is compliant with 3GPP TS 52.021 § 8.11.1.
+
+For a list of supported attributes, see <<get_attr_resp>>.
+
+[[get_attr_resp]]
+==== Get Attribute Response
+
+This message is compliant with 3GPP TS 52.021 § 8.11.3.
+
+The following attributes are provided by OsmoBTS:
+
+[options="header"]
+|===
+| 3GPP TS 52.021 chapter | description      | see
+| 9.4.61                 | SW Configuration | <<NM_ATT_SW_CONFIG>>
+| 9.4.30                 | Manufacturer Id  | <<NM_ATT_MANUF_ID>>
+|===
 
 === Details on OsmoBTS Specific Messages
 
@@ -406,9 +427,9 @@ stored items are currently not used in the OsmoBTS code base.
 | 0x38 | 9.4.58 | VSWR Thresholds  |  | _ignored_
 | 0x39 | 9.4.59 | Window Size  |  | _ignored_
 | 0x40 | 9.4.60 | TSC  | <- | Received, with limitations: see <<NM_ATT_TSC>>
-| 0x41 | 9.4.61 | SW Configuration  |  | _ignored_
+| 0x41 | 9.4.61 | SW Configuration  | -> | Sent, see <<NM_ATT_SW_CONFIG>>
 | 0x43 | 9.4.63 | Perceived Severity  |  | _ignored_
-| 0x44 | 9.4.64 | Get Attribute Response Info  |  | _ignored_
+| 0x44 | 9.4.64 | Get Attribute Response Info  | -> | Sent, see <<NM_ATT_MANUF_ID>>
 | 0x45 | 9.4.65 | Outstanding Alarm Sequence  |  | _ignored_
 | 0x46 | 9.4.66 | HW Conf Change Info  |  | _ignored_
 | 0x47 | 9.4.32 | Measurement Result  |  | _ignored_
@@ -783,6 +804,87 @@ It is encoded as follows:
 
 This attribute is not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
+
+[[NM_ATT_SW_CONFIG]]
+==== SW Configuration
+
+The SW Configuration IE is compliant with 3GPP TS 52.021 9.4.61: it contains a
+number of SW Description IEs (9.4.62).
+
+
+.Coding of SW Configuration IE
+[options="header",cols="20%,80%"]
+|===
+| octet | value
+| 1     | NM_ATT_SW_CONFIG IEI (0x41)
+| 2-3   | length of value part
+| 4     | NM_ATT_SW_DESCR IEI (0x42)
+| 5     | NM_ATT_FILE_ID IEI (0x12)
+| 6-7   | length of file name
+| 8-N   | ASCII coded file name (without terminating nul)
+| N+1   | NM_ATT_FILE_VERSION IEI (0x13)
+| N+2 - N+3 | length of file content
+| N+4 - M | file content
+| M+1   | NM_ATT_SW_DESCR IEI (0x42)
+| M+2   | NM_ATT_FILE_ID IEI (0x12)
+2+| ...
+|===
+
+.File names and content sent in the SW Configuration IE
+[options="header",cols="20%,80%"]
+|===
+| file name | content
+| 'osmobts' | ASCII coded OsmoBTS version number like "1.2.3" or "1.2.3.4-abcd"
+| 'BTS_TYPE_VARIANT' | one of "osmo-bts-lc15", "osmo-bts-oc2g", "osmo-bts-octphy",
+                       "osmo-bts-omldummy", "osmo-bts-sysmo", "osmo-bts-trx", "osmo-bts-virtual"
+| 'BTS_SUB_MODEL' | This file may be omitted; if present, may contain an ASCII
+                    coded model number like "sysmoBTS 1002"
+|===
+
+
+[[NM_ATT_MANUF_ID]]
+==== Manufacturer Id
+
+The coding of the Manufacturer Id attribute is a sequence of bit flags (a bit
+vector), where a zero flag indicates absence and a set flag indicates presence
+of a specific BTS feature.
+
+The number of flags transmitted depends on the software version of OsmoBTS and
+the BTS backend in use. More flags may be added in the future. The flag bits
+transmitted are followed by zero bits up to the next full octet boundary.
+
+These features are currently defined:
+
+.coding of BTS feature flags sent in the Manufacturer Id attribute
+[options="header",cols="5%,5%,30%,60%"]
+|===
+| octet  | bit | feature name | description
+.8+.|  0 |  7  | HSCSD | High-Speed Circuit-Switched Data
+         |  6  | GPRS | General Packet Radio Service
+         |  5  | EGPRS | Enhanced GPRS (EDGE)
+         |  4  | ECSD | Enhanced Circuit-Switched Data
+         |  3  | HOPPING | Frequency Hopping
+         |  2  | MULTI_TSC | Multi-TSC
+         |  1  | OML_ALERTS | OML Alerts
+         |  0  | AGCH_PCH_PROP | AGCH/PCH proportional allocation
+.8+.|  1 |  7  | CBCH | Cell Broadcast Channel
+         |  6  | SPEECH_F_V1 | Fullrate speech V1
+         |  5  | SPEECH_H_V1 | Halfrate speech V1
+         |  4  | SPEECH_F_EFR | Fullrate speech EFR
+         |  3  | SPEECH_F_AMR | Fullrate speech AMR
+         |  2  | SPEECH_H_AMR | Halfrate speech AMR
+         |  1  | ETWS_PN | ETWS Primary Notification via PCH
+         |  0  | PAGING_COORDINATION | BSS Paging Coordination
+.8+.|  2 |  7  | IPV6_NSVC | NSVC IPv6
+         |  6  | ACCH_REP | FACCH/SACCH Repetition
+         |  5  | CCN | Cell Change Notification
+         |  4  2.5+.| reserved for future use, sent as zero
+         |  3
+         |  2
+         |  1
+         |  0
+|===
+
 
 === A-bis OML Initialization / BTS bring-up
 
