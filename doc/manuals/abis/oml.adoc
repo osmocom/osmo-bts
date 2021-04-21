@@ -878,8 +878,8 @@ These features are currently defined:
 .8+.|  2 |  7  | IPV6_NSVC | NSVC IPv6
          |  6  | ACCH_REP | FACCH/SACCH Repetition
          |  5  | CCN | Cell Change Notification
-         |  4  2.5+.| reserved for future use, sent as zero
-         |  3
+         |  4  | VAMOS | Voice services over Adaptive Multi-user channels on One Slot
+         |  3  2.4+.| reserved for future use, sent as zero
          |  2
          |  1
          |  0
