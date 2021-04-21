@@ -3,16 +3,17 @@
 === List of Messages
 
 The following tables list the OML messages used by OsmoBTS, grouped by their
-level of compliance with 3GPP TS 12.21.
+level of compliance with 3GPP TS 52.021 [[3gpp-ts-52-021]] (previously 3GPP TS
+12.21).
 
-==== Messages Compliant With TS 12.21
+==== Messages Compliant With TS 52.021
 
 Specific limitations apply, see the linked sections.
 
-.Messages compliant with TS 12.21
+.Messages compliant with TS 52.021
 [options="header",cols="10%,10%,20%,35%,5%,20%"]
 |===
-| TS 12.21 § | type code (hex) | This document § | Message | <-/-> | Received/Sent by OsmoBTS
+| TS 52.021 § | type code (hex) | This document § | Message | <-/-> | Received/Sent by OsmoBTS
 6+<| *SW Download Management Messages:*
 | 8.3.7 | 0x10 | <<sw_act_rep>> | SW Activated Report | -> | Sent
 6+<| *Air Interface Management Messages:*
@@ -39,7 +40,7 @@ Specific limitations apply, see the linked sections.
 
 ==== Messages Specific to OsmoBTS
 
-.Messages specific to OsmoBTS, not found in 3GPP TS 12.21
+.Messages specific to OsmoBTS, not found in 3GPP TS 52.021
 [options="header"]
 [options="header",cols="20%,55%,5%,20%"]
 |===
@@ -49,10 +50,10 @@ Specific limitations apply, see the linked sections.
 
 
 ==== Messages Not Implemented by OsmoBTS
-.3GPP TS 12.21 messages not implemented by OsmoBTS
+.3GPP TS 52.021 messages not implemented by OsmoBTS
 [options="header",cols="10%,10%,80%"]
 |===
-| TS 12.21 § | type code (hex) | Message
+| TS 52.021 § | type code (hex) | Message
 3+<| *SW Download Management Messages:*
 .3+.| 8.3.1 | 0x01 | Load Data Initiate
             | 0x02 | Load Data Initiate Ack
@@ -151,7 +152,7 @@ Specific limitations apply, see the linked sections.
 ==== SW Activated Report
 
 OsmoBTS will send an _SW Activated Report_ when RF has been activated
-successfully. The message is compliant with 3GPP TS 12.21 § 8.3.7.
+successfully. The message is compliant with 3GPP TS 52.021 § 8.3.7.
 
 Upon RF activation, two _SW Activated Report_ messages will be sent, for the Object Classes
 
@@ -163,13 +164,13 @@ Upon RF activation, two _SW Activated Report_ messages will be sent, for the Obj
 
 OsmoBTS will receive a _Set BTS Attributes_ message and reply with a
 corresponding ACK message on success. IE handling is fully compliant to TS
-12.21, except that a change of BCCH ARFCN or BSIC while in operation is not
+52.021, except that a change of BCCH ARFCN or BSIC while in operation is not
 supported, and hence the _Starting Time_ IE is rejected.
 
 ._Set BTS Attributes_ IEs not handled by OsmoBTS
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 12.21 § | IE Name | Handling
+| TS 52.021 § | IE Name | Handling
 | 9.4.52 | Starting Time | not supported (provokes NACK cause 0x10)
 |===
 
@@ -177,13 +178,13 @@ supported, and hence the _Starting Time_ IE is rejected.
 [[set_radio_attr]]
 ==== Set Radio Carrier Attributes
 
-This message conforms to 3GPP TS 12.21, with the following limitation,
+This message conforms to 3GPP TS 52.021, with the following limitation,
 as frequency hopping is not supported by OsmoBTS:
 
 ._Set Radio Carrier Attributes_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 12.21 § | IE Name | Handling
+| TS 52.021 § | IE Name | Handling
 | 9.4.5 | ARFCN List | ignored
 |===
 
@@ -191,14 +192,14 @@ as frequency hopping is not supported by OsmoBTS:
 [[set_chan_attr]]
 ==== Set Channel Attributes
 
-This message conforms to 3GPP TS 12.21, with the following limitation: the
-following 3GPP TS 12.21 IEs provoke a NACK response when sent to OsmoBTS, as
+This message conforms to 3GPP TS 52.021, with the following limitation: the
+following 3GPP TS 52.021 IEs provoke a NACK response when sent to OsmoBTS, as
 frequency hopping is not supported:
 
 ._Set Channel Attributes_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 12.21 § | IE Name | Handling
+| TS 52.021 § | IE Name | Handling
 | 9.4.21 | HSN | not supported (provokes NACK cause 0x10)
 | 9.4.27 | MAIO | not supported (provokes NACK cause 0x10)
 | 9.4.52 | Starting Time | not supported (provokes NACK cause 0x10)
@@ -207,32 +208,32 @@ frequency hopping is not supported:
 [[state_changed_rep]]
 ==== State Changed Event Report
 
-This message is compliant with 3GPP TS 12.21. Exactly these IEs are sent by
+This message is compliant with 3GPP TS 52.021. Exactly these IEs are sent by
 OsmoBTS:
 
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message Type (0xf5) | 3GPP TS 12.21 9.1 | M | V | 1
-| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
-| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
-| Operational State | 3GPP TS 12.21 9.4.38 | O | TV | 2
-| Availability Status | 3GPP TS 12.21 9.4.7 | O | TL16V (with length of 1) | 3
+| Message Type (0xf5) | 3GPP TS 52.021 9.1 | M | V | 1
+| Object Class | 3GPP TS 52.021 9.2 | M | V | 1
+| Object Instance | 3GPP TS 52.021 9.3 | M | V | 3
+| Operational State | 3GPP TS 52.021 9.4.38 | O | TV | 2
+| Availability Status | 3GPP TS 52.021 9.4.7 | O | TL16V (with length of 1) | 3
 |===
 
 [[chg_adm_state]]
 ==== Change Administrative State
 
-This message is compliant with 3GPP TS 12.21 § 8.8.5. It applies to all of the
-Object Classes defined in 3GPP TS 12.21 § 9.2 as well as
+This message is compliant with 3GPP TS 52.021 § 8.8.5. It applies to all of the
+Object Classes defined in 3GPP TS 52.021 § 9.2 as well as
 <<addnl_obj_classes>>.
 
 [[opstart]]
 ==== Opstart
 
-This message is compliant with 3GPP TS 12.21 § 8.9.2. It applies to all of the
-Object Classes defined in 3GPP TS 12.21 § 9.2 as well as
+This message is compliant with 3GPP TS 52.021 § 8.9.2. It applies to all of the
+Object Classes defined in 3GPP TS 52.021 § 9.2 as well as
 <<addnl_obj_classes>>.
 
 
@@ -252,9 +253,9 @@ The message specifics depend on the Object Class and are detailed in
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message Type (0xf5) | 3GPP TS 12.21 9.1 | M | V | 1
-| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
-| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| Message Type (0xf5) | 3GPP TS 52.021 9.1 | M | V | 1
+| Object Class | 3GPP TS 52.021 9.2 | M | V | 1
+| Object Instance | 3GPP TS 52.021 9.3 | M | V | 3
 5+<| _Object Class specific IEs follow, see <<addnl_obj_classes>>..._
 |===
 
@@ -262,7 +263,7 @@ The message specifics depend on the Object Class and are detailed in
 [[addnl_obj_classes]]
 === Additional Object Classes
 
-In addition to 3GPP TS 12.21 Chapter 9.2, the following managed objects
+In addition to 3GPP TS 52.021 Chapter 9.2, the following managed objects
 are supported:
 
 .Additional Managed Object Classes
@@ -284,9 +285,9 @@ with the following Information Elements:
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
-| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
-| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| Message Type | 3GPP TS 52.021 9.1 | M | V | 1
+| Object Class | 3GPP TS 52.021 9.2 | M | V | 1
+| Object Instance | 3GPP TS 52.021 9.3 | M | V | 3
 | GPRS NSEI | <<NM_ATT_IPACC_NSEI>> | O | TL16V | >= 5
 | GPRS NS Configuration | <<NM_ATT_IPACC_NS_LINK_CFG>> | O | TL16V | >= 10
 | GPRS BSSGP Configuration | <<NM_ATT_IPACC_BSSGP_CFG>> | O | TL16V | >= 14
@@ -301,9 +302,9 @@ message with the following Information Elements:
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
-| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
-| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| Message Type | 3GPP TS 52.021 9.1 | M | V | 1
+| Object Class | 3GPP TS 52.021 9.2 | M | V | 1
+| Object Instance | 3GPP TS 52.021 9.3 | M | V | 3
 | GPRS Routing Area Code | <<NM_ATT_IPACC_RAC>> | O | TL16V | >= 4
 | GPRS Paging Configuration | <<NM_ATT_IPACC_GPRS_PAGING_CFG>>  | O | TL16V | >= 5
 | GPRS RLC Configuration | <<NM_ATT_IPACC_RLC_CFG>> | O | TL16V | >= 12
@@ -321,9 +322,9 @@ Attribute* message with the following Information Elements:
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message Type | 3GPP TS 12.21 9.1 | M | V | 1
-| Object Class | 3GPP TS 12.21 9.2 | M | V | 1
-| Object Instance | 3GPP TS 12.21 9.3 | M | V | 3
+| Message Type | 3GPP TS 52.021 9.1 | M | V | 1
+| Object Class | 3GPP TS 52.021 9.2 | M | V | 1
+| Object Instance | 3GPP TS 52.021 9.3 | M | V | 3
 | GPRS NSVCI | <<NM_ATT_IPACC_NSVCI>> | O | TL16V | >= 5
 | GPRS NS Link Configuration | <<NM_ATT_IPACC_NS_LINK_CFG>> | O | TL16V | >= 11
 |===
@@ -332,9 +333,9 @@ Attribute* message with the following Information Elements:
 === Information Elements Overview
 
 All of the IEs handled by OsmoBTS are listed below, with limitations and
-additions to TS 12.21 specified in more detail.
+additions to TS 52.021 specified in more detail.
 
-==== IEs Conforming to TS 12.21
+==== IEs Conforming to TS 52.021
 
 The following Information Elements are accepted by OsmoBTS.
 
@@ -346,10 +347,10 @@ IEs marked __ignored__ and additionally marked as being received by OsmoBTS
 (<-) are in fact parsed and their values are stored by OsmoBTS, but these
 stored items are currently not used in the OsmoBTS code base.
 
-.IEs conforming to TS 12.21
+.IEs conforming to TS 52.021
 [options="header",cols="5%,10%,40%,5%,40%"]
 |===
-| tag (hex) | TS 12.21 § | IE name | <-/-> | Received/Sent by OsmoBTS
+| tag (hex) | TS 52.021 § | IE name | <-/-> | Received/Sent by OsmoBTS
 | 0x00 | 9.4.1  | Abis Channel  |  | _ignored_
 | 0x01 | 9.4.2  | Additional Info  |  | _ignored_
 | 0x02 | 9.4.3  | Additional Text  |  | _ignored_
@@ -413,12 +414,12 @@ stored items are currently not used in the OsmoBTS code base.
 | 0x47 | 9.4.32 | Measurement Result  |  | _ignored_
 |===
 
-==== IEs Not Conforming to TS 12.21
+==== IEs Not Conforming to TS 52.021
 
-.IEs not conforming to TS 12.21
+.IEs not conforming to TS 52.021
 [options="header",cols="5%,10%,30%,55%"]
 |===
-| tag (hex) | TS 12.21 § | IE name | Description
+| tag (hex) | TS 52.021 § | IE name | Description
 | 0x15 | 9.4.21 | HSN              | presence causes NACK response
 | 0x17 | 9.4.23 | HW Description   | _ignored_ by OsmoBTS, but coding may differ, see <<ie_hw_desc>>
 | 0x1b | 9.4.27 | MAIO             | presence causes NACK response 
@@ -431,14 +432,14 @@ stored items are currently not used in the OsmoBTS code base.
 ==== Additional Attributes and Parameters
 
 The following Information Elements are defined in addition to those
-specified in 3GPP TS 12.21 Chapter 9.4.
+specified in 3GPP TS 52.021 Chapter 9.4.
 
 All of these additional IEs are _received_ by OsmoBTS.
 
 These attributes are not used by OsmoBTS, but
 simply passed to OsmoPCU connected to the PCU socket.
 
-.Additional IEs handled by OsmoBTS but not defined in TS 12.21
+.Additional IEs handled by OsmoBTS but not defined in TS 52.021
 [options="header",cols="5%,50%,45%"]
 |===
 | tag (hex) | IE name | Description
@@ -465,7 +466,7 @@ simply passed to OsmoPCU connected to the PCU socket.
 [[ie_hw_desc]]
 ==== HW Description
 
-TS 12.21 suggests a series of 5 length-value pairs for the _HW Description_ IE.
+TS 52.021 suggests a series of 5 length-value pairs for the _HW Description_ IE.
 Instead, OsmoBTS interprets it as a single TL16V. The value of this IE is
 ignored by OsmoBTS, yet the coding may affect message parsing.
 
@@ -487,7 +488,7 @@ exactly one ARFCN.
 [[ie_chan_comb]]
 ==== Additional Channel Combinations
 
-In addition to 3GPP TS 12.21 Chapter 9.4.13, the following channel
+In addition to 3GPP TS 52.021 Chapter 9.4.13, the following channel
 combinations are supported:
 
 .Additional Channel Combinations
@@ -513,7 +514,7 @@ work, please see the <<rsl-dynamic-channels>>.
 [[ie_conn_fail_crit]]
 ==== Connection Failure Criterion
 
-3GPP TS 12.21 Chapter 9.4.14 specifies two different options for the
+3GPP TS 52.021 Chapter 9.4.14 specifies two different options for the
 _Connection Failure Criterion_.  OsmoBTS only implements the option
 coded as 0x01, i.e. based upon uplink SACCH error rate
 (RADIO_LINK_TIMEOUT).
@@ -523,7 +524,7 @@ coded as 0x01, i.e. based upon uplink SACCH error rate
 
 Due to limitations in the currently supported PHY implementations,
 OsmoBTS supports only one global TSC for all channels on one TRX, rather
-than a separate TSC for each timeslot, as expected by 3GPP TS 12.21.
+than a separate TSC for each timeslot, as expected by 3GPP TS 52.021.
 
 
 [[NM_ATT_IPACC_DST_IP]]
@@ -786,7 +787,7 @@ simply passed to OsmoPCU connected to the PCU socket.
 === A-bis OML Initialization / BTS bring-up
 
 At the time an Abis/IP BTS connects to via OML to the BSC, it is
-initialized according to the procedures described in 3GPP TS 12.21 as
+initialized according to the procedures described in 3GPP TS 52.021 as
 amended by this document.
 
 Each Managed Object (MO) is separately initialized.  The initialization
