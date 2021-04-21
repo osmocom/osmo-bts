@@ -1,3 +1,10 @@
+osmo-bts (1.3.1) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * lchan2lch_par(): fix missing default branch in switch
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 21 Apr 2021 18:14:27 +0200
+
 osmo-bts (1.3.0) unstable; urgency=medium
 
   [ Michael McTernan ]
