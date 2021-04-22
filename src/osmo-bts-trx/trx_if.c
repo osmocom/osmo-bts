@@ -999,6 +999,13 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
 	uint8_t *buf = &trx_data_buf[0];
 
+	/* Make sure that the PHY is powered on */
+	if (!trx_if_powered(l1h)) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Ignoring Tx data, transceiver is powered off\n");
+		return -ENODEV;
+	}
+
 	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %zu invalid\n",
 			br->burst_len);
@@ -1027,18 +1034,14 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	/* copy ubits {0,1} */
 	memcpy(buf + 6, br->burst, br->burst_len);
 
-	/* we must be sure that TRX is on */
-	if (trx_if_powered(l1h)) {
-		snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, br->burst_len + 6, 0);
-		if (snd_len <= 0) {
-			strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
-			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-				"send() failed on TRXD with rc=%zd (%s)\n",
-				snd_len, trx_data_buf);
-			return -2;
-		}
-	} else
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Ignoring TX data, transceiver powered off.\n");
+	snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, br->burst_len + 6, 0);
+	if (snd_len <= 0) {
+		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"send() failed on TRXD with rc=%zd (%s)\n",
+			snd_len, trx_data_buf);
+		return -2;
+	}
 
 	return 0;
 }
