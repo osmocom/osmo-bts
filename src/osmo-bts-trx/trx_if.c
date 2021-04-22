@@ -730,7 +730,7 @@ static const uint8_t trx_data_rx_hdr_len[] = {
 };
 
 /* TRXD header dissector for version 0 */
-static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
+static int trx_data_handle_hdr_v0(struct phy_instance *phy_inst,
 				  struct trx_ul_burst_ind *bi,
 				  const uint8_t *buf, size_t buf_len)
 {
@@ -743,7 +743,7 @@ static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 }
 
 /* Parser for MTS (Modulation and Training Sequence) */
-static inline int trx_data_parse_mts(struct trx_l1h *l1h,
+static inline int trx_data_parse_mts(struct phy_instance *phy_inst,
 				     struct trx_ul_burst_ind *bi,
 				     const uint8_t mts)
 {
@@ -762,7 +762,7 @@ static inline int trx_data_parse_mts(struct trx_l1h *l1h,
 		bi->mod = TRX_MOD_T_8PSK;
 		bi->tsc_set = (mts >> 3) & 0x01;
 	} else {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+		LOGPPHI(phy_inst, DTRX, LOGL_ERROR,
 			"Rx TRXD PDU with unknown or not supported "
 			"modulation (MTS=0x%02x)\n", mts);
 		return -ENOTSUP;
@@ -777,14 +777,14 @@ static inline int trx_data_parse_mts(struct trx_l1h *l1h,
 }
 
 /* TRXD header dissector for version 0x01 */
-static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
+static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 				  struct trx_ul_burst_ind *bi,
 				  const uint8_t *buf, size_t buf_len)
 {
 	int rc;
 
 	/* Parse v0 specific part */
-	rc = trx_data_handle_hdr_v0(l1h, bi, buf, buf_len);
+	rc = trx_data_handle_hdr_v0(phy_inst, bi, buf, buf_len);
 	if (rc < 0)
 		return rc;
 
@@ -793,7 +793,7 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 	buf += rc;
 
 	/* MTS (Modulation and Training Sequence) */
-	rc = trx_data_parse_mts(l1h, bi, buf[0]);
+	rc = trx_data_parse_mts(phy_inst, bi, buf[0]);
 	if (rc < 0)
 		return rc;
 
@@ -805,7 +805,7 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 }
 
 /* TRXD burst handler for PDU version 0 */
-static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
+static int trx_data_handle_burst_v0(struct phy_instance *phy_inst,
 				    struct trx_ul_burst_ind *bi,
 				    const uint8_t *buf, size_t buf_len)
 {
@@ -824,7 +824,7 @@ static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
 		break;
 
 	default:
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+		LOGPPHI(phy_inst, DTRX, LOGL_NOTICE,
 			"Rx TRXD message with odd burst length %zu\n", buf_len);
 		return -EINVAL;
 	}
@@ -841,7 +841,7 @@ static int trx_data_handle_burst_v0(struct trx_l1h *l1h,
 }
 
 /* TRXD burst handler for PDU version 1 */
-static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
+static int trx_data_handle_burst_v1(struct phy_instance *phy_inst,
 				    struct trx_ul_burst_ind *bi,
 				    const uint8_t *buf, size_t buf_len)
 {
@@ -853,7 +853,7 @@ static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 
 	/* Verify burst length */
 	if (bl[bi->mod] != buf_len) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE,
+		LOGPPHI(phy_inst, DTRX, LOGL_NOTICE,
 			"Rx TRXD message with odd burst length %zu, "
 			"expected %zu\n", buf_len, bl[bi->mod]);
 		return -EINVAL;
@@ -861,7 +861,7 @@ static int trx_data_handle_burst_v1(struct trx_l1h *l1h,
 
 	/* The PDU format is the same as for version 0.
 	 * NOTE: other modulation types to be handled separately. */
-	return trx_data_handle_burst_v0(l1h, bi, buf, buf_len);
+	return trx_data_handle_burst_v0(phy_inst, bi, buf, buf_len);
 }
 
 static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
@@ -950,10 +950,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	switch (pdu_ver) {
 	case 0:
 		/* Legacy protocol has no version indicator */
-		hdr_len = trx_data_handle_hdr_v0(l1h, &bi, buf, buf_len);
+		hdr_len = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
 		break;
 	case 1:
-		hdr_len = trx_data_handle_hdr_v1(l1h, &bi, buf, buf_len);
+		hdr_len = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
 		break;
 	default:
 		/* Shall not happen */
@@ -982,10 +982,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	/* Handle burst bits */
 	switch (pdu_ver) {
 	case 0:
-		rc = trx_data_handle_burst_v0(l1h, &bi, buf + hdr_len, buf_len);
+		rc = trx_data_handle_burst_v0(l1h->phy_inst, &bi, buf + hdr_len, buf_len);
 		break;
 	case 1:
-		rc = trx_data_handle_burst_v1(l1h, &bi, buf + hdr_len, buf_len);
+		rc = trx_data_handle_burst_v1(l1h->phy_inst, &bi, buf + hdr_len, buf_len);
 		break;
 	default:
 		/* Shall not happen, just to make GCC happy */
