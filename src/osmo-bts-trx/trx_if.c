@@ -900,20 +900,24 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	return buf;
 }
 
+/* TRXD buffer used by Rx/Tx handlers */
+static uint8_t trx_data_buf[TRXD_MSG_BUF_SIZE];
+
 /* Parse TRXD message from transceiver, compose an UL burst indication. */
 static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 {
+	const uint8_t *buf = &trx_data_buf[0];
 	struct trx_l1h *l1h = ofd->data;
-	uint8_t buf[TRXD_MSG_BUF_SIZE];
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
 	uint8_t pdu_ver;
 
-	buf_len = recv(ofd->fd, buf, sizeof(buf), 0);
+	buf_len = recv(ofd->fd, trx_data_buf, sizeof(trx_data_buf), 0);
 	if (buf_len <= 0) {
-		strerror_r(errno, (char *)buf, sizeof(buf));
+		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"recv() failed on TRXD with rc=%zd (%s)\n", buf_len, buf);
+			"recv() failed on TRXD with rc=%zd (%s)\n",
+			buf_len, trx_data_buf);
 		return buf_len;
 	}
 
@@ -993,7 +997,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	ssize_t snd_len;
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
-	uint8_t buf[TRXD_MSG_BUF_SIZE];
+	uint8_t *buf = &trx_data_buf[0];
 
 	if ((br->burst_len != GSM_BURST_LEN) && (br->burst_len != EGPRS_BURST_LEN)) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR, "Tx burst length %zu invalid\n",
@@ -1026,11 +1030,12 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 
 	/* we must be sure that TRX is on */
 	if (trx_if_powered(l1h)) {
-		snd_len = send(l1h->trx_ofd_data.fd, buf, br->burst_len + 6, 0);
+		snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, br->burst_len + 6, 0);
 		if (snd_len <= 0) {
-			strerror_r(errno, (char *)buf, sizeof(buf));
+			strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-				"send() failed on TRXD with rc=%zd (%s)\n", snd_len, buf);
+				"send() failed on TRXD with rc=%zd (%s)\n",
+				snd_len, trx_data_buf);
 			return -2;
 		}
 	} else
