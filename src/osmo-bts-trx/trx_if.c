@@ -1016,9 +1016,8 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		break;
 
 	default:
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Requested TRXD PDU version %u is not supported\n", pdu_ver);
-		return -ENOTSUP;
+		/* Shall not happen */
+		OSMO_ASSERT(0);
 	}
 
 	buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
