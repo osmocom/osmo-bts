@@ -723,19 +723,17 @@ rsp_error:
 /* Uplink TRXDv1 header length: additional MTS + C/I */
 #define TRX_UL_V1HDR_LEN	(TRX_UL_V0HDR_LEN + 1 + 2)
 
+/* Minimum Uplink TRXD header length for all PDU versions */
+static const uint8_t trx_data_rx_hdr_len[] = {
+	TRX_UL_V0HDR_LEN, /* TRXDv0 */
+	TRX_UL_V1HDR_LEN, /* TRXDv1 */
+};
+
 /* TRXD header dissector for version 0 */
 static int trx_data_handle_hdr_v0(struct trx_l1h *l1h,
 				  struct trx_ul_burst_ind *bi,
 				  const uint8_t *buf, size_t buf_len)
 {
-	/* Make sure we have enough data */
-	if (buf_len < TRX_UL_V0HDR_LEN) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Short read on TRXD, missing version 0 header "
-			"(len=%zu vs expected %d)\n", buf_len, TRX_UL_V0HDR_LEN);
-		return -EIO;
-	}
-
 	bi->tn = buf[0] & 0b111;
 	bi->fn = osmo_load32be(buf + 1);
 	bi->rssi = -(int8_t)buf[5];
@@ -784,14 +782,6 @@ static int trx_data_handle_hdr_v1(struct trx_l1h *l1h,
 				  const uint8_t *buf, size_t buf_len)
 {
 	int rc;
-
-	/* Make sure we have enough data */
-	if (buf_len < TRX_UL_V1HDR_LEN) {
-		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"Short read on TRXD, missing version 1 header "
-			"(len=%zu vs expected %d)\n", buf_len, TRX_UL_V1HDR_LEN);
-		return -EIO;
-	}
 
 	/* Parse v0 specific part */
 	rc = trx_data_handle_hdr_v0(l1h, bi, buf, buf_len);
@@ -946,6 +936,14 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 			"Rx TRXD PDU with unexpected version %u (expected %u)\n",
 			pdu_ver, l1h->config.trxd_pdu_ver_use);
 		return -EIO;
+	}
+
+	/* Make sure that we have enough bytes to parse the header */
+	if (buf_len < trx_data_rx_hdr_len[pdu_ver]) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
+			pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
+		return -EINVAL;
 	}
 
 	/* Parse header depending on the PDU version */
