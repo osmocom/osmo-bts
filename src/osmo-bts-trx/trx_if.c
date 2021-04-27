@@ -397,6 +397,7 @@ struct trx_ctrl_rsp {
 
 static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp)
 {
+	size_t nlen, plen;
 	char *p, *k;
 
 	if (strncmp(buf_in, "RSP ", 4))
@@ -406,14 +407,17 @@ static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp
 	if (!(p = strchr(buf_in + 4, ' ')))
 		goto parse_err;
 
-	if (p - buf_in >= sizeof(rsp->cmd)) {
-		LOGP(DTRX, LOGL_ERROR, "cmd buffer too small %lu >= %zu\n",
-		     (long unsigned) (p - buf_in), sizeof(rsp->cmd));
+	/* Calculate length of the name part */
+	nlen = p - (buf_in + 4);
+
+	if (nlen >= sizeof(rsp->cmd)) {
+		LOGP(DTRX, LOGL_ERROR, "TRXC command name part is too long: "
+		     "%zu >= %zu\n", nlen, sizeof(rsp->cmd));
 		goto parse_err;
 	}
 
-	rsp->cmd[0] = '\0';
-	strncat(rsp->cmd, buf_in + 4, p - buf_in - 4);
+	memcpy(&rsp->cmd[0], buf_in + 4, nlen);
+	rsp->cmd[nlen] = '\0';
 
 	/* Now comes the status code of the response */
 	p++;
@@ -427,18 +431,22 @@ static int parse_rsp(const char *buf_in, size_t len_in, struct trx_ctrl_rsp *rsp
 	else
 		k = p + strlen(p);
 
-	if (strlen(k) >= sizeof(rsp->params)) {
-		LOGP(DTRX, LOGL_ERROR, "params buffer too small %zu >= %zu\n",
-			strlen(k), sizeof(rsp->params));
+	/* Calculate length of the parameters part */
+	plen = strlen(k);
+
+	if (plen >= sizeof(rsp->params)) {
+		LOGP(DTRX, LOGL_ERROR, "TRXC command parameters part is too long: "
+		     "%zu >= %zu\n", plen, sizeof(rsp->params));
 		goto parse_err;
 	}
-	rsp->params[0] = '\0';
-	strcat(rsp->params, k);
+
+	memcpy(&rsp->params[0], k, plen);
+	rsp->params[plen] = '\0';
+
 	return 0;
 
 parse_err:
-	LOGP(DTRX, LOGL_NOTICE, "Unknown message on ctrl port: %s\n",
-		buf_in);
+	LOGP(DTRX, LOGL_NOTICE, "Unknown TRXC message: %s\n", buf_in);
 	return -1;
 }
 
