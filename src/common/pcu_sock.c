@@ -314,9 +314,9 @@ int pcu_tx_info_ind(void)
 		info_ind->flags |= PCU_IF_FLAG_MCS8;
 	if (rlcc->cs_mask & (1 << GPRS_MCS9))
 		info_ind->flags |= PCU_IF_FLAG_MCS9;
-#warning	"isn't dl_tbf_ext wrong?: * 10 and no ntohs"
+	/* FIXME: isn't dl_tbf_ext wrong?: * 10 and no ntohs */
 	info_ind->dl_tbf_ext = rlcc->parameter[T_DL_TBF_EXT];
-#warning	"isn't ul_tbf_ext wrong?: * 10 and no ntohs"
+	/* FIXME: isn't ul_tbf_ext wrong?: * 10 and no ntohs */
 	info_ind->ul_tbf_ext = rlcc->parameter[T_UL_TBF_EXT];
 	info_ind->initial_cs = rlcc->initial_cs;
 	info_ind->initial_mcs = rlcc->initial_mcs;
