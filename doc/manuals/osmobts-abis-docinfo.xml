@@ -1,39 +1,3 @@
-<revhistory>
-  <revision>
-    <revnumber>1</revnumber>
-    <date>December 2015</date>
-    <authorinitials>NJH, HW</authorinitials>
-    <revremark>
-      Initial version, reflecting OsmoBTS master branch as on 2015-Dec-7
-      (commit e28a20a2d9d049cd6312e218a7646593bbc43431).
-    </revremark>
-  </revision>
-  <revision>
-    <revnumber>2</revnumber>
-    <date>February 2016</date>
-    <authorinitials>HW</authorinitials>
-    <revremark>
-      Updated version with Message Sequence Chart of OML and RSL bring-up.
-    </revremark>
-  </revision>
-  <revision>
-    <revnumber>2.1</revnumber>
-    <date>February 2016</date>
-    <authorinitials>HW</authorinitials>
-    <revremark>
-	    Fix A-bis OML/RSL port number swap in message seqeuence charts.
-    </revremark>
-  </revision>
-  <revision>
-    <revnumber>2.2</revnumber>
-    <date>July 2016</date>
-    <authorinitials>NJH, HW</authorinitials>
-    <revremark>
-	Add description on Dynamic Channel Configuration in OML and activation in RSL.
-    </revremark>
-  </revision>
-
-</revhistory>
 
 <authorgroup>
   <author>

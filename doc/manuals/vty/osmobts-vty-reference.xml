@@ -13,12 +13,6 @@
   <info>
     <revhistory>
         <revision>
-            <revnumber>v1</revnumber>
-            <date>13th October 2016</date>
-            <authorinitials>hw</authorinitials>
-            <revremark>Initial</revremark>
-        </revision>
-        <revision>
             <revnumber>v2</revnumber>
             <date>@@REV_DATE@@</date>
             <authorinitials>s.f.m.c.</authorinitials>
