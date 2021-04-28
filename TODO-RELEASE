@@ -1,1 +1,2 @@
 update libosmo-abis dependency to > 1.1.1 for osmo_rtp_socket_set_priority()
+update libosmo-abis dependency to > 1.1.1 for new e1_input vty commands for DSCP + priority

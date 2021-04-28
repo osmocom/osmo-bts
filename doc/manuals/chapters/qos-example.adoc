@@ -1,0 +1,50 @@
+==== Full example of QoS for osmo-bts uplink QoS
+
+In the below example we will show the full set of configuration required
+for both DSCP and PCP differentiation of uplink Abis traffic by osmo-bts.
+
+What we want to achieve in this example is the following configuration:
+
+.DSCP and PCP assignments for osmo-bts uplink traffic in this example
+[options="header",width="30%",cols="2,1,1"]
+|===
+|Traffic      |DSCP|PCP
+|A-bis RSL    |  56|  7
+|A-bis RTP    |  46|  6
+|A-bis OML    |  34|  5
+|===
+
+. configure the osmocom program to set the DSCP value
+. configure an egrees QoS map to map from priority to PCP
+
+.Example Step 1: add related VTY configuration to `osmo-bts.cfg`
+----
+...
+e1_input
+ ipa ip-dscp oml 34
+ ipa socket-priority oml 5
+ ipa ip-dscp rsl 56
+ ipa socket-priority rsl 7
+...
+bts 0
+ rtp ip-dscp 46
+ rtp socket-priority 6
+ ...
+----
+
+.Example Step 2: egress QoS map to map from socket priority to PCP values
+----
+$ sudo ip link set dev eth0.9<1> type vlan egress-qos-map 0:0 1:1 5:5 6:6 7:7 <2>
+----
+<1> make sure to specify your specific VLAN interface name here instead of `eth0.9`.
+<2> create a egress QoS map that maps the priority value 1:1 to the PCP. We also include the
+    mapping 1:1 from the osmo-pcu example (see <<userman-osmopcu>>) here.
+
+NOTE:: The settings of the `ip` command are volatile and only active until
+the next reboot (or the network device or VLAN is removed).  Please refer to
+the documentation of your specific Linux distribution in order to find out how
+to make such settings persistent by means of an `ifup` hook whenever the interface
+comes up.  For CentOS/RHEL 8 this can e.g. be achieved by means of an `/sbin/ifup-local
+script` (when using `network-scripts` and not NetworkManager).  For Debian or Ubuntu,
+this typically involves adding `up` lines to `/etc/network/interfaces` or a `/etc/network/if-up.d`
+script.
