@@ -329,6 +329,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_port_range_end = 17407;
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
 	bts->rtp_ip_dscp = -1;
+	bts->rtp_priority = -1;
 
 	/* Default (fall-back) MS/BS Power control parameters */
 	bts->bs_dpc_params = power_ctrl_params_def;

@@ -300,6 +300,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		bts->rtp_port_range_end, VTY_NEWLINE);
 	if (bts->rtp_ip_dscp != -1)
 		vty_out(vty, " rtp ip-dscp %i%s", bts->rtp_ip_dscp, VTY_NEWLINE);
+	if (bts->rtp_priority != -1)
+		vty_out(vty, " rtp socket-priority %i%s", bts->rtp_priority, VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
@@ -591,6 +593,21 @@ DEFUN_USRATTR(cfg_bts_rtp_ip_dscp,
 	int dscp = atoi(argv[0]);
 
 	bts->rtp_ip_dscp = dscp;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN_USRATTR(cfg_bts_rtp_priority,
+	      cfg_bts_rtp_priority_cmd,
+	      X(BTS_VTY_ATTR_NEW_LCHAN),
+	      "rtp socket-priority <0-255>",
+	      RTP_STR "Specify socket priority for RTP/IP packets\n"
+	      "The socket priority value (> 6 requires CAP_NET_ADMIN)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int prio = atoi(argv[0]);
+
+	bts->rtp_priority = prio;
 
 	return CMD_SUCCESS;
 }
@@ -2312,6 +2329,7 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_rtp_jitbuf_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_port_range_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_ip_dscp_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_priority_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);

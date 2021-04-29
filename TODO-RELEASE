@@ -1,0 +1,1 @@
+update libosmo-abis dependency to > 1.1.1 for osmo_rtp_socket_set_priority()

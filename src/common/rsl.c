@@ -2433,6 +2433,11 @@ static int bind_rtp(struct gsm_bts *bts, struct osmo_rtp_socket *rs, const char 
 				LOGP(DRSL, LOGL_ERROR, "failed to set DSCP=%i: %s\n",
 					bts->rtp_ip_dscp, strerror(errno));
 		}
+		if (bts->rtp_priority != -1) {
+			if (osmo_rtp_socket_set_priority(rs, bts->rtp_priority))
+				LOGP(DRSL, LOGL_ERROR, "failed to set socket priority %d: %s\n",
+					bts->rtp_priority, strerror(errno));
+		}
 		return 0;
 	}
 
