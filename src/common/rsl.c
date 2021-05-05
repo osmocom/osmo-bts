@@ -137,7 +137,7 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	default:
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
 			  "unknown 'Channel rate and type' value 0x%02x\n",
-			  cm->chan_rate);
+			  cm->chan_rt);
 		*cause = RSL_ERR_IE_CONTENT;
 		return -ENOTSUP;
 	}
