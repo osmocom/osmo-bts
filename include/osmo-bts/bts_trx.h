@@ -40,13 +40,6 @@ struct gsm_bts_trx {
 		void *l1h;
 	} role_bts;
 
-	union {
-		struct {
-			unsigned int test_state;
-			uint8_t test_nr;
-			struct rxlev_stats rxlev_stat;
-		} ipaccess;
-	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
