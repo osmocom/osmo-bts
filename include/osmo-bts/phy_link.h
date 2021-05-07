@@ -115,9 +115,6 @@ struct phy_instance {
 			bool sw_act_reported;
 		} osmotrx;
 		struct {
-			struct l1sched_trx sched;
-		} virt;
-		struct {
 			/* logical transceiver number within one PHY */
 			uint32_t trx_id;
 			/* trx lock state variable */

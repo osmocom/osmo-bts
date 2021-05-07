@@ -36,9 +36,9 @@
 #include <sched_utils.h>
 
 /* obtain a to-be-transmitted FCCH (frequency correction channel) burst */
-int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting FCCH\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting FCCH\n");
 
 	/* A frequency correction burst is basically a sequence of zeros.
 	 * Since br->burst is already zero-initialized, just set the length. */
@@ -48,21 +48,21 @@ int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 }
 
 /* obtain a to-be-transmitted SCH (synchronization channel) burst */
-int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	ubit_t burst[78];
 	uint8_t sb_info[4];
 	struct	gsm_time t;
 	uint8_t t3p, bsic;
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting SCH\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting SCH\n");
 
 	/* BURST BYPASS */
 
 	/* create SB info from GSM time and BSIC */
 	gsm_fn2gsmtime(&t, br->fn);
 	t3p = t.t3 / 10;
-	bsic = l1t->trx->bts->bsic;
+	bsic = l1ts->ts->trx->bts->bsic;
 	sb_info[0] =
 		((bsic &  0x3f) << 2) |
 		((t.t1 & 0x600) >> 9);

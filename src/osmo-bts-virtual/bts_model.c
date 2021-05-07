@@ -100,11 +100,7 @@ static uint8_t vbts_set_trx(struct gsm_bts_trx *trx)
 
 static uint8_t vbts_set_ts(struct gsm_bts_trx_ts *ts)
 {
-	struct phy_instance *pinst = trx_phy_instance(ts->trx);
-	int rc;
-
-	rc = trx_sched_set_pchan(&pinst->u.virt.sched, ts->nr, ts->pchan);
-	if (rc)
+	if (trx_sched_set_pchan(ts, ts->pchan) != 0)
 		return NM_NACK_RES_NOTAVAIL;
 
 	return 0;

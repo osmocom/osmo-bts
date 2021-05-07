@@ -125,8 +125,6 @@ struct trx_l1h {
 	/* transceiver config */
 	struct trx_config	config;
 	struct osmo_fsm_inst	*provision_fi;
-
-	struct l1sched_trx	l1s;
 };
 
 struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst);
@@ -135,11 +133,5 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn);
 void l1if_trx_set_nominal_power(struct gsm_bts_trx *trx, int nominal_power);
 int l1if_trx_start_power_ramp(struct gsm_bts_trx *trx, ramp_compl_cb_t ramp_compl_cb);
 enum gsm_phys_chan_config transceiver_chan_type_2_pchan(uint8_t type);
-
-static inline struct l1sched_trx *trx_l1sched_hdl(struct gsm_bts_trx *trx)
-{
-	struct trx_l1h *l1h = trx->pinst->u.osmotrx.hdl;
-	return &l1h->l1s;
-}
 
 #endif /* L1_IF_H_TRX */

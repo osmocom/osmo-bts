@@ -136,6 +136,8 @@ struct l1sched_chan_state {
 };
 
 struct l1sched_ts {
+	struct gsm_bts_trx_ts	*ts;		/* timeslot we belong to */
+
 	uint8_t 		mf_index;	/* selected multiframe index */
 	uint8_t			mf_period;	/* period of multiframe */
 	const struct trx_sched_frame *mf_frames; /* pointer to frame layout */
@@ -148,25 +150,18 @@ struct l1sched_ts {
 	struct l1sched_chan_state chan_state[_TRX_CHAN_MAX];
 };
 
-struct l1sched_trx {
-	struct gsm_bts_trx	*trx;
-	struct l1sched_ts       ts[TRX_NR_TS];
-};
-
-struct l1sched_ts *l1sched_trx_get_ts(struct l1sched_trx *l1t, uint8_t tn);
-
 
 /*! \brief Initialize the scheduler data structures */
-int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx);
+void trx_sched_init(struct gsm_bts_trx *trx);
 
 /*! \brief De-initialize the scheduler data structures */
-void trx_sched_exit(struct l1sched_trx *l1t);
+void trx_sched_clean(struct gsm_bts_trx *trx);
 
 /*! \brief Handle a PH-DATA.req from L2 down to L1 */
-int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
+int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
 /*! \brief Handle a PH-TCH.req from L2 down to L1 */
-int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap);
+int trx_sched_tch_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap);
 
 /*! \brief PHY informs us of new (current) GSM frame number */
 int trx_sched_clock(struct gsm_bts *bts, uint32_t fn);
@@ -178,21 +173,19 @@ int trx_sched_clock_started(struct gsm_bts *bts);
 int trx_sched_clock_stopped(struct gsm_bts *bts);
 
 /*! \brief set multiframe scheduler to given physical channel config */
-int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
-        enum gsm_phys_chan_config pchan);
+int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pchan);
 
 /*! \brief set all matching logical channels active/inactive */
-int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id, bool active);
+int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_id, bool active);
 
 /*! \brief set mode of all matching logical channels to given mode(s) */
-int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmode,
+int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_cmode,
 	uint8_t tch_mode, int codecs, uint8_t codec0, uint8_t codec1,
 	uint8_t codec2, uint8_t codec3, uint8_t initial_codec,
 	uint8_t handover);
 
 /*! \brief set ciphering on given logical channels */
-int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
-        int algo, uint8_t *key, int key_len);
+int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink);
 
 /* frame structures */
 struct trx_sched_frame {
@@ -287,8 +280,8 @@ struct trx_dl_burst_req {
 };
 
 /*! Handle an UL burst received by PHY */
-int trx_sched_route_burst_ind(struct trx_ul_burst_ind *bi, struct l1sched_trx *l1t);
-int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi);
+int trx_sched_route_burst_ind(const struct gsm_bts_trx *trx, struct trx_ul_burst_ind *bi);
+int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi);
 
 /* Averaging mode for trx_sched_meas_avg() */
 enum sched_meas_avg_mode {

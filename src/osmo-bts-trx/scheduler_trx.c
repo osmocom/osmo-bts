@@ -53,9 +53,9 @@
 	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting IDLE\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting IDLE\n");
 	return 0;
 }
 
@@ -108,7 +108,6 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		const struct phy_link *plink = trx->pinst->phy_link;
 		struct trx_l1h *l1h = trx->pinst->u.osmotrx.hdl;
-		struct l1sched_trx *l1t = &l1h->l1s;
 
 		/* we don't schedule, if power is off */
 		if (!trx_if_powered(l1h))
@@ -119,11 +118,12 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 		sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
 
 		/* process every TS of TRX */
-		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 			const struct phy_instance *pinst = trx->pinst;
+			struct l1sched_ts *l1ts = trx->ts[tn].priv;
 
 			/* ready-to-send */
-			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
+			_sched_rts(l1ts, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
 
 			/* All other parameters to be set by _sched_dl_burst() */
 			br = (struct trx_dl_burst_req) {
@@ -132,7 +132,7 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 			};
 
 			/* get burst for FN */
-			_sched_dl_burst(l1t, &br);
+			_sched_dl_burst(l1ts, &br);
 			if (br.burst_len == 0) {
 				/* if no bits, send no burst */
 				continue;
@@ -206,24 +206,17 @@ static struct gsm_bts_trx *ulfh_route_bi(const struct trx_ul_burst_ind *bi,
 }
 
 /* Route a given Uplink burst indication to the scheduler depending on freq. hopping state */
-int trx_sched_route_burst_ind(struct trx_ul_burst_ind *bi, struct l1sched_trx *l1t)
+int trx_sched_route_burst_ind(const struct gsm_bts_trx *trx, struct trx_ul_burst_ind *bi)
 {
-	const struct phy_instance *pinst;
-	const struct gsm_bts_trx *trx;
-	struct trx_l1h *l1h;
-
 	/* no frequency hopping => nothing to do */
-	if (!l1t->trx->ts[bi->tn].hopping.enabled)
-		return trx_sched_ul_burst(l1t, bi);
+	if (!trx->ts[bi->tn].hopping.enabled)
+		return trx_sched_ul_burst(trx->ts[bi->tn].priv, bi);
 
-	trx = ulfh_route_bi(bi, l1t->trx);
+	trx = ulfh_route_bi(bi, trx);
 	if (trx == NULL)
 		return -ENODEV;
 
-	pinst = trx_phy_instance(trx);
-	l1h = pinst->u.osmotrx.hdl;
-
-	return trx_sched_ul_burst(&l1h->l1s, bi);
+	return trx_sched_ul_burst(trx->ts[bi->tn].priv, bi);
 }
 
 /*! maximum number of 'missed' frame periods we can tolerate of OS doesn't schedule us*/
@@ -462,9 +455,9 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 	return 0;
 }
 
-void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate)
+void _sched_act_rach_det(struct gsm_bts_trx *trx, uint8_t tn, uint8_t ss, int activate)
 {
-	struct phy_instance *pinst = trx_phy_instance(l1t->trx);
+	struct phy_instance *pinst = trx_phy_instance(trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	if (activate)

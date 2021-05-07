@@ -1057,7 +1057,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		bi._num_pdus++;
 
 		/* feed received burst into scheduler code */
-		trx_sched_route_burst_ind(&bi, &l1h->l1s);
+		trx_sched_route_burst_ind(l1h->phy_inst->trx, &bi);
 	} while (bi.flags & TRX_BI_F_BATCH_IND);
 
 	return 0;
@@ -1222,7 +1222,7 @@ static void trx_phy_inst_close(struct phy_instance *pinst)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	trx_if_close(l1h);
-	trx_sched_exit(&l1h->l1s);
+	trx_sched_clean(pinst->trx);
 }
 
 /*! open the control + burst data sockets for one phy_instance */
@@ -1235,11 +1235,7 @@ static int trx_phy_inst_open(struct phy_instance *pinst)
 	if (!l1h)
 		return -EINVAL;
 
-	rc = trx_sched_init(&l1h->l1s, pinst->trx);
-	if (rc < 0) {
-		LOGPPHI(l1h->phy_inst, DL1C, LOGL_FATAL, "Cannot initialize scheduler\n");
-		return -EIO;
-	}
+	trx_sched_init(pinst->trx);
 
 	rc = trx_if_open(l1h);
 	if (rc < 0) {

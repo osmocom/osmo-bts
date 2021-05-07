@@ -102,8 +102,9 @@ static enum rach_synch_seq_t rach_get_synch_seq(sbit_t *bits, int *best_score)
 	return seq;
 }
 
-int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
+	struct gsm_bts_trx *trx = l1ts->ts->trx;
 	struct osmo_phsap_prim l1sap;
 	int n_errors = 0;
 	int n_bits_total = 0;
@@ -130,7 +131,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 			synch_seq = rach_get_synch_seq((sbit_t *) bi->burst, &best_score);
 	}
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi,
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
 	       "Received%s RACH (%s): rssi=%d toa256=%d",
 	       (bi->chan != TRXC_RACH) ? " handover" : "",
 	       get_value_string(rach_synch_seq_names, synch_seq),
@@ -157,16 +158,16 @@ int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	if (bi->flags & TRX_BI_F_CI_CB)
 		l1sap.u.rach_ind.lqual_cb = bi->ci_cb;
 	else
-		l1sap.u.rach_ind.lqual_cb = l1t->trx->bts->min_qual_rach;
+		l1sap.u.rach_ind.lqual_cb = trx->bts->min_qual_rach;
 
 	/* Decode RACH depending on its synch. sequence */
 	switch (synch_seq) {
 	case RACH_SYNCH_SEQ_TS1:
 	case RACH_SYNCH_SEQ_TS2:
 		rc = gsm0503_rach_ext_decode_ber(&ra11, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
-						 l1t->trx->bts->bsic, &n_errors, &n_bits_total);
+						 trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received bad Access Burst\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received bad Access Burst\n");
 			return 0;
 		}
 
@@ -183,14 +184,14 @@ int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	default:
 		/* Fall-back to the default TS0 if needed */
 		if (synch_seq != RACH_SYNCH_SEQ_TS0) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Falling-back to the default TS0\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Falling-back to the default TS0\n");
 			synch_seq = RACH_SYNCH_SEQ_TS0;
 		}
 
 		rc = gsm0503_rach_decode_ber(&ra, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
-					     l1t->trx->bts->bsic, &n_errors, &n_bits_total);
+					     trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received bad Access Burst\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received bad Access Burst\n");
 			return 0;
 		}
 
@@ -203,7 +204,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	l1sap.u.rach_ind.ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* forward primitive */
-	l1sap_up(l1t->trx, &l1sap);
+	l1sap_up(trx, &l1sap);
 
 	return 0;
 }

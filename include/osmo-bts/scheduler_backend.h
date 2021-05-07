@@ -1,21 +1,18 @@
 #pragma once
 
-#define LOGL1S(subsys, level, l1t, tn, chan, fn, fmt, args ...)	\
+#define LOGL1S(subsys, level, l1ts, chan, fn, fmt, args ...)	\
 		LOGP(subsys, level, "%s %s %s: " fmt,		\
 			gsm_fn_as_gsmtime_str(fn),		\
-			gsm_ts_name(&(l1t)->trx->ts[tn]),	\
+			gsm_ts_name((l1ts)->ts),		\
 			chan >=0 ? trx_chan_desc[chan].name : "", ## args)
 
 /* Logging helper adding context from trx_{ul,dl}_burst_{ind,req} */
-#define LOGL1SB(subsys, level, l1t, b, fmt, args ...) \
-	LOGL1S(subsys, level, l1t, (b)->tn, (b)->chan, (b)->fn, fmt, ## args)
+#define LOGL1SB(subsys, level, l1ts, b, fmt, args ...) \
+	LOGL1S(subsys, level, l1ts, (b)->chan, (b)->fn, fmt, ## args)
 
-typedef int trx_sched_rts_func(struct l1sched_trx *l1t, uint8_t tn,
-			       uint32_t fn, enum trx_chan_type chan);
-
-typedef int trx_sched_dl_func(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-
-typedef int trx_sched_ul_func(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+typedef int trx_sched_rts_func(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
+typedef int trx_sched_dl_func(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+typedef int trx_sched_ul_func(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
 
 struct trx_chan_desc {
 	/*! \brief Human-readable name */
@@ -42,35 +39,34 @@ extern const ubit_t _sched_tsc[8][26];
 extern const ubit_t _sched_egprs_tsc[8][78];
 extern const ubit_t _sched_sch_train[64];
 
-struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
-				 const struct trx_dl_burst_req *br);
+struct msgb *_sched_dequeue_prim(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
 
-int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 			       enum trx_chan_type chan, uint8_t *l2,
 			       uint8_t l2_len, float rssi,
 			       int16_t ta_offs_256bits, int16_t link_qual_cb,
 			       uint16_t ber10k,
 			       enum osmo_ph_pres_info_type presence_info);
 
-int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
 			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
 			   uint8_t is_sub);
 
-int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_tchf_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
 
-int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
-int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
-int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
-int rx_tchf_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
-int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
+int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
+int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
+int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
+int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi);
 
-void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
-int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);
-void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate);
+void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
+int _sched_rts(const struct l1sched_ts *l1ts, uint32_t fn);
+void _sched_act_rach_det(struct gsm_bts_trx *trx, uint8_t tn, uint8_t ss, int activate);

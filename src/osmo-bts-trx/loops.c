@@ -35,13 +35,10 @@
 #include "l1_if.h"
 #include "loops.h"
 
-void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
-	struct l1sched_chan_state *chan_state,
-	int n_errors, int n_bits_total)
+void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
+			int n_errors, int n_bits_total)
 {
-	struct gsm_bts_trx *trx = l1t->trx;
-	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)]
-					.lchan[l1sap_chan2ss(chan_nr)];
+	struct gsm_lchan *lchan = chan_state->lchan;
 	float ber;
 
 	/* calculate BER (Bit Error Ratio) */
@@ -59,7 +56,7 @@ void trx_loop_amr_input(struct l1sched_trx *l1t, uint8_t chan_nr,
 		return;
 
 	/* count bit errors */
-	if (L1SAP_IS_CHAN_TCHH(chan_nr)) {
+	if (lchan->type == GSM_LCHAN_TCH_H) {
 		chan_state->ber_num += 2;
 		chan_state->ber_sum += (ber + ber);
 	} else {

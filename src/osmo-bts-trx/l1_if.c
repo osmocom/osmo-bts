@@ -109,9 +109,6 @@ static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
 
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
-	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-
 	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
 		lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 		/* FIXME: perform whatever is needed (if any) to set proper PCH/AGCH allocation according to
@@ -121,14 +118,12 @@ int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 	/* set lchan inactive */
 	lchan_set_state(lchan, LCHAN_S_NONE);
 
-	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_DEDIC, false);
+	return trx_sched_set_lchan(lchan, gsm_lchan2chan_nr(lchan), LID_DEDIC, false);
 }
 
 int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
 {
-	struct phy_instance *pinst = trx_phy_instance(lchan->ts->trx);
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-	return trx_sched_set_lchan(&l1h->l1s, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
+	return trx_sched_set_lchan(lchan, gsm_lchan2chan_nr(lchan), LID_SACCH, false);
 }
 
 int l1if_trx_start_power_ramp(struct gsm_bts_trx *trx, ramp_compl_cb_t ramp_compl_cb)
@@ -293,7 +288,7 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 	 * decided on a more specific PCHAN type already. */
 	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
 	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
-	rc = trx_sched_set_pchan(&l1h->l1s, tn, pchan);
+	rc = trx_sched_set_pchan(ts, pchan);
 	if (rc)
 		return NM_NACK_RES_NOTAVAIL;
 
@@ -344,8 +339,7 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
  */
 
 /* enable ciphering */
-static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
-	uint8_t chan_nr, int downlink)
+static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr, int downlink)
 {
 	/* ciphering already enabled in both directions */
 	if (lchan->ciph_state == LCHAN_CIPH_RXTX_CONF)
@@ -353,28 +347,22 @@ static int l1if_set_ciphering(struct trx_l1h *l1h, struct gsm_lchan *lchan,
 
 	if (!downlink) {
 		/* set uplink */
-		trx_sched_set_cipher(&l1h->l1s, chan_nr, 0, lchan->encr.alg_id - 1,
-			lchan->encr.key, lchan->encr.key_len);
+		trx_sched_set_cipher(lchan, chan_nr, false);
 		lchan->ciph_state = LCHAN_CIPH_RX_CONF;
 	} else {
 		/* set downlink and also set uplink, if not already */
-		if (lchan->ciph_state != LCHAN_CIPH_RX_CONF) {
-			trx_sched_set_cipher(&l1h->l1s, chan_nr, 0,
-				lchan->encr.alg_id - 1, lchan->encr.key,
-				lchan->encr.key_len);
-		}
-		trx_sched_set_cipher(&l1h->l1s, chan_nr, 1, lchan->encr.alg_id - 1,
-			lchan->encr.key, lchan->encr.key_len);
+		if (lchan->ciph_state != LCHAN_CIPH_RX_CONF)
+			trx_sched_set_cipher(lchan, chan_nr, false);
+		trx_sched_set_cipher(lchan, chan_nr, true);
 		lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
 	}
 
 	return 0;
 }
 
-static int mph_info_chan_confirm(struct trx_l1h *l1h, uint8_t chan_nr,
-	enum osmo_mph_info_type type, uint8_t cause)
+static int mph_info_chan_confirm(struct gsm_bts_trx *trx, uint8_t chan_nr,
+				 enum osmo_mph_info_type type, uint8_t cause)
 {
-	struct phy_instance *pinst = l1h->phy_inst;
 	struct osmo_phsap_prim l1sap;
 
 	memset(&l1sap, 0, sizeof(l1sap));
@@ -384,7 +372,7 @@ static int mph_info_chan_confirm(struct trx_l1h *l1h, uint8_t chan_nr,
 	l1sap.u.info.u.act_cnf.chan_nr = chan_nr;
 	l1sap.u.info.u.act_cnf.cause = cause;
 
-	return l1sap_up(pinst->trx, &l1sap);
+	return l1sap_up(trx, &l1sap);
 }
 
 int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
@@ -406,8 +394,6 @@ int l1if_mph_time_ind(struct gsm_bts *bts, uint32_t fn)
 /* primitive from common part */
 int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
-	struct phy_instance *pinst = trx_phy_instance(trx);
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr;
 	int rc = 0;
@@ -418,21 +404,21 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		if (!msg)
 			break;
 		/* put data into scheduler's queue */
-		return trx_sched_ph_data_req(&l1h->l1s, l1sap);
+		return trx_sched_ph_data_req(trx, l1sap);
 	case OSMO_PRIM(PRIM_TCH, PRIM_OP_REQUEST):
 		if (!msg)
 			break;
 		/* put data into scheduler's queue */
-		return trx_sched_tch_req(&l1h->l1s, l1sap);
+		return trx_sched_tch_req(trx, l1sap);
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
 		switch (l1sap->u.info.type) {
 		case PRIM_INFO_ACT_CIPH:
 			chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
 			lchan = get_lchan_by_chan_nr(trx, chan_nr);
 			if (l1sap->u.info.u.ciph_req.uplink)
-				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
+				l1if_set_ciphering(lchan, chan_nr, 0);
 			if (l1sap->u.info.u.ciph_req.downlink)
-				l1if_set_ciphering(l1h, lchan, chan_nr, 1);
+				l1if_set_ciphering(lchan, chan_nr, 1);
 			break;
 		case PRIM_INFO_ACTIVATE:
 		case PRIM_INFO_DEACTIVATE:
@@ -463,11 +449,11 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					chan_nr = RSL_CHAN_OSMO_PDCH | (chan_nr & ~RSL_CHAN_NR_MASK);
 
 				/* activate dedicated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_DEDIC, true);
+				trx_sched_set_lchan(lchan, chan_nr, LID_DEDIC, true);
 				/* activate associated channel */
-				trx_sched_set_lchan(&l1h->l1s, chan_nr, LID_SACCH, true);
+				trx_sched_set_lchan(lchan, chan_nr, LID_SACCH, true);
 				/* set mode */
-				trx_sched_set_mode(&l1h->l1s, chan_nr,
+				trx_sched_set_mode(lchan->ts, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
 					lchan->tch.amr_mr.num_modes,
 					lchan->tch.amr_mr.bts_mode[0].mode,
@@ -481,16 +467,15 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				/* set lchan active */
 				lchan_set_state(lchan, LCHAN_S_ACTIVE);
 				/* set initial ciphering */
-				l1if_set_ciphering(l1h, lchan, chan_nr, 0);
-				l1if_set_ciphering(l1h, lchan, chan_nr, 1);
+				l1if_set_ciphering(lchan, chan_nr, 0);
+				l1if_set_ciphering(lchan, chan_nr, 1);
 				if (lchan->encr.alg_id)
 					lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
 				else
 					lchan->ciph_state = LCHAN_CIPH_NONE;
 
 				/* confirm */
-				mph_info_chan_confirm(l1h, chan_nr,
-					PRIM_INFO_ACTIVATE, 0);
+				mph_info_chan_confirm(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 				break;
 			}
 			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
@@ -499,7 +484,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					osmo_ecu_destroy(lchan->ecu_state);
 				lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
 				/* change mode */
-				trx_sched_set_mode(&l1h->l1s, chan_nr,
+				trx_sched_set_mode(lchan->ts, chan_nr,
 					lchan->rsl_cmode, lchan->tch_mode,
 					lchan->tch.amr_mr.num_modes,
 					lchan->tch.amr_mr.bts_mode[0].mode,
@@ -527,8 +512,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				/* deactivate dedicated channel */
 				lchan_deactivate(lchan);
 				/* confirm only on dedicated channel */
-				mph_info_chan_confirm(l1h, chan_nr,
-					PRIM_INFO_DEACTIVATE, 0);
+				mph_info_chan_confirm(trx, chan_nr, PRIM_INFO_DEACTIVATE, 0);
 			}
 			break;
 		default:

@@ -3,6 +3,7 @@
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * (C) 2015 by Harald Welte <laforge@gnumonks.org>
+ * Contributions by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -46,12 +47,9 @@
 
 extern void *tall_bts_ctx;
 
-static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan);
-static int rts_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan);
-static int rts_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan);
+static int rts_data_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
+static int rts_tchf_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
+static int rts_tchh_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
 
 /*! \brief Dummy Burst (TS 05.02 Chapter 5.2.6) */
 const ubit_t _sched_dummy_burst[GSM_BURST_LEN] = {
@@ -576,20 +574,20 @@ static const struct rate_ctr_group_desc l1sched_ts_ctrg_desc = {
  * init / exit
  */
 
-int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
+void trx_sched_init(struct gsm_bts_trx *trx)
 {
-	uint8_t tn;
-	unsigned int i;
+	unsigned int tn, i;
 
-	if (!trx)
-		return -EINVAL;
+	LOGPTRX(trx, DL1C, LOGL_DEBUG, "Init scheduler structures\n");
 
-	l1t->trx = trx;
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct l1sched_ts *l1ts;
 
-	LOGP(DL1C, LOGL_NOTICE, "Init scheduler for trx=%u\n", l1t->trx->nr);
+		l1ts = talloc_zero(trx, struct l1sched_ts);
+		OSMO_ASSERT(l1ts != NULL);
 
-	for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
-		struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+		trx->ts[tn].priv = l1ts;
+		l1ts->ts = &trx->ts[tn];
 
 		l1ts->mf_index = 0;
 		l1ts->ctrs = rate_ctr_group_alloc(trx, &l1sched_ts_ctrg_desc, (trx->nr + 1) * 10 + tn);
@@ -601,20 +599,18 @@ int trx_sched_init(struct l1sched_trx *l1t, struct gsm_bts_trx *trx)
 			chan_state->active = false;
 		}
 	}
-
-	return 0;
 }
 
-void trx_sched_exit(struct l1sched_trx *l1t)
+void trx_sched_clean(struct gsm_bts_trx *trx)
 {
-	struct gsm_bts_trx_ts *ts;
-	uint8_t tn;
-	int i;
+	unsigned int tn, i;
 
-	LOGP(DL1C, LOGL_NOTICE, "Exit scheduler for trx=%u\n", l1t->trx->nr);
+	LOGPTRX(trx, DL1C, LOGL_DEBUG, "Clean scheduler structures\n");
 
-	for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
-		struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+		struct l1sched_ts *l1ts = ts->priv;
+
 		msgb_queue_flush(&l1ts->dl_prims);
 		rate_ctr_group_free(l1ts->ctrs);
 		l1ts->ctrs = NULL;
@@ -631,19 +627,16 @@ void trx_sched_exit(struct l1sched_trx *l1t)
 			}
 		}
 		/* clear lchan channel states */
-		ts = &l1t->trx->ts[tn];
 		for (i = 0; i < ARRAY_SIZE(ts->lchan); i++)
 			lchan_set_state(&ts->lchan[i], LCHAN_S_NONE);
 	}
 }
 
-struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
-				 const struct trx_dl_burst_req *br)
+struct msgb *_sched_dequeue_prim(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)
 {
 	struct msgb *msg, *msg2;
 	uint32_t prim_fn, l1sap_fn;
 	uint8_t chan_nr, link_id;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 
 	/* get prim of current fn from queue */
 	llist_for_each_entry_safe(msg, msg2, &l1ts->dl_prims, list) {
@@ -660,17 +653,17 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
 			l1sap_fn = l1sap->u.tch.fn;
 			break;
 		default:
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Prim has wrong type.\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Prim has wrong type.\n");
 			goto free_msg;
 		}
 		prim_fn = GSM_TDMA_FN_SUB(l1sap_fn, br->fn);
 		if (prim_fn > 100) { /* l1sap_fn < fn */
-			LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
+			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br,
 			     "Prim %u is out of range (%u vs exp %u), or channel %s with "
 			     "type %s is already disabled. If this happens in "
 			     "conjunction with PCU, increase 'rts-advance' by 5.\n",
 			     prim_fn, l1sap_fn, br->fn,
-			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
+			     get_lchan_by_chan_nr(l1ts->ts->trx, chan_nr)->name,
 			     trx_chan_desc[br->chan].name);
 			rate_ctr_inc2(l1ts->ctrs, L1SCHED_TS_CTR_DL_LATE);
 			/* unlink and free message */
@@ -684,7 +677,7 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
 		/* l1sap_fn == fn */
 		if ((chan_nr ^ (trx_chan_desc[br->chan].chan_nr | br->tn))
 		 || ((link_id & 0xc0) ^ trx_chan_desc[br->chan].link_id)) {
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
 				"expecting chan_nr=0x%02x link_id=%02x.\n", chan_nr, link_id,
 				trx_chan_desc[br->chan].chan_nr | br->tn, trx_chan_desc[br->chan].link_id);
 			goto free_msg;
@@ -706,7 +699,7 @@ free_msg:
 	return NULL;
 }
 
-int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 			       enum trx_chan_type chan, uint8_t *l2,
 			       uint8_t l2_len, float rssi,
 			       int16_t ta_offs_256bits, int16_t link_qual_cb,
@@ -715,8 +708,7 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
-	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | l1ts->ts->nr;
 
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(l2_len);
@@ -739,22 +731,20 @@ int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		l1ts->chan_state[chan].lost_frames = 0;
 
 	/* forward primitive */
-	l1sap_up(l1t->trx, l1sap);
+	l1sap_up(l1ts->ts->trx, l1sap);
 
 	return 0;
 }
 
-int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
+int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
 			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
 			   uint8_t is_sub)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
-	struct gsm_bts_trx *trx = l1t->trx;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
+	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | l1ts->ts->nr;
+	struct gsm_lchan *lchan = &l1ts->ts->lchan[l1sap_chan2ss(chan_nr)];
 
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(tch_len);
@@ -775,11 +765,10 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	if (l1ts->chan_state[chan].lost_frames)
 		l1ts->chan_state[chan].lost_frames--;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.data.fn,
-	       "%s Rx -> RTP: %s\n",
+	LOGL1S(DL1P, LOGL_DEBUG, l1ts, chan, l1sap->u.data.fn, "%s Rx -> RTP: %s\n",
 	       gsm_lchan_name(lchan), osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 	/* forward primitive */
-	l1sap_up(l1t->trx, l1sap);
+	l1sap_up(l1ts->ts->trx, l1sap);
 
 	return 0;
 }
@@ -790,12 +779,12 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
  * data request (from upper layer)
  */
 
-int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
+int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
-	uint8_t tn = l1sap->u.data.chan_nr & 7;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	uint8_t tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
+	struct l1sched_ts *l1ts = trx->ts[tn].priv;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.data.fn,
+	LOGL1S(DL1P, LOGL_DEBUG, l1ts, -1, l1sap->u.data.fn,
 		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
 		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
@@ -813,13 +802,13 @@ int trx_sched_ph_data_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap
 	return 0;
 }
 
-int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
+int trx_sched_tch_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
-	uint8_t tn = l1sap->u.tch.chan_nr & 7;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	uint8_t tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
+	struct l1sched_ts *l1ts = trx->ts[tn].priv;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, -1, l1sap->u.tch.fn, "TCH.req: chan_nr=0x%02x\n",
-		l1sap->u.tch.chan_nr);
+	LOGL1S(DL1P, LOGL_DEBUG, l1ts, -1, l1sap->u.tch.fn,
+	       "TCH.req: chan_nr=0x%02x\n", l1sap->u.tch.chan_nr);
 
 	OSMO_ASSERT(l1sap->oph.operation == PRIM_OP_REQUEST);
 	OSMO_ASSERT(l1sap->oph.msg);
@@ -841,31 +830,28 @@ int trx_sched_tch_req(struct l1sched_trx *l1t, struct osmo_phsap_prim *l1sap)
  */
 
 /* RTS for data frame */
-static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan)
+static int rts_data_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)
 {
 	uint8_t chan_nr, link_id;
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
 
 	/* get data for RTS indication */
-	chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	link_id = trx_chan_desc[chan].link_id;
+	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
+	link_id = trx_chan_desc[br->chan].link_id;
 
 	if (!chan_nr) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
-			"RTS func with non-existing chan_nr %d\n", chan_nr);
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "RTS func with non-existing chan_nr 0x%02x\n", chan_nr);
 		return -ENODEV;
 	}
 
 	/* For handover detection, there are cases where the SACCH should remain inactive until the first RACH
 	 * indicating the TA is received. */
 	if (L1SAP_IS_LINK_SACCH(link_id)
-	    && !l1t->ts[tn].chan_state[chan].lchan->want_dl_sacch_active)
+	    && !l1ts->chan_state[br->chan].lchan->want_dl_sacch_active)
 		return 0;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
-		"PH-RTS.ind: chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "PH-RTS.ind: chan_nr=0x%02x link_id=0x%02x\n", chan_nr, link_id);
 
 	/* generate prim */
 	msg = l1sap_msgb_alloc(200);
@@ -876,31 +862,30 @@ static int rts_data_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 	                                PRIM_OP_INDICATION, msg);
 	l1sap->u.data.chan_nr = chan_nr;
 	l1sap->u.data.link_id = link_id;
-	l1sap->u.data.fn = fn;
+	l1sap->u.data.fn = br->fn;
 
-	return l1sap_up(l1t->trx, l1sap);
+	return l1sap_up(l1ts->ts->trx, l1sap);
 }
 
-static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, int facch)
+static int rts_tch_common(const struct l1sched_ts *l1ts,
+			  const struct trx_dl_burst_req *br,
+			  bool facch)
 {
 	uint8_t chan_nr, link_id;
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	int rc = 0;
 
 	/* get data for RTS indication */
-	chan_nr = trx_chan_desc[chan].chan_nr | tn;
-	link_id = trx_chan_desc[chan].link_id;
+	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
+	link_id = trx_chan_desc[br->chan].link_id;
 
 	if (!chan_nr) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
-			"RTS func with non-existing chan_nr %d\n", chan_nr);
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "RTS func with non-existing chan_nr 0x%02x\n", chan_nr);
 		return -ENODEV;
 	}
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
 
 	/* only send, if FACCH is selected */
 	if (facch) {
@@ -913,13 +898,13 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 						PRIM_OP_INDICATION, msg);
 		l1sap->u.data.chan_nr = chan_nr;
 		l1sap->u.data.link_id = link_id;
-		l1sap->u.data.fn = fn;
+		l1sap->u.data.fn = br->fn;
 
-		rc = l1sap_up(l1t->trx, l1sap);
+		rc = l1sap_up(l1ts->ts->trx, l1sap);
 	}
 
 	/* don't send, if TCH is in signalling only mode */
-	if (l1ts->chan_state[chan].rsl_cmode != RSL_CMOD_SPD_SIGN) {
+	if (l1ts->chan_state[br->chan].rsl_cmode != RSL_CMOD_SPD_SIGN) {
 		/* generate prim */
 		msg = l1sap_msgb_alloc(200);
 		if (!msg)
@@ -928,49 +913,44 @@ static int rts_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH_RTS,
 						PRIM_OP_INDICATION, msg);
 		l1sap->u.tch.chan_nr = chan_nr;
-		l1sap->u.tch.fn = fn;
+		l1sap->u.tch.fn = br->fn;
 
-		return l1sap_up(l1t->trx, l1sap);
+		return l1sap_up(l1ts->ts->trx, l1sap);
 	}
 
 	return rc;
 }
 
 /* RTS for full rate traffic frame */
-static int rts_tchf_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan)
+static int rts_tchf_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)
 {
 	/* TCH/F may include FACCH on every 4th burst */
-	return rts_tch_common(l1t, tn, fn, chan, 1);
+	return rts_tch_common(l1ts, br, true);
 }
 
 
 /* RTS for half rate traffic frame */
-static int rts_tchh_fn(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan)
+static int rts_tchh_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)
 {
 	/* the FN 4/5, 13/14, 21/22 defines that FACCH may be included. */
-	return rts_tch_common(l1t, tn, fn, chan, ((fn % 26) >> 2) & 1);
+	return rts_tch_common(l1ts, br, ((br->fn % 26) >> 2) & 1);
 }
 
 /* set multiframe scheduler to given pchan */
-int trx_sched_set_pchan(struct l1sched_trx *l1t, uint8_t tn,
-	enum gsm_phys_chan_config pchan)
+int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pchan)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	int i;
-
-	i = find_sched_mframe_idx(pchan, tn);
+	struct l1sched_ts *l1ts = ts->priv;
+	int i = find_sched_mframe_idx(pchan, ts->nr);
 	if (i < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "Failed to configure multiframe "
-			"trx=%d ts=%d\n", l1t->trx->nr, tn);
+		LOGP(DL1C, LOGL_NOTICE, "%s Failed to configure multiframe\n",
+		     gsm_ts_name(ts));
 		return -ENOTSUP;
 	}
 	l1ts->mf_index = i;
 	l1ts->mf_period = trx_sched_multiframes[i].period;
 	l1ts->mf_frames = trx_sched_multiframes[i].frames;
-	LOGP(DL1C, LOGL_NOTICE, "Configuring multiframe with %s trx=%d ts=%d\n",
-		trx_sched_multiframes[i].name, l1t->trx->nr, tn);
+	LOGP(DL1C, LOGL_NOTICE, "%s Configured multiframe with '%s'\n",
+	     gsm_ts_name(ts), trx_sched_multiframes[i].name);
 	return 0;
 }
 
@@ -1006,10 +986,10 @@ static void trx_sched_queue_filter(struct llist_head *q, uint8_t chan_nr, uint8_
 }
 
 /* setting all logical channels given attributes to active/inactive */
-int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_id, bool active)
+int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_id, bool active)
 {
+	struct l1sched_ts *l1ts = lchan->ts->priv;
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	uint8_t ss = l1sap_chan2ss(chan_nr);
 	bool found = false;
 	int i;
@@ -1026,9 +1006,9 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			continue;
 		found = true;
 
-		LOGP(DL1C, LOGL_NOTICE, "%s %s on trx=%d ts=%d\n",
-			(active) ? "Activating" : "Deactivating",
-			trx_chan_desc[i].name, l1t->trx->nr, tn);
+		LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "%s %s\n",
+			  (active) ? "Activating" : "Deactivating",
+			  trx_chan_desc[i].name);
 		/* free burst memory, to cleanly start with burst 0 */
 		if (chan_state->dl_bursts) {
 			talloc_free(chan_state->dl_bursts);
@@ -1044,8 +1024,7 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 			memset(chan_state, 0, sizeof(*chan_state));
 
 			/* Bind to generic 'struct gsm_lchan' */
-			chan_state->lchan = get_lchan_by_chan_nr(l1t->trx, chan_nr);
-			OSMO_ASSERT(chan_state->lchan != NULL);
+			chan_state->lchan = lchan;
 		} else {
 			chan_state->ho_rach_detect = 0;
 
@@ -1058,36 +1037,37 @@ int trx_sched_set_lchan(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t link_i
 
 	/* disable handover detection (on deactivation) */
 	if (!active)
-		_sched_act_rach_det(l1t, tn, ss, 0);
+		_sched_act_rach_det(lchan->ts->trx, tn, ss, 0);
 
 	return found ? 0 : -EINVAL;
 }
 
 /* setting all logical channels given attributes to active/inactive */
-int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmode,
+int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_cmode,
 	uint8_t tch_mode, int codecs, uint8_t codec0, uint8_t codec1,
 	uint8_t codec2, uint8_t codec3, uint8_t initial_id, uint8_t handover)
 {
+	struct l1sched_ts *l1ts = ts->priv;
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	uint8_t ss = l1sap_chan2ss(chan_nr);
 	int i;
 	int rc = -EINVAL;
-	struct l1sched_chan_state *chan_state;
 
 	/* no mode for PDCH */
-	if (trx_sched_multiframes[l1ts->mf_index].pchan == GSM_PCHAN_PDCH)
+	if (ts->pchan == GSM_PCHAN_PDCH)
 		return 0;
 
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
 		 && trx_chan_desc[i].link_id == 0x00) {
-			chan_state = &l1ts->chan_state[i];
-			LOGP(DL1C, LOGL_NOTICE, "Set mode %u, %u, handover %u "
-				"on %s of trx=%d ts=%d\n", rsl_cmode, tch_mode,
-				handover, trx_chan_desc[i].name, l1t->trx->nr,
-				tn);
+			struct l1sched_chan_state *chan_state = &l1ts->chan_state[i];
+
+			LOGP(DL1C, LOGL_NOTICE,
+			     "%s Set mode for %s (rsl_cmode=%u, tch_mode=%u, handover=%u)\n",
+			     gsm_ts_name(ts), trx_chan_desc[i].name,
+			     rsl_cmode, tch_mode, handover);
+
 			chan_state->rsl_cmode = rsl_cmode;
 			chan_state->tch_mode = tch_mode;
 			chan_state->ho_rach_detect = handover;
@@ -1114,50 +1094,49 @@ int trx_sched_set_mode(struct l1sched_trx *l1t, uint8_t chan_nr, uint8_t rsl_cmo
 	 * of transceiver link).
 	 * disable handover, if state is still set, since we might not know
 	 * the actual state of transceiver (due to loss of link) */
-	_sched_act_rach_det(l1t, tn, ss, handover);
+	_sched_act_rach_det(ts->trx, tn, ss, handover);
 
 	return rc;
 }
 
 /* setting cipher on logical channels */
-int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
-	int algo, uint8_t *key, int key_len)
+int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink)
 {
-	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
-	int i;
-	int rc = -EINVAL;
-	struct l1sched_chan_state *chan_state;
+	int algo = lchan->encr.alg_id - 1;
+	int i, rc = -EINVAL;
 
 	/* no cipher for PDCH */
-	if (trx_sched_multiframes[l1ts->mf_index].pchan == GSM_PCHAN_PDCH)
+	if (lchan->ts->pchan == GSM_PCHAN_PDCH)
 		return 0;
 
 	/* no algorithm given means a5/0 */
 	if (algo <= 0)
 		algo = 0;
-	else if (key_len != 8) {
-		LOGP(DL1C, LOGL_ERROR, "Algo A5/%d not supported with given "
-			"key len=%d\n", algo, key_len);
+	else if (lchan->encr.key_len != 8) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR,
+			  "Algo A5/%d not supported with given key_len=%u\n",
+			  algo, lchan->encr.key_len);
 		return -ENOTSUP;
 	}
 
 	/* look for all matching chan_nr */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		if (trx_chan_desc[i].chan_nr == (chan_nr & RSL_CHAN_NR_MASK)) {
-			chan_state = &l1ts->chan_state[i];
-			LOGP(DL1C, LOGL_NOTICE, "Set a5/%d %s for %s on trx=%d "
-				"ts=%d\n", algo,
-				(downlink) ? "downlink" : "uplink",
-				trx_chan_desc[i].name, l1t->trx->nr, tn);
+			struct l1sched_ts *l1ts = lchan->ts->priv;
+			struct l1sched_chan_state *l1cs = &l1ts->chan_state[i];
+
+			LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "Set A5/%d %s for %s\n",
+				  algo, (downlink) ? "downlink" : "uplink",
+				  trx_chan_desc[i].name);
+
 			if (downlink) {
-				chan_state->dl_encr_algo = algo;
-				memcpy(chan_state->dl_encr_key, key, key_len);
-				chan_state->dl_encr_key_len = key_len;
+				l1cs->dl_encr_algo = algo;
+				memcpy(l1cs->dl_encr_key, lchan->encr.key, lchan->encr.key_len);
+				l1cs->dl_encr_key_len = lchan->encr.key_len;
 			} else {
-				chan_state->ul_encr_algo = algo;
-				memcpy(chan_state->ul_encr_key, key, key_len);
-				chan_state->ul_encr_key_len = key_len;
+				l1cs->ul_encr_algo = algo;
+				memcpy(l1cs->ul_encr_key, lchan->encr.key, lchan->encr.key_len);
+				l1cs->ul_encr_key_len = lchan->encr.key_len;
 			}
 			rc = 0;
 		}
@@ -1167,9 +1146,8 @@ int trx_sched_set_cipher(struct l1sched_trx *l1t, uint8_t chan_nr, int downlink,
 }
 
 /* process ready-to-send */
-int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
+int _sched_rts(const struct l1sched_ts *l1ts, uint32_t fn)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period, bid;
 	trx_sched_rts_func *func;
@@ -1200,14 +1178,21 @@ int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn)
 	if (!TRX_CHAN_IS_ACTIVE(&l1ts->chan_state[chan], chan))
 	 	return -EINVAL;
 
-	return func(l1t, tn, fn, frame->dl_chan);
+	/* There is no burst, just for logging */
+	struct trx_dl_burst_req dbr = {
+		.fn = fn,
+		.tn = l1ts->ts->nr,
+		.bid = bid,
+		.chan = chan,
+	};
+
+	return func(l1ts, &dbr);
 }
 
 /* process downlink burst */
-void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
-	struct l1sched_chan_state *l1cs;
+	const struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period;
 	trx_sched_dl_func *func;
@@ -1231,7 +1216,7 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 		return;
 
 	/* get burst from function */
-	if (func(l1t, br) != 0)
+	if (func(l1ts, br) != 0)
 		return;
 
 	/* BS Power reduction (in dB) per logical channel */
@@ -1251,12 +1236,11 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	}
 }
 
-static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
+static int trx_sched_calc_frame_loss(struct l1sched_ts *l1ts,
 				     struct l1sched_chan_state *l1cs,
 				     const struct trx_ul_burst_ind *bi)
 {
 	const struct trx_sched_frame *frame;
-	struct l1sched_ts *l1ts;
 	uint32_t elapsed_fs;
 	uint8_t offset, i;
 	uint32_t fn_i;
@@ -1268,9 +1252,6 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	 */
 	if (l1cs->proc_tdma_fs == 0)
 		return 0;
-
-	/* Get current TDMA frame info */
-	l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 
 	/* Not applicable for some logical channels */
 	switch (bi->chan) {
@@ -1288,7 +1269,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	/* How many frames elapsed since the last one? */
 	elapsed_fs = GSM_TDMA_FN_SUB(bi->fn, l1cs->last_tdma_fn);
 	if (elapsed_fs > l1ts->mf_period) { /* Too many! */
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, bi,
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
 			"Too many (>%u) contiguous TDMA frames=%u elapsed "
 			"since the last processed fn=%u\n", l1ts->mf_period,
 			elapsed_fs, l1cs->last_tdma_fn);
@@ -1314,7 +1295,7 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	}
 
 	if (l1cs->lost_tdma_fs > 0) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi,
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			"At least %u TDMA frames were lost since the last "
 			"processed fn=%u\n", l1cs->lost_tdma_fs, l1cs->last_tdma_fn);
 
@@ -1350,10 +1331,10 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 			dbi.bid = frame->ul_bid;
 			dbi.fn = fn_i;
 
-			LOGL1SB(DL1P, LOGL_NOTICE, l1t, &dbi,
+			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, &dbi,
 				"Substituting lost burst with NOPE.ind\n");
 
-			func(l1t, &dbi);
+			func(l1ts, &dbi);
 
 			l1cs->lost_tdma_fs--;
 		}
@@ -1363,9 +1344,8 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 }
 
 /* Process an Uplink burst indication */
-int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
+int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period;
@@ -1386,7 +1366,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 
 	/* TODO: handle noise measurements */
 	if (bi->chan == TRXC_IDLE && bi->flags & TRX_BI_F_NOPE_IND) {
-		LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Rx noise measurement (%d)\n", bi->rssi);
+		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Rx noise measurement (%d)\n", bi->rssi);
 		return -ENOTSUP;
 	}
 
@@ -1399,7 +1379,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 		return -EINVAL;
 
 	/* calculate how many TDMA frames were potentially lost */
-	trx_sched_calc_frame_loss(l1t, l1cs, bi);
+	trx_sched_calc_frame_loss(l1ts, l1cs, bi);
 
 	/* update TDMA frame counters */
 	l1cs->last_tdma_fn = bi->fn;
@@ -1415,7 +1395,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 		default:
 			/* NOTE: Uplink burst handler must check bi->burst_len before
 			 * accessing bi->burst to avoid uninitialized memory access. */
-			return func(l1t, bi);
+			return func(l1ts, bi);
 		}
 	}
 
@@ -1434,13 +1414,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	}
 
 	/* Invoke the logical channel handler */
-	func(l1t, bi);
+	func(l1ts, bi);
 
 	return 0;
-}
-
-struct l1sched_ts *l1sched_trx_get_ts(struct l1sched_trx *l1t, uint8_t tn)
-{
-	OSMO_ASSERT(tn < ARRAY_SIZE(l1t->ts));
-	return &l1t->ts[tn];
 }

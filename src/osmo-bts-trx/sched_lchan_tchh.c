@@ -46,9 +46,8 @@
 #include <loops.h>
 
 /*! \brief a single TCH/H burst was received by the PHY, process it */
-int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	struct gsm_lchan *lchan = chan_state->lchan;
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
@@ -77,9 +76,9 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
 	if (chan_state->ho_rach_detect == 1 && ~bi->flags & TRX_BI_F_NOPE_IND)
-		return rx_rach_fn(l1t, bi);
+		return rx_rach_fn(l1ts, bi);
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received TCH/H, bid=%u\n", bi->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received TCH/H, bid=%u\n", bi->bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -114,7 +113,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 
 	/* check for complete set of bursts */
 	if ((*mask & 0x3) != 0x3) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi,
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			"Received incomplete frame (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
@@ -175,7 +174,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 		/* Tag all frames that are not regular AMR voice frames
 		   as SUB-Frames */
 		if (chan_state->amr_last_dtx != AMR_OTHER) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received AMR SID frame: %s\n",
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received AMR SID frame: %s\n",
 				gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
 			is_sub = 1;
 		}
@@ -206,9 +205,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 		}
 
 		if (rc)
-			trx_loop_amr_input(l1t,
-				trx_chan_desc[bi->chan].chan_nr | bi->tn, chan_state,
-				n_errors, n_bits_total);
+			trx_loop_amr_input(chan_state, n_errors, n_bits_total);
 
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
@@ -225,7 +222,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 
 		break;
 	default:
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, bi,
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
 			"TCH mode %u invalid, please fix!\n",
 			tch_mode);
 		return -EINVAL;
@@ -241,11 +238,11 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi, "Received bad data (%u/%u)\n",
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		bfi_flag = true;
 	} else if (rc < 4) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi,
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			"Received bad data (%u/%u) with invalid codec mode %d\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
 		bfi_flag = true;
@@ -265,7 +262,7 @@ int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
 		else
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
-		_sched_compose_ph_data_ind(l1t, bi->tn, fn_begin, bi->chan,
+		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			meas_avg.rssi, meas_avg.toa256,
 			meas_avg.ci_cb, ber10k,
@@ -312,7 +309,7 @@ bfi:
 					chan_state->codec[chan_state->dl_ft],
 					AMR_BAD);
 				if (rc < 2) {
-					LOGL1SB(DL1P, LOGL_ERROR, l1t, bi,
+					LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
 					       "Failed to encode AMR_BAD frame (rc=%d), "
 					       "not sending BFI\n", rc);
 					return -EINVAL;
@@ -320,7 +317,7 @@ bfi:
 				memset(tch_data + 2, 0, rc - 2);
 				break;
 			default:
-				LOGL1SB(DL1P, LOGL_ERROR, l1t, bi,
+				LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
 					"TCH mode %u invalid, please fix!\n", tch_mode);
 				return -EINVAL;
 			}
@@ -364,7 +361,7 @@ compose_l1sap:
 		chan_state->ber10k_facch = 0;
 	}
 
-	return _sched_compose_tch_ind(l1t, bi->tn, fn_begin, bi->chan, tch_data, rc,
+	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      /* FIXME: what should we use for BFI here? */
 				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,
 				      bfi_flag ? bi->rssi : meas_avg.rssi, is_sub);
@@ -372,16 +369,14 @@ compose_l1sap:
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
  * FIXME: this function is over-complicated, refactor / get rid of it. */
-extern void tx_tch_common(struct l1sched_trx *l1t,
+extern void tx_tch_common(struct l1sched_ts *l1ts,
 			  const struct trx_dl_burst_req *br,
 			  struct msgb **_msg_tch, struct msgb **_msg_facch);
 
 /* obtain a to-be-transmitted TCH/H (Half Traffic Channel) burst */
-int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
-	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
@@ -394,11 +389,11 @@ int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	}
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, br, &msg_tch, &msg_facch);
+	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, br,
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
 			"Cannot transmit FACCH starting on even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -424,7 +419,7 @@ int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "No TCH or FACCH prim for transmit.\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No TCH or FACCH prim for transmit.\n");
 		goto send_burst;
 	}
 
@@ -456,12 +451,12 @@ send_burst:
 	/* compose burst */
 	burst = *bursts_p + br->bid * 116;
 	memcpy(br->burst + 3, burst, 58);
-	memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
+	memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(l1ts->ts)], 26);
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting burst=%u.\n", br->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
 	return 0;
 }

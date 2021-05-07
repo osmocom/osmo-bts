@@ -47,9 +47,8 @@ static void add_sbits(sbit_t * current, const sbit_t * previous)
 }
 
 /*! \brief a single (SDCCH/SACCH) burst was received by the PHY, process it */
-int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
@@ -66,9 +65,9 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
 	if (chan_state->ho_rach_detect == 1 && ~bi->flags & TRX_BI_F_NOPE_IND)
-		return rx_rach_fn(l1t, bi);
+		return rx_rach_fn(l1ts, bi);
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received Data, bid=%u\n", bi->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received Data, bid=%u\n", bi->bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -116,7 +115,7 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi, "Received incomplete data (%u/%u)\n",
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received incomplete data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 
 		/* we require first burst to have correct FN */
@@ -130,7 +129,7 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	/* decode */
 	rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi, "Received bad data (%u/%u)\n",
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		l2_len = 0;
 
@@ -142,11 +141,11 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 			add_sbits(*bursts_p, chan_state->ul_bursts_prev);
 			rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
 			if (rc) {
-				LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi,
+				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block also yields bad data (%u/%u)\n",
 				       bi->fn % l1ts->mf_period, l1ts->mf_period);
 			} else {
-				LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi,
+				LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block yields good data (%u/%u)\n",
 				       bi->fn % l1ts->mf_period, l1ts->mf_period);
 				l2_len = GSM_MACBLOCK_LEN;
@@ -161,7 +160,7 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	if (rep_sacch)
 		memcpy(chan_state->ul_bursts_prev, *bursts_p, 464);
 
-	return _sched_compose_ph_data_ind(l1t, bi->tn, *first_fn,
+	return _sched_compose_ph_data_ind(l1ts, *first_fn,
 					  bi->chan, l2, l2_len,
 					  meas_avg.rssi, meas_avg.toa256,
 					  meas_avg.ci_cb, ber10k,
@@ -169,10 +168,8 @@ int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 }
 
 /* obtain a to-be-transmitted xCCH (e.g SACCH or SDCCH) burst */
-int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
-	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct msgb *msg = NULL; /* make GCC happy */
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[br->chan].dl_bursts;
 
@@ -184,11 +181,11 @@ int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	}
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br);
+	msg = _sched_dequeue_prim(l1ts, br);
 	if (msg)
 		goto got_msg;
 
-	LOGL1SB(DL1P, LOGL_INFO, l1t, br, "No prim for transmit.\n");
+	LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
 
 no_msg:
 	/* free burst memory */
@@ -201,7 +198,7 @@ no_msg:
 got_msg:
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim has odd len=%u != %u\n",
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim has odd len=%u != %u\n",
 			msgb_l2len(msg), GSM_MACBLOCK_LEN);
 		/* free message */
 		msgb_free(msg);
@@ -219,7 +216,7 @@ got_msg:
 
 			/* Note: RSSI is set to 0 to indicate to the higher
 			 * layers that this is a faked ph_data_ind */
-			_sched_compose_ph_data_ind(l1t, br->tn, 0, br->chan, NULL, 0,
+			_sched_compose_ph_data_ind(l1ts, 0, br->chan, NULL, 0,
 						   0, 0, 0, 10000,
 						   PRES_INFO_INVALID);
 		}
@@ -242,12 +239,12 @@ send_burst:
 	/* compose burst */
 	burst = *bursts_p + br->bid * 116;
 	memcpy(br->burst + 3, burst, 58);
-	memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
+	memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(l1ts->ts)], 26);
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting burst=%u.\n", br->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
 	return 0;
 }

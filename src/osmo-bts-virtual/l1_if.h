@@ -14,7 +14,6 @@ struct bts_virt_priv {
 
 struct vbts_l1h {
 	struct gsm_bts_trx	*trx;
-	struct l1sched_trx	l1s;
 	struct virt_um_inst	*virt_um;
 };
 

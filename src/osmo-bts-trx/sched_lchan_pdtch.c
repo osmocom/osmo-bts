@@ -39,9 +39,8 @@
 #define EGPRS_0503_MAX_BYTES	155
 
 /*! \brief a single PDTCH burst was received by the PHY, process it */
-int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
 	uint32_t first_fn;
@@ -55,7 +54,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	int rc;
 	enum osmo_ph_pres_info_type presence_info;
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received PDTCH bid=%u\n", bi->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received PDTCH bid=%u\n", bi->bid);
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
@@ -107,7 +106,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
-		LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received incomplete frame (%u/%u)\n",
+		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received incomplete frame (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 	}
 	*mask = 0x0;
@@ -129,7 +128,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	if (rc > 0) {
 		presence_info = PRES_INFO_BOTH;
 	} else {
-		LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received bad PDTCH (%u/%u)\n",
+		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received bad PDTCH (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
 		rc = 0;
 		presence_info = PRES_INFO_INVALID;
@@ -138,7 +137,7 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	first_fn = GSM_TDMA_FN_SUB(bi->fn, 3);
-	return _sched_compose_ph_data_ind(l1t, bi->tn,
+	return _sched_compose_ph_data_ind(l1ts,
 					  first_fn, bi->chan, l2, rc,
 					  meas_avg.rssi, meas_avg.toa256,
 					  meas_avg.ci_cb, ber10k,
@@ -146,10 +145,8 @@ int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 }
 
 /* obtain a to-be-transmitted PDTCH (packet data) burst */
-int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
-	struct gsm_bts_trx_ts *ts = &l1t->trx->ts[br->tn];
 	struct msgb *msg = NULL; /* make GCC happy */
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[br->chan].dl_bursts;
 	enum trx_mod_type *mod = &l1ts->chan_state[br->chan].dl_mod_type;
@@ -163,11 +160,11 @@ int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	}
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br);
+	msg = _sched_dequeue_prim(l1ts, br);
 	if (msg)
 		goto got_msg;
 
-	LOGL1SB(DL1P, LOGL_INFO, l1t, br, "No prim for transmit.\n");
+	LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
 
 no_msg:
 	/* free burst memory */
@@ -195,7 +192,7 @@ got_msg:
 
 	/* check validity of message */
 	if (rc < 0) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim invalid length, please FIX! "
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim invalid length, please FIX! "
 			"(len=%ld)\n", (long)(msg->tail - msg->l2h));
 		/* free message */
 		msgb_free(msg);
@@ -215,7 +212,7 @@ send_burst:
 		burst = *bursts_p + br->bid * 348;
 		memset(br->burst, 1, 9);
 		memcpy(br->burst + 9, burst, 174);
-		memcpy(br->burst + 183, _sched_egprs_tsc[gsm_ts_tsc(ts)], 78);
+		memcpy(br->burst + 183, _sched_egprs_tsc[gsm_ts_tsc(l1ts->ts)], 78);
 		memcpy(br->burst + 261, burst + 174, 174);
 		memset(br->burst + 435, 1, 9);
 
@@ -223,13 +220,13 @@ send_burst:
 	} else {
 		burst = *bursts_p + br->bid * 116;
 		memcpy(br->burst + 3, burst, 58);
-		memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(ts)], 26);
+		memcpy(br->burst + 61, _sched_tsc[gsm_ts_tsc(l1ts->ts)], 26);
 		memcpy(br->burst + 87, burst + 58, 58);
 
 		br->burst_len = GSM_BURST_LEN;
 	}
 
-	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting burst=%u.\n", br->bid);
+	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
 	return 0;
 }

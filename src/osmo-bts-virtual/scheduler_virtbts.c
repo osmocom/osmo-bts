@@ -2,6 +2,7 @@
 
 /* (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
  * (C) 2017 Sebastian Stumpf <sebastian.stumpf87@googlemail.com>
+ * Contributions by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -51,13 +52,14 @@
  * Send a message over the virtual um interface.
  * This will at first wrap the msg with a GSMTAP header and then write it to the declared multicast socket.
  */
-static void _tx_to_virt_um(struct l1sched_trx *l1t,
+static void _tx_to_virt_um(struct l1sched_ts *l1ts,
 			   struct trx_dl_burst_req *br,
 			   struct msgb *msg, bool is_voice_frame)
 {
 	const struct trx_chan_desc *chdesc = &trx_chan_desc[br->chan];
+	const struct gsm_bts_trx *trx = l1ts->ts->trx;
 	struct msgb *outmsg;			/* msg to send with gsmtap header prepended */
-	uint16_t arfcn = l1t->trx->arfcn;	/* ARFCN of the transceiver the message is send with */
+	uint16_t arfcn = trx->arfcn;		/* ARFCN of the transceiver the message is send with */
 	uint8_t signal_dbm = 63;		/* signal strength, 63 is best */
 	uint8_t snr = 63;			/* signal noise ratio, 63 is best */
 	uint8_t *data = msgb_l2(msg);		/* data to transmit (whole message without l1 header) */
@@ -73,13 +75,13 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t,
 	/* in Osmocom, AGCH is only sent on ccch block 0. no idea why. this seems to cause false GSMTAP channel
 	 * types for agch and pch. */
 	if (rsl_chantype == RSL_CHAN_PCH_AGCH &&
-	    l1sap_fn2ccch_block(br->fn) >= num_agch(l1t->trx, "PH-DATA-REQ"))
+	    l1sap_fn2ccch_block(br->fn) >= num_agch(trx, "PH-DATA-REQ"))
 		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
 	else
 		gsmtap_chantype = chantype_rsl2gsmtap2(rsl_chantype, chdesc->link_id, is_voice_frame); /* the logical channel type */
 
 	if (gsmtap_chantype == GSMTAP_CHANNEL_UNKNOWN) {
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Tx GSMTAP for RSL channel type 0x%02x: cannot send, this"
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Tx GSMTAP for RSL channel type 0x%02x: cannot send, this"
 		       " channel type is unknown in GSMTAP\n", rsl_chantype);
 		msgb_free(msg);
 		return;
@@ -93,44 +95,42 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t,
 	outmsg = gsmtap_makemsg(arfcn, timeslot, gsmtap_chantype, subslot, br->fn, signal_dbm, snr, data, data_len);
 
 	if (outmsg) {
-		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
+		struct phy_instance *pinst = trx_phy_instance(trx);
 		int rc;
 
 		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
 		if (rc < 0)
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br,
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
 			       "GSMTAP msg could not send to virtual Um: %s\n", strerror(-rc));
 		else if (rc == 0)
-			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
+			bts_shutdown(trx->bts, "VirtPHY write socket died\n");
 		else
-			LOGL1SB(DL1P, LOGL_DEBUG, l1t, br,
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br,
 			       "Sending GSMTAP message to virtual Um\n");
 	} else
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "GSMTAP msg could not be created!\n");
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "GSMTAP msg could not be created!\n");
 
 	/* free incoming message */
 	msgb_free(msg);
 }
 
-static void tx_to_virt_um(struct l1sched_trx *l1t,
+static void tx_to_virt_um(struct l1sched_ts *l1ts,
 			  struct trx_dl_burst_req *br,
 			  struct msgb *msg)
 {
-	_tx_to_virt_um(l1t, br, msg, false);
+	_tx_to_virt_um(l1ts, br, msg, false);
 }
 
 
-static struct gsm_lchan *lchan_from_l1t(struct l1sched_trx *l1t, uint8_t tn, enum trx_chan_type chan)
+static struct gsm_lchan *lchan_from_l1t(const struct l1sched_ts *l1ts,
+					const enum trx_chan_type chan)
 {
-	struct gsm_bts_trx_ts *ts;
+	struct gsm_bts_trx_ts *ts = l1ts->ts;
 	uint8_t subslot = 0;
-
-	OSMO_ASSERT(l1t && l1t->trx);
 
 	if (chan == TRXC_TCHH_1)
 		subslot = 1;
 
-	ts = &l1t->trx->ts[tn];
 	return &ts->lchan[subslot];
 }
 
@@ -152,11 +152,11 @@ static int get_um_voice_type(const struct gsm_lchan *lchan)
 	}
 }
 
-static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t,
+static void tx_to_virt_um_voice_frame(struct l1sched_ts *l1ts,
 				      struct trx_dl_burst_req *br,
 				      struct msgb *msg)
 {
-	struct gsm_lchan *lchan = lchan_from_l1t(l1t, br->tn, br->chan);
+	struct gsm_lchan *lchan = lchan_from_l1t(l1ts, br->chan);
 	int um_voice_type;
 
 	OSMO_ASSERT(lchan);
@@ -170,7 +170,7 @@ static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t,
 	msgb_pull_to_l2(msg);
 	msgb_push_u8(msg, um_voice_type);
 	msg->l2h = msg->data;
-	_tx_to_virt_um(l1t, br, msg, true);
+	_tx_to_virt_um(l1ts, br, msg, true);
 }
 
 /*
@@ -178,22 +178,22 @@ static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t,
  */
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg;
 
@@ -201,15 +201,15 @@ int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br);
+	msg = _sched_dequeue_prim(l1ts, br);
 	if (!msg) {
-		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim not 23 bytes, please FIX! (len=%d)\n",
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim not 23 bytes, please FIX! (len=%d)\n",
 			msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
@@ -217,12 +217,12 @@ int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	}
 
 	/* transmit the msg received on dl from bsc to layer1 (virt Um) */
-	tx_to_virt_um(l1t, br, msg);
+	tx_to_virt_um(l1ts, br, msg);
 
 	return 0;
 }
 
-int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
 
@@ -230,23 +230,22 @@ int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br);
+	msg = _sched_dequeue_prim(l1ts, br);
 	if (!msg) {
-		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
-	tx_to_virt_um(l1t, br, msg);
+	tx_to_virt_um(l1ts, br, msg);
 
 	return 0;
 }
 
-static void tx_tch_common(struct l1sched_trx *l1t,
+static void tx_tch_common(struct l1sched_ts *l1ts,
 			  const struct trx_dl_burst_req *br,
 			  struct msgb **_msg_tch, struct msgb **_msg_facch,
 			  int codec_mode_request)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
@@ -259,7 +258,7 @@ static void tx_tch_common(struct l1sched_trx *l1t,
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
-		LOGL1SB(DL1P, LOGL_NOTICE, l1t, br, "Missing TCH bursts detected, sending "
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Missing TCH bursts detected, sending "
 			"BFI for %s\n", trx_chan_desc[br->chan].name);
 
 		/* indicate bad frame */
@@ -287,7 +286,7 @@ static void tx_tch_common(struct l1sched_trx *l1t,
 			if (len < 2)
 				break;
 			memset(tch_data + 2, 0, len - 2);
-			_sched_compose_tch_ind(l1t, br->tn, 0, br->chan, tch_data, len);
+			_sched_compose_tch_ind(l1ts, 0, br->chan, tch_data, len);
 			break;
 		default:
 inval_mode1:
@@ -296,13 +295,13 @@ inval_mode1:
 			len = 0;
 		}
 		if (len)
-			_sched_compose_tch_ind(l1t, br->tn, 0, br->chan, tch_data, len);
+			_sched_compose_tch_ind(l1ts, 0, br->chan, tch_data, len);
 	}
 #endif
 
 	/* get frame and unlink from queue */
-	msg1 = _sched_dequeue_prim(l1t, br);
-	msg2 = _sched_dequeue_prim(l1t, br);
+	msg1 = _sched_dequeue_prim(l1ts, br);
+	msg2 = _sched_dequeue_prim(l1ts, br);
 	if (msg1) {
 		l1sap = msgb_l1sap_prim(msg1);
 		if (l1sap->oph.primitive == PRIM_TCH) {
@@ -310,7 +309,7 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive == PRIM_TCH) {
-					LOGL1SB(DL1P, LOGL_FATAL, l1t, br,
+					LOGL1SB(DL1P, LOGL_FATAL, l1ts, br,
 						"TCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
@@ -321,7 +320,7 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive != PRIM_TCH) {
-					LOGL1SB(DL1P, LOGL_FATAL, l1t, br,
+					LOGL1SB(DL1P, LOGL_FATAL, l1ts, br,
 						"FACCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
@@ -338,7 +337,7 @@ inval_mode1:
 
 	/* check validity of message */
 	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim has odd len=%u != %u\n",
+		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim has odd len=%u != %u\n",
 			msgb_l2len(msg_facch), GSM_MACBLOCK_LEN);
 		/* free message */
 		msgb_free(msg_facch);
@@ -354,7 +353,7 @@ inval_mode1:
 #endif
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
-			LOGL1SB(DL1P, LOGL_NOTICE, l1t, br, "Dropping speech frame, "
+			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Dropping speech frame, "
 				"because we are not in speech mode\n");
 			goto free_bad_msg;
 		}
@@ -365,7 +364,7 @@ inval_mode1:
 				len = 15;
 				if (msgb_l2len(msg_tch) >= 1
 				 && (msg_tch->l2h[0] & 0xf0) != 0x00) {
-					LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
+					LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br,
 						"Transmitting 'bad HR frame'\n");
 					goto free_bad_msg;
 				}
@@ -374,7 +373,7 @@ inval_mode1:
 			len = GSM_FR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
-				LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
+				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br,
 					"Transmitting 'bad FR frame'\n");
 				goto free_bad_msg;
 			}
@@ -385,7 +384,7 @@ inval_mode1:
 			len = GSM_EFR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xc) {
-				LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
+				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br,
 					"Transmitting 'bad EFR frame'\n");
 				goto free_bad_msg;
 			}
@@ -396,15 +395,15 @@ inval_mode1:
 			break;
 		default:
 inval_mode2:
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "TCH mode invalid, please fix!\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "TCH mode invalid, please fix!\n");
 			goto free_bad_msg;
 		}
 		if (len < 0) {
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot send invalid AMR payload\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send invalid AMR payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
-			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot send payload with "
+			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send payload with "
 				"invalid length! (expecing %d, received %d)\n", len, msgb_l2len(msg_tch));
 free_bad_msg:
 			/* free message */
@@ -419,34 +418,33 @@ send_frame:
 	*_msg_facch = msg_facch;
 }
 
-int tx_tchf_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 
 	if (br->bid > 0)
 		return 0;
 
-	tx_tch_common(l1t, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1ts, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, br, msg_facch);
+		tx_to_virt_um(l1ts, br, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, br, msg_tch);
+		tx_to_virt_um_voice_frame(l1ts, br, msg_tch);
 
 	return 0;
 }
 
-int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
+int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	//uint8_t tch_mode = chan_state->tch_mode;
 
@@ -455,11 +453,11 @@ int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 		return 0;
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1ts, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
-		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot transmit FACCH starting on "
+		LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot transmit FACCH starting on "
 			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -467,15 +465,15 @@ int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, br, msg_facch);
+		tx_to_virt_um(l1ts, br, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, br, msg_tch);
+		tx_to_virt_um_voice_frame(l1ts, br, msg_tch);
 
 	return 0;
 }
@@ -489,33 +487,33 @@ int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
  * directly into the L1SAP, bypassing the TDMA multiplex logic oriented
  * towards receiving bursts */
 
-int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
 /*! \brief a single burst was received by the PHY, process it */
-int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_tchf_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
+int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-void _sched_act_rach_det(struct l1sched_trx *l1t, uint8_t tn, uint8_t ss, int activate)
+void _sched_act_rach_det(struct gsm_bts_trx *trx, uint8_t tn, uint8_t ss, int activate)
 {
 }
 
@@ -536,12 +534,11 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 
 	/* advance the frame number? */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct l1sched_trx *l1t = &pinst->u.virt.sched;
 		struct trx_dl_burst_req br = { .fn = fn };
 
 		/* do for each of the 8 timeslots */
-		for (br.tn = 0; br.tn < ARRAY_SIZE(l1t->ts); br.tn++) {
+		for (br.tn = 0; br.tn < ARRAY_SIZE(trx->ts); br.tn++) {
+			struct l1sched_ts *l1ts = trx->ts[br.tn].priv;
 			/* Generate RTS indication to higher layers */
 			/* This will basically do 2 things (check l1_if:bts_model_l1sap_down):
 			 * 1) Get pending messages from layer 2 (from the lapdm queue)
@@ -549,13 +546,13 @@ static int vbts_sched_fn(struct gsm_bts *bts, uint32_t fn)
 			 *    --> Handle and process non-transparent RSL-Messages (activate channel, )
 			 *    --> Forward transparent RSL-DATA-Messages to the ms by appending them to
 			 *        the l1-dl-queue */
-			_sched_rts(l1t, br.tn, GSM_TDMA_FN_SUM(fn, RTS_ADVANCE));
+			_sched_rts(l1ts, GSM_TDMA_FN_SUM(fn, RTS_ADVANCE));
 			/* schedule transmit backend functions */
 			/* Process data in the l1-dlqueue and forward it
 			 * to MS */
 			/* the returned bits are not used here, the routines called will directly forward their
 			 * bits to the virt Um */
-			_sched_dl_burst(l1t, &br);
+			_sched_dl_burst(l1ts, &br);
 		}
 	}
 
