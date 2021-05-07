@@ -229,7 +229,7 @@ DEFUN_ATTR(cfg_bts_trx, cfg_bts_trx_cmd,
 		 */
 		trx = gsm_bts_trx_alloc(bts);
 		if (trx)
-			bts_trx_init(trx);
+			bts_model_trx_init(trx);
 	} else
 		trx = gsm_bts_trx_num(bts, trx_nr);
 

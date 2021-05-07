@@ -379,7 +379,7 @@ int bts_init(struct gsm_bts *bts)
 	}
 
 	/* TRX0 was allocated early during gsm_bts_alloc, not later through VTY */
-	bts_trx_init(bts->c0);
+	bts_model_trx_init(bts->c0);
 	bts_gsmnet.num_bts++;
 
 	if (!initialized) {

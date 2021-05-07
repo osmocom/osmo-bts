@@ -530,10 +530,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to alloc TRX structure\n");
 		exit(1);
 	}
-	if (bts_trx_init(trx) < 0) {
-		fprintf(stderr, "unable to init TRX\n");
-		exit(1);
-	}
 
 	printf("\n");
 	printf("***********************\n");

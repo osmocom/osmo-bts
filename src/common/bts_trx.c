@@ -107,53 +107,29 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 			name = gsm_lchan_name_compute(lchan);
 			lchan->name = talloc_strdup(trx, name);
 			INIT_LLIST_HEAD(&lchan->sapi_cmds);
+			INIT_LLIST_HEAD(&lchan->dl_tch_queue);
 		}
 	}
 
 	if (trx->nr != 0)
 		trx->nominal_power = bts->c0->nominal_power;
 
+	/* Default values for the power adjustments */
+	trx->power_params.ramp.max_initial_pout_mdBm = to_mdB(0);
+	trx->power_params.ramp.step_size_mdB = to_mdB(2);
+	trx->power_params.ramp.step_interval_sec = 1;
+
 	/* Default (fall-back) Dynamic Power Control parameters */
 	trx->bs_dpc_params = &bts->bs_dpc_params;
 	trx->ms_dpc_params = &bts->ms_dpc_params;
-
-	llist_add_tail(&trx->list, &bts->trx_list);
-
-	return trx;
-}
-
-/* Initialize the TRX data structures, called before config
- * file reading */
-int bts_trx_init(struct gsm_bts_trx *trx)
-{
-	/* initialize bts data structure */
-	struct trx_power_params *tpp = &trx->power_params;
-	int rc, i;
-
-	for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[i];
-		int k;
-
-		for (k = 0; k < ARRAY_SIZE(ts->lchan); k++) {
-			struct gsm_lchan *lchan = &ts->lchan[k];
-			INIT_LLIST_HEAD(&lchan->dl_tch_queue);
-		}
-	}
-	/* Default values for the power adjustments */
-	tpp->ramp.max_initial_pout_mdBm = to_mdB(0);
-	tpp->ramp.step_size_mdB = to_mdB(2);
-	tpp->ramp.step_interval_sec = 1;
 
 	/* IF BTS model doesn't DSP/HW support MS Power Control Loop, enable osmo algo by default: */
 	if (!bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP))
 		trx->ms_pwr_ctl_soft = true;
 
-	rc = bts_model_trx_init(trx);
-	if (rc < 0) {
-		llist_del(&trx->list);
-		return rc;
-	}
-	return 0;
+	llist_add_tail(&trx->list, &bts->trx_list);
+
+	return trx;
 }
 
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num)
