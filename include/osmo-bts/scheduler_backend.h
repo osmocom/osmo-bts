@@ -6,14 +6,16 @@
 			gsm_ts_name(&(l1t)->trx->ts[tn]),	\
 			chan >=0 ? trx_chan_desc[chan].name : "", ## args)
 
+/* Logging helper adding context from trx_{ul,dl}_burst_{ind,req} */
+#define LOGL1SB(subsys, level, l1t, b, fmt, args ...) \
+	LOGL1S(subsys, level, l1t, (b)->tn, (b)->chan, (b)->fn, fmt, ## args)
+
 typedef int trx_sched_rts_func(struct l1sched_trx *l1t, uint8_t tn,
 			       uint32_t fn, enum trx_chan_type chan);
 
-typedef int trx_sched_dl_func(struct l1sched_trx *l1t, enum trx_chan_type chan,
-			      uint8_t bid, struct trx_dl_burst_req *br);
+typedef int trx_sched_dl_func(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
 
-typedef int trx_sched_ul_func(struct l1sched_trx *l1t, enum trx_chan_type chan,
-			      uint8_t bid, const struct trx_ul_burst_ind *bi);
+typedef int trx_sched_ul_func(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
 
 struct trx_chan_desc {
 	/*! \brief Human-readable name */
@@ -40,8 +42,8 @@ extern const ubit_t _sched_tsc[8][26];
 extern const ubit_t _sched_egprs_tsc[8][78];
 extern const ubit_t _sched_sch_train[64];
 
-struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn,
-				 enum trx_chan_type chan);
+struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
+				 const struct trx_dl_burst_req *br);
 
 int _sched_compose_ph_data_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			       enum trx_chan_type chan, uint8_t *l2,
@@ -55,31 +57,19 @@ int _sched_compose_tch_ind(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
 			   uint8_t is_sub);
 
-int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
-int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br);
+int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_tchf_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
+int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
 
-int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi);
-int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi);
-int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	        uint8_t bid, const struct trx_ul_burst_ind *bi);
-int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi);
-int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi);
+int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+int rx_tchf_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
+int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi);
 
 void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br);
 int _sched_rts(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn);

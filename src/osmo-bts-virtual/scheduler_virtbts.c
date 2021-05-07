@@ -50,12 +50,12 @@
 /**
  * Send a message over the virtual um interface.
  * This will at first wrap the msg with a GSMTAP header and then write it to the declared multicast socket.
- * TODO: we might want to remove unused argument uint8_t tn
  */
-static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-			   enum trx_chan_type chan, struct msgb *msg, bool is_voice_frame)
+static void _tx_to_virt_um(struct l1sched_trx *l1t,
+			   struct trx_dl_burst_req *br,
+			   struct msgb *msg, bool is_voice_frame)
 {
-	const struct trx_chan_desc *chdesc = &trx_chan_desc[chan];
+	const struct trx_chan_desc *chdesc = &trx_chan_desc[br->chan];
 	struct msgb *outmsg;			/* msg to send with gsmtap header prepended */
 	uint16_t arfcn = l1t->trx->arfcn;	/* ARFCN of the transceiver the message is send with */
 	uint8_t signal_dbm = 63;		/* signal strength, 63 is best */
@@ -69,17 +69,17 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 	rsl_dec_chan_nr(chdesc->chan_nr, &rsl_chantype, &subslot, &timeslot);
 	/* the timeslot is not encoded in the chan_nr of the chdesc, and so has to be overwritten */
-	timeslot = tn;
+	timeslot = br->tn;
 	/* in Osmocom, AGCH is only sent on ccch block 0. no idea why. this seems to cause false GSMTAP channel
 	 * types for agch and pch. */
 	if (rsl_chantype == RSL_CHAN_PCH_AGCH &&
-	    l1sap_fn2ccch_block(fn) >= num_agch(l1t->trx, "PH-DATA-REQ"))
+	    l1sap_fn2ccch_block(br->fn) >= num_agch(l1t->trx, "PH-DATA-REQ"))
 		gsmtap_chantype = GSMTAP_CHANNEL_PCH;
 	else
 		gsmtap_chantype = chantype_rsl2gsmtap2(rsl_chantype, chdesc->link_id, is_voice_frame); /* the logical channel type */
 
 	if (gsmtap_chantype == GSMTAP_CHANNEL_UNKNOWN) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Tx GSMTAP for RSL channel type 0x%02x: cannot send, this"
+		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Tx GSMTAP for RSL channel type 0x%02x: cannot send, this"
 		       " channel type is unknown in GSMTAP\n", rsl_chantype);
 		msgb_free(msg);
 		return;
@@ -87,10 +87,10 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 #if MODULO_HYPERFRAME
 	/* Restart fn after every superframe (26 * 51 frames) to simulate hyperframe overflow each 6 seconds. */
-	fn %= 26 * 51;
+	br->fn %= 26 * 51;
 #endif
 
-	outmsg = gsmtap_makemsg(arfcn, timeslot, gsmtap_chantype, subslot, fn, signal_dbm, snr, data, data_len);
+	outmsg = gsmtap_makemsg(arfcn, timeslot, gsmtap_chantype, subslot, br->fn, signal_dbm, snr, data, data_len);
 
 	if (outmsg) {
 		struct phy_instance *pinst = trx_phy_instance(l1t->trx);
@@ -98,24 +98,25 @@ static void _tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 
 		rc = virt_um_write_msg(pinst->phy_link->u.virt.virt_um, outmsg);
 		if (rc < 0)
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn,
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br,
 			       "GSMTAP msg could not send to virtual Um: %s\n", strerror(-rc));
 		else if (rc == 0)
 			bts_shutdown(l1t->trx->bts, "VirtPHY write socket died\n");
 		else
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, tn, chan, fn,
+			LOGL1SB(DL1P, LOGL_DEBUG, l1t, br,
 			       "Sending GSMTAP message to virtual Um\n");
 	} else
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "GSMTAP msg could not be created!\n");
+		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "GSMTAP msg could not be created!\n");
 
 	/* free incoming message */
 	msgb_free(msg);
 }
 
-static void tx_to_virt_um(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-			  enum trx_chan_type chan, struct msgb *msg)
+static void tx_to_virt_um(struct l1sched_trx *l1t,
+			  struct trx_dl_burst_req *br,
+			  struct msgb *msg)
 {
-	_tx_to_virt_um(l1t, tn, fn, chan, msg, false);
+	_tx_to_virt_um(l1t, br, msg, false);
 }
 
 
@@ -151,10 +152,11 @@ static int get_um_voice_type(const struct gsm_lchan *lchan)
 	}
 }
 
-static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-				      enum trx_chan_type chan, struct msgb *msg)
+static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t,
+				      struct trx_dl_burst_req *br,
+				      struct msgb *msg)
 {
-	struct gsm_lchan *lchan = lchan_from_l1t(l1t, tn, chan);
+	struct gsm_lchan *lchan = lchan_from_l1t(l1t, br->tn, br->chan);
 	int um_voice_type;
 
 	OSMO_ASSERT(lchan);
@@ -168,7 +170,7 @@ static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint3
 	msgb_pull_to_l2(msg);
 	msgb_push_u8(msg, um_voice_type);
 	msg->l2h = msg->data;
-	_tx_to_virt_um(l1t, tn, fn, chan, msg, true);
+	_tx_to_virt_um(l1t, br, msg, true);
 }
 
 /*
@@ -176,42 +178,38 @@ static void tx_to_virt_um_voice_frame(struct l1sched_trx *l1t, uint8_t tn, uint3
  */
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	return 0;
 }
 
-int tx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_data_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg;
 
-	if (bid > 0)
+	if (br->bid > 0)
 		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br->tn, br->fn, chan);
+	msg = _sched_dequeue_prim(l1t, br);
 	if (!msg) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, br->tn, chan, br->fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
+		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim not 23 bytes, please FIX! (len=%d)\n",
 			msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
@@ -219,38 +217,38 @@ int tx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	}
 
 	/* transmit the msg received on dl from bsc to layer1 (virt Um) */
-	tx_to_virt_um(l1t, br->tn, br->fn, chan, msg);
+	tx_to_virt_um(l1t, br, msg);
 
 	return 0;
 }
 
-int tx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_pdtch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
 
-	if (bid > 0)
+	if (br->bid > 0)
 		return 0;
 
 	/* get mac block from queue */
-	msg = _sched_dequeue_prim(l1t, br->tn, br->fn, chan);
+	msg = _sched_dequeue_prim(l1t, br);
 	if (!msg) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
-	tx_to_virt_um(l1t, br->tn, br->fn, chan, msg);
+	tx_to_virt_um(l1t, br, msg);
 
 	return 0;
 }
 
-static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
-	enum trx_chan_type chan, uint8_t bid, struct msgb **_msg_tch,
-	struct msgb **_msg_facch, int codec_mode_request)
+static void tx_tch_common(struct l1sched_trx *l1t,
+			  const struct trx_dl_burst_req *br,
+			  struct msgb **_msg_tch, struct msgb **_msg_facch,
+			  int codec_mode_request)
 {
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
-	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
+	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	struct osmo_phsap_prim *l1sap;
@@ -261,13 +259,13 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 		uint8_t tch_data[GSM_FR_BYTES];
 		int len;
 
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Missing TCH bursts detected, sending "
-			"BFI for %s\n", trx_chan_desc[chan].name);
+		LOGL1SB(DL1P, LOGL_NOTICE, l1t, br, "Missing TCH bursts detected, sending "
+			"BFI for %s\n", trx_chan_desc[br->chan].name);
 
 		/* indicate bad frame */
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
-			if (chan != TRXC_TCHF) { /* HR */
+			if (br->chan != TRXC_TCHF) { /* HR */
 				tch_data[0] = 0x70; /* F = 0, FT = 111 */
 				memset(tch_data + 1, 0, 14);
 				len = 15;
@@ -277,7 +275,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			len = GSM_FR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
-			if (chan != TRXC_TCHF)
+			if (br->chan != TRXC_TCHF)
 				goto inval_mode1;
 			memset(tch_data, 0, GSM_EFR_BYTES);
 			len = GSM_EFR_BYTES;
@@ -289,7 +287,7 @@ static void tx_tch_common(struct l1sched_trx *l1t, uint8_t tn, uint32_t fn,
 			if (len < 2)
 				break;
 			memset(tch_data + 2, 0, len - 2);
-			_sched_compose_tch_ind(l1t, tn, 0, chan, tch_data, len);
+			_sched_compose_tch_ind(l1t, br->tn, 0, br->chan, tch_data, len);
 			break;
 		default:
 inval_mode1:
@@ -298,13 +296,13 @@ inval_mode1:
 			len = 0;
 		}
 		if (len)
-			_sched_compose_tch_ind(l1t, tn, 0, chan, tch_data, len);
+			_sched_compose_tch_ind(l1t, br->tn, 0, br->chan, tch_data, len);
 	}
 #endif
 
 	/* get frame and unlink from queue */
-	msg1 = _sched_dequeue_prim(l1t, tn, fn, chan);
-	msg2 = _sched_dequeue_prim(l1t, tn, fn, chan);
+	msg1 = _sched_dequeue_prim(l1t, br);
+	msg2 = _sched_dequeue_prim(l1t, br);
 	if (msg1) {
 		l1sap = msgb_l1sap_prim(msg1);
 		if (l1sap->oph.primitive == PRIM_TCH) {
@@ -312,8 +310,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive == PRIM_TCH) {
-					LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
-						"TCH twice, please FIX! ");
+					LOGL1SB(DL1P, LOGL_FATAL, l1t, br,
+						"TCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
 					msg_facch = msg2;
@@ -323,8 +321,8 @@ inval_mode1:
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive != PRIM_TCH) {
-					LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn,
-						"FACCH twice, please FIX! ");
+					LOGL1SB(DL1P, LOGL_FATAL, l1t, br,
+						"FACCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
 					msg_tch = msg2;
@@ -340,8 +338,8 @@ inval_mode1:
 
 	/* check validity of message */
 	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
-		LOGL1S(DL1P, LOGL_FATAL, l1t, tn, chan, fn, "Prim not 23 bytes, please FIX! (len=%d)\n",
-			msgb_l2len(msg_facch));
+		LOGL1SB(DL1P, LOGL_FATAL, l1t, br, "Prim has odd len=%u != %u\n",
+			msgb_l2len(msg_facch), GSM_MACBLOCK_LEN);
 		/* free message */
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -356,18 +354,18 @@ inval_mode1:
 #endif
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
-			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn, "Dropping speech frame, "
+			LOGL1SB(DL1P, LOGL_NOTICE, l1t, br, "Dropping speech frame, "
 				"because we are not in speech mode\n");
 			goto free_bad_msg;
 		}
 
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
-			if (chan != TRXC_TCHF) { /* HR */
+			if (br->chan != TRXC_TCHF) { /* HR */
 				len = 15;
 				if (msgb_l2len(msg_tch) >= 1
 				 && (msg_tch->l2h[0] & 0xf0) != 0x00) {
-					LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+					LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
 						"Transmitting 'bad HR frame'\n");
 					goto free_bad_msg;
 				}
@@ -376,18 +374,18 @@ inval_mode1:
 			len = GSM_FR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xd) {
-				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+				LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
 					"Transmitting 'bad FR frame'\n");
 				goto free_bad_msg;
 			}
 			break;
 		case GSM48_CMODE_SPEECH_EFR: /* EFR */
-			if (chan != TRXC_TCHF)
+			if (br->chan != TRXC_TCHF)
 				goto inval_mode2;
 			len = GSM_EFR_BYTES;
 			if (msgb_l2len(msg_tch) >= 1
 			 && (msg_tch->l2h[0] >> 4) != 0xc) {
-				LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+				LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
 					"Transmitting 'bad EFR frame'\n");
 				goto free_bad_msg;
 			}
@@ -398,15 +396,15 @@ inval_mode1:
 			break;
 		default:
 inval_mode2:
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "TCH mode invalid, please fix!\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "TCH mode invalid, please fix!\n");
 			goto free_bad_msg;
 		}
 		if (len < 0) {
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send invalid AMR payload\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot send invalid AMR payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Cannot send payload with "
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot send payload with "
 				"invalid length! (expecing %d, received %d)\n", len, msgb_l2len(msg_tch));
 free_bad_msg:
 			/* free message */
@@ -421,51 +419,47 @@ send_frame:
 	*_msg_facch = msg_facch;
 }
 
-int tx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_tchf_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 
-	if (bid > 0)
+	if (br->bid > 0)
 		return 0;
 
-	tx_tch_common(l1t, br->tn, br->fn, chan, bid, &msg_tch, &msg_facch,
-		(((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, br->tn, br->fn, chan, msg_facch);
+		tx_to_virt_um(l1t, br, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, br->tn, br->fn, chan, msg_tch);
+		tx_to_virt_um_voice_frame(l1t, br, msg_tch);
 
 	return 0;
 }
 
-int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_tchh_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
-	struct l1sched_chan_state *chan_state = &l1ts->chan_state[chan];
+	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	//uint8_t tch_mode = chan_state->tch_mode;
 
 	/* send burst, if we already got a frame */
-	if (bid > 0)
+	if (br->bid > 0)
 		return 0;
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1t, br->tn, br->fn, chan, bid, &msg_tch, &msg_facch,
-		(((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1t, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
 
 	/* check for FACCH alignment */
 	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
-		LOGL1S(DL1P, LOGL_ERROR, l1t, br->tn, chan, br->fn, "Cannot transmit FACCH starting on "
+		LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Cannot transmit FACCH starting on "
 			"even frames, please fix RTS!\n");
 		msgb_free(msg_facch);
 		msg_facch = NULL;
@@ -473,15 +467,15 @@ int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
-		LOGL1S(DL1P, LOGL_INFO, l1t, br->tn, chan, br->fn, "has not been served !! No prim\n");
+		LOGL1SB(DL1P, LOGL_INFO, l1t, br, "has not been served !! No prim\n");
 		return -ENODEV;
 	}
 
 	if (msg_facch) {
-		tx_to_virt_um(l1t, br->tn, br->fn, chan, msg_facch);
+		tx_to_virt_um(l1t, br, msg_facch);
 		msgb_free(msg_tch);
 	} else if (msg_tch)
-		tx_to_virt_um_voice_frame(l1t, br->tn, br->fn, chan, msg_tch);
+		tx_to_virt_um_voice_frame(l1t, br, msg_tch);
 
 	return 0;
 }
@@ -495,33 +489,28 @@ int tx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
  * directly into the L1SAP, bypassing the TDMA multiplex logic oriented
  * towards receiving bursts */
 
-int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
 /*! \brief a single burst was received by the PHY, process it */
-int rx_data_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_data_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_pdtch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	        uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_pdtch_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_tchf_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }
 
-int rx_tchh_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_tchh_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	return 0;
 }

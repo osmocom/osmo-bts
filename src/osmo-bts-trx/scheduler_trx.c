@@ -53,10 +53,9 @@
 	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
 
 /* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_idle_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting IDLE\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting IDLE\n");
 	return 0;
 }
 

@@ -249,6 +249,10 @@ struct trx_ul_burst_ind {
 	uint8_t tsc;		/*!< Training Sequence Code */
 	int16_t ci_cb;		/*!< Carrier-to-Interference ratio (in centiBels) */
 
+	/* Internally used by the scheduler */
+	enum trx_chan_type chan;
+	uint8_t bid;
+
 	/*! Burst soft-bits buffer */
 	sbit_t burst[EGPRS_BURST_LEN];
 	size_t burst_len;
@@ -259,6 +263,10 @@ struct trx_dl_burst_req {
 	uint32_t fn;		/*!< TDMA frame number */
 	uint8_t tn;		/*!< TDMA timeslot number */
 	uint8_t att;		/*!< Tx power attenuation */
+
+	/* Internally used by the scheduler */
+	enum trx_chan_type chan;
+	uint8_t bid;
 
 	/*! Burst hard-bits buffer */
 	ubit_t burst[EGPRS_BURST_LEN];

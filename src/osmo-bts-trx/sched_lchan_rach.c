@@ -2,6 +2,7 @@
  * (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
  * (C) 2019 by Vadim Yanitskiy <axilirator@gmail.com>
+ * Contributions by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -101,8 +102,7 @@ static enum rach_synch_seq_t rach_get_synch_seq(sbit_t *bits, int *best_score)
 	return seq;
 }
 
-int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, const struct trx_ul_burst_ind *bi)
+int rx_rach_fn(struct l1sched_trx *l1t, const struct trx_ul_burst_ind *bi)
 {
 	struct osmo_phsap_prim l1sap;
 	int n_errors = 0;
@@ -123,16 +123,16 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	/* If logical channel is not either of RACH, PDTCH or PTCCH, this is a
 	 * handover Access Burst, which is always encoded as 8-bit and shall
 	 * contain the generic training sequence (TS0). */
-	if (chan == TRXC_RACH || chan == TRXC_PDTCH || chan == TRXC_PTCCH) {
+	if (bi->chan == TRXC_RACH || bi->chan == TRXC_PDTCH || bi->chan == TRXC_PTCCH) {
 		if (bi->flags & TRX_BI_F_TS_INFO)
 			synch_seq = (enum rach_synch_seq_t) bi->tsc;
 		else
 			synch_seq = rach_get_synch_seq((sbit_t *) bi->burst, &best_score);
 	}
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
+	LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi,
 	       "Received%s RACH (%s): rssi=%d toa256=%d",
-	       (chan != TRXC_RACH) ? " handover" : "",
+	       (bi->chan != TRXC_RACH) ? " handover" : "",
 	       get_value_string(rach_synch_seq_names, synch_seq),
 	       bi->rssi, bi->toa256);
 	if (bi->flags & TRX_BI_F_CI_CB)
@@ -145,7 +145,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	/* Compose a new L1SAP primitive */
 	memset(&l1sap, 0x00, sizeof(l1sap));
 	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_PH_RACH, PRIM_OP_INDICATION, NULL);
-	l1sap.u.rach_ind.chan_nr = trx_chan_desc[chan].chan_nr | bi->tn;
+	l1sap.u.rach_ind.chan_nr = trx_chan_desc[bi->chan].chan_nr | bi->tn;
 	l1sap.u.rach_ind.acc_delay = (bi->toa256 >= 0) ? bi->toa256 / 256 : 0;
 	l1sap.u.rach_ind.acc_delay_256bits = bi->toa256;
 	l1sap.u.rach_ind.rssi = bi->rssi;
@@ -166,8 +166,7 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		rc = gsm0503_rach_ext_decode_ber(&ra11, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 						 l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
-			       "Received bad Access Burst\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received bad Access Burst\n");
 			return 0;
 		}
 
@@ -184,16 +183,14 @@ int rx_rach_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 	default:
 		/* Fall-back to the default TS0 if needed */
 		if (synch_seq != RACH_SYNCH_SEQ_TS0) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
-			       "Falling-back to the default TS0\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Falling-back to the default TS0\n");
 			synch_seq = RACH_SYNCH_SEQ_TS0;
 		}
 
 		rc = gsm0503_rach_decode_ber(&ra, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 					     l1t->trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
-			LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
-			       "Received bad Access Burst\n");
+			LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Received bad Access Burst\n");
 			return 0;
 		}
 

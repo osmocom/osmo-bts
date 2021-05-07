@@ -1,6 +1,7 @@
 /*
  * (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
+ * Contributions by sysmocom - s.f.m.c. GmbH
  *
  * All Rights Reserved
  *
@@ -35,10 +36,9 @@
 #include <sched_utils.h>
 
 /* obtain a to-be-transmitted FCCH (frequency correction channel) burst */
-int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	       uint8_t bid, struct trx_dl_burst_req *br)
+int tx_fcch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting FCCH\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting FCCH\n");
 
 	/* A frequency correction burst is basically a sequence of zeros.
 	 * Since br->burst is already zero-initialized, just set the length. */
@@ -48,15 +48,14 @@ int tx_fcch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 }
 
 /* obtain a to-be-transmitted SCH (synchronization channel) burst */
-int tx_sch_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
-	      uint8_t bid, struct trx_dl_burst_req *br)
+int tx_sch_fn(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 {
 	ubit_t burst[78];
 	uint8_t sb_info[4];
 	struct	gsm_time t;
 	uint8_t t3p, bsic;
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1t, br->tn, chan, br->fn, "Transmitting SCH\n");
+	LOGL1SB(DL1P, LOGL_DEBUG, l1t, br, "Transmitting SCH\n");
 
 	/* BURST BYPASS */
 

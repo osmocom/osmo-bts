@@ -637,13 +637,13 @@ void trx_sched_exit(struct l1sched_trx *l1t)
 	}
 }
 
-struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn,
-				 enum trx_chan_type chan)
+struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t,
+				 const struct trx_dl_burst_req *br)
 {
 	struct msgb *msg, *msg2;
 	uint32_t prim_fn, l1sap_fn;
 	uint8_t chan_nr, link_id;
-	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, tn);
+	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 
 	/* get prim of current fn from queue */
 	llist_for_each_entry_safe(msg, msg2, &l1ts->dl_prims, list) {
@@ -660,18 +660,18 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			l1sap_fn = l1sap->u.tch.fn;
 			break;
 		default:
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong type.\n");
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Prim has wrong type.\n");
 			goto free_msg;
 		}
-		prim_fn = GSM_TDMA_FN_SUB(l1sap_fn, fn);
+		prim_fn = GSM_TDMA_FN_SUB(l1sap_fn, br->fn);
 		if (prim_fn > 100) { /* l1sap_fn < fn */
-			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, chan, fn,
+			LOGL1SB(DL1P, LOGL_NOTICE, l1t, br,
 			     "Prim %u is out of range (%u vs exp %u), or channel %s with "
 			     "type %s is already disabled. If this happens in "
 			     "conjunction with PCU, increase 'rts-advance' by 5.\n",
-			     prim_fn, l1sap_fn, fn,
+			     prim_fn, l1sap_fn, br->fn,
 			     get_lchan_by_chan_nr(l1t->trx, chan_nr)->name,
-			     trx_chan_desc[chan].name);
+			     trx_chan_desc[br->chan].name);
 			rate_ctr_inc2(l1ts->ctrs, L1SCHED_TS_CTR_DL_LATE);
 			/* unlink and free message */
 			llist_del(&msg->list);
@@ -682,11 +682,11 @@ struct msgb *_sched_dequeue_prim(struct l1sched_trx *l1t, int8_t tn, uint32_t fn
 			break;
 
 		/* l1sap_fn == fn */
-		if ((chan_nr ^ (trx_chan_desc[chan].chan_nr | tn))
-		 || ((link_id & 0xc0) ^ trx_chan_desc[chan].link_id)) {
-			LOGL1S(DL1P, LOGL_ERROR, l1t, tn, chan, fn, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
+		if ((chan_nr ^ (trx_chan_desc[br->chan].chan_nr | br->tn))
+		 || ((link_id & 0xc0) ^ trx_chan_desc[br->chan].link_id)) {
+			LOGL1SB(DL1P, LOGL_ERROR, l1t, br, "Prim has wrong chan_nr=0x%02x link_id=%02x, "
 				"expecting chan_nr=0x%02x link_id=%02x.\n", chan_nr, link_id,
-				trx_chan_desc[chan].chan_nr | tn, trx_chan_desc[chan].link_id);
+				trx_chan_desc[br->chan].chan_nr | br->tn, trx_chan_desc[br->chan].link_id);
 			goto free_msg;
 		}
 
@@ -1209,9 +1209,8 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, br->tn);
 	struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
-	uint8_t offset, period, bid;
+	uint8_t offset, period;
 	trx_sched_dl_func *func;
-	enum trx_chan_type chan;
 
 	if (!l1ts->mf_index)
 		return;
@@ -1221,18 +1220,18 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 	offset = br->fn % period;
 	frame = l1ts->mf_frames + offset;
 
-	chan = frame->dl_chan;
-	bid = frame->dl_bid;
-	func = trx_chan_desc[chan].dl_fn;
+	br->chan = frame->dl_chan;
+	br->bid = frame->dl_bid;
+	func = trx_chan_desc[br->chan].dl_fn;
 
-	l1cs = &l1ts->chan_state[chan];
+	l1cs = &l1ts->chan_state[br->chan];
 
 	/* check if channel is active */
-	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, br->chan))
 		return;
 
 	/* get burst from function */
-	if (func(l1t, chan, bid, br) != 0)
+	if (func(l1t, br) != 0)
 		return;
 
 	/* BS Power reduction (in dB) per logical channel */
@@ -1253,9 +1252,9 @@ void _sched_dl_burst(struct l1sched_trx *l1t, struct trx_dl_burst_req *br)
 }
 
 static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
-	struct l1sched_chan_state *l1cs, uint8_t tn, uint32_t fn)
+				     struct l1sched_chan_state *l1cs,
+				     const struct trx_ul_burst_ind *bi)
 {
-	const struct trx_sched_frame *frame_head;
 	const struct trx_sched_frame *frame;
 	struct l1sched_ts *l1ts;
 	uint32_t elapsed_fs;
@@ -1271,12 +1270,10 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 		return 0;
 
 	/* Get current TDMA frame info */
-	l1ts = l1sched_trx_get_ts(l1t, tn);
-	offset = fn % l1ts->mf_period;
-	frame_head = l1ts->mf_frames + offset;
+	l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 
 	/* Not applicable for some logical channels */
-	switch (frame_head->ul_chan) {
+	switch (bi->chan) {
 	case TRXC_IDLE:
 	case TRXC_RACH:
 	case TRXC_PDTCH:
@@ -1289,9 +1286,9 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 	}
 
 	/* How many frames elapsed since the last one? */
-	elapsed_fs = GSM_TDMA_FN_SUB(fn, l1cs->last_tdma_fn);
+	elapsed_fs = GSM_TDMA_FN_SUB(bi->fn, l1cs->last_tdma_fn);
 	if (elapsed_fs > l1ts->mf_period) { /* Too many! */
-		LOGL1S(DL1P, LOGL_ERROR, l1t, tn, frame_head->ul_chan, fn,
+		LOGL1SB(DL1P, LOGL_ERROR, l1t, bi,
 			"Too many (>%u) contiguous TDMA frames=%u elapsed "
 			"since the last processed fn=%u\n", l1ts->mf_period,
 			elapsed_fs, l1cs->last_tdma_fn);
@@ -1312,12 +1309,12 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 		offset = fn_i % l1ts->mf_period;
 		frame = l1ts->mf_frames + offset;
 
-		if (frame->ul_chan == frame_head->ul_chan)
+		if (frame->ul_chan == bi->chan)
 			l1cs->lost_tdma_fs++;
 	}
 
 	if (l1cs->lost_tdma_fs > 0) {
-		LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, frame_head->ul_chan, fn,
+		LOGL1SB(DL1P, LOGL_NOTICE, l1t, bi,
 			"At least %u TDMA frames were lost since the last "
 			"processed fn=%u\n", l1cs->lost_tdma_fs, l1cs->last_tdma_fn);
 
@@ -1330,14 +1327,15 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 		trx_sched_ul_func *func;
 
 		/* Prepare dummy burst indication */
-		struct trx_ul_burst_ind bi = {
+		struct trx_ul_burst_ind dbi = {
 			.flags = TRX_BI_F_NOPE_IND,
 			.burst_len = GSM_BURST_LEN,
 			.burst = { 0 },
 			.rssi = -128,
 			.toa256 = 0,
+			.chan = bi->chan,
 			/* TDMA FN is set below */
-			.tn = tn,
+			.tn = bi->tn,
 		};
 
 		for (i = 1; i < elapsed_fs; i++) {
@@ -1346,15 +1344,16 @@ static int trx_sched_calc_frame_loss(struct l1sched_trx *l1t,
 			frame = l1ts->mf_frames + offset;
 			func = trx_chan_desc[frame->ul_chan].ul_fn;
 
-			if (frame->ul_chan != frame_head->ul_chan)
+			if (frame->ul_chan != bi->chan)
 				continue;
 
-			LOGL1S(DL1P, LOGL_NOTICE, l1t, tn, frame->ul_chan, fn,
-				"Substituting lost TDMA frame=%u by all-zero "
-				"dummy burst\n", fn_i);
+			dbi.bid = frame->ul_bid;
+			dbi.fn = fn_i;
 
-			bi.fn = fn_i;
-			func(l1t, frame->ul_chan, frame->ul_bid, &bi);
+			LOGL1SB(DL1P, LOGL_NOTICE, l1t, &dbi,
+				"Substituting lost burst with NOPE.ind\n");
+
+			func(l1t, &dbi);
 
 			l1cs->lost_tdma_fs--;
 		}
@@ -1369,9 +1368,8 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	struct l1sched_ts *l1ts = l1sched_trx_get_ts(l1t, bi->tn);
 	struct l1sched_chan_state *l1cs;
 	const struct trx_sched_frame *frame;
-	uint8_t offset, period, bid;
+	uint8_t offset, period;
 	trx_sched_ul_func *func;
-	enum trx_chan_type chan;
 
 	if (!l1ts->mf_index)
 		return -EINVAL;
@@ -1381,20 +1379,19 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	offset = bi->fn % period;
 	frame = l1ts->mf_frames + offset;
 
-	chan = frame->ul_chan;
-	bid = frame->ul_bid;
-	l1cs = &l1ts->chan_state[chan];
-	func = trx_chan_desc[chan].ul_fn;
+	bi->chan = frame->ul_chan;
+	bi->bid = frame->ul_bid;
+	l1cs = &l1ts->chan_state[bi->chan];
+	func = trx_chan_desc[bi->chan].ul_fn;
 
 	/* TODO: handle noise measurements */
-	if (chan == TRXC_IDLE && bi->flags & TRX_BI_F_NOPE_IND) {
-		LOGL1S(DL1P, LOGL_DEBUG, l1t, bi->tn, chan, bi->fn,
-		       "Rx noise measurement (%d)\n", bi->rssi);
+	if (bi->chan == TRXC_IDLE && bi->flags & TRX_BI_F_NOPE_IND) {
+		LOGL1SB(DL1P, LOGL_DEBUG, l1t, bi, "Rx noise measurement (%d)\n", bi->rssi);
 		return -ENOTSUP;
 	}
 
 	/* check if channel is active */
-	if (!TRX_CHAN_IS_ACTIVE(l1cs, chan))
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, bi->chan))
 		return -EINVAL;
 
 	/* omit bursts which have no handler, like IDLE bursts */
@@ -1402,7 +1399,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 		return -EINVAL;
 
 	/* calculate how many TDMA frames were potentially lost */
-	trx_sched_calc_frame_loss(l1t, l1cs, bi->tn, bi->fn);
+	trx_sched_calc_frame_loss(l1t, l1cs, bi);
 
 	/* update TDMA frame counters */
 	l1cs->last_tdma_fn = bi->fn;
@@ -1410,7 +1407,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 
 	/* handle NOPE indications */
 	if (bi->flags & TRX_BI_F_NOPE_IND) {
-		switch (chan) {
+		switch (bi->chan) {
 		case TRXC_PTCCH:
 		case TRXC_RACH:
 			/* For some logical channel types NOPE.ind is valueless. */
@@ -1418,7 +1415,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 		default:
 			/* NOTE: Uplink burst handler must check bi->burst_len before
 			 * accessing bi->burst to avoid uninitialized memory access. */
-			return func(l1t, chan, bid, bi);
+			return func(l1t, bi);
 		}
 	}
 
@@ -1437,7 +1434,7 @@ int trx_sched_ul_burst(struct l1sched_trx *l1t, struct trx_ul_burst_ind *bi)
 	}
 
 	/* Invoke the logical channel handler */
-	func(l1t, chan, bid, bi);
+	func(l1t, bi);
 
 	return 0;
 }
