@@ -36,9 +36,8 @@ struct gsm_bts_trx {
 	struct gsm_power_ctrl_params *ms_dpc_params; /* MS Dynamic Power Control */
 	bool ms_pwr_ctl_soft; /* is power control loop done by osmocom software? */
 
-	struct {
-		void *l1h;
-	} role_bts;
+	/* The associated PHY instance */
+	struct phy_instance *pinst;
 
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };

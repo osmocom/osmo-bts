@@ -118,7 +118,7 @@ struct phy_instance *phy_instance_create(struct phy_link *plink, int num)
 
 void phy_instance_link_to_trx(struct phy_instance *pinst, struct gsm_bts_trx *trx)
 {
-	trx->role_bts.l1h = pinst;
+	trx->pinst = pinst;
 	pinst->trx = trx;
 }
 
@@ -128,8 +128,8 @@ void phy_instance_destroy(struct phy_instance *pinst)
 	llist_del(&pinst->list);
 
 	/* remove reverse link from TRX */
-	OSMO_ASSERT(pinst->trx->role_bts.l1h == pinst);
-	pinst->trx->role_bts.l1h = NULL;
+	OSMO_ASSERT(pinst->trx->pinst == pinst);
+	pinst->trx->pinst = NULL;
 	pinst->trx = NULL;
 
 	talloc_free(pinst);

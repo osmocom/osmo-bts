@@ -73,13 +73,13 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 	/* Check the "cache" first, so we eliminate frequent lookups */
 	idx = gsm0502_hop_seq_gen(&time, SCHED_FH_PARAMS_VALS(ts), NULL);
 	if (ts->fh_trx_list[idx] != NULL)
-		return ts->fh_trx_list[idx]->role_bts.l1h;
+		return ts->fh_trx_list[idx]->pinst;
 
 	/* The "cache" may not be filled yet, lookup the transceiver */
 	llist_for_each_entry(trx, &ts->trx->bts->trx_list, list) {
 		if (trx->arfcn == ts->hopping.arfcn_list[idx]) {
 			ts->fh_trx_list[idx] = trx;
-			return trx->role_bts.l1h;
+			return trx->pinst;
 		}
 	}
 

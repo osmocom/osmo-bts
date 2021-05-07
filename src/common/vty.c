@@ -987,7 +987,7 @@ DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
 		return CMD_WARNING;
 	}
 
-	trx->role_bts.l1h = pinst;
+	trx->pinst = pinst;
 	pinst->trx = trx;
 
 	return CMD_SUCCESS;

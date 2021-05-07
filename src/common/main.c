@@ -341,7 +341,7 @@ int bts_main(int argc, char **argv)
 	}
 
 	llist_for_each_entry(trx, &g_bts->trx_list, list) {
-		if (!trx->role_bts.l1h) {
+		if (!trx->pinst) {
 			fprintf(stderr, "TRX %u has no associated PHY instance\n",
 				trx->nr);
 			exit(1);

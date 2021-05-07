@@ -138,8 +138,7 @@ enum gsm_phys_chan_config transceiver_chan_type_2_pchan(uint8_t type);
 
 static inline struct l1sched_trx *trx_l1sched_hdl(struct gsm_bts_trx *trx)
 {
-	struct phy_instance *pinst = trx->role_bts.l1h;
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+	struct trx_l1h *l1h = trx->pinst->u.osmotrx.hdl;
 	return &l1h->l1s;
 }
 

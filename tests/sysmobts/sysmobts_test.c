@@ -52,14 +52,17 @@ static void test_sysmobts_auto_band(void)
 {
 	struct gsm_bts bts;
 	struct gsm_bts_trx trx;
+	struct phy_instance pinst;
 	struct femtol1_hdl hdl;
 	int i;
 
 	memset(&bts, 0, sizeof(bts));
 	memset(&trx, 0, sizeof(trx));
+	memset(&pinst, 0, sizeof(pinst));
 	memset(&hdl, 0, sizeof(hdl));
 	trx.bts = &bts;
-	trx.role_bts.l1h = &hdl;
+	trx.pinst = &pinst;
+	trx.pinst->u.sysmobts.hdl = &hdl;
 
 	/* claim to support all hw_info's */
 	hdl.hw_info.band_support = GSM_BAND_850 | GSM_BAND_900 |

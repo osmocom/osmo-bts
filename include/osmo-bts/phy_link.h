@@ -173,7 +173,7 @@ const char *phy_instance_name(struct phy_instance *pinst);
 static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *trx)
 {
 	OSMO_ASSERT(trx);
-	return trx->role_bts.l1h;
+	return trx->pinst;
 }
 
 int bts_model_phy_link_open(struct phy_link *plink);
