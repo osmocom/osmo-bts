@@ -333,12 +333,6 @@ DEFUN(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	int nominal_power = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
 
-	if (( nominal_power > 25 ) ||  ( nominal_power < 0 )) {
-		vty_out(vty, "Nominal Tx power level must be between 0 and 25 dBm (%d) %s",
-		nominal_power, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	trx->nominal_power = nominal_power;
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(nominal_power);
 
@@ -352,12 +346,6 @@ DEFUN(cfg_phy_max_cell_size, cfg_phy_max_cell_size_cmd,
 	struct phy_instance *pinst = vty->index;
 	int cell_size = (uint8_t)atoi(argv[0]);
 
-	if (( cell_size >  166 ) || ( cell_size < 0 )) {
-		vty_out(vty, "Max cell size must be between 0 and 166 qbits (%d) %s",
-				cell_size, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	pinst->u.oc2g.max_cell_size = (uint8_t)cell_size;
 	return CMD_SUCCESS;
 }
@@ -370,10 +358,7 @@ DEFUN(cfg_phy_pedestal_mode, cfg_phy_pedestal_mode_cmd,
 	struct phy_instance *pinst = vty->index;
 	int val = get_string_value(oc2g_pedestal_mode_strs, argv[0]);
 
-	if((val < OC2G_PEDESTAL_OFF)  || (val > OC2G_PEDESTAL_ON)) {
-			vty_out(vty, "Invalid unused time-slot transmission mode %d%s", val, VTY_NEWLINE);
-			return CMD_WARNING;
-	}
+	OSMO_ASSERT(val != -EINVAL);
 
 	pinst->u.oc2g.pedestal_mode = (uint8_t)val;
 	return CMD_SUCCESS;
@@ -386,12 +371,6 @@ DEFUN(cfg_phy_dsp_alive_timer, cfg_phy_dsp_alive_timer_cmd,
 	struct phy_instance *pinst = vty->index;
 	uint8_t period = (uint8_t)atoi(argv[0]);
 
-	if (( period >  60 ) || ( period < 0 )) {
-		vty_out(vty, "DSP heart beat alive timer period must be between 0 and 60 seconds (%d) %s",
-				period, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	pinst->u.oc2g.dsp_alive_period = period;
 	return CMD_SUCCESS;
 }
@@ -403,10 +382,7 @@ DEFUN(cfg_phy_auto_tx_pwr_adj, cfg_phy_auto_tx_pwr_adj_cmd,
 	struct phy_instance *pinst = vty->index;
 	int val = get_string_value(oc2g_auto_adj_pwr_strs, argv[0]);
 
-	if((val < OC2G_TX_PWR_ADJ_NONE) || (val > OC2G_TX_PWR_ADJ_AUTO)) {
-		vty_out(vty, "Invalid output power adjustment mode %d%s", val, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
+	OSMO_ASSERT(val != -EINVAL);
 
 	pinst->u.oc2g.tx_pwr_adj_mode = (uint8_t)val;
 	return CMD_SUCCESS;
@@ -419,12 +395,6 @@ DEFUN(cfg_phy_tx_red_pwr_8psk, cfg_phy_tx_red_pwr_8psk_cmd,
 	struct phy_instance *pinst = vty->index;
 	int val = atoi(argv[0]);
 
-	if ((val > 40) || (val < 0)) {
-		vty_out(vty, "Reduction Tx power level must be between 0 and 40 dB (%d) %s",
-		val, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	pinst->u.oc2g.tx_pwr_red_8psk = (uint8_t)val;
 	return CMD_SUCCESS;
 }
@@ -435,12 +405,6 @@ DEFUN(cfg_phy_c0_idle_red_pwr, cfg_phy_c0_idle_red_pwr_cmd,
 {
 	struct phy_instance *pinst = vty->index;
 	int val = atoi(argv[0]);
-
-	if ((val > 40) || (val < 0)) {
-		vty_out(vty, "Reduction Tx power level must be between 0 and 40 dB (%d) %s",
-		val, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 
 	pinst->u.oc2g.tx_c0_idle_pwr_red = (uint8_t)val;
 	return CMD_SUCCESS;
