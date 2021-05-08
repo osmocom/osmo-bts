@@ -151,10 +151,10 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time)
 	return 0;
 }
 
-uint8_t num_agch(struct gsm_bts_trx *trx, const char * arg)
+uint8_t num_agch(const struct gsm_bts_trx *trx, const char * arg)
 {
-	struct gsm_bts *b = trx->bts;
-	struct gsm48_system_information_type_3 *si3;
+	const struct gsm_bts *b = trx->bts;
+	const struct gsm48_system_information_type_3 *si3;
 	if (GSM_BTS_HAS_SI(b, SYSINFO_TYPE_3)) {
 		si3 = GSM_BTS_SI(b, SYSINFO_TYPE_3);
 		return si3->control_channel_desc.bs_ag_blks_res;
