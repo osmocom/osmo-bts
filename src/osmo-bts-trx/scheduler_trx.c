@@ -93,7 +93,7 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 }
 
 /* schedule all frames of all TRX for given FN */
-static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
+static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
 	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
@@ -305,9 +305,9 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 		goto no_clock;
 	}
 
-	/* call trx_sched_fn() for all expired FN */
+	/* call bts_sched_fn() for all expired FN */
 	for (i = 0; i < expire_count; i++)
-		trx_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
+		bts_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
 
 	return 0;
 
@@ -375,7 +375,7 @@ static int trx_setup_clock(struct gsm_bts *bts, struct osmo_trx_clock_state *tcs
 	tcs->last_fn_timer.fn = fn;
 	tcs->last_fn_timer.tv = *tv_now;
 	/* call trx scheduler function for new 'last' FN */
-	trx_sched_fn(bts, tcs->last_fn_timer.fn);
+	bts_sched_fn(bts, tcs->last_fn_timer.fn);
 
 	return 0;
 }
@@ -450,7 +450,7 @@ int trx_sched_clock(struct gsm_bts *bts, uint32_t fn)
 
 	/* transmit what we still need to transmit */
 	while (fn != tcs->last_fn_timer.fn) {
-		trx_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
+		bts_sched_fn(bts, GSM_TDMA_FN_INC(tcs->last_fn_timer.fn));
 		fn_caught_up++;
 	}
 
