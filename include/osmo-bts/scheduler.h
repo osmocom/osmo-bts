@@ -1,5 +1,4 @@
-#ifndef TRX_SCHEDULER_H
-#define TRX_SCHEDULER_H
+#pragma once
 
 #include <osmocom/core/utils.h>
 #include <osmocom/core/rate_ctr.h>
@@ -312,5 +311,3 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 			struct l1sched_meas_set *avg,
 			enum sched_meas_avg_mode mode);
-
-#endif /* TRX_SCHEDULER_H */
