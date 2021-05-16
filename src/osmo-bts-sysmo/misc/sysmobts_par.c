@@ -37,7 +37,7 @@
 #include "sysmobts_par.h"
 #include "eeprom.h"
 
-#define EEPROM_PATH	"/sys/devices/platform/i2c_davinci.1/i2c-1/1-0050/eeprom"
+#define EEPROM_PATH	"eeprom"
 
 static const struct osmo_crc8gen_code crc8_ccit = {
 	.bits = 8,

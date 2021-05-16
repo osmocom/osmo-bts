@@ -79,7 +79,7 @@
 /**
  * EEPROM device file
  */
-#define EEPROM_DEV  "/sys/bus/i2c/devices/i2c-1/1-0050/eeprom"
+#define EEPROM_DEV  "eeprom"
 
 /**
  * EEPROM configuration start address
