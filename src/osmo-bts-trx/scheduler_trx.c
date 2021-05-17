@@ -107,9 +107,9 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 
 	/* process every TRX */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct phy_link *plink = pinst->phy_link;
-		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+		const struct phy_instance *_pinst = trx_phy_instance(trx);
+		const struct phy_link *plink = _pinst->phy_link;
+		struct trx_l1h *l1h = _pinst->u.osmotrx.hdl;
 		struct l1sched_trx *l1t = &l1h->l1s;
 
 		/* we don't schedule, if power is off */
@@ -122,6 +122,8 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(l1t->ts); tn++) {
+			const struct phy_instance *pinst = _pinst;
+
 			/* ready-to-send */
 			_sched_rts(l1t, tn, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
 
@@ -143,7 +145,6 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				pinst = dlfh_route_br(&br, &trx->ts[tn]);
 				if (pinst == NULL)
 					continue;
-				l1h = pinst->u.osmotrx.hdl;
 			}
 
 			if (pinst->trx == bts->c0) {
@@ -153,7 +154,7 @@ static void trx_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				br.att = 0;
 			}
 
-			trx_if_send_burst(l1h, &br);
+			trx_if_send_burst(pinst->u.osmotrx.hdl, &br);
 		}
 	}
 
