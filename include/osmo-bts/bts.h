@@ -57,6 +57,9 @@ const char *btsvariant2str(enum gsm_bts_type_variant v);
  * measurement data is passed using a separate MPH INFO MEAS IND.
  * (See also ticket: OS#2977) */
 #define BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB		(1 << 1)
+/* Whether the BTS model requires RadioCarrier MO to be in Enabled state
+ * (OPSTARTed) before OPSTARTing the RadioChannel MOs. See OS#5157 */
+#define BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER	(1 << 2)
 
 /* BTS implementation flags (internal use, not exposed via OML) */
 #define bts_internal_flag_get(bts, flag) \

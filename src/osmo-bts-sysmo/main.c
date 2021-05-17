@@ -79,6 +79,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP);
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB);
+	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER);
 
 	return 0;
 }

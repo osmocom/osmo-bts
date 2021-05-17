@@ -39,7 +39,8 @@ enum nm_fsm_events {
 	NM_EV_BBTRANSC_INSTALLED, /* Radio Channel only */
 	NM_EV_BBTRANSC_ENABLED, /* Radio Channel only */
 	NM_EV_BBTRANSC_DISABLED, /* Radio Channel only */
-
+	NM_EV_RCARRIER_ENABLED, /* Radio Channel only */
+	NM_EV_RCARRIER_DISABLED, /* Radio Channel only */
 };
 extern const struct value_string nm_fsm_event_names[];
 

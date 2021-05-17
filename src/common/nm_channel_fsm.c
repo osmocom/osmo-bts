@@ -40,6 +40,14 @@
 #define nm_chan_fsm_state_chg(fi, NEXT_STATE) \
 	osmo_fsm_inst_state_chg(fi, NEXT_STATE, 0, 0)
 
+/* Can the TS be enabled (OPSTARTed)? aka should it stay in "Disabled Dependency" state? */
+static bool ts_can_be_enabled(const struct gsm_bts_trx_ts *ts)
+{
+	return (ts->trx->bb_transc.mo.nm_state.operational == NM_OPSTATE_ENABLED &&
+		(!bts_internal_flag_get(ts->trx->bts, BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER) ||
+		 ts->trx->mo.nm_state.operational == NM_OPSTATE_ENABLED));
+}
+
 //////////////////////////
 // FSM STATE ACTIONS
 //////////////////////////
@@ -58,7 +66,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	switch (event) {
 	case NM_EV_BBTRANSC_INSTALLED:
 		oml_mo_tx_sw_act_rep(&ts->mo);
-		if (ts->trx->bb_transc.mo.nm_state.operational == NM_OPSTATE_ENABLED)
+		if (ts_can_be_enabled(ts))
 			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
 		else
 			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
@@ -92,7 +100,13 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 		oml_mo_opstart_nack(&ts->mo, (int)(intptr_t)data);
 		return;
 	case NM_EV_BBTRANSC_ENABLED:
-		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
+	case NM_EV_RCARRIER_ENABLED:
+		if (ts_can_be_enabled(ts))
+			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
+		return;
+	case NM_EV_BBTRANSC_DISABLED:
+	case NM_EV_RCARRIER_DISABLED:
+		/* do nothing, we are simply waiting for (potentially) both to be enabled */
 		return;
 	default:
 		OSMO_ASSERT(0);
@@ -121,7 +135,9 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		oml_mo_opstart_nack(&ts->mo, (int)(intptr_t)data);
 		return;
 	case NM_EV_BBTRANSC_DISABLED:
-		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
+	case NM_EV_RCARRIER_DISABLED:
+		if (!ts_can_be_enabled(ts))
+			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
 		return;
 	default:
 		OSMO_ASSERT(0);
@@ -136,9 +152,13 @@ static void st_op_enabled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state
 
 static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
+	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+
 	switch (event) {
 	case NM_EV_BBTRANSC_DISABLED:
-		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
+	case NM_EV_RCARRIER_DISABLED:
+		if (!ts_can_be_enabled(ts))
+			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_DEPENDENCY);
 		return;
 	case NM_EV_DISABLE:
 		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
@@ -163,7 +183,10 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 		.in_event_mask =
 			X(NM_EV_OPSTART_ACK) |  /* backward compatibility, buggy BSC */
 			X(NM_EV_OPSTART_NACK) |
-			X(NM_EV_BBTRANSC_ENABLED),
+			X(NM_EV_BBTRANSC_ENABLED) |
+			X(NM_EV_RCARRIER_ENABLED) |
+			X(NM_EV_BBTRANSC_DISABLED) |
+			X(NM_EV_RCARRIER_DISABLED),
 		.out_state_mask =
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
 			X(NM_CHAN_ST_OP_ENABLED), /* backward compatibility, buggy BSC */
@@ -175,7 +198,8 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 		.in_event_mask =
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
-			X(NM_EV_BBTRANSC_DISABLED),
+			X(NM_EV_BBTRANSC_DISABLED) |
+			X(NM_EV_RCARRIER_DISABLED),
 		.out_state_mask =
 			X(NM_CHAN_ST_OP_ENABLED) |
 			X(NM_CHAN_ST_OP_DISABLED_DEPENDENCY),
@@ -186,6 +210,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_ENABLED] = {
 		.in_event_mask =
 			X(NM_EV_BBTRANSC_DISABLED) |
+			X(NM_EV_RCARRIER_DISABLED) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
