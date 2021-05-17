@@ -106,7 +106,7 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 
 	/* process every TRX */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
+		struct phy_instance *pinst = trx->pinst;
 		struct phy_link *plink = pinst->phy_link;
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 		struct l1sched_trx *l1t = &l1h->l1s;
