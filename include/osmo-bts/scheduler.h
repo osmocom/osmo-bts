@@ -256,8 +256,6 @@ struct trx_ul_burst_ind {
 	size_t burst_len;
 };
 
-#define TRX_BR_F_MORE_PDUS	(1 << 0)
-
 /*! DL burst request with the corresponding meta info */
 struct trx_dl_burst_req {
 	uint8_t flags;		/*!< see TRX_BR_F_* */

@@ -1071,6 +1071,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
 	static uint8_t *buf = &trx_data_buf[0];
+	static uint8_t *last_pdu = NULL;
 	static unsigned int pdu_num = 0;
 	ssize_t snd_len, buf_len;
 
@@ -1080,6 +1081,16 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 			"Ignoring Tx data, transceiver is powered off\n");
 		return -ENODEV;
 	}
+
+	/* Burst batching breaker */
+	if (br == NULL) {
+		if (pdu_num > 0)
+			goto sendall;
+		return -ENOMSG;
+	}
+
+	/* Pointer to the last encoded PDU */
+	last_pdu = &buf[0];
 
 	switch (pdu_ver) {
 	/* Both versions have the same PDU format */
@@ -1092,7 +1103,8 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		break;
 	case 2: /* TRXDv2 */
 		buf[0] = br->tn;
-		buf[1] = (br->trx_num & 0x3f) | (br->flags << 7);
+		/* BATCH.ind will be unset in the last PDU */
+		buf[1] = (br->trx_num & 0x3f) | (1 << 7);
 		buf[2] = br->mts;
 		buf[3] = br->att;
 		buf[4] = (uint8_t) br->scpir;
@@ -1117,13 +1129,18 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	/* One more PDU in the buffer */
 	pdu_num++;
 
-	/* More PDUs to send? Batch them! */
-	if (pdu_ver >= 2 && br->flags & TRX_BR_F_MORE_PDUS)
+	/* TRXDv2: wait for the batching breaker */
+	if (pdu_ver >= 2)
 		return 0;
 
+sendall:
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
 		"Tx TRXDv%u datagram with %u PDU(s): fn=%u\n",
 		pdu_ver, pdu_num, br->fn);
+
+	/* TRXDv2: unset BATCH.ind in the last PDU */
+	if (pdu_ver >= 2)
+		last_pdu[1] &= ~(1 << 7);
 
 	buf_len = buf - &trx_data_buf[0];
 	buf = &trx_data_buf[0];

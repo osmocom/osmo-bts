@@ -143,6 +143,9 @@ static void bts_sched_flush_buffers(struct gsm_bts *bts)
 				continue;
 			trx_if_send_burst(l1h, br);
 		}
+
+		/* Batch all timeslots into a single TRXD PDU */
+		trx_if_send_burst(l1h, NULL);
 	}
 }
 
