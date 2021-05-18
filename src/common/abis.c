@@ -236,7 +236,7 @@ static int inp_s_cbfn(unsigned int subsys, unsigned int signal,
 
 
 static struct ipaccess_unit bts_dev_info = {
-	.unit_name	= "sysmoBTS",
+	.unit_name	= "osmo-bts",
 	.equipvers	= "",	/* FIXME: read this from hw */
 	.swversion	= PACKAGE_VERSION,
 	.location1	= "",

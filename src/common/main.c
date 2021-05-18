@@ -402,7 +402,7 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
-	line = abis_open(g_bts, g_bts->bsc_oml_host, "sysmoBTS");
+	line = abis_open(g_bts, g_bts->bsc_oml_host, "osmo-bts");
 	if (!line) {
 		fprintf(stderr, "unable to connect to BSC\n");
 		exit(2);
