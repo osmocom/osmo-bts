@@ -113,6 +113,7 @@ struct phy_instance {
 		struct {
 			struct trx_l1h *hdl;
 			bool sw_act_reported;
+			struct trx_dl_burst_req br[TRX_NR_TS];
 		} osmotrx;
 		struct {
 			/* logical transceiver number within one PHY */

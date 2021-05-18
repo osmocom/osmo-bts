@@ -3,6 +3,7 @@
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2020-2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -92,19 +93,72 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 	return NULL;
 }
 
+static void bts_sched_init_buffers(struct gsm_bts *bts, const uint32_t fn)
+{
+	struct gsm_bts_trx *trx;
+	uint8_t tn;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		struct phy_instance *pinst = trx->pinst;
+		const struct phy_link *plink = pinst->phy_link;
+
+		/* Advance frame number, so the PHY has more time to process bursts */
+		const uint32_t sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
+
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+			struct trx_dl_burst_req *br = &pinst->u.osmotrx.br[tn];
+
+			*br = (struct trx_dl_burst_req) {
+				.trx_num = trx->nr,
+				.fn = sched_fn,
+				.tn = tn,
+			};
+		}
+	}
+
+	/* Initialize all timeslots on C0/TRX0 with dummy burst */
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct phy_instance *pinst = bts->c0->pinst;
+		struct trx_dl_burst_req *br = &pinst->u.osmotrx.br[tn];
+
+		memcpy(br->burst, _sched_dummy_burst, GSM_BURST_LEN);
+		br->burst_len = GSM_BURST_LEN;
+	}
+}
+
+static void bts_sched_flush_buffers(struct gsm_bts *bts)
+{
+	const struct gsm_bts_trx *trx;
+	unsigned int tn;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		const struct phy_instance *pinst = trx->pinst;
+		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
+			const struct trx_dl_burst_req *br;
+
+			br = &pinst->u.osmotrx.br[tn];
+			if (!br->burst_len)
+				continue;
+			trx_if_send_burst(l1h, br);
+		}
+	}
+}
+
 /* schedule all frames of all TRX for given FN */
 static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
-	struct trx_dl_burst_req br;
 	struct gsm_bts_trx *trx;
-	uint8_t c0_mask = 0x00;
-	uint32_t sched_fn;
-	uint8_t tn;
+	unsigned int tn;
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
 
-	/* process every TRX */
+	/* Initialize Downlink burst buffers */
+	bts_sched_init_buffers(bts, fn);
+
+	/* Populate Downlink burst buffers for each TRX/TS */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		const struct phy_link *plink = trx->pinst->phy_link;
 		struct trx_l1h *l1h = trx->pinst->u.osmotrx.hdl;
@@ -113,66 +167,36 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 		if (!trx_if_powered(l1h))
 			continue;
 
-		/* advance frame number, so the transceiver has more
-		 * time until it must be transmitted. */
-		sched_fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance);
-
 		/* process every TS of TRX */
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
-			const struct phy_instance *pinst = trx->pinst;
-			struct l1sched_ts *l1ts = trx->ts[tn].priv;
+			struct phy_instance *pinst = trx->pinst;
+			struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+			struct l1sched_ts *l1ts = ts->priv;
+			struct trx_dl_burst_req *br;
 
 			/* ready-to-send */
-			_sched_rts(l1ts, GSM_TDMA_FN_SUM(sched_fn, plink->u.osmotrx.rts_advance));
+			_sched_rts(l1ts, GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance
+							   + plink->u.osmotrx.rts_advance));
 
-			/* All other parameters to be set by _sched_dl_burst() */
-			br = (struct trx_dl_burst_req) {
-				.fn = sched_fn,
-				.tn = tn,
-			};
-
-			/* get burst for FN */
-			_sched_dl_burst(l1ts, &br);
-			if (br.burst_len == 0) {
-				/* if no bits, send no burst */
-				continue;
-			}
+			/* pre-initialized buffer for the Downlink burst */
+			br = &pinst->u.osmotrx.br[tn];
 
 			/* resolve PHY instance if freq. hopping is enabled */
-			if (trx->ts[tn].hopping.enabled) {
-				pinst = dlfh_route_br(&br, &trx->ts[tn]);
+			if (ts->hopping.enabled) {
+				pinst = dlfh_route_br(br, ts);
 				if (pinst == NULL)
 					continue;
+				/* simply use a different buffer */
+				br = &pinst->u.osmotrx.br[tn];
 			}
 
-			if (pinst->trx == bts->c0) {
-				/* update dummy burst mask for C0 */
-				c0_mask |= (1 << tn);
-				/* ensure no attenuation on C0 */
-				br.att = 0;
-			}
-
-			trx_if_send_burst(pinst->u.osmotrx.hdl, &br);
+			/* get burst for FN */
+			_sched_dl_burst(l1ts, br);
 		}
 	}
 
-	/* send dummy bursts on inactive timeslots of C0 */
-	struct phy_instance *pinst = trx_phy_instance(bts->c0);
-	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
-	struct phy_link *plink = pinst->phy_link;
-
-	br = (struct trx_dl_burst_req) {
-		.fn = GSM_TDMA_FN_SUM(fn, plink->u.osmotrx.clock_advance),
-		.burst_len = GSM_BURST_LEN,
-	};
-
-	memcpy(br.burst, _sched_dummy_burst, GSM_BURST_LEN);
-
-	for (br.tn = 0; br.tn < TRX_NR_TS; br.tn++) {
-		if (c0_mask & (1 << br.tn))
-			continue;
-		trx_if_send_burst(l1h, &br);
-	}
+	/* Send everything to the PHY */
+	bts_sched_flush_buffers(bts);
 }
 
 /* Find a route (TRX instance) for a given Uplink burst indication */
