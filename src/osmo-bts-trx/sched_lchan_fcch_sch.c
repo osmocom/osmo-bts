@@ -80,7 +80,7 @@ int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* compose burst */
 	memcpy(br->burst + 3, burst, 39);
-	memcpy(br->burst + 42, _sched_sch_train, 64);
+	memcpy(br->burst + 42, _sched_train_seq_gmsk_sb, 64);
 	memcpy(br->burst + 106, burst + 39, 39);
 
 	br->burst_len = GSM_BURST_LEN;
