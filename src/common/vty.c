@@ -94,14 +94,14 @@ struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_
 	struct phy_instance *pinst;
 
 	if (!plink) {
-		vty_out(vty, "Cannot find PHY link number %d%s",
+		vty_out(vty, "%% Cannot find PHY link number %d%s",
 			phy_nr, VTY_NEWLINE);
 		return NULL;
 	}
 
 	pinst = phy_instance_by_num(plink, inst_nr);
 	if (!pinst) {
-		vty_out(vty, "Cannot find PHY instance number %d%s",
+		vty_out(vty, "%% Cannot find PHY instance number %d%s",
 			inst_nr, VTY_NEWLINE);
 		return NULL;
 	}
@@ -559,19 +559,19 @@ DEFUN(cfg_bts_rtp_port_range,
 	end = atoi(argv[1]);
 
 	if (end < start) {
-		vty_out(vty, "range end port (%u) must be greater than the range start port (%u)!%s",
+		vty_out(vty, "%% Range end port (%u) must be greater than the range start port (%u)!%s",
 			end, start, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	if (start & 1) {
-		vty_out(vty, "range must begin at an even port number! (%u not even)%s",
+		vty_out(vty, "%% Range must begin at an even port number! (%u is odd)%s",
 			start, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	if ((end & 1) == 0) {
-		vty_out(vty, "range must end at an odd port number! (%u not odd)%s",
+		vty_out(vty, "%% Range must end at an odd port number! (%u is even)%s",
 			end, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -952,11 +952,11 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 		 * has been ripped out in favour of the common implementation. Configuration files
 		 * may still contain 'dsp', so let's be tolerant and override 'dsp' by 'osmo'. */
 		if (trx->bts->variant == BTS_OSMO_TRX && vty->type == VTY_FILE) {
-			vty_out(vty, "BTS model 'osmo-bts-trx' has no DSP/HW MS Power Control support, "
+			vty_out(vty, "%% BTS model 'osmo-bts-trx' has no DSP/HW MS Power Control support, "
 				     "consider updating your configuration file!%s", VTY_NEWLINE);
 			soft = true; /* override */
 		} else {
-			vty_out(vty, "This BTS model has no DSP/HW MS Power Control support%s", VTY_NEWLINE);
+			vty_out(vty, "%% This BTS model has no DSP/HW MS Power Control support%s", VTY_NEWLINE);
 			return CMD_WARNING;
 		}
 	}
@@ -975,20 +975,20 @@ DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
 	struct phy_instance *pinst;
 
 	if (!plink) {
-		vty_out(vty, "phy%s does not exist%s",
+		vty_out(vty, "%% phy%s does not exist%s",
 			argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	pinst = phy_instance_by_num(plink, atoi(argv[1]));
 	if (!pinst) {
-		vty_out(vty, "phy%s instance %s does not exit%s",
+		vty_out(vty, "%% phy%s instance %s does not exit%s",
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	if (pinst->trx != NULL) {
-		vty_out(vty, "phy%s instance %s is already bound to %s%s",
+		vty_out(vty, "%% phy%s instance %s is already bound to %s%s",
 			argv[0], argv[1], gsm_trx_name(pinst->trx), VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -2054,7 +2054,7 @@ DEFUN_ATTR(cfg_phy_inst, cfg_phy_inst_cmd,
 	if (!pinst) {
 		pinst = phy_instance_create(plink, inst_nr);
 		if (!pinst) {
-			vty_out(vty, "Unable to create phy%u instance %u%s",
+			vty_out(vty, "%% Unable to create phy%u instance %u%s",
 				plink->num, inst_nr, VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -2077,7 +2077,7 @@ DEFUN(cfg_phy_no_inst, cfg_phy_no_inst_cmd,
 
 	pinst = phy_instance_by_num(plink, inst_nr);
 	if (!pinst) {
-		vty_out(vty, "No such instance %u%s", inst_nr, VTY_NEWLINE);
+		vty_out(vty, "%% No such instance %u%s", inst_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -2097,7 +2097,7 @@ DEFUN(cfg_phy_type, cfg_phy_type_cmd,
 	struct phy_link *plink = vty->index;
 
 	if (plink->state != PHY_LINK_SHUTDOWN) {
-		vty_out(vty, "Cannot change type of active PHY%s", VTY_NEWLINE);
+		vty_out(vty, "%% Cannot change type of active PHY%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
