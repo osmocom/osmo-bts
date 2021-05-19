@@ -97,7 +97,7 @@ struct phy_instance {
 	struct phy_link *phy_link;
 
 	/* back-pointer to the TRX to which we're associated */
-	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx *trx; /* NOTE: may be NULL! */
 
 	union {
 		struct {

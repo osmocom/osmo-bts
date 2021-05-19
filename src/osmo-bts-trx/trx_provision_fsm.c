@@ -279,7 +279,10 @@ static void st_open_poweroff_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_st
 	l1h->config.trxd_pdu_ver_req = pinst->phy_link->u.osmotrx.trxd_pdu_ver_max;
 
 	/* Apply initial RFMUTE state */
-	trx_if_cmd_rfmute(l1h, pinst->trx->mo.nm_state.administrative != NM_STATE_UNLOCKED);
+	if (pinst->trx != NULL)
+		trx_if_cmd_rfmute(l1h, pinst->trx->mo.nm_state.administrative != NM_STATE_UNLOCKED);
+	else
+		trx_if_cmd_rfmute(l1h, true);
 }
 
 static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *data)

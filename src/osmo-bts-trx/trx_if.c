@@ -1235,7 +1235,9 @@ static int trx_phy_inst_open(struct phy_instance *pinst)
 	if (!l1h)
 		return -EINVAL;
 
-	trx_sched_init(pinst->trx);
+	/* PHY instance may be not associated with a TRX instance */
+	if (pinst->trx != NULL)
+		trx_sched_init(pinst->trx);
 
 	rc = trx_if_open(l1h);
 	if (rc < 0) {

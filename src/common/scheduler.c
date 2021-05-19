@@ -578,6 +578,8 @@ void trx_sched_init(struct gsm_bts_trx *trx)
 {
 	unsigned int tn, i;
 
+	OSMO_ASSERT(trx != NULL);
+
 	LOGPTRX(trx, DL1C, LOGL_DEBUG, "Init scheduler structures\n");
 
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {

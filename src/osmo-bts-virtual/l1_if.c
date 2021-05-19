@@ -214,13 +214,15 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	/* iterate over list of PHY instances and initialize the scheduler */
 	llist_for_each_entry(pinst, &plink->instances, list) {
+		if (pinst->trx == NULL)
+			continue;
 		trx_sched_init(pinst->trx);
 		/* Only start the scheduler for the transceiver on C0.
 		 * If we have multiple transceivers, CCCH is always on C0
 		 * and has to be auto active */
 		/* Other TRX are activated via OML by a PRIM_INFO_MODIFY
 		 * / PRIM_INFO_ACTIVATE */
-		if (pinst->trx && pinst->trx == pinst->trx->bts->c0) {
+		if (pinst->trx == pinst->trx->bts->c0) {
 			vbts_sched_start(pinst->trx->bts);
 			/* init lapdm layer 3 callback for the trx on timeslot 0 == BCCH */
 			lchan_init_lapdm(&pinst->trx->ts[0].lchan[CCCH_LCHAN]);

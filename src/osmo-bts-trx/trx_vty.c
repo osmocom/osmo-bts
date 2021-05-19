@@ -99,17 +99,23 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	struct gsm_bts_trx *trx = pinst->trx;
 
-	vty_out(vty, "PHY Instance %s%s",
-		phy_instance_name(pinst), VTY_NEWLINE);
+	vty_out(vty, "PHY Instance '%s': bound to %s%s",
+		phy_instance_name(pinst),
+		gsm_trx_name(trx),
+		VTY_NEWLINE);
+
+	if (trx != NULL) {
+		const int actual = get_p_actual_mdBm(trx, trx->power_params.p_total_tgt_mdBm);
+		const int max = get_p_max_out_mdBm(trx);
+		vty_out(vty, " tx-attenuation : %d dB%s",
+			(max - actual) / 1000, VTY_NEWLINE);
+	}
 
 	if (l1h->config.rxgain_valid)
 		vty_out(vty, " rx-gain        : %d dB%s",
 			l1h->config.rxgain, VTY_NEWLINE);
 	else
 		vty_out(vty, " rx-gain        : undefined%s", VTY_NEWLINE);
-	vty_out(vty, " tx-attenuation : %d dB%s",
-		(get_p_max_out_mdBm(trx) - get_p_actual_mdBm(trx, trx->power_params.p_total_tgt_mdBm))/1000,
-		VTY_NEWLINE);
 	if (l1h->config.maxdly_valid)
 		vty_out(vty, " maxdly : %d%s", l1h->config.maxdly,
 			VTY_NEWLINE);
