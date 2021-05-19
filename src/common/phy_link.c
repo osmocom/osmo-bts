@@ -146,7 +146,7 @@ void phy_link_destroy(struct phy_link *plink)
 }
 
 static char name_buf[32];
-const char *phy_link_name(struct phy_link *plink)
+const char *phy_link_name(const struct phy_link *plink)
 {
 	snprintf(name_buf, sizeof(name_buf), "phy%u", plink->num);
 	return name_buf;
@@ -167,7 +167,7 @@ int phy_links_open(void)
 	return 0;
 }
 
-const char *phy_instance_name(struct phy_instance *pinst)
+const char *phy_instance_name(const struct phy_instance *pinst)
 {
 	snprintf(name_buf, sizeof(name_buf), "phy%u.%u", pinst->phy_link->num,
 		 pinst->num);

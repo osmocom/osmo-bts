@@ -155,7 +155,7 @@ struct phy_instance {
 struct phy_link *phy_link_by_num(int num);
 struct phy_link *phy_link_create(void *ctx, int num);
 void phy_link_destroy(struct phy_link *plink);
-const char *phy_link_name(struct phy_link *plink);
+const char *phy_link_name(const struct phy_link *plink);
 void phy_link_state_set(struct phy_link *plink, enum phy_link_state state);
 enum phy_link_state phy_link_state_get(struct phy_link *plink);
 const char *phy_link_state_name(enum phy_link_state state);
@@ -165,7 +165,7 @@ struct phy_instance *phy_instance_by_num(const struct phy_link *plink, int num);
 struct phy_instance *phy_instance_create(struct phy_link *plink, int num);
 void phy_instance_link_to_trx(struct phy_instance *pinst, struct gsm_bts_trx *trx);
 void phy_instance_destroy(struct phy_instance *pinst);
-const char *phy_instance_name(struct phy_instance *pinst);
+const char *phy_instance_name(const struct phy_instance *pinst);
 
 static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *trx)
 {
