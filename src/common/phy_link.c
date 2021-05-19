@@ -154,10 +154,19 @@ const char *phy_link_name(const struct phy_link *plink)
 
 int phy_links_open(void)
 {
+	const struct phy_instance *pinst;
 	struct phy_link *plink;
 
 	llist_for_each_entry(plink, &g_phy_links, list) {
 		int rc;
+
+		/* Warn about dangling PHY instances */
+		llist_for_each_entry(pinst, &plink->instances, list) {
+			if (pinst->trx != NULL)
+				continue;
+			LOGPPHI(pinst, DL1C, LOGL_NOTICE, "This PHY instance is not associated "
+				"with a TRX instance, check the configuration file!\n");
+		}
 
 		rc = bts_model_phy_link_open(plink);
 		if (rc < 0)
