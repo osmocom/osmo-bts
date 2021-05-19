@@ -118,6 +118,8 @@ struct phy_instance *phy_instance_create(struct phy_link *plink, int num)
 
 void phy_instance_link_to_trx(struct phy_instance *pinst, struct gsm_bts_trx *trx)
 {
+	/* There might already be an associated TRX */
+	OSMO_ASSERT(pinst->trx == NULL)
 	trx->pinst = pinst;
 	pinst->trx = trx;
 }

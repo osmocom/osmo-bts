@@ -987,8 +987,13 @@ DEFUN(cfg_trx_phy, cfg_trx_phy_cmd,
 		return CMD_WARNING;
 	}
 
-	trx->pinst = pinst;
-	pinst->trx = trx;
+	if (pinst->trx != NULL) {
+		vty_out(vty, "phy%s instance %s is already bound to %s%s",
+			argv[0], argv[1], gsm_trx_name(pinst->trx), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	phy_instance_link_to_trx(pinst, trx);
 
 	return CMD_SUCCESS;
 }
