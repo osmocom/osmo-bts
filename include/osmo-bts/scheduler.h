@@ -264,9 +264,12 @@ struct trx_dl_burst_req {
 	uint32_t fn;		/*!< TDMA frame number */
 	uint8_t tn;		/*!< TDMA timeslot number */
 	uint8_t att;		/*!< Tx power attenuation */
-	uint8_t mts;		/*!< MTS (Modulation and Training Sequence) */
 	int8_t scpir;		/*!< SCPIR (for AQPSK only) */
 	uint8_t trx_num;	/*!< TRX (RF channel) number */
+
+	enum trx_mod_type mod;	/*!< Modulation type */
+	uint8_t tsc_set;	/*!< Training Sequence Set */
+	uint8_t tsc;		/*!< Training Sequence Code */
 
 	/* Internally used by the scheduler */
 	enum trx_chan_type chan;

@@ -740,6 +740,11 @@ static const uint8_t trx_data_rx_hdr_len[] = {
 	TRX_UL_V2HDR_LEN, /* TRXDv2 */
 };
 
+static const uint8_t trx_data_mod_val[] = {
+	[TRX_MOD_T_GMSK]	= 0x00, /* .00xx... */
+	[TRX_MOD_T_8PSK]	= 0x20, /* .010x... */
+};
+
 /* Header dissector for TRXDv0 (and part of TRXDv1) */
 static inline void trx_data_handle_hdr_v0_part(struct trx_ul_burst_ind *bi,
 					       const uint8_t *buf)
@@ -1105,7 +1110,9 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		buf[0] = br->tn;
 		/* BATCH.ind will be unset in the last PDU */
 		buf[1] = (br->trx_num & 0x3f) | (1 << 7);
-		buf[2] = br->mts;
+		buf[2] = trx_data_mod_val[br->mod]
+		       | (br->tsc_set << 3)
+		       | (br->tsc & 0x07);
 		buf[3] = br->att;
 		buf[4] = (uint8_t) br->scpir;
 		buf[5] = buf[6] = buf[7] = 0x00; /* Spare */

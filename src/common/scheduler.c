@@ -1217,9 +1217,16 @@ void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	if (!TRX_CHAN_IS_ACTIVE(l1cs, br->chan))
 		return;
 
+	/* Training Sequence Code and Set */
+	br->tsc = gsm_ts_tsc(l1ts->ts);
+	br->tsc_set = 0;
+
 	/* get burst from function */
 	if (func(l1ts, br) != 0)
 		return;
+
+	/* Modulation is indicated by func() */
+	br->mod = l1cs->dl_mod_type;
 
 	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
