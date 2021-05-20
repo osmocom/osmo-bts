@@ -58,6 +58,7 @@ int main(int argc, char **argv)
 {
 	void *tall_bts_ctx;
 	struct e1inp_line *line;
+	struct e1inp_ts *sign_ts;
 	struct gsm_lchan *lchan;
 	struct osmo_phsap_prim nl1sap;
 	struct msgb *msg;
@@ -90,9 +91,9 @@ int main(int argc, char **argv)
 
 	line = e1inp_line_create(0, "ipa");
 	OSMO_ASSERT(line);
-
-	e1inp_ts_config_sign(&line->ts[E1INP_SIGN_RSL-1], line);
-	trx->rsl_link = e1inp_sign_link_create(&line->ts[E1INP_SIGN_RSL-1], E1INP_SIGN_RSL, NULL, 0, 0);
+	sign_ts = e1inp_line_ipa_rsl_ts(line, 0);
+	e1inp_ts_config_sign(sign_ts, line);
+	trx->rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL, NULL, 0, 0);
 	OSMO_ASSERT(trx->rsl_link);
 	trx->rsl_link->trx = trx;
 

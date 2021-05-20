@@ -99,25 +99,27 @@ int abis_bts_rsl_sendmsg(struct msgb *msg)
 static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 					    enum e1inp_sign_type type)
 {
-	struct e1inp_sign_link *sign_link = NULL;
+	struct e1inp_ts *sign_ts;
 	struct gsm_bts_trx *trx;
 	int trx_nr;
 
 	switch (type) {
 	case E1INP_SIGN_OML:
+		sign_ts = e1inp_line_ipa_oml_ts(line);
 		LOGP(DABIS, LOGL_INFO, "OML Signalling link up\n");
-		e1inp_ts_config_sign(&line->ts[E1INP_SIGN_OML-1], line);
-		sign_link = g_bts->oml_link =
-			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
-						E1INP_SIGN_OML, g_bts->c0, 255, 0);
+		e1inp_ts_config_sign(sign_ts, line);
+		g_bts->oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
+							g_bts->c0, IPAC_PROTO_OML, 0);
 		if (clock_gettime(CLOCK_MONOTONIC, &g_bts->oml_conn_established_timestamp) != 0)
 			memset(&g_bts->oml_conn_established_timestamp, 0,
 			       sizeof(g_bts->oml_conn_established_timestamp));
 		drain_oml_queue(g_bts);
 		bts_link_estab(g_bts);
-		break;
-	default:
+		return g_bts->oml_link;
+
+	case E1INP_SIGN_RSL:
 		trx_nr = type - E1INP_SIGN_RSL;
+		sign_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 		LOGP(DABIS, LOGL_INFO, "RSL Signalling link for TRX%d up\n",
 			trx_nr);
 		trx = gsm_bts_trx_num(g_bts, trx_nr);
@@ -126,16 +128,17 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 				trx_nr);
 			break;
 		}
-		e1inp_ts_config_sign(&line->ts[type-1], line);
-		sign_link = trx->rsl_link =
-			e1inp_sign_link_create(&line->ts[type-1],
-						E1INP_SIGN_RSL, trx,
-						trx->rsl_tei, 0);
+		e1inp_ts_config_sign(sign_ts, line);
+		trx->rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
+						       trx, trx->rsl_tei, 0);
 		trx_link_estab(trx);
-		break;
-	}
+		return trx->rsl_link;
 
-	return sign_link;
+	default:
+		LOGP(DABIS, LOGL_ERROR, "Unknwon Signalling link up %d\n", (int)type);
+		return NULL;
+	}
+	return NULL;
 }
 
 static void sign_link_down(struct e1inp_line *line)
