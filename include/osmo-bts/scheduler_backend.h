@@ -35,7 +35,7 @@ struct trx_chan_desc {
 extern const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX];
 
 extern const ubit_t _sched_dummy_burst[];
-extern const ubit_t _sched_train_seq_gmsk_nb[8][26];
+extern const ubit_t _sched_train_seq_gmsk_nb[4][8][26];
 extern const ubit_t _sched_train_seq_8psk_nb[8][78];
 extern const ubit_t _sched_train_seq_gmsk_sb[64];
 

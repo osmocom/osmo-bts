@@ -13,7 +13,7 @@
 	(trx_chan_desc[chan].flags & TRX_CHAN_FLAG_AUTO_ACTIVE || (state)->active)
 
 #define TRX_GMSK_NB_TSC(br) \
-	_sched_train_seq_gmsk_nb[(br)->tsc]
+	_sched_train_seq_gmsk_nb[(br)->tsc_set][(br)->tsc]
 
 #define TRX_8PSK_NB_TSC(br) \
 	_sched_train_seq_8psk_nb[(br)->tsc]
