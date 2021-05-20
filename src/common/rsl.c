@@ -134,6 +134,16 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	case RSL_CMOD_CRT_TCH_Bm:
 	case RSL_CMOD_CRT_TCH_Lm:
 		break;
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
+		/* Make sure that Osmocom specific TSC IE is present */
+		if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_TRAINING_SEQUENCE, 2)) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR,
+				  "Training Sequence IE is not present\n");
+			*cause = RSL_ERR_MAND_IE_ERROR;
+			return -ENODEV;
+		}
+		break;
 	default:
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
 			  "unknown 'Channel rate and type' value 0x%02x\n",
@@ -260,6 +270,24 @@ static int rsl_handle_chan_ident_ie(struct gsm_lchan *lchan,
 			*cause = RSL_ERR_SERV_OPT_UNIMPL;
 			return -ENOTSUP;
 		}
+	}
+
+	return 0;
+}
+
+/* Handle Osmocom specific TSC IE */
+static int rsl_handle_osmo_tsc_ie(struct gsm_lchan *lchan,
+				  const struct tlv_parsed *tp,
+				  uint8_t *cause)
+{
+	/* Osmocom specific IE indicating Training Sequence Code and Set */
+	if (TLVP_PRES_LEN(tp, RSL_IE_OSMO_TRAINING_SEQUENCE, 2)) {
+		const uint8_t *ie = TLVP_VAL(tp, RSL_IE_OSMO_TRAINING_SEQUENCE);
+		lchan->ts->tsc_set = ie[0] & 0x03; /* Range: 0..3 */
+		lchan->ts->tsc     = ie[1] & 0x07; /* Range: 0..7 */
+	} else {
+		lchan->ts->tsc = lchan->ts->tsc_oml;
+		lchan->ts->tsc_set = 0;
 	}
 
 	return 0;
@@ -1482,6 +1510,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return rsl_tx_chan_act_nack(lchan, cause);
 		if (rsl_handle_chan_ident_ie(lchan, &tp, &cause) != 0)
 			return rsl_tx_chan_act_nack(lchan, cause);
+		if (rsl_handle_osmo_tsc_ie(lchan, &tp, &cause) != 0)
+			return rsl_tx_chan_act_nack(lchan, cause);
 	}
 
 	/* 9.3.7 Encryption Information */
@@ -1995,6 +2025,9 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 		return rsl_tx_mode_modif_nack(lchan, cause);
 	/* 9.3.5 Channel Identification */
 	if (rsl_handle_chan_ident_ie(lchan, &tp, &cause) != 0)
+		return rsl_tx_mode_modif_nack(lchan, cause);
+	/* Osmocom specific TSC IE for VAMOS */
+	if (rsl_handle_osmo_tsc_ie(lchan, &tp, &cause) != 0)
 		return rsl_tx_mode_modif_nack(lchan, cause);
 
 	/* 9.3.7 Encryption Information */
