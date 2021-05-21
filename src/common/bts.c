@@ -874,6 +874,10 @@ int bts_supports_cm(const struct gsm_bts *bts,
 	/* Before the requested pchan/cm combination can be checked, we need to
 	 * convert it to a feature identifier we can check */
 	switch (cm->chan_rt) {
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
+			return 0;
+		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Bm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
@@ -891,6 +895,10 @@ int bts_supports_cm(const struct gsm_bts *bts,
 		}
 		break;
 
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
+			return 0;
+		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Lm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
