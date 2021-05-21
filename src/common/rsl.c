@@ -230,6 +230,33 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	return 0;
 }
 
+/* Handle RSL Channel Identification IE (see section 9.3.5) */
+static int rsl_handle_chan_ident_ie(struct gsm_lchan *lchan,
+				    const struct tlv_parsed *tp,
+				    uint8_t *cause)
+{
+	const struct gsm_bts_trx_ts *ts = lchan->ts;
+	const struct gsm_bts *bts = ts->trx->bts;
+	const struct gsm48_chan_desc *cd;
+
+	if (TLVP_PRES_LEN(tp, RSL_IE_CHAN_IDENT, sizeof(*cd) + 1)) {
+		/* Channel Description IE comes together with its IEI (see 9.3.5) */
+		cd = (const struct gsm48_chan_desc *) (TLVP_VAL(tp, RSL_IE_CHAN_IDENT) + 1);
+
+		/* The PHY may not support using different TSCs */
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_MULTI_TSC)
+		    && cd->h0.tsc != BTS_TSC(bts)) {
+			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "This PHY does not support "
+				  "lchan TSC %u != BSIC-TSC %u, sending NACK\n",
+				  cd->h0.tsc, BTS_TSC(bts));
+			*cause = RSL_ERR_SERV_OPT_UNIMPL;
+			return -ENOTSUP;
+		}
+	}
+
+	return 0;
+}
+
 
 /*
  * support
@@ -1445,6 +1472,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (type != RSL_ACT_OSMO_PDCH) {
 		if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
 			return rsl_tx_chan_act_nack(lchan, cause);
+		if (rsl_handle_chan_ident_ie(lchan, &tp, &cause) != 0)
+			return rsl_tx_chan_act_nack(lchan, cause);
 	}
 
 	/* 9.3.7 Encryption Information */
@@ -1955,6 +1984,9 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 
 	/* 9.3.6 Channel Mode */
 	if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
+		return rsl_tx_mode_modif_nack(lchan, cause);
+	/* 9.3.5 Channel Identification */
+	if (rsl_handle_chan_ident_ie(lchan, &tp, &cause) != 0)
 		return rsl_tx_mode_modif_nack(lchan, cause);
 
 	if (bts_supports_cm(lchan->ts->trx->bts, ts_pchan(lchan->ts), lchan->tch_mode) != 1) {
