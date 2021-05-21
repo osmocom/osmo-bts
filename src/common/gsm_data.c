@@ -352,7 +352,7 @@ static const uint8_t subslots_per_pchan[] = {
 };
 
 /*! Return the actual pchan type, also heeding dynamic TS. */
-enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts)
+enum gsm_phys_chan_config ts_pchan(const struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
@@ -369,7 +369,7 @@ enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts)
 
 /*! According to ts->pchan and possibly ts->dyn_pchan, return the number of
  * logical channels available in the timeslot. */
-uint8_t ts_subslots(struct gsm_bts_trx_ts *ts)
+uint8_t ts_subslots(const struct gsm_bts_trx_ts *ts)
 {
 	return subslots_per_pchan[ts_pchan(ts)];
 }
@@ -385,7 +385,7 @@ static bool pchan_is_tch(enum gsm_phys_chan_config pchan)
 	}
 }
 
-bool ts_is_tch(struct gsm_bts_trx_ts *ts)
+bool ts_is_tch(const struct gsm_bts_trx_ts *ts)
 {
 	return pchan_is_tch(ts_pchan(ts));
 }
@@ -403,7 +403,7 @@ const struct value_string lchan_ciph_state_names[] = {
 /* determine the ECU codec constant for the codec used by given lchan */
 int lchan2ecu_codec(const struct gsm_lchan *lchan)
 {
-	struct gsm_bts_trx_ts *ts = lchan->ts;
+	const struct gsm_bts_trx_ts *ts = lchan->ts;
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:

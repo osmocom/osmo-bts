@@ -526,9 +526,9 @@ uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts);
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				   int *rc);
 
-enum gsm_phys_chan_config ts_pchan(struct gsm_bts_trx_ts *ts);
-uint8_t ts_subslots(struct gsm_bts_trx_ts *ts);
-bool ts_is_tch(struct gsm_bts_trx_ts *ts);
+enum gsm_phys_chan_config ts_pchan(const struct gsm_bts_trx_ts *ts);
+uint8_t ts_subslots(const struct gsm_bts_trx_ts *ts);
+bool ts_is_tch(const struct gsm_bts_trx_ts *ts);
 
 int lchan2ecu_codec(const struct gsm_lchan *lchan);
 
