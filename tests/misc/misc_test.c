@@ -162,25 +162,49 @@ static void test_sacch_get(void)
 
 static void test_bts_supports_cm(void)
 {
+	struct rsl_ie_chan_mode cm;
 	struct gsm_bts *bts;
 
 	bts = gsm_bts_alloc(ctx, 0);
+
+	/* Signalling shall be supported regardless of the features */
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
+					 .spd_ind = RSL_CMOD_SPD_SIGN };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/F */
+
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
+					 .spd_ind = RSL_CMOD_SPD_SIGN };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/H */
 
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
 
-	OSMO_ASSERT(bts_supports_cm
-		    (bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_V1) == 1);
-	OSMO_ASSERT(bts_supports_cm
-		    (bts, GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_V1) == 1);
-	OSMO_ASSERT(bts_supports_cm
-		    (bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_EFR) == 0);
-	OSMO_ASSERT(bts_supports_cm
-		    (bts, GSM_PCHAN_TCH_F, GSM48_CMODE_SPEECH_AMR) == 1);
-	OSMO_ASSERT(bts_supports_cm
-		    (bts, GSM_PCHAN_TCH_H, GSM48_CMODE_SPEECH_AMR) == 1);
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
+					 .spd_ind = RSL_CMOD_SPD_SPEECH,
+					 .chan_rate = RSL_CMOD_SP_GSM1 };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/FS */
+
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
+					 .spd_ind = RSL_CMOD_SPD_SPEECH,
+					 .chan_rate = RSL_CMOD_SP_GSM1 };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/HS */
+
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
+					 .spd_ind = RSL_CMOD_SPD_SPEECH,
+					 .chan_rate = RSL_CMOD_SP_GSM2 };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 0); /* TCH/EFS */
+
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
+					 .spd_ind = RSL_CMOD_SPD_SPEECH,
+					 .chan_rate = RSL_CMOD_SP_GSM3 };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/AFS */
+
+	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
+					 .spd_ind = RSL_CMOD_SPD_SPEECH,
+					 .chan_rate = RSL_CMOD_SP_GSM3 };
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/AHS */
 
 	talloc_free(bts);
 }

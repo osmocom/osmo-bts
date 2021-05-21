@@ -854,28 +854,35 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 	return &bts->gsm_time;
 }
 
-int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
-		    enum gsm48_chan_mode cm)
+int bts_supports_cm(const struct gsm_bts *bts,
+		    const struct rsl_ie_chan_mode *cm)
 {
 	enum osmo_bts_features feature = _NUM_BTS_FEAT;
 
-	/* We assume that signalling support is mandatory,
-	 * there is no BTS_FEAT_* definition to check that. */
-	if (cm == GSM48_CMODE_SIGN)
+	switch (cm->spd_ind) {
+	case RSL_CMOD_SPD_SIGN:
+		/* We assume that signalling support is mandatory,
+		 * there is no BTS_FEAT_* definition to check that. */
 		return 1;
+	case RSL_CMOD_SPD_SPEECH:
+		break;
+	case RSL_CMOD_SPD_DATA:
+	default:
+		return 0;
+	}
 
 	/* Before the requested pchan/cm combination can be checked, we need to
 	 * convert it to a feature identifier we can check */
-	switch (pchan) {
-	case GSM_PCHAN_TCH_F:
-		switch(cm) {
-		case GSM48_CMODE_SPEECH_V1:
+	switch (cm->chan_rt) {
+	case RSL_CMOD_CRT_TCH_Bm:
+		switch (cm->chan_rate) {
+		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_F_V1;
 			break;
-		case GSM48_CMODE_SPEECH_EFR:
+		case RSL_CMOD_SP_GSM2:
 			feature	= BTS_FEAT_SPEECH_F_EFR;
 			break;
-		case GSM48_CMODE_SPEECH_AMR:
+		case RSL_CMOD_SP_GSM3:
 			feature = BTS_FEAT_SPEECH_F_AMR;
 			break;
 		default:
@@ -884,12 +891,12 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 		}
 		break;
 
-	case GSM_PCHAN_TCH_H:
-		switch(cm) {
-		case GSM48_CMODE_SPEECH_V1:
+	case RSL_CMOD_CRT_TCH_Lm:
+		switch (cm->chan_rate) {
+		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_H_V1;
 			break;
-		case GSM48_CMODE_SPEECH_AMR:
+		case RSL_CMOD_SP_GSM3:
 			feature = BTS_FEAT_SPEECH_H_AMR;
 			break;
 		default:
@@ -899,8 +906,9 @@ int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
 		break;
 
 	default:
-		LOGP(DRSL, LOGL_ERROR, "BTS %u: unhandled pchan %s when checking mode %s\n",
-		     bts->nr, gsm_pchan_name(pchan), gsm48_chan_mode_name(cm));
+		LOGP(DRSL, LOGL_ERROR,
+		     "Unhandled RSL channel type=0x%02x/rate=0x%02x\n",
+		     cm->chan_rt, cm->chan_rate);
 		return 0;
 	}
 

@@ -227,6 +227,14 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 
 #undef RSL_CMODE
 
+	if (bts_supports_cm(lchan->ts->trx->bts, cm) != 1) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel type=0x%02x/mode=%s "
+			  "is not supported by the PHY\n", cm->chan_rt,
+			  gsm48_chan_mode_name(lchan->tch_mode));
+		*cause = RSL_ERR_SERV_OPT_UNAVAIL;
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
@@ -1988,12 +1996,6 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.5 Channel Identification */
 	if (rsl_handle_chan_ident_ie(lchan, &tp, &cause) != 0)
 		return rsl_tx_mode_modif_nack(lchan, cause);
-
-	if (bts_supports_cm(lchan->ts->trx->bts, ts_pchan(lchan->ts), lchan->tch_mode) != 1) {
-		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s: invalid mode: %s (wrong BSC configuration?)\n",
-			  gsm_ts_and_pchan_name(lchan->ts), gsm48_chan_mode_name(lchan->tch_mode));
-		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_SERV_OPT_UNAVAIL);
-	}
 
 	/* 9.3.7 Encryption Information */
 	if (TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO)) {

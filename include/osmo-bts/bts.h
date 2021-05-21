@@ -400,8 +400,8 @@ struct gsm_time *get_time(struct gsm_bts *bts);
 
 int bts_main(int argc, char **argv);
 
-int bts_supports_cm(struct gsm_bts *bts, enum gsm_phys_chan_config pchan,
-		    enum gsm48_chan_mode cm);
+int bts_supports_cm(const struct gsm_bts *bts,
+		    const struct rsl_ie_chan_mode *cm);
 
 int32_t bts_get_avg_fn_advance(const struct gsm_bts *bts);
 
