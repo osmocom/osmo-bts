@@ -277,7 +277,7 @@ uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
 	if (ts->tsc != -1)
 		return ts->tsc;
 	else
-		return ts->trx->bts->bsic & 7;
+		return BTS_TSC(ts->trx->bts);
 }
 
 /* determine logical channel based on TRX and channel number IE */

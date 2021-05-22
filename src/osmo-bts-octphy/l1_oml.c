@@ -1352,7 +1352,7 @@ int l1if_trx_open(struct gsm_bts_trx *trx)
 	}
 	oc->Config.usBcchArfcn = trx->bts->c0->arfcn;
 #endif
-	oc->Config.usTsc = trx->bts->bsic & 0x7;
+	oc->Config.usTsc = BTS_TSC(trx->bts);
 	oc->RfConfig.ulRxGainDb = plink->u.octphy.rx_gain_db;
 	/* FIXME: compute this based on nominal transmit power, etc. */
 	if (plink->u.octphy.tx_atten_flag) {

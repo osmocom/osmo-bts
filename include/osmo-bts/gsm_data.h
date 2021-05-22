@@ -520,6 +520,7 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan);
 
 #define BSIC2BCC(bsic) ((bsic) & 0x07)
+#define BTS_TSC(bts) BSIC2BCC((bts)->bsic)
 
 uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts);
 

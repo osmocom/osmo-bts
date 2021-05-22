@@ -1975,10 +1975,10 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 		/* The PHY may not support using different TSCs */
 		if (!osmo_bts_has_feature(trx->bts->features, BTS_FEAT_MULTI_TSC)
-		    && cd->h0.tsc != (trx->bts->bsic & 7)) {
+		    && cd->h0.tsc != BTS_TSC(trx->bts)) {
 			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "This PHY does not support "
 				  "lchan TSC %u != BSIC-TSC %u, sending NACK\n",
-				  cd->h0.tsc, trx->bts->bsic & 7);
+				  cd->h0.tsc, BTS_TSC(trx->bts));
 			return -RSL_ERR_SERV_OPT_UNIMPL;
 		}
 	}

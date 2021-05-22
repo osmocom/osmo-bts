@@ -432,7 +432,7 @@ static int trx_init(struct gsm_bts_trx *trx)
 	dev_par->freqBand = lc15_band;
 	dev_par->u16Arfcn = trx->arfcn;
 	dev_par->u16BcchArfcn = trx->bts->c0->arfcn;
-	dev_par->u8NbTsc = trx->bts->bsic & 7;
+	dev_par->u8NbTsc = BTS_TSC(trx->bts);
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx)) {
 		/* Target is in the middle between lower and upper RxLev thresholds */
@@ -1835,9 +1835,9 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 		 * channels with a different TSC!! */
 		if (TLVP_PRESENT(new_attr, NM_ATT_TSC) &&
 		    TLVP_LEN(new_attr, NM_ATT_TSC) >= 1 &&
-		    *TLVP_VAL(new_attr, NM_ATT_TSC) != (bts->bsic & 7)) {
+		    *TLVP_VAL(new_attr, NM_ATT_TSC) != BTS_TSC(bts)) {
 			LOGP(DOML, LOGL_ERROR, "Channel TSC %u != BSIC-TSC %u\n",
-				*TLVP_VAL(new_attr, NM_ATT_TSC), bts->bsic & 7);
+				*TLVP_VAL(new_attr, NM_ATT_TSC), BTS_TSC(bts));
 			return -NM_NACK_PARAM_RANGE;
 		}
 		break;
