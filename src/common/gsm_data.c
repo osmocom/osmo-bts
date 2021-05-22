@@ -272,14 +272,6 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
 }
 
-uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts)
-{
-	if (ts->tsc != -1)
-		return ts->tsc;
-	else
-		return BTS_TSC(ts->trx->bts);
-}
-
 /* determine logical channel based on TRX and channel number IE */
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				   int *rc)

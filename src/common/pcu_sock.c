@@ -217,7 +217,7 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 			continue;
 
 		trx_info->pdch_mask |= (1 << tn);
-		trx_info->ts[tn].tsc = gsm_ts_tsc(ts);
+		trx_info->ts[tn].tsc = ts->tsc;
 
 		if (ts->hopping.enabled)
 			info_ind_fill_fhp(&trx_info->ts[tn], ts);

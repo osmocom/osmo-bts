@@ -12,6 +12,12 @@
 #define TRX_CHAN_IS_ACTIVE(state, chan) \
 	(trx_chan_desc[chan].flags & TRX_CHAN_FLAG_AUTO_ACTIVE || (state)->active)
 
+#define TRX_GMSK_NB_TSC(br) \
+	_sched_train_seq_gmsk_nb[(br)->tsc]
+
+#define TRX_8PSK_NB_TSC(br) \
+	_sched_train_seq_8psk_nb[(br)->tsc]
+
 /* These types define the different channels on a multiframe.
  * Each channel has queues and can be activated individually.
  */

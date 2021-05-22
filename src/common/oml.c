@@ -961,10 +961,10 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	/* 9.4.60 TSC */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_TSC, 1)) {
-		ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
+		ts->tsc_oml = ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
 	} else {
 		/* If there is no TSC specified, use the BCC */
-		ts->tsc = BTS_TSC(bts);
+		ts->tsc_oml = ts->tsc = BTS_TSC(bts);
 	}
 	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s",
 		ts->tsc, gsm_pchan_name(ts->pchan));

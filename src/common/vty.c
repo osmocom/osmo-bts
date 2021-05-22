@@ -1409,7 +1409,7 @@ static void ts_dump_vty(struct vty *vty, const struct gsm_bts_trx_ts *ts)
 {
 	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s, TSC %u",
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
-		gsm_pchan_name(ts->pchan), gsm_ts_tsc(ts));
+		gsm_pchan_name(ts->pchan), ts->tsc);
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
 		vty_out(vty, " (%s mode)",
 			ts->flags & TS_F_PDCH_ACTIVE ? "PDCH" : "TCH/F");

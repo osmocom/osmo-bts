@@ -86,7 +86,6 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->pchan = GSM_PCHAN_NONE;
 		ts->dyn.pchan_is = GSM_PCHAN_NONE;
 		ts->dyn.pchan_want = GSM_PCHAN_NONE;
-		ts->tsc = -1;
 
 		ts->mo.fi = osmo_fsm_inst_alloc(&nm_chan_fsm, trx, ts,
 						     LOGL_INFO, NULL);

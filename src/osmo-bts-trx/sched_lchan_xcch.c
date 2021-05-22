@@ -239,7 +239,7 @@ send_burst:
 	/* compose burst */
 	burst = *bursts_p + br->bid * 116;
 	memcpy(br->burst + 3, burst, 58);
-	memcpy(br->burst + 61, _sched_train_seq_gmsk_nb[gsm_ts_tsc(l1ts->ts)], 26);
+	memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;

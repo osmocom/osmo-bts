@@ -1218,8 +1218,8 @@ void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		return;
 
 	/* Training Sequence Code and Set */
-	br->tsc = gsm_ts_tsc(l1ts->ts);
-	br->tsc_set = 0;
+	br->tsc_set = l1ts->ts->tsc_set;
+	br->tsc = l1ts->ts->tsc;
 
 	/* get burst from function */
 	if (func(l1ts, br) != 0)

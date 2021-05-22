@@ -212,7 +212,7 @@ send_burst:
 		burst = *bursts_p + br->bid * 348;
 		memset(br->burst, 1, 9);
 		memcpy(br->burst + 9, burst, 174);
-		memcpy(br->burst + 183, _sched_train_seq_8psk_nb[gsm_ts_tsc(l1ts->ts)], 78);
+		memcpy(br->burst + 183, TRX_8PSK_NB_TSC(br), 78);
 		memcpy(br->burst + 261, burst + 174, 174);
 		memset(br->burst + 435, 1, 9);
 
@@ -220,7 +220,7 @@ send_burst:
 	} else {
 		burst = *bursts_p + br->bid * 116;
 		memcpy(br->burst + 3, burst, 58);
-		memcpy(br->burst + 61, _sched_train_seq_gmsk_nb[gsm_ts_tsc(l1ts->ts)], 26);
+		memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 		memcpy(br->burst + 87, burst + 58, 58);
 
 		br->burst_len = GSM_BURST_LEN;

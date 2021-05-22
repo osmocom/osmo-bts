@@ -441,7 +441,12 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 	struct gsm_abis_mo mo;
-	int tsc;		/* -1 == use BTS TSC */
+
+	/* Training Sequence Code (range 0..7) */
+	uint8_t tsc_oml; /* configured via OML */
+	uint8_t tsc; /* currently in use */
+	/* Training Sequence Set (range 0..3) */
+	uint8_t tsc_set;
 
 	/* Frequency hopping parameters (configured via OML) */
 	struct {
@@ -521,8 +526,6 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 
 #define BSIC2BCC(bsic) ((bsic) & 0x07)
 #define BTS_TSC(bts) BSIC2BCC((bts)->bsic)
-
-uint8_t gsm_ts_tsc(const struct gsm_bts_trx_ts *ts);
 
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				   int *rc);
