@@ -962,6 +962,13 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* 9.4.60 TSC */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_TSC, 1)) {
 		ts->tsc_oml = ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
+		if (ts->tsc != BTS_TSC(bts) &&
+		    !osmo_bts_has_feature(bts->features, BTS_FEAT_MULTI_TSC)) {
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: this BTS model does not "
+				"support TSC %u != BSIC-BCC %u\n", ts->tsc, BTS_TSC(bts));
+			talloc_free(tp_merged);
+			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
+		}
 	} else {
 		/* If there is no TSC specified, use the BCC */
 		ts->tsc_oml = ts->tsc = BTS_TSC(bts);
