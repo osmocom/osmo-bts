@@ -34,7 +34,7 @@ int trx_if_cmd_getnompower(struct trx_l1h *l1h, trx_if_cmd_getnompower_cb *cb);
 int trx_if_cmd_setpower_att(struct trx_l1h *l1h, int power_att_db, trx_if_cmd_setpower_att_cb *cb);
 int trx_if_cmd_setmaxdly(struct trx_l1h *l1h, int dly);
 int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly);
-int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb);
+int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, trx_if_cmd_setslot_cb *cb);
 int trx_if_cmd_rxtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb);
 int trx_if_cmd_txtune(struct trx_l1h *l1h, uint16_t arfcn, trx_if_cmd_generic_cb *cb);
 int trx_if_cmd_handover(struct trx_l1h *l1h, uint8_t tn, uint8_t ss);

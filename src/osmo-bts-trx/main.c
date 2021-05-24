@@ -145,6 +145,7 @@ int bts_model_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_HOPPING);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ACCH_REP);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_MULTI_TSC);
 
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB);
 

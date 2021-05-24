@@ -8,6 +8,7 @@
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
  * Copyright (C) 2016-2017  Harald Welte <laforge@gnumonks.org>
  * Copyright (C) 2019  Vadim Yanitskiy <axilirator@gmail.com>
+ * Copyright (C) 2021  sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -326,10 +327,21 @@ int trx_if_cmd_setmaxdlynb(struct trx_l1h *l1h, int dly)
 	return trx_ctrl_cmd(l1h, 0, "SETMAXDLYNB", "%d", dly);
 }
 
-/*! Send "SETSLOT" command to TRX: Configure Channel Combination for TS */
-int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn, uint8_t type, trx_if_cmd_setslot_cb *cb)
+/*! Send "SETSLOT" command to TRX: Configure Channel Combination and TSC for TS */
+int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn,
+		       trx_if_cmd_setslot_cb *cb)
 {
-	return trx_ctrl_cmd_cb(l1h, 1, cb, "SETSLOT", "%d %d", tn, type);
+	const struct trx_config *cfg = &l1h->config;
+
+	if (cfg->setslot[tn].tsc_valid) { /* PHY is instructed to use a custom TSC */
+		return trx_ctrl_cmd_cb(l1h, 1, cb, "SETSLOT", "%u %u C%u/S%u",
+				       tn, cfg->setslot[tn].slottype,
+				       cfg->setslot[tn].tsc_val,
+				       cfg->setslot[tn].tsc_set);
+       } else { /* PHY is instructed to use the default TSC from 'SETTSC' */
+		return trx_ctrl_cmd_cb(l1h, 1, cb, "SETSLOT", "%u %u",
+				       tn, cfg->setslot[tn].slottype);
+	}
 }
 
 /*! Send "RXTUNE" command to TRX: Tune Receiver to given ARFCN */

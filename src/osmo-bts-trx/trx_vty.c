@@ -127,16 +127,23 @@ static void show_phy_inst_single(struct vty *vty, struct phy_instance *pinst)
 	else
 		vty_out(vty, " maxdlynb : undefined%s", VTY_NEWLINE);
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
-		if (!((1 << tn) & l1h->config.slotmask))
+		if (!((1 << tn) & l1h->config.slotmask)) {
 			vty_out(vty, " slot #%d: unsupported%s", tn,
 				VTY_NEWLINE);
-		else if (l1h->config.slottype_valid[tn])
-			vty_out(vty, " slot #%d: type %d%s", tn,
-				l1h->config.slottype[tn],
-				VTY_NEWLINE);
-		else
+			continue;
+		} else if (!l1h->config.setslot_valid[tn]) {
 			vty_out(vty, " slot #%d: undefined%s", tn,
 				VTY_NEWLINE);
+			continue;
+		}
+
+		vty_out(vty, " slot #%d: type %d", tn,
+			l1h->config.setslot[tn].slottype);
+		if (l1h->config.setslot[tn].tsc_valid)
+			vty_out(vty, " TSC-s%dc%d",
+				l1h->config.setslot[tn].tsc_set,
+				l1h->config.setslot[tn].tsc_val);
+		vty_out(vty, "%s", VTY_NEWLINE);
 	}
 }
 

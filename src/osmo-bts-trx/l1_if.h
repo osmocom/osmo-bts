@@ -105,9 +105,14 @@ struct trx_config {
 
 	uint8_t			slotmask;
 
-	bool			slottype_valid[TRX_NR_TS];
-	uint8_t			slottype[TRX_NR_TS];
-	bool			slottype_sent[TRX_NR_TS];
+	bool			setslot_valid[TRX_NR_TS];
+	struct {
+		uint8_t slottype;
+		uint8_t tsc_set;
+		uint8_t tsc_val;
+		bool tsc_valid;
+	}			setslot[TRX_NR_TS];
+	bool			setslot_sent[TRX_NR_TS];
 };
 
 struct trx_l1h {

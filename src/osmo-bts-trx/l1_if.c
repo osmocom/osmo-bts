@@ -271,14 +271,8 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 	struct phy_instance *pinst = trx_phy_instance(ts->trx);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint8_t tn = ts->nr;
-	uint16_t tsc = ts->tsc;
 	uint8_t slottype;
 	int rc;
-
-	/* all TSC of all timeslots must be equal, because transceiver only
-	 * supports one TSC per TRX */
-
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_TSC, (void*)(intptr_t)tsc);
 
 	/* ignore disabled slots */
 	if (!(l1h->config.slotmask & (1 << tn)))
@@ -303,6 +297,13 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 
 
 	struct trx_prov_ev_cfg_ts_data data = { .tn = tn, .slottype = slottype };
+	if (ts->tsc_set != 0 || ts->tsc != BTS_TSC(ts->trx->bts)) {
+		/* On TRXC we use 3GPP compliant numbering, so +1 */
+		data.tsc_set = ts->tsc_set + 1;
+		data.tsc_val = ts->tsc;
+		data.tsc_valid = true;
+	}
+
 	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_TS, &data);
 
 	return 0;

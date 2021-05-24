@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include <osmocom/core/fsm.h>
 
 enum trx_provision_fsm_states {
@@ -35,6 +37,11 @@ enum trx_provision_fsm_states {
 struct trx_prov_ev_cfg_ts_data {
 	uint8_t tn;
 	uint8_t slottype;
+
+	/* Training Sequence Code and Set */
+	uint8_t tsc_set;
+	uint8_t tsc_val;
+	bool tsc_valid;
 };
 
 enum trx_provision_fsm_events {

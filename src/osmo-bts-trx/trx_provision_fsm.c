@@ -191,17 +191,15 @@ static void l1if_setslot_cb(struct trx_l1h *l1h, uint8_t tn, uint8_t type, int r
 	cb_ts_connected(ts, rc);
 }
 
-/* Returns true if any TS changed, false otherwise */
-static bool update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data* ts_data) {
+static void update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data *data)
+{
+	l1h->config.setslot[data->tn].slottype = data->slottype;
+	l1h->config.setslot[data->tn].tsc_set = data->tsc_set;
+	l1h->config.setslot[data->tn].tsc_val = data->tsc_val;
+	l1h->config.setslot[data->tn].tsc_valid = data->tsc_valid;
 
-	if (l1h->config.slottype[ts_data->tn] != ts_data->slottype ||
-	    !l1h->config.slottype_valid[ts_data->tn]) {
-		l1h->config.slottype[ts_data->tn] = ts_data->slottype;
-		l1h->config.slottype_valid[ts_data->tn] = true;
-		l1h->config.slottype_sent[ts_data->tn] = false;
-		return true;
-	}
-	return false;
+	l1h->config.setslot_valid[data->tn] = true;
+	l1h->config.setslot_sent[data->tn] = false;
 }
 
 /* Whether a given TRX is fully configured and can be powered on */
@@ -290,9 +288,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct gsm_bts_trx *trx = pinst->trx;
-	uint8_t bsic;
 	uint16_t arfcn;
-	uint16_t tsc;
 	int nominal_power;
 	int status;
 	bool others_ready;
@@ -302,11 +298,21 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		l1h->config.enabled =(bool)data;
 		break;
 	case TRX_PROV_EV_CFG_BSIC:
-		bsic = (uint8_t)(intptr_t)data;
-		if (l1h->config.bsic != bsic || !l1h->config.bsic_valid) {
-			l1h->config.bsic = bsic;
-			l1h->config.bsic_valid = true;
-			l1h->config.bsic_sent = false;
+		/* We always get BSIC from the BSC, TSC can be derived from the BCC */
+		if (!pinst->phy_link->u.osmotrx.use_legacy_setbsic) {
+			const uint8_t tsc = BSIC2BCC((uint8_t)(intptr_t)data);
+			if (l1h->config.tsc != tsc || !l1h->config.tsc_valid) {
+				l1h->config.tsc = tsc;
+				l1h->config.tsc_valid = true;
+				l1h->config.tsc_sent = false;
+			}
+		} else {
+			const uint8_t bsic = (uint8_t)(intptr_t)data;
+			if (l1h->config.bsic != bsic || !l1h->config.bsic_valid) {
+				l1h->config.bsic = bsic;
+				l1h->config.bsic_valid = true;
+				l1h->config.bsic_sent = false;
+			}
 		}
 		break;
 	case TRX_PROV_EV_CFG_ARFCN:
@@ -317,14 +323,6 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.txtune_sent = false;
 			l1h->config.rxtune_sent = false;
 			l1h->config.nomtxpower_sent = false;
-		}
-		break;
-	case TRX_PROV_EV_CFG_TSC:
-		tsc = (uint16_t)(intptr_t)data;
-		if (l1h->config.tsc != tsc || !l1h->config.tsc_valid) {
-			l1h->config.tsc = tsc;
-			l1h->config.tsc_valid = true;
-			l1h->config.tsc_sent = false;
 		}
 		break;
 	case TRX_PROV_EV_CFG_TS:
@@ -478,11 +476,10 @@ static void st_open_poweron_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_sta
 	}
 
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
-		if (l1h->config.slottype_valid[tn]
-		 && !l1h->config.slottype_sent[tn]) {
-			trx_if_cmd_setslot(l1h, tn,
-				l1h->config.slottype[tn], l1if_setslot_cb);
-			l1h->config.slottype_sent[tn] = true;
+		if (l1h->config.setslot_valid[tn]
+		 && !l1h->config.setslot_sent[tn]) {
+			trx_if_cmd_setslot(l1h, tn, l1if_setslot_cb);
+			l1h->config.setslot_sent[tn] = true;
 		}
 	}
 }
@@ -507,7 +504,7 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 			l1h->config.maxdly_sent = false;
 			l1h->config.maxdlynb_sent = false;
 			for (tn = 0; tn < TRX_NR_TS; tn++)
-				l1h->config.slottype_sent[tn] = false;
+				l1h->config.setslot_sent[tn] = false;
 		} else if (!pinst->phy_link->u.osmotrx.poweronoff_sent) {
 			bts_model_trx_close_cb(pinst->trx, 0);
 		} /* else: poweroff in progress, cb will be called upon TRXC RSP */
@@ -519,12 +516,10 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 		break;
 	case TRX_PROV_EV_CFG_TS:
 		ts_data = (struct trx_prov_ev_cfg_ts_data*)data;
-		if (update_ts_data(l1h, ts_data)) {
-			trx_if_cmd_setslot(l1h, ts_data->tn,
-				l1h->config.slottype[ ts_data->tn], l1if_setslot_cb);
-			l1h->config.slottype_sent[ts_data->tn] = true;
-		}
-
+		update_ts_data(l1h, ts_data);
+		/* While in this state we can send SETSLOT immediately */
+		trx_if_cmd_setslot(l1h, ts_data->tn, l1if_setslot_cb);
+		l1h->config.setslot_sent[ts_data->tn] = true;
 		break;
 	default:
 		OSMO_ASSERT(0);
@@ -571,7 +566,6 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 			X(TRX_PROV_EV_CFG_ENABLE) |
 			X(TRX_PROV_EV_CFG_BSIC) |
 			X(TRX_PROV_EV_CFG_ARFCN) |
-			X(TRX_PROV_EV_CFG_TSC) |
 			X(TRX_PROV_EV_CFG_TS) |
 			X(TRX_PROV_EV_RXTUNE_CNF) |
 			X(TRX_PROV_EV_TXTUNE_CNF) |
@@ -623,7 +617,6 @@ const struct value_string trx_prov_fsm_event_names[] = {
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_ENABLE),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_BSIC),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_ARFCN),
-	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_TSC),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_TS),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_RXGAIN),
 	OSMO_VALUE_STRING(TRX_PROV_EV_CFG_SETMAXDLY),
