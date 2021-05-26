@@ -118,6 +118,8 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		return g_bts->oml_link;
 
 	case E1INP_SIGN_RSL:
+		/* fall through to default to catch TRXn having type = E1INP_SIGN_RSL + n  */
+	default:
 		trx_nr = type - E1INP_SIGN_RSL;
 		sign_ts = e1inp_line_ipa_rsl_ts(line, trx_nr);
 		LOGP(DABIS, LOGL_INFO, "RSL Signalling link for TRX%d up\n",
@@ -133,10 +135,6 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 						       trx, trx->rsl_tei, 0);
 		trx_link_estab(trx);
 		return trx->rsl_link;
-
-	default:
-		LOGP(DABIS, LOGL_ERROR, "Unknwon Signalling link up %d\n", (int)type);
-		return NULL;
 	}
 	return NULL;
 }
