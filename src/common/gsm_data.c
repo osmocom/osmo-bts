@@ -187,16 +187,15 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 		OSMO_ASSERT(lchan_nr == 0);
-		cbits = 0x01;
+		cbits = ABIS_RSL_CHAN_NR_CBITS_Bm_ACCHs;
 		break;
 	case GSM_PCHAN_PDCH:
 		OSMO_ASSERT(lchan_nr == 0);
-		cbits = RSL_CHAN_OSMO_PDCH >> 3;
+		cbits = ABIS_RSL_CHAN_NR_CBITS_OSMO_PDCH;
 		break;
 	case GSM_PCHAN_TCH_H:
 		OSMO_ASSERT(lchan_nr < 2);
-		cbits = 0x02;
-		cbits += lchan_nr;
+		cbits = ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(lchan_nr);
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
@@ -206,21 +205,19 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		 * See osmo-bts-xxx/oml.c:opstart_compl().
 		 */
 		if (lchan_nr == CCCH_LCHAN)
-			cbits = 0x10; /* BCCH */
+			cbits = ABIS_RSL_CHAN_NR_CBITS_BCCH;
 		else {
 			OSMO_ASSERT(lchan_nr < 4);
-			cbits = 0x04;
-			cbits += lchan_nr;
+			cbits = ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(lchan_nr);
 		}
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
 		OSMO_ASSERT(lchan_nr < 8);
-		cbits = 0x08;
-		cbits += lchan_nr;
+		cbits = ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(lchan_nr);
 		break;
 	case GSM_PCHAN_CCCH:
-		cbits = 0x10;
+		cbits = ABIS_RSL_CHAN_NR_CBITS_BCCH;
 		break;
 	case GSM_PCHAN_NONE:
 		LOGP(DRSL, LOGL_ERROR, "Physical channel %s not expected!\n",
