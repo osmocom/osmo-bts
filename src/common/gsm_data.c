@@ -282,41 +282,62 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	if (rc)
 		*rc = -EINVAL;
 
-	if (cbits == ABIS_RSL_CHAN_NR_CBITS_Bm_ACCHs) {
+	switch (cbits) {
+	case ABIS_RSL_CHAN_NR_CBITS_Bm_ACCHs:
 		lch_idx = 0;	/* TCH/F */
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
 		    ts->pchan != GSM_PCHAN_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
 			ok = false;
-	} else if ((cbits & 0x1e) == ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(0)) {
+		break;
+	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(0):
+	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(1):
 		lch_idx = cbits & 0x1;	/* TCH/H */
 		if (ts->pchan != GSM_PCHAN_TCH_H &&
 		    ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
 			ok = false;
-	} else if ((cbits & 0x1c) == ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(0)) {
+		break;
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(0):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(1):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(2):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(3):
 		lch_idx = cbits & 0x3;	/* SDCCH/4 */
 		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
 		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 			ok = false;
-	} else if ((cbits & 0x18) == ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(0)) {
+		break;
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(0):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(1):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(2):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(3):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(4):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(5):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(6):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(7):
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
 		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
 		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
 			ok = false;
-	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
+		break;
+	case ABIS_RSL_CHAN_NR_CBITS_BCCH:
+	case ABIS_RSL_CHAN_NR_CBITS_RACH:
+	case ABIS_RSL_CHAN_NR_CBITS_PCH_AGCH:
 		lch_idx = 0;
 		if (ts->pchan != GSM_PCHAN_CCCH &&
 		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4 &&
 		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4_CBCH)
 			ok = false;
 		/* FIXME: we should not return first sdcch4 !!! */
-	} else if ((chan_nr & RSL_CHAN_NR_MASK) == RSL_CHAN_OSMO_PDCH) {
+		break;
+	case ABIS_RSL_CHAN_NR_CBITS_OSMO_PDCH:
 		lch_idx = 0;
 		if (ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
 			ok = false;
-	} else
+		break;
+	default:
 		return NULL;
+	}
 
 	if (rc && ok)
 		*rc = 0;
