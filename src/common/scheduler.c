@@ -744,6 +744,10 @@ int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 	struct osmo_phsap_prim *l1sap;
 	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | l1ts->ts->nr;
 
+	/* VAMOS: use Osmocom specific channel number */
+	if (l1ts->ts->vamos.is_shadow)
+		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
+
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(l2_len);
 	l1sap = msgb_l1sap_prim(msg);
@@ -779,6 +783,10 @@ int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 	struct osmo_phsap_prim *l1sap;
 	uint8_t chan_nr = trx_chan_desc[chan].chan_nr | l1ts->ts->nr;
 	struct gsm_lchan *lchan = &l1ts->ts->lchan[l1sap_chan2ss(chan_nr)];
+
+	/* VAMOS: use Osmocom specific channel number */
+	if (l1ts->ts->vamos.is_shadow)
+		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* compose primitive */
 	msg = l1sap_msgb_alloc(tch_len);
@@ -831,6 +839,10 @@ int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap
 		return 0;
 	}
 
+	/* VAMOS: convert Osmocom specific channel number to a generic one */
+	if (trx->ts[tn].vamos.is_shadow)
+		l1sap->u.data.chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
+
 	msgb_enqueue(&l1ts->dl_prims, l1sap->oph.msg);
 
 	return 0;
@@ -853,6 +865,10 @@ int trx_sched_tch_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		return 0;
 	}
 
+	/* VAMOS: convert Osmocom specific channel number to a generic one */
+	if (trx->ts[tn].vamos.is_shadow)
+		l1sap->u.tch.chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
+
 	msgb_enqueue(&l1ts->dl_prims, l1sap->oph.msg);
 
 	return 0;
@@ -873,6 +889,11 @@ static int rts_data_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_
 	/* get data for RTS indication */
 	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
 	link_id = trx_chan_desc[br->chan].link_id;
+
+
+	/* VAMOS: use Osmocom specific channel number */
+	if (l1ts->ts->vamos.is_shadow)
+		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* For handover detection, there are cases where the SACCH should remain inactive until the first RACH
 	 * indicating the TA is received. */
@@ -908,6 +929,11 @@ static int rts_tch_common(const struct l1sched_ts *l1ts,
 	/* get data for RTS indication */
 	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
 	link_id = trx_chan_desc[br->chan].link_id;
+
+
+	/* VAMOS: use Osmocom specific channel number */
+	if (l1ts->ts->vamos.is_shadow)
+		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
 
@@ -1018,6 +1044,11 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 	bool found = false;
 	int i;
 
+	/* VAMOS: convert Osmocom specific channel number to a generic one,
+	 * otherwise we won't match anything in trx_chan_desc[]. */
+	if (lchan->ts->vamos.is_shadow)
+		chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
+
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		struct l1sched_chan_state *chan_state = &l1ts->chan_state[i];
@@ -1081,6 +1112,11 @@ int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_c
 	if (ts->pchan == GSM_PCHAN_PDCH)
 		return 0;
 
+	/* VAMOS: convert Osmocom specific channel number to a generic one,
+	 * otherwise we won't match anything in trx_chan_desc[]. */
+	if (ts->vamos.is_shadow)
+		chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
+
 	/* look for all matching chan_nr/link_id */
 	for (i = 0; i < _TRX_CHAN_MAX; i++) {
 		if (trx_chan_desc[i].chan_nr == (chan_nr & 0xf8)
@@ -1132,6 +1168,11 @@ int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink
 	/* no cipher for PDCH */
 	if (lchan->ts->pchan == GSM_PCHAN_PDCH)
 		return 0;
+
+	/* VAMOS: convert Osmocom specific channel number to a generic one,
+	 * otherwise we won't match anything in trx_chan_desc[]. */
+	if (lchan->ts->vamos.is_shadow)
+		chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* no algorithm given means a5/0 */
 	if (algo <= 0)

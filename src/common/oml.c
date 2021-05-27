@@ -837,9 +837,17 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 		ts->lchan[CCCH_LCHAN].type = GSM_LCHAN_CBCH;
 		break;
 	case GSM_PCHAN_TCH_F:
+		if (ts->vamos.peer != NULL) { /* VAMOS: enable shadow lchans */
+			lchans_type_set(ts->vamos.peer, GSM_LCHAN_TCH_F, 1);
+			ts->vamos.peer->pchan = GSM_PCHAN_TCH_F;
+		}
 		lchans_type_set(ts, GSM_LCHAN_TCH_F, 1);
 		break;
 	case GSM_PCHAN_TCH_H:
+		if (ts->vamos.peer != NULL) { /* VAMOS: enable shadow lchans */
+			lchans_type_set(ts->vamos.peer, GSM_LCHAN_TCH_H, 2);
+			ts->vamos.peer->pchan = GSM_PCHAN_TCH_H;
+		}
 		lchans_type_set(ts, GSM_LCHAN_TCH_H, 2);
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
@@ -849,6 +857,10 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 			ts->lchan[2].type = GSM_LCHAN_CBCH;
 		break;
 	case GSM_PCHAN_PDCH:
+		if (ts->vamos.peer != NULL) { /* VAMOS: disable shadow lchans */
+			lchans_type_set(ts->vamos.peer, GSM_LCHAN_NONE, 1);
+			ts->vamos.peer->pchan = GSM_PCHAN_NONE;
+		}
 		lchans_type_set(ts, GSM_LCHAN_PDTCH, 1);
 		break;
 	default:

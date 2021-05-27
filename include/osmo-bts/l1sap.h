@@ -19,9 +19,11 @@
 #define L1SAP_IS_LINK_SACCH(link_id) \
 	((link_id & 0xC0) == LID_SACCH)
 #define L1SAP_IS_CHAN_TCHF(chan_nr) \
-	((chan_nr & 0xf8) == RSL_CHAN_Bm_ACCHs)
+	((chan_nr & 0xf8) == RSL_CHAN_Bm_ACCHs || \
+	 (chan_nr & 0xf8) == RSL_CHAN_OSMO_VAMOS_Bm_ACCHs)
 #define L1SAP_IS_CHAN_TCHH(chan_nr) \
-	((chan_nr & 0xf0) == RSL_CHAN_Lm_ACCHs)
+	((chan_nr & 0xf0) == RSL_CHAN_Lm_ACCHs || \
+	 (chan_nr & 0xf0) == RSL_CHAN_OSMO_VAMOS_Lm_ACCHs)
 #define L1SAP_IS_CHAN_SDCCH4(chan_nr) \
 	((chan_nr & 0xe0) == RSL_CHAN_SDCCH4_ACCH)
 #define L1SAP_IS_CHAN_SDCCH8(chan_nr) \
@@ -37,6 +39,9 @@
 #define L1SAP_IS_CHAN_CBCH(chan_nr) \
 	((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH4) \
 	|| ((chan_nr & 0xf8) == RSL_CHAN_OSMO_CBCH8)
+#define L1SAP_IS_CHAN_VAMOS(chan_nr) \
+	((chan_nr & 0xf8) == RSL_CHAN_OSMO_VAMOS_Bm_ACCHs || \
+	 (chan_nr & 0xf0) == RSL_CHAN_OSMO_VAMOS_Lm_ACCHs)
 
 /* rach type from ra */
 #define L1SAP_IS_PACKET_RACH(ra) ((ra & 0xf0) == 0x70 && (ra & 0x0f) != 0x0f)

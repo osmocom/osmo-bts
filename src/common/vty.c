@@ -1642,8 +1642,9 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	struct in_addr ia;
 
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u: Type %s%s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u (%s), Lchan %u: Type %s%s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		lchan->ts->vamos.is_shadow ? "shadow" : "primary",
 		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
 	/* show dyn TS details, if applicable */
 	switch (lchan->ts->pchan) {
@@ -1718,8 +1719,9 @@ static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	const struct gsm_meas_rep_unidir *mru = &lchan->meas.ul_res;
 
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u %s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u (%s) %s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		lchan->ts->vamos.is_shadow ? "shadow" : "primary",
 		gsm_pchan_name(lchan->ts->pchan));
 	vty_out_dyn_ts_status(vty, lchan->ts);
 	vty_out(vty, ", Lchan %u, Type %s, State %s - "
@@ -1760,6 +1762,8 @@ static int dump_lchan_trx(const struct gsm_bts_trx *trx, struct vty *vty,
 	for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 		const struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 		dump_lchan_trx_ts(ts, vty, dump_cb);
+		if (ts->vamos.peer != NULL) /* VAMOS: shadow timeslot */
+			dump_lchan_trx_ts(ts->vamos.peer, vty, dump_cb);
 	}
 
 	return CMD_SUCCESS;
@@ -1870,7 +1874,8 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	int bts_nr = atoi(argv[idx+0]);
 	int trx_nr = atoi(argv[idx+1]);
 	int ts_nr = atoi(argv[idx+2]);
-	int lchan_nr = atoi(argv[idx+3]);
+	bool shadow = argv[idx+3][0] == 's';
+	int lchan_nr = atoi(argv[idx+4]);
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
@@ -1886,6 +1891,11 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	if (ts_nr >= ARRAY_SIZE(trx->ts))
 		return NULL;
 	ts = &trx->ts[ts_nr];
+	if (shadow) { /* VAMOS shadow */
+		if (ts->vamos.peer == NULL)
+			return NULL;
+		ts = ts->vamos.peer;
+	}
 
 	if (lchan_nr >= ARRAY_SIZE(ts->lchan))
 		return NULL;
@@ -1894,7 +1904,7 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 }
 
 #define BTS_T_T_L_CMD \
-	"bts <0-0> trx <0-255> ts <0-7> lchan <0-7>"
+	"bts <0-0> trx <0-255> ts <0-7> (lchan|shadow-lchan) <0-7>"
 #define BTS_T_T_L_STR			\
 	"BTS related commands\n"	\
 	"BTS number\n"			\
@@ -1902,7 +1912,8 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	"TRX number\n"			\
 	"timeslot related commands\n"	\
 	"timeslot number\n"		\
-	"logical channel commands\n"	\
+	"Primary logical channel commands\n"	\
+	"Shadow logical channel commands\n"	\
 	"logical channel number\n"
 
 DEFUN(cfg_bts_gsmtap_remote_host,

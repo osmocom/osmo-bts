@@ -463,6 +463,13 @@ struct gsm_bts_trx_ts {
 	/* Implementation specific structure(s) */
 	void *priv;
 
+	/* VAMOS specific fields */
+	struct {
+		/* NULL if BTS_FEAT_VAMOS is not set */
+		struct gsm_bts_trx_ts *peer;
+		bool is_shadow;
+	} vamos;
+
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
@@ -514,6 +521,12 @@ char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts);
 void gsm_lchan_name_update(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
+
+#define GSM_TS_NAME_FMT \
+	"bts=%u,trx=%u,ts=%u" "%s"
+#define GSM_TS_NAME_ARGS(ts) \
+	(ts)->trx->bts->nr, (ts)->trx->nr, (ts)->nr, \
+	(ts)->vamos.is_shadow ? ",shadow" : ""
 
 static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 {

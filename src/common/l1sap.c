@@ -95,18 +95,25 @@ unsigned int l1sap_fn2ccch_block(uint32_t fn)
 struct gsm_lchan *get_lchan_by_chan_nr(struct gsm_bts_trx *trx,
 				       unsigned int chan_nr)
 {
+	struct gsm_bts_trx_ts *ts;
 	unsigned int tn, ss;
 
 	tn = L1SAP_CHAN2TS(chan_nr);
-	OSMO_ASSERT(tn < ARRAY_SIZE(trx->ts));
+	ts = &trx->ts[tn];
+
+	if (L1SAP_IS_CHAN_VAMOS(chan_nr)) {
+		if (ts->vamos.peer == NULL)
+			return NULL;
+		ts = ts->vamos.peer;
+	}
 
 	if (L1SAP_IS_CHAN_CBCH(chan_nr))
 		ss = 2; /* CBCH is always on sub-slot 2 */
 	else
 		ss = l1sap_chan2ss(chan_nr);
-	OSMO_ASSERT(ss < ARRAY_SIZE(trx->ts[tn].lchan));
+	OSMO_ASSERT(ss < ARRAY_SIZE(ts->lchan));
 
-	return &trx->ts[tn].lchan[ss];
+	return &ts->lchan[ss];
 }
 
 static struct gsm_lchan *
@@ -1986,18 +1993,22 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 
 	/* Init DTX DL FSM if necessary */
 	if (trx->bts->dtxd && lchan->type != GSM_LCHAN_SDCCH) {
-		char name[32];
-		snprintf(name, sizeof(name), "bts%u-trx%u-ts%u-ss%u",
-			 trx->bts->nr, trx->nr, lchan->ts->nr, lchan->nr);
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
 								tall_bts_ctx,
 								lchan,
 								LOGL_DEBUG,
-								name);
+								NULL);
 		if (!lchan->tch.dtx.dl_amr_fsm) {
 			l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE, 0);
 			return -RSL_ERR_EQUIPMENT_FAIL;
 		}
+
+		rc = osmo_fsm_inst_update_id_f(lchan->tch.dtx.dl_amr_fsm,
+					       "bts%u-trx%u-ts%u-ss%u%s",
+					       trx->bts->nr, trx->nr,
+					       lchan->ts->nr, lchan->nr,
+					       lchan->ts->vamos.is_shadow ? "-shadow" : "");
+		OSMO_ASSERT(rc == 0);
 	}
 	return 0;
 }

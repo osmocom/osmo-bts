@@ -107,11 +107,11 @@ const char *gsm_lchans_name(enum gsm_lchan_state s)
 
 static char ts2str[255];
 
-
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
 {
-	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
-		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
+	snprintf(ts2str, sizeof(ts2str),
+		 "(" GSM_TS_NAME_FMT ")",
+		 GSM_TS_NAME_ARGS(ts));
 
 	return ts2str;
 }
@@ -123,15 +123,14 @@ char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
 			snprintf(ts2str, sizeof(ts2str),
-				 "(bts=%d,trx=%d,ts=%d,pchan=%s as %s)",
-				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 "(" GSM_TS_NAME_FMT ",pchan=%s as %s)",
+				 GSM_TS_NAME_ARGS(ts),
 				 gsm_pchan_name(ts->pchan),
 				 gsm_pchan_name(ts->dyn.pchan_is));
 		else
 			snprintf(ts2str, sizeof(ts2str),
-				 "(bts=%d,trx=%d,ts=%d,pchan=%s"
-				 " switching %s -> %s)",
-				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 "(" GSM_TS_NAME_FMT ",pchan=%s switching %s -> %s)",
+				 GSM_TS_NAME_ARGS(ts),
 				 gsm_pchan_name(ts->pchan),
 				 gsm_pchan_name(ts->dyn.pchan_is),
 				 gsm_pchan_name(ts->dyn.pchan_want));
@@ -139,16 +138,15 @@ char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
 	case GSM_PCHAN_TCH_F_PDCH:
 		if ((ts->flags & TS_F_PDCH_PENDING_MASK) == 0)
 			snprintf(ts2str, sizeof(ts2str),
-				 "(bts=%d,trx=%d,ts=%d,pchan=%s as %s)",
-				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 "(" GSM_TS_NAME_FMT ",pchan=%s as %s)",
+				 GSM_TS_NAME_ARGS(ts),
 				 gsm_pchan_name(ts->pchan),
 				 (ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
 							       : "TCH/F");
 		else
 			snprintf(ts2str, sizeof(ts2str),
-				 "(bts=%d,trx=%d,ts=%d,pchan=%s"
-				 " switching %s -> %s)",
-				 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+				 "(" GSM_TS_NAME_FMT ",pchan=%s switching %s -> %s)",
+				 GSM_TS_NAME_ARGS(ts),
 				 gsm_pchan_name(ts->pchan),
 				 (ts->flags & TS_F_PDCH_ACTIVE)? "PDCH"
 							       : "TCH/F",
@@ -156,9 +154,8 @@ char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
 								    : "TCH/F");
 		break;
 	default:
-		snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,pchan=%s)",
-			 ts->trx->bts->nr, ts->trx->nr, ts->nr,
-			 gsm_pchan_name(ts->pchan));
+		snprintf(ts2str, sizeof(ts2str), "(" GSM_TS_NAME_FMT ",pchan=%s)",
+			 GSM_TS_NAME_ARGS(ts), gsm_pchan_name(ts->pchan));
 		break;
 	}
 
@@ -171,8 +168,8 @@ void gsm_lchan_name_update(struct gsm_lchan *lchan)
 	const struct gsm_bts_trx *trx = ts->trx;
 	char *name;
 
-	name = talloc_asprintf(trx, "(bts=%u,trx=%u,ts=%u,ss=%u)",
-			       trx->bts->nr, trx->nr, ts->nr, lchan->nr);
+	name = talloc_asprintf(trx, "(" GSM_TS_NAME_FMT ",ss=%u)",
+			       GSM_TS_NAME_ARGS(ts), lchan->nr);
 	if (lchan->name != NULL)
 		talloc_free(lchan->name);
 	lchan->name = name;
@@ -248,19 +245,30 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 {
+	uint8_t chan_nr;
+
 	switch (lchan->ts->pchan) {
 	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
 		/* Return chan_nr reflecting the current TS pchan, either a standard TCH kind, or the
 		 * nonstandard value reflecting PDCH for Osmocom style dyn TS. */
-		return gsm_lchan_as_pchan2chan_nr(lchan,
-						  lchan->ts->dyn.pchan_is);
+		chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, lchan->ts->dyn.pchan_is);
+		break;
 	case GSM_PCHAN_TCH_F_PDCH:
 		/* For ip.access style dyn TS, we always want to use the chan_nr as if it was TCH/F.
 		 * We're using custom PDCH ACT and DEACT messages that use the usual chan_nr values. */
-		return gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+		chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+		break;
 	default:
-		return gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
+		chan_nr = gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
+		break;
 	}
+
+	/* VAMOS: if this lchan belongs to a shadow timeslot, we must reflect
+	 * this in the channel number.  Convert it to Osmocom specific value. */
+	if (lchan->ts->vamos.is_shadow)
+		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
+
+	return chan_nr;
 }
 
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
@@ -286,6 +294,11 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		*rc = -EINVAL;
 
 	switch (cbits) {
+	case ABIS_RSL_CHAN_NR_CBITS_OSMO_VAMOS_Bm_ACCHs:
+		if (ts->vamos.peer == NULL)
+			return NULL;
+		ts = ts->vamos.peer;
+		/* fall-through */
 	case ABIS_RSL_CHAN_NR_CBITS_Bm_ACCHs:
 		lch_idx = 0;	/* TCH/F */
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
@@ -294,6 +307,12 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		    ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
 			ok = false;
 		break;
+	case ABIS_RSL_CHAN_NR_CBITS_OSMO_VAMOS_Lm_ACCHs(0):
+	case ABIS_RSL_CHAN_NR_CBITS_OSMO_VAMOS_Lm_ACCHs(1):
+		if (ts->vamos.peer == NULL)
+			return NULL;
+		ts = ts->vamos.peer;
+		/* fall-through */
 	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(0):
 	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(1):
 		lch_idx = cbits & 0x1;	/* TCH/H */

@@ -1,5 +1,5 @@
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2020 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
+ * (C) 2020-2021 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -52,10 +52,76 @@ static int gsm_bts_trx_talloc_destructor(struct gsm_bts_trx *trx)
 	return 0;
 }
 
+/* Initialize all logical channels of the given timeslot */
+static void gsm_bts_trx_ts_init_lchan(struct gsm_bts_trx_ts *ts)
+{
+	unsigned int ln;
+
+	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+		struct gsm_lchan *lchan = &ts->lchan[ln];
+
+		lchan->ts = ts;
+		lchan->nr = ln;
+		lchan->type = GSM_LCHAN_NONE;
+		gsm_lchan_name_update(lchan);
+
+		INIT_LLIST_HEAD(&lchan->sapi_cmds);
+		INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+	}
+}
+
+/* Initialize primary timeslots of the given transceiver */
+static void gsm_bts_trx_init_ts(struct gsm_bts_trx *trx)
+{
+	unsigned int tn;
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+
+		ts->trx = trx;
+		ts->nr = tn;
+
+		ts->mo.fi = osmo_fsm_inst_alloc(&nm_chan_fsm, trx, ts,
+						LOGL_INFO, NULL);
+		osmo_fsm_inst_update_id_f(ts->mo.fi, "%s-ts%u",
+					  trx->bb_transc.mo.fi->id, ts->nr);
+		gsm_mo_init(&ts->mo, trx->bts, NM_OC_CHANNEL,
+			    trx->bts->nr, trx->nr, ts->nr);
+
+		gsm_bts_trx_ts_init_lchan(ts);
+	}
+}
+
+/* Initialize shadow timeslots of the given transceiver */
+void gsm_bts_trx_init_shadow_ts(struct gsm_bts_trx *trx)
+{
+	unsigned int tn;
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *ts;
+
+		ts = talloc_zero(trx, struct gsm_bts_trx_ts);
+		OSMO_ASSERT(ts != NULL);
+
+		ts->trx = trx;
+		ts->nr = tn;
+
+		/* Link both primary and shadow */
+		trx->ts[tn].vamos.peer = ts;
+		ts->vamos.peer = &trx->ts[tn];
+		ts->vamos.is_shadow = true;
+
+		/* Shadow timeslot uses the primary's NM FSM */
+		OSMO_ASSERT(trx->ts[tn].mo.fi != NULL);
+		ts->mo.fi = trx->ts[tn].mo.fi;
+
+		gsm_bts_trx_ts_init_lchan(ts);
+	}
+}
+
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
-	int k;
 
 	if (!trx)
 		return NULL;
@@ -77,36 +143,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
 		    bts->nr, trx->nr, 0xff);
 
-	for (k = 0; k < TRX_NR_TS; k++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[k];
-		int l;
-
-		ts->trx = trx;
-		ts->nr = k;
-		ts->pchan = GSM_PCHAN_NONE;
-		ts->dyn.pchan_is = GSM_PCHAN_NONE;
-		ts->dyn.pchan_want = GSM_PCHAN_NONE;
-
-		ts->mo.fi = osmo_fsm_inst_alloc(&nm_chan_fsm, trx, ts,
-						     LOGL_INFO, NULL);
-		osmo_fsm_inst_update_id_f(ts->mo.fi, "bts%d-trx%d-ts%d",
-					  bts->nr, trx->nr, ts->nr);
-		gsm_mo_init(&ts->mo, bts, NM_OC_CHANNEL,
-			    bts->nr, trx->nr, ts->nr);
-
-		for (l = 0; l < TS_MAX_LCHAN; l++) {
-			struct gsm_lchan *lchan;
-			lchan = &ts->lchan[l];
-
-			lchan->ts = ts;
-			lchan->nr = l;
-			lchan->type = GSM_LCHAN_NONE;
-			gsm_lchan_name_update(lchan);
-
-			INIT_LLIST_HEAD(&lchan->sapi_cmds);
-			INIT_LLIST_HEAD(&lchan->dl_tch_queue);
-		}
-	}
+	gsm_bts_trx_init_ts(trx);
 
 	if (trx->nr != 0)
 		trx->nominal_power = bts->c0->nominal_power;
