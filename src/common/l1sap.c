@@ -765,6 +765,12 @@ static int l1sap_info_act_cnf(struct gsm_bts_trx *trx,
 	struct info_act_cnf_param *info_act_cnf)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
+	if (lchan == NULL) {
+		LOGPTRX(trx, DL1C, LOGL_ERROR, "get_lchan_by_chan_nr(chan_nr=%s) "
+			"yields NULL for PRIM_INFO_ACTIVATE.conf\n",
+			rsl_chan_nr_str(info_act_cnf->chan_nr));
+		return -ENODEV;
+	}
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activate confirm chan_nr=%s trx=%d\n",
 		  rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
@@ -788,6 +794,12 @@ static int l1sap_info_rel_cnf(struct gsm_bts_trx *trx,
 	struct info_act_cnf_param *info_act_cnf)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, info_act_cnf->chan_nr);
+	if (lchan == NULL) {
+		LOGPTRX(trx, DL1C, LOGL_ERROR, "get_lchan_by_chan_nr(chan_nr=%s) "
+			"yields NULL for PRIM_INFO_ACTIVATE.conf\n",
+			rsl_chan_nr_str(info_act_cnf->chan_nr));
+		return -ENODEV;
+	}
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivate confirm chan_nr=%s trx=%d\n",
 		  rsl_chan_nr_str(info_act_cnf->chan_nr), trx->nr);
