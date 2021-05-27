@@ -40,8 +40,8 @@ int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting FCCH\n");
 
-	/* A frequency correction burst is basically a sequence of zeros.
-	 * Since br->burst is already zero-initialized, just set the length. */
+	/* A frequency correction burst is basically a sequence of zeros */
+	memset(br->burst, 0x00, GSM_BURST_LEN);
 	br->burst_len = GSM_BURST_LEN;
 
 	return 0;
