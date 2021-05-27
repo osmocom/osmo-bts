@@ -149,6 +149,40 @@ static void bts_sched_flush_buffers(struct gsm_bts *bts)
 	}
 }
 
+/* schedule one frame for a shadow timeslot, merge bursts */
+static void _sched_dl_shadow_burst(const struct gsm_bts_trx_ts *ts,
+				   struct trx_dl_burst_req *br)
+{
+	struct l1sched_ts *l1ts = ts->priv;
+
+	/* For the shadow timeslots, physical channel type can be either
+	 * GSM_PCHAN_TCH_{F,H} or GSM_PCHAN_NONE.  Even if the primary
+	 * timeslot is a dynamic timeslot, it's always a concrete value. */
+	if (ts->pchan == GSM_PCHAN_NONE)
+		return;
+
+	struct trx_dl_burst_req sbr = {
+		.trx_num = br->trx_num,
+		.fn = br->fn,
+		.tn = br->tn,
+	};
+
+	_sched_dl_burst(l1ts, &sbr);
+
+	if (br->burst_len != 0 && sbr.burst_len != 0) { /* Both present */
+		memcpy(br->burst + GSM_BURST_LEN, sbr.burst, GSM_BURST_LEN);
+		br->burst_len = 2 * GSM_BURST_LEN;
+		br->mod = TRX_MOD_T_AQPSK;
+		/* FIXME: SCPIR is hard-coded to 0 */
+	} else if (br->burst_len == 0) {
+		/* No primary burst, send shadow burst alone */
+		memcpy(br, &sbr, sizeof(sbr));
+	} else if (sbr.burst_len == 0) {
+		/* No shadow burst, send primary burst alone */
+		return;
+	}
+}
+
 /* schedule all frames of all TRX for given FN */
 static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
@@ -193,8 +227,11 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 				br = &pinst->u.osmotrx.br[tn];
 			}
 
-			/* get burst for FN */
+			/* get burst for the primary timeslot */
 			_sched_dl_burst(l1ts, br);
+
+			/* get burst for the shadow timeslot */
+			_sched_dl_shadow_burst(ts->vamos.peer, br);
 		}
 	}
 

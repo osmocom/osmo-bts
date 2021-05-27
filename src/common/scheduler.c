@@ -606,32 +606,49 @@ static const struct rate_ctr_group_desc l1sched_ts_ctrg_desc = {
  * init / exit
  */
 
+static void trx_sched_init_ts(struct gsm_bts_trx_ts *ts,
+			      const unsigned int rate_ctr_idx)
+{
+	struct l1sched_ts *l1ts;
+	unsigned int i;
+
+	l1ts = talloc_zero(ts->trx, struct l1sched_ts);
+	OSMO_ASSERT(l1ts != NULL);
+
+	/* Link both structures */
+	ts->priv = l1ts;
+	l1ts->ts = ts;
+
+	l1ts->ctrs = rate_ctr_group_alloc(ts->trx,
+					  &l1sched_ts_ctrg_desc,
+					  rate_ctr_idx);
+	INIT_LLIST_HEAD(&l1ts->dl_prims);
+
+	for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
+		struct l1sched_chan_state *chan_state;
+		chan_state = &l1ts->chan_state[i];
+		chan_state->active = false;
+	}
+}
+
 void trx_sched_init(struct gsm_bts_trx *trx)
 {
-	unsigned int tn, i;
+	unsigned int tn;
 
 	OSMO_ASSERT(trx != NULL);
 
 	LOGPTRX(trx, DL1C, LOGL_DEBUG, "Init scheduler structures\n");
 
+	/* Allocate shadow timeslots */
+	gsm_bts_trx_init_shadow_ts(trx);
+
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
-		struct l1sched_ts *l1ts;
+		unsigned int rate_ctr_idx = trx->nr * 100 + tn;
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 
-		l1ts = talloc_zero(trx, struct l1sched_ts);
-		OSMO_ASSERT(l1ts != NULL);
-
-		trx->ts[tn].priv = l1ts;
-		l1ts->ts = &trx->ts[tn];
-
-		l1ts->mf_index = 0;
-		l1ts->ctrs = rate_ctr_group_alloc(trx, &l1sched_ts_ctrg_desc, (trx->nr + 1) * 10 + tn);
-		INIT_LLIST_HEAD(&l1ts->dl_prims);
-
-		for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {
-			struct l1sched_chan_state *chan_state;
-			chan_state = &l1ts->chan_state[i];
-			chan_state->active = false;
-		}
+		/* Init primary and shadow timeslots */
+		trx_sched_init_ts(ts, rate_ctr_idx);
+		trx_sched_init_ts(ts->vamos.peer, rate_ctr_idx + 10);
 	}
 }
 
@@ -999,6 +1016,12 @@ int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pch
 	l1ts->mf_index = i;
 	l1ts->mf_period = trx_sched_multiframes[i].period;
 	l1ts->mf_frames = trx_sched_multiframes[i].frames;
+	if (ts->vamos.peer != NULL) {
+		l1ts = ts->vamos.peer->priv;
+		l1ts->mf_index = i;
+		l1ts->mf_period = trx_sched_multiframes[i].period;
+		l1ts->mf_frames = trx_sched_multiframes[i].frames;
+	}
 	LOGP(DL1C, LOGL_NOTICE, "%s Configured multiframe with '%s'\n",
 	     gsm_ts_name(ts), trx_sched_multiframes[i].name);
 	return 0;
@@ -1422,6 +1445,10 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 	const struct trx_sched_frame *frame;
 	uint8_t offset, period;
 	trx_sched_ul_func *func;
+
+	/* VAMOS: redirect to the shadow timeslot */
+	if (bi->flags & TRX_BI_F_SHADOW_IND)
+		l1ts = l1ts->ts->vamos.peer->priv;
 
 	if (!l1ts->mf_index)
 		return -EINVAL;

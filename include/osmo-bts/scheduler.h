@@ -71,6 +71,7 @@ enum trx_chan_type {
 enum trx_mod_type {
 	TRX_MOD_T_GMSK,
 	TRX_MOD_T_8PSK,
+	TRX_MOD_T_AQPSK,
 };
 
 /* A set of measurements belonging to one Uplink burst */
@@ -231,6 +232,7 @@ extern const struct trx_sched_multiframe trx_sched_multiframes[];
 #define TRX_BI_F_CI_CB		(1 << 3)
 #define TRX_BI_F_TRX_NUM	(1 << 4)
 #define TRX_BI_F_BATCH_IND	(1 << 5)
+#define TRX_BI_F_SHADOW_IND	(1 << 6)
 
 /*! UL burst indication with the corresponding meta info */
 struct trx_ul_burst_ind {

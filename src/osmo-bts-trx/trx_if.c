@@ -755,6 +755,7 @@ static const uint8_t trx_data_rx_hdr_len[] = {
 static const uint8_t trx_data_mod_val[] = {
 	[TRX_MOD_T_GMSK]	= 0x00, /* .00xx... */
 	[TRX_MOD_T_8PSK]	= 0x20, /* .010x... */
+	[TRX_MOD_T_AQPSK]	= 0x60, /* .11xx... */
 };
 
 /* Header dissector for TRXDv0 (and part of TRXDv1) */
@@ -863,9 +864,12 @@ static int trx_data_handle_pdu_v2(struct phy_instance *phy_inst,
 	/* TDMA timeslot number (other bits are RFU) */
 	bi->tn = buf[0] & 0x07;
 
-	/* TRX (RF channel) number and BATCH.ind */
-	if (buf[1] & (1 << 7))
+	if (buf[1] & (1 << 7)) /* BATCH.ind */
 		bi->flags |= TRX_BI_F_BATCH_IND;
+	if (buf[1] & (1 << 6)) /* VAMOS.ind */
+		bi->flags |= TRX_BI_F_SHADOW_IND;
+
+	/* TRX (RF channel) number */
 	bi->trx_num = buf[1] & 0x3f;
 	bi->flags |= TRX_BI_F_TRX_NUM;
 
