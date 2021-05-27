@@ -512,7 +512,7 @@ enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts);
-char *gsm_lchan_name_compute(const struct gsm_lchan *lchan);
+void gsm_lchan_name_update(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)

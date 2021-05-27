@@ -165,14 +165,17 @@ char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
 	return ts2str;
 }
 
-char *gsm_lchan_name_compute(const struct gsm_lchan *lchan)
+void gsm_lchan_name_update(struct gsm_lchan *lchan)
 {
-	struct gsm_bts_trx_ts *ts = lchan->ts;
+	const struct gsm_bts_trx_ts *ts = lchan->ts;
+	const struct gsm_bts_trx *trx = ts->trx;
+	char *name;
 
-	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,ss=%d)",
-		 ts->trx->bts->nr, ts->trx->nr, ts->nr, lchan->nr);
-
-	return ts2str;
+	name = talloc_asprintf(trx, "(bts=%u,trx=%u,ts=%u,ss=%u)",
+			       trx->bts->nr, trx->nr, ts->nr, lchan->nr);
+	if (lchan->name != NULL)
+		talloc_free(lchan->name);
+	lchan->name = name;
 }
 
 /* See Table 10.5.25 of GSM04.08 */
