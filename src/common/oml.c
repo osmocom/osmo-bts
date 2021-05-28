@@ -789,9 +789,12 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	return bts_model_apply_oml(trx->bts, msg, tp_merged, NM_OC_RADIO_CARRIER, trx);
 }
 
-static int conf_lchans(struct gsm_bts_trx_ts *ts)
+static int handle_chan_comb(struct gsm_bts_trx_ts *ts, const uint8_t comb)
 {
-	enum gsm_phys_chan_config pchan = ts->pchan;
+	enum gsm_phys_chan_config pchan;
+
+	pchan = abis_nm_pchan4chcomb(comb);
+	ts->pchan = pchan;
 
 	/* RSL_MT_IPAC_PDCH_ACT style dyn PDCH */
 	if (pchan == GSM_PCHAN_TCH_F_PDCH)
@@ -946,12 +949,10 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	/* 9.4.13 Channel Combination */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_CHAN_COMB, 1)) {
-		uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
-		ts->pchan = abis_nm_pchan4chcomb(comb);
-		rc = conf_lchans(ts);
-		if (rc < 0) {
+		const uint8_t comb = *TLVP_VAL(&tp, NM_ATT_CHAN_COMB);
+		if ((rc = handle_chan_comb(ts, comb)) != 0) {
 			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: invalid Chan Comb 0x%x"
-				" (pchan=%s, conf_lchans()->%d)\n",
+				" (pchan=%s, handle_chan_comb() returns %d)\n",
 				comb, gsm_pchan_name(ts->pchan), rc);
 			talloc_free(tp_merged);
 			/* Send NACK */
