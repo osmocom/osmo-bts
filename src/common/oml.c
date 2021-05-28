@@ -813,62 +813,50 @@ static int handle_chan_comb(struct gsm_bts_trx_ts *ts, const uint8_t comb)
 	return conf_lchans_as_pchan(ts, pchan);
 }
 
+static inline void lchans_type_set(struct gsm_bts_trx_ts *ts,
+				   enum gsm_chan_t lchan_type,
+				   unsigned int num_lchans)
+{
+	unsigned int i;
+
+	for (i = 0; i < num_lchans; i++)
+		ts->lchan[i].type = lchan_type;
+}
+
 int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config pchan)
 {
-	struct gsm_lchan *lchan;
-	unsigned int i;
-
 	switch (pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
-		/* fallthrough */
 	case GSM_PCHAN_CCCH_SDCCH4:
-		for (i = 0; i < 4; i++) {
-			lchan = &ts->lchan[i];
-			if (pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH
-			    && i == 2) {
-				lchan->type = GSM_LCHAN_CBCH;
-			} else {
-				lchan->type = GSM_LCHAN_SDCCH;
-			}
-		}
+		lchans_type_set(ts, GSM_LCHAN_SDCCH, 4);
+		if (pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
+			ts->lchan[2].type = GSM_LCHAN_CBCH;
 		/* fallthrough */
 	case GSM_PCHAN_CCCH:
-		lchan = &ts->lchan[CCCH_LCHAN];
-		lchan->type = GSM_LCHAN_CCCH;
+		ts->lchan[CCCH_LCHAN].type = GSM_LCHAN_CBCH;
 		break;
 	case GSM_PCHAN_TCH_F:
-		lchan = &ts->lchan[0];
-		lchan->type = GSM_LCHAN_TCH_F;
+		lchans_type_set(ts, GSM_LCHAN_TCH_F, 1);
 		break;
 	case GSM_PCHAN_TCH_H:
-		for (i = 0; i < 2; i++) {
-			lchan = &ts->lchan[i];
-			lchan->type = GSM_LCHAN_TCH_H;
-		}
+		lchans_type_set(ts, GSM_LCHAN_TCH_H, 2);
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
-		/* fallthrough */
 	case GSM_PCHAN_SDCCH8_SACCH8C:
-		for (i = 0; i < 8; i++) {
-			lchan = &ts->lchan[i];
-			if (pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH
-			    && i == 2) {
-				lchan->type = GSM_LCHAN_CBCH;
-			} else {
-				lchan->type = GSM_LCHAN_SDCCH;
-			}
-		}
+		lchans_type_set(ts, GSM_LCHAN_SDCCH, 8);
+		if (pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
+			ts->lchan[2].type = GSM_LCHAN_CBCH;
 		break;
 	case GSM_PCHAN_PDCH:
-		lchan = &ts->lchan[0];
-		lchan->type = GSM_LCHAN_PDTCH;
+		lchans_type_set(ts, GSM_LCHAN_PDTCH, 1);
 		break;
 	default:
 		LOGP(DOML, LOGL_ERROR, "Unknown/unhandled PCHAN type: %u %s\n",
 		     ts->pchan, gsm_pchan_name(ts->pchan));
 		return -NM_NACK_PARAM_RANGE;
 	}
+
 	return 0;
 }
 
