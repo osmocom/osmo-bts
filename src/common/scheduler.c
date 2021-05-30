@@ -874,11 +874,6 @@ static int rts_data_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_
 	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
 	link_id = trx_chan_desc[br->chan].link_id;
 
-	if (!chan_nr) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "RTS func with non-existing chan_nr 0x%02x\n", chan_nr);
-		return -ENODEV;
-	}
-
 	/* For handover detection, there are cases where the SACCH should remain inactive until the first RACH
 	 * indicating the TA is received. */
 	if (L1SAP_IS_LINK_SACCH(link_id)
@@ -913,11 +908,6 @@ static int rts_tch_common(const struct l1sched_ts *l1ts,
 	/* get data for RTS indication */
 	chan_nr = trx_chan_desc[br->chan].chan_nr | br->tn;
 	link_id = trx_chan_desc[br->chan].link_id;
-
-	if (!chan_nr) {
-		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "RTS func with non-existing chan_nr 0x%02x\n", chan_nr);
-		return -ENODEV;
-	}
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "TCH RTS.ind: chan_nr=0x%02x\n", chan_nr);
 
