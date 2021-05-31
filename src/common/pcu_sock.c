@@ -266,6 +266,7 @@ int pcu_tx_info_ind(void)
 	if (pcu_direct)
 		info_ind->flags |= PCU_IF_FLAG_SYSMO;
 
+	info_ind->bsic = bts->bsic;
 	/* RAI */
 	info_ind->mcc = net->plmn.mcc;
 	info_ind->mnc = net->plmn.mnc;
