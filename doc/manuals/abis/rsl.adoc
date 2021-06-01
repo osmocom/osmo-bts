@@ -857,17 +857,22 @@ addition to those indicated in 3GPP TS 48.058 Section 9.3:
 [[RSL_IE_CHAN_NR]]
 ==== RSL_IE_CHAN_NR
 
-This information element is coded like 3GPP TS 48.058 Section 9.3.1,
-but in addition supports the following extended coding:
+This information element is coded as described in 3GPP TS 48.058 Section 9.3.1,
+but in addition supports the following vendor specific values:
 
-* C5..C1 bits 0b11000 for PDCH type channels
+.RSL Channel Number extensions
+[options="header",cols="5%,5%,5%,5%,5%,75%"]
+|===
+| C5 | C4 | C3 | C2 | C1 | Description
+|  1 |  1 |  0 |  0 |  0 | PDCH `<1>`
+|===
+
+`<1>` This extension is only valid on an Osmocom-style dynamic channel, having
+configured the 'NM_CHANC_IPAC_TCHFull_PDCH' channel combination by OML.
 
 The TN-Bits are not re-defined in this case but use the same encoding
 as specified in TS 48.058 Section 9.3.1.
 
-NOTE:: The above extension is only valid on an Osmocom-style dynamic
-channel, having configured the 'NM_CHANC_IPAC_TCHFull_PDCH' channel
-combination by OML.
 
 [[RSL_IE_IPAC_REMOTE_IP]]
 ==== RSL_IE_IPAC_REMOTE_IP
