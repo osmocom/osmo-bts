@@ -867,10 +867,15 @@ but in addition supports the following vendor specific values:
 |  1 |  1 |  0 |  0 |  0 | PDCH `<1>`
 |  1 |  1 |  0 |  0 |  1 | CBCH on SDCCH4
 |  1 |  1 |  0 |  1 |  0 | CBCH on SDCCH8
+|  1 |  1 |  1 |  0 |  1 | VAMOS TCH/F `<2>`
+|  1 |  1 |  1 |  1 |  T | VAMOS TCH/H `<2>`
 |===
 
 `<1>` This extension is only valid on an Osmocom-style dynamic channel, having
 configured the 'NM_CHANC_IPAC_TCHFull_PDCH' channel combination by OML.
+`<2>` These Osmocom specific values are used by osmo-bsc to address logical
+channels on the shadow timeslots in VAMOS mode, iff the BTS is an osmo-bts
+and VAMOS capable.
 
 The TN-Bits are not re-defined in this case but use the same encoding
 as specified in TS 48.058 Section 9.3.1.
