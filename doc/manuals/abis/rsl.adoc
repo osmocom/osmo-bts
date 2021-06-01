@@ -865,6 +865,8 @@ but in addition supports the following vendor specific values:
 |===
 | C5 | C4 | C3 | C2 | C1 | Description
 |  1 |  1 |  0 |  0 |  0 | PDCH `<1>`
+|  1 |  1 |  0 |  0 |  1 | CBCH on SDCCH4
+|  1 |  1 |  0 |  1 |  0 | CBCH on SDCCH8
 |===
 
 `<1>` This extension is only valid on an Osmocom-style dynamic channel, having
