@@ -3,16 +3,16 @@
 === List of Messages
 
 The following tables list the RSL messages used by OsmoBTS A-bis/IP,
-grouped by their level of compliance with 3GPP TS 08.58.
+grouped by their level of compliance with 3GPP TS 48.058.
 
-==== Messages Compliant With TS 08.58
+==== Messages Compliant With TS 48.058
 
 Specific additions and limitations apply, see the linked sections.
 
-.Messages compliant with TS 08.58
+.Messages compliant with TS 48.058
 [options="header",cols="10%,20%,45%,5%,20%"]
 |===
-| TS 08.58 § | This document § | Message | <-/-> | Received/Sent by OsmoBTS
+| TS 48.058 § | This document § | Message | <-/-> | Received/Sent by OsmoBTS
 5+<| *Radio link layer management messages*
 | 8.3.1  | - | DATA REQUEST | <- | Received
 | 8.3.2  | - | DATA INDICATION | -> | Sent
@@ -59,7 +59,7 @@ Specific additions and limitations apply, see the linked sections.
 
 ==== Messages Specific to OsmoBTS
 
-.Messages specific to OsmoBTS, not found in 3GPP TS 08.58
+.Messages specific to OsmoBTS, not found in 3GPP TS 48.058
 [options="header",cols="15%,15%,45%,5%,20%"]
 |===
 2+| This document § | Message | <-/-> | Received/Sent by OsmoBTS
@@ -87,10 +87,10 @@ Specific additions and limitations apply, see the linked sections.
 
 ==== Messages Not Implemented by OsmoBTS
 
-.3GPP TS 08.58 messages not implemented by OsmoBTS
+.3GPP TS 48.058 messages not implemented by OsmoBTS
 [options="header",cols="10%,90%"]
 |===
-| TS 08.58 § | Message
+| TS 48.058 § | Message
 2+<| *DEDICATED CHANNEL MANAGEMENT MESSAGES*
 | 8.4.12 | PHYSICAL CONTEXT REQUEST
 | 8.4.13 | PHYSICAL CONTEXT CONFIRM
@@ -135,24 +135,24 @@ dynamic PDCH protocol employed by nanoBTS devices (<<ipa_style_pdch_mgmt>>).
 [[MEASUREMENT_RESULT]]
 ==== Measurement Result
 
-Conforms to 3GPP TS 08.58 § 8.4.8 with this limitation:
+Conforms to 3GPP TS 48.058 § 8.4.8 with this limitation:
 
 ._Measurement Result_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.37 | MS Timing Offset | never sent by OsmoBTS
 |===
 
 [[MODE_MODIFY]]
 ==== Mode Modify
 
-Conforms to 3GPP TS 08.58 § 8.4.9 with these limitations:
+Conforms to 3GPP TS 48.058 § 8.4.9 with these limitations:
 
 ._Mode Modify_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.45 | Main channel reference | _ignored_
 | 9.3.53 | MultiRate Control | _ignored_
 | 9.3.54 | Supported Codec Types | _ignored_
@@ -161,12 +161,12 @@ Conforms to 3GPP TS 08.58 § 8.4.9 with these limitations:
 [[MS_POWER_CONTROL]]
 ==== MS Power Control
 
-Conforms to 3GPP TS 08.58 § 8.4.15 with these limitations:
+Conforms to 3GPP TS 48.058 § 8.4.15 with these limitations:
 
 ._MS Power Control_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.31 | MS Power Parameters | _ignored_
 |===
 
@@ -174,12 +174,12 @@ Conforms to 3GPP TS 08.58 § 8.4.15 with these limitations:
 [[SACCH_INFO_MODIFY]]
 ==== SACCH Info Modify
 
-Conforms to 3GPP TS 08.58 § 8.4.20, with these exceptions:
+Conforms to 3GPP TS 48.058 § 8.4.20, with these exceptions:
 
 ._SACCH Info Modify_ IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.30 | System Info Type | See below for available types
 | 9.3.23 | Starting Time | not supported, provokes an _Error Report_ response
 |===
@@ -199,12 +199,12 @@ Conforms to 3GPP TS 08.58 § 8.4.20, with these exceptions:
 [[BCCH_INFORMATION]]
 ==== BCCH Information
 
-Conforms to 3GPP TS 08.58 § 8.5.1, with these limitations and extensions:
+Conforms to 3GPP TS 48.058 § 8.5.1, with these limitations and extensions:
 
 ._BCCH Information_ IE details
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.30 | System Info Type | See <<SACCH_INFO_MODIFY>> for available types
 | 9.3.11 | L3 Info | This IE may be included instead of a 9.3.39 _Full BCCH Info_ IE.
                      The _Full BCCH Info_ takes precedence over _L3 Info_.
@@ -215,12 +215,12 @@ Conforms to 3GPP TS 08.58 § 8.5.1, with these limitations and extensions:
 [[CHANNEL_REQUIRED]]
 ==== Channel Required
 
-Conforms to 3GPP TS 08.58 § 8.5.3, with these limitations:
+Conforms to 3GPP TS 48.058 § 8.5.3, with these limitations:
 
 ._Channel Required_ message IE details
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.16 | Physical Context | never sent by OsmoBTS
 |===
 
@@ -228,12 +228,12 @@ Conforms to 3GPP TS 08.58 § 8.5.3, with these limitations:
 [[PAGING_COMMAND]]
 ==== Paging Command
 
-Conforms to 3GPP TS 08.58 § 8.5.5, with these limitations:
+Conforms to 3GPP TS 48.058 § 8.5.5, with these limitations:
 
 ._Paging Command_ message IE details
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.49 | eMLPP Priority | _ignored_
 |===
 
@@ -244,15 +244,15 @@ in any way.
 [[RF_RESOURCE_INDICATION]]
 ==== RF Resource Indication
 
-This message does not conform to 3GPP TS 08.58 § 8.6.1, in that it omits the
+This message does not conform to 3GPP TS 48.058 § 8.6.1, in that it omits the
 _Resource Information_ IE that would contain the actual payload data, which
 renders this message void.
 
 ._RF Resource Indication_ message IE exceptions
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
-| 9.3.21 | Resource Information | OsmoBTS omits this IE, though TS 08.58
+| TS 48.058 § | IE Name | Handling
+| 9.3.21 | Resource Information | OsmoBTS omits this IE, though TS 48.058
                                   specifies it as mandatory.
 |===
 
@@ -260,12 +260,12 @@ renders this message void.
 [[SACCH_FILLING]]
 ==== SACCH Filling
 
-Conforms to 3GPP TS 08.58 § 8.6.2, with these limitations:
+Conforms to 3GPP TS 48.058 § 8.6.2, with these limitations:
 
 ._SACCH Filling_ message IE limitations
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.3.30 | System Info Type | See <<SACCH_INFO_MODIFY>> for available types
 | 9.3.23 | Starting Time | _ignored_
 |===
@@ -275,7 +275,7 @@ Conforms to 3GPP TS 08.58 § 8.6.2, with these limitations:
 === User Plane Transport Management
 
 This chapter defines the A-bis/IP specific RSL procedures that are
-introduced in addition to the 3GPP TS 08.58 standard procedures.
+introduced in addition to the 3GPP TS 48.058 standard procedures.
 
 In classic A-bis over E1, user plane traffic is carried over 16kBps
 sub-slots of 64kBps E1 time-slots according to ETSI/3GPP TS 08.60.  As
@@ -423,10 +423,10 @@ The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
 procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:
 
 * The 'C-bits' part of the 'Channel Number' IE take the non-standard binary
-  value 11000 (C5 through C1 as seen in 3GPP TS 08.58 § 9.3.1).
+  value 11000 (C5 through C1 as seen in 3GPP TS 48.058 § 9.3.1).
 * The 'A-bits' part of the 'Activation Type' IE take the non-standard binary
   value 1111, with an additional fourth bit (add A4 to A3 through A1 as seen in
-  3GPP TS 08.58 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
+  3GPP TS 48.058 § 9.3.3; all remaining reserved bits as well as the 'R' bit are
   coded as zero).
 * The normally mandatory 'Channel Mode' IE is omitted; none of the optional IEs
   are included.
@@ -436,7 +436,7 @@ Hence the message consists of exactly these IEs:
 .PDCH type _Channel Activation_ message IEs
 [options="header",cols="10%,30%,60%"]
 |===
-| TS 08.58 § | IE Name | Handling
+| TS 48.058 § | IE Name | Handling
 | 9.1 | Message discriminator | Dedicated Channel Management
 | 9.2 | Message type | CHANnel ACTIVation
 | 9.3.1 | Channel number | 'C-bits' 11000, plus TS bits as usual
@@ -489,9 +489,9 @@ number*.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
 | Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
 | IP Speech Mode | <<RSL_IE_IPAC_SPEECH_MODE>> | O | TV | 2
@@ -509,9 +509,9 @@ in response to the *Create Connection (CRCX)*.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | M | TV | 3
 | Source IP Address | <<RSL_IE_IPAC_LOCAL_IP>> | O | TV | 5
 | Source IP Port | <<RSL_IE_IPAC_LOCAL_PORT>> | O | TV | 3
@@ -529,12 +529,12 @@ sent in response to the *Create Connection (CRCX)*.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
 | Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
-| Cause | 08.58 9.3.26 | O | TLV | >= 3
+| Cause | 48.058 9.3.26 | O | TLV | >= 3
 |===
 
 
@@ -548,9 +548,9 @@ properties of a user-plane RTP connection.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
 | Destination IP Address | <<RSL_IE_IPAC_REMOTE_IP>> | O | TV | 5
 | Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
@@ -569,9 +569,9 @@ response to a *Modify Connection (MDCX)*
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
 | Source IP Address | <<RSL_IE_IPAC_LOCAL_IP>> | C | TV | 5
 | Source IP Port | <<RSL_IE_IPAC_LOCAL_PORT>> | C | TV | 3
@@ -590,10 +590,10 @@ Connection (MDCX)*.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
-| Cause | 08.58 9.3.26 | M | TLV | >= 3
+| Channel number | 48.058 9.3.1 | M | TV | 2
+| Cause | 48.058 9.3.26 | M | TLV | >= 3
 |===
 
 [[rsl_dlcx_ind_msg]]
@@ -607,12 +607,12 @@ time of RF Channel release.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | M | TV | 3
 | Connection Id | <<RSL_IE_IPAC_CONN_STAT>> | M | TV | 3
-| Cause | 08.58 9.3.26 | M | TLV | >= 3
+| Cause | 48.058 9.3.26 | M | TLV | >= 3
 |===
 
 [[rsl_dlcx_msg]]
@@ -626,9 +626,9 @@ number.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
 |===
 
@@ -644,9 +644,9 @@ Channel number.  It is sent in response to the *Delete Connection
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
 | Connection Statistics | <<RSL_IE_IPAC_CONN_STAT>> | C | TV | 29
 |===
@@ -663,11 +663,11 @@ Channel number.  It is sent in response to the *Delete Connection
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 | Connection Id | <<RSL_IE_IPAC_CONN_ID>> | O | TV | 3
-| Cause | 08.58 9.3.26 | M | TLV | >= 3
+| Cause | 48.058 9.3.26 | M | TLV | >= 3
 |===
 
 [[rsl_pdch_act]]
@@ -680,9 +680,9 @@ a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -697,10 +697,10 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
-| Frame Number | 08.58 9.3.8 | O | TV | 3
+| Channel number | 48.058 9.3.1 | M | TV | 2
+| Frame Number | 48.058 9.3.8 | O | TV | 3
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -715,10 +715,10 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
-| Cause | 08.58 9.3.26 | M | TLV | >= 3
+| Channel number | 48.058 9.3.1 | M | TV | 2
+| Cause | 48.058 9.3.26 | M | TLV | >= 3
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -733,9 +733,9 @@ on a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -750,9 +750,9 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
+| Channel number | 48.058 9.3.1 | M | TV | 2
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -767,10 +767,10 @@ on a IPA style dynamic TCH/F+PDCH channel.
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
-| Cause | 08.58 9.3.26 | M | TLV | >= 3
+| Channel number | 48.058 9.3.1 | M | TV | 2
+| Cause | 48.058 9.3.26 | M | TLV | >= 3
 |===
 
 NOTE:: This message is *not* used by Osmocom style dynamic channels
@@ -794,10 +794,10 @@ The Channel Number IE is set to the Downlink CCCH (PCH).
 [cols="30%,25%,15%,15%,15%"]
 |===
 | INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
-| Message discriminator | 08.58 9.1 | M | V | 1
+| Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
-| Channel number | 08.58 9.3.1 | M | TV | 2
-| SMSCB Message | 08.58 9.3.42 | M | TLV | 2-58
+| Channel number | 48.058 9.3.1 | M | TV | 2
+| SMSCB Message | 48.058 9.3.42 | M | TLV | 2-58
 |===
 
 
@@ -807,7 +807,7 @@ The Channel Number IE is set to the Downlink CCCH (PCH).
 ==== A-bis/IP specific RSL Message discriminators
 
 The following message discriminators are used in addition to those
-indicated in 3GPP TS 08.58 Section 9.1:
+indicated in 3GPP TS 48.058 Section 9.1:
 
 .OsmoBTS specific new message discriminators
 [options="header",cols="10%,50%,40%"]
@@ -835,7 +835,7 @@ indicated in 3GPP TS 08.58 Section 9.1:
 ==== A-bis/IP specific RSL IEIs
 
 The following Information Element Identifiers (IEIs) are used in
-addition to those indicated in 3GPP TS 08.58 Section 9.3:
+addition to those indicated in 3GPP TS 48.058 Section 9.3:
 
 .A-bis/IP specific information elements
 [options="header",cols="10%,50%,40%"]
@@ -857,13 +857,13 @@ addition to those indicated in 3GPP TS 08.58 Section 9.3:
 [[RSL_IE_CHAN_NR]]
 ==== RSL_IE_CHAN_NR
 
-This information element is coded like 3GPP TS 08.58 Section 9.3.1,
+This information element is coded like 3GPP TS 48.058 Section 9.3.1,
 but in addition supports the following extended coding:
 
 * C5..C1 bits 0b11000 for PDCH type channels
 
 The TN-Bits are not re-defined in this case but use the same encoding
-as specified in TS 08.58 Section 9.3.1.
+as specified in TS 48.058 Section 9.3.1.
 
 NOTE:: The above extension is only valid on an Osmocom-style dynamic
 channel, having configured the 'NM_CHANC_IPAC_TCHFull_PDCH' channel
