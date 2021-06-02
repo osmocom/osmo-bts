@@ -1154,8 +1154,8 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 
 sendall:
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
-		"Tx TRXDv%u datagram with %u PDU(s): fn=%u\n",
-		pdu_ver, pdu_num, br->fn);
+		"Tx TRXDv%u datagram with %u PDU(s)\n",
+		pdu_ver, pdu_num);
 
 	/* TRXDv2: unset BATCH.ind in the last PDU */
 	if (pdu_ver >= 2)
