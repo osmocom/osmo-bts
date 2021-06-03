@@ -250,11 +250,6 @@ int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 	int rc = 0;
 	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
 
-	if (lchan->ts->nr >= 8)
-		return -EINVAL;
-	if (pchan >= _GSM_PCHAN_MAX)
-		return -EINVAL;
-
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
 		fn_mod = translate_tch_meas_rep_fn104(fn % 104);
