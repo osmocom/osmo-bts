@@ -1007,7 +1007,7 @@ bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink)
 	const struct trx_sched_frame *frame;
 	enum trx_chan_type ch_type;
 
-	i = find_sched_mframe_idx(ts->pchan, ts->nr);
+	i = find_sched_mframe_idx(ts_pchan(ts), ts->nr);
 	if (i < 0)
 		return -EINVAL;
 	sched = &trx_sched_multiframes[i];
