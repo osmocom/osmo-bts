@@ -88,7 +88,7 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 		br->fn, br->tn, SCHED_FH_PARAMS_VALS(ts));
 
 	struct bts_trx_priv *priv = (struct bts_trx_priv *) ts->trx->bts->model_priv;
-	rate_ctr_inc(&priv->ctrs->ctr[BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER]);
+	rate_ctr_inc(rate_ctr_group_get_ctr(priv->ctrs, BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER));
 
 	return NULL;
 }
@@ -227,7 +227,7 @@ static struct gsm_bts_trx *ulfh_route_bi(const struct trx_ul_burst_ind *bi,
 		bi->fn, bi->tn, SCHED_FH_PARAMS_VALS(&src_trx->ts[bi->tn]));
 
 	struct bts_trx_priv *priv = (struct bts_trx_priv *) src_trx->bts->model_priv;
-	rate_ctr_inc(&priv->ctrs->ctr[BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER]);
+	rate_ctr_inc(rate_ctr_group_get_ctr(priv->ctrs, BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER));
 
 	return NULL;
 }
@@ -299,7 +299,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	if (expire_count > 1) {
 		LOGP(DL1C, LOGL_NOTICE, "FN timer expire_count=%"PRIu64": We missed %"PRIu64" timers\n",
 		     expire_count, expire_count - 1);
-		rate_ctr_add(&bts_trx->ctrs->ctr[BTSTRX_CTR_SCHED_DL_MISS_FN], expire_count - 1);
+		rate_ctr_add(rate_ctr_group_get_ctr(bts_trx->ctrs, BTSTRX_CTR_SCHED_DL_MISS_FN), expire_count - 1);
 	}
 
 	/* check if transceiver is still alive */
