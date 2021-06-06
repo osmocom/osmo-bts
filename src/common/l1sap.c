@@ -592,17 +592,17 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 			       struct osmo_phsap_prim *l1sap,
 			       struct info_time_ind_param *info_time_ind)
 {
-	int frames_expired;
-	int i;
+	unsigned int frames_expired;
+	unsigned int i;
 
 	DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
 
 	/* Calculate and check frame difference */
-	frames_expired = info_time_ind->fn - bts->gsm_time.fn;
+	frames_expired = GSM_TDMA_FN_SUB(info_time_ind->fn, bts->gsm_time.fn);
 	if (frames_expired > 1) {
 		if (bts->gsm_time.fn)
 			LOGPFN(DL1P, LOGL_ERROR, info_time_ind->fn,
-			     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32"=%d > 1!\n",
+			     "Invalid condition detected: Frame difference is %"PRIu32"-%"PRIu32"=%u > 1!\n",
 			     info_time_ind->fn, bts->gsm_time.fn, frames_expired);
 	}
 
