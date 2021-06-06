@@ -611,6 +611,7 @@ static void trx_sched_init_ts(struct gsm_bts_trx_ts *ts,
 {
 	struct l1sched_ts *l1ts;
 	unsigned int i;
+	char name[128];
 
 	l1ts = talloc_zero(ts->trx, struct l1sched_ts);
 	OSMO_ASSERT(l1ts != NULL);
@@ -622,6 +623,11 @@ static void trx_sched_init_ts(struct gsm_bts_trx_ts *ts,
 	l1ts->ctrs = rate_ctr_group_alloc(ts->trx,
 					  &l1sched_ts_ctrg_desc,
 					  rate_ctr_idx);
+	snprintf(name, sizeof(name), "bts%u-trx%u-ts%u%s",
+		 ts->trx->bts->nr, ts->trx->nr, ts->nr,
+		 ts->vamos.is_shadow ? "-shadow" : "");
+	rate_ctr_group_set_name(l1ts->ctrs, name);
+
 	INIT_LLIST_HEAD(&l1ts->dl_prims);
 
 	for (i = 0; i < ARRAY_SIZE(l1ts->chan_state); i++) {

@@ -3,3 +3,4 @@
 update libosmo-abis dependency to > 1.1.1 for osmo_rtp_socket_set_priority()
 update libosmo-abis dependency to > 1.1.1 for new e1_input vty commands for DSCP + priority
 update libosmocore dependency to > 1.5.1-73-g524b4f80 for osmo_bts_features_desc()
+update libosmocore dependency to > 1.5.1-133-g09f075fa for name in (struct rate_ctr_group)
