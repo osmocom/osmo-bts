@@ -1119,13 +1119,6 @@ int l1if_rsl_chan_act(struct gsm_lchan *lchan)
 	return 0;
 }
 
-#define talloc_replace(dst, ctx, src)			\
-	do {						\
-		if (dst)				\
-			talloc_free(dst);		\
-		dst = talloc_strdup(ctx, (const char *) src);	\
-	} while (0)
-
 static int app_info_sys_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, void *data)
 {
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_SYSTEM_RSP *aisr =
@@ -1145,8 +1138,10 @@ static int app_info_sys_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp, voi
 	LOGP(DL1C, LOGL_INFO, "Note: compiled without multi-trx support.\n");
 #endif
 
-	talloc_replace(fl1h->info.system.platform, fl1h, aisr->szPlatform);
-	talloc_replace(fl1h->info.system.version, fl1h, aisr->szVersion);
+	osmo_talloc_replace_string(fl1h, &fl1h->info.system.platform,
+				   (const char *) aisr->szPlatform);
+	osmo_talloc_replace_string(fl1h, &fl1h->info.system.version,
+				   (const char *) aisr->szVersion);
 
 	msgb_free(resp);
 
@@ -1210,9 +1205,12 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 		}
 	}
 
-	talloc_replace(fl1h->info.app.name, fl1h, air->szName);
-	talloc_replace(fl1h->info.app.description, fl1h, air->szDescription);
-	talloc_replace(fl1h->info.app.version, fl1h, air->szVersion);
+	osmo_talloc_replace_string(fl1h, &fl1h->info.app.name,
+				   (const char *) air->szName);
+	osmo_talloc_replace_string(fl1h, &fl1h->info.app.description,
+				   (const char *) air->szDescription);
+	osmo_talloc_replace_string(fl1h, &fl1h->info.app.version,
+				   (const char *) air->szVersion);
 	OSMO_ASSERT(strlen(ver_hdr) < sizeof(pinst->version));
 	osmo_strlcpy(pinst->version, ver_hdr, strlen(ver_hdr));
 
