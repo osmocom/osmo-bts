@@ -826,6 +826,9 @@ static inline void lchans_type_set(struct gsm_bts_trx_ts *ts,
 int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 			 enum gsm_phys_chan_config pchan)
 {
+	/* Initialize all lchans with GSM_LCHAN_NONE first */
+	lchans_type_set(ts, GSM_LCHAN_NONE, ARRAY_SIZE(ts->lchan));
+
 	switch (pchan) {
 	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
 	case GSM_PCHAN_CCCH_SDCCH4:
