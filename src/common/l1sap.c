@@ -139,7 +139,8 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 		/* 12/13 frames usable for audio in TCH,
 		   160 samples per RTP packet,
 		   1 RTP packet per 4 frames */
-		samples_passed = (fn - lchan->tch.last_fn) * 12 * 160 / (13 * 4);
+		const uint32_t num_fn = GSM_TDMA_FN_SUB(fn, lchan->tch.last_fn);
+		samples_passed = num_fn * 12 * 160 / (13 * 4);
 		/* round number of samples to the nearest multiple of
 		   GSM_RTP_DURATION */
 		r = samples_passed + GSM_RTP_DURATION / 2;
