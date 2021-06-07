@@ -834,7 +834,7 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 			ts->lchan[2].type = GSM_LCHAN_CBCH;
 		/* fallthrough */
 	case GSM_PCHAN_CCCH:
-		ts->lchan[CCCH_LCHAN].type = GSM_LCHAN_CBCH;
+		ts->lchan[CCCH_LCHAN].type = GSM_LCHAN_CCCH;
 		break;
 	case GSM_PCHAN_TCH_F:
 		if (ts->vamos.peer != NULL) { /* VAMOS: enable shadow lchans */
