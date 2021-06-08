@@ -337,6 +337,9 @@ struct gsm_lchan {
 			/* standard deviation of toa256 value during measurement period */
 			uint16_t toa256_std_dev;
 		} ext;
+		/* Interference levels reported by PHY (in dBm) */
+		int16_t interf_meas_dbm[31]; /* Intave max is 31 */
+		uint8_t interf_meas_num;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
@@ -537,6 +540,9 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan);
 
+void gsm_lchan_interf_meas_push(struct gsm_lchan *lchan, int dbm);
+int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan);
+
 #define BSIC2BCC(bsic) ((bsic) & 0x07)
 #define BTS_TSC(bts) BSIC2BCC((bts)->bsic)
 
@@ -557,5 +563,17 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 #define CIPHER_A5(x) (1 << (x-1))
 
 bool ts_is_pdch(const struct gsm_bts_trx_ts *ts);
+
+static inline bool lchan_is_dcch(const struct gsm_lchan *lchan)
+{
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+	case GSM_LCHAN_TCH_F:
+	case GSM_LCHAN_TCH_H:
+		return true;
+	default:
+		return false;
+	}
+}
 
 #endif /* _GSM_DATA_H */

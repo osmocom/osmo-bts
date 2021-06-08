@@ -588,6 +588,20 @@ static unsigned int calc_exprd_rach_frames(struct gsm_bts *bts, uint32_t fn)
 	return rach_frames_expired;
 }
 
+static void l1sap_interf_meas_report(struct gsm_bts *bts)
+{
+	const uint32_t period = bts->interference.intave * 104;
+	struct gsm_bts_trx *trx;
+
+	if (bts->interference.intave == 0)
+		return;
+	if (bts->gsm_time.fn % period != 0)
+		return;
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		rsl_tx_rf_res(trx);
+}
+
 /* time information received from bts model */
 static int l1sap_info_time_ind(struct gsm_bts *bts,
 			       struct osmo_phsap_prim *l1sap,
@@ -619,6 +633,9 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 		uint32_t fn = GSM_TDMA_FN_SUB(info_time_ind->fn, i);
 		bts->load.rach.total += calc_exprd_rach_frames(bts, fn);
 	}
+
+	/* Report interference levels to the BSC */
+	l1sap_interf_meas_report(bts);
 
 	return 0;
 }

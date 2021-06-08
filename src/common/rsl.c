@@ -427,6 +427,7 @@ static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause, const uin
 /* 8.6.1 sending RF RESOURCE INDICATION */
 int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 {
+	unsigned int tn, ln;
 	struct msgb *nmsg;
 
 	LOGP(DRSL, LOGL_INFO, "Tx RSL RF RESource INDication\n");
@@ -434,8 +435,40 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_common_hdr));
 	if (!nmsg)
 		return -ENOMEM;
-	// FIXME: add interference levels of TRX
-	msgb_tlv_put(nmsg, RSL_IE_RESOURCE_INFO, 0, NULL);
+
+	/* Add interference levels for each logical channel */
+	uint8_t *len = msgb_tl_put(nmsg, RSL_IE_RESOURCE_INFO);
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+
+		for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+			struct gsm_lchan *lchan = &ts->lchan[ln];
+
+			/* We're not interested in active lchans */
+			if (lchan->state == LCHAN_S_ACTIVE) {
+				/* Avoid potential buffer overflow */
+				lchan->meas.interf_meas_num = 0;
+				continue;
+			}
+
+			/* Only for GSM_LCHAN_{SDCCH,TCH_F,TCH_H} */
+			if (!lchan_is_dcch(lchan))
+				continue;
+
+			/* Average all collected samples */
+			int band = gsm_lchan_interf_meas_calc_band(lchan);
+			if (band < 0)
+				continue;
+
+			msgb_v_put(nmsg, gsm_lchan2chan_nr(lchan));
+			msgb_v_put(nmsg, (band & 0x07) << 5);
+		}
+	}
+
+	/* Calculate length of the V part */
+	*len = msgb_l3len(nmsg) - 2;
+
 	rsl_trx_push_hdr(nmsg, RSL_MT_RF_RES_IND);
 	nmsg->trx = trx;
 

@@ -96,7 +96,6 @@ Common Core
  * System Information limited to 1,2,2bis,2ter,2quater,3,4,5,6,9,13
  * No RATSCCH in AMR
  * Will reject TS 12.21 STARTING TIME in SET BTS ATTR / SET CHAN ATTR
- * No reporting of interference levels as part of TS 08.58 RF RES IND
  * No support of TS 08.58 MultiRate Control
  * No support of TS 08.58 Supported Codec Types
  * No support of Bter frame / ENHANCED MEASUREMENT REPORT

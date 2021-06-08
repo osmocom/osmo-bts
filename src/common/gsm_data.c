@@ -280,6 +280,54 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
 }
 
+/* Called by the model specific code every 104 TDMA frames (SACCH period) */
+void gsm_lchan_interf_meas_push(struct gsm_lchan *lchan, int dbm)
+{
+	const uint8_t meas_num = lchan->meas.interf_meas_num;
+
+	if (meas_num >= ARRAY_SIZE(lchan->meas.interf_meas_dbm)) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Not enough room "
+			  "to store interference report (%ddBm)\n", dbm);
+		return;
+	}
+
+	lchan->meas.interf_meas_dbm[meas_num] = dbm;
+	lchan->meas.interf_meas_num++;
+}
+
+/* Called by the higher layers every Intave * 104 TDMA frames */
+int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan)
+{
+	const uint8_t meas_num = lchan->meas.interf_meas_num;
+	const struct gsm_bts *bts = lchan->ts->trx->bts;
+	int b, meas_avg, meas_sum = 0;
+
+	/* There must be at least one sample */
+	if (meas_num == 0)
+		return -EAGAIN;
+
+	/* Calculate the sum of all collected samples (in -x dBm) */
+	while (lchan->meas.interf_meas_num) {
+		uint8_t i = --lchan->meas.interf_meas_num;
+		meas_sum += lchan->meas.interf_meas_dbm[i];
+	}
+
+	/* Calculate the average of all collected samples */
+	meas_avg = meas_sum / (int) meas_num;
+
+	/* Determine the band using interference boundaries from BSC */
+	for (b = 0; b < ARRAY_SIZE(bts->interference.boundary); b++) {
+		if (meas_avg >= bts->interference.boundary[b])
+			break; /* Current 'b' is the band value */
+	}
+
+	LOGPLCHAN(lchan, DL1C, LOGL_DEBUG,
+		  "Interference AVG: %ddBm (band %d)\n",
+		  meas_avg, b);
+
+	return b;
+}
+
 /* determine logical channel based on TRX and channel number IE */
 struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				   int *rc)

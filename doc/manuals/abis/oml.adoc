@@ -394,8 +394,8 @@ stored items are currently not used in the OsmoBTS code base.
 | 0x13 | 9.4.19 | File Version  |  | _ignored_
 | 0x14 | 9.4.20 | GSM Time  |  | _ignored_
 | 0x16 | 9.4.22 | HW Configuration  |  | _ignored_
-| 0x18 | 9.4.24 | Intave Parameter  | <- | _ignored_
-| 0x19 | 9.4.25 | Interference level Boundaries  | <- | _ignored_
+| 0x18 | 9.4.24 | Intave Parameter  | <- |
+| 0x19 | 9.4.25 | Interference level Boundaries  | <- |
 | 0x1a | 9.4.26 | List of Required Attributes  |  | _ignored_
 | 0x1c | 9.4.28 | Manufacturer Dependent State  |  | _ignored_
 | 0x1d | 9.4.29 | Manufacturer Dependent Thresholds  |  | _ignored_
