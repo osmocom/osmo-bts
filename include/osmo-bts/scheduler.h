@@ -136,10 +136,14 @@ struct l1sched_chan_state {
 	uint8_t			ul_encr_key[MAX_A5_KEY_LEN];
 	uint8_t			dl_encr_key[MAX_A5_KEY_LEN];
 
-	/* Simple ring buffer (up to 8 unique measurements) */
+	/* Uplink measurements */
 	struct {
-		struct l1sched_meas_set buf[8];
+		/* Active channel measurements (simple ring buffer) */
+		struct l1sched_meas_set buf[8]; /* up to 8 entries */
 		unsigned int current; /* current position */
+
+		/* Interference measurements */
+		int interf_avg; /* sliding average */
 	} meas;
 
 	/* handover */

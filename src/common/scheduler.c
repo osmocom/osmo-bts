@@ -1444,6 +1444,31 @@ static int trx_sched_calc_frame_loss(struct l1sched_ts *l1ts,
 	return 0;
 }
 
+/* Process a single noise measurement for an inactive timeslot. */
+static void trx_sched_noise_meas(struct l1sched_chan_state *l1cs,
+				 const struct trx_ul_burst_ind *bi)
+{
+	int *Avg = &l1cs->meas.interf_avg;
+
+	/* EWMA (Exponentially Weighted Moving Average):
+	*
+	*   Avg[n] = a * Val[n] + (1 - a) * Avg[n - 1]
+	*
+	* Implemented using the '+=' operator:
+	*
+	*   Avg += a * Val - a * Avg
+	*   Avg += a * (Val - Avg)
+	*
+	* We use constant 'a' = 0.5, what is equal to:
+	*
+	*   Avg += (Val - Avg) / 2
+	*
+	* We don't really need precisity here, so no scaling.
+	*/
+
+	*Avg += (bi->rssi - *Avg) / 2;
+}
+
 /* Process an Uplink burst indication */
 int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 {
@@ -1469,15 +1494,13 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 	l1cs = &l1ts->chan_state[bi->chan];
 	func = trx_chan_desc[bi->chan].ul_fn;
 
-	/* TODO: handle noise measurements */
-	if (bi->chan == TRXC_IDLE && bi->flags & TRX_BI_F_NOPE_IND) {
-		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Rx noise measurement (%d)\n", bi->rssi);
-		return -ENOTSUP;
-	}
-
 	/* check if channel is active */
-	if (!TRX_CHAN_IS_ACTIVE(l1cs, bi->chan))
-		return -EINVAL;
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, bi->chan)) {
+		/* handle noise measurements */
+		if (TRX_CHAN_IS_DEDIC(bi->chan))
+			trx_sched_noise_meas(l1cs, bi);
+		return 0;
+	}
 
 	/* omit bursts which have no handler, like IDLE bursts */
 	if (!func)

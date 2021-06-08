@@ -60,6 +60,65 @@ int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	return 0;
 }
 
+static void ts_report_interf_meas(const struct gsm_bts_trx_ts *ts)
+{
+	const struct l1sched_ts *l1ts = ts->priv;
+	unsigned int ln;
+
+	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+		const struct gsm_lchan *lchan = &ts->lchan[ln];
+		enum trx_chan_type dcch, acch;
+		int interf_avg;
+
+		/* We're not interested in active channels */
+		if (lchan->state == LCHAN_S_ACTIVE)
+			continue;
+
+		switch (lchan->type) {
+		case GSM_LCHAN_SDCCH:
+			if (ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+			    ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
+				dcch = TRXC_SDCCH4_0 + ln;
+				acch = TRXC_SACCH4_0 + ln;
+			} else { /* SDCCH/8 otherwise */
+				dcch = TRXC_SDCCH8_0 + ln;
+				acch = TRXC_SACCH8_0 + ln;
+			}
+			break;
+		case GSM_LCHAN_TCH_F:
+			dcch = TRXC_TCHF;
+			acch = TRXC_SACCHTF;
+			break;
+		case GSM_LCHAN_TCH_H:
+			dcch = TRXC_TCHH_0 + ln;
+			acch = TRXC_SACCHTH_0 + ln;
+			break;
+		default:
+			/* Skip other lchan types */
+			continue;
+		}
+
+		OSMO_ASSERT(dcch < ARRAY_SIZE(l1ts->chan_state));
+		OSMO_ASSERT(acch < ARRAY_SIZE(l1ts->chan_state));
+
+		interf_avg = (l1ts->chan_state[dcch].meas.interf_avg +
+			      l1ts->chan_state[acch].meas.interf_avg) / 2;
+
+		gsm_lchan_interf_meas_push((struct gsm_lchan *) lchan, interf_avg);
+	}
+}
+
+static void bts_report_interf_meas(const struct gsm_bts *bts)
+{
+	const struct gsm_bts_trx *trx;
+	unsigned int tn;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
+			ts_report_interf_meas(&trx->ts[tn]);
+	}
+}
+
 /* Find a route (PHY instance) for a given Downlink burst request */
 static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 					  struct gsm_bts_trx_ts *ts)
@@ -188,6 +247,10 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 {
 	struct gsm_bts_trx *trx;
 	unsigned int tn;
+
+	/* Report interference measurements */
+	if (fn % 104 == 0) /* SACCH period */
+		bts_report_interf_meas(bts);
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
