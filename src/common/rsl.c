@@ -550,6 +550,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 			}
 			break;
 		case SYSINFO_TYPE_1:
+		case SYSINFO_TYPE_2:
 		case SYSINFO_TYPE_13:
 			pcu_tx_si(trx->bts, osmo_si, true);
 			break;
