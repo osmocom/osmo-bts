@@ -456,6 +456,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 	enum osmo_sysinfo_type osmo_si;
 	struct gsm48_system_information_type_2quater *si2q;
 	struct bitvec bv;
+	const uint8_t *si_buf;
 	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
 
 	/* 9.3.30 System Info Type */
@@ -518,7 +519,8 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		bts->si_valid |= (1 << osmo_si);
 
-		if (SYSINFO_TYPE_3 == osmo_si) {
+		switch (osmo_si) {
+		case SYSINFO_TYPE_3:
 			if (trx->nr == 0 && num_agch(trx, "RSL") != 1) {
 				lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
 				/* will be reactivated by sapi_deactivate_cb() */
@@ -526,29 +528,33 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 					LCHAN_REL_ACT_REACT;
 			}
 			/* decode original SI3 Rest Octets as sent by BSC */
-			const uint8_t *si3_ro_buf = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
-			si3_ro_buf += offsetof(struct gsm48_system_information_type_3, rest_octets);
-			osmo_gsm48_rest_octets_si3_decode(&bts->si3_ro_decoded, si3_ro_buf);
+			si_buf = (const uint8_t *) GSM_BTS_SI(bts, osmo_si);
+			si_buf += offsetof(struct gsm48_system_information_type_3, rest_octets);
+			osmo_gsm48_rest_octets_si3_decode(&bts->si3_ro_decoded, si_buf);
 			/* patch out GPRS indicator from binary if PCU is not connected; will be enabled
 			 * after PCU connects */
 			regenerate_si3_restoctets(bts);
 			pcu_tx_si(trx->bts, SYSINFO_TYPE_3, true);
-		} else if (SYSINFO_TYPE_4 == osmo_si) {
+			break;
+		case SYSINFO_TYPE_4:
 			/* decode original SI4 Rest Octets as sent by BSC */
-			const uint8_t *si4 = (uint8_t *) GSM_BTS_SI(bts, osmo_si);
-			int si4_ro_offset = get_si4_ro_offset(si4);
+			si_buf = (const uint8_t *) GSM_BTS_SI(bts, osmo_si);
+			int si4_ro_offset = get_si4_ro_offset(si_buf);
 			if (si4_ro_offset > 0) {
 				osmo_gsm48_rest_octets_si4_decode(&bts->si4_ro_decoded,
-								  si4 + si4_ro_offset,
+								  si_buf + si4_ro_offset,
 								  GSM_MACBLOCK_LEN - si4_ro_offset);
 				/* patch out GPRS indicator from binary if PCU is not connected; will be
 				 * enabled after PCU connects */
 				regenerate_si4_restoctets(bts);
 			}
-		} else if (SYSINFO_TYPE_13 == osmo_si) {
-			pcu_tx_si(trx->bts, SYSINFO_TYPE_13, true);
-		} else if (SYSINFO_TYPE_1 == osmo_si) {
-			pcu_tx_si(trx->bts, SYSINFO_TYPE_1, true);
+			break;
+		case SYSINFO_TYPE_1:
+		case SYSINFO_TYPE_13:
+			pcu_tx_si(trx->bts, osmo_si, true);
+			break;
+		default:
+			break;
 		}
 
 	} else if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
