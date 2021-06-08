@@ -167,6 +167,8 @@ struct gsm_bts {
 	/* how do we talk OML with this TRX? */
 	struct e1inp_sign_link *oml_link;
 	struct timespec oml_conn_established_timestamp;
+	/* OSMO extenion link associated to same line as oml_link: */
+	struct e1inp_sign_link *osmo_link;
 
 	/* Abis network management O&M handle */
 	struct gsm_abis_mo mo;

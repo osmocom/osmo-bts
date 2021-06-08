@@ -45,6 +45,7 @@
 #include <osmo-bts/signal.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/abis_osmo.h>
 
 uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx);
 
@@ -61,8 +62,6 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
 };
-
-static int pcu_sock_send(struct gsm_network *net, struct msgb *msg);
 
 /*
  * PCU messages
@@ -884,11 +883,21 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 	return 0;
 }
 
+#define CHECK_IF_MSG_SIZE(prim_len, prim_msg) \
+	do { \
+		size_t _len = PCUIF_HDR_SIZE + sizeof(prim_msg); \
+		if (prim_len < _len) { \
+			LOGP(DPCU, LOGL_ERROR, "Received %zu bytes on PCU Socket, but primitive %s " \
+			     "size is %zu, discarding\n", prim_len, #prim_msg, _len); \
+			return -EINVAL; \
+		} \
+	} while(0);
 static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
-	struct gsm_pcu_if *pcu_prim)
+	struct gsm_pcu_if *pcu_prim, size_t prim_len)
 {
 	int rc = 0;
 	struct gsm_bts *bts;
+	size_t exp_len;
 
 	if ((bts = gsm_bts_num(net, pcu_prim->bts_nr)) == NULL) {
 		LOGP(DPCU, LOGL_ERROR, "Received PCU Prim for non-existent BTS %u\n", pcu_prim->bts_nr);
@@ -897,16 +906,31 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 
 	switch (msg_type) {
 	case PCU_IF_MSG_DATA_REQ:
+		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.data_req);
 		rc = pcu_rx_data_req(bts, msg_type, &pcu_prim->u.data_req);
 		break;
 	case PCU_IF_MSG_PAG_REQ:
+		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.pag_req);
 		rc = pcu_rx_pag_req(bts, msg_type, &pcu_prim->u.pag_req);
 		break;
 	case PCU_IF_MSG_ACT_REQ:
+		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.act_req);
 		rc = pcu_rx_act_req(bts, &pcu_prim->u.act_req);
 		break;
 	case PCU_IF_MSG_TXT_IND:
+		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.txt_ind);
 		rc = pcu_rx_txt_ind(bts, &pcu_prim->u.txt_ind);
+		break;
+	case PCU_IF_MSG_CONTAINER:
+		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.container);
+		/* ^ check if we can access container fields, v check with container data length */
+		exp_len = PCUIF_HDR_SIZE + sizeof(pcu_prim->u.container) + osmo_load16be(&pcu_prim->u.container.length);
+		if (prim_len < exp_len) {
+			LOGP(DPCU, LOGL_ERROR, "Received %zu bytes on PCU Socket, but primitive "
+			     "container size is %zu, discarding\n", prim_len, exp_len);
+			return -EINVAL;
+		}
+		rc = abis_osmo_pcu_tx_container(bts, &pcu_prim->u.container);
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Received unknown PCU msg type %d\n",
@@ -928,7 +952,7 @@ struct pcu_sock_state {
 	struct llist_head upqueue;	/* queue for sending messages */
 };
 
-static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
+int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 {
 	struct pcu_sock_state *state = net->pcu_state;
 	struct osmo_fd *conn_bfd;
@@ -1019,7 +1043,7 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 	struct msgb *msg;
 	int rc;
 
-	msg = msgb_alloc(sizeof(*pcu_prim), "pcu_sock_rx");
+	msg = msgb_alloc(sizeof(*pcu_prim) + 1000, "pcu_sock_rx");
 	if (!msg)
 		return -ENOMEM;
 
@@ -1037,14 +1061,14 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 		goto close;
 	}
 
-	if (rc < sizeof(*pcu_prim)) {
-		LOGP(DPCU, LOGL_ERROR, "Received %d bytes on PCU Socket, but primitive size "
-		     "is %zu, discarding\n", rc, sizeof(*pcu_prim));
+	if (rc < PCUIF_HDR_SIZE) {
+		LOGP(DPCU, LOGL_ERROR, "Received %d bytes on PCU Socket, but primitive hdr size "
+		     "is %zu, discarding\n", rc, PCUIF_HDR_SIZE);
 		msgb_free(msg);
 		return 0;
 	}
 
-	rc = pcu_rx(state->net, pcu_prim->msg_type, pcu_prim);
+	rc = pcu_rx(state->net, pcu_prim->msg_type, pcu_prim, rc);
 
 	/* as we always synchronously process the message in pcu_rx() and
 	 * its callbacks, we can free the message here. */

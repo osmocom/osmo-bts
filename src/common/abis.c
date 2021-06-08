@@ -48,6 +48,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
+#include <osmo-bts/abis_osmo.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts_trx.h>
 
@@ -113,6 +114,8 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		if (clock_gettime(CLOCK_MONOTONIC, &g_bts->oml_conn_established_timestamp) != 0)
 			memset(&g_bts->oml_conn_established_timestamp, 0,
 			       sizeof(g_bts->oml_conn_established_timestamp));
+		g_bts->osmo_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OSMO,
+							  g_bts->c0, IPAC_PROTO_OSMO, 0);
 		drain_oml_queue(g_bts);
 		bts_link_estab(g_bts);
 		return g_bts->oml_link;
@@ -158,9 +161,14 @@ static void sign_link_down(struct e1inp_line *line)
 			"A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
 			(uint64_t)(now.tv_sec - g_bts->oml_conn_established_timestamp.tv_sec));
 		}
+		g_bts->oml_link = NULL;
 	}
-	g_bts->oml_link = NULL;
 	memset(&g_bts->oml_conn_established_timestamp, 0, sizeof(g_bts->oml_conn_established_timestamp));
+
+	if (g_bts->osmo_link) {
+		e1inp_sign_link_destroy(g_bts->osmo_link);
+		g_bts->osmo_link = NULL;
+	}
 
 	/* Then iterate over the RSL signalling links */
 	llist_for_each_entry(trx, &g_bts->trx_list, list) {
@@ -190,6 +198,9 @@ static int sign_link_cb(struct msgb *msg)
 		break;
 	case E1INP_SIGN_RSL:
 		down_rsl(link->trx, msg);
+		break;
+	case E1INP_SIGN_OSMO:
+		down_osmo(link->trx->bts, msg);
 		break;
 	default:
 		msgb_free(msg);

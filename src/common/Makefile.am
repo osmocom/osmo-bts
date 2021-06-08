@@ -12,6 +12,7 @@ libbts_a_SOURCES = \
 	sysinfo.c \
 	logging.c \
 	abis.c \
+	abis_osmo.c \
 	oml.c \
 	bts.c \
 	bts_trx.c \
