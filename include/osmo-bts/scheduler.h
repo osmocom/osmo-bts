@@ -18,6 +18,9 @@
 #define TRX_8PSK_NB_TSC(br) \
 	_sched_train_seq_8psk_nb[(br)->tsc]
 
+#define TRX_CHAN_IS_DEDIC(chan) \
+	(chan >= TRXC_TCHF)
+
 /* These types define the different channels on a multiframe.
  * Each channel has queues and can be activated individually.
  */
@@ -28,6 +31,10 @@ enum trx_chan_type {
 	TRXC_BCCH,
 	TRXC_RACH,
 	TRXC_CCCH,
+	TRXC_CBCH,
+	TRXC_PDTCH,
+	TRXC_PTCCH,
+/* Dedicated channels start here */
 	TRXC_TCHF,
 	TRXC_TCHH_0,
 	TRXC_TCHH_1,
@@ -58,9 +65,6 @@ enum trx_chan_type {
 	TRXC_SACCH8_5,
 	TRXC_SACCH8_6,
 	TRXC_SACCH8_7,
-	TRXC_PDTCH,
-	TRXC_PTCCH,
-	TRXC_CBCH,
 	_TRX_CHAN_MAX
 };
 
