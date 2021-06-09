@@ -1201,7 +1201,7 @@ int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink
 	/* no algorithm given means a5/0 */
 	if (algo <= 0)
 		algo = 0;
-	else if (lchan->encr.key_len != 8) {
+	else if (lchan->encr.key_len != 8 && lchan->encr.key_len != 16) {
 		LOGPLCHAN(lchan, DL1C, LOGL_ERROR,
 			  "Algo A5/%d not supported with given key_len=%u\n",
 			  algo, lchan->encr.key_len);

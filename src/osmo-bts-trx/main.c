@@ -127,7 +127,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts->model_priv = bts_trx;
 	bts->variant = BTS_OSMO_TRX;
-	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3) | CIPHER_A5(4);
 
 	/* The nominal value for each TRX is later overwritten through VTY cmd
 	 * 'nominal-tx-power' if present, otherwise through TRXC cmd NOMTXPOWER.

@@ -50,14 +50,14 @@ static void test_cipher_parsing(void)
 		ASSERT_TRUE(bts_supports_cipher(bts, i) == 0);
 	}
 
-	/* checking default A5/1 to A5/3 support */
-	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	/* checking default A5/1 to A5/4 support */
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3) | CIPHER_A5(4);
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x0) == -ENOTSUP);
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x1) == 1); /* A5/0 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x2) == 1); /* A5/1 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x3) == 1); /* A5/2 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x4) == 1); /* A5/3 */
-	ASSERT_TRUE(bts_supports_cipher(bts, 0x5) == 0); /* A5/4 */
+	ASSERT_TRUE(bts_supports_cipher(bts, 0x5) == 1); /* A5/4 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x6) == 0); /* A5/5 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x7) == 0); /* A5/6 */
 	ASSERT_TRUE(bts_supports_cipher(bts, 0x8) == 0); /* A5/7 */
