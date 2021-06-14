@@ -80,7 +80,36 @@ struct paging_state {
 	/* total number of currently active paging records in queue */
 	unsigned int num_paging;
 	struct llist_head paging_queue[MAX_PAGING_BLOCKS_CCCH*MAX_BS_PA_MFRMS];
+
+	/* prioritization of cs pagings will automatically become
+	 * active on congestions (queue almost full) */
+	bool cs_priority_active;
 };
+
+/* The prioritization of cs pagings is controlled by a hysteresis. When the
+ * fill state of the paging queue exceeds the upper fill level
+ * THRESHOLD_CONGESTED [%], then PS pagings (immediate assignments) will be
+ * dropped until fill state of the paging queue drops under the lower fill
+ * level THRESHOLD_CLEAR [%]. */
+#define THRESHOLD_CONGESTED 66 /* (percent of num_paging_max) */
+#define THRESHOLD_CLEAR 50 /* (percent of num_paging_max) */
+
+/* Check the queue fill status and decide if prioritization of CS pagings
+ * must be turned on to flatten the negative effects of the congestion
+ * situation on the CS domain. */
+static void check_congestion(struct paging_state *ps)
+{
+	int pag_queue_len = paging_queue_length(ps);
+	int pag_queue_max = paging_get_queue_max(ps);
+	unsigned int treshold_upper = pag_queue_max * THRESHOLD_CONGESTED / 100;
+	unsigned int treshold_lower = pag_queue_max * THRESHOLD_CLEAR / 100;
+
+	if (pag_queue_len > treshold_upper && ps->cs_priority_active == false) {
+		ps->cs_priority_active = true;
+		rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_CONG);
+	} else if (pag_queue_len < treshold_lower)
+		ps->cs_priority_active = false;
+}
 
 unsigned int paging_get_lifetime(struct paging_state *ps)
 {
@@ -181,6 +210,8 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	int blocks = gsm48_number_of_paging_subchannels(&ps->chan_desc);
 	struct paging_record *pr;
 
+	check_congestion(ps);
+
 	rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_RCVD);
 
 	if (paging_group >= blocks) {
@@ -238,11 +269,20 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add an IMM.ASS message to the paging queue */
 int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
-		       uint8_t len)
+                       uint8_t len, bool from_pcu)
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
 	uint16_t imsi, paging_group;
+
+	check_congestion(ps);
+
+	if (ps->cs_priority_active && from_pcu) {
+		LOGP(DPAG, LOGL_NOTICE, "Dropping paging for PS, queue congested (%u)\n",
+			ps->num_paging);
+		rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_DROP_PS);
+		return -ENOSPC;
+	}
 
 	if (len != GSM_MACBLOCK_LEN + 3) {
 		LOGP(DPAG, LOGL_ERROR, "IMM.ASS invalid length %d\n", len);
@@ -530,6 +570,10 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 	int group;
 	int len;
 
+	/* This will have no effect on behavior of this function, we just need
+	 * need to check the congestion status of the queue from time to time. */
+	check_congestion(ps);
+
 	*is_empty = 0;
 	bts->load.ccch.pch_total += 1;
 
@@ -711,6 +755,7 @@ struct paging_state *paging_init(struct gsm_bts *bts,
 	ps->bts = bts;
 	ps->paging_lifetime = paging_lifetime;
 	ps->num_paging_max = num_paging_max;
+	ps->cs_priority_active = false;
 
 	for (i = 0; i < ARRAY_SIZE(ps->paging_queue); i++)
 		INIT_LLIST_HEAD(&ps->paging_queue[i]);

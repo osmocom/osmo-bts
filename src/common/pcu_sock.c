@@ -673,7 +673,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 
 	switch (data_req->sapi) {
 	case PCU_IF_SAPI_PCH:
-		paging_add_imm_ass(bts->paging_state, data_req->data, data_req->len);
+		paging_add_imm_ass(bts->paging_state, data_req->data, data_req->len, true);
 		break;
 	case PCU_IF_SAPI_AGCH:
 		msg = msgb_alloc(data_req->len, "pcu_agch");

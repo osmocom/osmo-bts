@@ -37,7 +37,7 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add an IMM.ASS message to the paging queue */
 int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
-                       uint8_t len);
+                       uint8_t len, bool from_pcu);
 
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,

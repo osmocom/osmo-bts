@@ -90,6 +90,8 @@ static int bts_signal_cbfn(unsigned int subsys, unsigned int signal,
 static const struct rate_ctr_desc bts_ctr_desc[] = {
 	[BTS_CTR_PAGING_RCVD] =		{"paging:rcvd", "Received paging requests (Abis)"},
 	[BTS_CTR_PAGING_DROP] =		{"paging:drop", "Dropped paging requests (Abis)"},
+	[BTS_CTR_PAGING_DROP_PS] =	{"paging:drop-ps", "Dropped paging requests (PS/PCU)"},
+	[BTS_CTR_PAGING_CONG] =		{"paging:cong", "Paging congestion detected (Abis)"},
 	[BTS_CTR_PAGING_SENT] =		{"paging:sent", "Sent paging requests (Um)"},
 
 	[BTS_CTR_RACH_RCVD] =		{"rach:rcvd", "Received RACH requests (Um)"},
