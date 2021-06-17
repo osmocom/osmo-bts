@@ -100,6 +100,9 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 				tn, mf->name, VTY_NEWLINE);
 			vty_out(vty, "    pending DL prims    : %u%s",
 				llist_count(&l1ts->dl_prims), VTY_NEWLINE);
+			vty_out(vty, "    interference        : %ddBm%s",
+				l1ts->chan_state[TRXC_IDLE].meas.interf_avg,
+				VTY_NEWLINE);
 		}
 	}
 

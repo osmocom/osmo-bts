@@ -1491,8 +1491,8 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 
 	/* check if channel is active */
 	if (!TRX_CHAN_IS_ACTIVE(l1cs, bi->chan)) {
-		/* handle noise measurements */
-		if (TRX_CHAN_IS_DEDIC(bi->chan))
+		/* handle noise measurements on dedicated and idle channels */
+		if (TRX_CHAN_IS_DEDIC(bi->chan) || bi->chan == TRXC_IDLE)
 			trx_sched_noise_meas(l1cs, bi);
 		return 0;
 	}
