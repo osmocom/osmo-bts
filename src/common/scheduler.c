@@ -148,7 +148,6 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		/* On C0, BTS needs to ensure discontinuous burst transmission.
 		 * Therefore we need to send dummy bursts on IDLE slots. */
 		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
-		.dl_fn = tx_idle_fn,
 	},
 	[TRXC_FCCH] = {
 		.name = "FCCH", /* 3GPP TS 05.02, section 3.3.2.1 */

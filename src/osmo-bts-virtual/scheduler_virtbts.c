@@ -177,12 +177,6 @@ static void tx_to_virt_um_voice_frame(struct l1sched_ts *l1ts,
  * TX on downlink
  */
 
-/* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
-{
-	return 0;
-}
-
 int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	return 0;

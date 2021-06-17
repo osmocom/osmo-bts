@@ -53,13 +53,6 @@
 #define SCHED_FH_PARAMS_VALS(ts) \
 	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
 
-/* an IDLE burst returns nothing. on C0 it is replaced by dummy burst */
-int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
-{
-	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting IDLE\n");
-	return 0;
-}
-
 static void ts_report_interf_meas(const struct gsm_bts_trx_ts *ts)
 {
 	const struct l1sched_ts *l1ts = ts->priv;

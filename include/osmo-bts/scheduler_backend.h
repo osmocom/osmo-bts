@@ -53,7 +53,6 @@ int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
 			   uint8_t is_sub);
 
-int tx_idle_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
 int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
 int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
 int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
