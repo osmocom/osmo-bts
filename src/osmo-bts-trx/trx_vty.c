@@ -57,6 +57,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 {
 	struct gsm_bts_trx *trx;
 	struct trx_l1h *l1h;
+	unsigned int tn;
 
 	llist_for_each_entry(trx, &g_bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
@@ -87,6 +88,19 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 				VTY_NEWLINE);
 		else
 			vty_out(vty, " bsic   : undefined%s", VTY_NEWLINE);
+
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+			const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+			const struct l1sched_ts *l1ts = ts->priv;
+			const struct trx_sched_multiframe *mf;
+
+			mf = &trx_sched_multiframes[l1ts->mf_index];
+
+			vty_out(vty, "  timeslot #%u (%s)%s",
+				tn, mf->name, VTY_NEWLINE);
+			vty_out(vty, "    pending DL prims    : %u%s",
+				llist_count(&l1ts->dl_prims), VTY_NEWLINE);
+		}
 	}
 
 	return CMD_SUCCESS;
