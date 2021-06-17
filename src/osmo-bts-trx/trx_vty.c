@@ -1,4 +1,4 @@
-/* VTY interface for sysmoBTS */
+/* VTY interface for osmo-bts-trx */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  *
