@@ -86,7 +86,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 			vty_out(vty, " bsic   : %d%s", l1h->config.bsic,
 				VTY_NEWLINE);
 		else
-			vty_out(vty, " bisc   : undefined%s", VTY_NEWLINE);
+			vty_out(vty, " bsic   : undefined%s", VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
