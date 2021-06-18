@@ -45,6 +45,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
+#include <osmo-bts/pcu_if.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
@@ -101,14 +102,36 @@ static void ts_report_interf_meas(const struct gsm_bts_trx_ts *ts)
 	}
 }
 
-static void bts_report_interf_meas(const struct gsm_bts *bts)
+static void bts_report_interf_meas(const struct gsm_bts *bts,
+				   const uint32_t fn)
 {
 	const struct gsm_bts_trx *trx;
-	unsigned int tn;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++)
-			ts_report_interf_meas(&trx->ts[tn]);
+		uint8_t pdch_interf[8] = { 0 };
+		unsigned int tn, pdch_num = 0;
+
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+			const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+			const struct l1sched_ts *l1ts = ts->priv;
+			const struct l1sched_chan_state *l1cs;
+
+			/* PS interference reports for the PCU */
+			if (ts_pchan(ts) == GSM_PCHAN_PDCH) {
+				l1cs = &l1ts->chan_state[TRXC_IDLE];
+				/* Interference value is encoded as -x dBm */
+				pdch_interf[tn] = -1 * l1cs->meas.interf_avg;
+				pdch_num++;
+				continue;
+			}
+
+			/* CS interference reports for the BSC */
+			ts_report_interf_meas(ts);
+		}
+
+		/* Report interference levels on PDCH to the PCU */
+		if (pdch_num > 0)
+			pcu_tx_interf_ind(bts->nr, trx->nr, fn, pdch_interf);
 	}
 }
 
@@ -243,7 +266,7 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 
 	/* Report interference measurements */
 	if (fn % 104 == 0) /* SACCH period */
-		bts_report_interf_meas(bts);
+		bts_report_interf_meas(bts, fn);
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);

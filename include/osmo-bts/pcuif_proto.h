@@ -21,6 +21,7 @@
 #define PCU_IF_MSG_INFO_IND	0x32	/* retrieve BTS info */
 #define PCU_IF_MSG_ACT_REQ	0x40	/* activate/deactivate PDCH */
 #define PCU_IF_MSG_TIME_IND	0x52	/* GSM time indication */
+#define PCU_IF_MSG_INTERF_IND	0x53	/* interference report */
 #define PCU_IF_MSG_PAG_REQ	0x60	/* paging request */
 #define PCU_IF_MSG_TXT_IND	0x70	/* Text indication for BTS */
 
@@ -208,6 +209,14 @@ struct gsm_pcu_if_susp_req {
 	uint8_t		cause;
 } __attribute__ ((packed));
 
+/* Interference measurements on PDCH timeslots */
+struct gsm_pcu_if_interf_ind {
+	uint8_t		trx_nr;
+	uint8_t		spare[3];
+	uint32_t	fn;
+	uint8_t		interf[8];
+} __attribute__ ((packed));
+
 struct gsm_pcu_if {
 	/* context based information */
 	uint8_t		msg_type;	/* message type */
@@ -228,6 +237,7 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_time_ind	time_ind;
 		struct gsm_pcu_if_pag_req	pag_req;
 		struct gsm_pcu_if_app_info_req	app_info_req;
+		struct gsm_pcu_if_interf_ind	interf_ind;
 	} u;
 } __attribute__ ((packed));
 

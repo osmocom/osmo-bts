@@ -560,6 +560,27 @@ int pcu_tx_time_ind(uint32_t fn)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
+int pcu_tx_interf_ind(uint8_t bts_nr, uint8_t trx_nr, uint32_t fn,
+		      const uint8_t *pdch_interf)
+{
+	struct gsm_pcu_if_interf_ind *interf_ind;
+	struct gsm_pcu_if *pcu_prim;
+	struct msgb *msg;
+
+	msg = pcu_msgb_alloc(PCU_IF_MSG_INTERF_IND, bts_nr);
+	if (!msg)
+		return -ENOMEM;
+	pcu_prim = (struct gsm_pcu_if *) msg->data;
+	interf_ind = &pcu_prim->u.interf_ind;
+
+	interf_ind->trx_nr = trx_nr;
+	interf_ind->fn = fn;
+	memcpy(&interf_ind->interf[0], &pdch_interf[0],
+	       sizeof(interf_ind->interf));
+
+	return pcu_sock_send(&bts_gsmnet, msg);
+}
+
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 {
 	struct pcu_sock_state *state = bts_gsmnet.pcu_state;
@@ -914,7 +935,8 @@ static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 	struct gsm_pcu_if *pcu_prim = (struct gsm_pcu_if *) msg->data;
 
 	if (!state) {
-		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND)
+		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND &&
+		    pcu_prim->msg_type != PCU_IF_MSG_INTERF_IND)
 			LOGP(DPCU, LOGL_INFO, "PCU socket not created, "
 				"dropping message\n");
 		msgb_free(msg);
@@ -922,7 +944,8 @@ static int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
 	}
 	conn_bfd = &state->conn_bfd;
 	if (conn_bfd->fd <= 0) {
-		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND)
+		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND &&
+		    pcu_prim->msg_type != PCU_IF_MSG_INTERF_IND)
 			LOGP(DPCU, LOGL_NOTICE, "PCU socket not connected, "
 				"dropping message\n");
 		msgb_free(msg);
