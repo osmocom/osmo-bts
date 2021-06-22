@@ -1190,7 +1190,7 @@ int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink
 	int i, rc = -EINVAL;
 
 	/* no cipher for PDCH */
-	if (lchan->ts->pchan == GSM_PCHAN_PDCH)
+	if (ts_pchan(lchan->ts) == GSM_PCHAN_PDCH)
 		return 0;
 
 	/* VAMOS: convert Osmocom specific channel number to a generic one,
