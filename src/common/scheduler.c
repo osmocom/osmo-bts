@@ -868,7 +868,7 @@ int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap
 
 int trx_sched_tch_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
-	uint8_t tn = L1SAP_CHAN2TS(l1sap->u.data.chan_nr);
+	uint8_t tn = L1SAP_CHAN2TS(l1sap->u.tch.chan_nr);
 	struct l1sched_ts *l1ts = trx->ts[tn].priv;
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1ts, -1, l1sap->u.tch.fn,
