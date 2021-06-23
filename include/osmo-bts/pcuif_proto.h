@@ -24,6 +24,7 @@
 #define PCU_IF_MSG_INTERF_IND	0x53	/* interference report */
 #define PCU_IF_MSG_PAG_REQ	0x60	/* paging request */
 #define PCU_IF_MSG_TXT_IND	0x70	/* Text indication for BTS */
+#define PCU_IF_MSG_CONTAINER	0x80	/* Transparent container message */
 
 /* sapi */
 #define PCU_IF_SAPI_RACH	0x01	/* channel request on CCCH */
@@ -217,6 +218,14 @@ struct gsm_pcu_if_interf_ind {
 	uint8_t		interf[8];
 } __attribute__ ((packed));
 
+/* Contains messages transmitted BSC<->PCU, potentially forwarded by BTS via IPA/PCU */
+struct gsm_pcu_if_container {
+	uint8_t		msg_type;
+	uint8_t 	spare;
+	uint16_t	length; /* network byte order */
+	uint8_t		data[0];
+} __attribute__ ((packed));
+
 struct gsm_pcu_if {
 	/* context based information */
 	uint8_t		msg_type;	/* message type */
@@ -238,6 +247,7 @@ struct gsm_pcu_if {
 		struct gsm_pcu_if_pag_req	pag_req;
 		struct gsm_pcu_if_app_info_req	app_info_req;
 		struct gsm_pcu_if_interf_ind	interf_ind;
+		struct gsm_pcu_if_container	container;
 	} u;
 } __attribute__ ((packed));
 
