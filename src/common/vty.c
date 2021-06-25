@@ -1106,6 +1106,10 @@ static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, "  Radio Link Timeout (OVERRIDE): %s%s",
 			stringify_radio_link_timeout(bts->radio_link_timeout.current), VTY_NEWLINE);
 	}
+	if (bts->c0_power_red_db > 0) {
+		vty_out(vty, "  BCCH carrier power reduction: %u dB%s",
+			bts->c0_power_red_db, VTY_NEWLINE);
+	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		const struct phy_instance *pinst = trx_phy_instance(trx);
@@ -1259,6 +1263,39 @@ DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-t
 	} else {
 		bts->radio_link_timeout.current = atoi(argv[1]);
 		bts->radio_link_timeout.vty_override = true;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(bts_c0_power_red,
+      bts_c0_power_red_cmd,
+      "bts <0-255> c0-power-red <0-6>",
+      "BTS Specific Commands\n" BTS_NR_STR
+      "BCCH carrier power reduction operation\n"
+      "Power reduction value (in dB, even numbers only)\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	const int bts_nr = atoi(argv[0]);
+	const int red = atoi(argv[1]);
+	struct gsm_bts *bts;
+
+	bts = gsm_bts_num(net, atoi(argv[0]));
+	if (bts == NULL) {
+		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (red % 2 != 0) {
+		vty_out(vty, "%% Incorrect BCCH power reduction value, "
+			"an even number is expected%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (bts_set_c0_pwr_red(bts, red) != 0) {
+		vty_out(vty, "%% BCCH carrier power reduction operation mode "
+			"is not supported for BTS (%d)%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
 	}
 
 	return CMD_SUCCESS;
@@ -2391,6 +2428,7 @@ int bts_vty_init(void *ctx)
 	install_element(ENABLE_NODE, &bts_t_t_l_power_ctrl_current_max_cmd);
 	install_element(ENABLE_NODE, &test_send_failure_event_report_cmd);
 	install_element(ENABLE_NODE, &radio_link_timeout_cmd);
+	install_element(ENABLE_NODE, &bts_c0_power_red_cmd);
 
 	install_element(CONFIG_NODE, &cfg_phy_cmd);
 	install_node(&phy_node, config_write_phy);

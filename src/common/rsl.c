@@ -2179,6 +2179,7 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts_trx *trx = msg->trx;
 	const struct tlv_p_entry *ie;
 	struct tlv_parsed tp;
 	uint8_t old, new;
@@ -2187,22 +2188,34 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 
 	/* 9.3.4 BS Power (M) */
 	if (!TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
-		return rsl_tx_error_report(msg->trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &dch->chan_nr, NULL, msg);
 
 	if (*TLVP_VAL(&tp, RSL_IE_BS_POWER) & (1 << 4)) {
 		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Fast Power Control is not supported\n");
-		return rsl_tx_error_report(msg->trx, RSL_ERR_SERV_OPT_UNIMPL, &dch->chan_nr, NULL, msg);
+		return rsl_tx_error_report(trx, RSL_ERR_SERV_OPT_UNIMPL, &dch->chan_nr, NULL, msg);
 	}
 
 	new = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
 	old = lchan->bs_power_ctrl.current;
+
+	/* Osmocom specific extension for BCCH carrier power reduction */
+	if (dch->chan_nr == RSL_CHAN_BCCH) {
+		int rc = bts_set_c0_pwr_red(trx->bts, new);
+		if (rc != 0) {
+			const uint8_t cause = (rc == -ENOTSUP) ?
+				RSL_ERR_SERV_OPT_UNIMPL : RSL_ERR_IE_CONTENT;
+			return rsl_tx_error_report(trx, cause, &dch->chan_nr, NULL, msg);
+		}
+
+		return 0;
+	}
 
 	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
 		struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
 
 		/* Parsed parameters will override per-TRX defaults */
-		memcpy(params, msg->trx->bs_dpc_params, sizeof(*params));
+		memcpy(params, trx->bs_dpc_params, sizeof(*params));
 
 		/* Parsed parameters will override per-TRX defaults */
 		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
@@ -3554,6 +3567,10 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 		break;
 	case RSL_MT_OSMO_ETWS_CMD:
 		ret = rsl_rx_osmo_etws_cmd(trx, msg);
+		break;
+	/* Osmocom specific extension for BCCH carrier power reduction */
+	case RSL_MT_BS_POWER_CONTROL:
+		ret = rsl_rx_bs_pwr_ctrl(msg);
 		break;
 	default:
 		LOGPLCHAN(msg->lchan, DRSL, LOGL_NOTICE, "undefined RSL cchan msg_type 0x%02x\n",

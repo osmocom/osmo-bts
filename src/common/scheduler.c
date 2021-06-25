@@ -1318,6 +1318,8 @@ void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
 		br->att = l1cs->lchan->bs_power_ctrl.current;
+	else /* Ensure no attenuation in the absence of lchan (e.g. on PDCH) */
+		br->att = 0;
 
 	/* encrypt */
 	if (br->burst_len && l1cs->dl_encr_algo) {

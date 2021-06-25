@@ -195,9 +195,13 @@ static void bts_sched_init_buffers(struct gsm_bts *bts, const uint32_t fn)
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		struct phy_instance *pinst = bts->c0->pinst;
 		struct trx_dl_burst_req *br = &pinst->u.osmotrx.br[tn];
+		const struct gsm_bts_trx_ts *ts = &bts->c0->ts[tn];
 
 		memcpy(br->burst, _sched_dummy_burst, GSM_BURST_LEN);
 		br->burst_len = GSM_BURST_LEN;
+
+		/* BCCH carrier power reduction for this timeslot */
+		br->att = ts->c0_power_red_db;
 	}
 }
 

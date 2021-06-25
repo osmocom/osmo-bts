@@ -331,6 +331,9 @@ struct gsm_bts {
 	struct gsm_power_ctrl_params bs_dpc_params; /* BS Dynamic Power Control */
 	struct gsm_power_ctrl_params ms_dpc_params; /* MS Dynamic Power Control */
 
+	/* Maximum BCCH carrier power reduction */
+	uint8_t c0_power_red_db;
+
 	/* used by the sysmoBTS to adjust band */
 	uint8_t auto_band;
 
@@ -409,5 +412,7 @@ int32_t bts_get_avg_fn_advance(const struct gsm_bts *bts);
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */
 struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
+
+int bts_set_c0_pwr_red(struct gsm_bts *bts, const uint8_t red);
 
 #endif /* _BTS_H */

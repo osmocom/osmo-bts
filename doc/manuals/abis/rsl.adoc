@@ -476,6 +476,26 @@ signaling for it.
 See <<OSMO_ETWS_CMD>> for the Osmocom implementation.
 
 
+=== BCCH carrier power reduction operation
+
+According to 3GPP TS 45.008, section 7.1, the BCCH carrier (sometimes called C0) of
+a BTS shall maintain discontinuous Downlink transmission at full power in order to
+stay "visible" to the mobile stations.  Because of that, early versions of this 3GPP
+document prohibited BS power reduction on C0.  However, a new feature was introduced
+version 13.0.0 (2015-11) - "BCCH carrier power reduction operation".
+
+This is a special mode of operation, in which the variation of RF power level for
+some timeslots is relaxed for the purpose of energy saving.  In other words, the
+output power on some timeslots, except the timeslot(s) carrying BCCH/CCCH, can be
+lower than the full power.  In this case the maximum allowed difference is 6 dB.
+
+Unfortunately, 3GPP did not specify in which way the BTS is instructed to activate
+and deactivate the BCCH carrier power reduction mode.  Osmocom had to invent their
+own non-standard approach: the BSC needs to send _BS POWER CONTROL_ message with
+the _Channel Number_ IE set to 0x80 (BCCH) and the _Message Discriminator_ set to
+0x06 (Common Channel Management messages).
+
+
 === Message Formats and Contents
 
 [[rsl_crcx_msg]]

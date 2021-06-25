@@ -948,3 +948,58 @@ struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
 
 	return lchan;
 }
+
+/* BCCH carrier power reduction (see 3GPP TS 45.008, section 7.1) */
+int bts_set_c0_pwr_red(struct gsm_bts *bts, const uint8_t red)
+{
+	struct gsm_bts_trx *c0 = bts->c0;
+	unsigned int tn;
+
+	if (!osmo_bts_has_feature(bts->features, BTS_FEAT_BCCH_POWER_RED)) {
+		LOGPTRX(c0, DRSL, LOGL_ERROR, "BCCH carrier power reduction "
+			"is not supported by this BTS model\n");
+		return -ENOTSUP;
+	}
+
+	if (red > 6 || red % 2 != 0) {
+		LOGPTRX(c0, DRSL, LOGL_ERROR, "BCCH carrier power reduction "
+			"value (%u dB) is incorrect or out of range\n", red);
+		return -EINVAL;
+	}
+
+	LOGPTRX(c0, DRSL, LOGL_NOTICE, "BCCH carrier power reduction: "
+		"%u dB (%s)\n", red, red ? "enabled" : "disabled");
+
+	/* Timeslot 0 is always transmitting BCCH/CCCH */
+	c0->ts[0].c0_power_red_db = 0;
+
+	for (tn = 1; tn < ARRAY_SIZE(c0->ts); tn++) {
+		struct gsm_bts_trx_ts *ts = &c0->ts[tn];
+		struct gsm_bts_trx_ts *prev = ts - 1;
+
+		switch (ts_pchan(ts)) {
+		/* Not allowed on CCCH/BCCH */
+		case GSM_PCHAN_CCCH:
+			/* Preceeding timeslot shall not exceed 2 dB */
+			if (prev->c0_power_red_db > 0)
+				prev->c0_power_red_db = 2;
+			/* fall-through */
+		/* Not recommended on SDCCH/8 */
+		case GSM_PCHAN_SDCCH8_SACCH8C:
+		case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+			ts->c0_power_red_db = 0;
+			break;
+		default:
+			ts->c0_power_red_db = red;
+			break;
+		}
+	}
+
+	/* Timeslot 7 is always preceding BCCH/CCCH */
+	if (c0->ts[7].c0_power_red_db > 0)
+		c0->ts[7].c0_power_red_db = 2;
+
+	bts->c0_power_red_db = red;
+
+	return 0;
+}

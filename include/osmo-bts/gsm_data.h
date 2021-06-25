@@ -451,6 +451,9 @@ struct gsm_bts_trx_ts {
 	/* Training Sequence Set (range 0..3) */
 	uint8_t tsc_set;
 
+	/* Actual BCCH carrier power reduction */
+	uint8_t c0_power_red_db;
+
 	/* Frequency hopping parameters (configured via OML) */
 	struct {
 		bool enabled;
