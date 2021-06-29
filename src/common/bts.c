@@ -372,6 +372,7 @@ int bts_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ETWS_PN);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_IPV6_NSVC);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ABIS_OSMO_PCU);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_DYN_TS_SDCCH8);
 
 	rc = bts_model_init(bts);
 	if (rc < 0) {

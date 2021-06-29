@@ -1425,6 +1425,7 @@ static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	switch (ts->dyn.pchan_want) {
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_SDCCH8_SACCH8C:
 		break;
 	case GSM_PCHAN_PDCH:
 		/* Only the first lchan matters for PDCH */
@@ -1448,14 +1449,23 @@ static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 static enum gsm_phys_chan_config dyn_pchan_from_chan_nr(uint8_t chan_nr)
 {
-	uint8_t cbits = chan_nr & RSL_CHAN_NR_MASK;
+	uint8_t cbits = chan_nr >> 3;
 	switch (cbits) {
-	case RSL_CHAN_Bm_ACCHs:
+	case ABIS_RSL_CHAN_NR_CBITS_Bm_ACCHs:
 		return GSM_PCHAN_TCH_F;
-	case RSL_CHAN_Lm_ACCHs:
-	case (RSL_CHAN_Lm_ACCHs + RSL_CHAN_NR_1):
+	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(0):
+	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(1):
 		return GSM_PCHAN_TCH_H;
-	case RSL_CHAN_OSMO_PDCH:
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(0):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(1):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(2):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(3):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(4):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(5):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(6):
+	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(7):
+		return GSM_PCHAN_SDCCH8_SACCH8C;
+	case ABIS_RSL_CHAN_NR_CBITS_OSMO_PDCH:
 		return GSM_PCHAN_PDCH;
 	default:
 		LOGP(DRSL, LOGL_ERROR,
@@ -3009,6 +3019,7 @@ static void osmo_dyn_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	switch (ts->dyn.pchan_want) {
 	case GSM_PCHAN_TCH_F:
 	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_PDCH:
 		break;
 	default:

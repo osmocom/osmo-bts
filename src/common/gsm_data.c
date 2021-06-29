@@ -382,7 +382,8 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	case ABIS_RSL_CHAN_NR_CBITS_SDCCH8_ACCH(7):
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
 		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C &&
-		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
+		    ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C_CBCH &&
+		    ts->pchan != GSM_PCHAN_OSMO_DYN)
 			ok = false;
 		break;
 	case ABIS_RSL_CHAN_NR_CBITS_BCCH:
