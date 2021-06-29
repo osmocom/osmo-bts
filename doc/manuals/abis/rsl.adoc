@@ -488,7 +488,7 @@ number*.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -508,7 +508,7 @@ in response to the *Create Connection (CRCX)*.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -528,7 +528,7 @@ sent in response to the *Create Connection (CRCX)*.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -547,7 +547,7 @@ properties of a user-plane RTP connection.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -568,7 +568,7 @@ response to a *Modify Connection (MDCX)*
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -589,7 +589,7 @@ Connection (MDCX)*.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -606,7 +606,7 @@ time of RF Channel release.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -625,7 +625,7 @@ number.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -643,7 +643,7 @@ Channel number.  It is sent in response to the *Delete Connection
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -662,7 +662,7 @@ Channel number.  It is sent in response to the *Delete Connection
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -679,7 +679,7 @@ a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -696,7 +696,7 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -714,7 +714,7 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -732,7 +732,7 @@ on a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -749,7 +749,7 @@ of a PDCH on a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -766,7 +766,7 @@ on a IPA style dynamic TCH/F+PDCH channel.
 [options="header"]
 [cols="30%,25%,15%,15%,15%"]
 |===
-| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH 
+| INFORMATION ELEMENT | REFERENCE | PRESENCE | FORMAT | LENGTH
 | Message discriminator | 48.058 9.1 | M | V | 1
 | Message type | <<own_msg_types>> | M | V | 1
 | Channel number | 48.058 9.3.1 | M | TV | 2
@@ -844,7 +844,7 @@ addition to those indicated in 3GPP TS 48.058 Section 9.3:
 | 0x01 | RSL_IE_CHAN_NR | <<RSL_IE_CHAN_NR>>
 | 0x60 | RSL_IE_OSMO_REP_ACCH_CAP | <<RSL_IE_OSMO_REP_ACCH_CAP>>
 | 0x61 | RSL_IE_OSMO_TRAINING_SEQUENCE | <<RSL_IE_OSMO_TRAINING_SEQUENCE>>
-| 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>> 
+| 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>>
 | 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
 | 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
 | 0xf4 | RSL_IE_IPAC_SPEECH_MODE | <<RSL_IE_IPAC_SPEECH_MODE>>
@@ -1089,4 +1089,3 @@ The initialization of the primary and secondary TRX slightly differ, as
 illustrated by the differences of <<rsl-msc-pri>> and <<rsl-msc-sec>>.
 Since the secondary TRX has no BCCH, it does not (need to) receive any 'RSL
 BCCH INFORMATION' messages from the BSC.
-
