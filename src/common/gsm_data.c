@@ -78,11 +78,6 @@ const char *gsm_pchan_name(enum gsm_phys_chan_config c)
 	return get_value_string(gsm_pchant_names, c);
 }
 
-enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
-{
-	return get_string_value(gsm_pchant_names, name);
-}
-
 /* TODO: move to libosmocore, next to gsm_chan_t_names? */
 const char *gsm_lchant_name(enum gsm_chan_t c)
 {
