@@ -1832,7 +1832,7 @@ void bts_model_ts_connect(struct gsm_bts_trx_ts *ts,
 {
 	int rc;
 	if (as_pchan == GSM_PCHAN_TCH_F_PDCH
-	    || as_pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	    || as_pchan == GSM_PCHAN_OSMO_DYN) {
 		LOGP(DL1C, LOGL_ERROR,
 		     "%s Requested TS connect as %s,"
 		     " expected a specific pchan instead\n",

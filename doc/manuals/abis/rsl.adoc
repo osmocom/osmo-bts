@@ -123,7 +123,7 @@ Specific additions and limitations apply, see the linked sections.
 ==== Channel Activation
 
 When used on a timeslot using the non-standard channel combination
-'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' as configured by OML, the regular
+'NM_CHANC_OSMO_DYN' as configured by OML, the regular
 RSL channel activation procedures can not only be used for activation
 of circuit-switched channels, but also for activation of a PDCH.
 
@@ -417,7 +417,7 @@ include::dyn_ts_ipa_style2.msc[]
 ==== Osmocom Style Dynamic Channels
 
 This method is in use when OML uses
-'NM_CHANC_OSMO_TCHFull_TCHHalf_PDCH' (0x90) for the given time-slot.
+'NM_CHANC_OSMO_DYN' (0x90) for the given time-slot.
 
 The activation of PDCH is performed by using the regular 'RSL CHANNEL ACTIVATE'
 procedure according to <<CHANNEL_ACTIVATION>>, with these modifications:

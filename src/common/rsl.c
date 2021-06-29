@@ -1132,7 +1132,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 
 	case LCHAN_REL_ACT_PCU:
 		switch (lchan->ts->pchan) {
-		case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+		case GSM_PCHAN_OSMO_DYN:
 			if (lchan->ts->dyn.pchan_is != GSM_PCHAN_PDCH) {
 				LOGP(DRSL, LOGL_ERROR, "%s (ss=%d) PDCH release: not in PDCH mode\n",
 				     gsm_ts_and_pchan_name(lchan->ts), lchan->nr);
@@ -1140,7 +1140,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 			}
 			if (lchan->ts->dyn.pchan_want != GSM_PCHAN_PDCH) {
 				/* Continue to ack the release below. (This is a non-standard rel ack invented
-				 * specifically for GSM_PCHAN_TCH_F_TCH_H_PDCH). */
+				 * specifically for GSM_PCHAN_OSMO_DYN). */
 				/* remember the fact that the TS is now released */
 				lchan->ts->dyn.pchan_is = GSM_PCHAN_NONE;
 				send_rel_ack = true;
@@ -1502,7 +1502,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
-	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	if (ts->pchan == GSM_PCHAN_OSMO_DYN) {
 		ts->dyn.pchan_want = dyn_pchan_from_chan_nr(dch->chan_nr);
 		DEBUGP(DRSL, "%s rx chan activ\n", gsm_ts_and_pchan_name(ts));
 
@@ -1711,7 +1711,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		  gsm48_chan_mode_name(lchan->tch_mode));
 
 	/* Connecting PDCH on dyn TS goes via PCU instead. */
-	if (ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	if (ts->pchan == GSM_PCHAN_OSMO_DYN
 	    && ts->dyn.pchan_want == GSM_PCHAN_PDCH) {
 		/*
 		 * We ack the activation to the BSC right away, regardless of
@@ -1851,7 +1851,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 
 	/* Dynamic channel in PDCH mode is released via PCU */
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	if (lchan->ts->pchan == GSM_PCHAN_OSMO_DYN
 	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
 		rc = dyn_ts_pdch_release(lchan);
 		if (rc == 1) {
@@ -3032,7 +3032,7 @@ void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
 		return ipacc_dyn_pdch_ts_disconnected(ts);
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		return osmo_dyn_ts_disconnected(ts);
 	default:
 		return;
@@ -3130,7 +3130,7 @@ void cb_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F_PDCH:
 		return ipacc_dyn_pdch_ts_connected(ts, rc);
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		return osmo_dyn_ts_connected(ts, rc);
 	default:
 		return;

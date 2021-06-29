@@ -281,7 +281,7 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 	/* set physical channel. For dynamic timeslots, the caller should have
 	 * decided on a more specific PCHAN type already. */
 	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
-	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
+	OSMO_ASSERT(pchan != GSM_PCHAN_OSMO_DYN);
 	rc = trx_sched_set_pchan(ts, pchan);
 	if (rc)
 		return NM_NACK_RES_NOTAVAIL;
@@ -322,7 +322,7 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 		pchan = (ts->flags & TS_F_PDCH_ACTIVE)? GSM_PCHAN_PDCH
 			                              : GSM_PCHAN_TCH_F;
 		break;
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		OSMO_ASSERT(ts->dyn.pchan_is == ts->dyn.pchan_want);
 		pchan = ts->dyn.pchan_is;
 		break;

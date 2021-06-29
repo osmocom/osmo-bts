@@ -52,7 +52,7 @@ const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "CCCH+SDCCH4+CBCH" },
 	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "SDCCH8+CBCH" },
-	{ GSM_PCHAN_TCH_F_TCH_H_PDCH, "TCH/F_TCH/H_PDCH" },
+	{ GSM_PCHAN_OSMO_DYN, "TCH/F_TCH/H_SDCCH8_PDCH" },
 	{ 0,			NULL }
 };
 
@@ -69,7 +69,7 @@ const struct value_string gsm_pchant_descs[13] = {
 	{ GSM_PCHAN_UNKNOWN,	"Unknown / Unsupported channel combination" },
 	{ GSM_PCHAN_CCCH_SDCCH4_CBCH, "FCCH + SCH + BCCH + CCCH + CBCH + 3 SDCCH + 2 SACCH (Comb. V)" },
 	{ GSM_PCHAN_SDCCH8_SACCH8C_CBCH, "7 SDCCH + 4 SACCH + CBCH (Comb. VII)" },
-	{ GSM_PCHAN_TCH_F_TCH_H_PDCH, "Dynamic TCH/F or TCH/H or GPRS PDCH" },
+	{ GSM_PCHAN_OSMO_DYN, "Dynamic TCH/F or TCH/H or SDCCH/8 or GPRS PDCH" },
 	{ 0,			NULL }
 };
 
@@ -115,7 +115,7 @@ char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
 			snprintf(ts2str, sizeof(ts2str),
 				 "(" GSM_TS_NAME_FMT ",pchan=%s as %s)",
@@ -176,7 +176,7 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 {
 	uint8_t cbits, chan_nr;
 
-	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH);
+	OSMO_ASSERT(pchan != GSM_PCHAN_OSMO_DYN);
 	OSMO_ASSERT(pchan != GSM_PCHAN_TCH_F_PDCH);
 
 	switch (pchan) {
@@ -243,7 +243,7 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 	uint8_t chan_nr;
 
 	switch (lchan->ts->pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		/* Return chan_nr reflecting the current TS pchan, either a standard TCH kind, or the
 		 * nonstandard value reflecting PDCH for Osmocom style dyn TS. */
 		chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, lchan->ts->dyn.pchan_is);
@@ -269,7 +269,7 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan)
 {
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH
+	if (lchan->ts->pchan == GSM_PCHAN_OSMO_DYN
 	    && as_pchan == GSM_PCHAN_PDCH)
 		return RSL_CHAN_OSMO_PDCH | (lchan->ts->nr & ~RSL_CHAN_NR_MASK);
 	return gsm_pchan2chan_nr(as_pchan, lchan->ts->nr, lchan->nr);
@@ -347,7 +347,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
 		    ts->pchan != GSM_PCHAN_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH &&
-		    ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		    ts->pchan != GSM_PCHAN_OSMO_DYN)
 			ok = false;
 		break;
 	case ABIS_RSL_CHAN_NR_CBITS_OSMO_VAMOS_Lm_ACCHs(0):
@@ -360,7 +360,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	case ABIS_RSL_CHAN_NR_CBITS_Lm_ACCHs(1):
 		lch_idx = cbits & 0x1;	/* TCH/H */
 		if (ts->pchan != GSM_PCHAN_TCH_H &&
-		    ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		    ts->pchan != GSM_PCHAN_OSMO_DYN)
 			ok = false;
 		break;
 	case ABIS_RSL_CHAN_NR_CBITS_SDCCH4_ACCH(0):
@@ -397,7 +397,7 @@ struct gsm_lchan *rsl_lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		break;
 	case ABIS_RSL_CHAN_NR_CBITS_OSMO_PDCH:
 		lch_idx = 0;
-		if (ts->pchan != GSM_PCHAN_TCH_F_TCH_H_PDCH)
+		if (ts->pchan != GSM_PCHAN_OSMO_DYN)
 			ok = false;
 		break;
 	default:
@@ -421,7 +421,7 @@ static const uint8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_CCCH_SDCCH4_CBCH] = 4,
 	[GSM_PCHAN_SDCCH8_SACCH8C_CBCH] = 8,
 	/*
-	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_TCH_F_TCH_H_PDCH should not be
+	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_OSMO_DYN should not be
 	 * part of this, those TS are handled according to their dynamic state.
 	 */
 };
@@ -430,7 +430,7 @@ static const uint8_t subslots_per_pchan[] = {
 enum gsm_phys_chan_config ts_pchan(const struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		return ts->dyn.pchan_is;
 	case GSM_PCHAN_TCH_F_PDCH:
 		if (ts->flags & TS_F_PDCH_ACTIVE)

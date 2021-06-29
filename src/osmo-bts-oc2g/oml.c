@@ -93,7 +93,7 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	[GSM_PCHAN_PDCH]		= GsmL1_LogChComb_XIII,
 	[GSM_PCHAN_UNKNOWN]		= GsmL1_LogChComb_0,
 	/*
-	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_TCH_F_TCH_H_PDCH should not be
+	 * GSM_PCHAN_TCH_F_PDCH and GSM_PCHAN_OSMO_DYN should not be
 	 * part of this, only "real" pchan values will be looked up here.
 	 * See the callers of ts_connect_as().
 	 */
@@ -540,7 +540,7 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	GsmL1_MphConnectReq_t *cr;
 
 	if (pchan == GSM_PCHAN_TCH_F_PDCH
-	    || pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	    || pchan == GSM_PCHAN_OSMO_DYN) {
 		LOGP(DL1C, LOGL_ERROR,
 		     "%s Requested TS connect as %s,"
 		     " expected a specific pchan instead\n",
@@ -560,7 +560,7 @@ static int ts_opstart(struct gsm_bts_trx_ts *ts)
 {
 	enum gsm_phys_chan_config pchan = ts->pchan;
 	switch (pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		ts->dyn.pchan_is = ts->dyn.pchan_want = GSM_PCHAN_NONE;
 		/* First connect as NONE, until first RSL CHAN ACT. */
 		pchan = GSM_PCHAN_NONE;
@@ -595,7 +595,7 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 {
 	enum gsm_phys_chan_config pchan = lchan->ts->pchan;
 
-	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH)
+	if (pchan == GSM_PCHAN_OSMO_DYN)
 		pchan = lchan->ts->dyn.pchan_want;
 
 	switch (pchan) {
@@ -614,7 +614,7 @@ GsmL1_SubCh_t lchan_to_GsmL1_SubCh_t(const struct gsm_lchan *lchan)
 	case GSM_PCHAN_PDCH:
 	case GSM_PCHAN_UNKNOWN:
 	default:
-	/* case GSM_PCHAN_TCH_F_TCH_H_PDCH: is caught above */
+	/* case GSM_PCHAN_OSMO_DYN: is caught above */
 		return GsmL1_SubCh_NA;
 	}
 

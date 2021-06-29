@@ -99,7 +99,7 @@ static bool ts_should_be_pdch(const struct gsm_bts_trx_ts *ts)
 			return !(ts->flags & TS_F_PDCH_DEACT_PENDING);
 		else
 			return (ts->flags & TS_F_PDCH_ACT_PENDING);
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		/*
 		 * When we're busy de-/activating the PDCH, we first set
 		 * ts->dyn.pchan_want, tell the PCU about it and wait for a
@@ -867,7 +867,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 		     gsm_lchant_name(lchan->type));
 		return -EINVAL;
 	}
-	if (lchan->ts->pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH &&
+	if (lchan->ts->pchan == GSM_PCHAN_OSMO_DYN &&
 	    lchan->ts->dyn.pchan_is != GSM_PCHAN_PDCH) {
 		LOGP(DPCU, LOGL_ERROR,
 		     "%s request, but lchan in dyn TS is not configured as PDCH in lower layers (is %s)\n",

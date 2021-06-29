@@ -802,7 +802,7 @@ static int handle_chan_comb(struct gsm_bts_trx_ts *ts, const uint8_t comb)
 						    : GSM_PCHAN_TCH_F;
 
 	/* Osmocom RSL CHAN ACT style dyn TS */
-	if (pchan == GSM_PCHAN_TCH_F_TCH_H_PDCH) {
+	if (pchan == GSM_PCHAN_OSMO_DYN) {
 		pchan = ts->dyn.pchan_is;
 
 		/* If the dyn TS doesn't have a pchan yet, do nothing. */

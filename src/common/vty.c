@@ -1541,7 +1541,7 @@ DEFUN(show_ts,
 static void vty_out_dyn_ts_status(struct vty *vty, const struct gsm_bts_trx_ts *ts)
 {
 	switch (ts->pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		if (ts->dyn.pchan_is == ts->dyn.pchan_want)
 			vty_out(vty, " as %s",
 				gsm_pchan_name(ts->dyn.pchan_is));
@@ -1690,7 +1690,7 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
 	/* show dyn TS details, if applicable */
 	switch (lchan->ts->pchan) {
-	case GSM_PCHAN_TCH_F_TCH_H_PDCH:
+	case GSM_PCHAN_OSMO_DYN:
 		vty_out(vty, "  Osmocom Dyn TS:");
 		vty_out_dyn_ts_status(vty, lchan->ts);
 		vty_out(vty, VTY_NEWLINE);
