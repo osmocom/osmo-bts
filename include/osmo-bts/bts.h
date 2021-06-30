@@ -133,6 +133,12 @@ struct gsm_bts_sm {
 	struct gsm_abis_mo mo;
 };
 
+/* Struct that holds one OML-Address (Address of the BSC) */
+struct bsc_oml_host {
+	struct llist_head list;
+	char *addr;
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -295,7 +301,7 @@ struct gsm_bts {
 	} etws;
 
 	struct paging_state *paging_state;
-	char *bsc_oml_host;
+	struct llist_head bsc_oml_hosts;
 	struct llist_head oml_queue;
 	unsigned int rtp_jitter_buf_ms;
 	bool rtp_jitter_adaptive;
@@ -363,6 +369,7 @@ struct gsm_bts {
 	} gsmtap;
 
 	struct osmo_fsm_inst *shutdown_fi; /* FSM instance to manage shutdown procedure during process exit */
+	struct osmo_fsm_inst *abis_link_fi; /* FSM instance to manage abis connection during process startup and link failure */
 	struct osmo_tdef *T_defs; /* Timer defines */
 
 	void *model_priv; /* Allocated by bts_model, contains model specific data pointer */

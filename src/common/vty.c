@@ -41,7 +41,7 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/core/sockaddr_str.h>
 #include <osmocom/trau/osmo_ortp.h>
-
+#include <osmocom/core/fsm.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -282,6 +282,7 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	const struct gsm_bts_trx *trx;
 	const char *sapi_buf;
 	int i;
+	struct bsc_oml_host *bsc_oml_host;
 
 	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
 	if (bts->description)
@@ -291,7 +292,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " auto-band%s", VTY_NEWLINE);
 	vty_out(vty, " ipa unit-id %u %u%s",
 		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
-	vty_out(vty, " oml remote-ip %s%s", bts->bsc_oml_host, VTY_NEWLINE);
+	llist_for_each_entry(bsc_oml_host, &bts->bsc_oml_hosts, list)
+		vty_out(vty, " oml remote-ip %s%s", bsc_oml_host->addr, VTY_NEWLINE);
 	vty_out(vty, " rtp jitter-buffer %u", bts->rtp_jitter_buf_ms);
 	if (bts->rtp_jitter_adaptive)
 		vty_out(vty, " adaptive");
@@ -507,11 +509,51 @@ DEFUN(cfg_bts_oml_ip,
       "OML Parameters\n" "OML IP Address\n" "OML IP Address\n")
 {
 	struct gsm_bts *bts = vty->index;
+	struct bsc_oml_host *bsc_oml_host;
 
-	if (bts->bsc_oml_host)
-		talloc_free(bts->bsc_oml_host);
+	/* stop when the address is already in the list */
+	llist_for_each_entry(bsc_oml_host, &bts->bsc_oml_hosts, list) {
+		if (strcmp(argv[0], bsc_oml_host->addr) == 0) {
+			vty_out(vty, "%% duplicate BSC (A-Bis/OML) ip address configured ('%s')%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
 
-	bts->bsc_oml_host = talloc_strdup(bts, argv[0]);
+	bsc_oml_host = talloc_zero(bts, struct bsc_oml_host);
+	OSMO_ASSERT(bsc_oml_host);
+	bsc_oml_host->addr = talloc_strdup(bsc_oml_host, argv[0]);
+	OSMO_ASSERT(bsc_oml_host->addr);
+	llist_add_tail(&bsc_oml_host->list, &bts->bsc_oml_hosts);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_oml_ip,
+      cfg_bts_no_oml_ip_cmd,
+      "no oml remote-ip A.B.C.D",
+      NO_STR "OML Parameters\n" "OML IP Address\n" "OML IP Address\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bsc_oml_host *bsc_oml_host;
+	struct bsc_oml_host *bsc_oml_host_del = NULL;
+
+	llist_for_each_entry(bsc_oml_host, &bts->bsc_oml_hosts, list) {
+		if (strcmp(argv[0], bsc_oml_host->addr) == 0)
+			bsc_oml_host_del = bsc_oml_host;
+	}
+
+	if (bsc_oml_host_del) {
+		if (bts->abis_link_fi) {
+			osmo_fsm_inst_dispatch(bts->abis_link_fi, ABIS_LINK_EV_VTY_RM_ADDR, bsc_oml_host_del);
+			llist_del(&bsc_oml_host_del->list);
+			talloc_free(bsc_oml_host_del);
+		}
+	} else {
+		vty_out(vty, "%% no such BSC (A-Bis/OML) ip address configured ('%s')%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -2378,6 +2420,7 @@ int bts_vty_init(void *ctx)
 	install_element(CONFIG_NODE, &cfg_vty_telnet_port_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_oml_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_bind_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_jitbuf_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_port_range_cmd);

@@ -272,7 +272,6 @@ static int write_pid_file(char *procname)
 int bts_main(int argc, char **argv)
 {
 	struct gsm_bts_trx *trx;
-	struct e1inp_line *line;
 	int rc;
 
 	/* Track the use of talloc NULL memory contexts */
@@ -397,16 +396,8 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	if (!g_bts->bsc_oml_host) {
-		fprintf(stderr, "Cannot start BTS without knowing BSC OML IP\n");
+	if (abis_open(g_bts, "osmo-bts") != 0)
 		exit(1);
-	}
-
-	line = abis_open(g_bts, g_bts->bsc_oml_host, "osmo-bts");
-	if (!line) {
-		fprintf(stderr, "unable to connect to BSC\n");
-		exit(2);
-	}
 
 	rc = phy_links_open();
 	if (rc < 0) {

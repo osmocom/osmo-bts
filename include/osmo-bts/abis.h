@@ -16,9 +16,14 @@ enum {
 	LINK_STATE_CONNECT,
 };
 
+enum abis_link_fsm_event {
+	ABIS_LINK_EV_SIGN_LINK_DOWN,
+	ABIS_LINK_EV_VTY_RM_ADDR,
+};
+
 void abis_init(struct gsm_bts *bts);
-struct e1inp_line *abis_open(struct gsm_bts *bts, char *dst_host,
-			     char *model_name);
+int abis_open(struct gsm_bts *bts, char *model_name);
+
 
 
 int abis_oml_sendmsg(struct msgb *msg);

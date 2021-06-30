@@ -38,11 +38,13 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/signal.h>
 #include <osmocom/core/macaddr.h>
+#include <osmocom/core/fsm.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/abis/ipaccess.h>
 #include <osmocom/gsm/ipa.h>
 
+#include <osmo-bts/abis.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts.h>
@@ -53,6 +55,204 @@
 #include <osmo-bts/bts_trx.h>
 
 static struct gsm_bts *g_bts;
+
+static struct e1inp_line_ops line_ops;
+
+static struct ipaccess_unit bts_dev_info;
+
+#define S(x) (1 << (x))
+
+enum abis_link_fsm_state {
+	ABIS_LINK_ST_CONNECTING,
+	ABIS_LINK_ST_CONNECTED,
+	ABIS_LINK_ST_FAILED,
+};
+
+static const struct value_string abis_link_fsm_event_names[] = {
+	OSMO_VALUE_STRING(ABIS_LINK_EV_SIGN_LINK_DOWN),
+	OSMO_VALUE_STRING(ABIS_LINK_EV_VTY_RM_ADDR),
+	{}
+};
+
+struct abis_link_fsm_priv {
+	struct llist_head *bsc_oml_host;
+	struct gsm_bts *bts;
+	char *model_name;
+	int line_ctr;
+};
+
+static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+	struct gsm_bts_trx *trx;
+	bool oml_rsl_was_connected = false;
+
+	OSMO_ASSERT(event == ABIS_LINK_EV_SIGN_LINK_DOWN);
+
+	/* First remove the OML signalling link */
+	if (bts->oml_link) {
+		struct timespec now;
+
+		e1inp_sign_link_destroy(bts->oml_link);
+
+		/* Log a special notice if the OML connection was dropped relatively quickly. */
+		if (bts->oml_conn_established_timestamp.tv_sec != 0 && clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
+		    bts->oml_conn_established_timestamp.tv_sec + OSMO_BTS_OML_CONN_EARLY_DISCONNECT >= now.tv_sec) {
+			LOGP(DABIS, LOGL_FATAL, "OML link was closed early within %" PRIu64 " seconds. "
+			     "If this situation persists, please check your BTS and BSC configuration files for errors. "
+			     "A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
+			     (uint64_t) (now.tv_sec - g_bts->oml_conn_established_timestamp.tv_sec));
+		}
+		bts->oml_link = NULL;
+		oml_rsl_was_connected = true;
+	}
+	memset(&g_bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
+
+	if (g_bts->osmo_link) {
+		e1inp_sign_link_destroy(g_bts->osmo_link);
+		g_bts->osmo_link = NULL;
+		oml_rsl_was_connected = true;
+	}
+
+	/* Then iterate over the RSL signalling links */
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->rsl_link) {
+			e1inp_sign_link_destroy(trx->rsl_link);
+			trx->rsl_link = NULL;
+			oml_rsl_was_connected = true;
+		}
+	}
+
+	/* Note: if there was an OML or RSL connection present (the BTS was connected to a BSC). Then we will not try
+	 * to connect to an alternate BSC. Instead we will shut down the BTS process. This will ensure that all states
+	 * in the BTS (hardware and software) are reset properly. It is then up to the process management of the host
+	 * to restart osmo-bts. */
+	if (oml_rsl_was_connected)
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+	else
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTING, 0, 0);
+}
+
+static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct e1inp_line *line;
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+	struct bsc_oml_host *bsc_oml_host;
+
+	if (priv->bsc_oml_host) {
+		/* Get a BSC host from the list and move the list head one position forward. */
+		bsc_oml_host = (struct bsc_oml_host *)priv->bsc_oml_host;
+		if (priv->bsc_oml_host == llist_last(&bts->bsc_oml_hosts))
+			priv->bsc_oml_host = NULL;
+		else
+			priv->bsc_oml_host = priv->bsc_oml_host->next;
+	} else {
+		LOGP(DABIS, LOGL_FATAL, "No BSC available, A-bis connection establishment failed\n");
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+		return;
+	}
+
+	LOGP(DABIS, LOGL_NOTICE, "A-bis connection establishment to BSC (%s) in progress...\n", bsc_oml_host->addr);
+
+	/* patch in various data from VTY and other sources */
+	line_ops.cfg.ipa.addr = bsc_oml_host->addr;
+	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
+	bts_dev_info.site_id = bts->ip_access.site_id;
+	bts_dev_info.bts_id = bts->ip_access.bts_id;
+	bts_dev_info.unit_name = priv->model_name;
+	if (bts->description)
+		bts_dev_info.unit_name = bts->description;
+	bts_dev_info.location2 = priv->model_name;
+
+	line = e1inp_line_find(priv->line_ctr);
+	if (line) {
+		e1inp_line_get2(line, __FILE__);	/* We want a new reference for returned line */
+	} else
+		line = e1inp_line_create(priv->line_ctr, "ipa");	/* already comes with a reference */
+
+	/* The abis connection may fail and we may have to try again with a different BSC (if configured). The next
+	 * attempt must happen on a different line. */
+	priv->line_ctr++;
+
+	if (!line) {
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+		return;
+	}
+	e1inp_line_bind_ops(line, &line_ops);
+
+	/* This will open the OML connection now */
+	if (e1inp_line_update(line) < 0) {
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+		return;
+	}
+
+	/* The TCP connection to the BSC is now in progress. */
+	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTED, 0, 0);
+}
+
+static void abis_link_failed_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
+{
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+
+	/* None of the configured BSCs was reachable or there was an existing
+	 * OML/RSL connection that beoke. Initiate BTS process shut down now. */
+	bts_model_abis_close(bts);
+}
+
+static void abis_link_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+
+	if (event != ABIS_LINK_EV_VTY_RM_ADDR)
+		return;
+
+	if (priv->bsc_oml_host == data) {
+		if (llist_count(&bts->bsc_oml_hosts) <= 1)
+			priv->bsc_oml_host = NULL;
+		else if (priv->bsc_oml_host == llist_last(&bts->bsc_oml_hosts))
+			priv->bsc_oml_host = priv->bsc_oml_host->prev;
+		else
+			priv->bsc_oml_host = priv->bsc_oml_host->next;
+	}
+}
+
+static struct osmo_fsm_state abis_link_fsm_states[] = {
+	[ABIS_LINK_ST_CONNECTED] = {
+		.name = "CONNECTED",
+		.in_event_mask =
+			S(ABIS_LINK_EV_SIGN_LINK_DOWN),
+		.out_state_mask =
+			S(ABIS_LINK_ST_CONNECTING) |
+			S(ABIS_LINK_ST_FAILED),
+		.action = abis_link_connected,
+	},
+	[ABIS_LINK_ST_CONNECTING] = {
+		.name = "CONNECTING",
+		.out_state_mask =
+			S(ABIS_LINK_ST_CONNECTING) |
+			S(ABIS_LINK_ST_CONNECTED) |
+			S(ABIS_LINK_ST_FAILED),
+		.onenter = abis_link_connecting_onenter,
+	},
+	[ABIS_LINK_ST_FAILED] = {
+		.name = "FAILED",
+		.onenter = abis_link_failed_onenter,
+	},
+};
+
+static struct osmo_fsm abis_link_fsm = {
+	.name = "abis_link",
+	.states = abis_link_fsm_states,
+	.num_states = ARRAY_SIZE(abis_link_fsm_states),
+	.log_subsys = DABIS,
+	.event_names = abis_link_fsm_event_names,
+	.allstate_action = abis_link_allstate,
+	.allstate_event_mask = S(ABIS_LINK_EV_VTY_RM_ADDR),
+};
 
 int abis_oml_sendmsg(struct msgb *msg)
 {
@@ -144,41 +344,8 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 
 static void sign_link_down(struct e1inp_line *line)
 {
-	struct gsm_bts_trx *trx;
 	LOGPIL(line, DABIS, LOGL_ERROR, "Signalling link down\n");
-
-	/* First remove the OML signalling link */
-	if (g_bts->oml_link) {
-		struct timespec now;
-
-		e1inp_sign_link_destroy(g_bts->oml_link);
-
-		/* Log a special notice if the OML connection was dropped relatively quickly. */
-		if (g_bts->oml_conn_established_timestamp.tv_sec != 0 && clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
-		    g_bts->oml_conn_established_timestamp.tv_sec + OSMO_BTS_OML_CONN_EARLY_DISCONNECT >= now.tv_sec) {
-			LOGP(DABIS, LOGL_FATAL, "OML link was closed early within %" PRIu64 " seconds. "
-			"If this situation persists, please check your BTS and BSC configuration files for errors. "
-			"A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
-			(uint64_t)(now.tv_sec - g_bts->oml_conn_established_timestamp.tv_sec));
-		}
-		g_bts->oml_link = NULL;
-	}
-	memset(&g_bts->oml_conn_established_timestamp, 0, sizeof(g_bts->oml_conn_established_timestamp));
-
-	if (g_bts->osmo_link) {
-		e1inp_sign_link_destroy(g_bts->osmo_link);
-		g_bts->osmo_link = NULL;
-	}
-
-	/* Then iterate over the RSL signalling links */
-	llist_for_each_entry(trx, &g_bts->trx_list, list) {
-		if (trx->rsl_link) {
-			e1inp_sign_link_destroy(trx->rsl_link);
-			trx->rsl_link = NULL;
-		}
-	}
-
-	bts_model_abis_close(g_bts);
+	osmo_fsm_inst_dispatch(g_bts->abis_link_fi, ABIS_LINK_EV_SIGN_LINK_DOWN, NULL);
 }
 
 
@@ -277,33 +444,27 @@ void abis_init(struct gsm_bts *bts)
 	osmo_signal_register_handler(SS_L_INPUT, &inp_s_cbfn, bts);
 }
 
-struct e1inp_line *abis_open(struct gsm_bts *bts, char *dst_host,
-			     char *model_name)
+int abis_open(struct gsm_bts *bts, char *model_name)
 {
-	struct e1inp_line *line;
+	struct abis_link_fsm_priv *abis_link_fsm_priv;
 
-	/* patch in various data from VTY and other sources */
-	line_ops.cfg.ipa.addr = dst_host;
-	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
-	bts_dev_info.site_id = bts->ip_access.site_id;
-	bts_dev_info.bts_id = bts->ip_access.bts_id;
-	bts_dev_info.unit_name = model_name;
-	if (bts->description)
-		bts_dev_info.unit_name = bts->description;
-	bts_dev_info.location2 = model_name;
+	if (llist_empty(&bts->bsc_oml_hosts)) {
+		LOGP(DABIS, LOGL_FATAL, "No BSC configured, cannot start BTS without knowing BSC OML IP\n");
+		return -EINVAL;
+	}
 
-	line = e1inp_line_find(0);
-	if (line) {
-		e1inp_line_get2(line, __FILE__); /* We want a new reference for returned line */
-	} else
-		line = e1inp_line_create(0, "ipa"); /* already comes with a reference */
-	if (!line)
-		return NULL;
-	e1inp_line_bind_ops(line, &line_ops);
+	OSMO_ASSERT(osmo_fsm_register(&abis_link_fsm) == 0);
+	bts->abis_link_fi = osmo_fsm_inst_alloc(&abis_link_fsm, bts, NULL, LOGL_DEBUG, "abis_link");
+	OSMO_ASSERT(bts->abis_link_fi);
 
-	/* This will open the OML connection now */
-	if (e1inp_line_update(line) < 0)
-		return NULL;
+	abis_link_fsm_priv = talloc_zero(bts->abis_link_fi, struct abis_link_fsm_priv);
+	OSMO_ASSERT(abis_link_fsm_priv);
+	abis_link_fsm_priv->bsc_oml_host = bts->bsc_oml_hosts.next;
+	abis_link_fsm_priv->bts = bts;
+	abis_link_fsm_priv->model_name = model_name;
+	bts->abis_link_fi->priv = abis_link_fsm_priv;
 
-	return line;
+	osmo_fsm_inst_state_chg_ms(bts->abis_link_fi, ABIS_LINK_ST_CONNECTING, 1, 0);
+
+	return 0;
 }

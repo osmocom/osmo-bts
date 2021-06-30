@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
-	struct e1inp_line *line;
+	struct bsc_oml_host *bsc_oml_host;
 	int i;
 
 	parse_cmdline(argc, argv);
@@ -144,9 +144,13 @@ int main(int argc, char **argv)
 	//btsb = bts_role_bts(bts);
 	abis_init(bts);
 
-	line = abis_open(bts, cmdline.dst_host, "OMLdummy");
-	if (!line)
-		exit(2);
+	bsc_oml_host = talloc_zero(bts, struct bsc_oml_host);
+	OSMO_ASSERT(bsc_oml_host);
+	bsc_oml_host->addr = talloc_strdup(bsc_oml_host, cmdline.dst_host);
+	OSMO_ASSERT(bsc_oml_host->addr);
+	llist_add_tail(&bsc_oml_host->list, &bts->bsc_oml_hosts);
+	if (abis_open(bts, "OMLdummy") != 0)
+		exit(1);
 
 	while (1) {
 		osmo_select_main(0);
