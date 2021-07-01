@@ -1586,8 +1586,16 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_SERV_OPT_UNIMPL);
 		}
 
-		lchan->bs_power_ctrl.max = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
-		lchan->bs_power_ctrl.current = lchan->bs_power_ctrl.max;
+		uint8_t red = BS_POWER2DB(*TLVP_VAL(&tp, RSL_IE_BS_POWER));
+
+		/* BS power reduction is generally not allowed on BCCH/CCCH carrier.
+		 * However, we allow it in the BCCH carrier power reduction operation.
+		 * Constrain BS power value by the maximum reduction for this timeslot. */
+		if (ts->trx->bts->c0 == ts->trx)
+			red = OSMO_MIN(red, ts->c0_power_red_db);
+
+		lchan->bs_power_ctrl.max = red;
+		lchan->bs_power_ctrl.current = red;
 
 		LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "BS Power attenuation %u dB\n",
 			  lchan->bs_power_ctrl.current);
@@ -2209,6 +2217,12 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 
 		return 0;
 	}
+
+	/* BS power reduction is generally not allowed on BCCH/CCCH carrier.
+	 * However, we allow it in the BCCH carrier power reduction operation.
+	 * Constrain BS power value by the maximum reduction for this timeslot. */
+	if (trx->bts->c0 == trx)
+		new = OSMO_MIN(new, lchan->ts->c0_power_red_db);
 
 	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
