@@ -2625,9 +2625,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 
 	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_PORT, 2)) {
-		connect_port = tlvp_val16_unal(&tp, RSL_IE_IPAC_REMOTE_PORT);
-		LOGPC(DRSL, LOGL_DEBUG, "connect_port=%u ",
-		      ntohs(connect_port));
+		connect_port = tlvp_val16be(&tp, RSL_IE_IPAC_REMOTE_PORT);
+		LOGPC(DRSL, LOGL_DEBUG, "connect_port=%u ", connect_port);
 	}
 
 	speech_mode = TLVP_VAL(&tp, RSL_IE_IPAC_SPEECH_MODE);
@@ -2743,7 +2742,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	} else
 		ia.s_addr = connect_ip;
 	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
-				     inet_ntoa(ia), ntohs(connect_port));
+				     inet_ntoa(ia), connect_port);
 	if (rc < 0) {
 		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "Failed to connect RTP/RTCP sockets\n");
 		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
@@ -2754,7 +2753,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 	/* save IP address and port number */
 	lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
-	lchan->abis_ip.connect_port = ntohs(connect_port);
+	lchan->abis_ip.connect_port = connect_port;
 
 	rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
 					&lchan->abis_ip.bound_ip,
