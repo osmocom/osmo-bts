@@ -244,16 +244,16 @@ in any way.
 [[RF_RESOURCE_INDICATION]]
 ==== RF Resource Indication
 
-This message does not conform to 3GPP TS 48.058 § 8.6.1, in that it omits the
-_Resource Information_ IE that would contain the actual payload data, which
-renders this message void.
+For all osmo-bts variants, except osmo-bts-trx, this message does not conform
+to 3GPP TS 48.058 § 8.6.1, in that it omits the _Resource Information_ IE that
+would contain the actual payload data, which renders this message void.
 
 ._RF Resource Indication_ message IE exceptions
 [options="header",cols="10%,30%,60%"]
 |===
 | TS 48.058 § | IE Name | Handling
-| 9.3.21 | Resource Information | OsmoBTS omits this IE, though TS 48.058
-                                  specifies it as mandatory.
+| 9.3.21 | Resource Information | DSP based osmo-bts variants omit this IE, though
+				  TS 48.058 specifies it as mandatory.
 |===
 
 
