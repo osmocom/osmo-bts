@@ -317,8 +317,8 @@ int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan)
 	}
 
 	LOGPLCHAN(lchan, DL1C, LOGL_DEBUG,
-		  "Interference AVG: %ddBm (band %d)\n",
-		  meas_avg, b);
+		  "Interference AVG: %ddBm (band %d, samples %u)\n",
+		  meas_avg, b, meas_num);
 
 	return b;
 }
