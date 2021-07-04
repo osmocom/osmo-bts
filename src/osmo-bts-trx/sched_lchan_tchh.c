@@ -417,9 +417,16 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		}
 	}
 
-	/* no message at all */
+	/* no message at all, send a dummy L2 frame on FACCH */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
+		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
+			0x03, 0x03, 0x01, /* TODO: use randomized padding */
+			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
+			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
+		};
+
 		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No TCH or FACCH prim for transmit.\n");
+		gsm0503_tch_hr_encode(*bursts_p, dummy, sizeof(dummy));
 		goto send_burst;
 	}
 
