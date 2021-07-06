@@ -311,9 +311,16 @@ int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan)
 	meas_avg = meas_sum / (int) meas_num;
 
 	/* Determine the band using interference boundaries from BSC */
-	for (b = 0; b < ARRAY_SIZE(bts->interference.boundary); b++) {
-		if (meas_avg >= bts->interference.boundary[b])
-			break; /* Current 'b' is the band value */
+	if (bts->interference.boundary[0] > bts->interference.boundary[1]) {
+		for (b = 0; b < ARRAY_SIZE(bts->interference.boundary); b++) {
+			if (meas_avg >= bts->interference.boundary[b])
+				break; /* Current 'b' is the band value */
+		}
+	} else {
+		for (b = 0; b < ARRAY_SIZE(bts->interference.boundary); b++) {
+			if (meas_avg < bts->interference.boundary[b])
+				break; /* Current 'b' is the band value */
+		}
 	}
 
 	LOGPLCHAN(lchan, DL1C, LOGL_DEBUG,
