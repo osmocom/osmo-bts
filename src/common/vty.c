@@ -1828,9 +1828,9 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
 	const struct gsm_network *net = gsmnet_from_vty(vty);
-	const struct gsm_bts *bts;
-	const struct gsm_bts_trx *trx;
-	const struct gsm_bts_trx_ts *ts;
+	const struct gsm_bts *bts = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
+	const struct gsm_bts_trx *trx = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
+	const struct gsm_bts_trx_ts *ts = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
 	const struct gsm_lchan *lchan;
 	int bts_nr, trx_nr, ts_nr, lchan_nr;
 
