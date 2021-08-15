@@ -92,7 +92,6 @@ enum gsm_lchan_state {
 	LCHAN_S_REL_REQ,	/* channel release has been requested */
 	LCHAN_S_REL_ERR,	/* channel is in an error state */
 	LCHAN_S_BROKEN,		/* channel is somehow unusable */
-	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
 #define MAX_NUM_UL_MEAS	104
