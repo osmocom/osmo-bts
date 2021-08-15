@@ -1085,6 +1085,30 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	msg->l2h = NULL;
 	msg->len = TLVP_LEN(&tp, RSL_IE_FULL_IMM_ASS_INFO);
 
+	/* Early Immediate Assignment: when there is a lot of latency on Abis, the Abis roundtrip of Chan Activ -> Chan
+	 * Activ ACK -> Immediate Assignment may take so long that each MS sends a second RACH for Chan Rqd, reserving
+	 * two SDCCH for each request but using only one. To help with that, the Early IA feature in osmo-bsc sends the
+	 * Immediate Assignment without waiting for the Channel Activation ACK. This may then be too early, and the MS
+	 * may not be able to establish a channel. So to help with Early IA, look up whether the target lchan is already
+	 * active. If not, then hold back the RR Immediate Assignment message, and send it once L1 has confirmed that
+	 * the channel is active. Hence we still wait for the activation, but don't need the Abis roundtrip of Activ ACK
+	 * -> Immediate Assignment via the BSC.
+	 * If anything is wrong with the sizes or the lchan lookup, behave normally, i.e. do not do the RR IA caching,
+	 * but just send the RR message to the MS as-is. */
+	if (msg->len >= sizeof(struct gsm48_imm_ass)) {
+		struct gsm48_imm_ass *rr_ia = (void*)msg->data;
+		struct gsm_lchan *ia_target_lchan = lchan_lookup(trx, rr_ia->chan_desc.chan_nr, "Early IA check: ");
+		if (ia_target_lchan && ia_target_lchan->state != LCHAN_S_ACTIVE) {
+			/* Target lchan is not yet active. Cache the IA.
+			 * If a previous IA is still lingering, free it. */
+			msgb_free(ia_target_lchan->early_rr_ia);
+			ia_target_lchan->early_rr_ia = msg;
+
+			/* return 1 means: don't msgb_free() the msg */
+			return 1;
+		}
+	}
+
 	/* put into the AGCH queue of the BTS */
 	if (bts_agch_enqueue(trx->bts, msg) < 0) {
 		/* if there is no space in the queue: send DELETE IND */

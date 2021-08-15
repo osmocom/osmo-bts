@@ -412,6 +412,11 @@ struct gsm_lchan {
 
 	/* Message buffer to store DL-SACCH repeation candidate */
 	struct msgb *rep_sacch;
+
+	/* Cached early Immediate Assignment message: if the Immediate Assignment arrives before the channel is
+	 * confirmed active, then cache it here and send it once the channel is confirmed to be active. This is related
+	 * to the Early IA feature, see OsmoBSC config option 'immediate-assignment pre-chan-ack'. */
+	struct msgb *early_rr_ia;
 };
 
 extern const struct value_string lchan_ciph_state_names[];
