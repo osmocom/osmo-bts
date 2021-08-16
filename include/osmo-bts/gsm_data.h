@@ -428,6 +428,7 @@ struct gsm_lchan {
 	 * confirmed active, then cache it here and send it once the channel is confirmed to be active. This is related
 	 * to the Early IA feature, see OsmoBSC config option 'immediate-assignment pre-chan-ack'. */
 	struct msgb *early_rr_ia;
+	struct osmo_timer_list early_rr_ia_delay;
 };
 
 extern const struct value_string lchan_ciph_state_names[];
@@ -534,6 +535,7 @@ enum gprs_cs {
 
 extern struct osmo_tdef_group bts_tdef_groups[];
 extern struct osmo_tdef bts_T_defs[];
+extern struct osmo_tdef abis_T_defs[];
 
 extern const struct value_string gsm_pchant_names[13];
 extern const struct value_string gsm_pchant_descs[13];

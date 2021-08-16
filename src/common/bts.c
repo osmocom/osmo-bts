@@ -143,6 +143,11 @@ struct osmo_tdef bts_T_defs[] = {
 	{}
 };
 
+struct osmo_tdef abis_T_defs[] = {
+	{ .T=-15, .default_val=50, .unit=OSMO_TDEF_MS, .desc="Time to wait between Channel Activation and dispatching a cached early Immediate Assignment" },
+	{}
+};
+
 static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
 static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
@@ -234,6 +239,7 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 
 	bts->T_defs = bts_T_defs;
 	osmo_tdefs_reset(bts->T_defs);
+	osmo_tdefs_reset(abis_T_defs);
 	bts->shutdown_fi = osmo_fsm_inst_alloc(&bts_shutdown_fsm, bts, bts,
 					       LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);

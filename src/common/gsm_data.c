@@ -42,6 +42,7 @@
 
 struct osmo_tdef_group bts_tdef_groups[] = {
 	{ .name = "bts", .tdefs = bts_T_defs, .desc = "BTS process timers" },
+	{ .name = "abis", .tdefs = abis_T_defs, .desc = "Abis (RSL) related timers" },
 	{}
 };
 
