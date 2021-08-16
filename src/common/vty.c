@@ -37,6 +37,7 @@
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/misc.h>
 #include <osmocom/vty/ports.h>
+#include <osmocom/vty/tdef_vty.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/sockaddr_str.h>
@@ -384,6 +385,7 @@ static int config_write_bts(struct vty *vty)
 	llist_for_each_entry(bts, &net->bts_list, list)
 		config_write_bts_single(vty, bts);
 
+	osmo_tdef_vty_groups_write(vty, "");
 	return CMD_SUCCESS;
 }
 
@@ -2418,6 +2420,9 @@ int bts_vty_init(void *ctx)
 	install_node(&bts_node, config_write_bts);
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_element(CONFIG_NODE, &cfg_vty_telnet_port_cmd);
+
+	osmo_tdef_vty_groups_init(CONFIG_NODE, bts_tdef_groups);
+
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_oml_ip_cmd);

@@ -128,7 +128,7 @@ static const struct rate_ctr_group_desc cbch_ctrg_desc = {
 	cbch_ctr_desc
 };
 
-static struct osmo_tdef bts_T_defs[] = {
+struct osmo_tdef bts_T_defs[] = {
 	/* T-1: FIXME: Ideally should be dynamically calculated per trx at
 	 * shutdown start based on params below, and highest trx value taken:
 	 * + VTY's power-ramp step-interval.

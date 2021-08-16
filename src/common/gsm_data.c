@@ -40,6 +40,11 @@
 #include <osmo-bts/bts_trx.h>
 #include <osmo-bts/logging.h>
 
+struct osmo_tdef_group bts_tdef_groups[] = {
+	{ .name = "bts", .tdefs = bts_T_defs, .desc = "BTS process timers" },
+	{}
+};
+
 const struct value_string gsm_pchant_names[13] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },

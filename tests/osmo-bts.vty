@@ -7,6 +7,7 @@ OsmoBTS> list
   show lchan summary [<0-255>] [<0-255>] [<0-7>] [<0-7>]
   show bts <0-255> gprs
 ...
+  show timer [(bts)] [TNNNN]
   show e1_driver
   show e1_line [<0-255>] [stats]
   show e1_timeslot [<0-255>] [<0-31>]
@@ -22,6 +23,7 @@ OsmoBTS> show ?
   trx             Display information about a TRX
   timeslot        Display information about a TS
   lchan           Display information about a logical channel
+  timer           Show timers
   e1_driver       Display information about available E1 drivers
   e1_line         Display information about a E1 line
   e1_timeslot     Display information about a E1 timeslot
@@ -59,6 +61,22 @@ OsmoBTS> show lchan summary 0 0 ?
   [<0-7>]  Timeslot Number
 OsmoBTS> show lchan summary 0 0 0 ?
   [<0-7>]  Logical Channel Number
+
+OsmoBTS> show timer ?
+  [bts]  BTS process timers
+OsmoBTS> show timer
+bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
+bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s) (default: 3 s)
+OsmoBTS> show timer bts ?
+  [TNNNN]  T- or X-timer-number -- 3GPP compliant timer number of the format '1234' or 'T1234' or 't1234'; Osmocom-specific timer number of the format: 'X1234' or 'x1234'.
+OsmoBTS> show timer bts
+bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
+bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s) (default: 3 s)
+OsmoBTS> show timer bts X1
+bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
+OsmoBTS> show timer bts X2
+bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s) (default: 3 s)
+
 OsmoBTS> show e1_driver ?
   <cr>  
 OsmoBTS> show e1_line ?
@@ -80,6 +98,7 @@ OsmoBTS# list
   show lchan summary [<0-255>] [<0-255>] [<0-7>] [<0-7>]
   show bts <0-255> gprs
 ...
+  show timer [(bts)] [TNNNN]
   bts <0-0> trx <0-255> ts <0-7> (lchan|shadow-lchan) <0-7> rtp jitter-buffer <0-10000>
   test send-failure-event-report <0-255>
   bts <0-255> c0-power-red <0-6>
@@ -99,6 +118,7 @@ OsmoBTS# show ?
   trx             Display information about a TRX
   timeslot        Display information about a TS
   lchan           Display information about a logical channel
+  timer           Show timers
   e1_driver       Display information about available E1 drivers
   e1_line         Display information about a E1 line
   e1_timeslot     Display information about a E1 timeslot
@@ -152,6 +172,7 @@ OsmoBTS(config)# list
 ...
   bts BTS_NR
 ...
+  timer [(bts)] [TNNNN] [(<0-2147483647>|default)]
   phy <0-255>
   e1_input
 ...
@@ -159,6 +180,7 @@ OsmoBTS(config)# ?
 ...
   bts        Select a BTS to configure
 ...
+  timer      Configure or show timers
   phy        Select a PHY to configure
   e1_input   Configure E1/T1/J1 TDM input
 ...
@@ -166,6 +188,24 @@ OsmoBTS(config)# bts ?
   BTS_NR  BTS Number
 OsmoBTS(config)# phy ?
   <0-255>  PHY number
+
+OsmoBTS(config)# timer ?
+  [bts]  BTS process timers
+OsmoBTS(config)# timer bts ?
+  [TNNNN]  T- or X-timer-number -- 3GPP compliant timer number of the format '1234' or 'T1234' or 't1234'; Osmocom-specific timer number of the format: 'X1234' or 'x1234'.
+OsmoBTS(config)# timer bts X1
+bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
+OsmoBTS(config)# timer bts X2
+bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s) (default: 3 s)
+OsmoBTS(config)# timer bts X1 ?
+  [<0-2147483647>]  New timer value
+  [default]         Set to default timer value
+OsmoBTS(config)# timer bts X1 123
+OsmoBTS(config)# timer bts X1
+bts: X1 = 123 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
+OsmoBTS(config)# timer bts X1 default
+OsmoBTS(config)# timer bts X1
+bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
 
 OsmoBTS(config)# bts 0
 OsmoBTS(bts)# list

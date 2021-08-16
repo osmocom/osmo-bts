@@ -9,6 +9,7 @@
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/tdef.h>
 #include <osmocom/codec/ecu.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/gsm23003.h>
@@ -521,6 +522,8 @@ enum gprs_cs {
  * OML connection will cause a special warning to be logged. */
 #define OSMO_BTS_OML_CONN_EARLY_DISCONNECT 10	 /* in seconds */
 
+extern struct osmo_tdef_group bts_tdef_groups[];
+extern struct osmo_tdef bts_T_defs[];
 
 extern const struct value_string gsm_pchant_names[13];
 extern const struct value_string gsm_pchant_descs[13];
