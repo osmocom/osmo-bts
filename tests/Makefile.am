@@ -26,6 +26,26 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)
 TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
+if ENABLE_EXT_TESTS
+python-tests: $(BUILT_SOURCES)
+	$(MAKE) vty-test
+else
+python-tests: $(BUILT_SOURCES)
+	echo "Not running python-based tests (determined at configure-time)"
+endif
+
+# Run a specific test with: 'make vty-test VTY_TEST=foo.vty'
+VTY_TEST ?= *.vty
+
+# To update the VTY script from current application behavior,
+# pass -u to vty_script_runner.py by doing:
+#   make vty-test U=-u
+vty-test:
+	osmo_verify_transcript_vty.py -v \
+		-n OsmoBTS -p 4241 \
+		-r "$(top_builddir)/src/osmo-bts/osmo-bts-virtual/osmo-bts-virtual -c $(top_srcdir)/doc/examples/osmo-bts-virtual/osmo-bts-virtual.cfg" \
+		$(U) $(srcdir)/$(VTY_TEST)
+
 check-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
 

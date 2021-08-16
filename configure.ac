@@ -349,6 +349,24 @@ then
 	AC_SUBST([OSMO_GSM_MANUALS_DIR])
 fi
 
+AC_ARG_ENABLE([external_tests],
+		AC_HELP_STRING([--enable-external-tests],
+				[Include the VTY/CTRL tests in make check [default=no]]),
+		[enable_ext_tests="$enableval"],[enable_ext_tests="no"])
+if test "x$enable_ext_tests" = "xyes" ; then
+	AC_CHECK_PROG(PYTHON3_AVAIL,python3,yes)
+	 if test "x$PYTHON3_AVAIL" != "xyes" ; then
+		AC_MSG_ERROR([Please install python3 to run the VTY/CTRL tests.])
+	fi
+	AC_CHECK_PROG(OSMOTESTEXT_CHECK,osmotestvty.py,yes)
+	 if test "x$OSMOTESTEXT_CHECK" != "xyes" ; then
+		AC_MSG_ERROR([Please install git://osmocom.org/python/osmo-python-tests to run the VTY/CTRL tests.])
+	fi
+fi
+AC_MSG_CHECKING([whether to enable VTY/CTRL tests])
+AC_MSG_RESULT([$enable_ext_tests])
+AM_CONDITIONAL(ENABLE_EXT_TESTS, test "x$enable_ext_tests" = "xyes")
+
 # https://www.freedesktop.org/software/systemd/man/daemon.html
 AC_ARG_WITH([systemdsystemunitdir],
      [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],,
