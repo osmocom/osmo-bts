@@ -21,6 +21,7 @@ configure_flags="\
   --enable-werror \
   --enable-sysmocom-bts \
   --with-sysmobts=$inst/include/ \
+  --enable-external-tests \
   "
 
 # This will not work for the femtobts

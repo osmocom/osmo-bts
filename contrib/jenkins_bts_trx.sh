@@ -17,6 +17,7 @@ configure_flags="\
   --enable-sanitize \
   --enable-werror \
   --enable-trx \
+  --enable-external-tests \
   "
 
 build_bts "osmo-bts-trx" "$configure_flags"

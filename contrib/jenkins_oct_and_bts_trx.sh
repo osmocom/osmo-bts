@@ -20,6 +20,7 @@ configure_flags="\
   --with-octsdr-2g=$deps/layer1-headers/ \
   --enable-octphy \
   --enable-trx \
+  --enable-external-tests \
   "
 
 build_bts "osmo-bts-octphy+trx" "$configure_flags"
