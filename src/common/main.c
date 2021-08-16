@@ -65,6 +65,7 @@ static int daemonize = 0;
 static int rt_prio = -1;
 static char *gsmtap_ip = 0;
 extern int g_vty_port_num;
+static bool vty_test_mode = false;
 
 static void print_help()
 {
@@ -80,6 +81,8 @@ static void print_help()
 		"\nVTY reference generation:\n"
 		"	--vty-ref-mode MODE	VTY reference generation mode (e.g. 'expert').\n"
 		"	--vty-ref-xml		Generate the VTY reference XML output and exit.\n"
+		"\nRegression testing:\n"
+		"       --vty-test		VTY test mode. Do not connect to BSC, do not exit.\n"
 		);
 	bts_model_print_help();
 }
@@ -103,6 +106,9 @@ static void handle_long_options(const char *prog_name, const int long_option)
 			get_value_string(vty_ref_gen_mode_desc, vty_ref_mode));
 		vty_dump_xml_ref_mode(stdout, (enum vty_ref_gen_mode) vty_ref_mode);
 		exit(0);
+	case 3:
+		vty_test_mode = true;
+		break;
 	default:
 		fprintf(stderr, "%s: error parsing cmdline options\n", prog_name);
 		exit(2);
@@ -140,6 +146,7 @@ static void handle_options(int argc, char **argv)
 			{ "realtime", 1, 0, 'r' },
 			{ "vty-ref-mode", 1, &long_option, 1 },
 			{ "vty-ref-xml", 0, &long_option, 2 },
+			{ "vty-test", 0, &long_option, 3 },
 			{ 0, 0, 0, 0 }
 		};
 
@@ -299,6 +306,8 @@ int bts_main(int argc, char **argv)
 	handle_options(argc, argv);
 
 	fprintf(stderr, "((*))\n  |\n / \\ OsmoBTS\n");
+	if (vty_test_mode)
+		fprintf(stderr, "--- VTY test mode: not connecting to BSC, not exiting ---\n");
 
 	g_bts = gsm_bts_alloc(tall_bts_ctx, 0);
 	if (!g_bts) {
@@ -395,6 +404,16 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
+
+	if (vty_test_mode) {
+		/* Just select-loop without connecting to the BSC, don't exit. This allows running tests on the VTY
+		 * telnet port. */
+		while (!quit) {
+			log_reset_context();
+			osmo_select_main(0);
+		}
+		return EXIT_SUCCESS;
+	}
 
 	if (abis_open(g_bts, "osmo-bts") != 0)
 		exit(1);

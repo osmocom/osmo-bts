@@ -1,0 +1,239 @@
+OsmoBTS> list
+...
+  show bts [<0-255>]
+  show trx [<0-255>] [<0-255>]
+  show timeslot [<0-255>] [<0-255>] [<0-7>]
+  show lchan [<0-255>] [<0-255>] [<0-7>] [<0-7>]
+  show lchan summary [<0-255>] [<0-255>] [<0-7>] [<0-7>]
+  show bts <0-255> gprs
+...
+  show e1_driver
+  show e1_line [<0-255>] [stats]
+  show e1_timeslot [<0-255>] [<0-31>]
+...
+OsmoBTS> ?
+...
+  show      Show running system information
+...
+
+OsmoBTS> show ?
+...
+  bts             Display information about a BTS
+  trx             Display information about a TRX
+  timeslot        Display information about a TS
+  lchan           Display information about a logical channel
+  e1_driver       Display information about available E1 drivers
+  e1_line         Display information about a E1 line
+  e1_timeslot     Display information about a E1 timeslot
+...
+OsmoBTS> show bts ?
+  [<0-255>]  BTS Number
+  <0-255>    BTS Number
+OsmoBTS> show bts 0 ?
+  gprs  GPRS/EGPRS configuration
+  <cr>  
+OsmoBTS> show trx ?
+  [<0-255>]  BTS Number
+OsmoBTS> show trx 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS> show timeslot ?
+  [<0-255>]  BTS Number
+OsmoBTS> show timeslot 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS> show timeslot 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS> show lchan ?
+  [<0-255>]  BTS Number
+  summary    Short summary
+OsmoBTS> show lchan 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS> show lchan 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS> show lchan 0 0 0 ?
+  [<0-7>]  Logical Channel Number
+OsmoBTS> show lchan summary ?
+  [<0-255>]  BTS Number
+OsmoBTS> show lchan summary 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS> show lchan summary 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS> show lchan summary 0 0 0 ?
+  [<0-7>]  Logical Channel Number
+OsmoBTS> show e1_driver ?
+  <cr>  
+OsmoBTS> show e1_line ?
+  [<0-255>]  E1 Line Number
+OsmoBTS> show e1_line 0 ?
+  [stats]  Include statistics
+OsmoBTS> show e1_timeslot ?
+  [<0-255>]  E1 Line Number
+OsmoBTS> show e1_timeslot 0 ?
+  [<0-31>]  E1 Timeslot Number
+
+OsmoBTS> enable
+OsmoBTS# list
+...
+  show bts [<0-255>]
+  show trx [<0-255>] [<0-255>]
+  show timeslot [<0-255>] [<0-255>] [<0-7>]
+  show lchan [<0-255>] [<0-255>] [<0-7>] [<0-7>]
+  show lchan summary [<0-255>] [<0-255>] [<0-7>] [<0-7>]
+  show bts <0-255> gprs
+...
+  bts <0-0> trx <0-255> ts <0-7> (lchan|shadow-lchan) <0-7> rtp jitter-buffer <0-10000>
+  test send-failure-event-report <0-255>
+  bts <0-255> c0-power-red <0-6>
+  show e1_driver
+  show e1_line [<0-255>] [stats]
+  show e1_timeslot [<0-255>] [<0-31>]
+...
+
+OsmoBTS# ?
+...
+  show       Show running system information
+...
+
+OsmoBTS# show ?
+...
+  bts             Display information about a BTS
+  trx             Display information about a TRX
+  timeslot        Display information about a TS
+  lchan           Display information about a logical channel
+  e1_driver       Display information about available E1 drivers
+  e1_line         Display information about a E1 line
+  e1_timeslot     Display information about a E1 timeslot
+...
+OsmoBTS# show bts ?
+  [<0-255>]  BTS Number
+  <0-255>    BTS Number
+OsmoBTS# show bts 0 ?
+  gprs  GPRS/EGPRS configuration
+  <cr>  
+OsmoBTS# show trx ?
+  [<0-255>]  BTS Number
+OsmoBTS# show trx 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS# show timeslot ?
+  [<0-255>]  BTS Number
+OsmoBTS# show timeslot 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS# show timeslot 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS# show lchan ?
+  [<0-255>]  BTS Number
+  summary    Short summary
+OsmoBTS# show lchan 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS# show lchan 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS# show lchan 0 0 0 ?
+  [<0-7>]  Logical Channel Number
+OsmoBTS# show lchan summary ?
+  [<0-255>]  BTS Number
+OsmoBTS# show lchan summary 0 ?
+  [<0-255>]  TRX Number
+OsmoBTS# show lchan summary 0 0 ?
+  [<0-7>]  Timeslot Number
+OsmoBTS# show lchan summary 0 0 0 ?
+  [<0-7>]  Logical Channel Number
+OsmoBTS# show e1_driver ?
+  <cr>  
+OsmoBTS# show e1_line ?
+  [<0-255>]  E1 Line Number
+OsmoBTS# show e1_line 0 ?
+  [stats]  Include statistics
+OsmoBTS# show e1_timeslot ?
+  [<0-255>]  E1 Line Number
+OsmoBTS# show e1_timeslot 0 ?
+  [<0-31>]  E1 Timeslot Number
+
+OsmoBTS# configure terminal
+OsmoBTS(config)# list
+...
+  bts BTS_NR
+...
+  phy <0-255>
+  e1_input
+...
+OsmoBTS(config)# ?
+...
+  bts        Select a BTS to configure
+...
+  phy        Select a PHY to configure
+  e1_input   Configure E1/T1/J1 TDM input
+...
+OsmoBTS(config)# bts ?
+  BTS_NR  BTS Number
+OsmoBTS(config)# phy ?
+  <0-255>  PHY number
+
+OsmoBTS(config)# bts 0
+OsmoBTS(bts)# list
+...
+  ipa unit-id <0-65534> <0-255>
+  oml remote-ip A.B.C.D
+  no oml remote-ip A.B.C.D
+  rtp jitter-buffer <0-10000> [adaptive]
+  rtp port-range <1-65534> <1-65534>
+  rtp ip-dscp <0-63>
+  rtp socket-priority <0-255>
+  band (450|GSM450|480|GSM480|750|GSM750|810|GSM810|850|GSM850|900|GSM900|1800|DCS1800|1900|PCS1900)
+  description .TEXT
+  no description
+  paging queue-size <1-1024>
+  paging lifetime <0-60>
+  agch-queue-mgmt default
+  agch-queue-mgmt threshold <0-100> low <0-100> high <0-100000>
+  min-qual-rach <-100-100>
+  min-qual-norm <-100-100>
+  max-ber10k-rach <0-10000>
+  pcu-socket PATH
+  supp-meas-info toa256
+  no supp-meas-info toa256
+  smscb queue-max-length <1-60>
+  smscb queue-target-length <1-30>
+  smscb queue-hysteresis <0-30>
+  gsmtap-remote-host [HOSTNAME]
+  no gsmtap-remote-host
+  gsmtap-sapi (enable-all|disable-all)
+  gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
+  no gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
+  trx <0-254>
+...
+OsmoBTS(bts)# ?
+...
+  ipa                 ip.access RSL commands
+  oml                 OML Parameters
+  no                  Negate a command or set its defaults
+  rtp                 RTP parameters
+  band                Set the frequency band of this BTS
+  description         Save human-readable description of the object
+  paging              Paging related parameters
+  agch-queue-mgmt     AGCH queue mgmt
+  min-qual-rach       Set the minimum link quality level of Access Bursts to be accepted
+  min-qual-norm       Set the minimum link quality level of Normal Bursts to be accepted
+  max-ber10k-rach     Set the maximum BER for valid RACH requests
+  pcu-socket          Configure the PCU socket file/path name
+  supp-meas-info      Configure the RSL Supplementary Measurement Info
+  smscb               SMSCB (SMS Cell Broadcast) / CBCH configuration
+  gsmtap-remote-host  Enable GSMTAP Um logging (see also 'gsmtap-sapi')
+  gsmtap-sapi         Enable/disable sending of UL/DL messages over GSMTAP
+  trx                 Select a TRX to configure
+...
+OsmoBTS(bts)# trx 0
+OsmoBTS(trx)# list
+...
+  user-gain <-100000-100000> (dB|mdB)
+  power-ramp max-initial <-10000-100000> (dBm|mdBm)
+  power-ramp step-size <1-100000> (dB|mdB)
+  power-ramp step-interval <1-100>
+  ms-power-control (dsp|osmo)
+  phy <0-255> instance <0-255>
+...
+OsmoBTS(trx)# ?
+...
+  user-gain         Inform BTS about additional, user-provided gain or attenuation at TRX output
+  power-ramp        Power-Ramp settings
+  ms-power-control  Mobile Station Power Level Control
+  phy               Configure PHY Link+Instance for this TRX
+...

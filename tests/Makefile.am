@@ -22,12 +22,38 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
                echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)
+EXTRA_DIST = \
+	testsuite.at \
+	$(srcdir)/package.m4 \
+	$(TESTSUITE) \
+	osmo-bts.vty \
+	$(NULL)
 TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
+if ENABLE_EXT_TESTS
+python-tests: $(BUILT_SOURCES)
+	$(MAKE) vty-test
+else
+python-tests: $(BUILT_SOURCES)
+	echo "Not running python-based tests (determined at configure-time)"
+endif
+
+# Run a specific test with: 'make vty-test VTY_TEST=foo.vty'
+VTY_TEST ?= *.vty
+
+# To update the VTY script from current application behavior,
+# pass -u to vty_script_runner.py by doing:
+#   make vty-test U=-u
+vty-test:
+	osmo_verify_transcript_vty.py -v \
+		-n OsmoBTS -p 4241 \
+		-r "$(top_builddir)/src/osmo-bts-virtual/osmo-bts-virtual --vty-test -c $(top_srcdir)/doc/examples/virtual/osmo-bts-virtual.cfg" \
+		$(U) $(srcdir)/$(VTY_TEST)
+
 check-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+	$(MAKE) $(AM_MAKEFLAGS) python-tests
 
 installcheck-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
