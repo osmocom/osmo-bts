@@ -144,7 +144,7 @@ struct osmo_tdef bts_T_defs[] = {
 };
 
 struct osmo_tdef abis_T_defs[] = {
-	{ .T=-15, .default_val=50, .unit=OSMO_TDEF_MS, .desc="Time to wait between Channel Activation and dispatching a cached early Immediate Assignment" },
+	{ .T=-15, .default_val=0, .unit=OSMO_TDEF_MS, .desc="Time to wait between Channel Activation and dispatching a cached early Immediate Assignment" },
 	{}
 };
 

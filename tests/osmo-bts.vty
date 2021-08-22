@@ -68,7 +68,7 @@ OsmoBTS> show timer ?
 OsmoBTS> show timer
 bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
 bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop during shut down process does not finish (s) (default: 3 s)
-abis: X15 = 50 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 50 ms)
+abis: X15 = 0 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 0 ms)
 OsmoBTS> show timer bts ?
   [TNNNN]  T- or X-timer-number -- 3GPP compliant timer number of the format '1234' or 'T1234' or 't1234'; Osmocom-specific timer number of the format: 'X1234' or 'x1234'.
 OsmoBTS> show timer bts
@@ -81,7 +81,7 @@ bts: X2 = 3 s	Time after which osmo-bts exits if requesting transceivers to stop
 OsmoBTS> show timer abis ?
   [TNNNN]  T- or X-timer-number -- 3GPP compliant timer number of the format '1234' or 'T1234' or 't1234'; Osmocom-specific timer number of the format: 'X1234' or 'x1234'.
 OsmoBTS> show timer abis X15
-abis: X15 = 50 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 50 ms)
+abis: X15 = 0 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 0 ms)
 
 OsmoBTS> show e1_driver ?
   <cr>  
@@ -215,13 +215,13 @@ OsmoBTS(config)# timer bts X1
 bts: X1 = 300 s	Time after which osmo-bts exits if regular ramp down during shut down process does not finish (s) (default: 300 s)
 
 OsmoBTS(config)# timer abis X15
-abis: X15 = 50 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 50 ms)
+abis: X15 = 0 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 0 ms)
 OsmoBTS(config)# timer abis X15 123
 OsmoBTS(config)# timer abis X15
-abis: X15 = 123 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 50 ms)
+abis: X15 = 123 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 0 ms)
 OsmoBTS(config)# timer abis X15 default
 OsmoBTS(config)# timer abis X15
-abis: X15 = 50 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 50 ms)
+abis: X15 = 0 ms	Time to wait between Channel Activation and dispatching a cached early Immediate Assignment (default: 0 ms)
 
 OsmoBTS(config)# bts 0
 OsmoBTS(bts)# list
