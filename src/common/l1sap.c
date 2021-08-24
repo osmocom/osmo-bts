@@ -474,6 +474,9 @@ static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int l
 
 	switch (chan_type) {
 	case GSMTAP_CHANNEL_AGCH:
+	case GSMTAP_CHANNEL_SDCCH:
+	case GSMTAP_CHANNEL_TCH_F:
+	case GSMTAP_CHANNEL_TCH_H:
 		if (!memcmp(data, fill_frame, GSM_MACBLOCK_LEN))
 			return true;
 		break;
@@ -481,6 +484,7 @@ static bool is_fill_frame(uint8_t chan_type, const uint8_t *data, unsigned int l
 		if (!memcmp(data, paging_fill, GSM_MACBLOCK_LEN))
 			return true;
 		break;
+	/* FIXME: implement the same for GSMTAP_CHANNEL_PDTCH from/to PCU */
 	/* don't use 'default' case here as the above only conditionally return true */
 	}
 	return false;
