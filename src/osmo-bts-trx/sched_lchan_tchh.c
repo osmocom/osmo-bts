@@ -72,6 +72,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint8_t is_sub = 0;
 	uint8_t ft;
 	bool mask_stolen_tch_block = false;
+	bool fn_is_cmi;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
@@ -164,10 +165,21 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			break;
 		}
 
+		/* Calculate the frame number where the block begins */
+		if (bi->fn % 13 < 4)
+			fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 5);
+		else
+			fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 4);
+		if (lchan->nr == 0)
+			fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
+		else
+			fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H1);
+		fn_is_cmi = ul_amr_fn_is_cmi(fn_begin);
+
 		/* See comment in function rx_tchf_fn() */
 		amr = 2;
 		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, *bursts_p,
-			fn_is_odd, fn_is_odd, chan_state->codec,
+			fn_is_odd, !fn_is_cmi, chan_state->codec,
 			chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
 
@@ -343,7 +355,6 @@ compose_l1sap:
 		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 5);
 	else
 		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 4);
-	
 	if (lchan->nr == 0)
 		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
 	else
@@ -441,7 +452,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
 		gsm0503_tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(br->fn),
+			msgb_l2len(msg_tch) - 2, !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);

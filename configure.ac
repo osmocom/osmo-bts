@@ -411,6 +411,7 @@ AC_OUTPUT(
     tests/tx_power/Makefile
     tests/power/Makefile
     tests/meas/Makefile
+    tests/amr/Makefile
     doc/Makefile
     doc/examples/Makefile
     doc/manuals/Makefile

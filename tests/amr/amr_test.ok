@@ -1,0 +1,152 @@
+AMR transmission phase (CMI) in relation to GSM FN:
+Uplink, AMR AHS on HR subslot 0: fn_begin=0, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=4, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=8, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=13, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=17, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=21, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=26, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=30, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=34, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=39, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=43, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=47, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=52, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=56, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=60, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=65, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=69, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=73, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=78, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=82, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=86, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=91, CMI=0
+Uplink, AMR AHS on HR subslot 0: fn_begin=95, CMI=1
+Uplink, AMR AHS on HR subslot 0: fn_begin=99, CMI=0
+
+Downlink, AMR AHS on HR subslot 0: fn_begin=0, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=4, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=8, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=13, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=17, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=21, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=26, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=30, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=34, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=39, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=43, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=47, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=52, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=56, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=60, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=65, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=69, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=73, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=78, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=82, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=86, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=91, CMI=1
+Downlink, AMR AHS on HR subslot 0: fn_begin=95, CMI=0
+Downlink, AMR AHS on HR subslot 0: fn_begin=99, CMI=1
+
+
+Uplink, AMR AHS on HR subslot 1: fn_begin=1, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=5, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=9, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=14, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=18, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=22, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=27, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=31, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=35, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=40, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=44, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=48, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=53, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=57, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=61, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=66, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=70, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=74, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=79, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=83, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=87, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=92, CMI=0
+Uplink, AMR AHS on HR subslot 1: fn_begin=96, CMI=1
+Uplink, AMR AHS on HR subslot 1: fn_begin=100, CMI=0
+
+Downlink, AMR AHS on HR subslot 1: fn_begin=1, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=5, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=9, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=14, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=18, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=22, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=27, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=31, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=35, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=40, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=44, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=48, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=53, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=57, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=61, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=66, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=70, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=74, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=79, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=83, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=87, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=92, CMI=1
+Downlink, AMR AHS on HR subslot 1: fn_begin=96, CMI=0
+Downlink, AMR AHS on HR subslot 1: fn_begin=100, CMI=1
+
+
+Uplink, AMR AFS: fn_begin=0, CMI=1
+Uplink, AMR AFS: fn_begin=4, CMI=0
+Uplink, AMR AFS: fn_begin=8, CMI=1
+Uplink, AMR AFS: fn_begin=13, CMI=0
+Uplink, AMR AFS: fn_begin=17, CMI=1
+Uplink, AMR AFS: fn_begin=21, CMI=0
+Uplink, AMR AFS: fn_begin=26, CMI=1
+Uplink, AMR AFS: fn_begin=30, CMI=0
+Uplink, AMR AFS: fn_begin=34, CMI=1
+Uplink, AMR AFS: fn_begin=39, CMI=0
+Uplink, AMR AFS: fn_begin=43, CMI=1
+Uplink, AMR AFS: fn_begin=47, CMI=0
+Uplink, AMR AFS: fn_begin=52, CMI=1
+Uplink, AMR AFS: fn_begin=56, CMI=0
+Uplink, AMR AFS: fn_begin=60, CMI=1
+Uplink, AMR AFS: fn_begin=65, CMI=0
+Uplink, AMR AFS: fn_begin=69, CMI=1
+Uplink, AMR AFS: fn_begin=73, CMI=0
+Uplink, AMR AFS: fn_begin=78, CMI=1
+Uplink, AMR AFS: fn_begin=82, CMI=0
+Uplink, AMR AFS: fn_begin=86, CMI=1
+Uplink, AMR AFS: fn_begin=91, CMI=0
+Uplink, AMR AFS: fn_begin=95, CMI=1
+Uplink, AMR AFS: fn_begin=99, CMI=0
+
+Downlink, AMR AFS: fn_begin=0, CMI=0
+Downlink, AMR AFS: fn_begin=4, CMI=1
+Downlink, AMR AFS: fn_begin=8, CMI=0
+Downlink, AMR AFS: fn_begin=13, CMI=1
+Downlink, AMR AFS: fn_begin=17, CMI=0
+Downlink, AMR AFS: fn_begin=21, CMI=1
+Downlink, AMR AFS: fn_begin=26, CMI=0
+Downlink, AMR AFS: fn_begin=30, CMI=1
+Downlink, AMR AFS: fn_begin=34, CMI=0
+Downlink, AMR AFS: fn_begin=39, CMI=1
+Downlink, AMR AFS: fn_begin=43, CMI=0
+Downlink, AMR AFS: fn_begin=47, CMI=1
+Downlink, AMR AFS: fn_begin=52, CMI=0
+Downlink, AMR AFS: fn_begin=56, CMI=1
+Downlink, AMR AFS: fn_begin=60, CMI=0
+Downlink, AMR AFS: fn_begin=65, CMI=1
+Downlink, AMR AFS: fn_begin=69, CMI=0
+Downlink, AMR AFS: fn_begin=73, CMI=1
+Downlink, AMR AFS: fn_begin=78, CMI=0
+Downlink, AMR AFS: fn_begin=82, CMI=1
+Downlink, AMR AFS: fn_begin=86, CMI=0
+Downlink, AMR AFS: fn_begin=91, CMI=1
+Downlink, AMR AFS: fn_begin=95, CMI=0
+Downlink, AMR AFS: fn_begin=99, CMI=1

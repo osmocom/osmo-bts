@@ -65,6 +65,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint16_t ber10k;
 	uint8_t is_sub = 0;
 	uint8_t ft;
+	bool amr_is_cmr;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
@@ -129,6 +130,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * the first FN 4,13,21 defines that CMR is included in frame.
 		 * NOTE: A frame ends 7 FN after start.
 		 */
+		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
+		amr_is_cmr = !ul_amr_fn_is_cmi(fn_begin);
 
 		/* The AFS_ONSET frame itself does not result into an RTP frame
 		 * since it only contains a recognition pattern that marks the
@@ -144,8 +147,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * know this before we actually decode the frame) */
 		amr = 2;
 		rc = gsm0503_tch_afs_decode_dtx(tch_data + amr, *bursts_p,
-			(((bi->fn + 26 - 7) % 26) >> 2) & 1, chan_state->codec,
-			chan_state->codecs, &chan_state->ul_ft,
+			amr_is_cmr, chan_state->codec, chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
 
 		/* Tag all frames that are not regular AMR voice frames as
@@ -419,6 +421,7 @@ inval_mode1:
 		enum osmo_amr_type ft_codec;
 		enum osmo_amr_quality bfi;
 		int8_t sti, cmi;
+		bool amr_is_cmr = !dl_amr_fn_is_cmi(br->fn);
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
 			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Dropping speech frame, "
@@ -463,7 +466,7 @@ inval_mode1:
 					"Codec (FT = %d) of RTP frame not in list\n", ft_codec);
 				goto free_bad_msg;
 			}
-			if (fn_is_codec_mode_request(br->fn) && chan_state->dl_ft != ft) {
+			if (amr_is_cmr && chan_state->dl_ft != ft) {
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Codec (FT = %d) "
 					" of RTP cannot be changed now, but in next frame\n", ft_codec);
 				goto free_bad_msg;
@@ -552,7 +555,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
 		gsm0503_tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, fn_is_codec_mode_request(br->fn),
+			msgb_l2len(msg_tch) - 2, !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);

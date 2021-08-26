@@ -63,3 +63,9 @@ AT_KEYWORDS([ta_control])
 cat $abs_srcdir/ta_control/ta_control_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/ta_control/ta_control_test], [], [expout], [ignore])
 AT_CLEANUP
+
+AT_SETUP([amr])
+AT_KEYWORDS([amr])
+cat $abs_srcdir/amr/amr_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/amr/amr_test], [], [expout], [ignore])
+AT_CLEANUP
