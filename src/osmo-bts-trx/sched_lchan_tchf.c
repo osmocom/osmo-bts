@@ -191,7 +191,7 @@ int rx_tchf_fn(struct l1sched_trx *l1t, enum trx_chan_type chan,
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			if (chan_state->amr_last_dtx == AMR_OTHER) {
-				ft = chan_state->codec[chan_state->ul_cmr];
+				ft = chan_state->codec[chan_state->ul_ft];
 			} else {
 				/* SID frames will always get Frame Type Index 8 (AMR_SID) */
 				ft = AMR_SID;
