@@ -938,6 +938,30 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 		params->rxqual_meas.upper_thresh = thresh->u_rxqual;
 	}
 
+	/* Osmocom extension, C/I related thresholds: */
+	if (TLVP_PRES_LEN(&tp[0], RSL_IPAC_EIE_OSMO_MS_PWR_CTL, sizeof(struct osmo_preproc_pc_thresh))) {
+		const struct osmo_preproc_pc_thresh *osmo_thresh;
+		ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_OSMO_MS_PWR_CTL);
+		osmo_thresh = (const struct osmo_preproc_pc_thresh *) ie->val;
+		params->ci_fr_meas.lower_thresh = osmo_thresh->l_ci_fr;
+		params->ci_fr_meas.upper_thresh = osmo_thresh->u_ci_fr;
+
+		params->ci_hr_meas.lower_thresh = osmo_thresh->l_ci_hr;
+		params->ci_hr_meas.upper_thresh = osmo_thresh->u_ci_hr;
+
+		params->ci_amr_fr_meas.lower_thresh = osmo_thresh->l_ci_amr_fr;
+		params->ci_amr_fr_meas.upper_thresh = osmo_thresh->u_ci_amr_fr;
+
+		params->ci_amr_hr_meas.lower_thresh = osmo_thresh->l_ci_amr_hr;
+		params->ci_amr_hr_meas.upper_thresh = osmo_thresh->u_ci_amr_hr;
+
+		params->ci_sdcch_meas.lower_thresh = osmo_thresh->l_ci_sdcch;
+		params->ci_sdcch_meas.upper_thresh = osmo_thresh->u_ci_sdcch;
+
+		params->ci_gprs_meas.lower_thresh = osmo_thresh->l_ci_gprs;
+		params->ci_gprs_meas.upper_thresh = osmo_thresh->u_ci_gprs;
+	}
+
 	/* (TV) PC Threshold Comparators */
 	if ((ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_PC_THRESH_COMP)) != NULL) {
 		const struct ipac_preproc_pc_comp *thresh_comp;
@@ -962,6 +986,25 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 		/* Power increase / reduce step size: POWER_{INC,RED}_STEP_SIZE */
 		params->inc_step_size_db = thresh_comp->inc_step_size;
 		params->red_step_size_db = thresh_comp->red_step_size;
+	}
+
+	/* Osmocom extension, C/I related thresholds: */
+	if (TLVP_PRES_LEN(&tp[0], RSL_IPAC_EIE_OSMO_PC_THRESH_COMP, sizeof(struct osmo_preproc_pc_thresh))) {
+		const struct osmo_preproc_pc_comp *osmo_thresh_comp;
+		ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_OSMO_PC_THRESH_COMP);
+		osmo_thresh_comp = (const struct osmo_preproc_pc_comp *) ie->val;
+		#define SET_PREPROC_PC(PARAMS, FROM, TYPE) \
+			(PARAMS)->TYPE##_meas.lower_cmp_p = (FROM)->TYPE.lower_p; \
+			(PARAMS)->TYPE##_meas.lower_cmp_n = (FROM)->TYPE.lower_n; \
+			(PARAMS)->TYPE##_meas.upper_cmp_p = (FROM)->TYPE.upper_p; \
+			(PARAMS)->TYPE##_meas.upper_cmp_n = (FROM)->TYPE.upper_n
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_fr);
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_hr);
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_amr_fr);
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_amr_hr);
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_sdcch);
+		SET_PREPROC_PC(params, osmo_thresh_comp, ci_gprs);
+		#undef SET_PREPROC_PC
 	}
 
 	/* (TLV) Measurement Averaging parameters for RxLev/RxQual */
@@ -1006,6 +1049,42 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 		case IPAC_MEDIAN_AVE:
 			break;
 		}
+	}
+
+	/* (TLV) Measurement Averaging parameters for C/I (Osmocom extension)*/
+	if (TLVP_PRES_LEN(&tp[0], RSL_IPAC_EIE_OSMO_MEAS_AVG_CFG, sizeof(struct osmo_preproc_ave_cfg))) {
+		ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_OSMO_MEAS_AVG_CFG);
+		const struct osmo_preproc_ave_cfg *cfg = (const struct osmo_preproc_ave_cfg *) ie->val;
+		unsigned params_offset = 0;
+		#define SET_AVE_CFG(PARAMS, FROM, TYPE, PARAM_OFFSET) do {\
+				if ((FROM)->TYPE.ave_enabled) { \
+					(PARAMS)->TYPE##_meas.h_reqave = (FROM)->TYPE.h_reqave; \
+					(PARAMS)->TYPE##_meas.h_reqt = (FROM)->TYPE.h_reqt; \
+					(PARAMS)->TYPE##_meas.algo = (FROM)->TYPE.ave_method + 1; \
+					switch ((FROM)->TYPE.ave_method) { \
+					case IPAC_OSMO_EWMA_AVE: \
+						if (ie->len > sizeof(*cfg) + (PARAM_OFFSET)) {  \
+							(PARAMS)->TYPE##_meas.ewma.alpha = (FROM)->params[PARAM_OFFSET]; \
+							(PARAM_OFFSET)++; \
+						} \
+						break; \
+					/* FIXME: not implemented */ \
+					case IPAC_UNWEIGHTED_AVE: \
+					case IPAC_WEIGHTED_AVE: \
+					case IPAC_MEDIAN_AVE: \
+						break; \
+					} \
+				} else { \
+					(PARAMS)->TYPE##_meas.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE; \
+				} \
+			} while(0)
+		SET_AVE_CFG(params, cfg, ci_fr, params_offset);
+		SET_AVE_CFG(params, cfg, ci_hr, params_offset);
+		SET_AVE_CFG(params, cfg, ci_amr_fr, params_offset);
+		SET_AVE_CFG(params, cfg, ci_amr_hr, params_offset);
+		SET_AVE_CFG(params, cfg, ci_sdcch, params_offset);
+		SET_AVE_CFG(params, cfg, ci_gprs, params_offset);
+		#undef SET_AVE_CFG
 	}
 
 	return 0;

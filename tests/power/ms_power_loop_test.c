@@ -67,13 +67,13 @@ static void init_test(const char *name)
 	printf("\nStarting test case '%s'\n", name);
 }
 
-static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_ret, uint8_t exp_current)
+static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int lqual_cb, int exp_ret, uint8_t exp_current)
 {
 	uint8_t old;
 	int ret;
 
 	old = lchan->ms_power_ctrl.current;
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev);
+	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev, lqual_cb);
 
 	/* Keep the measurement counter updated */
 	lchan->meas.res_nr++;
@@ -87,9 +87,14 @@ static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int exp_
 static void test_power_loop(void)
 {
 	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
+	params = lchan->ms_power_ctrl.dpc_params;
+	lchan->type = GSM_LCHAN_SDCCH;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
@@ -97,73 +102,78 @@ static void test_power_loop(void)
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
 	/* Simply clamping */
-	apply_power_test(lchan, -60, 0, 15);
+	apply_power_test(lchan, -60, good_lqual, 0, 15);
 
 	/*
 	 * Now 15 dB too little and we should power it up. Could be a
 	 * power level of 7 or 8 for 15 dBm. However, since we limit peace at
 	 * which we change values, expect several steps of MS_RAISE_MAX_DB/2 levels:
 	 */
-	apply_power_test(lchan, -90, 1, 13);
-	apply_power_test(lchan, -90, 1, 11);
-	apply_power_test(lchan, -90, 1, 9);
-	apply_power_test(lchan, -90, 1, 7);
-	apply_power_test(lchan, -90, 1, 5);
+	apply_power_test(lchan, -90, good_lqual, 1, 13);
+	apply_power_test(lchan, -90, good_lqual, 1, 11);
+	apply_power_test(lchan, -90, good_lqual, 1, 9);
+	apply_power_test(lchan, -90, good_lqual, 1, 7);
+	apply_power_test(lchan, -90, good_lqual, 1, 5);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 5);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, good_lqual, 0, 5);
 
-	apply_power_test(lchan, -90, 1, 3);
-	apply_power_test(lchan, -90, 1, 2); /* .max is pwr lvl 2 */
-	apply_power_test(lchan, -90, 0, 2); /* .max is pwr lvl 2 */
+	apply_power_test(lchan, -90, good_lqual, 1, 3);
+	apply_power_test(lchan, -90, good_lqual, 1, 2); /* .max is pwr lvl 2 */
+	apply_power_test(lchan, -90, good_lqual, 0, 2); /* .max is pwr lvl 2 */
 
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
-	apply_power_test(lchan, -90, 1, 0); /* .max is pwr lvl 0 */
-	apply_power_test(lchan, -90, 0, 0); /* .max is pwr lvl 0 */
+	apply_power_test(lchan, -90, good_lqual, 1, 0); /* .max is pwr lvl 0 */
+	apply_power_test(lchan, -90, good_lqual, 0, 0); /* .max is pwr lvl 0 */
 
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 36);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 29);
-	apply_power_test(lchan, -90, 1, 30);
-	apply_power_test(lchan, -90, 1, 29);
-	apply_power_test(lchan, -90, 0, 29);
+	apply_power_test(lchan, -90, good_lqual, 1, 30);
+	apply_power_test(lchan, -90, good_lqual, 1, 29);
+	apply_power_test(lchan, -90, good_lqual, 0, 29);
 
 	/* Check good RSSI value keeps it at same power level: */
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 29);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, good_lqual, 0, 29);
 
 	/* Now go down, steps are double size in this direction: */
-	apply_power_test(lchan, -45, 1, 1);
-	apply_power_test(lchan, -45, 1, 5);
-	apply_power_test(lchan, -45, 1, 9);
+	apply_power_test(lchan, -45, good_lqual, 1, 1);
+	apply_power_test(lchan, -45, good_lqual, 1, 5);
+	apply_power_test(lchan, -45, good_lqual, 1, 9);
 
 	/* Go down only one level down and up: */
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, 1, 10);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 2, 1, 9);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, good_lqual, 1, 10);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 2, good_lqual, 1, 9);
 
 	/* Check if BSC requesting a low max power is applied after loop calculation: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 2);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 14);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, 1, 14);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 2, good_lqual, 1, 14);
 	/* Set back a more normal max: */
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 30);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
 
 	/* Disable dynamic power control and jump down */
 	lchan->ms_power_ctrl.dpc_params = NULL;
-	apply_power_test(lchan, -60, 0, 14);
+	apply_power_test(lchan, -60, good_lqual, 0, 14);
 
 	/* Enable and leave it again */
 	lchan->ms_power_ctrl.dpc_params = &lchan->ms_dpc_params;
-	apply_power_test(lchan, -40, 1, 15);
+	apply_power_test(lchan, -40, good_lqual, 1, 15);
 }
 
 static void test_pf_algo_ewma(void)
 {
 	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual;
 	const int *avg100;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
+	lchan->type = GSM_LCHAN_SDCCH;
+	params = lchan->ms_power_ctrl.dpc_params;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 	avg100 = &lchan->ms_power_ctrl.rxlev_meas_proc.ewma.Avg100;
 
 	struct gsm_power_ctrl_meas_params *mp = &lchan->ms_dpc_params.rxlev_meas;
@@ -180,15 +190,15 @@ static void test_pf_algo_ewma(void)
 	       ((float) *avg100) / 100, exp);
 
 	/* UL RSSI remains constant => no UL power change */
-	apply_power_test(lchan, -75, 0, 15);
+	apply_power_test(lchan, -75, good_lqual, 0, 15);
 	CHECK_UL_RSSI_AVG100(-75.00);
 
 	/* Avg[t] = (0.2 * -90) + (0.8 * -75) = -78.0 dBm */
-	apply_power_test(lchan, -90, 1, 13);
+	apply_power_test(lchan, -90, good_lqual, 1, 13);
 	CHECK_UL_RSSI_AVG100(-78.00);
 
 	/* Avg[t] = (0.2 * -90) + (0.8 * -78) = -80.4 dBm */
-	apply_power_test(lchan, -90, 1, 11);
+	apply_power_test(lchan, -90, good_lqual, 1, 11);
 	CHECK_UL_RSSI_AVG100(-80.40);
 
 	/* Avg[t] = (0.2 * -70) + (0.8 * -80.4) = -78.32 dBm,
@@ -199,7 +209,7 @@ static void test_pf_algo_ewma(void)
 	 *   Avg100[t] = -8040 + 20 * (-70 + 80)
 	 *   Avg100[t] = -8040 + 200 = -7840
 	 *   Avg[t] = -7840 / 100 = -78.4 */
-	apply_power_test(lchan, -70, 1, 9);
+	apply_power_test(lchan, -70, good_lqual, 1, 9);
 	CHECK_UL_RSSI_AVG100(-78.40);
 
 	mp->ewma.alpha = 70; /* 30% smoothing */
@@ -208,25 +218,30 @@ static void test_pf_algo_ewma(void)
 		(struct gsm_power_ctrl_meas_proc_state) { 0 };
 
 	/* This is the first sample, the filter outputs it as-is */
-	apply_power_test(lchan, -50, 0, 15);
+	apply_power_test(lchan, -50, good_lqual, 0, 15);
 	CHECK_UL_RSSI_AVG100(-50.00);
 
 	/* Avg[t] = (0.7 * -50) + (0.3 * -50) = -50.0 dBm */
-	apply_power_test(lchan, -50, 0, 15);
+	apply_power_test(lchan, -50, good_lqual, 0, 15);
 	CHECK_UL_RSSI_AVG100(-50.0);
 
 	/* Simulate SACCH block loss (-110 dBm):
 	 * Avg[t] = (0.7 * -110) + (0.3 * -50) = -92.0 dBm */
-	apply_power_test(lchan, -110, 1, 13);
+	apply_power_test(lchan, -110, good_lqual, 1, 13);
 	CHECK_UL_RSSI_AVG100(-92.0);
 }
 
 static void test_power_hysteresis(void)
 {
 	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
+	lchan->type = GSM_LCHAN_SDCCH;
+	params = lchan->ms_power_ctrl.dpc_params;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
 	/* Tolerate power deviations in range -80 .. -70 */
 	lchan->ms_dpc_params.rxlev_meas.lower_thresh = 30;
@@ -237,61 +252,66 @@ static void test_power_hysteresis(void)
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 15);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 3, 0, 15);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 3, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, good_lqual, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 3, good_lqual, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 3, good_lqual, 0, 15);
 
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, 0, 15);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 5, 0, 15);
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 5, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM, good_lqual, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM + 5, good_lqual, 0, 15);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 5, good_lqual, 0, 15);
 
-	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 10, 1, 13);
+	apply_power_test(lchan, PWR_TEST_RXLEV_TARGET_DBM - 10, good_lqual, 1, 13);
 }
 
 static void test_power_ctrl_interval(void)
 {
 	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual;
 	unsigned int i, j;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
+	lchan->type = GSM_LCHAN_SDCCH;
+	params = lchan->ms_power_ctrl.dpc_params;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
-	static const int script[][8][3] = {
+	const int script[][8][4] = {
 		{ /* P_Con_INTERVAL=0 (480 ms) */
 			/* { UL RxLev, expected rc, expected Tx power level } */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 9 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 7 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 5 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 3 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 2 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 2 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 9 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 7 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 5 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 3 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 2 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 2 },
 		},
 		{ /* P_Con_INTERVAL=1 (960 ms) */
 			/* { UL RxLev, expected rc, expected Tx power level } */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 9 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	 9 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	 7 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	 7 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 9 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	 9 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	 7 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	 7 }, /* skipped */
 		},
 		{ /* P_Con_INTERVAL=2 (1920 ms) */
 			/* { UL RxLev, expected rc, expected Tx power level } */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	13 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	13 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	1,	11 },
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
-			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	13 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	13 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	1,	11 },
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	11 }, /* skipped */
+			{ PWR_TEST_RXLEV_TARGET_DBM - 15,	good_lqual,	0,	11 }, /* skipped */
 		},
 	};
 
@@ -305,12 +325,52 @@ static void test_power_ctrl_interval(void)
 
 		for (j = 0; j < ARRAY_SIZE(script[i]); j++) {
 			apply_power_test(lchan, script[i][j][0],  /* UL RxLev */
-						script[i][j][1],  /* expected rc */
-						script[i][j][2]); /* expected Tx power level */
+						script[i][j][1],  /* UL C/I */
+						script[i][j][2],  /* expected rc */
+						script[i][j][3]); /* expected Tx power level */
 		}
 
 		printf("\n");
 	}
+}
+
+static void test_power_loop_ci(void)
+{
+	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual, too_low_lqual, too_high_lqual;
+
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
+	params = lchan->ms_power_ctrl.dpc_params;
+	lchan->type = GSM_LCHAN_SDCCH;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
+	too_low_lqual = (params->ci_sdcch_meas.lower_thresh - 1) * 10;
+	too_high_lqual = (params->ci_sdcch_meas.upper_thresh + 1) * 10;
+
+	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
+	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
+	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
+	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
+
+	/* Simply clamping */
+	apply_power_test(lchan, -60, good_lqual, 0, 15);
+
+	/* Now UL C/I is too bad as well as RSSI: */
+	apply_power_test(lchan, -100, too_low_lqual, 1, 13);
+	apply_power_test(lchan, -100, too_low_lqual, 1, 11);
+
+	/* Now UL C/I is good again while RSSI is good: */
+	apply_power_test(lchan, -60, good_lqual, 1, 12);
+	apply_power_test(lchan, -60, too_high_lqual, 1, 13);
+
+	/* Now UL C/I is good while RSSI is bad, C/I mandates: */
+	apply_power_test(lchan, -100, good_lqual, 1, 11);
+	apply_power_test(lchan, -100, too_high_lqual, 1, 12);
+
+	/* Now UL C/I is bad again while RSSI is good, C/I mandates: */
+	apply_power_test(lchan, -60, good_lqual, 1, 13);
+	apply_power_test(lchan, -60, too_high_lqual, 1, 14);
 }
 
 int main(int argc, char **argv)
@@ -332,6 +392,7 @@ int main(int argc, char **argv)
 	test_pf_algo_ewma();
 	test_power_hysteresis();
 	test_power_ctrl_interval();
+	test_power_loop_ci();
 
 	printf("Power loop test OK\n");
 

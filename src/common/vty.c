@@ -1391,7 +1391,7 @@ static void dump_dpc_meas_params(struct vty *vty, const unsigned int indent,
 }
 
 static void dump_dpc_params(struct vty *vty, const unsigned int indent,
-			    const struct gsm_power_ctrl_params *cp)
+			    const struct gsm_power_ctrl_params *cp, bool uplink)
 {
 	cfg_out(vty, "Power control interval: %u ms (every %u SACCH block(s))%s",
 		cp->ctrl_interval ? cp->ctrl_interval * 2 * 480 : 480,
@@ -1408,6 +1408,26 @@ static void dump_dpc_params(struct vty *vty, const unsigned int indent,
 
 	cfg_out(vty, "RxQual measurement processing:%s", VTY_NEWLINE);
 	dump_dpc_meas_params(vty, indent + 2, &cp->rxqual_meas, "RXQUAL", 3);
+
+	if (uplink) {
+		cfg_out(vty, "C/I measurement processing (FR/EFR):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_fr_meas, "CI_FR", 0);
+
+		cfg_out(vty, "C/I measurement processing (HR):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_hr_meas, "CI_HR", 0);
+
+		cfg_out(vty, "C/I measurement processing (AMR-FR):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_amr_fr_meas, "CI_AMR_FR", 0);
+
+		cfg_out(vty, "C/I measurement processing (AMR-HR):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_amr_hr_meas, "CI_AMR_HR", 0);
+
+		cfg_out(vty, "C/I measurement processing (SDCCH):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_sdcch_meas, "CI_SDCCH", 0);
+
+		cfg_out(vty, "C/I measurement processing (GPRS):%s", VTY_NEWLINE);
+		dump_dpc_meas_params(vty, indent + 2, &cp->ci_gprs_meas, "CI_GPRS", 0);
+	}
 }
 
 static void trx_dump_vty(struct vty *vty, const struct gsm_bts_trx *trx)
@@ -1425,13 +1445,13 @@ static void trx_dump_vty(struct vty *vty, const struct gsm_bts_trx *trx)
 		trx->bs_dpc_params == &trx->bts->bs_dpc_params ?
 			"fall-back" : "from BSC",
 		VTY_NEWLINE);
-	dump_dpc_params(vty, 4, trx->bs_dpc_params);
+	dump_dpc_params(vty, 4, trx->bs_dpc_params, false);
 
 	vty_out(vty, "  MS Power control parameters (%s):%s",
 		trx->ms_dpc_params == &trx->bts->ms_dpc_params ?
 			"fall-back" : "from BSC",
 		VTY_NEWLINE);
-	dump_dpc_params(vty, 4, trx->ms_dpc_params);
+	dump_dpc_params(vty, 4, trx->ms_dpc_params, true);
 
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &trx->mo.nm_state);
@@ -1638,7 +1658,7 @@ static void lchan_bs_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 		return;
 
 	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
-	dump_dpc_params(vty, indent + 2, st->dpc_params);
+	dump_dpc_params(vty, indent + 2, st->dpc_params, false);
 }
 
 static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
@@ -1664,7 +1684,7 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 		return;
 
 	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
-	dump_dpc_params(vty, indent + 2, st->dpc_params);
+	dump_dpc_params(vty, indent + 2, st->dpc_params, true);
 }
 
 static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,

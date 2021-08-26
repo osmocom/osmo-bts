@@ -1,51 +1,60 @@
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -60 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 13 (4 dBm) to 11, 8 dBm (rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 11 (8 dBm) to 9, 12 dBm (rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 9 (12 dBm) to 7, 16 dBm (rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 7 (16 dBm) to 5, 20 dBm (rx-ms-pwr-lvl 7, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 5, 20 dBm (rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, rx-current -75 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 5 (20 dBm) to 3, 24 dBm (rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 3 (24 dBm) to 2, 26 dBm (rx-ms-pwr-lvl 3, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2, 26 dBm (rx-ms-pwr-lvl 2, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 2 (26 dBm) to 0, 30 dBm (rx-ms-pwr-lvl 2, max-ms-pwr-lvl 0, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 0, 30 dBm (rx-ms-pwr-lvl 0, max-ms-pwr-lvl 0, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 0 (30 dBm) to 30, 34 dBm (rx-ms-pwr-lvl 0, max-ms-pwr-lvl 29, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 30 (34 dBm) to 29, 36 dBm (rx-ms-pwr-lvl 30, max-ms-pwr-lvl 29, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29, 36 dBm (rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29, 36 dBm (rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, rx-current -75 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 29 (36 dBm) to 30, 34 dBm (rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, rx-current -45 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 30 (34 dBm) to 31, 32 dBm (rx-ms-pwr-lvl 30, max-ms-pwr-lvl 29, rx-current -45 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 31 (32 dBm) to 0, 30 dBm (rx-ms-pwr-lvl 31, max-ms-pwr-lvl 29, rx-current -45 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 0 (30 dBm) to 1, 28 dBm (rx-ms-pwr-lvl 0, max-ms-pwr-lvl 29, rx-current -73 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 1 (28 dBm) to 0, 30 dBm (rx-ms-pwr-lvl 1, max-ms-pwr-lvl 29, rx-current -77 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 0 (30 dBm) to 14, 2 dBm (rx-ms-pwr-lvl 0, max-ms-pwr-lvl 14, rx-current -73 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Lowering MS power from control level 14 (2 dBm) to 15, 0 dBm (rx-ms-pwr-lvl 14, max-ms-pwr-lvl 0, rx-current -40 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -75 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 3 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 13 (4 dBm) to 11, 8 dBm (rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 11 (8 dBm) to 9, 11 dBm (rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, rx-current -70 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -50 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -50 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -110 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -75 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -72 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -78 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -75 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -70 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15, 0 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -80 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -85 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 13 (4 dBm) to 11, 8 dBm (rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 11 (8 dBm) to 9, 12 dBm (rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 9 (12 dBm) to 7, 16 dBm (rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 7 (16 dBm) to 5, 20 dBm (rx-ms-pwr-lvl 7, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 5 (20 dBm) to 3, 24 dBm (rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 3 (24 dBm) to 2, 26 dBm (rx-ms-pwr-lvl 3, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2, 26 dBm (rx-ms-pwr-lvl 2, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 13 (4 dBm) to 11, 8 dBm (rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 11 (8 dBm) to 9, 12 dBm (rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 9 (12 dBm) to 7, 16 dBm (rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 15 (0 dBm) to 13, 4 dBm (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
-(bts=0,trx=0,ts=0,ss=0) Raising MS power from control level 13 (4 dBm) to 11, 8 dBm (rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, rx-current -90 dBm, rx-target -75 dBm)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 7 (16 dBm) => 5 (20 dBm): rx-ms-pwr-lvl 7, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 5 (20 dBm): (rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, RSSI[curr -75, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 5 (20 dBm) => 3 (24 dBm): rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 3 (24 dBm) => 2 (26 dBm): rx-ms-pwr-lvl 3, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2 (26 dBm): (rx-ms-pwr-lvl 2, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 2 (26 dBm) => 0 (30 dBm): rx-ms-pwr-lvl 2, max-ms-pwr-lvl 0, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 0 (30 dBm): (rx-ms-pwr-lvl 0, max-ms-pwr-lvl 0, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 0 (30 dBm) => 30 (34 dBm): rx-ms-pwr-lvl 0, max-ms-pwr-lvl 29, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 30 (34 dBm) => 29 (36 dBm): rx-ms-pwr-lvl 30, max-ms-pwr-lvl 29, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29 (36 dBm): (rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29 (36 dBm): (rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, RSSI[curr -75, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 29 (36 dBm) => 30 (34 dBm): rx-ms-pwr-lvl 29, max-ms-pwr-lvl 29, RSSI[curr -45, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 30 (34 dBm) => 31 (32 dBm): rx-ms-pwr-lvl 30, max-ms-pwr-lvl 29, RSSI[curr -45, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 31 (32 dBm) => 0 (30 dBm): rx-ms-pwr-lvl 31, max-ms-pwr-lvl 29, RSSI[curr -45, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 0 (30 dBm) => 1 (28 dBm): rx-ms-pwr-lvl 0, max-ms-pwr-lvl 29, RSSI[curr -73, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 1 (28 dBm) => 0 (30 dBm): rx-ms-pwr-lvl 1, max-ms-pwr-lvl 29, RSSI[curr -77, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 0 (30 dBm) => 14 (2 dBm): rx-ms-pwr-lvl 0, max-ms-pwr-lvl 14, RSSI[curr -73, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 14 (2 dBm) => 15 (0 dBm): rx-ms-pwr-lvl 14, max-ms-pwr-lvl 0, RSSI[curr -40, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -75, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (3 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (11 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -70, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -50, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -50, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -110, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -75, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -72, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -78, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -75, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -70, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -80, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -85, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 7 (16 dBm) => 5 (20 dBm): rx-ms-pwr-lvl 7, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 5 (20 dBm) => 3 (24 dBm): rx-ms-pwr-lvl 5, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 3 (24 dBm) => 2 (26 dBm): rx-ms-pwr-lvl 3, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2 (26 dBm): (rx-ms-pwr-lvl 2, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): rx-ms-pwr-lvl 9, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -90, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): (rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 14, tgt 14] dB)
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 15, max-ms-pwr-lvl 2, RSSI[curr -100, tgt -75] dBm, C/I[curr 11, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -100, tgt -75] dBm, C/I[curr 11, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 11 (8 dBm) => 12 (6 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 12 (6 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 12, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 17, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -100, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 11 (8 dBm) => 12 (6 dBm): rx-ms-pwr-lvl 11, max-ms-pwr-lvl 2, RSSI[curr -100, tgt -75] dBm, C/I[curr 17, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 12 (6 dBm) => 13 (4 dBm): rx-ms-pwr-lvl 12, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 14, tgt 14] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 13 (4 dBm) => 14 (2 dBm): rx-ms-pwr-lvl 13, max-ms-pwr-lvl 2, RSSI[curr -60, tgt -75] dBm, C/I[curr 17, tgt 14] dB

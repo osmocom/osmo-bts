@@ -90,7 +90,7 @@ static int do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
 
 /* Calculate target RxLev value from lower/upper thresholds */
 #define CALC_TARGET(mp) \
-	(mp.lower_thresh + mp.upper_thresh) / 2
+	((mp).lower_thresh + (mp).upper_thresh) / 2
 
 /* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
  * to be applied to the current Tx power level to approach the target level. */
@@ -139,14 +139,40 @@ static int calc_delta(const struct gsm_power_ctrl_params *params,
 	return delta;
 }
 
+static const struct gsm_power_ctrl_meas_params *lchan_get_ci_thresholds(const struct gsm_lchan *lchan)
+{
+	const struct gsm_power_ctrl_params *params = lchan->ms_power_ctrl.dpc_params;
+
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+		return &params->ci_sdcch_meas;
+	case GSM_LCHAN_PDTCH:
+		return &params->ci_gprs_meas;
+	case GSM_LCHAN_TCH_F:
+		if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+			return &params->ci_amr_fr_meas;
+		else
+			return &params->ci_fr_meas;
+	case GSM_LCHAN_TCH_H:
+		if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+			return &params->ci_amr_hr_meas;
+		else
+			return &params->ci_hr_meas;
+	default:
+		OSMO_ASSERT(0);
+	}
+}
+
 /*! compute the new MS POWER LEVEL communicated to the MS and store it in lchan.
  *  \param lchan logical channel for which to compute (and in which to store) new power value.
  *  \param[in] ms_power_lvl MS Power Level received from Uplink L1 SACCH Header in SACCH block.
  *  \param[in] ul_rssi_dbm Signal level of the received SACCH block, in dBm.
+ *  \param[in] ul_lqual_cb C/I of the received SACCH block, in dB.
  */
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power_lvl,
-		      const int8_t ul_rssi_dbm)
+		      const int8_t ul_rssi_dbm,
+		      const int16_t ul_lqual_cb)
 {
 	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
 	const struct gsm_power_ctrl_params *params = state->dpc_params;
@@ -155,6 +181,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
+	const struct gsm_power_ctrl_meas_params *ci_meas;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
@@ -187,8 +214,16 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	/* Calculate the new Tx power value (in dBm) */
-	new_dbm = ms_dbm + calc_delta(params, state, ul_rssi_dbm);
+	/* If computed C/I is out of acceptable thresholds: */
+	ci_meas = lchan_get_ci_thresholds(lchan);
+	if (ul_lqual_cb < ci_meas->lower_thresh * 10) {
+		new_dbm = ms_dbm + params->inc_step_size_db;
+	} else if (ul_lqual_cb > ci_meas->upper_thresh * 10) {
+		new_dbm = ms_dbm - params->red_step_size_db;
+	} else {
+		/* Calculate the new Tx power value (in dBm) */
+		new_dbm = ms_dbm + calc_delta(params, state, ul_rssi_dbm);
+	}
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
 	   cope with any unsigned dbm value, regardless of band minimal value. */
@@ -211,19 +246,21 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	int target_dbm = rxlev2dbm(CALC_TARGET(params->rxlev_meas));
 
 	if (state->current == new_power_lvl) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d, %d dBm "
-			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d (%d dBm): "
+			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", RSSI[curr %d, tgt %d] dBm,"
+			  " C/I[curr %d, tgt %d] dB)\n",
 			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
-			  ul_rssi_dbm, target_dbm);
+			  ul_rssi_dbm, target_dbm, ul_lqual_cb/10, CALC_TARGET(*ci_meas));
 		return 0;
 	}
 
 	current_dbm = ms_pwr_dbm(band, state->current);
-	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power from control level %d (%d dBm) to %d, %d dBm "
-		  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", rx-current %d dBm, rx-target %d dBm)\n",
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power control level %d (%d dBm) => %d (%d dBm): "
+		  "rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", RSSI[curr %d, tgt %d] dBm,"
+		  " C/I[curr %d, tgt %d] dB\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
-		  state->current, current_dbm, new_power_lvl, new_dbm,
-		  ms_power_lvl, state->max, ul_rssi_dbm, target_dbm);
+		  state->current, current_dbm, new_power_lvl, new_dbm, ms_power_lvl,
+		  state->max, ul_rssi_dbm, target_dbm, ul_lqual_cb/10, CALC_TARGET(*ci_meas));
 
 	/* store the resulting new MS power level in the lchan */
 	state->current = new_power_lvl;

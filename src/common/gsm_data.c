@@ -527,4 +527,136 @@ const struct gsm_power_ctrl_params power_ctrl_params_def = {
 		/* FIXME: RxQual averaging is not yet implemented */
 		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
 	},
+
+	/* C/I measurement parameters.
+	 * Target C/I retrieved from "GSM/EDGE: Evolution and Performance" Table 10.3.
+	 * Set lower and upper so that (lower + upper) / 2 is equal or slightly
+	 * above the target.
+	 */
+	.ci_fr_meas = { /* FR: Target C/I = 15 dB, Soft blocking threshold = 10 dB */
+		.lower_thresh = 13,
+		.upper_thresh = 17,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_FR_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_FR_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
+	.ci_hr_meas = { /* HR: Target C/I = 18 dB, Soft blocking threshold = 13 dB */
+		.lower_thresh = 16,
+		.upper_thresh = 21,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_HR_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_HR_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
+	.ci_amr_fr_meas = { /* AMR-FR: Target C/I = 9 dB, Soft blocking threshold = 4 dB */
+		.lower_thresh = 7,
+		.upper_thresh = 11,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_AMR_FR_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_AMR_FR_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
+	.ci_amr_hr_meas = { /* AMR-HR: Target C/I = 15 dB, Soft blocking threshold = 10 dB */
+		.lower_thresh = 13,
+		.upper_thresh = 17,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_AMR_HR_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_AMR_HR_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
+	.ci_sdcch_meas = { /* SDCCH: Target C/I = 14 dB, Soft blocking threshold = 9 dB */
+		.lower_thresh = 12,
+		.upper_thresh = 16,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_SDCCH_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_SDCCH_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
+	.ci_gprs_meas = { /* GPRS: Target C/I = 20 dB, Soft blocking threshold = 15 dB */
+		.lower_thresh = 18,
+		.upper_thresh = 24,
+
+		/* Increase {UL,DL}_TXPWR if at least LOWER_CMP_P averages
+		 * out of LOWER_CMP_N averages are lower than L_CI_GPRS_XX_P */
+		.lower_cmp_p = 5, /* P3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		.lower_cmp_n = 7, /* N3 as in 3GPP TS 45.008, A.3.2.1 (case c) */
+		/* Decrease {UL,DL}_TXPWR if at least UPPER_CMP_P averages
+		 * out of UPPER_CMP_N averages are greater than L_CI_GPRS_XX_P */
+		.upper_cmp_p = 15, /* P4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+		.upper_cmp_n = 18, /* N4 as in 3GPP TS 45.008, A.3.2.1 (case d) */
+
+		/* No averaging (filtering) by default */
+		.algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE,
+
+		/* Hreqave: the period over which an average is produced */
+		.h_reqave = 4, /* TODO: investigate a reasonable default value */
+		/* Hreqt: the number of averaged results maintained */
+		.h_reqt = 6, /* TODO: investigate a reasonable default value */
+	},
 };
