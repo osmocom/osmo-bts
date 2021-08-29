@@ -445,6 +445,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	if (msg_facch) {
 		gsm0503_tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
 		chan_state->dl_ongoing_facch = 1; /* first of two TCH frames */
+		chan_state->dl_facch_bursts = 6;
 	} else if (chan_state->dl_ongoing_facch) /* second of two TCH frames */
 		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
 	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
@@ -473,6 +474,11 @@ send_burst:
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;
+
+	if (chan_state->dl_facch_bursts > 0) {
+		chan_state->dl_facch_bursts--;
+		br->flags |= TRX_BR_F_FACCH;
+	}
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 

@@ -1287,6 +1287,26 @@ int _sched_rts(const struct l1sched_ts *l1ts, uint32_t fn)
 	return func(l1ts, &dbr);
 }
 
+static void trx_sched_apply_att(const struct gsm_lchan *lchan,
+				struct trx_dl_burst_req *br)
+{
+	const struct trx_chan_desc *desc = &trx_chan_desc[br->chan];
+	const uint8_t overpower_db = lchan->bs_acch_overpower_db;
+
+	/* Current BS power reduction value in dB */
+	br->att = lchan->bs_power_ctrl.current;
+
+	/* Temporary Overpower for SACCH/FACCH bursts */
+	if (overpower_db == 0)
+		return;
+	if (desc->link_id == LID_SACCH || br->flags & TRX_BR_F_FACCH) {
+		if (br->att > overpower_db)
+			br->att -= overpower_db;
+		else
+			br->att = 0;
+	}
+}
+
 /* process downlink burst */
 void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
@@ -1326,7 +1346,7 @@ void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* BS Power reduction (in dB) per logical channel */
 	if (l1cs->lchan != NULL)
-		br->att = l1cs->lchan->bs_power_ctrl.current;
+		trx_sched_apply_att(l1cs->lchan, br);
 
 	/* encrypt */
 	if (br->burst_len && l1cs->dl_encr_algo) {

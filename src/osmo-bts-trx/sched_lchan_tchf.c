@@ -547,10 +547,11 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	}
 
 	/* encode bursts (prioritize FACCH) */
-	if (msg_facch)
+	if (msg_facch) {
 		gsm0503_tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
 			1);
-	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+		chan_state->dl_facch_bursts = 8;
+	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
@@ -576,6 +577,11 @@ send_burst:
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;
+
+	if (chan_state->dl_facch_bursts > 0) {
+		chan_state->dl_facch_bursts--;
+		br->flags |= TRX_BR_F_FACCH;
+	}
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 

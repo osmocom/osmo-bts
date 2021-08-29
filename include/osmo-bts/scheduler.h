@@ -128,6 +128,8 @@ struct l1sched_chan_state {
 	struct l1sched_meas_set meas_avg_facch;   /* measurement results for last FACCH */
 	uint16_t		ber10k_facch;	  /* bit error rate for last FACCH */
 
+	uint8_t			dl_facch_bursts;  /* number of remaining DL FACCH bursts */
+
 	/* encryption */
 	int			ul_encr_algo;	/* A5/x encry algo downlink */
 	int			dl_encr_algo;	/* A5/x encry algo uplink */
@@ -271,6 +273,8 @@ struct trx_ul_burst_ind {
 	sbit_t burst[EGPRS_BURST_LEN];
 	size_t burst_len;
 };
+
+#define TRX_BR_F_FACCH		(1 << 0)
 
 /*! DL burst request with the corresponding meta info */
 struct trx_dl_burst_req {
