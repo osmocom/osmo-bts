@@ -1596,6 +1596,26 @@ static void parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_p
 	       sizeof(lchan->repeated_acch_capability));
 }
 
+/* Parse RSL_IE_OSMO_TOP_ACCH_CAP */
+static int parse_temporary_overpower_acch_capability(struct gsm_lchan *lchan,
+						     const struct tlv_parsed *tp)
+{
+	struct abis_rsl_osmo_temp_ovp_acch_cap *top;
+
+	lchan->bs_acch_overpower_db = 0;
+
+	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP, sizeof(*top)))
+		return 0;
+
+	if (!osmo_bts_has_feature(lchan->ts->trx->bts->features, BTS_FEAT_ACCH_TEMP_OVP))
+		return -RSL_ERR_OPT_IE_ERROR;
+
+	top = (struct abis_rsl_osmo_temp_ovp_acch_cap *)TLVP_VAL(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP);
+	lchan->bs_acch_overpower_db = top->overpower_db;
+
+	return 0;
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
@@ -1896,6 +1916,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 
 	parse_repeated_acch_capability(lchan, &tp);
+	rc = parse_temporary_overpower_acch_capability(lchan, &tp);
+	if (rc < 0)
+		return rsl_tx_chan_act_acknack(lchan, -rc);
 
 	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
@@ -2220,6 +2243,9 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.54 Supported Codec Types */
 
 	parse_repeated_acch_capability(lchan, &tp);
+	rc = parse_temporary_overpower_acch_capability(lchan, &tp);
+	if (rc < 0)
+		return rsl_tx_mode_modif_nack(lchan, -rc);
 
 	l1sap_chan_modify(lchan->ts->trx, dch->chan_nr);
 
