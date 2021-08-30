@@ -909,7 +909,7 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 				   const uint8_t *data, size_t data_len)
 {
 	const struct tlv_p_entry *ie;
-	struct tlv_parsed tp[2];
+	struct tlv_parsed tp[3];
 	unsigned int i;
 	int rc;
 
