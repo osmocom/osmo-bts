@@ -969,7 +969,7 @@ static int parse_power_ctrl_params(struct gsm_power_ctrl_params *params,
 		const struct ipac_preproc_ave_cfg *ave_cfg;
 		struct gsm_power_ctrl_meas_params *mp;
 
-		ie = TLVP_GET(&tp[0], RSL_IPAC_EIE_MEAS_AVG_CFG);
+		ie = TLVP_GET(&tp[i], RSL_IPAC_EIE_MEAS_AVG_CFG);
 		if (ie == NULL)
 			break;
 
