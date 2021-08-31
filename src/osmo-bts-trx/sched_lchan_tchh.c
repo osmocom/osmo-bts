@@ -317,8 +317,8 @@ bfi:
 				break;
 			case GSM48_CMODE_SPEECH_AMR: /* AMR */
 				rc = osmo_amr_rtp_enc(tch_data,
-					chan_state->codec[chan_state->dl_cmr],
-					chan_state->codec[chan_state->dl_ft],
+					chan_state->codec[chan_state->ul_cmr],
+					chan_state->codec[chan_state->ul_ft],
 					AMR_BAD);
 				if (rc < 2) {
 					LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
