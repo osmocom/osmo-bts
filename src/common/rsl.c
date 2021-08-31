@@ -1589,9 +1589,7 @@ static void parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_p
 
 	memset(&lchan->repeated_acch_capability, 0, sizeof(lchan->repeated_acch_capability));
 
-	if (!TLVP_PRESENT(tp, RSL_IE_OSMO_REP_ACCH_CAP))
-		return;
-	if (TLVP_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP) != sizeof(lchan->repeated_acch_capability))
+	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP, sizeof(lchan->repeated_acch_capability)))
 		return;
 
 	memcpy(&lchan->repeated_acch_capability, TLVP_VAL(tp, RSL_IE_OSMO_REP_ACCH_CAP),
