@@ -185,32 +185,30 @@ static void test_pf_algo_ewma(void)
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 2);
 
-#define CHECK_UL_RSSI_AVG100(exp) \
-	printf("\tAvg[t] is %2.2f dBm (expected %2.2f dBm)\n", \
+#define CHECK_RXLEV_AVG100(exp) \
+	printf("\tAvg[t] is RxLev %2.2f (expected %2.2f)\n", \
 	       ((float) *avg100) / 100, exp);
 
 	/* UL RSSI remains constant => no UL power change */
 	apply_power_test(lchan, -75, good_lqual, 0, 15);
-	CHECK_UL_RSSI_AVG100(-75.00);
+	CHECK_RXLEV_AVG100((float)dbm2rxlev(-75)); /* RXLEV 35 */
 
-	/* Avg[t] = (0.2 * -90) + (0.8 * -75) = -78.0 dBm */
-	apply_power_test(lchan, -90, good_lqual, 1, 13);
-	CHECK_UL_RSSI_AVG100(-78.00);
+	/* Avg[t] = (0.2 * 20) + (0.8 * 35) = RXLEV 32, (-78 dBm) */
+	apply_power_test(lchan, -90, good_lqual, 1, 13); /* -90 dBm = RXLEV 20 */
+	CHECK_RXLEV_AVG100(32.00);
 
-	/* Avg[t] = (0.2 * -90) + (0.8 * -78) = -80.4 dBm */
-	apply_power_test(lchan, -90, good_lqual, 1, 11);
-	CHECK_UL_RSSI_AVG100(-80.40);
+	/* Avg[t] = (0.2 * 20) + (0.8 * 32) = RXLEV 29.6 (-80.4 dBm) */
+	apply_power_test(lchan, -90, good_lqual, 1, 11);  /* -90 dBm = RXLEV 20 */
+	CHECK_RXLEV_AVG100(29.60);
 
-	/* Avg[t] = (0.2 * -70) + (0.8 * -80.4) = -78.32 dBm,
+	/* Avg[t] = (0.2 * 40) + (0.8 * 29.60) = RXLEV 31.68 (-78.32 dBm),
 	 * but due to up-/down-scaling artefacts we get the following:
 	 *   Avg100[t] = Avg100[t - 1] + A * (Pwr - Avg[t] / 100)
-	 *   Avg100[t] = -8040 + 20 * (-70 - (-8040 / 100))
-	 *   Avg100[t] = -8040 + 20 * (-70 - (-8040 / 100))
-	 *   Avg100[t] = -8040 + 20 * (-70 + 80)
-	 *   Avg100[t] = -8040 + 200 = -7840
-	 *   Avg[t] = -7840 / 100 = -78.4 */
-	apply_power_test(lchan, -70, good_lqual, 1, 9);
-	CHECK_UL_RSSI_AVG100(-78.40);
+	 *   Avg100[t] = 2960 + 20 * (40 - (2960 / 100))
+	 *   Avg100[t] = 2960 + 20 * (40 - 29)
+	 *   Avg[t] = 3180 / 100 = 31.80 */
+	apply_power_test(lchan, -70, good_lqual, 1, 9); /* RXLEV 40 */
+	CHECK_RXLEV_AVG100(31.80);
 
 	mp->ewma.alpha = 70; /* 30% smoothing */
 	lchan->ms_power_ctrl.current = 15;
@@ -218,17 +216,17 @@ static void test_pf_algo_ewma(void)
 		(struct gsm_power_ctrl_meas_proc_state) { 0 };
 
 	/* This is the first sample, the filter outputs it as-is */
-	apply_power_test(lchan, -50, good_lqual, 0, 15);
-	CHECK_UL_RSSI_AVG100(-50.00);
+	apply_power_test(lchan, -50, good_lqual, 0, 15); /* RXLEV 60 */
+	CHECK_RXLEV_AVG100((float)dbm2rxlev(-50));
 
-	/* Avg[t] = (0.7 * -50) + (0.3 * -50) = -50.0 dBm */
+	/* Avg[t] = (0.7 * 60) + (0.3 * 60) = RXLEV 60 (-50.0 dBm) */
 	apply_power_test(lchan, -50, good_lqual, 0, 15);
-	CHECK_UL_RSSI_AVG100(-50.0);
+	CHECK_RXLEV_AVG100((float)dbm2rxlev(-50));
 
 	/* Simulate SACCH block loss (-110 dBm):
-	 * Avg[t] = (0.7 * -110) + (0.3 * -50) = -92.0 dBm */
-	apply_power_test(lchan, -110, good_lqual, 1, 13);
-	CHECK_UL_RSSI_AVG100(-92.0);
+	 * Avg[t] = (0.7 * 0) + (0.3 * 60) = RXLEV 18.0 (-92.0 dBm) */
+	apply_power_test(lchan, -110, good_lqual, 1, 13); /* RXLEV 0 */
+	CHECK_RXLEV_AVG100(18.0);
 }
 
 static void test_power_hysteresis(void)

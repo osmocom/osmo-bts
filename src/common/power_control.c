@@ -113,22 +113,18 @@ static int do_avg_algo(const struct gsm_power_ctrl_meas_params *mp,
  * to be applied to the current Tx power level to approach the target level. */
 static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params,
 		      struct lchan_power_ctrl_state *state,
-		      const int rxlev_dbm_avg)
+		      const uint8_t rxlev)
 {
-	uint8_t rxlev_avg;
 	int delta;
 
-	/* FIXME: avoid this conversion, accept RxLev as-is */
-	rxlev_avg = dbm2rxlev(rxlev_dbm_avg);
-
 	/* Check if RxLev is within the threshold window */
-	if (rxlev_avg >= params->rxlev_meas.lower_thresh &&
-	    rxlev_avg <= params->rxlev_meas.upper_thresh)
+	if (rxlev >= params->rxlev_meas.lower_thresh &&
+	    rxlev <= params->rxlev_meas.upper_thresh)
 		return 0;
 
 	/* How many dBs measured power should be increased (+) or decreased (-)
 	 * to reach expected power. */
-	delta = CALC_TARGET(params->rxlev_meas) - rxlev_avg;
+	delta = CALC_TARGET(params->rxlev_meas) - rxlev;
 
 	/* Don't ever change more than PWR_{LOWER,RAISE}_MAX_DBM during one loop
 	 * iteration, i.e. reduce the speed at which the MS transmit power can
@@ -183,7 +179,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
-	int8_t ul_rssi_dbm_avg;
+	uint8_t rxlev_avg;
 	int16_t ul_lqual_cb_avg;
 	const struct gsm_power_ctrl_meas_params *ci_meas;
 
@@ -221,14 +217,14 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	/* If computed C/I is out of acceptable thresholds: */
 	ci_meas = lchan_get_ci_thresholds(lchan);
 	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
-	ul_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, ul_rssi_dbm);
+	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
 	if (ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
 		new_dbm = ms_dbm + params->inc_step_size_db;
 	} else if (ul_lqual_cb_avg > ci_meas->upper_thresh * 10) {
 		new_dbm = ms_dbm - params->red_step_size_db;
 	} else {
 		/* Calculate the new Tx power value (in dBm) */
-		new_dbm = ms_dbm + calc_delta_rxlev(params, state, ul_rssi_dbm_avg);
+		new_dbm = ms_dbm + calc_delta_rxlev(params, state, rxlev_avg);
 	}
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
@@ -252,7 +248,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d (%d dBm): "
 			  "ms-pwr-lvl[curr %" PRIu8 ", max %" PRIu8 "], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
 			  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
-			  new_power_lvl, new_dbm, ms_power_lvl, state->max, ul_rssi_dbm, ul_rssi_dbm_avg,
+			  new_power_lvl, new_dbm, ms_power_lvl, state->max, ul_rssi_dbm, rxlev2dbm(rxlev_avg),
 			  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
 			  ul_lqual_cb/10, ul_lqual_cb_avg/10, ci_meas->lower_thresh, ci_meas->upper_thresh);
 		return 0;
@@ -264,7 +260,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  state->current, current_dbm, new_power_lvl, new_dbm, ms_power_lvl,
-		  state->max, ul_rssi_dbm, ul_rssi_dbm_avg,
+		  state->max, ul_rssi_dbm, rxlev2dbm(rxlev_avg),
 		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
 		  ul_lqual_cb/10, ul_lqual_cb_avg/10, ci_meas->lower_thresh, ci_meas->upper_thresh);
 
@@ -286,8 +282,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	const struct gsm_power_ctrl_params *params = state->dpc_params;
 	uint8_t rxqual_full, rxqual_sub;
 	uint8_t rxlev_full, rxlev_sub;
-	uint8_t rxqual, rxqual_avg, rxlev;
-	int8_t dl_rssi_dbm, dl_rssi_dbm_avg;
+	uint8_t rxqual, rxqual_avg, rxlev, rxlev_avg;
 	int new_att;
 
 	/* Check if dynamic BS Power Control is enabled */
@@ -341,8 +336,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		rxlev = rxlev_full;
 	}
 
-	dl_rssi_dbm = rxlev2dbm(rxlev);
-	dl_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dl_rssi_dbm);
+	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, rxlev);
 	rxqual_avg = do_avg_algo(&params->rxqual_meas, &state->rxqual_meas_proc, rxqual);
 	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
 	if (rxqual_avg > params->rxqual_meas.lower_thresh) {
@@ -365,7 +359,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		 *   RxLev + Delta = TxPwr - PathLoss -  TxAtt + Delta
 		 *   RxLev + Delta = TxPwr - PathLoss - (TxAtt - Delta)
 		 */
-		new_att = state->current - calc_delta_rxlev(params, state, dl_rssi_dbm_avg);
+		new_att = state->current - calc_delta_rxlev(params, state, rxlev_avg);
 	}
 
 	/* Make sure new TxAtt is never negative: */
@@ -380,7 +374,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping DL attenuation at %u dB: "
 			  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
 			  "RxQual[curr %d, avg %d, thresh %d..%d]\n",
-			  state->current,  state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
+			  state->current,  state->max, rxlev2dbm(rxlev), rxlev2dbm(rxlev_avg),
 			  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
 			  rxqual, rxqual_avg, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
 		return 0;
@@ -390,7 +384,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
 		   "RxQual[curr %d, avg %d, thresh %d..%d]\n",
 		  (new_att > state->current) ? "Raising" : "Lowering",
-		  state->current, new_att, state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
+		  state->current, new_att, state->max, rxlev2dbm(rxlev), rxlev2dbm(rxlev_avg),
 		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
 		  rxqual, rxqual_avg, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
 	state->current = new_att;
