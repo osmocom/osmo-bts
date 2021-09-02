@@ -36,6 +36,8 @@
 
 /* We don't want to deal with floating point, so we scale up */
 #define EWMA_SCALE_FACTOR 100
+/* EWMA_SCALE_FACTOR/2 = +50: Round to nearest value when downscaling, otherwise floor() is applied. */
+#define EWMA_ROUND_FACTOR (EWMA_SCALE_FACTOR / 2)
 
 /* Base Low-Pass Single-Pole IIR Filter (EWMA) formula:
  *
@@ -84,8 +86,8 @@ static int do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
 		return Val;
 	}
 
-	*Avg100 += A * (Val - *Avg100 / EWMA_SCALE_FACTOR);
-	return *Avg100 / EWMA_SCALE_FACTOR;
+	*Avg100 += A * (Val - (*Avg100 + EWMA_ROUND_FACTOR) / EWMA_SCALE_FACTOR);
+	return (*Avg100 + EWMA_ROUND_FACTOR) / EWMA_SCALE_FACTOR;
 }
 
 /* Calculate target RxLev value from lower/upper thresholds */

@@ -204,11 +204,11 @@ static void test_pf_algo_ewma(void)
 	/* Avg[t] = (0.2 * 40) + (0.8 * 29.60) = RXLEV 31.68 (-78.32 dBm),
 	 * but due to up-/down-scaling artefacts we get the following:
 	 *   Avg100[t] = Avg100[t - 1] + A * (Pwr - Avg[t] / 100)
-	 *   Avg100[t] = 2960 + 20 * (40 - (2960 / 100))
-	 *   Avg100[t] = 2960 + 20 * (40 - 29)
-	 *   Avg[t] = 3180 / 100 = 31.80 */
+	 *   Avg100[t] = 2960 + 20 * (40 - ((2960+50) / 100)) <- HERE we lose 0.1: (2960+50) / 100) = 30.1
+	 *   Avg100[t] = 2960 + 20 * (40 - 30) <- HERE we lose 20*0.1 = 2.0! (upscaled, hence we lose finally 2.0/100=0.2)
+	 *   Avg[t] = (3160) / 100 = 31.60*/
 	apply_power_test(lchan, -70, good_lqual, 1, 9); /* RXLEV 40 */
-	CHECK_RXLEV_AVG100(31.80);
+	CHECK_RXLEV_AVG100(31.60);
 
 	mp->ewma.alpha = 70; /* 30% smoothing */
 	lchan->ms_power_ctrl.current = 15;
