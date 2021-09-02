@@ -348,6 +348,9 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	if (rxqual_avg > params->rxqual_meas.lower_thresh) {
 		/* Increase Tx power by reducing Tx attenuation */
 		new_att = state->current - params->inc_step_size_db;
+	} else if (rxqual_avg < params->rxqual_meas.upper_thresh) {
+		/* Increase Tx power by Increasing Tx attenuation */
+		new_att = state->current + params->red_step_size_db;
 	} else {
 		/* Basic signal transmission / reception formula:
 		 *
