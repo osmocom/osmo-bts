@@ -92,29 +92,31 @@ static int do_pf_ewma(const struct gsm_power_ctrl_meas_params *mp,
 #define CALC_TARGET(mp) \
 	((mp).lower_thresh + (mp).upper_thresh) / 2
 
-/* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
- * to be applied to the current Tx power level to approach the target level. */
-static int calc_delta(const struct gsm_power_ctrl_params *params,
-		      struct lchan_power_ctrl_state *state,
-		      const int rxlev_dbm)
+static int do_avg_algo(const struct gsm_power_ctrl_meas_params *mp,
+		       struct gsm_power_ctrl_meas_proc_state *mps,
+		       const int val)
 {
-	int rxlev_dbm_avg;
-	uint8_t rxlev_avg;
-	int delta;
-
-	/* Filter RxLev value to reduce unnecessary Tx power oscillations */
-	switch (params->rxlev_meas.algo) {
+	int val_avg;
+	switch (mp->algo) {
 	case GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA:
-		rxlev_dbm_avg = do_pf_ewma(&params->rxlev_meas,
-					   &state->rxlev_meas_proc,
-					   rxlev_dbm);
+		val_avg = do_pf_ewma(mp, mps, val);
 		break;
 	/* TODO: implement other pre-processing methods */
 	case GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE:
 	default:
 		/* No filtering (pass through) */
-		rxlev_dbm_avg = rxlev_dbm;
+		val_avg = val;
 	}
+	return val_avg;
+}
+/* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
+ * to be applied to the current Tx power level to approach the target level. */
+static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params,
+		      struct lchan_power_ctrl_state *state,
+		      const int rxlev_dbm_avg)
+{
+	uint8_t rxlev_avg;
+	int delta;
 
 	/* FIXME: avoid this conversion, accept RxLev as-is */
 	rxlev_avg = dbm2rxlev(rxlev_dbm_avg);
@@ -181,6 +183,8 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	enum gsm_band band = bts->band;
 	int8_t new_power_lvl; /* TS 05.05 power level */
 	int8_t ms_dbm, new_dbm, current_dbm, bsc_max_dbm;
+	int8_t ul_rssi_dbm_avg;
+	int16_t ul_lqual_cb_avg;
 	const struct gsm_power_ctrl_meas_params *ci_meas;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
@@ -216,13 +220,15 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* If computed C/I is out of acceptable thresholds: */
 	ci_meas = lchan_get_ci_thresholds(lchan);
-	if (ul_lqual_cb < ci_meas->lower_thresh * 10) {
+	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
+	ul_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, ul_rssi_dbm);
+	if (ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
 		new_dbm = ms_dbm + params->inc_step_size_db;
-	} else if (ul_lqual_cb > ci_meas->upper_thresh * 10) {
+	} else if (ul_lqual_cb_avg > ci_meas->upper_thresh * 10) {
 		new_dbm = ms_dbm - params->red_step_size_db;
 	} else {
 		/* Calculate the new Tx power value (in dBm) */
-		new_dbm = ms_dbm + calc_delta(params, state, ul_rssi_dbm);
+		new_dbm = ms_dbm + calc_delta_rxlev(params, state, ul_rssi_dbm_avg);
 	}
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
@@ -281,6 +287,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	uint8_t rxqual_full, rxqual_sub;
 	uint8_t rxlev_full, rxlev_sub;
 	uint8_t rxqual, rxlev;
+	int8_t dl_rssi_dbm_avg;
 	int delta, new;
 
 	/* Check if dynamic BS Power Control is enabled */
@@ -334,6 +341,8 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		rxlev = rxlev_full;
 	}
 
+	dl_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, rxlev2dbm(rxlev));
+
 	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
 	if (rxqual > params->rxqual_meas.lower_thresh) {
 		uint8_t old = state->current;
@@ -355,7 +364,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	}
 
 	/* Calculate a 'delta' for the current attenuation level */
-	delta = calc_delta(params, state, rxlev2dbm(rxlev));
+	delta = calc_delta_rxlev(params, state, dl_rssi_dbm_avg);
 
 	/* Basic signal transmission / reception formula:
 	 *

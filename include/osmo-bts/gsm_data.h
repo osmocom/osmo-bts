@@ -242,6 +242,7 @@ struct lchan_power_ctrl_state {
 	const struct gsm_power_ctrl_params *dpc_params;
 	/* Measurement pre-processing state (for dynamic mode) */
 	struct gsm_power_ctrl_meas_proc_state rxlev_meas_proc;
+	struct gsm_power_ctrl_meas_proc_state ci_meas_proc;
 	/* Number of SACCH blocks to skip (for dynamic mode) */
 	int skip_block_num;
 
