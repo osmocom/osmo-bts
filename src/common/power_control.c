@@ -248,25 +248,25 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	/* FIXME: this is only needed for logging, print thresholds instead */
-	int target_dbm = rxlev2dbm(CALC_TARGET(params->rxlev_meas));
-
 	if (state->current == new_power_lvl) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d (%d dBm): "
-			  "(rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", RSSI[curr %d, tgt %d] dBm,"
-			  " C/I[curr %d, tgt %d] dB)\n",
-			  new_power_lvl, new_dbm, ms_power_lvl, state->max,
-			  ul_rssi_dbm, target_dbm, ul_lqual_cb/10, CALC_TARGET(*ci_meas));
+			  "ms-pwr-lvl[curr %" PRIu8 ", max %" PRIu8 "], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
+			  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
+			  new_power_lvl, new_dbm, ms_power_lvl, state->max, ul_rssi_dbm, ul_rssi_dbm_avg,
+			  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
+			  ul_lqual_cb/10, ul_lqual_cb_avg/10, ci_meas->lower_thresh, ci_meas->upper_thresh);
 		return 0;
 	}
 
 	current_dbm = ms_pwr_dbm(band, state->current);
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power control level %d (%d dBm) => %d (%d dBm): "
-		  "rx-ms-pwr-lvl %" PRIu8 ", max-ms-pwr-lvl %" PRIu8 ", RSSI[curr %d, tgt %d] dBm,"
-		  " C/I[curr %d, tgt %d] dB\n",
+		  "ms-pwr-lvl[curr %" PRIu8 ", max %" PRIu8 "], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
+		  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
 		  (new_dbm > current_dbm) ? "Raising" : "Lowering",
 		  state->current, current_dbm, new_power_lvl, new_dbm, ms_power_lvl,
-		  state->max, ul_rssi_dbm, target_dbm, ul_lqual_cb/10, CALC_TARGET(*ci_meas));
+		  state->max, ul_rssi_dbm, ul_rssi_dbm_avg,
+		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
+		  ul_lqual_cb/10, ul_lqual_cb_avg/10, ci_meas->lower_thresh, ci_meas->upper_thresh);
 
 	/* store the resulting new MS power level in the lchan */
 	state->current = new_power_lvl;
