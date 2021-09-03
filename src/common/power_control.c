@@ -287,8 +287,8 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	uint8_t rxqual_full, rxqual_sub;
 	uint8_t rxlev_full, rxlev_sub;
 	uint8_t rxqual, rxlev;
-	int8_t dl_rssi_dbm_avg;
-	int delta, new;
+	int8_t dl_rssi_dbm, dl_rssi_dbm_avg;
+	int new_att;
 
 	/* Check if dynamic BS Power Control is enabled */
 	if (params == NULL)
@@ -341,68 +341,54 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		rxlev = rxlev_full;
 	}
 
-	dl_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, rxlev2dbm(rxlev));
-
+	dl_rssi_dbm = rxlev2dbm(rxlev);
+	dl_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dl_rssi_dbm);
 	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
 	if (rxqual > params->rxqual_meas.lower_thresh) {
-		uint8_t old = state->current;
-
-		/* Tx power has reached the maximum, nothing to do */
-		if (state->current == 0)
-			return 0;
-
 		/* Increase Tx power by reducing Tx attenuation */
-		if (state->current >= params->inc_step_size_db)
-			state->current -= params->inc_step_size_db;
-		else
-			state->current = 0;
-
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Reducing Downlink attenuation: "
-			  "%u -> %d dB due to RxQual %u worse than L_RXQUAL_XX_P %u\n",
-			  old, state->current, rxqual, params->rxqual_meas.lower_thresh);
-		return 1;
+		new_att = state->current - params->inc_step_size_db;
+	} else {
+		/* Basic signal transmission / reception formula:
+		 *
+		 *   RxLev = TxPwr - (PathLoss + TxAtt)
+		 *
+		 * Here we want to change RxLev at the MS side, so:
+		 *
+		 *   RxLev + Delta = TxPwr - (PathLoss + TxAtt) + Delta
+		 *
+		 * The only parameter we can change here is TxAtt, so:
+		 *
+		 *   RxLev + Delta = TxPwr - PathLoss -  TxAtt + Delta
+		 *   RxLev + Delta = TxPwr - PathLoss - (TxAtt - Delta)
+		 */
+		new_att = state->current - calc_delta_rxlev(params, state, dl_rssi_dbm_avg);
 	}
 
-	/* Calculate a 'delta' for the current attenuation level */
-	delta = calc_delta_rxlev(params, state, dl_rssi_dbm_avg);
+	/* Make sure new TxAtt is never negative: */
+	if (new_att < 0)
+		new_att = 0;
 
-	/* Basic signal transmission / reception formula:
-	 *
-	 *   RxLev = TxPwr - (PathLoss + TxAtt)
-	 *
-	 * Here we want to change RxLev at the MS side, so:
-	 *
-	 *   RxLev + Delta = TxPwr - (PathLoss + TxAtt) + Delta
-	 *
-	 * The only parameter we can change here is TxAtt, so:
-	 *
-	 *   RxLev + Delta = TxPwr - PathLoss -  TxAtt + Delta
-	 *   RxLev + Delta = TxPwr - PathLoss - (TxAtt - Delta)
-	 */
-	new = state->current - delta;
-	if (new > state->max)
-		new = state->max;
-	if (new < 0)
-		new = 0;
+	/* Don't ask for higher TxAtt than permitted:  */
+	if (new_att > state->max)
+		new_att = state->max;
 
-	if (state->current != new) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Changing Downlink attenuation: "
-			  "%u -> %u dB (maximum %u dB, suggested delta %d dB, "
-			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
-			  state->current, new, state->max,
-			  -delta, rxlev, rxlev2dbm(rxlev),
-			  params->rxlev_meas.lower_thresh,
-			  params->rxlev_meas.upper_thresh);
-		state->current = new;
-		return 1;
-	} else {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping Downlink attenuation "
-			  "at %u dB (maximum %u dB, suggested delta %d dB, "
-			  "RxLev current %u (%d dBm), thresholds %u .. %u)\n",
-			  state->current, state->max,
-			  -delta, rxlev, rxlev2dbm(rxlev),
-			  params->rxlev_meas.lower_thresh,
-			  params->rxlev_meas.upper_thresh);
+	if (state->current == new_att) {
+		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping DL attenuation at %u dB: "
+			  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
+			  "RxQual[curr %d, thresh %d..%d]\n",
+			  state->current,  state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
+			  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
+			  rxqual, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
 		return 0;
 	}
+
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s DL attenuation %u dB => %u dB:"
+		  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
+		   "RxQual[curr %d, thresh %d..%d]\n",
+		  (new_att > state->current) ? "Raising" : "Lowering",
+		  state->current, new_att, state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
+		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
+		  rxqual, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
+	state->current = new_att;
+	return 1;
 }
