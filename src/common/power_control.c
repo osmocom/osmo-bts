@@ -286,7 +286,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	const struct gsm_power_ctrl_params *params = state->dpc_params;
 	uint8_t rxqual_full, rxqual_sub;
 	uint8_t rxlev_full, rxlev_sub;
-	uint8_t rxqual, rxlev;
+	uint8_t rxqual, rxqual_avg, rxlev;
 	int8_t dl_rssi_dbm, dl_rssi_dbm_avg;
 	int new_att;
 
@@ -343,8 +343,9 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 
 	dl_rssi_dbm = rxlev2dbm(rxlev);
 	dl_rssi_dbm_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dl_rssi_dbm);
+	rxqual_avg = do_avg_algo(&params->rxqual_meas, &state->rxqual_meas_proc, rxqual);
 	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
-	if (rxqual > params->rxqual_meas.lower_thresh) {
+	if (rxqual_avg > params->rxqual_meas.lower_thresh) {
 		/* Increase Tx power by reducing Tx attenuation */
 		new_att = state->current - params->inc_step_size_db;
 	} else {
@@ -375,20 +376,20 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 	if (state->current == new_att) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping DL attenuation at %u dB: "
 			  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
-			  "RxQual[curr %d, thresh %d..%d]\n",
+			  "RxQual[curr %d, avg %d, thresh %d..%d]\n",
 			  state->current,  state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
 			  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
-			  rxqual, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
+			  rxqual, rxqual_avg, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
 		return 0;
 	}
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s DL attenuation %u dB => %u dB:"
 		  "max %u dB, RSSI[curr %d, avg %d, thresh %d..%d] dBm, "
-		   "RxQual[curr %d, thresh %d..%d]\n",
+		   "RxQual[curr %d, avg %d, thresh %d..%d]\n",
 		  (new_att > state->current) ? "Raising" : "Lowering",
 		  state->current, new_att, state->max, dl_rssi_dbm, dl_rssi_dbm_avg,
 		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
-		  rxqual, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
+		  rxqual, rxqual_avg, params->rxqual_meas.lower_thresh, params->rxqual_meas.upper_thresh);
 	state->current = new_att;
 	return 1;
 }
