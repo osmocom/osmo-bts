@@ -1632,7 +1632,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan->meas.l1_info.ta = l1_hdr->ta;
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
 
-		lchan_ms_pwr_ctrl(lchan, data[0] & 0x1f, data_ind->rssi, data_ind->lqual_cb);
+		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, data_ind->rssi, data_ind->lqual_cb);
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
