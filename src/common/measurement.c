@@ -589,7 +589,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		/* When AMR is used, we expect at least one SUB frame, since
 		 * the SACCH will always be SUB frame. There may occur more
 		 * SUB frames but since DTX periods in AMR are dynamic, we
-		 * can not know how much exactly. */
+		 * can not know how many exactly. */
 		num_meas_sub_expect = 1;
 	}
 
