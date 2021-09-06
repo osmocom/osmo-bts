@@ -1,6 +1,7 @@
 /* Loop control for Timing Advance */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -19,6 +20,8 @@
  *
  */
 
+/* Related specs: 3GPP TS 45.010 sections 5.5, 5.6 */
+
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 
@@ -29,22 +32,60 @@
 #define TA_MIN 0
 #define TA_MAX 63
 
-void lchan_ms_ta_ctrl(struct gsm_lchan *lchan)
-{
-	int16_t toa256 = lchan->meas.ms_toa256;
+/* TODO: make configurable over osmo-bts VTY? Pass it BSC->BTS? */
+#define TA_MAX_INC_STEP 1
+#define TA_MAX_DEC_STEP 1
 
-	if (toa256 < -TOA256_9OPERCENT && lchan->rqd_ta > TA_MIN) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
-			  "TOA is too early (%d), now lowering TA from %d to %d\n",
-			  toa256, lchan->rqd_ta, lchan->rqd_ta - 1);
-		lchan->rqd_ta--;
-	} else if (toa256 > TOA256_9OPERCENT && lchan->rqd_ta < TA_MAX) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
-			  "TOA is too late (%d), now raising TA from %d to %d\n",
-			  toa256, lchan->rqd_ta, lchan->rqd_ta + 1);
-		lchan->rqd_ta++;
-	} else
+
+/*! compute the new "Ordered Timing Advance" communicated to the MS and store it in lchan.
+ * \param lchan logical channel for which to compute (and in which to store) new power value.
+ * \param[in] ms_tx_ta The TA used by the MS and reported in L1SACCH, see struct gsm_sacch_l1_hdr field "ta".
+ * \param[in] toa256 Time of Arrival (in 1/256th bits) computed at Rx side
+ */
+void lchan_ms_ta_ctrl(struct gsm_lchan *lchan, uint8_t ms_tx_ta, int16_t toa256)
+{
+	int16_t new_ta;
+	/* Shall we skip current block based on configured interval? */
+
+	/*TODO: implement P_CON_INTERVAL for TA loop */
+
+	int16_t delta_ta = toa256/256;
+	if (toa256 >= 0) {
+		if ((toa256 - (256 * delta_ta)) > TOA256_9OPERCENT)
+			delta_ta++;
+		if (delta_ta > TA_MAX_INC_STEP)
+			delta_ta = TA_MAX_INC_STEP;
+	} else {
+		if ((toa256 - (256 * delta_ta)) < -TOA256_9OPERCENT)
+			delta_ta--;
+		if (delta_ta < -TA_MAX_DEC_STEP)
+			delta_ta = -TA_MAX_DEC_STEP;
+	}
+
+	new_ta = ms_tx_ta + delta_ta;
+
+	/* Make sure new_ta is never negative: */
+	if (new_ta < TA_MIN)
+		new_ta = TA_MIN;
+
+	/* Don't ask for out of range TA: */
+	if (new_ta > TA_MAX)
+		new_ta = TA_MAX;
+
+	if (lchan->rqd_ta == (uint8_t)new_ta) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG,
-			  "TOA is correct (%d), keeping current TA of %d\n",
-			  toa256, lchan->rqd_ta);
+			  "Keeping current TA at %u: TOA was %d\n",
+			  lchan->rqd_ta, toa256);
+		return;
+	}
+
+	LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
+		  "%s TA %u => %u: TOA was too %s (%d)\n",
+		  (uint8_t)new_ta > lchan->rqd_ta ? "Raising" : "Lowering",
+		  lchan->rqd_ta, (uint8_t)new_ta,
+		  (uint8_t)new_ta > lchan->rqd_ta ? "late" : "early",
+		  toa256);
+
+	/* store the resulting new TA in the lchan */
+	lchan->rqd_ta = (uint8_t)new_ta;
 }

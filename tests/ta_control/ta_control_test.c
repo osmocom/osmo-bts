@@ -35,9 +35,6 @@ void lchan_ms_ta_ctrl_test(int16_t toa256_start, unsigned int steps)
 	uint8_t rqd_ta_before;
 	int16_t toa256 = toa256_start;
 
-	/* Arbitrary value, high enough so that a computation can happen. */
-	lchan.meas.num_ul_meas = 10;
-
 	printf("toa256_start = %u / 256 = %u, steps = %u\n", toa256_start,
 	       toa256_start / 256, steps);
 
@@ -49,8 +46,7 @@ void lchan_ms_ta_ctrl_test(int16_t toa256_start, unsigned int steps)
 
 		rqd_ta_before = lchan.rqd_ta;
 
-		lchan.meas.ms_toa256 = toa256;
-		lchan_ms_ta_ctrl(&lchan);
+		lchan_ms_ta_ctrl(&lchan, rqd_ta_before, toa256);
 
 		rqd_ta_after = lchan.rqd_ta;
 		toa256 -= (rqd_ta_after - rqd_ta_before) * 256;

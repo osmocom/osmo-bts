@@ -53,6 +53,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/power_control.h>
+#include <osmo-bts/ta_control.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
@@ -1604,6 +1605,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			rsl_tx_meas_res(lchan, NULL, 0, le);
 
 			radio_link_timeout(lchan, true);
+			lchan_ms_ta_ctrl(lchan, lchan->rqd_ta, lchan->meas.ms_toa256);
 			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, data_ind->rssi, data_ind->lqual_cb);
 		}
 		return -EINVAL;
@@ -1632,6 +1634,19 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan->meas.l1_info.ta = l1_hdr->ta;
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
 
+		/* 3GPP TS 45.008 sec 4.2: UL L1 SACCH Header contains TA and
+		 * MS_PWR used "for the last burst of the previous SACCH
+		 * period". Since MS must use the values provided in DL SACCH
+		 * starting at next meas period, the value of the "last burst"
+		 * is actually the value used in the entire meas period. Since
+		 * it contains info about the previous meas period, we want to
+		 * feed the Control Loop with the measurements for the same
+		 * period (the previous one), which is stored in lchan->meas(.ul_res): */
+		lchan_ms_ta_ctrl(lchan, l1_hdr->ta, lchan->meas.ms_toa256);
+		/* FIXME: lchan_ms_pwr_ctrl() is currently being passed data_ind->lqual_cb, which is wrong because:
+		 * 1- It contains measurement data for 1 SACCH block only, not the average over the entire period
+		 * 2- It contains measurement data for *current* meas period, not *previous* one.
+		 */
 		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, data_ind->rssi, data_ind->lqual_cb);
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
 	} else
