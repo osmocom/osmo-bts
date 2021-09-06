@@ -33,8 +33,8 @@
 #define TA_MAX 63
 
 /* TODO: make configurable over osmo-bts VTY? Pass it BSC->BTS? */
-#define TA_MAX_INC_STEP 1
-#define TA_MAX_DEC_STEP 1
+#define TA_MAX_INC_STEP 2
+#define TA_MAX_DEC_STEP 2
 
 
 /*! compute the new "Ordered Timing Advance" communicated to the MS and store it in lchan.
