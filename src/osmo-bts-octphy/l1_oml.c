@@ -459,7 +459,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	lac->LchId.bySAPI = cmd->sapi;
 	lac->LchId.byDirection = cmd->dir;
 
-	lac->Config.byTimingAdvance = lchan->rqd_ta;
+	lac->Config.byTimingAdvance = lchan->ta_ctrl.current;
 	lac->Config.byBSIC = lchan->ts->trx->bts->bsic;
 	if ((rc = lchan2lch_par(lchan, &lac->Config)) != 0) {
 		talloc_free(msg);

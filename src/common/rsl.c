@@ -1512,7 +1512,7 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
 	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
 	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
-	lchan->rqd_ta = 0;
+	lchan->ta_ctrl.current = 0;
 	copy_sacch_si_to_lchan(lchan);
 	memset(&lchan->tch, 0, sizeof(lchan->tch));
 }
@@ -1721,7 +1721,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
-		lchan->rqd_ta = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
+		lchan->ta_ctrl.current = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
 
 	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {

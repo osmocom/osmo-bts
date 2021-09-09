@@ -254,6 +254,11 @@ struct lchan_power_ctrl_state {
 	uint8_t max;
 };
 
+struct lchan_ta_ctrl_state {
+	/* Currently requested TA */
+	uint8_t current;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -287,8 +292,6 @@ struct gsm_lchan {
 		uint8_t speech_mode;
 		struct osmo_rtp_socket *rtp_socket;
 	} abis_ip;
-
-	uint8_t rqd_ta;
 
 	char *name;
 
@@ -402,6 +405,9 @@ struct gsm_lchan {
 	enum lchan_rel_act_kind rel_act_kind;
 	/* RTP header Marker bit to indicate beginning of speech after pause  */
 	bool rtp_tx_marker;
+
+	/* TA Control Loop */
+	struct lchan_ta_ctrl_state ta_ctrl;
 
 	/* MS/BS power control state */
 	struct lchan_power_ctrl_state ms_power_ctrl;

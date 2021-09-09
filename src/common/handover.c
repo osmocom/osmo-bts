@@ -51,7 +51,7 @@ static int ho_tx_phys_info(struct gsm_lchan *lchan)
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_HANDO_INFO;
-	msgb_put_u8(msg, lchan->rqd_ta);
+	msgb_put_u8(msg, lchan->ta_ctrl.current);
 
 	rsl_rll_push_l3(msg, RSL_MT_UNIT_DATA_REQ, gsm_lchan2chan_nr(lchan),
 		0x00, 0);
@@ -111,7 +111,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 		  "TA=%u, ref=%u\n", gsm_lchant_name(lchan->type), acc_delay, ra);
 
 	/* Set timing advance */
-	lchan->rqd_ta = acc_delay;
+	lchan->ta_ctrl.current = acc_delay;
 	lchan->want_dl_sacch_active = true;
 
 	/* Stop handover detection, wait for valid frame */
@@ -123,7 +123,7 @@ void handover_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay)
 	}
 
 	/* Send HANDover DETect to BSC */
-	rsl_tx_hando_det(lchan, &lchan->rqd_ta);
+	rsl_tx_hando_det(lchan, &lchan->ta_ctrl.current);
 
 	/* Send PHYS INFO */
 	lchan->ho.phys_info_count = 1;

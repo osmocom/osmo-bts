@@ -72,20 +72,20 @@ void lchan_ms_ta_ctrl(struct gsm_lchan *lchan, uint8_t ms_tx_ta, int16_t toa256)
 	if (new_ta > TA_MAX)
 		new_ta = TA_MAX;
 
-	if (lchan->rqd_ta == (uint8_t)new_ta) {
+	if (lchan->ta_ctrl.current == (uint8_t)new_ta) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG,
 			  "Keeping current TA at %u: TOA was %d\n",
-			  lchan->rqd_ta, toa256);
+			  lchan->ta_ctrl.current, toa256);
 		return;
 	}
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO,
 		  "%s TA %u => %u: TOA was too %s (%d)\n",
-		  (uint8_t)new_ta > lchan->rqd_ta ? "Raising" : "Lowering",
-		  lchan->rqd_ta, (uint8_t)new_ta,
-		  (uint8_t)new_ta > lchan->rqd_ta ? "late" : "early",
+		  (uint8_t)new_ta > lchan->ta_ctrl.current ? "Raising" : "Lowering",
+		  lchan->ta_ctrl.current, (uint8_t)new_ta,
+		  (uint8_t)new_ta > lchan->ta_ctrl.current ? "late" : "early",
 		  toa256);
 
 	/* store the resulting new TA in the lchan */
-	lchan->rqd_ta = (uint8_t)new_ta;
+	lchan->ta_ctrl.current = (uint8_t)new_ta;
 }

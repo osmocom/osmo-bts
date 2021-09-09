@@ -40,18 +40,18 @@ void lchan_ms_ta_ctrl_test(int16_t toa256_start, unsigned int steps)
 
 	for (i = 0; i < steps; i++) {
 		printf("Step #%u\n", i);
-		printf("  lchan.rqd_ta (before) = %u\n", lchan.rqd_ta);
+		printf("  lchan.ta_ctrl.current (before) = %u\n", lchan.ta_ctrl.current);
 		printf("  toa256 (before) = %u / 256 = %u\n", toa256,
 		       toa256 / 256);
 
-		rqd_ta_before = lchan.rqd_ta;
+		rqd_ta_before = lchan.ta_ctrl.current;
 
 		lchan_ms_ta_ctrl(&lchan, rqd_ta_before, toa256);
 
-		rqd_ta_after = lchan.rqd_ta;
+		rqd_ta_after = lchan.ta_ctrl.current;
 		toa256 -= (rqd_ta_after - rqd_ta_before) * 256;
 
-		printf("  lchan.rqd_ta (after) = %u\n", lchan.rqd_ta);
+		printf("  lchan.ta_ctrl.current (after) = %u\n", lchan.ta_ctrl.current);
 		printf("  toa256 (after) = %u / 256 = %u\n", toa256,
 		       toa256 / 256);
 	}

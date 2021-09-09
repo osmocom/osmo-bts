@@ -1186,7 +1186,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p[0] = lchan->ms_power_ctrl.current;
 			if (lchan->repeated_ul_sacch_active)
 				p[0] |= 0x40; /* See also: 3GPP TS 44.004, section 7.1 */
-			p[1] = lchan->rqd_ta;
+			p[1] = lchan->ta_ctrl.current;
 			le = &lchan->lapdm_ch.lapdm_acch;
 			if (lchan->repeated_acch_capability.dl_sacch) {
 				/* Check if MS requests SACCH repetition and update state accordingly */
@@ -1605,7 +1605,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			rsl_tx_meas_res(lchan, NULL, 0, le);
 
 			radio_link_timeout(lchan, true);
-			lchan_ms_ta_ctrl(lchan, lchan->rqd_ta, lchan->meas.ms_toa256);
+			lchan_ms_ta_ctrl(lchan, lchan->ta_ctrl.current, lchan->meas.ms_toa256);
 			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, data_ind->rssi, data_ind->lqual_cb);
 		}
 		return -EINVAL;
