@@ -30,6 +30,7 @@ struct gsm_bts_trx {
         uint8_t max_power_backoff_8psk; /* in actual dB OC-2G only */
         uint8_t c0_idle_power_red;      /* in actual dB OC-2G only */
 
+	uint8_t ta_ctrl_interval; /* 1 step is 2 SACCH periods */
 
 	struct trx_power_params power_params;
 	struct gsm_power_ctrl_params *bs_dpc_params; /* BS Dynamic Power Control */

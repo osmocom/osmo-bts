@@ -284,6 +284,7 @@ OsmoBTS(trx)# list
   power-ramp step-size <1-100000> (dB|mdB)
   power-ramp step-interval <1-100>
   ms-power-control (dsp|osmo)
+  ta-control interval <0-31>
   phy <0-255> instance <0-255>
 ...
 OsmoBTS(trx)# ?
@@ -291,5 +292,6 @@ OsmoBTS(trx)# ?
   user-gain         Inform BTS about additional, user-provided gain or attenuation at TRX output
   power-ramp        Power-Ramp settings
   ms-power-control  Mobile Station Power Level Control
+  ta-control        Timing Advance Control Parameters
   phy               Configure PHY Link+Instance for this TRX
 ...

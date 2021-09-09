@@ -370,6 +370,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, "  ms-power-control %s%s",
 			trx->ms_pwr_ctl_soft ? "osmo" : "dsp",
 			VTY_NEWLINE);
+		vty_out(vty, "  ta-control interval %u%s",
+			trx->ta_ctrl_interval, VTY_NEWLINE);
 		vty_out(vty, "  phy %u instance %u%s", pinst->phy_link->num,
 			pinst->num, VTY_NEWLINE);
 
@@ -1006,6 +1008,19 @@ DEFUN(cfg_trx_ms_power_control, cfg_trx_ms_power_control_cmd,
 	}
 
 	trx->ms_pwr_ctl_soft = soft;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ta_ctrl_interval, cfg_ta_ctrl_interval_cmd,
+	"ta-control interval <0-31>",
+	"Timing Advance Control Parameters\n"
+	"Set TA control loop interval\n"
+	"As in P_CON_INTERVAL, in units of 2 SACCH periods (0.96 seconds) (default=0, every SACCH block)\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->ta_ctrl_interval = atoi(argv[0]);
+
 	return CMD_SUCCESS;
 }
 
@@ -2487,6 +2502,7 @@ int bts_vty_init(void *ctx)
 	install_element(TRX_NODE, &cfg_trx_pr_step_size_cmd);
 	install_element(TRX_NODE, &cfg_trx_pr_step_interval_cmd);
 	install_element(TRX_NODE, &cfg_trx_ms_power_control_cmd);
+	install_element(TRX_NODE, &cfg_ta_ctrl_interval_cmd);
 	install_element(TRX_NODE, &cfg_trx_phy_cmd);
 
 	install_element(ENABLE_NODE, &bts_t_t_l_jitter_buf_cmd);

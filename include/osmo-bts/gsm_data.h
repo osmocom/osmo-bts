@@ -255,6 +255,8 @@ struct lchan_power_ctrl_state {
 };
 
 struct lchan_ta_ctrl_state {
+	/* Number of SACCH blocks to skip */
+	int skip_block_num;
 	/* Currently requested TA */
 	uint8_t current;
 };

@@ -26,10 +26,13 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/ta_control.h>
+#include <osmo-bts/bts_trx.h>
 
 void lchan_ms_ta_ctrl_test(int16_t toa256_start, unsigned int steps)
 {
-	struct gsm_lchan lchan = { };
+	struct gsm_bts_trx trx = { };
+	struct gsm_bts_trx_ts ts = { .trx = &trx };
+	struct gsm_lchan lchan = { .ts = &ts };
 	unsigned int i;
 	uint8_t rqd_ta_after;
 	uint8_t rqd_ta_before;

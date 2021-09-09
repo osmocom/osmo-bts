@@ -23,6 +23,7 @@
 /* Related specs: 3GPP TS 45.010 sections 5.5, 5.6 */
 
 #include <osmo-bts/gsm_data.h>
+#include <osmo-bts/bts_trx.h>
 #include <osmo-bts/logging.h>
 
 /* 3GPP TS 45.010 sec 5.6.3 Delay assessment error:
@@ -48,7 +49,16 @@ void lchan_ms_ta_ctrl(struct gsm_lchan *lchan, uint8_t ms_tx_ta, int16_t toa256)
 	int16_t new_ta;
 	/* Shall we skip current block based on configured interval? */
 
-	/*TODO: implement P_CON_INTERVAL for TA loop */
+	/* TA control interval: how many blocks do we skip? */
+	if (lchan->ta_ctrl.skip_block_num-- > 0)
+		return;
+
+	/* Reset the number of SACCH blocks to be skipped:
+	 *   ctrl_interval=0 => 0 blocks to skip,
+	 *   ctrl_interval=1 => 1 blocks to skip,
+	 *   ctrl_interval=2 => 3 blocks to skip,
+	 *     so basically ctrl_interval * 2 - 1. */
+	lchan->ta_ctrl.skip_block_num = lchan->ts->trx->ta_ctrl_interval * 2 - 1;
 
 	int16_t delta_ta = toa256/256;
 	if (toa256 >= 0) {
