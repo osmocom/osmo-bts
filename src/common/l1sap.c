@@ -1616,6 +1616,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		handover_frame(lchan);
 
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
+		int8_t ul_rssi;
 		radio_link_timeout(lchan, false);
 		le = &lchan->lapdm_ch.lapdm_acch;
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
@@ -1647,7 +1648,12 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		 * 1- It contains measurement data for 1 SACCH block only, not the average over the entire period
 		 * 2- It contains measurement data for *current* meas period, not *previous* one.
 		 */
-		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, data_ind->rssi, data_ind->lqual_cb);
+		/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
+		if (lchan->tch.dtx.dl_active)
+			ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
+		else
+			ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
+		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, ul_rssi, data_ind->lqual_cb);
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
