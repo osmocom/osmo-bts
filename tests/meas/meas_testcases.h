@@ -1,5 +1,5 @@
 #define ULM(ber, ta, sub, neg_rssi) \
-	{ .ber10k = (ber), .ta_offs_256bits = (ta), .c_i = 1.0, .is_sub = sub, .inv_rssi = (neg_rssi) }
+	{ .ber10k = (ber), .ta_offs_256bits = (ta), .c_i = 10, .is_sub = sub, .inv_rssi = (neg_rssi) }
 
 struct meas_testcase {
 	const char *name;

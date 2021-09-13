@@ -105,8 +105,8 @@ struct bts_ul_meas {
 	uint16_t ber10k;
 	/* timing advance offset (in 1/256 bits) */
 	int16_t ta_offs_256bits;
-	/* C/I ratio in dB */
-	float c_i;
+	/* C/I ratio in cB */
+	int16_t c_i;
 	/* flags */
 	uint8_t is_sub:1;
 	/* RSSI in dBm * -1 */
@@ -339,6 +339,8 @@ struct gsm_lchan {
 	        struct rsl_l1_info l1_info;
 		struct gsm_meas_rep_unidir ul_res;
 		int16_t ms_toa256;
+		int16_t ul_ci_cb_full;
+		int16_t ul_ci_cb_sub;
 		/* Frame number of the last measurement indication receceived */
 		uint32_t last_fn;
 		/* Osmocom extended measurement results, see LC_UL_M_F_EXTD_VALID */

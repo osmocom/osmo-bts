@@ -341,7 +341,7 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan,
 	if (!ulm->is_sub)
 		dest->is_sub = ts45008_83_is_sub(lchan, fn);
 
-	DEBUGPFN(DMEAS, fn, "%s adding measurement (ber10k=%u, ta_offs=%d, ci=%0.2f, is_sub=%u, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
+	DEBUGPFN(DMEAS, fn, "%s adding measurement (ber10k=%u, ta_offs=%d, ci_cB=%d, is_sub=%u, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
 		 gsm_lchan_name(lchan), ulm->ber10k, ulm->ta_offs_256bits,
 		 ulm->c_i, dest->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
 		 fn_mod);
@@ -555,8 +555,10 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	struct gsm_meas_rep_unidir *mru;
 	uint32_t ber_full_sum = 0;
 	uint32_t irssi_full_sum = 0;
+	int32_t ci_full_sum = 0;
 	uint32_t ber_sub_sum = 0;
 	uint32_t irssi_sub_sum = 0;
+	int32_t ci_sub_sum = 0;
 	int32_t ta256b_sum = 0;
 	unsigned int num_meas_sub = 0;
 	unsigned int num_meas_sub_actual = 0;
@@ -624,11 +626,13 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 			m = &lchan->meas.uplink[i + num_ul_meas_excess];
 			if (m->is_sub) {
 				irssi_sub_sum += m->inv_rssi;
+				ci_sub_sum += m->c_i;
 				num_meas_sub_actual++;
 				is_sub = true;
 			}
 			irssi_full_sum += m->inv_rssi;
 			ta256b_sum += m->ta_offs_256bits;
+			ci_full_sum += m->c_i;
 
 			num_ul_meas_actual++;
 		} else {
@@ -697,27 +701,32 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	else
 		irssi_full_sum = irssi_full_sum / num_ul_meas_actual;
 
-	if (!num_ul_meas_actual)
+	if (!num_ul_meas_actual) {
 		ta256b_sum = lchan->meas.ms_toa256;
-	else
+		ci_full_sum = lchan->meas.ul_ci_cb_full;
+	} else {
 		ta256b_sum = ta256b_sum / (signed)num_ul_meas_actual;
+		ci_full_sum = ci_full_sum / (signed)num_ul_meas_actual;
+	}
 
 	if (!num_meas_sub)
 		ber_sub_sum = MEASUREMENT_DUMMY_BER;
 	else
 		ber_sub_sum = ber_sub_sum / num_meas_sub;
 
-	if (!num_meas_sub_actual)
+	if (!num_meas_sub_actual) {
 		irssi_sub_sum = MEASUREMENT_DUMMY_IRSSI;
-	else
+		ci_sub_sum = lchan->meas.ul_ci_cb_sub;
+	} else {
 		irssi_sub_sum = irssi_sub_sum / num_meas_sub_actual;
+		ci_sub_sum = ci_sub_sum / (signed)num_meas_sub_actual;
+	}
 
 	LOGPLCHAN(lchan, DMEAS, LOGL_INFO,
-		  "Computed TA256(% 4d) BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), "
-		  "BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm)\n",
-		  ta256b_sum, ber_full_sum / 100, ber_full_sum % 100,
-		  irssi_full_sum, ber_sub_sum / 100, ber_sub_sum % 100,
-		  irssi_sub_sum);
+		  "Computed TA256(% 4d), BER-FULL(%2u.%02u%%), RSSI-FULL(-%3udBm), C/I-FULL(% 4d cB), "
+		  "BER-SUB(%2u.%02u%%), RSSI-SUB(-%3udBm), C/I-SUB(% 4d cB)\n",
+		  ta256b_sum, ber_full_sum / 100, ber_full_sum % 100, irssi_full_sum, ci_full_sum,
+		  ber_sub_sum / 100, ber_sub_sum % 100, irssi_sub_sum, ci_sub_sum);
 
 	/* store results */
 	mru = &lchan->meas.ul_res;
@@ -726,6 +735,8 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	mru->full.rx_qual = ber10k_to_rxqual(ber_full_sum);
 	mru->sub.rx_qual = ber10k_to_rxqual(ber_sub_sum);
 	lchan->meas.ms_toa256 = ta256b_sum;
+	lchan->meas.ul_ci_cb_full = ci_full_sum;
+	lchan->meas.ul_ci_cb_sub = ci_sub_sum;
 
 	LOGPLCHAN(lchan, DMEAS, LOGL_INFO,
 		  "UL MEAS RXLEV_FULL(%u), RXLEV_SUB(%u), RXQUAL_FULL(%u), RXQUAL_SUB(%u), "

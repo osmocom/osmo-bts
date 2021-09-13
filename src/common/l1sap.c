@@ -681,6 +681,7 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	uint8_t is_sub;
 	int16_t ta_offs_256bits;
 	uint16_t ber10k;
+	int16_t ci_cb;
 	const char *ind_name;
 
 	switch (ind_type) {
@@ -693,6 +694,7 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		is_sub = info_meas_ind->is_sub;
 		ta_offs_256bits = info_meas_ind->ta_offs_256bits;
 		ber10k = info_meas_ind->ber10k;
+		ci_cb = info_meas_ind->c_i_cb;
 		ind_name = "MPH INFO";
 		break;
 	case PRIM_TCH:
@@ -705,6 +707,7 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		is_sub = ph_tch_ind->is_sub;
 		ta_offs_256bits = ph_tch_ind->ta_offs_256bits;
 		ber10k = ph_tch_ind->ber10k;
+		ci_cb = ph_tch_ind->lqual_cb;
 		ind_name = "TCH";
 		break;
 	case PRIM_PH_DATA:
@@ -717,6 +720,7 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		is_sub = ph_data_ind->is_sub;
 		ta_offs_256bits = ph_data_ind->ta_offs_256bits;
 		ber10k = ph_data_ind->ber10k;
+		ci_cb = ph_data_ind->lqual_cb;
 		ind_name = "DATA";
 		break;
 	default:
@@ -732,9 +736,9 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	}
 
 	DEBUGPFN(DL1P, fn,
-		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u\n",
+		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
 		 gsm_lchan_name(lchan), ind_name, ta_offs_256bits, ber10k,
-		 inv_rssi);
+		 inv_rssi, ci_cb);
 
 	/* in the GPRS case we are not interested in measurement
 	 * processing.  The PCU will take care of it */
@@ -744,6 +748,7 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	memset(&ulm, 0, sizeof(ulm));
 	ulm.ta_offs_256bits = ta_offs_256bits;
 	ulm.ber10k = ber10k;
+	ulm.c_i = ci_cb;
 	ulm.inv_rssi = inv_rssi;
 	ulm.is_sub = is_sub;
 
@@ -1526,11 +1531,11 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint8_t chan_nr, link_id;
 	uint8_t tn;
 	uint32_t fn;
-	int8_t rssi;
 	enum osmo_ph_pres_info_type pr_info = data_ind->pdch_presence_info;
 	struct gsm_sacch_l1_hdr *l1_hdr;
+	int8_t ul_rssi;
+	int16_t ul_ci_cb;
 
-	rssi = data_ind->rssi;
 	chan_nr = data_ind->chan_nr;
 	link_id = data_ind->link_id;
 	fn = data_ind->fn;
@@ -1578,7 +1583,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 		/* PDTCH / PACCH frame handling */
 		pcu_tx_data_ind(&trx->ts[tn], PCU_IF_SAPI_PDTCH, fn, trx->arfcn,
-				L1SAP_FN2MACBLOCK(fn), data, len, rssi, data_ind->ber10k,
+				L1SAP_FN2MACBLOCK(fn), data, len, data_ind->rssi, data_ind->ber10k,
 				data_ind->ta_offs_256bits/64, data_ind->lqual_cb);
 		return 0;
 	}
@@ -1606,7 +1611,15 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 			radio_link_timeout(lchan, true);
 			lchan_ms_ta_ctrl(lchan, lchan->ta_ctrl.current, lchan->meas.ms_toa256);
-			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, data_ind->rssi, data_ind->lqual_cb);
+			/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
+			if (lchan->tch.dtx.dl_active) {
+				ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
+				ul_ci_cb = lchan->meas.ul_ci_cb_full;
+			} else {
+				ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
+				ul_ci_cb = lchan->meas.ul_ci_cb_sub;
+			}
+			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, ul_rssi, ul_ci_cb);
 		}
 		return -EINVAL;
 	}
@@ -1616,7 +1629,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		handover_frame(lchan);
 
 	if (L1SAP_IS_LINK_SACCH(link_id)) {
-		int8_t ul_rssi;
 		radio_link_timeout(lchan, false);
 		le = &lchan->lapdm_ch.lapdm_acch;
 		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
@@ -1644,16 +1656,15 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		 * feed the Control Loop with the measurements for the same
 		 * period (the previous one), which is stored in lchan->meas(.ul_res): */
 		lchan_ms_ta_ctrl(lchan, l1_hdr->ta, lchan->meas.ms_toa256);
-		/* FIXME: lchan_ms_pwr_ctrl() is currently being passed data_ind->lqual_cb, which is wrong because:
-		 * 1- It contains measurement data for 1 SACCH block only, not the average over the entire period
-		 * 2- It contains measurement data for *current* meas period, not *previous* one.
-		 */
 		/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
-		if (lchan->tch.dtx.dl_active)
+		if (lchan->tch.dtx.dl_active) {
 			ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
-		else
+			ul_ci_cb = lchan->meas.ul_ci_cb_full;
+		} else {
 			ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
-		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, ul_rssi, data_ind->lqual_cb);
+			ul_ci_cb = lchan->meas.ul_ci_cb_sub;
+		}
+		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, ul_rssi, ul_ci_cb);
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
