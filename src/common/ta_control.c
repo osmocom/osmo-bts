@@ -25,8 +25,9 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
 
-/* 90% of one bit duration in 1/256 symbols: 256*0.9 */
-#define TOA256_9OPERCENT	230
+/* 3GPP TS 45.010 sec 5.6.3 Delay assessment error:
+ * 75% of one bit duration in 1/256 symbols: 256*0.75 */
+#define TOA256_THRESH	192
 
 /* rqd_ta value range */
 #define TA_MIN 0
@@ -51,12 +52,12 @@ void lchan_ms_ta_ctrl(struct gsm_lchan *lchan, uint8_t ms_tx_ta, int16_t toa256)
 
 	int16_t delta_ta = toa256/256;
 	if (toa256 >= 0) {
-		if ((toa256 - (256 * delta_ta)) > TOA256_9OPERCENT)
+		if ((toa256 - (256 * delta_ta)) > TOA256_THRESH)
 			delta_ta++;
 		if (delta_ta > TA_MAX_INC_STEP)
 			delta_ta = TA_MAX_INC_STEP;
 	} else {
-		if ((toa256 - (256 * delta_ta)) < -TOA256_9OPERCENT)
+		if ((toa256 - (256 * delta_ta)) < -TOA256_THRESH)
 			delta_ta--;
 		if (delta_ta < -TA_MAX_DEC_STEP)
 			delta_ta = -TA_MAX_DEC_STEP;
