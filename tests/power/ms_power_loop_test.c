@@ -59,6 +59,9 @@ static void init_test(const char *name)
 	g_trx->ts[0].lchan[0].ms_power_ctrl.dpc_params = params;
 	*params = power_ctrl_params_def;
 
+	/* Disable loop SACCH block skip by default: */
+	params->ctrl_interval = 0;
+
 	/* Disable RxLev pre-processing and hysteresis by default */
 	struct gsm_power_ctrl_meas_params *mp = &params->rxlev_meas;
 	mp->lower_thresh = mp->upper_thresh = PWR_TEST_RXLEV_TARGET;

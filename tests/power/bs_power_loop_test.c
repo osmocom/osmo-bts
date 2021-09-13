@@ -112,6 +112,14 @@ static void init_test(const char *name)
 	g_bts->band = GSM_BAND_900;
 	g_bts->c0 = g_trx;
 
+	/* Init defaultBS power control parameters, enable dynamic power control */
+	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].bs_dpc_params;
+	g_trx->ts[0].lchan[0].bs_power_ctrl.dpc_params = params;
+	*params = power_ctrl_params_def;
+
+	/* Disable loop SACCH block skip by default: */
+	params->ctrl_interval = 0;
+
 	printf("\nStarting test case '%s'\n", name);
 }
 
@@ -218,9 +226,6 @@ static void exec_power_test(const struct power_test_step *steps,
 
 	struct gsm_lchan *lchan = &g_trx->ts[0].lchan[0];
 	struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
-
-	/* Default BS power control parameters */
-	memcpy(params, &power_ctrl_params_def, sizeof(*params));
 
 	/* No RxLev hysteresis: lower == upper */
 	params->rxlev_meas.lower_thresh = PWR_TEST_RXLEV_TARGET;

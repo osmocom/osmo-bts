@@ -504,6 +504,9 @@ int lchan2ecu_codec(const struct gsm_lchan *lchan)
 
 /* Default MS/BS Power Control parameters (see 3GPP TS 45.008, table A.1) */
 const struct gsm_power_ctrl_params power_ctrl_params_def = {
+
+	.ctrl_interval = 1, /* Trigger loop every second SACCH block. TS 45.008 sec 4.7.1 */
+
 	/* Power increasing/reducing step size (optimal defaults) */
 	.inc_step_size_db = 4, /* quickly increase MS/BS power */
 	.red_step_size_db = 2, /* slowly decrease MS/BS power */
