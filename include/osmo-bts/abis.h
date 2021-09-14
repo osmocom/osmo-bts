@@ -6,16 +6,6 @@
 
 #include <osmo-bts/gsm_data.h>
 
-#define	OML_RETRY_TIMER		5
-#define	OML_PING_TIMER		20
-
-enum {
-	LINK_STATE_IDLE = 0,
-	LINK_STATE_RETRYING,
-	LINK_STATE_CONNECTING,
-	LINK_STATE_CONNECT,
-};
-
 enum abis_link_fsm_event {
 	ABIS_LINK_EV_SIGN_LINK_DOWN,
 	ABIS_LINK_EV_VTY_RM_ADDR,
