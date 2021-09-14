@@ -102,18 +102,12 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 			LOGP(DABIS, LOGL_FATAL, "OML link was closed early within %" PRIu64 " seconds. "
 			     "If this situation persists, please check your BTS and BSC configuration files for errors. "
 			     "A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
-			     (uint64_t) (now.tv_sec - g_bts->oml_conn_established_timestamp.tv_sec));
+			     (uint64_t) (now.tv_sec - bts->oml_conn_established_timestamp.tv_sec));
 		}
 		bts->oml_link = NULL;
 		oml_rsl_was_connected = true;
 	}
-	memset(&g_bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
-
-	if (g_bts->osmo_link) {
-		e1inp_sign_link_destroy(g_bts->osmo_link);
-		g_bts->osmo_link = NULL;
-		oml_rsl_was_connected = true;
-	}
+	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
 
 	/* Then iterate over the RSL signalling links */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
