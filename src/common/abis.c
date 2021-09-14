@@ -201,8 +201,7 @@ static void abis_link_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 	struct abis_link_fsm_priv *priv = fi->priv;
 	struct gsm_bts *bts = priv->bts;
 
-	if (event != ABIS_LINK_EV_VTY_RM_ADDR)
-		return;
+	OSMO_ASSERT(event == ABIS_LINK_EV_VTY_RM_ADDR);
 
 	if (priv->bsc_oml_host == data) {
 		if (llist_count(&bts->bsc_oml_hosts) <= 1)
