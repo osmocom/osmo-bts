@@ -192,7 +192,7 @@ static void abis_link_failed_onenter(struct osmo_fsm_inst *fi, uint32_t prev_sta
 	struct gsm_bts *bts = priv->bts;
 
 	/* None of the configured BSCs was reachable or there was an existing
-	 * OML/RSL connection that beoke. Initiate BTS process shut down now. */
+	 * OML/RSL connection that broke. Initiate BTS process shut down now. */
 	bts_model_abis_close(bts);
 }
 
