@@ -61,9 +61,11 @@ static struct e1inp_line_ops line_ops;
 static struct ipaccess_unit bts_dev_info;
 
 #define S(x) (1 << (x))
+#define	OML_RETRY_TIMER	5
 
 enum abis_link_fsm_state {
-	ABIS_LINK_ST_CONNECTING, /* OML link has not yet been established */
+	ABIS_LINK_ST_WAIT_RECONNECT, /* OML link has not yet been established */
+	ABIS_LINK_ST_CONNECTING, /* OML link in process of been established */
 	ABIS_LINK_ST_CONNECTED, /* OML link is established, RSL links may be established or not */
 	ABIS_LINK_ST_FAILED, /* There used to be an active OML connection but it became broken */
 };
@@ -128,12 +130,10 @@ static int pick_next_bsc(struct osmo_fsm_inst *fi)
 
 	last = (struct bsc_oml_host *)llist_last_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
 
-	if (!priv->current_bsc) /* Pick first one: */
+	if (!priv->current_bsc || priv->current_bsc == last) /* Pick first one (wrap around): */
 		priv->current_bsc = (struct bsc_oml_host *)llist_first_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
 	else if (priv->current_bsc != last)
 		priv->current_bsc = (struct bsc_oml_host *)llist_entry(priv->current_bsc->list.next, struct bsc_oml_host, list);
-	else
-		return -1; /* We are so far not starting over the list when we reach the list, but only exit */
 
 	return 0;
 }
@@ -199,7 +199,7 @@ static void abis_link_connecting(struct osmo_fsm_inst *fi, uint32_t event, void 
 		break;
 	case ABIS_LINK_EV_SIGN_LINK_DOWN:
 		reset_oml_link(bts);
-		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTING, 0, 0);
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
 		break;
 	default:
 		OSMO_ASSERT(0);
@@ -262,14 +262,32 @@ static void abis_link_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 	}
 }
 
+int abis_link_fsm_timer_cb(struct osmo_fsm_inst *fi)
+{
+	switch (fi->state) {
+	case ABIS_LINK_ST_WAIT_RECONNECT:
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTING, 0, 0);
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
+	return 0;
+}
+
+
 static struct osmo_fsm_state abis_link_fsm_states[] = {
+	[ABIS_LINK_ST_WAIT_RECONNECT] = {
+		.name = "WAIT_RECONNECT",
+		.out_state_mask =
+			S(ABIS_LINK_ST_CONNECTING),
+	},
 	[ABIS_LINK_ST_CONNECTING] = {
 		.name = "CONNECTING",
 		.in_event_mask =
 			S(ABIS_LINK_EV_SIGN_LINK_OML_UP) |
 			S(ABIS_LINK_EV_SIGN_LINK_DOWN),
 		.out_state_mask =
-			S(ABIS_LINK_ST_CONNECTING) |
+			S(ABIS_LINK_ST_WAIT_RECONNECT) |
 			S(ABIS_LINK_ST_CONNECTED) |
 			S(ABIS_LINK_ST_FAILED),
 		.onenter = abis_link_connecting_onenter,
@@ -298,6 +316,7 @@ static struct osmo_fsm abis_link_fsm = {
 	.event_names = abis_link_fsm_event_names,
 	.allstate_action = abis_link_allstate,
 	.allstate_event_mask = S(ABIS_LINK_EV_VTY_RM_ADDR),
+	.timer_cb = abis_link_fsm_timer_cb,
 };
 
 int abis_oml_sendmsg(struct msgb *msg)
