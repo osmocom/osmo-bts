@@ -81,53 +81,6 @@ struct abis_link_fsm_priv {
 	int line_ctr;
 };
 
-static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *data)
-{
-	struct abis_link_fsm_priv *priv = fi->priv;
-	struct gsm_bts *bts = priv->bts;
-	struct gsm_bts_trx *trx;
-	bool oml_rsl_was_connected = false;
-
-	OSMO_ASSERT(event == ABIS_LINK_EV_SIGN_LINK_DOWN);
-
-	/* First remove the OML signalling link */
-	if (bts->oml_link) {
-		struct timespec now;
-
-		e1inp_sign_link_destroy(bts->oml_link);
-
-		/* Log a special notice if the OML connection was dropped relatively quickly. */
-		if (bts->oml_conn_established_timestamp.tv_sec != 0 && clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
-		    bts->oml_conn_established_timestamp.tv_sec + OSMO_BTS_OML_CONN_EARLY_DISCONNECT >= now.tv_sec) {
-			LOGP(DABIS, LOGL_FATAL, "OML link was closed early within %" PRIu64 " seconds. "
-			     "If this situation persists, please check your BTS and BSC configuration files for errors. "
-			     "A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
-			     (uint64_t) (now.tv_sec - bts->oml_conn_established_timestamp.tv_sec));
-		}
-		bts->oml_link = NULL;
-		oml_rsl_was_connected = true;
-	}
-	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
-
-	/* Then iterate over the RSL signalling links */
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->rsl_link) {
-			e1inp_sign_link_destroy(trx->rsl_link);
-			trx->rsl_link = NULL;
-			oml_rsl_was_connected = true;
-		}
-	}
-
-	/* Note: if there was an OML or RSL connection present (the BTS was connected to a BSC). Then we will not try
-	 * to connect to an alternate BSC. Instead we will shut down the BTS process. This will ensure that all states
-	 * in the BTS (hardware and software) are reset properly. It is then up to the process management of the host
-	 * to restart osmo-bts. */
-	if (oml_rsl_was_connected)
-		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
-	else
-		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTING, 0, 0);
-}
-
 static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct e1inp_line *line;
@@ -186,6 +139,53 @@ static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev
 	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTED, 0, 0);
 }
 
+static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+	struct gsm_bts_trx *trx;
+	bool oml_rsl_was_connected = false;
+
+	OSMO_ASSERT(event == ABIS_LINK_EV_SIGN_LINK_DOWN);
+
+	/* First remove the OML signalling link */
+	if (bts->oml_link) {
+		struct timespec now;
+
+		e1inp_sign_link_destroy(bts->oml_link);
+
+		/* Log a special notice if the OML connection was dropped relatively quickly. */
+		if (bts->oml_conn_established_timestamp.tv_sec != 0 && clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
+		    bts->oml_conn_established_timestamp.tv_sec + OSMO_BTS_OML_CONN_EARLY_DISCONNECT >= now.tv_sec) {
+			LOGP(DABIS, LOGL_FATAL, "OML link was closed early within %" PRIu64 " seconds. "
+			     "If this situation persists, please check your BTS and BSC configuration files for errors. "
+			     "A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
+			     (uint64_t) (now.tv_sec - bts->oml_conn_established_timestamp.tv_sec));
+		}
+		bts->oml_link = NULL;
+		oml_rsl_was_connected = true;
+	}
+	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
+
+	/* Then iterate over the RSL signalling links */
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->rsl_link) {
+			e1inp_sign_link_destroy(trx->rsl_link);
+			trx->rsl_link = NULL;
+			oml_rsl_was_connected = true;
+		}
+	}
+
+	/* Note: if there was an OML or RSL connection present (the BTS was connected to a BSC). Then we will not try
+	 * to connect to an alternate BSC. Instead we will shut down the BTS process. This will ensure that all states
+	 * in the BTS (hardware and software) are reset properly. It is then up to the process management of the host
+	 * to restart osmo-bts. */
+	if (oml_rsl_was_connected)
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+	else
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTING, 0, 0);
+}
+
 static void abis_link_failed_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct abis_link_fsm_priv *priv = fi->priv;
@@ -215,6 +215,14 @@ static void abis_link_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 }
 
 static struct osmo_fsm_state abis_link_fsm_states[] = {
+	[ABIS_LINK_ST_CONNECTING] = {
+		.name = "CONNECTING",
+		.out_state_mask =
+			S(ABIS_LINK_ST_CONNECTING) |
+			S(ABIS_LINK_ST_CONNECTED) |
+			S(ABIS_LINK_ST_FAILED),
+		.onenter = abis_link_connecting_onenter,
+	},
 	[ABIS_LINK_ST_CONNECTED] = {
 		.name = "CONNECTED",
 		.in_event_mask =
@@ -223,14 +231,6 @@ static struct osmo_fsm_state abis_link_fsm_states[] = {
 			S(ABIS_LINK_ST_CONNECTING) |
 			S(ABIS_LINK_ST_FAILED),
 		.action = abis_link_connected,
-	},
-	[ABIS_LINK_ST_CONNECTING] = {
-		.name = "CONNECTING",
-		.out_state_mask =
-			S(ABIS_LINK_ST_CONNECTING) |
-			S(ABIS_LINK_ST_CONNECTED) |
-			S(ABIS_LINK_ST_FAILED),
-		.onenter = abis_link_connecting_onenter,
 	},
 	[ABIS_LINK_ST_FAILED] = {
 		.name = "FAILED",
