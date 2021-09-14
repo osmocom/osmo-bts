@@ -7,6 +7,7 @@
 #include <osmo-bts/gsm_data.h>
 
 enum abis_link_fsm_event {
+	ABIS_LINK_EV_SIGN_LINK_OML_UP,
 	ABIS_LINK_EV_SIGN_LINK_DOWN,
 	ABIS_LINK_EV_VTY_RM_ADDR,
 };
