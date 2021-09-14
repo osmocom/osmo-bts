@@ -9,7 +9,7 @@
 enum abis_link_fsm_event {
 	ABIS_LINK_EV_SIGN_LINK_OML_UP,
 	ABIS_LINK_EV_SIGN_LINK_DOWN,
-	ABIS_LINK_EV_VTY_RM_ADDR,
+	ABIS_LINK_EV_VTY_RM_ADDR, /* data: struct bsc_oml_host* being removed */
 };
 
 void abis_init(struct gsm_bts *bts);

@@ -76,7 +76,7 @@ static const struct value_string abis_link_fsm_event_names[] = {
 };
 
 struct abis_link_fsm_priv {
-	struct llist_head *bsc_oml_host;
+	struct bsc_oml_host *current_bsc;
 	struct gsm_bts *bts;
 	char *model_name;
 	int line_ctr;
@@ -115,30 +115,45 @@ static void drain_oml_queue(struct gsm_bts *bts)
 	}
 }
 
+static int pick_next_bsc(struct osmo_fsm_inst *fi)
+{
+	struct abis_link_fsm_priv *priv = fi->priv;
+	struct gsm_bts *bts = priv->bts;
+	struct bsc_oml_host *last;
+
+	if (llist_empty(&bts->bsc_oml_hosts)) {
+		LOGPFSML(fi, LOGL_ERROR, "List of BSCs to connect to is empty!\n");
+		return -1;
+	}
+
+	last = (struct bsc_oml_host *)llist_last_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
+
+	if (!priv->current_bsc) /* Pick first one: */
+		priv->current_bsc = (struct bsc_oml_host *)llist_first_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
+	else if (priv->current_bsc != last)
+		priv->current_bsc = (struct bsc_oml_host *)llist_entry(priv->current_bsc->list.next, struct bsc_oml_host, list);
+	else
+		return -1; /* We are so far not starting over the list when we reach the list, but only exit */
+
+	return 0;
+}
+
 static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct e1inp_line *line;
 	struct abis_link_fsm_priv *priv = fi->priv;
 	struct gsm_bts *bts = priv->bts;
-	struct bsc_oml_host *bsc_oml_host;
 
-	if (priv->bsc_oml_host) {
-		/* Get a BSC host from the list and move the list head one position forward. */
-		bsc_oml_host = (struct bsc_oml_host *)priv->bsc_oml_host;
-		if (priv->bsc_oml_host == llist_last(&bts->bsc_oml_hosts))
-			priv->bsc_oml_host = NULL;
-		else
-			priv->bsc_oml_host = priv->bsc_oml_host->next;
-	} else {
-		LOGP(DABIS, LOGL_FATAL, "No BSC available, A-bis connection establishment failed\n");
+	if (pick_next_bsc(fi) < 0) {
+		LOGPFSML(fi, LOGL_FATAL, "No BSC available, A-bis connection establishment failed\n");
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
 		return;
 	}
 
-	LOGP(DABIS, LOGL_NOTICE, "A-bis connection establishment to BSC (%s) in progress...\n", bsc_oml_host->addr);
+	LOGP(DABIS, LOGL_NOTICE, "A-bis connection establishment to BSC (%s) in progress...\n", priv->current_bsc->addr);
 
 	/* patch in various data from VTY and other sources */
-	line_ops.cfg.ipa.addr = bsc_oml_host->addr;
+	line_ops.cfg.ipa.addr = priv->current_bsc->addr;
 	osmo_get_macaddr(bts_dev_info.mac_addr, "eth0");
 	bts_dev_info.site_id = bts->ip_access.site_id;
 	bts_dev_info.bts_id = bts->ip_access.bts_id;
@@ -239,13 +254,11 @@ static void abis_link_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 
 	OSMO_ASSERT(event == ABIS_LINK_EV_VTY_RM_ADDR);
 
-	if (priv->bsc_oml_host == data) {
+	if (priv->current_bsc == data) {
 		if (llist_count(&bts->bsc_oml_hosts) <= 1)
-			priv->bsc_oml_host = NULL;
-		else if (priv->bsc_oml_host == llist_last(&bts->bsc_oml_hosts))
-			priv->bsc_oml_host = priv->bsc_oml_host->prev;
+			priv->current_bsc = NULL;
 		else
-			priv->bsc_oml_host = priv->bsc_oml_host->next;
+			pick_next_bsc(fi);
 	}
 }
 
@@ -477,7 +490,6 @@ int abis_open(struct gsm_bts *bts, char *model_name)
 
 	abis_link_fsm_priv = talloc_zero(bts->abis_link_fi, struct abis_link_fsm_priv);
 	OSMO_ASSERT(abis_link_fsm_priv);
-	abis_link_fsm_priv->bsc_oml_host = bts->bsc_oml_hosts.next;
 	abis_link_fsm_priv->bts = bts;
 	abis_link_fsm_priv->model_name = model_name;
 	bts->abis_link_fi->priv = abis_link_fsm_priv;
