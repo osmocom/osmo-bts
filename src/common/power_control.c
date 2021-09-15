@@ -111,11 +111,9 @@ static int do_avg_algo(const struct gsm_power_ctrl_meas_params *mp,
 	}
 	return val_avg;
 }
-/* Calculate a 'delta' value (for the given MS/BS power control state and parameters)
+/* Calculate a 'delta' value (for the given MS/BS power control parameters)
  * to be applied to the current Tx power level to approach the target level. */
-static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params,
-		      struct lchan_power_ctrl_state *state,
-		      const uint8_t rxlev)
+static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params, const uint8_t rxlev)
 {
 	int delta;
 
@@ -236,7 +234,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		new_dbm = ms_dbm - params->red_step_size_db;
 	} else {
 		/* Calculate the new Tx power value (in dBm) */
-		new_dbm = ms_dbm + calc_delta_rxlev(params, state, rxlev_avg);
+		new_dbm = ms_dbm + calc_delta_rxlev(params, rxlev_avg);
 	}
 
 	/* Make sure new_dbm is never negative. ms_pwr_ctl_lvl() can later on
@@ -364,7 +362,7 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		 *   RxLev + Delta = TxPwr - PathLoss -  TxAtt + Delta
 		 *   RxLev + Delta = TxPwr - PathLoss - (TxAtt - Delta)
 		 */
-		new_att = state->current - calc_delta_rxlev(params, state, rxlev_avg);
+		new_att = state->current - calc_delta_rxlev(params, rxlev_avg);
 	}
 
 	/* Make sure new TxAtt is never negative: */
