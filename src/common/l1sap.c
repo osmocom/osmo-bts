@@ -1614,10 +1614,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
 			if (lchan->tch.dtx.dl_active) {
 				ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
-				ul_ci_cb = lchan->meas.ul_ci_cb_full;
+				ul_ci_cb = lchan->meas.ul_ci_cb_sub;
 			} else {
 				ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
-				ul_ci_cb = lchan->meas.ul_ci_cb_sub;
+				ul_ci_cb = lchan->meas.ul_ci_cb_full;
 			}
 			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, ul_rssi, ul_ci_cb);
 		}
@@ -1659,10 +1659,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
 		if (lchan->tch.dtx.dl_active) {
 			ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
-			ul_ci_cb = lchan->meas.ul_ci_cb_full;
+			ul_ci_cb = lchan->meas.ul_ci_cb_sub;
 		} else {
 			ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
-			ul_ci_cb = lchan->meas.ul_ci_cb_sub;
+			ul_ci_cb = lchan->meas.ul_ci_cb_full;
 		}
 		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, ul_rssi, ul_ci_cb);
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
