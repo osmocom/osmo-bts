@@ -178,7 +178,8 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 			X(NM_EV_RSL_UP) |
 			X(NM_EV_RSL_DOWN) |
 			X(NM_EV_PHYLINK_UP) |
-			X(NM_EV_PHYLINK_DOWN),
+			X(NM_EV_PHYLINK_DOWN) |
+			X(NM_EV_DISABLE),
 		.out_state_mask =
 			X(NM_RCARRIER_ST_OP_DISABLED_OFFLINE),
 		.name = "DISABLED_NOTINSTALLED",
@@ -192,7 +193,8 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 			X(NM_EV_RSL_UP) |
 			X(NM_EV_RSL_DOWN) |
 			X(NM_EV_PHYLINK_UP) |
-			X(NM_EV_PHYLINK_DOWN),
+			X(NM_EV_PHYLINK_DOWN) |
+			X(NM_EV_DISABLE),
 		.out_state_mask =
 			X(NM_RCARRIER_ST_OP_ENABLED),
 		.name = "DISABLED_OFFLINE",
@@ -202,7 +204,8 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 	[NM_RCARRIER_ST_OP_ENABLED] = {
 		.in_event_mask =
 			X(NM_EV_RSL_DOWN) |
-			X(NM_EV_PHYLINK_DOWN),
+			X(NM_EV_PHYLINK_DOWN) |
+			X(NM_EV_DISABLE),
 		.out_state_mask =
 			X(NM_RCARRIER_ST_OP_DISABLED_OFFLINE),
 		.name = "ENABLED",
