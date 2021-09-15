@@ -47,7 +47,7 @@ int oml_mo_statechg_ack(const struct gsm_abis_mo *mo);
 int oml_mo_statechg_nack(const struct gsm_abis_mo *mo, uint8_t nack_cause);
 
 /* Change the state and send STATE CHG REP */
-int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state);
+int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state, int adm_state);
 
 /* First initialization of MO, does _not_ generate state changes */
 void oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state);

@@ -340,12 +340,13 @@ void oml_mo_state_init(struct gsm_abis_mo *mo, int op_state, int avail_state)
 	mo->nm_state.operational = op_state;
 }
 
-int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
+int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state, int adm_state)
 {
 	int rc = 0;
 
 	if ((op_state != -1 && mo->nm_state.operational != op_state) ||
-	    (avail_state != -1 && mo->nm_state.availability != avail_state)) {
+	    (avail_state != -1 && mo->nm_state.availability != avail_state) ||
+	    (adm_state != -1 && mo->nm_state.administrative != adm_state)) {
 		if (avail_state != -1) {
 			LOGP(DOML, LOGL_INFO, "%s AVAIL STATE %s -> %s\n",
 				gsm_abis_mo_name(mo),
@@ -361,6 +362,14 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state)
 			mo->nm_state.operational = op_state;
 			osmo_signal_dispatch(SS_GLOBAL, S_NEW_OP_STATE, NULL);
 		}
+		if (adm_state != -1) {
+			LOGP(DOML, LOGL_INFO, "%s ADMIN STATE %s -> %s\n",
+				gsm_abis_mo_name(mo),
+				abis_nm_admin_name(mo->nm_state.administrative),
+				abis_nm_admin_name(adm_state));
+			mo->nm_state.administrative = adm_state;
+		}
+
 
 		/* send state change report */
 		rc = oml_tx_state_changed(mo);

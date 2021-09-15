@@ -49,7 +49,7 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 {
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
 	trx->mo.opstart_success = false;
-	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
 
 static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -82,7 +82,7 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 	unsigned int i;
 
 	trx->mo.opstart_success = false;
-	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE, -1);
 
 	if (prev_state == NM_RCARRIER_ST_OP_ENABLED) {
 		for (i = 0; i < TRX_NR_TS; i++) {
@@ -147,7 +147,7 @@ static void st_op_enabled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
 	unsigned int tn;
 
-	oml_mo_state_chg(&trx->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+	oml_mo_state_chg(&trx->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK, -1);
 	/* Mark Dependency TS as Offline (ready to be Opstarted) */
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[tn];

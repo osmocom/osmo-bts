@@ -49,7 +49,7 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 {
 	struct gsm_bts_sm *site_mgr = (struct gsm_bts_sm *)fi->priv;
 	site_mgr->mo.opstart_success = false;
-	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
 
 static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -70,7 +70,7 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 {
 	struct gsm_bts_sm *site_mgr = (struct gsm_bts_sm *)fi->priv;
 	site_mgr->mo.opstart_success = false;
-	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE);
+	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE, -1);
 }
 
 static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -95,7 +95,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 static void st_op_enabled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_sm *site_mgr = (struct gsm_bts_sm *)fi->priv;
-	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK);
+	oml_mo_state_chg(&site_mgr->mo, NM_OPSTATE_ENABLED, NM_AVSTATE_OK, -1);
 }
 
 static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)

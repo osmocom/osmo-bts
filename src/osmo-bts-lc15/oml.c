@@ -1906,13 +1906,13 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
 	case NM_OC_GPRS_NSVC:
-		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, -1);
+		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, -1, -1);
 		rc = oml_mo_opstart_ack(mo);
 		if (mo->obj_class == NM_OC_BTS) {
-			oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_OK);
-			oml_mo_state_chg(&bts->gprs.nse.mo, -1, NM_AVSTATE_OK);
-			oml_mo_state_chg(&bts->gprs.cell.mo, -1, NM_AVSTATE_OK);
-			oml_mo_state_chg(&bts->gprs.nsvc[0].mo, -1, NM_AVSTATE_OK);
+			oml_mo_state_chg(&bts->mo, -1, NM_AVSTATE_OK, -1);
+			oml_mo_state_chg(&bts->gprs.nse.mo, -1, NM_AVSTATE_OK, -1);
+			oml_mo_state_chg(&bts->gprs.cell.mo, -1, NM_AVSTATE_OK, -1);
+			oml_mo_state_chg(&bts->gprs.nsvc[0].mo, -1, NM_AVSTATE_OK, -1);
 		}
 		break;
 	default:
