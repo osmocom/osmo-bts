@@ -544,6 +544,7 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 			llist_for_each_entry(pinst, &plink->instances, list) {
 				bts_model_trx_close_cb(pinst->trx, rc);
 			}
+			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWEROFF);
 		}
 		break;
 	default:
