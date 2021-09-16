@@ -168,6 +168,20 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	}
 }
 
+static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+
+	switch (event) {
+	case NM_EV_SHUTDOWN_START:
+		/* Announce we start shutting down */
+		oml_mo_state_chg(&ts->mo, -1, -1, NM_STATE_SHUTDOWN);
+		break;
+	default:
+		OSMO_ASSERT(false);
+	}
+}
+
 static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
@@ -226,6 +240,8 @@ struct osmo_fsm nm_chan_fsm = {
 	.states = nm_chan_fsm_states,
 	.num_states = ARRAY_SIZE(nm_chan_fsm_states),
 	.event_names = nm_fsm_event_names,
+	.allstate_action = nm_chan_allstate,
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
 	.log_subsys = DOML,
 };
 

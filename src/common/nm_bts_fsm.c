@@ -102,6 +102,27 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 }
 
+static void nm_bts_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct gsm_bts_trx *trx;
+
+	switch (event) {
+	case NM_EV_SHUTDOWN_START:
+		/* Announce we start shutting down */
+		oml_mo_state_chg(&bts->mo, -1, -1, NM_STATE_SHUTDOWN);
+
+		/* Propagate event to children: */
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SHUTDOWN_START, NULL);
+			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SHUTDOWN_START, NULL);
+		}
+		break;
+	default:
+		OSMO_ASSERT(false);
+	}
+}
+
 static struct osmo_fsm_state nm_bts_fsm_states[] = {
 	[NM_BTS_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
@@ -136,6 +157,8 @@ struct osmo_fsm nm_bts_fsm = {
 	.states = nm_bts_fsm_states,
 	.num_states = ARRAY_SIZE(nm_bts_fsm_states),
 	.event_names = nm_fsm_event_names,
+	.allstate_action = nm_bts_allstate,
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
 	.log_subsys = DOML,
 };
 

@@ -171,6 +171,20 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	nm_rcarrier_fsm_state_chg(fi, NM_RCARRIER_ST_OP_DISABLED_OFFLINE);
 }
 
+static void nm_rcarrier_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
+
+	switch (event) {
+	case NM_EV_SHUTDOWN_START:
+		/* Announce we start shutting down */
+		oml_mo_state_chg(&trx->mo, -1, -1, NM_STATE_SHUTDOWN);
+		break;
+	default:
+		OSMO_ASSERT(false);
+	}
+}
+
 static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 	[NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
@@ -219,6 +233,8 @@ struct osmo_fsm nm_rcarrier_fsm = {
 	.states = nm_rcarrier_fsm_states,
 	.num_states = ARRAY_SIZE(nm_rcarrier_fsm_states),
 	.event_names = nm_fsm_event_names,
+	.allstate_action = nm_rcarrier_allstate,
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
 	.log_subsys = DOML,
 };
 

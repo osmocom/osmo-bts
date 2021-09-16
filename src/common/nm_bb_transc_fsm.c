@@ -181,6 +181,28 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_OFFLINE);
 }
 
+static void nm_bb_transc_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
+{
+	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	uint8_t tn;
+
+	switch (event) {
+	case NM_EV_SHUTDOWN_START:
+		/* Announce we start shutting down */
+		oml_mo_state_chg(&bb_transc->mo, -1, -1, NM_STATE_SHUTDOWN);
+
+		/* Propagate event to children: */
+		for (tn = 0; tn < TRX_NR_TS; tn++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+			osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_SHUTDOWN_START, NULL);
+		}
+		break;
+	default:
+		OSMO_ASSERT(false);
+	}
+}
+
 static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 	[NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
@@ -229,6 +251,8 @@ struct osmo_fsm nm_bb_transc_fsm = {
 	.states = nm_bb_transc_fsm_states,
 	.num_states = ARRAY_SIZE(nm_bb_transc_fsm_states),
 	.event_names = nm_fsm_event_names,
+	.allstate_action = nm_bb_transc_allstate,
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
 	.log_subsys = DOML,
 };
 
