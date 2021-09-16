@@ -302,7 +302,6 @@ struct gsm_bts {
 
 	struct paging_state *paging_state;
 	struct llist_head bsc_oml_hosts;
-	struct llist_head oml_queue;
 	unsigned int rtp_jitter_buf_ms;
 	bool rtp_jitter_adaptive;
 

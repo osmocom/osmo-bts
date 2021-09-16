@@ -104,19 +104,6 @@ static void reset_oml_link(struct gsm_bts *bts)
 	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
 }
 
-static void drain_oml_queue(struct gsm_bts *bts)
-{
-	struct msgb *msg, *msg2;
-
-	llist_for_each_entry_safe(msg, msg2, &bts->oml_queue, list) {
-		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
-		 * the signalling link at msg->dst */
-		llist_del(&msg->list);
-		msg->dst = bts->oml_link;
-		abis_sendmsg(msg);
-	}
-}
-
 static int pick_next_bsc(struct osmo_fsm_inst *fi)
 {
 	struct abis_link_fsm_priv *priv = fi->priv;
@@ -208,7 +195,6 @@ static void abis_link_connecting(struct osmo_fsm_inst *fi, uint32_t event, void 
 
 static void abis_link_connected_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
-	drain_oml_queue(g_bts);
 	bts_link_estab(g_bts);
 }
 
@@ -324,14 +310,14 @@ int abis_oml_sendmsg(struct msgb *msg)
 	struct gsm_bts *bts = msg->trx->bts;
 
 	if (!bts->oml_link) {
-		llist_add_tail(&msg->list, &bts->oml_queue);
+		LOGP(DABIS, LOGL_INFO, "Drop Tx OML msg, OML link is down\n");
 		return 0;
-	} else {
-		/* osmo-bts uses msg->trx internally, but libosmo-abis uses
-		 * the signalling link at msg->dst */
-		msg->dst = bts->oml_link;
-		return abis_sendmsg(msg);
 	}
+
+	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
+	 * the signalling link at msg->dst */
+	msg->dst = bts->oml_link;
+	return abis_sendmsg(msg);
 }
 
 int abis_bts_rsl_sendmsg(struct msgb *msg)
