@@ -180,6 +180,9 @@ static void nm_rcarrier_allstate(struct osmo_fsm_inst *fi, uint32_t event, void 
 		/* Announce we start shutting down */
 		oml_mo_state_chg(&trx->mo, -1, -1, NM_STATE_SHUTDOWN);
 		break;
+	case NM_EV_SHUTDOWN_FINISH:
+		nm_rcarrier_fsm_state_chg(fi, NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED);
+		break;
 	default:
 		OSMO_ASSERT(false);
 	}
@@ -195,6 +198,7 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_RCARRIER_ST_OP_DISABLED_OFFLINE),
 		.name = "DISABLED_NOTINSTALLED",
 		.onenter = st_op_disabled_notinstalled_on_enter,
@@ -210,6 +214,7 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_RCARRIER_ST_OP_ENABLED),
 		.name = "DISABLED_OFFLINE",
 		.onenter = st_op_disabled_offline_on_enter,
@@ -221,6 +226,7 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_RCARRIER_ST_OP_DISABLED_OFFLINE),
 		.name = "ENABLED",
 		.onenter = st_op_enabled_on_enter,
@@ -234,7 +240,8 @@ struct osmo_fsm nm_rcarrier_fsm = {
 	.num_states = ARRAY_SIZE(nm_rcarrier_fsm_states),
 	.event_names = nm_fsm_event_names,
 	.allstate_action = nm_rcarrier_allstate,
-	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START) |
+			       X(NM_EV_SHUTDOWN_FINISH),
 	.log_subsys = DOML,
 };
 

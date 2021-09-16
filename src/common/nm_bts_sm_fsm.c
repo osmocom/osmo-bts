@@ -41,6 +41,13 @@
 #define nm_bts_sm_fsm_state_chg(fi, NEXT_STATE) \
 	osmo_fsm_inst_state_chg(fi, NEXT_STATE, 0, 0)
 
+
+static void ev_dispatch_children(struct gsm_bts_sm *site_mgr, uint32_t event)
+{
+	struct gsm_bts *bts = gsm_bts_sm_get_bts(site_mgr);
+	osmo_fsm_inst_dispatch(bts->mo.fi, event, NULL);
+}
+
 //////////////////////////
 // FSM STATE ACTIONS
 //////////////////////////
@@ -105,7 +112,6 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 static void nm_bts_sm_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_sm *site_mgr = (struct gsm_bts_sm *)fi->priv;
-	struct gsm_bts *bts = gsm_bts_sm_get_bts(site_mgr);
 
 	switch (event) {
 	case NM_EV_SHUTDOWN_START:
@@ -113,7 +119,12 @@ static void nm_bts_sm_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 		oml_mo_state_chg(&site_mgr->mo, -1, -1, NM_STATE_SHUTDOWN);
 
 		/* Propagate event to children: */
-		osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_SHUTDOWN_START, NULL);
+		ev_dispatch_children(site_mgr, event);
+		break;
+	case NM_EV_SHUTDOWN_FINISH:
+		/* Propagate event to children: */
+		ev_dispatch_children(site_mgr, event);
+		nm_bts_sm_fsm_state_chg(fi, NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -125,6 +136,7 @@ static struct osmo_fsm_state nm_bts_sm_fsm_states[] = {
 		.in_event_mask =
 			X(NM_EV_SW_ACT),
 		.out_state_mask =
+			X(NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BTS_SM_ST_OP_DISABLED_OFFLINE),
 		.name = "DISABLED_NOTINSTALLED",
 		.onenter = st_op_disabled_notinstalled_on_enter,
@@ -135,6 +147,7 @@ static struct osmo_fsm_state nm_bts_sm_fsm_states[] = {
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK),
 		.out_state_mask =
+			X(NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BTS_SM_ST_OP_ENABLED),
 		.name = "DISABLED_OFFLINE",
 		.onenter = st_op_disabled_offline_on_enter,
@@ -142,7 +155,8 @@ static struct osmo_fsm_state nm_bts_sm_fsm_states[] = {
 	},
 	[NM_BTS_SM_ST_OP_ENABLED] = {
 		.in_event_mask = 0,
-		.out_state_mask = 0,
+		.out_state_mask =
+			X(NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED),
 		.name = "ENABLED",
 		.onenter = st_op_enabled_on_enter,
 		.action = st_op_enabled,
@@ -155,7 +169,8 @@ struct osmo_fsm nm_bts_sm_fsm = {
 	.num_states = ARRAY_SIZE(nm_bts_sm_fsm_states),
 	.event_names = nm_fsm_event_names,
 	.allstate_action = nm_bts_sm_allstate,
-	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START) |
+			       X(NM_EV_SHUTDOWN_FINISH),
 	.log_subsys = DOML,
 };
 

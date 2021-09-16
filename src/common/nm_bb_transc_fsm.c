@@ -41,6 +41,17 @@
 #define nm_bb_transc_fsm_state_chg(fi, NEXT_STATE) \
 	osmo_fsm_inst_state_chg(fi, NEXT_STATE, 0, 0)
 
+static void ev_dispatch_children(struct gsm_bts_bb_trx *bb_transc, uint32_t event)
+{
+	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	uint8_t tn;
+
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+		osmo_fsm_inst_dispatch(ts->mo.fi, event, NULL);
+	}
+}
+
 //////////////////////////
 // FSM STATE ACTIONS
 //////////////////////////
@@ -184,8 +195,6 @@ static void st_op_enabled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 static void nm_bb_transc_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
-	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
-	uint8_t tn;
 
 	switch (event) {
 	case NM_EV_SHUTDOWN_START:
@@ -193,10 +202,12 @@ static void nm_bb_transc_allstate(struct osmo_fsm_inst *fi, uint32_t event, void
 		oml_mo_state_chg(&bb_transc->mo, -1, -1, NM_STATE_SHUTDOWN);
 
 		/* Propagate event to children: */
-		for (tn = 0; tn < TRX_NR_TS; tn++) {
-			struct gsm_bts_trx_ts *ts = &trx->ts[tn];
-			osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_SHUTDOWN_START, NULL);
-		}
+		ev_dispatch_children(bb_transc, event);
+		break;
+	case NM_EV_SHUTDOWN_FINISH:
+		/* Propagate event to children: */
+		ev_dispatch_children(bb_transc, event);
+		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -213,6 +224,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BBTRANSC_ST_OP_DISABLED_OFFLINE),
 		.name = "DISABLED_NOTINSTALLED",
 		.onenter = st_op_disabled_notinstalled_on_enter,
@@ -228,6 +240,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BBTRANSC_ST_OP_ENABLED),
 		.name = "DISABLED_OFFLINE",
 		.onenter = st_op_disabled_offline_on_enter,
@@ -239,6 +252,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 			X(NM_EV_PHYLINK_DOWN) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BBTRANSC_ST_OP_DISABLED_OFFLINE),
 		.name = "ENABLED",
 		.onenter = st_op_enabled_on_enter,
@@ -252,7 +266,8 @@ struct osmo_fsm nm_bb_transc_fsm = {
 	.num_states = ARRAY_SIZE(nm_bb_transc_fsm_states),
 	.event_names = nm_fsm_event_names,
 	.allstate_action = nm_bb_transc_allstate,
-	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START) |
+			       X(NM_EV_SHUTDOWN_FINISH),
 	.log_subsys = DOML,
 };
 

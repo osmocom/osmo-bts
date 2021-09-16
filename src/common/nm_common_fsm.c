@@ -28,6 +28,7 @@ const struct value_string nm_fsm_event_names[] = {
 	{ NM_EV_OPSTART_ACK, "OPSTART_ACK" },
 	{ NM_EV_OPSTART_NACK, "OPSTART_NACK" },
 	{ NM_EV_SHUTDOWN_START, "SHUTDOWN_START" },
+	{ NM_EV_SHUTDOWN_FINISH, "SHUTDOWN_FINISH" },
 	{ NM_EV_RSL_UP, "RSL_UP" },
 	{ NM_EV_RSL_DOWN, "RSL_DOWN" },
 	{ NM_EV_PHYLINK_UP, "PHYLINK_UP" },

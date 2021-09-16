@@ -152,6 +152,10 @@ static void st_wait_trx_closed(struct osmo_fsm_inst *fi, uint32_t event, void *d
 
 static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
+	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+
+	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SHUTDOWN_FINISH, NULL);
+
 	LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfuly, exiting process\n");
 	exit(0);
 }

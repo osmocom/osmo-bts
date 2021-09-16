@@ -32,6 +32,7 @@ enum nm_fsm_events {
 	NM_EV_OPSTART_ACK,
 	NM_EV_OPSTART_NACK,
 	NM_EV_SHUTDOWN_START,
+	NM_EV_SHUTDOWN_FINISH,
 	NM_EV_RSL_UP, /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_RSL_DOWN,  /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_PHYLINK_UP, /* RadioCarrier and BaseBand Transceiver only */

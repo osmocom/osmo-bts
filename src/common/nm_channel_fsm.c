@@ -177,6 +177,9 @@ static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		/* Announce we start shutting down */
 		oml_mo_state_chg(&ts->mo, -1, -1, NM_STATE_SHUTDOWN);
 		break;
+	case NM_EV_SHUTDOWN_FINISH:
+		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_NOTINSTALLED);
+		break;
 	default:
 		OSMO_ASSERT(false);
 	}
@@ -187,6 +190,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 		.in_event_mask =
 			X(NM_EV_BBTRANSC_INSTALLED),
 		.out_state_mask =
+			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
 			X(NM_CHAN_ST_OP_DISABLED_DEPENDENCY),
 		.name = "DISABLED_NOTINSTALLED",
@@ -202,6 +206,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 			X(NM_EV_BBTRANSC_DISABLED) |
 			X(NM_EV_RCARRIER_DISABLED),
 		.out_state_mask =
+			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
 			X(NM_CHAN_ST_OP_ENABLED), /* backward compatibility, buggy BSC */
 		.name = "DISABLED_DEPENDENCY",
@@ -215,6 +220,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 			X(NM_EV_BBTRANSC_DISABLED) |
 			X(NM_EV_RCARRIER_DISABLED),
 		.out_state_mask =
+			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_ENABLED) |
 			X(NM_CHAN_ST_OP_DISABLED_DEPENDENCY),
 		.name = "DISABLED_OFFLINE",
@@ -227,6 +233,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 			X(NM_EV_RCARRIER_DISABLED) |
 			X(NM_EV_DISABLE),
 		.out_state_mask =
+			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
 			X(NM_CHAN_ST_OP_DISABLED_DEPENDENCY),
 		.name = "ENABLED",
@@ -241,7 +248,8 @@ struct osmo_fsm nm_chan_fsm = {
 	.num_states = ARRAY_SIZE(nm_chan_fsm_states),
 	.event_names = nm_fsm_event_names,
 	.allstate_action = nm_chan_allstate,
-	.allstate_event_mask = X(NM_EV_SHUTDOWN_START),
+	.allstate_event_mask = X(NM_EV_SHUTDOWN_START) |
+			       X(NM_EV_SHUTDOWN_FINISH),
 	.log_subsys = DOML,
 };
 
