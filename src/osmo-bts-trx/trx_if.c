@@ -332,8 +332,10 @@ int trx_if_cmd_setslot(struct trx_l1h *l1h, uint8_t tn,
 		       trx_if_cmd_setslot_cb *cb)
 {
 	const struct trx_config *cfg = &l1h->config;
+	const struct phy_instance *pinst = l1h->phy_inst;
 
-	if (cfg->setslot[tn].tsc_valid) { /* PHY is instructed to use a custom TSC */
+	if (cfg->setslot[tn].tsc_valid && cfg->setslot[tn].tsc_val != BTS_TSC(pinst->trx->bts)) {
+		/* PHY is instructed to use a custom TSC */
 		return trx_ctrl_cmd_cb(l1h, 1, cb, "SETSLOT", "%u %u C%u/S%u",
 				       tn, cfg->setslot[tn].slottype,
 				       cfg->setslot[tn].tsc_val,

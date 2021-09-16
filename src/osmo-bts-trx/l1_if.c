@@ -292,7 +292,7 @@ static uint8_t trx_set_ts_as_pchan(struct gsm_bts_trx_ts *ts,
 
 
 	struct trx_prov_ev_cfg_ts_data data = { .tn = tn, .slottype = slottype };
-	if (ts->tsc_set != 0 || ts->tsc != BTS_TSC(ts->trx->bts)) {
+	if (ts->tsc_set != 0) {
 		/* On TRXC we use 3GPP compliant numbering, so +1 */
 		data.tsc_set = ts->tsc_set + 1;
 		data.tsc_val = ts->tsc;
