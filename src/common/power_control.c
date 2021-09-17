@@ -199,6 +199,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	uint8_t rxlev_avg;
 	int16_t ul_lqual_cb_avg;
 	const struct gsm_power_ctrl_meas_params *ci_meas;
+	bool ignore;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
@@ -254,7 +255,29 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	if (state->current == new_power_lvl) {
+	current_dbm = ms_pwr_dbm(band, state->current);
+
+	/* In this Power Control Loop, we infer a new good MS Power Level based
+	 * on the previous MS Power Level announced by the MS (not the previous
+	 * one we requested!) together with the related computed measurements.
+	 * Hence, and since we allow for several good MS Power Levels falling into our
+	 * thresholds, we could finally converge into an oscillation loop where
+	 * the MS bounces between 2 different correct MS Power levels all the
+	 * time, due to the fact that we "accept" and "request back" whatever
+	 * good MS Power Level we received from the MS, but at that time the MS
+	 * will be transmitting using the previous MS Power Level we
+	 * requested, which we will later "accept" and "request back" on next loop
+	 * iteration. As a result MS effectively bounces between those 2 MS
+	 * Power Levels.
+	 * In order to fix this permanent oscillation, if current MS_PWR used/announced
+	 * by MS is good ("ms_dbm == new_dbm", hence within thresholds and no change
+	 * required) but has higher Tx power than the one we last requested, we ignore
+	 * it and keep requesting for one with lower Tx power. This way we converge to
+	 * the lowest good Tx power avoiding oscillating over values within thresholds.
+	 */
+	ignore = (ms_dbm == new_dbm && ms_dbm > current_dbm);
+
+	if (state->current == new_power_lvl || ignore) {
 		LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Keeping MS power at control level %d (%d dBm): "
 			  "ms-pwr-lvl[curr %" PRIu8 ", max %" PRIu8 "], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
 			  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
@@ -264,7 +287,6 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	current_dbm = ms_pwr_dbm(band, state->current);
 	LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "%s MS power control level %d (%d dBm) => %d (%d dBm): "
 		  "ms-pwr-lvl[curr %" PRIu8 ", max %" PRIu8 "], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
 		  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",

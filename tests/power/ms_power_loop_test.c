@@ -398,11 +398,11 @@ static void test_good_threshold_convergence(void)
 	lchan->ms_power_ctrl.current = 10;
 	lchan->ms_power_ctrl.max = 2;
 
-	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
-	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 1, 10);
-	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
-	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 1, 10);
-	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 0, 10);
+	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 0, 10);
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 0, 10);
+	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 0, 10);
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 0, 10);
 }
 
 int main(int argc, char **argv)
