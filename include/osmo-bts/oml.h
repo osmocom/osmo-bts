@@ -32,6 +32,7 @@ struct gsm_abis_mo {
 	struct gsm_bts *bts;
 	/* NM BTS Site Manager FSM */
 	struct osmo_fsm_inst *fi;
+	bool setattr_success;
 	bool opstart_success;
 };
 

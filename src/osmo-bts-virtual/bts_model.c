@@ -110,20 +110,38 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
-	int cause = 0;
+	struct gsm_abis_mo *mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+	struct nm_fsm_ev_setattr_data ev_data = {
+		.msg = msg,
+		.cause = 0,
+	};
+	int rc;
+
+	/* TODO: NM Object without FSM: */
+	switch (foh->obj_class) {
+	case NM_OC_GPRS_NSE:
+	case NM_OC_GPRS_CELL:
+	case NM_OC_GPRS_NSVC:
+		return oml_fom_ack_nack(ev_data.msg, ev_data.cause);
+	}
 
 	switch (foh->msg_type) {
 	case NM_MT_SET_BTS_ATTR:
-		cause = vbts_set_bts(obj);
+		ev_data.cause = vbts_set_bts(obj);
 		break;
 	case NM_MT_SET_RADIO_ATTR:
-		cause = vbts_set_trx(obj);
+		ev_data.cause = vbts_set_trx(obj);
 		break;
 	case NM_MT_SET_CHAN_ATTR:
-		cause = vbts_set_ts(obj);
+		ev_data.cause = vbts_set_ts(obj);
 		break;
 	}
-	return oml_fom_ack_nack(msg, cause);
+
+	rc = osmo_fsm_inst_dispatch(mo->fi,
+				    ev_data.cause == 0 ? NM_EV_SETATTR_ACK : NM_EV_SETATTR_NACK,
+				    &ev_data);
+	/* msgb ownsership is transferred to FSM if it received ev: */
+	return rc == 0 ? 1 : 0;
 }
 
 /* MO: TS 12.21 Managed Object */

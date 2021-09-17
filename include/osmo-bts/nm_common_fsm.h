@@ -25,10 +25,13 @@
 
 #include <osmocom/core/fsm.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/msgb.h>
 
 /* Common */
 enum nm_fsm_events {
 	NM_EV_SW_ACT,
+	NM_EV_SETATTR_ACK, /* data: struct nm_fsm_ev_setattr_data */
+	NM_EV_SETATTR_NACK, /* data: struct nm_fsm_ev_setattr_data */
 	NM_EV_OPSTART_ACK,
 	NM_EV_OPSTART_NACK,
 	NM_EV_SHUTDOWN_START,
@@ -45,6 +48,11 @@ enum nm_fsm_events {
 	NM_EV_RCARRIER_DISABLED, /* Radio Channel only */
 };
 extern const struct value_string nm_fsm_event_names[];
+
+struct nm_fsm_ev_setattr_data {
+	struct msgb *msg; /* msgb ownership is transferred to FSM */
+	int cause;
+};
 
 
 /* BTS SiteManager */

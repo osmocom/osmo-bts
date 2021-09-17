@@ -55,6 +55,7 @@ static bool ts_can_be_enabled(const struct gsm_bts_trx_ts *ts)
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+	ts->mo.setattr_success = false;
 	ts->mo.opstart_success = false;
 	oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
@@ -86,8 +87,15 @@ static void st_op_disabled_dependency_on_enter(struct osmo_fsm_inst *fi, uint32_
 static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+	struct nm_fsm_ev_setattr_data *setattr_data;
 
 	switch (event) {
+	case NM_EV_SETATTR_ACK:
+	case NM_EV_SETATTR_NACK:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		ts->mo.setattr_success = setattr_data->cause == 0;
+		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		break;
 	case NM_EV_OPSTART_ACK:
 		 LOGPFSML(fi, LOGL_NOTICE, "BSC trying to activate TS while still in avail=dependency. "
 			  "Allowing it to stay backward-compatible with older osmo-bts versions, but BSC is wrong.\n");
@@ -123,8 +131,15 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+	struct nm_fsm_ev_setattr_data *setattr_data;
 
 	switch (event) {
+	case NM_EV_SETATTR_ACK:
+	case NM_EV_SETATTR_NACK:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		ts->mo.setattr_success = setattr_data->cause == 0;
+		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		break;
 	case NM_EV_OPSTART_ACK:
 		ts->mo.opstart_success = true;
 		oml_mo_opstart_ack(&ts->mo);
@@ -199,6 +214,8 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	},
 	[NM_CHAN_ST_OP_DISABLED_DEPENDENCY] = {
 		.in_event_mask =
+			X(NM_EV_SETATTR_ACK) |
+			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |  /* backward compatibility, buggy BSC */
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_BBTRANSC_ENABLED) |
@@ -215,6 +232,8 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	},
 	[NM_CHAN_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_SETATTR_ACK) |
+			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_BBTRANSC_DISABLED) |

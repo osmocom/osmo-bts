@@ -48,6 +48,7 @@
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
+	trx->mo.setattr_success = false;
 	trx->mo.opstart_success = false;
 	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
@@ -81,6 +82,7 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
 	unsigned int i;
 
+	trx->mo.setattr_success = false;
 	trx->mo.opstart_success = false;
 	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE, -1);
 
@@ -95,10 +97,17 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
+	struct nm_fsm_ev_setattr_data *setattr_data;
 	bool phy_state_connected;
 	bool rsl_link_connected;
 
 	switch (event) {
+	case NM_EV_SETATTR_ACK:
+	case NM_EV_SETATTR_NACK:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		trx->mo.setattr_success = setattr_data->cause == 0;
+		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		break;
 	case NM_EV_OPSTART_ACK:
 		trx->mo.opstart_success = true;
 		oml_mo_opstart_ack(&trx->mo);
@@ -131,12 +140,13 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	}
 
 	if (rsl_link_connected && phy_state_connected &&
-	    trx->mo.opstart_success) {
+	    trx->mo.setattr_success && trx->mo.opstart_success) {
 		nm_rcarrier_fsm_state_chg(fi, NM_RCARRIER_ST_OP_ENABLED);
 	} else {
-		LOGPFSML(fi, LOGL_INFO, "Delay switch to operative state Enabled, wait for:%s%s%s\n",
+		LOGPFSML(fi, LOGL_INFO, "Delay switch to operative state Enabled, wait for:%s%s%s%s\n",
 			 rsl_link_connected ? "" : " rsl",
 			 phy_state_connected ? "" : " phy",
+			 trx->mo.setattr_success ? "" : " setattr",
 			 trx->mo.opstart_success ? "" : " opstart");
 
 	}
@@ -206,6 +216,8 @@ static struct osmo_fsm_state nm_rcarrier_fsm_states[] = {
 	},
 	[NM_RCARRIER_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_SETATTR_ACK) |
+			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_RSL_UP) |

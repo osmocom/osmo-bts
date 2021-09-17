@@ -1843,11 +1843,31 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 {
-	if (kind == NM_OC_RADIO_CARRIER) {
-		struct gsm_bts_trx *trx = obj;
-		struct oc2gl1_hdl *fl1h = trx_oc2gl1_hdl(trx);
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_abis_mo *mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
+	struct nm_fsm_ev_setattr_data ev_data = {
+		.msg = msg,
+		.cause = 0,
+	};
+	int rc;
+	struct gsm_bts_trx *trx;
+	struct oc2gl1_hdl *fl1h;
+	uint8_t cell_size;
+
+	/* TODO: NM Object without FSM: */
+	switch (foh->obj_class) {
+	case NM_OC_GPRS_NSE:
+	case NM_OC_GPRS_CELL:
+	case NM_OC_GPRS_NSVC:
+		return oml_fom_ack_nack(ev_data.msg, ev_data.cause);
+	}
+
+	switch (foh->msg_type) {
+	case NM_MT_SET_RADIO_ATTR:
+		trx = obj;
+		fl1h = trx_oc2gl1_hdl(trx);
 		/* convert max TA to max cell size in qbits */
-		uint8_t cell_size = bts->max_ta << 2;
+		cell_size = bts->max_ta << 2;
 
 		/* We do not need to check for L1 handle
 		 * because the max cell size parameter can receive before MphInit */
@@ -1876,11 +1896,14 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 				l1if_set_txpower_c0_idle_pwr_red(fl1h, fl1h->phy_inst->u.oc2g.tx_c0_idle_pwr_red);
 			}
 		}
-
+		break;
 	}
 
-	/* FIXME: we actually need to send a ACK or NACK for the OML message */
-	return oml_fom_ack_nack(msg, 0);
+	rc = osmo_fsm_inst_dispatch(mo->fi,
+				    ev_data.cause == 0 ? NM_EV_SETATTR_ACK : NM_EV_SETATTR_NACK,
+				    &ev_data);
+	/* msgb ownsership is transferred to FSM if it received ev: */
+	return rc == 0 ? 1 : 0;
 }
 
 /* callback from OML */

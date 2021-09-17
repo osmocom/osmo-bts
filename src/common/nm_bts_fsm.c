@@ -57,6 +57,7 @@ static void ev_dispatch_children(struct gsm_bts *bts, uint32_t event)
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	bts->mo.setattr_success = false;
 	bts->mo.opstart_success = false;
 	oml_mo_state_chg(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
@@ -78,6 +79,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	bts->mo.setattr_success = false;
 	bts->mo.opstart_success = false;
 	oml_mo_state_chg(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE, -1);
 }
@@ -85,8 +87,15 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct nm_fsm_ev_setattr_data *setattr_data;
 
 	switch (event) {
+	case NM_EV_SETATTR_ACK:
+	case NM_EV_SETATTR_NACK:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		bts->mo.setattr_success = setattr_data->cause == 0;
+		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		break;
 	case NM_EV_OPSTART_ACK:
 		bts->mo.opstart_success = true;
 		oml_mo_opstart_ack(&bts->mo);
@@ -146,6 +155,8 @@ static struct osmo_fsm_state nm_bts_fsm_states[] = {
 	},
 	[NM_BTS_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_SETATTR_ACK) |
+			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK),
 		.out_state_mask =

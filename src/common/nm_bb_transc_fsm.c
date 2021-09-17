@@ -59,6 +59,7 @@ static void ev_dispatch_children(struct gsm_bts_bb_trx *bb_transc, uint32_t even
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	bb_transc->mo.setattr_success = false;
 	bb_transc->mo.opstart_success = false;
 	oml_mo_state_chg(&bb_transc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
 }
@@ -99,6 +100,7 @@ static void st_op_disabled_offline_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
 	int i;
 
+	bb_transc->mo.setattr_success = false;
 	bb_transc->mo.opstart_success = false;
 	oml_mo_state_chg(&bb_transc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_OFF_LINE, -1);
 
@@ -114,10 +116,17 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
 	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	struct nm_fsm_ev_setattr_data *setattr_data;
 	bool phy_state_connected;
 	bool rsl_link_connected;
 
 	switch (event) {
+	case NM_EV_SETATTR_ACK:
+	case NM_EV_SETATTR_NACK:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		bb_transc->mo.setattr_success = setattr_data->cause == 0;
+		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		break;
 	case NM_EV_OPSTART_ACK:
 		bb_transc->mo.opstart_success = true;
 		oml_mo_opstart_ack(&bb_transc->mo);
@@ -150,6 +159,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		rsl_link_connected = true;
 	}
 
+	/* We so far don't expect any SetAttributes for this NM object */
 	if (rsl_link_connected && phy_state_connected &&
 	    bb_transc->mo.opstart_success) {
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_ENABLED);
@@ -232,6 +242,8 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 	},
 	[NM_BBTRANSC_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_SETATTR_ACK) |
+			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_RSL_UP) |
