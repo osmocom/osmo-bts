@@ -58,3 +58,8 @@
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 11 (8 dBm) => 12 (6 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 12 (6 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 12, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 13 (4 dBm) => 14 (2 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 10 (10 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 9 (12 dBm) => 10 (10 dBm): ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 10 (10 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 9 (12 dBm) => 10 (10 dBm): ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Raising MS power control level 10 (10 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB

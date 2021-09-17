@@ -70,13 +70,11 @@ static void init_test(const char *name)
 	printf("\nStarting test case '%s'\n", name);
 }
 
-static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int lqual_cb, int exp_ret, uint8_t exp_current)
+static void apply_power_test_ext(struct gsm_lchan *lchan, uint8_t ms_pwr, int rxlev, int lqual_cb, int exp_ret, uint8_t exp_current)
 {
-	uint8_t old;
 	int ret;
 
-	old = lchan->ms_power_ctrl.current;
-	ret = lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, rxlev, lqual_cb);
+	ret = lchan_ms_pwr_ctrl(lchan, ms_pwr, rxlev, lqual_cb);
 
 	/* Keep the measurement counter updated */
 	lchan->meas.res_nr++;
@@ -84,7 +82,12 @@ static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int lqua
 	printf("lchan_ms_pwr_ctrl(RxLvl=%d dBm) returns %d (expected %d)\n",
 	       rxlev, ret, exp_ret);
 	printf("\tMS current power %u -> %u (expected %u)\n",
-	       old, lchan->ms_power_ctrl.current, exp_current);
+	       ms_pwr, lchan->ms_power_ctrl.current, exp_current);
+}
+
+static inline void apply_power_test(struct gsm_lchan *lchan, int rxlev, int lqual_cb, int exp_ret, uint8_t exp_current)
+{
+	apply_power_test_ext(lchan, lchan->ms_power_ctrl.current, rxlev, lqual_cb, exp_ret, exp_current);
 }
 
 static void test_power_loop(void)
@@ -374,6 +377,34 @@ static void test_power_loop_ci(void)
 	apply_power_test(lchan, -60, too_high_lqual, 1, 14);
 }
 
+/* Test whether ping pong between requested MS Power Level and announced MS
+ * Power level occurs, oscillating between considered good levels all the time:
+ * FIXME: Current code shows there's an issue with oscillating values. */
+static void test_good_threshold_convergence(void)
+{
+	struct gsm_lchan *lchan;
+	const struct gsm_power_ctrl_params *params;
+	int16_t good_lqual, good_rxlev;
+
+	init_test(__func__);
+	lchan = &g_trx->ts[0].lchan[0];
+	params = lchan->ms_power_ctrl.dpc_params;
+	lchan->ms_dpc_params.rxlev_meas.upper_thresh = 37;
+	lchan->ms_dpc_params.rxlev_meas.lower_thresh = 30;
+	lchan->type = GSM_LCHAN_SDCCH;
+	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
+	good_rxlev = rxlev2dbm(params->rxlev_meas.lower_thresh + 2);
+
+	lchan->ms_power_ctrl.current = 10;
+	lchan->ms_power_ctrl.max = 2;
+
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
+	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 1, 10);
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
+	apply_power_test_ext(lchan, 10, good_rxlev, good_lqual, 1, 10);
+	apply_power_test_ext(lchan, 9, good_rxlev, good_lqual, 1, 9);
+}
+
 int main(int argc, char **argv)
 {
 	printf("Testing power loop...\n");
@@ -394,6 +425,7 @@ int main(int argc, char **argv)
 	test_power_hysteresis();
 	test_power_ctrl_interval();
 	test_power_loop_ci();
+	test_good_threshold_convergence();
 
 	printf("Power loop test OK\n");
 
