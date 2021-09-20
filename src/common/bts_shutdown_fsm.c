@@ -197,7 +197,7 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 const struct value_string bts_shutdown_fsm_event_names[] = {
 	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_START),
 	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_TRX_RAMP_COMPL),
-	OSMO_VALUE_STRING(BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED),
+	OSMO_VALUE_STRING(BTS_SHUTDOWN_EV_TRX_CLOSED),
 	{ 0, NULL }
 };
 
