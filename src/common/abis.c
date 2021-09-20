@@ -69,8 +69,8 @@ enum abis_link_fsm_state {
 };
 
 static const struct value_string abis_link_fsm_event_names[] = {
-	OSMO_VALUE_STRING(ABIS_LINK_EV_SIGN_LINK_DOWN),
-	OSMO_VALUE_STRING(ABIS_LINK_EV_VTY_RM_ADDR),
+	{ ABIS_LINK_EV_SIGN_LINK_DOWN,   "SIGN_LINK_DOWN" },
+	{ ABIS_LINK_EV_VTY_RM_ADDR,      "VTY_RM_ADDR" },
 	{}
 };
 
