@@ -65,10 +65,23 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	struct gsm_bts_trx *trx;
 
 	switch (event) {
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&bts->mo);
+
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			/* During startup, phy_links are already opened, but if we are
+			 * re-connecting, phy_link was closed when disconnected from
+			 * previous BSC, so let's re-open it.
+			 */
+			struct phy_instance *pinst = trx_phy_instance(trx);
+			struct phy_link *plink = pinst->phy_link;
+			if (phy_link_state_get(plink) == PHY_LINK_SHUTDOWN)
+				bts_model_phy_link_open(plink);
+		}
+
 		nm_bts_fsm_state_chg(fi, NM_BTS_ST_OP_DISABLED_OFFLINE);
 		return;
 	default:
