@@ -224,14 +224,6 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 		l1h = pinst->u.osmotrx.hdl;
 
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_BSIC, (void*)(intptr_t)bsic);
-		/* signal availability */
-		if (!pinst->u.osmotrx.sw_act_reported) {
-			/* HACK, we should change state when we receive first clock from
-			 * transceiver */
-			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
-			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
-			pinst->u.osmotrx.sw_act_reported = true;
-		}
 	}
 
 	return 0;
