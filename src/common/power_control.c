@@ -199,7 +199,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	uint8_t rxlev_avg;
 	int16_t ul_lqual_cb_avg;
 	const struct gsm_power_ctrl_meas_params *ci_meas;
-	bool ignore;
+	bool ignore, ci_on;
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
@@ -225,13 +225,19 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	/* If computed C/I is out of acceptable thresholds: */
 	ci_meas = lchan_get_ci_thresholds(lchan);
+
+	/* Is C/I based algo enabled by config?
+	* FIXME: this can later be generalized when properly implementing P & N counting. */
+	ci_on = ci_meas->lower_cmp_n && ci_meas->upper_cmp_n;
+
 	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
 	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
-	if (ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
+
+	/* If computed C/I is enabled and out of acceptable thresholds: */
+	if (ci_on && ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
 		new_dbm = ms_dbm + params->inc_step_size_db;
-	} else if (ul_lqual_cb_avg > ci_meas->upper_thresh * 10) {
+	} else if (ci_on && ul_lqual_cb_avg > ci_meas->upper_thresh * 10) {
 		new_dbm = ms_dbm - params->red_step_size_db;
 	} else {
 		/* Calculate the new Tx power value (in dBm) */
