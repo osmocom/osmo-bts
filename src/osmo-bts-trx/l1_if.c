@@ -87,26 +87,6 @@ struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst)
 	return l1h;
 }
 
-static void check_transceiver_availability_trx(struct trx_l1h *l1h, int avail)
-{
-	struct phy_instance *pinst = l1h->phy_inst;
-	struct gsm_bts_trx *trx = pinst->trx;
-
-	/* HACK, we should change state when we receive first clock from
-	 * transceiver */
-	if (avail) {
-		/* signal availability */
-		if (!pinst->u.osmotrx.sw_act_reported) {
-			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
-			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
-			pinst->u.osmotrx.sw_act_reported = true;
-		}
-	} else {
-		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
-		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
-	}
-}
-
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
 	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
@@ -211,7 +191,8 @@ void bts_model_trx_close(struct gsm_bts_trx *trx)
 	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CLOSE, NULL);
 
 	/* Set to Operational State: Disabled */
-	check_transceiver_availability_trx(l1h, 0);
+	osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
+	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
 }
 
 /* on RSL failure, deactivate transceiver */
@@ -234,7 +215,6 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint8_t bsic = bts->bsic;
 	struct gsm_bts_trx *trx;
-	struct phy_link *plink;
 
 	/* ARFCN for C0 is assigned during Set BTS Attr, see oml.c */
 	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ARFCN, (void *)(intptr_t)pinst->trx->arfcn);
@@ -242,10 +222,16 @@ static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		pinst = trx_phy_instance(trx);
 		l1h = pinst->u.osmotrx.hdl;
-		plink = pinst->phy_link;
 
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_BSIC, (void*)(intptr_t)bsic);
-		check_transceiver_availability_trx(l1h, phy_link_state_get(plink) != PHY_LINK_SHUTDOWN);
+		/* signal availability */
+		if (!pinst->u.osmotrx.sw_act_reported) {
+			/* HACK, we should change state when we receive first clock from
+			 * transceiver */
+			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
+			pinst->u.osmotrx.sw_act_reported = true;
+		}
 	}
 
 	return 0;
