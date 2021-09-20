@@ -1199,6 +1199,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 		talloc_free(tcm);
 	}
 	talloc_free(l1h->last_acked);
+	l1h->last_acked = NULL;
 }
 
 /*! close the TRX for given handle (data + control socket) */
