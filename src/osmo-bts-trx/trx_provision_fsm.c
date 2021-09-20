@@ -592,14 +592,13 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 	case TRX_PROV_EV_POWEROFF_CNF:
 		rc = (uint16_t)(intptr_t)data;
 		if (plink->state != PHY_LINK_SHUTDOWN) {
-			trx_sched_clock_stopped(pinst->trx->bts);
-			phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+			bts_model_phy_link_close(plink);
 
 			/* Notify TRX close on all TRX associated with this phy */
 			llist_for_each_entry(pinst, &plink->instances, list) {
 				bts_model_trx_close_cb(pinst->trx, rc);
 			}
-			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWEROFF);
+			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_CLOSED);
 		}
 		break;
 	default:
@@ -661,7 +660,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 		.in_event_mask =
 			X(TRX_PROV_EV_POWEROFF_CNF),
 		.out_state_mask =
-			X(TRX_PROV_ST_OPEN_POWEROFF),
+			X(TRX_PROV_ST_CLOSED),
 		.name = "OPEN_WAIT_POWEROFF_CNF",
 		.action = st_open_wait_poweroff_cnf,
 	},

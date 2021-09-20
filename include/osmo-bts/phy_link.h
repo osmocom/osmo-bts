@@ -174,6 +174,7 @@ static inline struct phy_instance *trx_phy_instance(const struct gsm_bts_trx *tr
 }
 
 int bts_model_phy_link_open(struct phy_link *plink);
+int bts_model_phy_link_close(struct phy_link *plink);
 
 #define LOGPPHL(plink, section, lvl, fmt, args...) LOGP(section, lvl, "%s: " fmt, phy_link_name(plink), ##args)
 #define LOGPPHI(pinst, section, lvl, fmt, args...) LOGP(section, lvl, "%s: " fmt, phy_instance_name(pinst), ##args)

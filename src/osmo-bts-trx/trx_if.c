@@ -1341,6 +1341,23 @@ cleanup:
 	return -1;
 }
 
+/*! close the PHY link using TRX protocol */
+int bts_model_phy_link_close(struct phy_link *plink)
+{
+	bool clock_stopped = false;
+	struct phy_instance *pinst;
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		if (!clock_stopped) {
+			clock_stopped = true;
+			trx_sched_clock_stopped(pinst->trx->bts);
+		}
+		trx_phy_inst_close(pinst);
+	}
+	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
+	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+	return 0;
+}
+
 /*! determine if the TRX for given handle is powered up */
 int trx_if_powered(struct trx_l1h *l1h)
 {
