@@ -446,7 +446,6 @@ int abis_open(struct gsm_bts *bts, char *model_name)
 		return -EINVAL;
 	}
 
-	OSMO_ASSERT(osmo_fsm_register(&abis_link_fsm) == 0);
 	bts->abis_link_fi = osmo_fsm_inst_alloc(&abis_link_fsm, bts, NULL, LOGL_DEBUG, "abis_link");
 	OSMO_ASSERT(bts->abis_link_fi);
 
@@ -460,4 +459,9 @@ int abis_open(struct gsm_bts *bts, char *model_name)
 	osmo_fsm_inst_state_chg_ms(bts->abis_link_fi, ABIS_LINK_ST_CONNECTING, 1, 0);
 
 	return 0;
+}
+
+static __attribute__((constructor)) void abis_link_fsm_init(void)
+{
+	OSMO_ASSERT(osmo_fsm_register(&abis_link_fsm) == 0);
 }
