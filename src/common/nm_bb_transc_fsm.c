@@ -144,9 +144,9 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_ENABLED);
 	} else {
 		LOGPFSML(fi, LOGL_INFO, "Delay switch to operative state Enabled, wait for:%s%s%s\n",
-			 rsl_link_connected ? "": " rsl",
-			 phy_state_connected ? "": " phy",
-			 bb_transc->mo.opstart_success ? "": " opstart");
+			 rsl_link_connected ? "" : " rsl",
+			 phy_state_connected ? "" : " phy",
+			 bb_transc->mo.opstart_success ? "" : " opstart");
 
 	}
 }
