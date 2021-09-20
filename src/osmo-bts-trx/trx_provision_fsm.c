@@ -92,6 +92,57 @@ void l1if_setformat_cb(struct trx_l1h *l1h, int rc)
 /*
  * transceiver provisioning
  */
+
+static void trx_provision_reset(struct trx_l1h *l1h)
+{
+	struct phy_instance *pinst = l1h->phy_inst;
+	uint8_t tn;
+
+	l1h->config.trxd_pdu_ver_req = pinst->phy_link->u.osmotrx.trxd_pdu_ver_max;
+	l1h->config.trxd_pdu_ver_use = 0;
+	l1h->config.setformat_sent = false;
+	l1h->config.setformat_acked = false;
+
+	l1h->config.enabled = false;
+	l1h->config.arfcn_valid = false;
+	l1h->config.arfcn = 0;
+	l1h->config.rxtune_sent = false;
+	l1h->config.rxtune_acked = false;
+	l1h->config.txtune_sent = false;
+	l1h->config.txtune_acked = false;
+
+	l1h->config.tsc_valid = false;
+	l1h->config.tsc = 0;
+	l1h->config.tsc_sent = false;
+	l1h->config.tsc_acked = false;
+
+	l1h->config.bsic_valid = false;
+	l1h->config.bsic = 0;
+	l1h->config.bsic_sent = false;
+	l1h->config.bsic_acked = false;
+
+	l1h->config.rxgain_valid = false;
+	l1h->config.rxgain = 0;
+	l1h->config.rxgain_sent = false;
+
+	l1h->config.nomtxpower_sent = false;
+	l1h->config.nomtxpower_acked = false;
+
+	l1h->config.maxdly_valid = false;
+	l1h->config.maxdly_sent = false;
+
+	l1h->config.maxdlynb_valid = false;
+	l1h->config.maxdlynb_sent = false;
+
+	for (tn = 0; tn < TRX_NR_TS; tn++) {
+		l1h->config.setslot_valid[tn] = false;
+		l1h->config.setslot_sent[tn] = false;
+		l1h->config.setslot[tn].slottype = 0;
+		l1h->config.setslot[tn].tsc_set = 0;
+		l1h->config.setslot[tn].tsc_val = 0;
+		l1h->config.setslot[tn].tsc_valid = 0;
+	}
+}
 int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -274,7 +325,7 @@ static void st_open_poweroff_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_st
 	struct trx_l1h *l1h = (struct trx_l1h *)fi->priv;
 	struct phy_instance *pinst = l1h->phy_inst;
 
-	l1h->config.trxd_pdu_ver_req = pinst->phy_link->u.osmotrx.trxd_pdu_ver_max;
+	trx_provision_reset(l1h);
 
 	/* Apply initial RFMUTE state */
 	if (pinst->trx != NULL)
