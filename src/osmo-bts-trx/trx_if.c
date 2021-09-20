@@ -1203,6 +1203,10 @@ void trx_if_flush(struct trx_l1h *l1h)
 	}
 	talloc_free(l1h->last_acked);
 	l1h->last_acked = NULL;
+
+	/* Tx queue is now empty, so there's no point in keeping the retrans timer armed: */
+	if (osmo_timer_pending(&l1h->trx_ctrl_timer))
+		osmo_timer_del(&l1h->trx_ctrl_timer);
 }
 
 /*! close the TRX for given handle (data + control socket) */
