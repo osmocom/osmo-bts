@@ -230,13 +230,20 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 /* set bts attributes */
 static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
 {
-	struct gsm_bts_trx *trx;
+	struct phy_instance *pinst = trx_phy_instance(bts->c0);
+	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 	uint8_t bsic = bts->bsic;
+	struct gsm_bts_trx *trx;
+	struct phy_link *plink;
+
+	/* ARFCN for C0 is assigned during Set BTS Attr, see oml.c */
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ARFCN, (void *)(intptr_t)pinst->trx->arfcn);
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		struct phy_instance *pinst = trx_phy_instance(trx);
-		struct phy_link *plink = pinst->phy_link;
-		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
+		pinst = trx_phy_instance(trx);
+		l1h = pinst->u.osmotrx.hdl;
+		plink = pinst->phy_link;
+
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_BSIC, (void*)(intptr_t)bsic);
 		check_transceiver_availability_trx(l1h, phy_link_state_get(plink) != PHY_LINK_SHUTDOWN);
 	}
@@ -252,7 +259,9 @@ static uint8_t trx_set_trx(struct gsm_bts_trx *trx)
 	struct phy_link *plink = pinst->phy_link;
 	uint16_t arfcn = trx->arfcn;
 
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ARFCN, (void*)(intptr_t)arfcn);
+	/* ARFCN for C0 is assigned during Set BTS Attr, see oml.c */
+	if (trx != trx->bts->c0)
+		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_CFG_ARFCN, (void *)(intptr_t)arfcn);
 
 	/* Begin to ramp up the power if power reduction is set by OML and TRX
 	   is already running. Otherwise skip, power ramping will be started
