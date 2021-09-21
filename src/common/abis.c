@@ -215,12 +215,8 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 			trx->rsl_link = NULL;
 		}
 	}
-
-	/* Note: if there was an OML or RSL connection present (the BTS was connected to a BSC). Then we will not try
-	 * to connect to an alternate BSC. Instead we will shut down the BTS process. This will ensure that all states
-	 * in the BTS (hardware and software) are reset properly. It is then up to the process management of the host
-	 * to restart osmo-bts. */
-	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
+	bts_model_abis_close(bts);
+	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
 }
 
 static void abis_link_failed_onenter(struct osmo_fsm_inst *fi, uint32_t prev_state)
@@ -284,7 +280,7 @@ static struct osmo_fsm_state abis_link_fsm_states[] = {
 		.in_event_mask =
 			S(ABIS_LINK_EV_SIGN_LINK_DOWN),
 		.out_state_mask =
-			S(ABIS_LINK_ST_FAILED),
+			S(ABIS_LINK_ST_WAIT_RECONNECT),
 		.onenter = abis_link_connected_onenter,
 		.action = abis_link_connected,
 	},
