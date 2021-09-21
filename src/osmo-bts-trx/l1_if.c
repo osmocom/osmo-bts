@@ -195,10 +195,11 @@ void bts_model_trx_close(struct gsm_bts_trx *trx)
 	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
 }
 
-/* on RSL failure, deactivate transceiver */
 void bts_model_abis_close(struct gsm_bts *bts)
 {
-	bts_shutdown(bts, "Abis close");
+	/* Go into shutdown state deactivating transceivers until Abis link
+	 * becomes up again */
+	bts_shutdown_ext(bts, "Abis close", false);
 }
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
