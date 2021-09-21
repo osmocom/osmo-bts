@@ -156,8 +156,11 @@ static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 
 	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SHUTDOWN_FINISH, NULL);
 
-	LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfuly, exiting process\n");
-	exit(0);
+	if (bts->shutdown_fi_exit_proc) {
+		LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfully, exiting process\n");
+		exit(0);
+	}
+	bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_NONE);
 }
 
 static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
@@ -190,6 +193,8 @@ static struct osmo_fsm_state bts_shutdown_fsm_states[] = {
 	},
 	[BTS_SHUTDOWN_ST_EXIT] = {
 		.name = "EXIT",
+		.out_state_mask =
+			X(BTS_SHUTDOWN_ST_NONE),
 		.onenter = st_exit_on_enter,
 	}
 };
@@ -232,16 +237,24 @@ static __attribute__((constructor)) void bts_shutdown_fsm_init(void)
 	OSMO_ASSERT(osmo_fsm_register(&bts_shutdown_fsm) == 0);
 }
 
-void bts_shutdown(struct gsm_bts *bts, const char *reason)
+void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
 {
 	struct osmo_fsm_inst *fi = bts->shutdown_fi;
 	if (fi->state != BTS_SHUTDOWN_ST_NONE) {
 		LOGPFSML(fi, LOGL_NOTICE, "BTS is already being shutdown.\n");
+		if (exit_proc)
+			bts->shutdown_fi_exit_proc = true;
 		return;
 	}
-
-	LOGPFSML(fi, LOGL_NOTICE, "Shutting down BTS, reason: %s\n", reason);
+	bts->shutdown_fi_exit_proc = exit_proc;
+	LOGPFSML(fi, LOGL_NOTICE, "Shutting down BTS, exit %u, reason: %s\n",
+		 exit_proc, reason);
 	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_START, NULL);
+}
+
+void bts_shutdown(struct gsm_bts *bts, const char *reason)
+{
+	bts_shutdown_ext(bts, reason, true);
 }
 
 void bts_model_trx_close_cb(struct gsm_bts_trx *trx, int rc)

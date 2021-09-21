@@ -368,6 +368,7 @@ struct gsm_bts {
 	} gsmtap;
 
 	struct osmo_fsm_inst *shutdown_fi; /* FSM instance to manage shutdown procedure during process exit */
+	bool shutdown_fi_exit_proc; /* exit process when shutdown_fsm is finished? */
 	struct osmo_fsm_inst *abis_link_fi; /* FSM instance to manage abis connection during process startup and link failure */
 	struct osmo_tdef *T_defs; /* Timer defines */
 
@@ -390,6 +391,7 @@ struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num);
 
 int bts_init(struct gsm_bts *bts);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);
+void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc);
 
 int bts_link_estab(struct gsm_bts *bts);
 
