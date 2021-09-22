@@ -217,6 +217,9 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 		oml_tx_failure_event_rep(&trx->bb_transc.mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_RSL_FAIL,
 					 "Failed to establish RSL link (%d)", rc);
 
+	if (trx == trx->bts->c0)
+		load_timer_start(trx->bts);
+
 	return 0;
 }
 

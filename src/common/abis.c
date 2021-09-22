@@ -213,6 +213,8 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 		if (trx->rsl_link) {
 			e1inp_sign_link_destroy(trx->rsl_link);
 			trx->rsl_link = NULL;
+			if (trx == trx->bts->c0)
+				load_timer_stop(trx->bts);
 		}
 		/* Note: Here we could send NM_EV_RSL_DOWN to each
 		 * trx->(bb_transc.)mo.fi, but we are starting shutdown of the

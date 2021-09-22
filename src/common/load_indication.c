@@ -94,3 +94,8 @@ void load_timer_stop(struct gsm_bts *bts)
 {
 	osmo_timer_del(&bts->load.ccch.timer);
 }
+
+bool load_timer_is_running(const struct gsm_bts *bts)
+{
+	return osmo_timer_pending(&bts->load.ccch.timer);
+}

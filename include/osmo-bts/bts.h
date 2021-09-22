@@ -409,6 +409,8 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);
+void load_timer_stop(struct gsm_bts *bts);
+bool load_timer_is_running(const struct gsm_bts *bts);
 void bts_update_status(enum bts_global_status which, int on);
 
 struct gsm_time *get_time(struct gsm_bts *bts);

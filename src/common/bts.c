@@ -345,7 +345,6 @@ int bts_init(struct gsm_bts *bts)
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;
-	load_timer_start(bts);
 	bts->rtp_jitter_buf_ms = 100;
 	bts->max_ta = 63;
 	bts->ny1 = 4;
