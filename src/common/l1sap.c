@@ -1977,8 +1977,12 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 	l1sap->u.data.chan_nr = RSL_CHAN_OSMO_PDCH | ts->nr;
 	l1sap->u.data.link_id = 0x00;
 	l1sap->u.data.fn = fn;
-	msg->l2h = msgb_put(msg, len);
-	memcpy(msg->l2h, data, len);
+	if (len) {
+		msg->l2h = msgb_put(msg, len);
+		memcpy(msg->l2h, data, len);
+	} else {
+		msg->l2h = NULL; /* Idle block */
+	}
 
 	return l1sap_down(ts->trx, l1sap);
 }
