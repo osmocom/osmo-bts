@@ -102,6 +102,13 @@ static void reset_oml_link(struct gsm_bts *bts)
 		bts->oml_link = NULL;
 	}
 	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
+
+	/* Same for IPAC_PROTO_OSMO on the same ipa connection: */
+	if (bts->osmo_link) {
+		e1inp_sign_link_destroy(bts->osmo_link);
+		bts->osmo_link = NULL;
+	}
+
 }
 
 static int pick_next_bsc(struct osmo_fsm_inst *fi)
