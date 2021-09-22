@@ -206,25 +206,16 @@ const char *gsm_trx_unit_id(struct gsm_bts_trx *trx)
 /* RSL link is established, send status report */
 int trx_link_estab(struct gsm_bts_trx *trx)
 {
-	struct e1inp_sign_link *link = trx->rsl_link;
 	int rc;
 
-	LOGPTRX(trx, DSUM, LOGL_INFO, "RSL link %s\n",
-		link ? "up" : "down");
+	LOGPTRX(trx, DSUM, LOGL_INFO, "RSL link up\n");
 
-	osmo_fsm_inst_dispatch(trx->mo.fi, link ? NM_EV_RSL_UP : NM_EV_RSL_DOWN, NULL);
-	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, link ? NM_EV_RSL_UP : NM_EV_RSL_DOWN, NULL);
+	osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_RSL_UP, NULL);
+	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_RSL_UP, NULL);
 
-	if (link)
-		rc = rsl_tx_rf_res(trx);
-	else
-		rc = bts_model_trx_deact_rf(trx);
-	if (rc < 0) {
+	if ((rc = rsl_tx_rf_res(trx)) < 0)
 		oml_tx_failure_event_rep(&trx->bb_transc.mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_RSL_FAIL,
-					 link ?
-					 "Failed to establish RSL link (%d)" :
-					 "Failed to deactivate RF (%d)", rc);
-	}
+					 "Failed to establish RSL link (%d)", rc);
 
 	return 0;
 }

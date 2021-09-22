@@ -214,6 +214,14 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 			e1inp_sign_link_destroy(trx->rsl_link);
 			trx->rsl_link = NULL;
 		}
+		/* Note: Here we could send NM_EV_RSL_DOWN to each
+		 * trx->(bb_transc.)mo.fi, but we are starting shutdown of the
+		 * entire BTS anyway through bts_model_abis_close(), so simply
+		 * let bts_shutdown FSM take care of slowly powering down all
+		 * the TRX. It would make sense to send NM_EV_RSL_DOWN only if a
+		 * RSL link TRX!=C0 was going down, in order to selectively stop
+		 * that TRX only. But libosmo-abis expects us to drop the entire
+		 * line when something goes wrong... */
 	}
 	bts_model_abis_close(bts);
 	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
