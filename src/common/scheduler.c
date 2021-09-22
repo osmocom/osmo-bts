@@ -653,34 +653,43 @@ void trx_sched_init(struct gsm_bts_trx *trx)
 	}
 }
 
+static void trx_sched_clean_ts(struct gsm_bts_trx_ts *ts)
+{
+	struct l1sched_ts *l1ts = ts->priv;
+	unsigned int i;
+
+	msgb_queue_flush(&l1ts->dl_prims);
+	rate_ctr_group_free(l1ts->ctrs);
+	l1ts->ctrs = NULL;
+	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		struct l1sched_chan_state *chan_state;
+		chan_state = &l1ts->chan_state[i];
+		if (chan_state->dl_bursts) {
+			talloc_free(chan_state->dl_bursts);
+			chan_state->dl_bursts = NULL;
+		}
+		if (chan_state->ul_bursts) {
+			talloc_free(chan_state->ul_bursts);
+			chan_state->ul_bursts = NULL;
+		}
+	}
+	/* clear lchan channel states */
+	for (i = 0; i < ARRAY_SIZE(ts->lchan); i++)
+		lchan_set_state(&ts->lchan[i], LCHAN_S_NONE);
+}
+
 void trx_sched_clean(struct gsm_bts_trx *trx)
 {
-	unsigned int tn, i;
+	unsigned int tn;
 
 	LOGPTRX(trx, DL1C, LOGL_DEBUG, "Clean scheduler structures\n");
 
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
-		struct l1sched_ts *l1ts = ts->priv;
 
-		msgb_queue_flush(&l1ts->dl_prims);
-		rate_ctr_group_free(l1ts->ctrs);
-		l1ts->ctrs = NULL;
-		for (i = 0; i < _TRX_CHAN_MAX; i++) {
-			struct l1sched_chan_state *chan_state;
-			chan_state = &l1ts->chan_state[i];
-			if (chan_state->dl_bursts) {
-				talloc_free(chan_state->dl_bursts);
-				chan_state->dl_bursts = NULL;
-			}
-			if (chan_state->ul_bursts) {
-				talloc_free(chan_state->ul_bursts);
-				chan_state->ul_bursts = NULL;
-			}
-		}
-		/* clear lchan channel states */
-		for (i = 0; i < ARRAY_SIZE(ts->lchan); i++)
-			lchan_set_state(&ts->lchan[i], LCHAN_S_NONE);
+		/* Clean primary and shadow timeslots */
+		trx_sched_clean_ts(ts);
+		trx_sched_clean_ts(ts->vamos.peer);
 	}
 }
 
