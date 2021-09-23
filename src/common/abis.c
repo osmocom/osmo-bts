@@ -81,6 +81,7 @@ struct abis_link_fsm_priv {
 	struct bsc_oml_host *current_bsc;
 	struct gsm_bts *bts;
 	char *model_name;
+	int line_ctr;
 };
 
 static void reset_oml_link(struct gsm_bts *bts)
@@ -155,7 +156,15 @@ static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev
 		bts_dev_info.unit_name = bts->description;
 	bts_dev_info.location2 = priv->model_name;
 
-	line = e1inp_line_create(0, "ipa");	/* already comes with a reference "ctor" */
+	line = e1inp_line_find(priv->line_ctr);
+	if (line) {
+		e1inp_line_get2(line, __FILE__);	/* We want a new reference for returned line */
+	} else
+		line = e1inp_line_create(priv->line_ctr, "ipa");	/* already comes with a reference */
+
+	/* The abis connection may fail and we may have to try again with a different BSC (if configured). The next
+	 * attempt must happen on a different line. */
+	priv->line_ctr++;
 
 	if (!line) {
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
@@ -177,17 +186,13 @@ static void abis_link_connecting(struct osmo_fsm_inst *fi, uint32_t event, void 
 {
 	struct abis_link_fsm_priv *priv = fi->priv;
 	struct gsm_bts *bts = priv->bts;
-	struct e1inp_line *line;
 
 	switch (event) {
 	case ABIS_LINK_EV_SIGN_LINK_OML_UP:
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_CONNECTED, 0, 0);
 		break;
 	case ABIS_LINK_EV_SIGN_LINK_DOWN:
-		line = (struct e1inp_line *)data;
 		reset_oml_link(bts);
-		/* Drop reference obtained through e1inp_line_create() to get rid of the line object: */
-		e1inp_line_put2(line, "ctor");
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
 		break;
 	default:
@@ -205,7 +210,6 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 	struct abis_link_fsm_priv *priv = fi->priv;
 	struct gsm_bts *bts = priv->bts;
 	struct gsm_bts_trx *trx;
-	struct e1inp_line *line = (struct e1inp_line *)data;
 	OSMO_ASSERT(event == ABIS_LINK_EV_SIGN_LINK_DOWN);
 
 	/* First remove the OML signalling link */
@@ -228,10 +232,6 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 		 * that TRX only. But libosmo-abis expects us to drop the entire
 		 * line when something goes wrong... */
 	}
-
-	/* Drop reference obtained through e1inp_line_create() to get rid of the line object: */
-	e1inp_line_put2(line, "ctor");
-
 	bts_model_abis_close(bts);
 	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
 }
@@ -395,7 +395,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 static void sign_link_down(struct e1inp_line *line)
 {
 	LOGPIL(line, DABIS, LOGL_ERROR, "Signalling link down\n");
-	osmo_fsm_inst_dispatch(g_bts->abis_link_fi, ABIS_LINK_EV_SIGN_LINK_DOWN, line);
+	osmo_fsm_inst_dispatch(g_bts->abis_link_fi, ABIS_LINK_EV_SIGN_LINK_DOWN, NULL);
 }
 
 
