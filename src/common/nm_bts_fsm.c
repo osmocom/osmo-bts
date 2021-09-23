@@ -72,6 +72,8 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 		oml_mo_tx_sw_act_rep(&bts->mo);
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->bts->variant == BTS_OSMO_OMLDUMMY) /* In OMLDUMMY, phy=NULL */
+				continue;
 			/* During startup, phy_links are already opened, but if we are
 			 * re-connecting, phy_link was closed when disconnected from
 			 * previous BSC, so let's re-open it.
