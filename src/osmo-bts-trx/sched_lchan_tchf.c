@@ -514,7 +514,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* send burst, if we already got a frame */
 	if (br->bid > 0) {
 		if (!*bursts_p)
-			return 0;
+			return -ENODEV;
 		goto send_burst;
 	}
 
