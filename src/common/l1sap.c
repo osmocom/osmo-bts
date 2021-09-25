@@ -2040,7 +2040,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	int rc;
 
-	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "activating channel %s\n", rsl_chan_nr_str(chan_nr));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Activating channel %s\n", rsl_chan_nr_str(chan_nr));
 
 	lchan->s = trx->bts->radio_link_timeout.current;
 
@@ -2073,8 +2073,8 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
-	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivating channel chan_nr=%s trx=%d\n",
-		  rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Deactivating channel %s\n",
+		  rsl_chan_nr_str(chan_nr));
 
 	if (lchan->tch.dtx.dl_amr_fsm) {
 		osmo_fsm_inst_free(lchan->tch.dtx.dl_amr_fsm);
@@ -2089,8 +2089,8 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 
-	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "deactivating sacch chan_nr=%s trx=%d\n",
-		  rsl_chan_nr_str(chan_nr), trx->nr);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Deactivating SACCH on channel %s\n",
+		  rsl_chan_nr_str(chan_nr));
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
 		1);
@@ -2098,8 +2098,10 @@ int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
-	LOGP(DL1C, LOGL_INFO, "modifying channel chan_nr=%s trx=%d\n",
-		rsl_chan_nr_str(chan_nr), trx->nr);
+	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
+
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Modifying channel %s\n",
+		rsl_chan_nr_str(chan_nr));
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
 }
