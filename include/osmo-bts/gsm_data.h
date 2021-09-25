@@ -568,6 +568,7 @@ static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 }
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
+uint8_t gsm_lchan2chan_nr_rsl(const struct gsm_lchan *lchan);
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan);
 

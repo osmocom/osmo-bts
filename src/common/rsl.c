@@ -461,7 +461,7 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 			if (band < 0)
 				continue;
 
-			msgb_v_put(nmsg, gsm_lchan2chan_nr(lchan));
+			msgb_v_put(nmsg, gsm_lchan2chan_nr_rsl(lchan));
 			msgb_v_put(nmsg, (band & 0x07) << 5);
 		}
 	}
@@ -1225,7 +1225,7 @@ static int tx_rf_rel_ack(struct gsm_lchan *lchan, uint8_t chan_nr)
 /* 8.4.19 sending RF CHANnel RELease ACKnowledge */
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 {
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	bool send_rel_ack;
 
 	switch (lchan->rel_act_kind) {
@@ -1314,7 +1314,7 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 {
 	struct gsm_time *gtime = get_time(lchan->ts->trx->bts);
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	uint8_t ie[2];
 
 	LOGP(DRSL, LOGL_NOTICE, "%s (ss=%d) %s Tx CHAN ACT ACK\n",
@@ -1340,7 +1340,7 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Sending HANDOver DETect\n");
 
@@ -1382,7 +1382,7 @@ static int _rsl_tx_chan_act_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uint8
 	return abis_bts_rsl_sendmsg(msg);
 }
 static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause) {
-	return _rsl_tx_chan_act_nack(lchan->ts->trx, gsm_lchan2chan_nr(lchan), cause, lchan);
+	return _rsl_tx_chan_act_nack(lchan->ts->trx, gsm_lchan2chan_nr_rsl(lchan), cause, lchan);
 }
 
 /* Send an RSL Channel Activation Ack if cause is zero, a Nack otherwise. */
@@ -1403,7 +1403,7 @@ int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
 int rsl_tx_conn_fail(const struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Sending Connection Failure: cause = 0x%02x\n", cause);
 
@@ -2011,7 +2011,7 @@ static int tx_ciph_mod_compl_hack(struct gsm_lchan *lchan, uint8_t link_id,
 		}
 	}
 
-	rsl_rll_push_l3(fake_msg, RSL_MT_DATA_IND, gsm_lchan2chan_nr(lchan),
+	rsl_rll_push_l3(fake_msg, RSL_MT_DATA_IND, gsm_lchan2chan_nr_rsl(lchan),
 			link_id, 1);
 
 	fake_msg->lchan = lchan;
@@ -2146,7 +2146,7 @@ static int _rsl_tx_mode_modif_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uin
 }
 static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 {
-	return _rsl_tx_mode_modif_nack(lchan->ts->trx, gsm_lchan2chan_nr(lchan), cause, lchan);
+	return _rsl_tx_mode_modif_nack(lchan->ts->trx, gsm_lchan2chan_nr_rsl(lchan), cause, lchan);
 }
 
 
@@ -2154,7 +2154,7 @@ static int rsl_tx_mode_modif_nack(struct gsm_lchan *lchan, uint8_t cause)
 static int rsl_tx_mode_modif_ack(struct gsm_lchan *lchan)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Tx MODE MODIF ACK\n");
 
@@ -2432,7 +2432,7 @@ int rsl_tx_cbch_load_indication(struct gsm_bts *bts, bool ext_cbch, bool overflo
 		return -ENOMEM;
 
 	/* 9.3.1 Channel Number */
-	rsl_cch_push_hdr(msg, RSL_MT_CBCH_LOAD_IND, gsm_lchan2chan_nr(lchan));
+	rsl_cch_push_hdr(msg, RSL_MT_CBCH_LOAD_IND, gsm_lchan2chan_nr_rsl(lchan));
 
 	/* 9.3.43 CBCH Load Information */
 	load_info = ((overflow & 1) << 7) | (amount & 0x0F);
@@ -2494,7 +2494,7 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 	msgb_tv16_put(nmsg, RSL_IE_IPAC_CONN_ID, htons(lchan->abis_ip.conn_id));
 	rsl_add_rtp_stats(lchan, nmsg);
 	msgb_tlv_put(nmsg, RSL_IE_CAUSE, 1, &cause);
-	rsl_ipa_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND, gsm_lchan2chan_nr(lchan));
+	rsl_ipa_push_hdr(nmsg, RSL_MT_IPAC_DLCX_IND, gsm_lchan2chan_nr_rsl(lchan));
 
 	nmsg->trx = lchan->ts->trx;
 
@@ -2506,7 +2506,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 				  uint8_t orig_msgt)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	const char *name;
 	struct in_addr ia;
 
@@ -2554,7 +2554,7 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 static int rsl_tx_ipac_dlcx_ack(struct gsm_lchan *lchan, int inc_conn_id)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "RSL Tx IPAC_DLCX_ACK\n");
 
@@ -2577,7 +2577,7 @@ static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 				 uint8_t cause)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "RSL Tx IPAC_DLCX_NACK\n");
 
@@ -2603,7 +2603,7 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 			     int inc_ipport, uint8_t orig_msgtype)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	/* FIXME: allocate new msgb and copy old over */
 	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "RSL Tx IPAC_BIND_NACK\n");
@@ -2918,7 +2918,7 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 static int rsl_tx_dyn_pdch_ack(struct gsm_lchan *lchan, bool pdch_act)
 {
 	struct gsm_time *gtime = get_time(lchan->ts->trx->bts);
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	struct msgb *msg;
 	uint8_t ie[2];
 
@@ -2947,7 +2947,7 @@ static int rsl_tx_dyn_pdch_nack(struct gsm_lchan *lchan, bool pdch_act,
 				uint8_t cause)
 {
 	struct msgb *msg;
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 
 	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Tx PDCH %s NACK (cause = 0x%02x)\n",
 		  pdch_act ? "ACT" : "DEACT", cause);
@@ -3512,7 +3512,7 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
-	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	int res_valid = lchan->meas.flags & LC_UL_M_F_RES_VALID;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 

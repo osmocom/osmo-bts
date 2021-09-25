@@ -243,7 +243,7 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 	return chan_nr;
 }
 
-uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
+static uint8_t _gsm_lchan2chan_nr(const struct gsm_lchan *lchan, bool rsl)
 {
 	uint8_t chan_nr;
 
@@ -254,9 +254,14 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 		chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, lchan->ts->dyn.pchan_is);
 		break;
 	case GSM_PCHAN_TCH_F_PDCH:
-		/* For ip.access style dyn TS, we always want to use the chan_nr as if it was TCH/F.
+		/* For ip.access style dyn TS, on RSL we want to use the chan_nr as if it was TCH/F.
 		 * We're using custom PDCH ACT and DEACT messages that use the usual chan_nr values. */
-		chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+		if (rsl)
+			chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+		else if (~lchan->ts->flags & TS_F_PDCH_ACTIVE)
+			chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_TCH_F);
+		else
+			chan_nr = gsm_lchan_as_pchan2chan_nr(lchan, GSM_PCHAN_PDCH);
 		break;
 	default:
 		chan_nr = gsm_pchan2chan_nr(lchan->ts->pchan, lchan->ts->nr, lchan->nr);
@@ -269,6 +274,16 @@ uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
 		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	return chan_nr;
+}
+
+uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
+{
+	return _gsm_lchan2chan_nr(lchan, false);
+}
+
+uint8_t gsm_lchan2chan_nr_rsl(const struct gsm_lchan *lchan)
+{
+	return _gsm_lchan2chan_nr(lchan, true);
 }
 
 uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
