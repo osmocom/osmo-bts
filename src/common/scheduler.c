@@ -1094,7 +1094,7 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 			continue;
 		found = true;
 
-		LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "%s %s\n",
+		LOGPLCHAN(lchan, DL1C, LOGL_INFO, "%s %s\n",
 			  (active) ? "Activating" : "Deactivating",
 			  trx_chan_desc[i].name);
 		/* free burst memory, to cleanly start with burst 0 */
