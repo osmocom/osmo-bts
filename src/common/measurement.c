@@ -10,6 +10,8 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/power_control.h>
+#include <osmo-bts/ta_control.h>
 
 /* Tables as per TS 45.008 Section 8.3 */
 static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
@@ -793,11 +795,59 @@ int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigne
 {
 	int timing_offset, rc;
 	struct lapdm_entity *le;
+	bool dtxu_used;
+	uint8_t ms_pwr;
+	uint8_t ms_ta;
+	int8_t ul_rssi;
+	int16_t ul_ci_cb;
 
 	le = &lchan->lapdm_ch.lapdm_acch;
 
 	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
 	rc = rsl_tx_meas_res(lchan, (uint8_t *)gh, len, timing_offset);
+
+	/* Run control loops now that we have all the information: */
+	/* 3GPP TS 45.008 sec 4.2: UL L1 SACCH Header contains TA and
+	 * MS_PWR used "for the last burst of the previous SACCH
+	 * period". Since MS must use the values provided in DL SACCH
+	 * starting at next meas period, the value of the "last burst"
+	 * is actually the value used in the entire meas period. Since
+	 * it contains info about the previous meas period, we want to
+	 * feed the Control Loop with the measurements for the same
+	 * period (the previous one), which is stored in lchan->meas(.ul_res):
+	 */
+	if (len == 0) {
+		dtxu_used = true;
+		ms_ta = lchan->ta_ctrl.current;
+		ms_pwr = lchan->ms_power_ctrl.current;
+	} else {
+		/* if len!=0, it means we were able to parse L1Header in UL SACCH: */
+		OSMO_ASSERT(lchan->meas.flags | LC_UL_M_F_L1_VALID);
+
+		ms_ta = lchan->meas.l1_info.ta;
+		ms_pwr = lchan->meas.l1_info.ms_pwr;
+		switch (gh->msg_type) {
+		case GSM48_MT_RR_MEAS_REP:
+			dtxu_used = (len > sizeof(*gh) + 1) && !!(gh->data[0] & 0x40);
+			break;
+		case GSM48_MT_RR_EXT_MEAS_REP:
+		default:
+			dtxu_used = true; /* FIXME: not implemented */
+			break;
+		}
+	}
+
+	if (dtxu_used) {
+		ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
+		ul_ci_cb = lchan->meas.ul_ci_cb_sub;
+	} else {
+		ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
+		ul_ci_cb = lchan->meas.ul_ci_cb_full;
+	}
+	lchan_ms_ta_ctrl(lchan, ms_ta, lchan->meas.ms_toa256);
+	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
+	if (gh)
+		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) gh);
 
 	/* Reset state for next iteration */
 	lchan->meas.res_nr++;

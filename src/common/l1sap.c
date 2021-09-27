@@ -52,8 +52,6 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
-#include <osmo-bts/power_control.h>
-#include <osmo-bts/ta_control.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
@@ -1533,8 +1531,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint32_t fn;
 	enum osmo_ph_pres_info_type pr_info = data_ind->pdch_presence_info;
 	struct gsm_sacch_l1_hdr *l1_hdr;
-	int8_t ul_rssi;
-	int16_t ul_ci_cb;
 
 	chan_nr = data_ind->chan_nr;
 	link_id = data_ind->link_id;
@@ -1609,16 +1605,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			handle_ms_meas_report(lchan, NULL, 0);
 
 			radio_link_timeout(lchan, true);
-			lchan_ms_ta_ctrl(lchan, lchan->ta_ctrl.current, lchan->meas.ms_toa256);
-			/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
-			if (lchan->tch.dtx.dl_active) {
-				ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
-				ul_ci_cb = lchan->meas.ul_ci_cb_sub;
-			} else {
-				ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
-				ul_ci_cb = lchan->meas.ul_ci_cb_full;
-			}
-			lchan_ms_pwr_ctrl(lchan, lchan->ms_power_ctrl.current, ul_rssi, ul_ci_cb);
 		}
 		return -EINVAL;
 	}
@@ -1645,26 +1631,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan->meas.l1_info.srr_sro = l1_hdr->srr_sro;
 		lchan->meas.l1_info.ta = l1_hdr->ta;
 		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
-
-		/* 3GPP TS 45.008 sec 4.2: UL L1 SACCH Header contains TA and
-		 * MS_PWR used "for the last burst of the previous SACCH
-		 * period". Since MS must use the values provided in DL SACCH
-		 * starting at next meas period, the value of the "last burst"
-		 * is actually the value used in the entire meas period. Since
-		 * it contains info about the previous meas period, we want to
-		 * feed the Control Loop with the measurements for the same
-		 * period (the previous one), which is stored in lchan->meas(.ul_res): */
-		lchan_ms_ta_ctrl(lchan, l1_hdr->ta, lchan->meas.ms_toa256);
-		/* If DTx is active on Downlink, use the '-SUB', otherwise '-FULL': */
-		if (lchan->tch.dtx.dl_active) {
-			ul_rssi = rxlev2dbm(lchan->meas.ul_res.sub.rx_lev);
-			ul_ci_cb = lchan->meas.ul_ci_cb_sub;
-		} else {
-			ul_rssi = rxlev2dbm(lchan->meas.ul_res.full.rx_lev);
-			ul_ci_cb = lchan->meas.ul_ci_cb_full;
-		}
-		lchan_ms_pwr_ctrl(lchan, l1_hdr->ms_pwr, ul_rssi, ul_ci_cb);
-		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) &data[5]);
 	} else
 		le = &lchan->lapdm_ch.lapdm_dcch;
 
