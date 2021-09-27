@@ -1606,8 +1606,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			 * lack the measurement report from the MS side. See
 			 * also rsl.c:lapdm_rll_tx_cb() */
 			LOGPGT(DL1P, LOGL_INFO, &g_time, "Lost SACCH block, faking meas reports and ms pwr\n");
-			le = &lchan->lapdm_ch.lapdm_acch;
-			rsl_tx_meas_res(lchan, NULL, 0, le);
+			handle_ms_meas_report(lchan, NULL, 0);
 
 			radio_link_timeout(lchan, true);
 			lchan_ms_ta_ctrl(lchan, lchan->ta_ctrl.current, lchan->meas.ms_toa256);

@@ -776,3 +776,35 @@ void lchan_meas_reset(struct gsm_lchan *lchan)
 	memset(&lchan->meas, 0, sizeof(lchan->meas));
 	lchan->meas.last_fn = LCHAN_FN_DUMMY;
 }
+
+static inline uint8_t ms_to2rsl(const struct gsm_lchan *lchan, const struct lapdm_entity *le)
+{
+	return (lchan->ms_t_offs >= 0) ? lchan->ms_t_offs : (lchan->p_offs - le->ta);
+}
+
+static inline bool ms_to_valid(const struct gsm_lchan *lchan)
+{
+	return (lchan->ms_t_offs >= 0) || (lchan->p_offs >= 0);
+}
+
+/* Called every time a Measurement Result (TS 08.58 8.4.8) is received from
+ * lower layers and has to be forwarded to BSC */
+int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigned int len)
+{
+	int timing_offset, rc;
+	struct lapdm_entity *le;
+
+	le = &lchan->lapdm_ch.lapdm_acch;
+
+	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
+	rc = rsl_tx_meas_res(lchan, (uint8_t *)gh, len, timing_offset);
+
+	/* Reset state for next iteration */
+	lchan->meas.res_nr++;
+	lchan->tch.dtx.dl_active = false;
+	lchan->meas.flags &= ~LC_UL_M_F_OSMO_EXT_VALID;
+	lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
+	lchan->ms_t_offs = -1;
+	lchan->p_offs = -1;
+	return rc;
+}

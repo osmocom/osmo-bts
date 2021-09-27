@@ -3490,16 +3490,6 @@ static int handle_gprs_susp_req(struct msgb *msg)
 	return rc;
 }
 
-static inline uint8_t ms_to2rsl(const struct gsm_lchan *lchan, const struct lapdm_entity *le)
-{
-	return (lchan->ms_t_offs >= 0) ? lchan->ms_t_offs : (lchan->p_offs - le->ta);
-}
-
-static inline bool ms_to_valid(const struct gsm_lchan *lchan)
-{
-	return (lchan->ms_t_offs >= 0) || (lchan->p_offs >= 0);
-}
-
 struct osmo_bts_supp_meas_info {
 	int16_t toa256_mean;
 	int16_t toa256_min;
@@ -3507,8 +3497,8 @@ struct osmo_bts_supp_meas_info {
 	uint16_t toa256_std_dev;
 } __attribute__((packed));
 
-/* Compose and send 8.4.8 MEASUREMENT RESult via RSL */
-int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const struct lapdm_entity *le)
+/* Compose and send 8.4.8 MEASUREMENT RESult via RSL. (timing_offset=-1 -> not present) */
+int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, int timing_offset)
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
@@ -3534,13 +3524,12 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 	     lchan->meas.ul_res.full.rx_qual,
 	     lchan->meas.ul_res.sub.rx_qual,
 	     lchan->meas.l1_info.ms_pwr,
-	     lchan->meas.l1_info.ta, l3_len, ms_to2rsl(lchan, le) - MEAS_MAX_TIMING_ADVANCE);
+	     lchan->meas.l1_info.ta, l3_len, timing_offset - MEAS_MAX_TIMING_ADVANCE);
 
-	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr++);
+	msgb_tv_put(msg, RSL_IE_MEAS_RES_NR, lchan->meas.res_nr);
 	size_t ie_len = gsm0858_rsl_ul_meas_enc(&lchan->meas.ul_res,
 						lchan->tch.dtx.dl_active,
 						meas_res);
-	lchan->tch.dtx.dl_active = false;
 	if (ie_len >= 3) {
 		if (bts->supp_meas_toa256 && lchan->meas.flags & LC_UL_M_F_OSMO_EXT_VALID) {
 			struct osmo_bts_supp_meas_info *smi;
@@ -3558,24 +3547,18 @@ int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, const stru
 			smi->toa256_min = htons(ta256 + lchan->meas.ext.toa256_min);
 			smi->toa256_max = htons(ta256 + lchan->meas.ext.toa256_max);
 			smi->toa256_std_dev = htons(lchan->meas.ext.toa256_std_dev);
-			lchan->meas.flags &= ~LC_UL_M_F_OSMO_EXT_VALID;
 		}
 		msgb_tlv_put(msg, RSL_IE_UPLINK_MEAS, ie_len, meas_res);
-		lchan->meas.flags &= ~LC_UL_M_F_RES_VALID;
 	}
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power_ctrl.current / 2);
 	if (lchan->meas.flags & LC_UL_M_F_L1_VALID) {
 		msgb_tv_fixed_put(msg, RSL_IE_L1_INFO, sizeof(lchan->meas.l1_info), (uint8_t*)&lchan->meas.l1_info);
-		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
 	}
 
-	if (l3 && l3_len > 0)
+	if (l3 && l3_len > 0) {
 		msgb_tl16v_put(msg, RSL_IE_L3_INFO, l3_len, l3);
-	if (ms_to_valid(lchan)) {
-		if (l3 && l3_len > 0)
-			msgb_tv_put(msg, RSL_IE_MS_TIMING_OFFSET, ms_to2rsl(lchan, le));
-		lchan->ms_t_offs = -1;
-		lchan->p_offs = -1;
+		if (timing_offset != -1)
+			msgb_tv_put(msg, RSL_IE_MS_TIMING_OFFSET, timing_offset);
 	}
 
 	rsl_dch_push_hdr(msg, RSL_MT_MEAS_RES, chan_nr);
@@ -3629,7 +3612,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 		}
 
 		repeated_dl_facch_active_decision(lchan, msgb_l3(msg), msgb_l3len(msg));
-		rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), le);
+		rc = handle_ms_meas_report(lchan, (struct gsm48_hdr *)msgb_l3(msg), msgb_l3len(msg));
 		msgb_free(msg);
 		return rc;
 	} else if (rslms_is_gprs_susp_req(msg)) {

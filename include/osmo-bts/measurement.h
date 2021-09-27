@@ -20,4 +20,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn);
 
 int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn);
 
+int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigned int len);
+
 #endif
