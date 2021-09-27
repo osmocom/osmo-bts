@@ -226,7 +226,7 @@ DEFUN(show_phy_clksrc, show_trx_clksrc_cmd,
 }
 
 DEFUN(show_dsp_trace_f, show_dsp_trace_f_cmd,
-	"show trx <0-0> dsp-trace-flags",
+	"show dsp-trace-flags trx <0-0>",
 	SHOW_TRX_STR "Display the current setting of the DSP trace flags")
 {
 	int trx_nr = atoi(argv[0]);
