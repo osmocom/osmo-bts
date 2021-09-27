@@ -266,7 +266,7 @@ DEFUN_DEPRECATED(cfg_phy_no_timing_advance_loop, cfg_phy_no_timing_advance_loop_
 }
 
 DEFUN_ATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
-	   "osmotrx maxdly <0-31>",
+	   "osmotrx maxdly <0-63>",
 	   OSMOTRX_STR
 	   "Set the maximum acceptable delay of an Access Burst (in GSM symbols)."
 	   " Access Burst is the first burst a mobile transmits in order to establish"
@@ -275,7 +275,7 @@ DEFUN_ATTR(cfg_phyinst_maxdly, cfg_phyinst_maxdly_cmd,
 	   " distance. So changing this setting effectively changes maximum range of"
 	   " the cell, because if we receive an Access Burst with a delay higher than"
 	   " this value, it will be ignored and connection is dropped.\n"
-	   "GSM symbols (approx. 1.1km per symbol)\n",
+	   "GSM symbols (550m distance between UE and BTS per symbol)\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_instance *pinst = vty->index;
