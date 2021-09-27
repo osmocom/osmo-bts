@@ -122,17 +122,13 @@ static void trx_provision_reset(struct trx_l1h *l1h)
 	l1h->config.bsic_sent = false;
 	l1h->config.bsic_acked = false;
 
-	l1h->config.rxgain_valid = false;
-	l1h->config.rxgain = 0;
 	l1h->config.rxgain_sent = false;
 
 	l1h->config.nomtxpower_sent = false;
 	l1h->config.nomtxpower_acked = false;
 
-	l1h->config.maxdly_valid = false;
 	l1h->config.maxdly_sent = false;
 
-	l1h->config.maxdlynb_valid = false;
 	l1h->config.maxdlynb_sent = false;
 
 	for (tn = 0; tn < TRX_NR_TS; tn++) {
