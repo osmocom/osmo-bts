@@ -304,7 +304,9 @@ compose_l1sap:
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      /* FIXME: what should we use for BFI here? */
 				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,
-				      bfi_flag ? bi->rssi : meas_avg.rssi, is_sub);
+				      bfi_flag ? bi->rssi : meas_avg.rssi,
+				      bfi_flag ? bi->ci_cb : meas_avg.ci_cb,
+				      is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
@@ -366,7 +368,7 @@ inval_mode1:
 			/* Note: RSSI/ToA256 is set to 0 to indicate to the higher
 			 * layers that this is a faked tch_ind */
 			_sched_compose_tch_ind(l1ts, br->fn, br->chan,
-					       tch_data, len, 0, 10000, 0, 0);
+					       tch_data, len, 0, 10000, 0, 0, 0);
 		}
 	}
 
