@@ -39,3 +39,6 @@ enum bts_shutdown_fsm_events {
 };
 
 extern struct osmo_fsm bts_shutdown_fsm;
+
+struct gsm_bts;
+bool bts_shutdown_in_progress(const struct gsm_bts *bts);

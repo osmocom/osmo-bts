@@ -237,10 +237,16 @@ static __attribute__((constructor)) void bts_shutdown_fsm_init(void)
 	OSMO_ASSERT(osmo_fsm_register(&bts_shutdown_fsm) == 0);
 }
 
+bool bts_shutdown_in_progress(const struct gsm_bts *bts)
+{
+	const struct osmo_fsm_inst *fi = bts->shutdown_fi;
+	return fi->state != BTS_SHUTDOWN_ST_NONE;
+}
+
 void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
 {
 	struct osmo_fsm_inst *fi = bts->shutdown_fi;
-	if (fi->state != BTS_SHUTDOWN_ST_NONE) {
+	if (bts_shutdown_in_progress(bts)) {
 		LOGPFSML(fi, LOGL_NOTICE, "BTS is already being shutdown.\n");
 		if (exit_proc)
 			bts->shutdown_fi_exit_proc = true;

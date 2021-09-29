@@ -53,6 +53,7 @@
 #include <osmo-bts/abis_osmo.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts_trx.h>
+#include <osmo-bts/bts_shutdown_fsm.h>
 
 static struct gsm_bts *g_bts;
 
@@ -136,6 +137,12 @@ static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev
 	struct e1inp_line *line;
 	struct abis_link_fsm_priv *priv = fi->priv;
 	struct gsm_bts *bts = priv->bts;
+
+	if (bts_shutdown_in_progress(bts)) {
+		LOGPFSML(fi, LOGL_NOTICE, "BTS is shutting down, delaying A-bis connection establishment to BSC\n");
+		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
+		return;
+	}
 
 	if (pick_next_bsc(fi) < 0) {
 		LOGPFSML(fi, LOGL_FATAL, "No BSC available, A-bis connection establishment failed\n");
