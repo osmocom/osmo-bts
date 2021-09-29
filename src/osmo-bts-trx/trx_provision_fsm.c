@@ -560,10 +560,7 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 			bts_model_trx_close_cb(pinst->trx, 0);
 		} /* else: poweroff in progress, cb will be called upon TRXC RSP */
 
-		if (pinst->num == 0)
-			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF);
-		else
-			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWEROFF);
+		trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF);
 		break;
 	case TRX_PROV_EV_CFG_TS:
 		ts_data = (struct trx_prov_ev_cfg_ts_data*)data;
@@ -592,9 +589,10 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 
 			/* Notify TRX close on all TRX associated with this phy */
 			llist_for_each_entry(pinst, &plink->instances, list) {
+				l1h = pinst->u.osmotrx.hdl;
+				trx_prov_fsm_state_chg(l1h->provision_fi, TRX_PROV_ST_CLOSED);
 				bts_model_trx_close_cb(pinst->trx, rc);
 			}
-			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_CLOSED);
 		}
 		break;
 	default:
@@ -646,8 +644,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 			X(TRX_PROV_EV_CLOSE) |
 			X(TRX_PROV_EV_CFG_TS),
 		.out_state_mask =
-			X(TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF) |
-			X(TRX_PROV_ST_OPEN_POWEROFF),
+			X(TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF),
 		.name = "OPEN_POWERON",
 		.onenter = st_open_poweron_on_enter,
 		.action = st_open_poweron,
