@@ -34,6 +34,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
+#include <osmo-bts/signal.h>
 
 #include "l1_if.h"
 #include "trx_provision_fsm.h"
@@ -314,6 +315,30 @@ static void trx_prov_fsm_apply_close(struct phy_link *plink, int rc)
 	}
 }
 
+static int trx_prov_fsm_signal_cb(unsigned int subsys, unsigned int signal,
+				  void *hdlr_data, void *signal_data)
+{
+	struct nm_statechg_signal_data *nsd;
+	struct gsm_bts_trx *trx;
+
+	if (subsys != SS_GLOBAL)
+		return -EINVAL;
+
+	if (signal != S_NEW_OP_STATE)
+		return 0;
+
+	nsd = (struct nm_statechg_signal_data *)signal_data;
+
+	if (nsd->mo->obj_class != NM_OC_RADIO_CARRIER)
+		return 0;
+
+	if (nsd->old_state != NM_OPSTATE_ENABLED && nsd->new_state == NM_OPSTATE_ENABLED) {
+		trx = gsm_objclass2obj(nsd->mo->bts, nsd->mo->obj_class, &nsd->mo->obj_inst);
+		l1if_trx_start_power_ramp(trx, NULL);
+	}
+	return 0;
+}
+
 //////////////////////////
 // FSM STATE ACTIONS
 //////////////////////////
@@ -511,13 +536,6 @@ static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, voi
 		if (rc == 0 && plink->state != PHY_LINK_CONNECTED) {
 			trx_sched_clock_started(pinst->trx->bts);
 			phy_link_state_set(plink, PHY_LINK_CONNECTED);
-
-			/* Begin to ramp up the power on all TRX associated with this phy */
-			llist_for_each_entry(pinst, &plink->instances, list) {
-				if (pinst->trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
-					l1if_trx_start_power_ramp(pinst->trx, NULL);
-			}
-
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWERON);
 		} else if (rc != 0 && plink->state != PHY_LINK_SHUTDOWN) {
 			trx_sched_clock_stopped(pinst->trx->bts);
@@ -709,4 +727,5 @@ struct osmo_fsm trx_prov_fsm = {
 static __attribute__((constructor)) void trx_prov_fsm_init(void)
 {
 	OSMO_ASSERT(osmo_fsm_register(&trx_prov_fsm) == 0);
+	OSMO_ASSERT(osmo_signal_register_handler(SS_GLOBAL, trx_prov_fsm_signal_cb, NULL) == 0);
 }

@@ -355,12 +355,16 @@ int oml_mo_state_chg(struct gsm_abis_mo *mo, int op_state, int avail_state, int 
 			mo->nm_state.availability = avail_state;
 		}
 		if (op_state != -1) {
+			struct nm_statechg_signal_data nsd;
 			LOGP(DOML, LOGL_INFO, "%s OPER STATE %s -> %s\n",
 				gsm_abis_mo_name(mo),
 				abis_nm_opstate_name(mo->nm_state.operational),
 				abis_nm_opstate_name(op_state));
+			nsd.mo = mo;
+			nsd.old_state = mo->nm_state.operational;
+			nsd.new_state = op_state;
 			mo->nm_state.operational = op_state;
-			osmo_signal_dispatch(SS_GLOBAL, S_NEW_OP_STATE, NULL);
+			osmo_signal_dispatch(SS_GLOBAL, S_NEW_OP_STATE, &nsd);
 		}
 		if (adm_state != -1) {
 			LOGP(DOML, LOGL_INFO, "%s ADMIN STATE %s -> %s\n",

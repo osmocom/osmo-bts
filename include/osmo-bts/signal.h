@@ -15,4 +15,10 @@ enum signals_global {
 	S_NEW_NSVC_ATTR,
 };
 
+struct nm_statechg_signal_data {
+	struct gsm_abis_mo *mo;
+	uint8_t old_state;
+	uint8_t new_state;
+};
+
 #endif
