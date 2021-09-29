@@ -296,6 +296,24 @@ static bool trx_other_trx0_ready(struct trx_l1h *l1h)
 	return true;
 }
 
+/* Closes a phy_link and all its associated TRX */
+static void trx_prov_fsm_apply_close(struct phy_link *plink, int rc)
+{
+	struct trx_l1h *l1h;
+	struct phy_instance *pinst;
+
+	if (plink->state == PHY_LINK_SHUTDOWN)
+		return;
+
+	bts_model_phy_link_close(plink);
+	/* Notify TRX close on all TRX associated with this phy */
+	llist_for_each_entry(pinst, &plink->instances, list) {
+		l1h = pinst->u.osmotrx.hdl;
+		trx_prov_fsm_state_chg(l1h->provision_fi, TRX_PROV_ST_CLOSED);
+		bts_model_trx_close_cb(pinst->trx, rc);
+	}
+}
+
 //////////////////////////
 // FSM STATE ACTIONS
 //////////////////////////
@@ -345,6 +363,13 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	bool others_ready;
 
 	switch (event) {
+	case TRX_PROV_EV_CLOSE:
+		/* In this state, we didn't for sure send a POWERON yet, hence we
+		   are save directly applying the close as if we received a
+		   POWEROFF RSP: */
+		if (pinst->num == 0)
+			trx_prov_fsm_apply_close(pinst->phy_link, 0);
+		return;
 	case TRX_PROV_EV_CFG_ENABLE:
 		l1h->config.enabled =(bool)data;
 		break;
@@ -584,16 +609,7 @@ static void st_open_wait_poweroff_cnf(struct osmo_fsm_inst *fi, uint32_t event, 
 	switch (event) {
 	case TRX_PROV_EV_POWEROFF_CNF:
 		rc = (uint16_t)(intptr_t)data;
-		if (plink->state != PHY_LINK_SHUTDOWN) {
-			bts_model_phy_link_close(plink);
-
-			/* Notify TRX close on all TRX associated with this phy */
-			llist_for_each_entry(pinst, &plink->instances, list) {
-				l1h = pinst->u.osmotrx.hdl;
-				trx_prov_fsm_state_chg(l1h->provision_fi, TRX_PROV_ST_CLOSED);
-				bts_model_trx_close_cb(pinst->trx, rc);
-			}
-		}
+		trx_prov_fsm_apply_close(plink, rc);
 		break;
 	default:
 		OSMO_ASSERT(0);
@@ -611,6 +627,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 	},
 	[TRX_PROV_ST_OPEN_POWEROFF] = {
 		.in_event_mask =
+			X(TRX_PROV_EV_CLOSE) |
 			X(TRX_PROV_EV_OTHER_TRX_READY) |
 			X(TRX_PROV_EV_CFG_ENABLE) |
 			X(TRX_PROV_EV_CFG_BSIC) |
@@ -623,6 +640,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 			X(TRX_PROV_EV_SETTSC_CNF) |
 			X(TRX_PROV_EV_SETFORMAT_CNF),
 		.out_state_mask =
+			X(TRX_PROV_ST_CLOSED) |
 			X(TRX_PROV_ST_OPEN_WAIT_POWERON_CNF) |
 			X(TRX_PROV_ST_OPEN_POWERON),
 		.name = "OPEN_POWEROFF",
