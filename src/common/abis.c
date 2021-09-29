@@ -81,7 +81,6 @@ struct abis_link_fsm_priv {
 	struct bsc_oml_host *current_bsc;
 	struct gsm_bts *bts;
 	char *model_name;
-	int line_ctr;
 };
 
 static void reset_oml_link(struct gsm_bts *bts)
@@ -156,22 +155,16 @@ static void abis_link_connecting_onenter(struct osmo_fsm_inst *fi, uint32_t prev
 		bts_dev_info.unit_name = bts->description;
 	bts_dev_info.location2 = priv->model_name;
 
-	line = e1inp_line_find(priv->line_ctr);
-	if (line) {
-		e1inp_line_get2(line, __FILE__);	/* We want a new reference for returned line */
-	} else
-		line = e1inp_line_create(priv->line_ctr, "ipa");	/* already comes with a reference */
-
-	/* The abis connection may fail and we may have to try again with a different BSC (if configured). The next
-	 * attempt must happen on a different line. */
-	priv->line_ctr++;
-
+	line = e1inp_line_find(0);
+	if (!line)
+		line = e1inp_line_create(0, "ipa");
 	if (!line) {
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
 		return;
 	}
-	e1inp_line_bind_ops(line, &line_ops);
+	/* Line always comes already with a "ctor" reference, enough to keep it alive forever. */
 
+	e1inp_line_bind_ops(line, &line_ops);
 	/* This will open the OML connection now */
 	if (e1inp_line_update(line) < 0) {
 		osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_FAILED, 0, 0);
