@@ -805,6 +805,8 @@ int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigne
 
 	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
 	rc = rsl_tx_meas_res(lchan, (uint8_t *)gh, len, timing_offset);
+	if (rc == 0) /* Count successful transmissions */
+		lchan->meas.res_nr++;
 
 	/* Run control loops now that we have all the information: */
 	/* 3GPP TS 45.008 sec 4.2: UL L1 SACCH Header contains TA and
@@ -850,7 +852,6 @@ int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigne
 		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) gh);
 
 	/* Reset state for next iteration */
-	lchan->meas.res_nr++;
 	lchan->tch.dtx.dl_active = false;
 	lchan->meas.flags &= ~LC_UL_M_F_OSMO_EXT_VALID;
 	lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
