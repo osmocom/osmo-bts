@@ -1651,9 +1651,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 	}
 
-	LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "rx Channel Activation in state: %s.\n",
-		  gsm_lchans_name(lchan->state));
-
 	/* Initialize MS Power Control defaults */
 	lchan->ms_power_ctrl = (struct lchan_power_ctrl_state) {
 		.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0),
