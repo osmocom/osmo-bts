@@ -278,6 +278,8 @@ struct gsm_lchan {
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
 	enum lchan_rel_act_kind rel_act_kind;
+	/* Pending RSL CHANnel ACTIVation message */
+	struct msgb *pending_chan_activ;
 	/* RTP header Marker bit to indicate beginning of speech after pause  */
 	bool rtp_tx_marker;
 

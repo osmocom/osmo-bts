@@ -1523,7 +1523,7 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
  * Store the CHAN_ACTIV msg, connect the L1 timeslot in the proper type and
  * then invoke rsl_rx_chan_activ() with msg.
  */
-static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
+static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts)
 {
 	DEBUGP(DRSL, "%s dyn_ts_l1_reconnect\n", gsm_ts_and_pchan_name(ts));
 
@@ -1543,9 +1543,6 @@ static int dyn_ts_l1_reconnect(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		     gsm_pchan_name(ts->dyn.pchan_want));
 		return -EINVAL;
 	}
-
-	/* We will feed this back to rsl_rx_chan_activ() later */
-	ts->dyn.pending_chan_activ = msg;
 
 	/* Disconnect, continue connecting from cb_ts_disconnected(). */
 	DEBUGP(DRSL, "%s Disconnect\n", gsm_ts_and_pchan_name(ts));
@@ -1652,9 +1649,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			 * mode than this activation needs it to be.
 			 * Re-connect, then come back to rsl_rx_chan_activ().
 			 */
-			rc = dyn_ts_l1_reconnect(ts, msg);
+			rc = dyn_ts_l1_reconnect(ts);
 			if (rc)
 				return rsl_tx_chan_act_nack(lchan, RSL_ERR_NORMAL_UNSPEC);
+			/* will be fed back to rsl_rx_chan_activ() later */
+			OSMO_ASSERT(lchan->pending_chan_activ == NULL);
+			lchan->pending_chan_activ = msg;
 			/* indicate that the msgb should not be freed. */
 			return 1;
 		}
@@ -3181,8 +3181,7 @@ static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 
 static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 {
-	struct msgb *msg = ts->dyn.pending_chan_activ;
-	ts->dyn.pending_chan_activ = NULL;
+	unsigned int ln;
 
 	if (rc) {
 		LOGP(DRSL, LOGL_NOTICE, "%s PDCH ACT OSMO operation failed (%d) in bts model\n",
@@ -3191,20 +3190,23 @@ static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 		return;
 	}
 
-	if (!msg) {
-		LOGP(DRSL, LOGL_ERROR,
-		     "%s TS re-connected, but no chan activ msg pending\n",
-		     gsm_ts_and_pchan_name(ts));
-		return;
-	}
-
 	ts->dyn.pchan_is = ts->dyn.pchan_want;
 	DEBUGP(DRSL, "%s Connected\n", gsm_ts_and_pchan_name(ts));
 
-	/* continue where we left off before re-connecting the TS. */
-	rc = rsl_rx_chan_activ(msg);
-	if (rc != 1)
-		msgb_free(msg);
+	/* Handle postponed RSL CHANnel ACTIVation messages (if any) */
+	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+		struct gsm_lchan *lchan = &ts->lchan[ln];
+
+		if (lchan->pending_chan_activ == NULL)
+			continue;
+
+		struct msgb *msg = lchan->pending_chan_activ;
+		lchan->pending_chan_activ = NULL;
+
+		/* Continue where we left off before re-connecting the TS */
+		if (rsl_rx_chan_activ(msg) != 1)
+			msgb_free(msg);
+	}
 }
 
 void cb_ts_connected(struct gsm_bts_trx_ts *ts, int rc)

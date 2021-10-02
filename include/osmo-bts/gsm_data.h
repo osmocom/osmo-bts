@@ -83,7 +83,6 @@ struct gsm_bts_trx_ts {
 	struct {
 		enum gsm_phys_chan_config pchan_is;
 		enum gsm_phys_chan_config pchan_want;
-		struct msgb *pending_chan_activ;
 	} dyn;
 
 	unsigned int flags;
