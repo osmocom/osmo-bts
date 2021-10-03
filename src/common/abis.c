@@ -324,6 +324,7 @@ int abis_oml_sendmsg(struct msgb *msg)
 
 	if (!bts->oml_link) {
 		LOGP(DABIS, LOGL_INFO, "Drop Tx OML msg, OML link is down\n");
+		msgb_free(msg);
 		return 0;
 	}
 
