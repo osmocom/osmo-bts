@@ -340,8 +340,8 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_priority = -1;
 
 	/* Default (fall-back) MS/BS Power control parameters */
-	bts->bs_dpc_params = power_ctrl_params_def;
-	bts->ms_dpc_params = power_ctrl_params_def;
+	power_ctrl_params_def_reset(&bts->bs_dpc_params, true);
+	power_ctrl_params_def_reset(&bts->ms_dpc_params, false);
 
 	/* configurable via OML */
 	bts->load.ccch.load_ind_period = 112;

@@ -223,6 +223,7 @@ struct gsm_power_ctrl_params {
 
 /* Default MS/BS Power Control parameters */
 extern const struct gsm_power_ctrl_params power_ctrl_params_def;
+void power_ctrl_params_def_reset(struct gsm_power_ctrl_params *params, bool is_bs_pwr);
 
 /* Measurement pre-processing state */
 struct gsm_power_ctrl_meas_proc_state {

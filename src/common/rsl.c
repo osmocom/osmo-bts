@@ -1111,7 +1111,8 @@ static int rsl_rx_meas_preproc_dft(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* TLV (O) BS Power Parameters IE */
 	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
 		/* Allocate a new chunk and initialize with default values */
-		params = talloc_memdup(trx, &power_ctrl_params_def, sizeof(*params));
+		params = talloc(trx, struct gsm_power_ctrl_params);
+		power_ctrl_params_def_reset(params, true);
 
 		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) == 0) {
 			/* Initially it points to the global defaults */
@@ -1128,7 +1129,8 @@ static int rsl_rx_meas_preproc_dft(struct gsm_bts_trx *trx, struct msgb *msg)
 	/* TLV (O) MS Power Parameters IE */
 	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
 		/* Allocate a new chunk and initialize with default values */
-		params = talloc_memdup(trx, &power_ctrl_params_def, sizeof(*params));
+		params = talloc(trx, struct gsm_power_ctrl_params);
+		power_ctrl_params_def_reset(params, false);
 
 		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) == 0) {
 			/* Initially it points to the global defaults */

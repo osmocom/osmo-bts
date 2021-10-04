@@ -680,3 +680,11 @@ const struct gsm_power_ctrl_params power_ctrl_params_def = {
 		.h_reqt = 6, /* TODO: investigate a reasonable default value */
 	},
 };
+
+void power_ctrl_params_def_reset(struct gsm_power_ctrl_params *params, bool is_bs_pwr)
+{
+	*params = power_ctrl_params_def;
+	if (!is_bs_pwr)
+		/* Trigger loop every fourth SACCH block (1.92s). TS 45.008 sec 4.7.1: */
+		params->ctrl_interval = 2;
+}
