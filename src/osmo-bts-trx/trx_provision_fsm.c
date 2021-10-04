@@ -547,6 +547,14 @@ static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, voi
 	case TRX_PROV_EV_CFG_TS:
 		update_ts_data(l1h, (struct trx_prov_ev_cfg_ts_data*)data);
 		break;
+	case TRX_PROV_EV_CLOSE:
+		/* power off transceiver, if not already */
+		if (pinst->num == 0 && !plink->u.osmotrx.poweroff_sent) {
+			trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
+			plink->u.osmotrx.poweroff_sent = true;
+		}
+		trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF);
+		break;
 	default:
 		OSMO_ASSERT(0);
 	}
@@ -658,10 +666,12 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 	},
 	[TRX_PROV_ST_OPEN_WAIT_POWERON_CNF] = {
 		.in_event_mask =
+			X(TRX_PROV_EV_CLOSE) |
 			X(TRX_PROV_EV_POWERON_CNF) |
 			X(TRX_PROV_EV_CFG_TS),
 		.out_state_mask =
-			X(TRX_PROV_ST_OPEN_POWERON),
+			X(TRX_PROV_ST_OPEN_POWERON) |
+			X(TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF),
 		.name = "OPEN_WAIT_POWERON_CNF",
 		.onenter = st_open_wait_power_cnf_on_enter,
 		.action = st_open_wait_power_cnf,
