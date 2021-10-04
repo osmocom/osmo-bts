@@ -584,7 +584,6 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct phy_link *plink = pinst->phy_link;
 	struct trx_prov_ev_cfg_ts_data* ts_data;
-	uint8_t tn;
 
 	switch (event) {
 	case TRX_PROV_EV_CLOSE:
@@ -594,11 +593,6 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 				trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
 				plink->u.osmotrx.poweronoff_sent = true;
 			}
-			l1h->config.rxgain_sent = false;
-			l1h->config.maxdly_sent = false;
-			l1h->config.maxdlynb_sent = false;
-			for (tn = 0; tn < TRX_NR_TS; tn++)
-				l1h->config.setslot_sent[tn] = false;
 		} else if (!pinst->phy_link->u.osmotrx.poweronoff_sent) {
 			bts_model_trx_close_cb(pinst->trx, 0);
 		} /* else: poweroff in progress, cb will be called upon TRXC RSP */
