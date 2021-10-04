@@ -588,15 +588,10 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	switch (event) {
 	case TRX_PROV_EV_CLOSE:
 		/* power off transceiver, if not already */
-		if (l1h->config.enabled) {
-			if (pinst->num == 0 && plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
+		if (pinst->num == 0 && plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
 				trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
 				plink->u.osmotrx.poweronoff_sent = true;
-			}
-		} else if (!pinst->phy_link->u.osmotrx.poweronoff_sent) {
-			bts_model_trx_close_cb(pinst->trx, 0);
-		} /* else: poweroff in progress, cb will be called upon TRXC RSP */
-
+		}
 		trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF);
 		break;
 	case TRX_PROV_EV_CFG_TS:
