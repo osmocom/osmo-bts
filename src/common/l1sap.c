@@ -629,6 +629,8 @@ static void l1sap_interf_meas_report(struct gsm_bts *bts)
 		l1sap_interf_meas_calc_avg(trx);
 		/* Report to the BSC over the A-bis/RSL */
 		rsl_tx_rf_res(trx);
+		/* Report to the PCU over the PCUIF */
+		pcu_tx_interf_ind(trx, bts->gsm_time.fn);
 	}
 }
 

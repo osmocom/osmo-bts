@@ -559,23 +559,31 @@ int pcu_tx_time_ind(uint32_t fn)
 	return pcu_sock_send(&bts_gsmnet, msg);
 }
 
-int pcu_tx_interf_ind(uint8_t bts_nr, uint8_t trx_nr, uint32_t fn,
-		      const uint8_t *pdch_interf)
+int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn)
 {
 	struct gsm_pcu_if_interf_ind *interf_ind;
 	struct gsm_pcu_if *pcu_prim;
 	struct msgb *msg;
+	unsigned int tn;
 
-	msg = pcu_msgb_alloc(PCU_IF_MSG_INTERF_IND, bts_nr);
+	msg = pcu_msgb_alloc(PCU_IF_MSG_INTERF_IND, trx->bts->nr);
 	if (!msg)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
 	interf_ind = &pcu_prim->u.interf_ind;
 
-	interf_ind->trx_nr = trx_nr;
+	interf_ind->trx_nr = trx->nr;
 	interf_ind->fn = fn;
-	memcpy(&interf_ind->interf[0], &pdch_interf[0],
-	       sizeof(interf_ind->interf));
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+		const struct gsm_lchan *lchan = &ts->lchan[0];
+
+		if (ts_pchan(ts) != GSM_PCHAN_PDCH)
+			continue;
+
+		interf_ind->interf[tn] = -1 * lchan->meas.interf_meas_avg_dbm;
+	}
 
 	return pcu_sock_send(&bts_gsmnet, msg);
 }

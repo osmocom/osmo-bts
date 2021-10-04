@@ -54,84 +54,69 @@
 #define SCHED_FH_PARAMS_VALS(ts) \
 	(ts)->hopping.hsn, (ts)->hopping.maio, (ts)->hopping.arfcn_num
 
-static void ts_report_interf_meas(const struct gsm_bts_trx_ts *ts)
+static void lchan_report_interf_meas(const struct gsm_lchan *lchan)
 {
+	const struct gsm_bts_trx_ts *ts = lchan->ts;
 	const struct l1sched_ts *l1ts = ts->priv;
-	unsigned int ln;
+	enum trx_chan_type dcch, acch;
+	int interf_avg;
 
-	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
-		const struct gsm_lchan *lchan = &ts->lchan[ln];
-		enum trx_chan_type dcch, acch;
-		int interf_avg;
-
-		/* We're not interested in active channels */
-		if (lchan->state == LCHAN_S_ACTIVE)
-			continue;
-
-		switch (lchan->type) {
-		case GSM_LCHAN_SDCCH:
-			if (ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
-			    ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
-				dcch = TRXC_SDCCH4_0 + ln;
-				acch = TRXC_SACCH4_0 + ln;
-			} else { /* SDCCH/8 otherwise */
-				dcch = TRXC_SDCCH8_0 + ln;
-				acch = TRXC_SACCH8_0 + ln;
-			}
-			break;
-		case GSM_LCHAN_TCH_F:
-			dcch = TRXC_TCHF;
-			acch = TRXC_SACCHTF;
-			break;
-		case GSM_LCHAN_TCH_H:
-			dcch = TRXC_TCHH_0 + ln;
-			acch = TRXC_SACCHTH_0 + ln;
-			break;
-		default:
-			/* Skip other lchan types */
-			continue;
-		}
-
-		OSMO_ASSERT(dcch < ARRAY_SIZE(l1ts->chan_state));
-		OSMO_ASSERT(acch < ARRAY_SIZE(l1ts->chan_state));
-
-		interf_avg = (l1ts->chan_state[dcch].meas.interf_avg +
-			      l1ts->chan_state[acch].meas.interf_avg) / 2;
-
-		gsm_lchan_interf_meas_push((struct gsm_lchan *) lchan, interf_avg);
+	/* We're not interested in active CS channels */
+	if (lchan->state == LCHAN_S_ACTIVE) {
+		if (lchan->type != GSM_LCHAN_PDTCH)
+			return;
 	}
+
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+		if (ts->pchan == GSM_PCHAN_CCCH_SDCCH4 ||
+		    ts->pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH) {
+			dcch = TRXC_SDCCH4_0 + lchan->nr;
+			acch = TRXC_SACCH4_0 + lchan->nr;
+		} else { /* SDCCH/8 otherwise */
+			dcch = TRXC_SDCCH8_0 + lchan->nr;
+			acch = TRXC_SACCH8_0 + lchan->nr;
+		}
+		break;
+	case GSM_LCHAN_TCH_F:
+		dcch = TRXC_TCHF;
+		acch = TRXC_SACCHTF;
+		break;
+	case GSM_LCHAN_TCH_H:
+		dcch = TRXC_TCHH_0 + lchan->nr;
+		acch = TRXC_SACCHTH_0 + lchan->nr;
+		break;
+	case GSM_LCHAN_PDTCH:
+		/* We use idle TDMA frames on PDCH */
+		dcch = TRXC_IDLE;
+		acch = TRXC_IDLE;
+		break;
+	default:
+		/* Skip other lchan types */
+		return;
+	}
+
+	OSMO_ASSERT(dcch < ARRAY_SIZE(l1ts->chan_state));
+	OSMO_ASSERT(acch < ARRAY_SIZE(l1ts->chan_state));
+
+	interf_avg = (l1ts->chan_state[dcch].meas.interf_avg +
+		      l1ts->chan_state[acch].meas.interf_avg) / 2;
+
+	gsm_lchan_interf_meas_push((struct gsm_lchan *) lchan, interf_avg);
 }
 
 static void bts_report_interf_meas(const struct gsm_bts *bts,
 				   const uint32_t fn)
 {
 	const struct gsm_bts_trx *trx;
+	unsigned int tn, ln;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		uint8_t pdch_interf[8] = { 0 };
-		unsigned int tn, pdch_num = 0;
-
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 			const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
-			const struct l1sched_ts *l1ts = ts->priv;
-			const struct l1sched_chan_state *l1cs;
-
-			/* PS interference reports for the PCU */
-			if (ts_pchan(ts) == GSM_PCHAN_PDCH) {
-				l1cs = &l1ts->chan_state[TRXC_IDLE];
-				/* Interference value is encoded as -x dBm */
-				pdch_interf[tn] = -1 * l1cs->meas.interf_avg;
-				pdch_num++;
-				continue;
-			}
-
-			/* CS interference reports for the BSC */
-			ts_report_interf_meas(ts);
+			for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++)
+				lchan_report_interf_meas(&ts->lchan[ln]);
 		}
-
-		/* Report interference levels on PDCH to the PCU */
-		if (pdch_num > 0)
-			pcu_tx_interf_ind(bts->nr, trx->nr, fn, pdch_interf);
 	}
 }
 

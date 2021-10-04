@@ -19,8 +19,7 @@ int pcu_tx_rach_ind(uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
 		    int16_t qta, uint16_t ra, uint32_t fn, uint8_t is_11bit,
 		    enum ph_burst_type burst_type, uint8_t sapi);
 int pcu_tx_time_ind(uint32_t fn);
-int pcu_tx_interf_ind(uint8_t bts_nr, uint8_t trx_nr, uint32_t fn,
-		      const uint8_t *pdch_interf);
+int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn);
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed);
 int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len);
 int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
