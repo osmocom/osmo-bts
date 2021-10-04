@@ -50,12 +50,14 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 	struct phy_link *plink = pinst->phy_link;
 
 	plink->u.osmotrx.powered = poweronoff;
-	plink->u.osmotrx.poweronoff_sent = false;
 
-	if (poweronoff)
+	if (poweronoff) {
+		plink->u.osmotrx.poweron_sent = false;
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_POWERON_CNF, (void*)(intptr_t)rc);
-	else
+	} else {
+		plink->u.osmotrx.poweroff_sent = false;
 		osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_POWEROFF_CNF, (void*)(intptr_t)rc);
+	}
 }
 
 
@@ -520,7 +522,7 @@ static void st_open_wait_power_cnf_on_enter(struct osmo_fsm_inst *fi, uint32_t p
 	struct phy_instance *pinst = l1h->phy_inst;
 
 	trx_if_cmd_poweron(l1h, l1if_poweronoff_cb);
-	pinst->phy_link->u.osmotrx.poweronoff_sent = true;
+	pinst->phy_link->u.osmotrx.poweron_sent = true;
 }
 
 static void st_open_wait_power_cnf(struct osmo_fsm_inst *fi, uint32_t event, void *data)
@@ -588,9 +590,9 @@ static void st_open_poweron(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	switch (event) {
 	case TRX_PROV_EV_CLOSE:
 		/* power off transceiver, if not already */
-		if (pinst->num == 0 && plink->u.osmotrx.powered && !plink->u.osmotrx.poweronoff_sent) {
-				trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
-				plink->u.osmotrx.poweronoff_sent = true;
+		if (pinst->num == 0 && plink->u.osmotrx.powered && !plink->u.osmotrx.poweroff_sent) {
+			trx_if_cmd_poweroff(l1h, l1if_poweronoff_cb);
+			plink->u.osmotrx.poweroff_sent = true;
 		}
 		trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWEROFF_CNF);
 		break;

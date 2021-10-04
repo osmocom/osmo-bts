@@ -50,7 +50,8 @@ struct phy_link {
 			bool use_legacy_setbsic;
 			uint8_t trxd_pdu_ver_max; /* Maximum TRXD PDU version to negotiate */
 			bool powered; /* last POWERON (true) or POWEROFF (false) confirmed */
-			bool poweronoff_sent; /* is there a POWERON/POWEROFF in transit? (one or the other based on ->powered) */
+			bool poweron_sent; /* is there a POWERON in transit? */
+			bool poweroff_sent; /* is there a POWEROFF in transit? */
 		} osmotrx;
 		struct {
 			char *mcast_dev;		/* Network device for multicast */
