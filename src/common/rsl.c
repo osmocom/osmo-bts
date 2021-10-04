@@ -449,13 +449,20 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 			if (lchan->meas.interf_meas_avg_dbm == 0)
 				continue;
 
-			/* We're not interested in active lchans */
-			if (lchan->state == LCHAN_S_ACTIVE)
+			/* Only for GSM_LCHAN_{SDCCH,TCH_F,TCH_H,PDTCH} */
+			switch (lchan->type) {
+			case GSM_LCHAN_SDCCH:
+			case GSM_LCHAN_TCH_F:
+			case GSM_LCHAN_TCH_H:
+				/* We're not interested in active CS lchans */
+				if (lchan->state == LCHAN_S_ACTIVE)
+					continue;
+				break;
+			case GSM_LCHAN_PDTCH:
+				break;
+			default:
 				continue;
-
-			/* Only for GSM_LCHAN_{SDCCH,TCH_F,TCH_H} */
-			if (!lchan_is_dcch(lchan))
-				continue;
+			}
 
 			msgb_v_put(nmsg, gsm_lchan2chan_nr_rsl(lchan));
 			msgb_v_put(nmsg, (lchan->meas.interf_band & 0x07) << 5);
