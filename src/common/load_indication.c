@@ -41,6 +41,10 @@ static void load_timer_cb(void *data)
 	struct gsm_bts *bts = data;
 	unsigned int pch_percent, rach_percent;
 
+	/* It makes no sense to send Load Indication if CCCH is still disabled...*/
+	if (bts->c0->ts[0].mo.nm_state.operational != NM_OPSTATE_ENABLED)
+		goto retry_later;
+
 	/* compute percentages */
 	if (bts->load.ccch.pch_total == 0)
 		pch_percent = 0;
@@ -73,6 +77,7 @@ static void load_timer_cb(void *data)
 					  bts->load.rach.access);
 	}
 
+retry_later:
 	reset_load_counters(bts);
 
 	/* re-schedule the timer */
