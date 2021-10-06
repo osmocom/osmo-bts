@@ -194,4 +194,6 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 
 bool ts_is_pdch(const struct gsm_bts_trx_ts *ts);
 
+void gsm_ts_release(struct gsm_bts_trx_ts *ts);
+
 #endif /* _GSM_DATA_H */

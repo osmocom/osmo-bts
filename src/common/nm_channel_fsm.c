@@ -193,6 +193,9 @@ static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		oml_mo_state_chg(&ts->mo, -1, -1, NM_STATE_SHUTDOWN);
 		break;
 	case NM_EV_SHUTDOWN_FINISH:
+		gsm_ts_release(ts);
+		if (ts->vamos.peer)
+			gsm_ts_release(ts->vamos.peer);
 		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:

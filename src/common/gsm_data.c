@@ -305,3 +305,13 @@ bool ts_is_pdch(const struct gsm_bts_trx_ts *ts)
 		return false;
 	}
 }
+
+void gsm_ts_release(struct gsm_bts_trx_ts *ts)
+{
+	unsigned int ln;
+
+	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+		struct gsm_lchan *lchan = &ts->lchan[ln];
+		gsm_lchan_release(lchan, LCHAN_REL_ACT_OML);
+	}
+}
