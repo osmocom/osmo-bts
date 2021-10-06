@@ -59,14 +59,7 @@ static void gsm_bts_trx_ts_init_lchan(struct gsm_bts_trx_ts *ts)
 
 	for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
 		struct gsm_lchan *lchan = &ts->lchan[ln];
-
-		lchan->ts = ts;
-		lchan->nr = ln;
-		lchan->type = GSM_LCHAN_NONE;
-		gsm_lchan_name_update(lchan);
-
-		INIT_LLIST_HEAD(&lchan->sapi_cmds);
-		INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+		gsm_lchan_init(lchan, ts, ln);
 	}
 }
 

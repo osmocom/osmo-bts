@@ -25,6 +25,17 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 
+void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned int lchan_nr)
+{
+	lchan->ts = ts;
+	lchan->nr = lchan_nr;
+	lchan->type = GSM_LCHAN_NONE;
+	gsm_lchan_name_update(lchan);
+
+	INIT_LLIST_HEAD(&lchan->sapi_cmds);
+	INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+}
+
 void early_rr_ia_delay_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;

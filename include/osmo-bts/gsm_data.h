@@ -556,6 +556,7 @@ const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 const char *gsm_lchant_name(enum gsm_chan_t c);
 char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
 char *gsm_ts_and_pchan_name(const struct gsm_bts_trx_ts *ts);
+void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned int lchan_nr);
 void gsm_lchan_name_update(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
