@@ -99,7 +99,7 @@ enum lchan_rel_act_kind {
 	LCHAN_REL_ACT_RSL,
 	LCHAN_REL_ACT_PCU,
 	LCHAN_REL_ACT_OML,
-	LCHAN_REL_ACT_REACT, /* remove once auto-activation hack is removed from opstart_compl() */
+	LCHAN_REL_ACT_REACT, /* FIXME: remove once auto-activation hack is removed from opstart_compl() (OS#1575) */
 };
 
 struct gsm_rep_facch {
