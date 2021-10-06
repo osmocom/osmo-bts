@@ -20,10 +20,16 @@
  */
 
 #include <osmocom/core/logging.h>
+
+#include <osmocom/trau/osmo_ortp.h>
+
 #include <osmo-bts/logging.h>
 #include <osmo-bts/lchan.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
+#include <osmo-bts/pcu_if.h>
+#include <osmo-bts/handover.h>
+#include <osmo-bts/l1sap.h>
 #include <errno.h>
 
 static const struct value_string lchan_s_names[] = {
@@ -68,6 +74,75 @@ void gsm_lchan_name_update(struct gsm_lchan *lchan)
 	if (lchan->name != NULL)
 		talloc_free(lchan->name);
 	lchan->name = name;
+}
+
+static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
+		LOGP(DRSL, LOGL_ERROR, "%s: PDCH release requested but already"
+		     " in switchover\n", gsm_ts_and_pchan_name(ts));
+		return -EINVAL;
+	}
+
+	/*
+	 * Indicate PDCH Disconnect in dyn_pdch.want, let pcu_tx_info_ind()
+	 * pick it up and wait for PCU to disable the channel.
+	 */
+	ts->dyn.pchan_want = GSM_PCHAN_NONE;
+
+	if (!pcu_connected()) {
+		/* PCU not connected yet. Just record the new type and done,
+		 * the PCU will pick it up once connected. */
+		ts->dyn.pchan_is = GSM_PCHAN_NONE;
+		return 1;
+	}
+
+	return pcu_tx_info_ind();
+}
+
+void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind)
+{
+	int rc;
+
+	if (lchan->abis_ip.rtp_socket) {
+		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
+		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
+			"Closing RTP socket on Channel Release ");
+		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+		msgb_queue_flush(&lchan->dl_tch_queue);
+	}
+
+	/* FIXME: right now we allow creating the rtp_socket even if chan is not
+	 * activated... Once we check for that, we can move this check at the
+	 * start of the function */
+	if (lchan->state == LCHAN_S_NONE)
+		return;
+
+	/* release handover state */
+	handover_reset(lchan);
+
+	lchan->rel_act_kind = rel_kind;
+
+	/* Dynamic channel in PDCH mode is released via PCU */
+	if (lchan->ts->pchan == GSM_PCHAN_OSMO_DYN
+	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
+		rc = dyn_ts_pdch_release(lchan);
+		if (rc == 1) {
+			/* If the PCU is not connected, continue to rel ack right away. */
+			lchan->rel_act_kind = LCHAN_REL_ACT_PCU;
+			rsl_tx_rf_rel_ack(lchan);
+			return;
+		}
+		/* Waiting for PDCH release */
+		return;
+	}
+
+	l1sap_chan_rel(lchan->ts->trx, gsm_lchan2chan_nr(lchan));
+
+	lapdm_channel_exit(&lchan->lapdm_ch);
 }
 
 const char *gsm_lchans_name(enum gsm_lchan_state s)

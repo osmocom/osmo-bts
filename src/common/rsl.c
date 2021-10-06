@@ -1934,37 +1934,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	return 0;
 }
 
-static int dyn_ts_pdch_release(struct gsm_lchan *lchan)
-{
-	struct gsm_bts_trx_ts *ts = lchan->ts;
-
-	if (ts->dyn.pchan_is != ts->dyn.pchan_want) {
-		LOGP(DRSL, LOGL_ERROR, "%s: PDCH release requested but already"
-		     " in switchover\n", gsm_ts_and_pchan_name(ts));
-		return -EINVAL;
-	}
-
-	/*
-	 * Indicate PDCH Disconnect in dyn_pdch.want, let pcu_tx_info_ind()
-	 * pick it up and wait for PCU to disable the channel.
-	 */
-	ts->dyn.pchan_want = GSM_PCHAN_NONE;
-
-	if (!pcu_connected()) {
-		/* PCU not connected yet. Just record the new type and done,
-		 * the PCU will pick it up once connected. */
-		ts->dyn.pchan_is = GSM_PCHAN_NONE;
-		return 1;
-	}
-
-	return pcu_tx_info_ind();
-}
-
 /* 8.4.14 RF CHANnel RELease is received */
 static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 {
-	int rc;
-
 	if (lchan->state == LCHAN_S_NONE) {
 		LOGP(DRSL, LOGL_ERROR,
 		     "%s ss=%d state=%s Rx RSL RF Channel Release, but is already inactive;"
@@ -1975,38 +1947,7 @@ static int rsl_rx_rf_chan_rel(struct gsm_lchan *lchan, uint8_t chan_nr)
 		 * not necessarily reflecting the current lchan state. */
 		return tx_rf_rel_ack(lchan, chan_nr);
 	}
-
-	if (lchan->abis_ip.rtp_socket) {
-		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
-		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
-			"Closing RTP socket on Channel Release ");
-		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-		lchan->abis_ip.rtp_socket = NULL;
-		msgb_queue_flush(&lchan->dl_tch_queue);
-	}
-
-	/* release handover state */
-	handover_reset(lchan);
-
-	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
-
-	/* Dynamic channel in PDCH mode is released via PCU */
-	if (lchan->ts->pchan == GSM_PCHAN_OSMO_DYN
-	    && lchan->ts->dyn.pchan_is == GSM_PCHAN_PDCH) {
-		rc = dyn_ts_pdch_release(lchan);
-		if (rc == 1) {
-			/* If the PCU is not connected, continue to rel ack right away. */
-			lchan->rel_act_kind = LCHAN_REL_ACT_PCU;
-			return rsl_tx_rf_rel_ack(lchan);
-		}
-		/* Waiting for PDCH release */
-		return rc;
-	}
-
-	l1sap_chan_rel(lchan->ts->trx, chan_nr);
-
-	lapdm_channel_exit(&lchan->lapdm_ch);
-
+	gsm_lchan_release(lchan, LCHAN_REL_ACT_RSL);
 	return 0;
 }
 
