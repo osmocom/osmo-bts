@@ -1633,6 +1633,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
+	if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+	    ts->mo.nm_state.availability != NM_AVSTATE_OK) {
+		LOGP(DRSL, LOGL_ERROR, "%s rx chan activ but TS not in nm_state oper=ENABLED avail=OK, nack!\n",
+		     gsm_ts_and_pchan_name(ts));
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_RR_UNAVAIL);
+	}
+
 	if (ts->pchan == GSM_PCHAN_OSMO_DYN) {
 		ts->dyn.pchan_want = dyn_pchan_from_chan_nr(dch->chan_nr);
 		DEBUGP(DRSL, "%s rx chan activ\n", gsm_ts_and_pchan_name(ts));
