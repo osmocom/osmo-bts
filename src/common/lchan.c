@@ -21,7 +21,7 @@
 
 #include <osmocom/core/logging.h>
 #include <osmo-bts/logging.h>
-#include <osmo-bts/gsm_data.h>
+#include <osmo-bts/lchan.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/rsl.h>
 

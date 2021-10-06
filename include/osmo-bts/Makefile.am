@@ -22,6 +22,7 @@ noinst_HEADERS = \
 	control_if.h \
 	cbch.h \
 	l1sap.h \
+	lchan.h \
 	power_control.h \
 	scheduler.h \
 	scheduler_backend.h \
