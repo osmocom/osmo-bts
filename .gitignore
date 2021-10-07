@@ -54,6 +54,7 @@ src/osmo-bts-oc2g/misc/.dirstamp
 
 tests/atconfig
 tests/package.m4
+tests/amr/amr_test
 tests/agch/agch_test
 tests/paging/paging_test
 tests/cipher/cipher_test
