@@ -62,6 +62,8 @@ const char *btsvariant2str(enum gsm_bts_type_variant v);
 /* Whether the BTS model requires RadioCarrier MO to be in Enabled state
  * (OPSTARTed) before OPSTARTing the RadioChannel MOs. See OS#5157 */
 #define BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER	(1 << 2)
+/* Whether the BTS model reports interference measurements to L1SAP. */
+#define BTS_INTERNAL_FLAG_INTERF_MEAS			(1 << 3)
 
 /* BTS implementation flags (internal use, not exposed via OML) */
 #define bts_internal_flag_get(bts, flag) \

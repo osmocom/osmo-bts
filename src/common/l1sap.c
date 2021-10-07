@@ -667,7 +667,8 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	}
 
 	/* Report interference levels to the BSC */
-	l1sap_interf_meas_report(bts);
+	if (bts_internal_flag_get(bts, BTS_INTERNAL_FLAG_INTERF_MEAS))
+		l1sap_interf_meas_report(bts);
 
 	return 0;
 }
