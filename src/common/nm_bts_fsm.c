@@ -150,6 +150,8 @@ static void nm_bts_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	case NM_EV_SHUTDOWN_FINISH:
 		/* Propagate event to children: */
 		ev_dispatch_children(bts, event);
+		/* Reset state: */
+		bts->si_valid = 0;
 		nm_bts_fsm_state_chg(fi, NM_BTS_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:
