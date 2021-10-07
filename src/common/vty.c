@@ -1830,6 +1830,14 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 		vty_out(vty, "  RTP/PDCH Loopback Enabled%s", VTY_NEWLINE);
 	vty_out(vty, "  Radio Link Failure Counter 'S': %d%s", lchan->s, VTY_NEWLINE);
 
+	/* Interference levels */
+	if (lchan->meas.interf_meas_avg_dbm != 0) {
+		vty_out(vty, "  Interference: %d dBm (band %d)%s",
+			lchan->meas.interf_meas_avg_dbm,
+			lchan->meas.interf_band,
+			VTY_NEWLINE);
+	}
+
 	/* BS/MS Power Control state and parameters */
 	lchan_bs_power_ctrl_state_dump(vty, 2, lchan);
 	lchan_ms_power_ctrl_state_dump(vty, 2, lchan);
