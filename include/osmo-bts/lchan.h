@@ -226,8 +226,10 @@ struct gsm_lchan {
 			uint16_t toa256_std_dev;
 		} ext;
 		/* Interference levels reported by PHY (in dBm) */
+		int16_t interf_meas_avg_dbm; /* Average value */
 		int16_t interf_meas_dbm[31]; /* Intave max is 31 */
 		uint8_t interf_meas_num;
+		uint8_t interf_band;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
@@ -341,7 +343,7 @@ uint8_t gsm_lchan_as_pchan2chan_nr(const struct gsm_lchan *lchan,
 				   enum gsm_phys_chan_config as_pchan);
 
 void gsm_lchan_interf_meas_push(struct gsm_lchan *lchan, int dbm);
-int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan);
+void gsm_lchan_interf_meas_calc_avg(struct gsm_lchan *lchan);
 
 int lchan2ecu_codec(const struct gsm_lchan *lchan);
 

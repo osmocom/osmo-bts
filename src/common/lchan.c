@@ -348,15 +348,14 @@ void gsm_lchan_interf_meas_push(struct gsm_lchan *lchan, int dbm)
 }
 
 /* Called by the higher layers every Intave * 104 TDMA frames */
-int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan)
+void gsm_lchan_interf_meas_calc_avg(struct gsm_lchan *lchan)
 {
 	const uint8_t meas_num = lchan->meas.interf_meas_num;
 	const struct gsm_bts *bts = lchan->ts->trx->bts;
 	int b, meas_avg, meas_sum = 0;
 
 	/* There must be at least one sample */
-	if (meas_num == 0)
-		return -EAGAIN;
+	OSMO_ASSERT(meas_num > 0);
 
 	/* Calculate the sum of all collected samples (in -x dBm) */
 	while (lchan->meas.interf_meas_num) {
@@ -377,7 +376,8 @@ int gsm_lchan_interf_meas_calc_band(struct gsm_lchan *lchan)
 		  "Interference AVG: %ddBm (band %d, samples %u)\n",
 		  meas_avg, b, meas_num);
 
-	return b;
+	lchan->meas.interf_meas_avg_dbm = meas_avg;
+	lchan->meas.interf_band = b;
 }
 
 /* determine the ECU codec constant for the codec used by given lchan */

@@ -440,29 +440,25 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	uint8_t *len = msgb_tl_put(nmsg, RSL_IE_RESOURCE_INFO);
 
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 
 		for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
-			struct gsm_lchan *lchan = &ts->lchan[ln];
+			const struct gsm_lchan *lchan = &ts->lchan[ln];
+
+			/* No average interference value => no band */
+			if (lchan->meas.interf_meas_avg_dbm == 0)
+				continue;
 
 			/* We're not interested in active lchans */
-			if (lchan->state == LCHAN_S_ACTIVE) {
-				/* Avoid potential buffer overflow */
-				lchan->meas.interf_meas_num = 0;
+			if (lchan->state == LCHAN_S_ACTIVE)
 				continue;
-			}
 
 			/* Only for GSM_LCHAN_{SDCCH,TCH_F,TCH_H} */
 			if (!lchan_is_dcch(lchan))
 				continue;
 
-			/* Average all collected samples */
-			int band = gsm_lchan_interf_meas_calc_band(lchan);
-			if (band < 0)
-				continue;
-
 			msgb_v_put(nmsg, gsm_lchan2chan_nr_rsl(lchan));
-			msgb_v_put(nmsg, (band & 0x07) << 5);
+			msgb_v_put(nmsg, (lchan->meas.interf_band & 0x07) << 5);
 		}
 	}
 

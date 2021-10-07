@@ -591,6 +591,29 @@ static unsigned int calc_exprd_rach_frames(struct gsm_bts *bts, uint32_t fn)
 	return rach_frames_expired;
 }
 
+static void l1sap_interf_meas_calc_avg(struct gsm_bts_trx *trx)
+{
+	unsigned int tn, ln;
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+
+		for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
+			struct gsm_lchan *lchan = &ts->lchan[ln];
+
+			lchan->meas.interf_meas_avg_dbm = 0;
+			lchan->meas.interf_band = 0;
+
+			/* There must be at least one sample */
+			if (lchan->meas.interf_meas_num == 0)
+				continue;
+
+			/* Average all collected samples */
+			gsm_lchan_interf_meas_calc_avg(lchan);
+		}
+	}
+}
+
 static void l1sap_interf_meas_report(struct gsm_bts *bts)
 {
 	const uint32_t period = bts->interference.intave * 104;
@@ -601,8 +624,12 @@ static void l1sap_interf_meas_report(struct gsm_bts *bts)
 	if (bts->gsm_time.fn % period != 0)
 		return;
 
-	llist_for_each_entry(trx, &bts->trx_list, list)
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		/* Calculate the average of all received samples */
+		l1sap_interf_meas_calc_avg(trx);
+		/* Report to the BSC over the A-bis/RSL */
 		rsl_tx_rf_res(trx);
+	}
 }
 
 /* time information received from bts model */
