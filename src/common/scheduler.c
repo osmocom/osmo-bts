@@ -694,6 +694,9 @@ void trx_sched_clean(struct gsm_bts_trx *trx)
 		/* Clean primary and shadow timeslots */
 		trx_sched_clean_ts(ts);
 		trx_sched_clean_ts(ts->vamos.peer);
+
+		talloc_free(ts->vamos.peer);
+		ts->vamos.peer = NULL;
 	}
 }
 
