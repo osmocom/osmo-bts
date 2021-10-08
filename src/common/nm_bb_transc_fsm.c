@@ -59,6 +59,9 @@ static void ev_dispatch_children(struct gsm_bts_bb_trx *bb_transc, uint32_t even
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
+	/* Reset state: */
+	TALLOC_FREE(bb_transc->mo.nm_attr);
+
 	bb_transc->mo.setattr_success = false;
 	bb_transc->mo.opstart_success = false;
 	oml_mo_state_chg(&bb_transc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);

@@ -59,6 +59,7 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 	gsm_ts_release(ts);
 	if (ts->vamos.peer)
 		gsm_ts_release(ts->vamos.peer);
+	TALLOC_FREE(ts->mo.nm_attr);
 
 	ts->mo.setattr_success = false;
 	ts->mo.opstart_success = false;

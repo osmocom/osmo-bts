@@ -48,6 +48,9 @@
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_trx *trx = (struct gsm_bts_trx *)fi->priv;
+	/* Reset state: */
+	TALLOC_FREE(trx->mo.nm_attr);
+
 	trx->mo.setattr_success = false;
 	trx->mo.opstart_success = false;
 	oml_mo_state_chg(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
