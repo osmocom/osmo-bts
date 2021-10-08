@@ -677,6 +677,9 @@ static void trx_sched_clean_ts(struct gsm_bts_trx_ts *ts)
 	/* clear lchan channel states */
 	for (i = 0; i < ARRAY_SIZE(ts->lchan); i++)
 		lchan_set_state(&ts->lchan[i], LCHAN_S_NONE);
+
+	talloc_free(l1ts);
+	ts->priv = NULL;
 }
 
 void trx_sched_clean(struct gsm_bts_trx *trx)
