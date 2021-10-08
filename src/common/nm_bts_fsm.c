@@ -57,6 +57,9 @@ static void ev_dispatch_children(struct gsm_bts *bts, uint32_t event)
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	/* Reset state: */
+	bts->si_valid = 0;
+
 	bts->mo.setattr_success = false;
 	bts->mo.opstart_success = false;
 	oml_mo_state_chg(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
@@ -150,8 +153,6 @@ static void nm_bts_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data
 	case NM_EV_SHUTDOWN_FINISH:
 		/* Propagate event to children: */
 		ev_dispatch_children(bts, event);
-		/* Reset state: */
-		bts->si_valid = 0;
 		nm_bts_fsm_state_chg(fi, NM_BTS_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:

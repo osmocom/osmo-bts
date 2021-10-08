@@ -55,6 +55,11 @@ static bool ts_can_be_enabled(const struct gsm_bts_trx_ts *ts)
 static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
+	/* Reset state: */
+	gsm_ts_release(ts);
+	if (ts->vamos.peer)
+		gsm_ts_release(ts->vamos.peer);
+
 	ts->mo.setattr_success = false;
 	ts->mo.opstart_success = false;
 	oml_mo_state_chg(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED, NM_STATE_LOCKED);
@@ -193,9 +198,6 @@ static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		oml_mo_state_chg(&ts->mo, -1, -1, NM_STATE_SHUTDOWN);
 		break;
 	case NM_EV_SHUTDOWN_FINISH:
-		gsm_ts_release(ts);
-		if (ts->vamos.peer)
-			gsm_ts_release(ts->vamos.peer);
 		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_NOTINSTALLED);
 		break;
 	default:
