@@ -1624,6 +1624,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts_trx_ts *ts = lchan->ts;
+	struct gsm_bts_trx_ts *primary_ts;
 	struct tlv_parsed tp;
 	const struct tlv_p_entry *ie;
 	uint8_t type, cause;
@@ -1635,8 +1636,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
-	if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
-	    ts->mo.nm_state.availability != NM_AVSTATE_OK) {
+	/* We need to pick the real TS here to check NM state: */
+	primary_ts = ts->vamos.is_shadow ? ts->vamos.peer : ts;
+	if (primary_ts->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+	    primary_ts->mo.nm_state.availability != NM_AVSTATE_OK) {
 		LOGP(DRSL, LOGL_ERROR, "%s rx chan activ but TS not in nm_state oper=ENABLED avail=OK, nack!\n",
 		     gsm_ts_and_pchan_name(ts));
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_RR_UNAVAIL);
