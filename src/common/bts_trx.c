@@ -115,11 +115,18 @@ void gsm_bts_trx_init_shadow_ts(struct gsm_bts_trx *trx)
 void gsm_bts_trx_free_shadow_ts(struct gsm_bts_trx *trx)
 {
 	unsigned int tn;
+	unsigned int ln;
 
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		struct gsm_bts_trx_ts *shadow_ts = trx->ts[tn].vamos.peer;
 		if (!shadow_ts)
 			continue;
+
+		/* free lchan related mem allocated on the trx object: */
+		for (ln = 0; ln < ARRAY_SIZE(shadow_ts->lchan); ln++) {
+			struct gsm_lchan *lchan = &shadow_ts->lchan[ln];
+			TALLOC_FREE(lchan->name);
+		}
 
 		talloc_free(shadow_ts);
 		trx->ts[tn].vamos.peer = NULL;
