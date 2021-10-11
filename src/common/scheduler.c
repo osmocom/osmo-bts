@@ -694,10 +694,10 @@ void trx_sched_clean(struct gsm_bts_trx *trx)
 		/* Clean primary and shadow timeslots */
 		trx_sched_clean_ts(ts);
 		trx_sched_clean_ts(ts->vamos.peer);
-
-		talloc_free(ts->vamos.peer);
-		ts->vamos.peer = NULL;
 	}
+
+	/* Free previously allocated shadow timeslots */
+	gsm_bts_trx_free_shadow_ts(trx);
 }
 
 struct msgb *_sched_dequeue_prim(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)

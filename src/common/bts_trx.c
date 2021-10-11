@@ -112,6 +112,20 @@ void gsm_bts_trx_init_shadow_ts(struct gsm_bts_trx *trx)
 	}
 }
 
+void gsm_bts_trx_free_shadow_ts(struct gsm_bts_trx *trx)
+{
+	unsigned int tn;
+
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+		struct gsm_bts_trx_ts *shadow_ts = trx->ts[tn].vamos.peer;
+		if (!shadow_ts)
+			continue;
+
+		talloc_free(shadow_ts);
+		trx->ts[tn].vamos.peer = NULL;
+	}
+}
+
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);

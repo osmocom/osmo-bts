@@ -50,6 +50,7 @@ static inline struct gsm_bts_trx *gsm_bts_bb_trx_get_trx(struct gsm_bts_bb_trx *
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 void gsm_bts_trx_init_shadow_ts(struct gsm_bts_trx *trx);
+void gsm_bts_trx_free_shadow_ts(struct gsm_bts_trx *trx);
 char *gsm_trx_name(const struct gsm_bts_trx *trx);
 const char *gsm_trx_unit_id(struct gsm_bts_trx *trx);
 
