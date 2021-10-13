@@ -1272,7 +1272,8 @@ static void trx_phy_inst_close(struct phy_instance *pinst)
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
 
 	trx_if_close(l1h);
-	trx_sched_clean(pinst->trx);
+	if (pinst->trx)
+		trx_sched_clean(pinst->trx);
 }
 
 /*! open the control + burst data sockets for one phy_instance */
