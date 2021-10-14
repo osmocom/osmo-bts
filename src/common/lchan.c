@@ -30,6 +30,7 @@
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/bts_model.h>
 #include <errno.h>
 
 static const struct value_string lchan_s_names[] = {
@@ -232,6 +233,14 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 	l1sap_chan_rel(lchan->ts->trx, gsm_lchan2chan_nr(lchan));
 
 	lapdm_channel_exit(&lchan->lapdm_ch);
+}
+
+int lchan_deactivate(struct gsm_lchan *lchan)
+{
+	OSMO_ASSERT(lchan);
+
+	lchan->ciph_state = 0;
+	return bts_model_lchan_deactivate(lchan);
 }
 
 const char *gsm_lchans_name(enum gsm_lchan_state s)

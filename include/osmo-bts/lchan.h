@@ -331,6 +331,7 @@ void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned
 void gsm_lchan_name_update(struct gsm_lchan *lchan);
 int lchan_init_lapdm(struct gsm_lchan *lchan);
 void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind);
+int lchan_deactivate(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
