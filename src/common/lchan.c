@@ -257,10 +257,8 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 {
-	DEBUGP(DL1C, "%s state %s -> %s\n",
-	       gsm_lchan_name(lchan),
-	       gsm_lchans_name(lchan->state),
-	       gsm_lchans_name(state));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "state %s -> %s\n",
+		  gsm_lchans_name(lchan->state), gsm_lchans_name(state));
 	lchan->state = state;
 
 	/* Early Immediate Assignment: if we have a cached early IA pending, send it upon becoming active, or discard it
