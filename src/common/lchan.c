@@ -272,29 +272,34 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 		  gsm_lchans_name(lchan->state), gsm_lchans_name(state));
 	lchan->state = state;
 
-	/* Early Immediate Assignment: if we have a cached early IA pending, send it upon becoming active, or discard it
-	 * when releasing. */
-	if (lchan->early_rr_ia) {
-		switch (lchan->state) {
-		case LCHAN_S_ACT_REQ:
-			/* Activation is requested, keep the early IA until active. This allows the BSC to send the IA
-			 * even before a dynamic timeslot is done switching to a different pchan kind (experimental). */
-			break;
-		case LCHAN_S_ACTIVE:
-			/* Activation is done, send the RR IA now. Delay a bit more to give Um time to let the lchan
-			 * light up for the MS */
+	switch (lchan->state) {
+	case LCHAN_S_ACT_REQ:
+		/* Early Immediate Assignment: Activation is requested, keep the
+		 * early IA until active. This allows the BSC to send the IA
+		 * even before a dynamic timeslot is done switching to a
+		 * different pchan kind (experimental). */
+		break;
+	case LCHAN_S_ACTIVE:
+		lchan_init_lapdm(lchan);
+		if (lchan->early_rr_ia) {
+			/* Early Immediate Assignment: Activation is done, send
+			 * the RR IA now. Delay a bit more to give Um time to
+			 * let the lchan light up for the MS */
 			osmo_timer_del(&lchan->early_rr_ia_delay);
 			osmo_timer_schedule(&lchan->early_rr_ia_delay, 0,
 					    osmo_tdef_get(abis_T_defs, -15, OSMO_TDEF_US, -1));
-			break;
-		default:
-			/* Transition to any other state means whatever IA the BSC has sent shall now not be relevant
-			 * anymore. */
+		}
+		break;
+	default:
+		if (lchan->early_rr_ia) {
+			/* Early Immediate Assignment: Transition to any other
+			 * state means whatever IA the BSC has sent shall now
+			 * not be relevant anymore. */
 			osmo_timer_del(&lchan->early_rr_ia_delay);
 			msgb_free(lchan->early_rr_ia);
 			lchan->early_rr_ia = NULL;
-			break;
 		}
+		break;
 	}
 }
 

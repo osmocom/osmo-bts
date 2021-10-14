@@ -1107,9 +1107,6 @@ int lchan_activate(struct gsm_lchan *lchan)
 		}
 		enqueue_sapi_act_cmd(lchan, sapi, dir);
 	}
-
-	lchan_init_lapdm(lchan);
-
 	return 0;
 }
 

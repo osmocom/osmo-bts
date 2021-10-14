@@ -1212,10 +1212,6 @@ int lchan_activate(struct gsm_lchan *lchan)
 
 		enqueue_sapi_act_cmd(lchan, sapi, dir);
 	}
-
-#warning "FIXME: Should this be in sapi_activate_cb?"
-	lchan_init_lapdm(lchan);
-
 	return 0;
 }
 

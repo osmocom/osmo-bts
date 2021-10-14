@@ -165,10 +165,6 @@ static int trx_init(struct gsm_bts_trx *trx)
 	if (rc != 0)
 		return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_NACK,
 					      (void*)(intptr_t)NM_NACK_CANT_PERFORM);
-
-	if (trx == trx->bts->c0)
-		lchan_init_lapdm(&trx->ts[0].lchan[CCCH_LCHAN]);
-
 	/* Send OPSTART ack */
 	return osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_OPSTART_ACK, NULL);
 }
@@ -438,8 +434,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					lchan->tch.amr_mr.bts_mode[3].mode,
 					amr_get_initial_mode(lchan),
 					(lchan->ho.active == 1));
-				/* init lapdm */
-				lchan_init_lapdm(lchan);
 				/* set lchan active */
 				lchan_set_state(lchan, LCHAN_S_ACTIVE);
 				/* set initial ciphering */

@@ -224,8 +224,6 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		 * / PRIM_INFO_ACTIVATE */
 		if (pinst->trx == pinst->trx->bts->c0) {
 			vbts_sched_start(pinst->trx->bts);
-			/* init lapdm layer 3 callback for the trx on timeslot 0 == BCCH */
-			lchan_init_lapdm(&pinst->trx->ts[0].lchan[CCCH_LCHAN]);
 			/* FIXME: This is probably the wrong location to set the CCCH to active... the OML link def. needs to be reworked and fixed. */
 			pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
 			lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
@@ -392,8 +390,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					lchan->tch.amr_mr.bts_mode[3].mode,
 					amr_get_initial_mode(lchan),
 					(lchan->ho.active == 1));
-				/* init lapdm */
-				lchan_init_lapdm(lchan);
 				/* set lchan active */
 				lchan_set_state(lchan, LCHAN_S_ACTIVE);
 				/* set initial ciphering */
