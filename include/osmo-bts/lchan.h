@@ -329,6 +329,7 @@ static inline const char *lchan_ciph_state_name(uint8_t state)
 
 void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned int lchan_nr);
 void gsm_lchan_name_update(struct gsm_lchan *lchan);
+int lchan_init_lapdm(struct gsm_lchan *lchan);
 void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
@@ -336,6 +337,8 @@ static inline char *gsm_lchan_name(const struct gsm_lchan *lchan)
 {
 	return lchan->name;
 }
+
+uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
 
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 uint8_t gsm_lchan2chan_nr_rsl(const struct gsm_lchan *lchan);

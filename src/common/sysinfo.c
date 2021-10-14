@@ -164,22 +164,6 @@ uint8_t num_agch(const struct gsm_bts_trx *trx, const char * arg)
 	return 1;
 }
 
-/* obtain the next to-be transmitted dowlink SACCH frame (L2 hdr + L3); returns pointer to lchan->si buffer */
-uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
-{
-	uint32_t tmp, i;
-
-	for (i = 0; i < _MAX_SYSINFO_TYPE; i++) {
-		tmp = (lchan->si.last + 1 + i) % _MAX_SYSINFO_TYPE;
-		if (!(lchan->si.valid & (1 << tmp)))
-			continue;
-		lchan->si.last = tmp;
-		return GSM_LCHAN_SI(lchan, tmp);
-	}
-	LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "SACCH no SI available\n");
-	return NULL;
-}
-
 /* re-generate SI3 restoctets with GPRS indicator depending on the PCU socket connection state */
 void regenerate_si3_restoctets(struct gsm_bts *bts)
 {

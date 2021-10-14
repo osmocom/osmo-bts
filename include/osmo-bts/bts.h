@@ -407,8 +407,6 @@ uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time);
 void regenerate_si3_restoctets(struct gsm_bts *bts);
 void regenerate_si4_restoctets(struct gsm_bts *bts);
 int get_si4_ro_offset(const uint8_t *si4_buf);
-uint8_t *lchan_sacch_get(struct gsm_lchan *lchan);
-int lchan_init_lapdm(struct gsm_lchan *lchan);
 
 void load_timer_start(struct gsm_bts *bts);
 void load_timer_stop(struct gsm_bts *bts);

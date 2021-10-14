@@ -454,66 +454,6 @@ int bts_link_estab(struct gsm_bts *bts)
 	return bts_model_oml_estab(bts);
 }
 
-/* prepare the per-SAPI T200 arrays for a given lchan */
-static int t200_by_lchan(int *t200_ms_dcch, int *t200_ms_acch, struct gsm_lchan *lchan)
-{
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-
-	/* we have to compensate for the "RTS advance" due to the asynchronous interface between
-	 * the BTS (LAPDm) and the PHY/L1 (OsmoTRX or DSP in case of osmo-bts-{sysmo,lc15,oc2g,octphy} */
-	int32_t fn_advance = bts_get_avg_fn_advance(bts);
-	int32_t fn_advance_us = fn_advance * 4615;
-	int fn_advance_ms = fn_advance_us / 1000;
-
-	t200_ms_acch[DL_SAPI0] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
-	t200_ms_acch[DL_SAPI3] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
-
-	if (lchan->repeated_acch_capability.dl_facch_all && (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)) {
-		t200_ms_acch[DL_SAPI0] *= 2;
-		t200_ms_acch[DL_SAPI3] *= 2;
-	}
-
-	switch (lchan->type) {
-	case GSM_LCHAN_SDCCH:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_SDCCH] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_SDCCH_SAPI3] + fn_advance_ms;
-		break;
-	case GSM_LCHAN_TCH_F:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_FACCH_F] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_FACCH_F] + fn_advance_ms;
-		break;
-	case GSM_LCHAN_TCH_H:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_FACCH_H] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_FACCH_H] + fn_advance_ms;
-		break;
-	default:
-		/* Channels such as CCCH don't use lapdm DL, and hence no T200 is needed */
-		return -1;
-	}
-	return 0;
-}
-
-int lchan_init_lapdm(struct gsm_lchan *lchan)
-{
-	struct lapdm_channel *lc = &lchan->lapdm_ch;
-	int t200_ms_dcch[_NR_DL_SAPI], t200_ms_acch[_NR_DL_SAPI];
-
-	if (t200_by_lchan(t200_ms_dcch, t200_ms_acch, lchan) == 0) {
-		LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG,
-			  "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
-			  t200_ms_dcch[DL_SAPI0], t200_ms_dcch[DL_SAPI3],
-			  t200_ms_acch[DL_SAPI0], t200_ms_acch[DL_SAPI3]);
-		lapdm_channel_init3(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type,
-				    gsm_lchan_name(lchan));
-		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
-		lapdm_channel_set_l1(lc, NULL, lchan);
-	}
-	/* We still need to set Rx callback to receive RACH requests: */
-	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);
-
-	return 0;
-}
-
 #define CCCH_RACH_RATIO_COMBINED256      (256*1/9)
 #define CCCH_RACH_RATIO_SEPARATE256      (256*10/55)
 
