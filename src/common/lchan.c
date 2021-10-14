@@ -52,12 +52,41 @@ const struct value_string lchan_ciph_state_names[] = {
 	{ 0, NULL }
 };
 
+static void early_rr_ia_delay_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+
+	if (!lchan->early_rr_ia) {
+		/* The IA message has disappeared since the timer was started. */
+		return;
+	}
+
+	if (lchan->state != LCHAN_S_ACTIVE) {
+		/* Release has happened since the timer was started. */
+		msgb_free(lchan->early_rr_ia);
+		lchan->early_rr_ia = NULL;
+		return;
+	}
+
+	/* Activation is done, send the RR IA now. Put RR IA msg into the AGCH queue of the BTS. */
+	if (bts_agch_enqueue(bts, lchan->early_rr_ia) < 0) {
+		/* if there is no space in the queue: send DELETE IND */
+		rsl_tx_delete_ind(bts, lchan->early_rr_ia->data, lchan->early_rr_ia->len);
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_DELETED);
+		msgb_free(lchan->early_rr_ia);
+	}
+	lchan->early_rr_ia = NULL;
+}
+
 void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned int lchan_nr)
 {
 	lchan->ts = ts;
 	lchan->nr = lchan_nr;
 	lchan->type = GSM_LCHAN_NONE;
 	gsm_lchan_name_update(lchan);
+
+	osmo_timer_setup(&lchan->early_rr_ia_delay, early_rr_ia_delay_cb, lchan);
 
 	INIT_LLIST_HEAD(&lchan->sapi_cmds);
 	INIT_LLIST_HEAD(&lchan->dl_tch_queue);
@@ -150,33 +179,6 @@ const char *gsm_lchans_name(enum gsm_lchan_state s)
 	return get_value_string(lchan_s_names, s);
 }
 
-void early_rr_ia_delay_cb(void *data)
-{
-	struct gsm_lchan *lchan = data;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-
-	if (!lchan->early_rr_ia) {
-		/* The IA message has disappeared since the timer was started. */
-		return;
-	}
-
-	if (lchan->state != LCHAN_S_ACTIVE) {
-		/* Release has happened since the timer was started. */
-		msgb_free(lchan->early_rr_ia);
-		lchan->early_rr_ia = NULL;
-		return;
-	}
-
-	/* Activation is done, send the RR IA now. Put RR IA msg into the AGCH queue of the BTS. */
-	if (bts_agch_enqueue(bts, lchan->early_rr_ia) < 0) {
-		/* if there is no space in the queue: send DELETE IND */
-		rsl_tx_delete_ind(bts, lchan->early_rr_ia->data, lchan->early_rr_ia->len);
-		rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_DELETED);
-		msgb_free(lchan->early_rr_ia);
-	}
-	lchan->early_rr_ia = NULL;
-}
-
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 {
 	DEBUGP(DL1C, "%s state %s -> %s\n",
@@ -197,7 +199,6 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 			/* Activation is done, send the RR IA now. Delay a bit more to give Um time to let the lchan
 			 * light up for the MS */
 			osmo_timer_del(&lchan->early_rr_ia_delay);
-			osmo_timer_setup(&lchan->early_rr_ia_delay, early_rr_ia_delay_cb, lchan);
 			osmo_timer_schedule(&lchan->early_rr_ia_delay, 0,
 					    osmo_tdef_get(abis_T_defs, -15, OSMO_TDEF_US, -1));
 			break;
