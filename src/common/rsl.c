@@ -1296,21 +1296,6 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
 	     gsm_lchant_name(lchan->type));
 
-	/*
-	 * Free the LAPDm resources now that the BTS
-	 * has released all the resources.
-	 */
-	lapdm_channel_exit(&lchan->lapdm_ch);
-
-	/* Also ensure that there are no leftovers from repeated FACCH or
-	 * repeated SACCH that might cause memory leakage. */
-	msgb_free(lchan->tch.rep_facch[0].msg);
-	msgb_free(lchan->tch.rep_facch[1].msg);
-	lchan->tch.rep_facch[0].msg = NULL;
-	lchan->tch.rep_facch[1].msg = NULL;
-	msgb_free(lchan->rep_sacch);
-	lchan->rep_sacch = NULL;
-
 	return tx_rf_rel_ack(lchan, chan_nr);
 }
 

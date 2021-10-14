@@ -231,8 +231,6 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 	}
 
 	l1sap_chan_rel(lchan->ts->trx, gsm_lchan2chan_nr(lchan));
-
-	lapdm_channel_exit(&lchan->lapdm_ch);
 }
 
 int lchan_deactivate(struct gsm_lchan *lchan)
@@ -290,6 +288,17 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 					    osmo_tdef_get(abis_T_defs, -15, OSMO_TDEF_US, -1));
 		}
 		break;
+	case LCHAN_S_NONE:
+		lapdm_channel_exit(&lchan->lapdm_ch);
+		/* Also ensure that there are no leftovers from repeated FACCH or
+		 * repeated SACCH that might cause memory leakage. */
+		msgb_free(lchan->tch.rep_facch[0].msg);
+		msgb_free(lchan->tch.rep_facch[1].msg);
+		lchan->tch.rep_facch[0].msg = NULL;
+		lchan->tch.rep_facch[1].msg = NULL;
+		msgb_free(lchan->rep_sacch);
+		lchan->rep_sacch = NULL;
+		/* fall through */
 	default:
 		if (lchan->early_rr_ia) {
 			/* Early Immediate Assignment: Transition to any other
