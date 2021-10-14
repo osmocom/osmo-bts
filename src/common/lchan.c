@@ -257,6 +257,8 @@ uint8_t *lchan_sacch_get(struct gsm_lchan *lchan)
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 {
+	if (lchan->state == state)
+		return;
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "state %s -> %s\n",
 		  gsm_lchans_name(lchan->state), gsm_lchans_name(state));
 	lchan->state = state;
