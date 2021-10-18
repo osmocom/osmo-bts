@@ -78,6 +78,7 @@ int get_p_trxout_actual_mdBm(const struct gsm_bts_trx *trx, uint8_t bs_power_red
 int get_p_trxout_actual_mdBm_lchan(const struct gsm_lchan *lchan);
 
 int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, ramp_compl_cb_t ramp_compl_cb);
+void power_ramp_abort(struct gsm_bts_trx *trx);
 
 void power_trx_change_compl(struct gsm_bts_trx *trx, int p_trxout_cur_mdBm);
 

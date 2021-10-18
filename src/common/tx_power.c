@@ -259,7 +259,7 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 	}
 
 	/* Cancel any pending request */
-	osmo_timer_del(&tpp->ramp.step_timer);
+	power_ramp_abort(trx);
 
 	/* set the new target */
 	tpp->p_total_tgt_mdBm = p_total_tgt_mdBm;
@@ -295,6 +295,12 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 	}
 
 	return 0;
+}
+
+/* Cancel any pending request */
+void power_ramp_abort(struct gsm_bts_trx *trx)
+{
+	osmo_timer_del(&trx->power_params.ramp.step_timer);
 }
 
 /* determine the initial transceiver output power at start-up time */

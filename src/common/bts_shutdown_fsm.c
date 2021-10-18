@@ -112,8 +112,15 @@ static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, vo
 
 		LOGPFSML(fi, LOGL_INFO, "%s Ramping down complete, %u TRX remaining\n",
 			 gsm_trx_name(src_trx), remaining);
-		if (remaining == 0)
+		if (remaining == 0) {
+			/* Make sure we end up any remaining ongoing power ramp
+			 * down under target shutdown tx power level, then
+			 * finally transit to next state:
+			 */
+			llist_for_each_entry(trx, &bts->trx_list, list)
+				power_ramp_abort(trx);
 			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_TRX_CLOSED);
+		}
 		break;
 	}
 }
