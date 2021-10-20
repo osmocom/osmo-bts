@@ -902,7 +902,7 @@ int handle_ms_meas_report(struct gsm_lchan *lchan,
 		ms_pwr = lchan->ms_power_ctrl.current;
 	} else {
 		/* if len!=0, it means we were able to parse L1Header in UL SACCH: */
-		OSMO_ASSERT(lchan->meas.flags | LC_UL_M_F_L1_VALID);
+		OSMO_ASSERT(lchan->meas.flags & LC_UL_M_F_L1_VALID);
 
 		ms_ta = lchan->meas.l1_info.ta;
 		ms_pwr = lchan->meas.l1_info.ms_pwr;
