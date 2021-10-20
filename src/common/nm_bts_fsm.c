@@ -35,6 +35,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/phy_link.h>
+#include <osmo-bts/cbch.h>
 
 #define X(s) (1 << (s))
 
@@ -60,6 +61,7 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 	/* Reset state: */
 	bts->si_valid = 0;
 	TALLOC_FREE(bts->mo.nm_attr);
+	bts_cbch_reset(bts);
 
 	bts->mo.setattr_success = false;
 	bts->mo.opstart_success = false;

@@ -21,3 +21,5 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 /* call-back from bts model specific code when it wants to obtain a CBCH
  * block for a given gsm_time.  outbuf must have 23 bytes of space. */
 int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time);
+
+void bts_cbch_reset(struct gsm_bts *bts);

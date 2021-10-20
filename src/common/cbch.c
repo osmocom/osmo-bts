@@ -322,3 +322,22 @@ int bts_cbch_get(struct gsm_bts *bts, uint8_t *outbuf, struct gsm_time *g_time)
 
 	return rc;
 }
+
+static void bts_smscb_state_reset(struct bts_smscb_state *bts_ss)
+{
+	struct smscb_msg *scm, *tmp;
+	llist_for_each_entry_safe(scm, tmp, &bts_ss->queue, list) {
+		llist_del(&scm->list);
+		talloc_free(scm);
+	}
+	bts_ss->queue_len = 0;
+	rate_ctr_group_reset(bts_ss->ctrs);
+	TALLOC_FREE(bts_ss->cur_msg);
+	TALLOC_FREE(bts_ss->default_msg);
+}
+
+void bts_cbch_reset(struct gsm_bts *bts)
+{
+	bts_smscb_state_reset(&bts->smscb_basic);
+	bts_smscb_state_reset(&bts->smscb_extended);
+}
