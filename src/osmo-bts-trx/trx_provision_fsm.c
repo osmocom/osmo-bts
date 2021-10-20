@@ -369,11 +369,13 @@ static void st_open_poweroff_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_st
 
 	trx_provision_reset(l1h);
 
-	/* Apply initial RFMUTE state */
-	if (pinst->trx != NULL)
-		trx_if_cmd_rfmute(l1h, pinst->trx->mo.nm_state.administrative != NM_STATE_UNLOCKED);
-	else
+	if (pinst->trx == NULL) {
 		trx_if_cmd_rfmute(l1h, true);
+		return;
+	}
+
+	/* Apply initial RFMUTE state */
+	trx_if_cmd_rfmute(l1h, pinst->trx->mo.nm_state.administrative != NM_STATE_UNLOCKED);
 
 	osmo_fsm_inst_dispatch(pinst->trx->mo.fi, NM_EV_SW_ACT, NULL);
 	osmo_fsm_inst_dispatch(pinst->trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
