@@ -789,6 +789,80 @@ static inline bool ms_to_valid(const struct gsm_lchan *lchan)
 	return (lchan->ms_t_offs >= 0) || (lchan->p_offs >= 0);
 }
 
+/* Decide if repeated FACCH should be applied or not. If RXQUAL level, that the
+ * MS reports is high enough, FACCH repetition is not needed. */
+static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
+					      const struct gsm48_hdr *gh)
+{
+	const struct gsm48_meas_res *meas_res;
+	uint8_t upper;
+	uint8_t lower;
+	uint8_t rxqual;
+	bool prev_repeated_dl_facch_active = lchan->repeated_dl_facch_active;
+
+	/* This is an optimization so that we exit as quickly as possible if
+	 * there are no FACCH repetition capabilities present. However If the
+	 * repeated FACCH capabilities vanish for whatever reason, we must be
+	 * sure that FACCH repetition is disabled. */
+	if (!lchan->repeated_acch_capability.dl_facch_cmd
+	    && !lchan->repeated_acch_capability.dl_facch_all) {
+		lchan->repeated_dl_facch_active = false;
+		goto out;
+	}
+
+	/* Threshold disabled (always on) */
+	if (lchan->repeated_acch_capability.rxqual == 0) {
+		lchan->repeated_dl_facch_active = true;
+		goto out;
+	}
+
+	/* When the MS sets the SRR bit in the UL-SACCH L1 header
+	 * (repeated SACCH requested) then it makes sense to enable
+	 * FACCH repetition too. */
+	if (lchan->meas.l1_info.srr_sro) {
+		lchan->repeated_dl_facch_active = true;
+		goto out;
+	}
+
+	/* Parse MS measurement results */
+	if (gh == NULL)
+		goto out;
+	/* Check if this is a Measurement Report */
+	if (gh->proto_discr != GSM48_PDISC_RR)
+		goto out;
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		goto out;
+	meas_res = (const struct gsm48_meas_res *) gh->data;
+
+	/* If the RXQUAL level at the MS drops under a certain threshold
+	 * we enable FACCH repetition. */
+	upper = lchan->repeated_acch_capability.rxqual;
+	if (upper > 2)
+		lower = lchan->repeated_acch_capability.rxqual - 2;
+	else
+		lower = 0;
+
+	/* When downlink DTX is applied, use RXQUAL-SUB, otherwise use
+	 * RXQUAL-FULL. */
+	if (meas_res->dtx_used)
+		rxqual = meas_res->rxqual_sub;
+	else
+		rxqual = meas_res->rxqual_full;
+
+	if (rxqual >= upper)
+		lchan->repeated_dl_facch_active = true;
+	else if (rxqual <= lower)
+		lchan->repeated_dl_facch_active = false;
+
+out:
+	if (lchan->repeated_dl_facch_active == prev_repeated_dl_facch_active)
+		return;
+	if (lchan->repeated_dl_facch_active)
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: inactive => active\n");
+	else
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: active => inactive\n");
+}
+
 /* Called every time a Measurement Result (TS 08.58 8.4.8) is received from
  * lower layers and has to be forwarded to BSC */
 int handle_ms_meas_report(struct gsm_lchan *lchan,
@@ -852,6 +926,8 @@ int handle_ms_meas_report(struct gsm_lchan *lchan,
 	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
 	if (gh)
 		lchan_bs_pwr_ctrl(lchan, gh);
+
+	repeated_dl_facch_active_decision(lchan, gh);
 
 	/* Reset state for next iteration */
 	lchan->tch.dtx.dl_active = false;

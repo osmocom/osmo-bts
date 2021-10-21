@@ -3586,7 +3586,6 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 			return 0;
 		}
 
-		repeated_dl_facch_active_decision(lchan, msgb_l3(msg), msgb_l3len(msg));
 		rc = handle_ms_meas_report(lchan, (struct gsm48_hdr *)msgb_l3(msg), msgb_l3len(msg));
 		msgb_free(msg);
 		return rc;
