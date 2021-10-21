@@ -1566,7 +1566,7 @@ static enum gsm_phys_chan_config dyn_pchan_from_chan_nr(uint8_t chan_nr)
 }
 
 /* Parse RSL_IE_OSMO_REP_ACCH_CAP */
-static void parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_parsed *tp)
+static int parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_parsed *tp)
 {
 	/* 3GPP TS 24.008, section 10.5.1.7 defines a Repeated ACCH Capability
 	 * bit that indicates if REPEATED FACCH/SACCH is supported or not.
@@ -1577,10 +1577,15 @@ static void parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_p
 	memset(&lchan->repeated_acch_capability, 0, sizeof(lchan->repeated_acch_capability));
 
 	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP, sizeof(lchan->repeated_acch_capability)))
-		return;
+		return 0;
+
+	if (!osmo_bts_has_feature(lchan->ts->trx->bts->features, BTS_FEAT_ACCH_REP))
+		return -RSL_ERR_OPT_IE_ERROR;
 
 	memcpy(&lchan->repeated_acch_capability, TLVP_VAL(tp, RSL_IE_OSMO_REP_ACCH_CAP),
 	       sizeof(lchan->repeated_acch_capability));
+
+	return 0;
 }
 
 /* Parse RSL_IE_OSMO_TOP_ACCH_CAP */
@@ -1912,7 +1917,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* Remember to send an RSL ACK once the lchan is active */
 	lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
 
-	parse_repeated_acch_capability(lchan, &tp);
+	rc = parse_repeated_acch_capability(lchan, &tp);
+	if (rc < 0)
+		return rsl_tx_chan_act_acknack(lchan, -rc);
 	rc = parse_temporary_overpower_acch_capability(lchan, &tp);
 	if (rc < 0)
 		return rsl_tx_chan_act_acknack(lchan, -rc);
@@ -2180,7 +2187,9 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
-	parse_repeated_acch_capability(lchan, &tp);
+	rc = parse_repeated_acch_capability(lchan, &tp);
+	if (rc < 0)
+		return rsl_tx_mode_modif_nack(lchan, -rc);
 	rc = parse_temporary_overpower_acch_capability(lchan, &tp);
 	if (rc < 0)
 		return rsl_tx_mode_modif_nack(lchan, -rc);
