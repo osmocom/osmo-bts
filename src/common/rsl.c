@@ -3464,7 +3464,7 @@ struct osmo_bts_supp_meas_info {
 } __attribute__((packed));
 
 /* Compose and send 8.4.8 MEASUREMENT RESult via RSL. (timing_offset=-1 -> not present) */
-int rsl_tx_meas_res(struct gsm_lchan *lchan, uint8_t *l3, int l3_len, int timing_offset)
+int rsl_tx_meas_res(struct gsm_lchan *lchan, const uint8_t *l3, int l3_len, int timing_offset)
 {
 	struct msgb *msg;
 	uint8_t meas_res[16];
