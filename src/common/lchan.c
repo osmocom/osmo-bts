@@ -296,8 +296,8 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 		msgb_free(lchan->tch.rep_facch[1].msg);
 		lchan->tch.rep_facch[0].msg = NULL;
 		lchan->tch.rep_facch[1].msg = NULL;
-		msgb_free(lchan->rep_sacch);
-		lchan->rep_sacch = NULL;
+		msgb_free(lchan->rep_acch.dl_sacch_msg);
+		lchan->rep_acch.dl_sacch_msg = NULL;
 		/* fall through */
 	default:
 		if (lchan->early_rr_ia) {

@@ -798,7 +798,7 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	uint8_t upper;
 	uint8_t lower;
 	uint8_t rxqual;
-	bool prev_repeated_dl_facch_active = lchan->repeated_dl_facch_active;
+	bool prev_repeated_dl_facch_active = lchan->rep_acch.dl_facch_active;
 
 	/* This is an optimization so that we exit as quickly as possible if
 	 * there are no FACCH repetition capabilities present. However If the
@@ -806,13 +806,13 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	 * sure that FACCH repetition is disabled. */
 	if (!lchan->rep_acch_cap.dl_facch_cmd
 	    && !lchan->rep_acch_cap.dl_facch_all) {
-		lchan->repeated_dl_facch_active = false;
+		lchan->rep_acch.dl_facch_active = false;
 		goto out;
 	}
 
 	/* Threshold disabled (always on) */
 	if (lchan->rep_acch_cap.rxqual == 0) {
-		lchan->repeated_dl_facch_active = true;
+		lchan->rep_acch.dl_facch_active = true;
 		goto out;
 	}
 
@@ -820,7 +820,7 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	 * (repeated SACCH requested) then it makes sense to enable
 	 * FACCH repetition too. */
 	if (lchan->meas.l1_info.srr_sro) {
-		lchan->repeated_dl_facch_active = true;
+		lchan->rep_acch.dl_facch_active = true;
 		goto out;
 	}
 
@@ -852,14 +852,14 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 		rxqual = meas_res->rxqual_full;
 
 	if (rxqual >= upper)
-		lchan->repeated_dl_facch_active = true;
+		lchan->rep_acch.dl_facch_active = true;
 	else if (rxqual <= lower)
-		lchan->repeated_dl_facch_active = false;
+		lchan->rep_acch.dl_facch_active = false;
 
 out:
-	if (lchan->repeated_dl_facch_active == prev_repeated_dl_facch_active)
+	if (lchan->rep_acch.dl_facch_active == prev_repeated_dl_facch_active)
 		return;
-	if (lchan->repeated_dl_facch_active)
+	if (lchan->rep_acch.dl_facch_active)
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: inactive => active\n");
 	else
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: active => inactive\n");

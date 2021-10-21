@@ -304,13 +304,16 @@ struct gsm_lchan {
 	/* ECU (Error Concealment Unit) state */
 	struct osmo_ecu_state *ecu_state;
 
+	/* Repeated ACCH capabilities and current state */
 	struct abis_rsl_osmo_rep_acch_cap rep_acch_cap;
-	bool repeated_dl_facch_active;
-	bool repeated_ul_sacch_active;
-	bool repeated_dl_sacch_active;
+	struct {
+		bool dl_facch_active;
+		bool ul_sacch_active;
+		bool dl_sacch_active;
 
-	/* Message buffer to store DL-SACCH repeation candidate */
-	struct msgb *rep_sacch;
+		/* Message buffer to store DL-SACCH repeation candidate */
+		struct msgb *dl_sacch_msg;
+	} rep_acch;
 
 	/* Cached early Immediate Assignment message: if the Immediate Assignment arrives before the channel is
 	 * confirmed active, then cache it here and send it once the channel is confirmed to be active. This is related

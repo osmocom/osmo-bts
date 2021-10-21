@@ -60,7 +60,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint16_t ber10k;
 	int rc;
 	struct gsm_lchan *lchan = chan_state->lchan;
-	bool rep_sacch = L1SAP_IS_LINK_SACCH(trx_chan_desc[bi->chan].link_id) && lchan->repeated_ul_sacch_active;
+	bool rep_sacch = L1SAP_IS_LINK_SACCH(trx_chan_desc[bi->chan].link_id) && lchan->rep_acch.ul_sacch_active;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */

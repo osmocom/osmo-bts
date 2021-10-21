@@ -1723,7 +1723,7 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 			VTY_NEWLINE);
 	else
 		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
-	if (lchan->repeated_dl_facch_active)
+	if (lchan->rep_acch.dl_facch_active)
 		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
 	else
 		cfg_out(vty, "retransmission currently inactive%s",
@@ -1737,7 +1737,7 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 			VTY_NEWLINE);
 	else
 		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
-	if (lchan->repeated_dl_sacch_active)
+	if (lchan->rep_acch.dl_sacch_active)
 		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
 	else
 		cfg_out(vty, "retransmission currently inactive%s",
@@ -1751,7 +1751,7 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 			VTY_NEWLINE);
 	else
 		cfg_out(vty, "no retransmission (disabled)%s", VTY_NEWLINE);
-	if (lchan->repeated_ul_sacch_active)
+	if (lchan->rep_acch.ul_sacch_active)
 		cfg_out(vty, "retransmission currently active%s", VTY_NEWLINE);
 	else
 		cfg_out(vty, "retransmission currently inactive%s",

@@ -1037,15 +1037,15 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan
 	 * possible candidates in order to have one ready in case the MS enables
 	 * SACCH repetition. */
 
-	if (lchan->rep_sacch) {
+	if (lchan->rep_acch.dl_sacch_msg) {
 		if (lchan->meas.l1_info.srr_sro == 0) {
 			/* Toss previous repetition candidate */
-			msgb_free(lchan->rep_sacch);
-			lchan->rep_sacch = NULL;
+			msgb_free(lchan->rep_acch.dl_sacch_msg);
+			lchan->rep_acch.dl_sacch_msg = NULL;
 		} else {
 			/* Use previous repetition candidate */
-			msg = lchan->rep_sacch;
-			lchan->rep_sacch = NULL;
+			msg = lchan->rep_acch.dl_sacch_msg;
+			lchan->rep_acch.dl_sacch_msg = NULL;
 			return msg;
 		}
 	}
@@ -1059,7 +1059,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan
 	/* Only LAPDm frames for SAPI 0 may become a repetition
 	 * candidate. */
 	if (sapi == 0)
-		lchan->rep_sacch = msgb_copy(msg, "rep_sacch");
+		lchan->rep_acch.dl_sacch_msg = msgb_copy(msg, "rep_sacch");
 
 	return msg;
 }
@@ -1143,20 +1143,20 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
 			p[0] = lchan->ms_power_ctrl.current;
-			if (lchan->repeated_ul_sacch_active)
+			if (lchan->rep_acch.ul_sacch_active)
 				p[0] |= 0x40; /* See also: 3GPP TS 44.004, section 7.1 */
 			p[1] = lchan->ta_ctrl.current;
 			le = &lchan->lapdm_ch.lapdm_acch;
 			if (lchan->rep_acch_cap.dl_sacch) {
 				/* Check if MS requests SACCH repetition and update state accordingly */
 				if (lchan->meas.l1_info.srr_sro) {
-					if (lchan->repeated_dl_sacch_active == false)
+					if (lchan->rep_acch.dl_sacch_active == false)
 						LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-SACCH repetition: inactive => active\n");
-					lchan->repeated_dl_sacch_active = true;
+					lchan->rep_acch.dl_sacch_active = true;
 				} else {
-					if (lchan->repeated_dl_sacch_active == true)
+					if (lchan->rep_acch.dl_sacch_active == true)
 						LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-SACCH repetition: active => inactive\n");
-					lchan->repeated_dl_sacch_active = false;
+					lchan->rep_acch.dl_sacch_active = false;
 				}
 				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le);
 			} else {
@@ -1166,7 +1166,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			if (lchan->ts->trx->bts->dtxd)
 				dtxd_facch = true;
 			le = &lchan->lapdm_ch.lapdm_dcch;
-			if (lchan->repeated_dl_facch_active && lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
+			if (lchan->rep_acch.dl_facch_active && lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
 				pp_msg = lapdm_phsap_dequeue_msg_facch(lchan, le, fn);
 			else
 				pp_msg = lapdm_phsap_dequeue_msg(le);
@@ -1427,20 +1427,20 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 {
 	uint16_t upper = 0;
 	uint16_t lower = 0;
-	bool prev_repeated_ul_sacch_active = lchan->repeated_ul_sacch_active;
+	bool prev_repeated_ul_sacch_active = lchan->rep_acch.ul_sacch_active;
 
 	/* This is an optimization so that we exit as quickly as possible if
 	 * there are no uplink SACCH repetition capabilities present.
 	 * However If the repeated UL-SACCH capabilities vanish for whatever
 	 * reason, we must be sure that UL-SACCH repetition is disabled. */
 	if (!lchan->rep_acch_cap.ul_sacch) {
-		lchan->repeated_ul_sacch_active = false;
+		lchan->rep_acch.ul_sacch_active = false;
 		goto out;
 	}
 
 	/* Threshold disabled (repetition is always on) */
 	if (lchan->rep_acch_cap.rxqual == 0) {
-		lchan->repeated_ul_sacch_active = true;
+		lchan->rep_acch.ul_sacch_active = true;
 		goto out;
 	}
 
@@ -1459,14 +1459,14 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 
 	/* If upper/rxqual == 0, then repeated UL-SACCH is always on */
 	if (ber10k >= upper)
-		lchan->repeated_ul_sacch_active = true;
+		lchan->rep_acch.ul_sacch_active = true;
 	else if (ber10k <= lower)
-		lchan->repeated_ul_sacch_active = false;
+		lchan->rep_acch.ul_sacch_active = false;
 
 out:
-	if (lchan->repeated_ul_sacch_active == prev_repeated_ul_sacch_active)
+	if (lchan->rep_acch.ul_sacch_active == prev_repeated_ul_sacch_active)
 		return;
-	if (lchan->repeated_ul_sacch_active)
+	if (lchan->rep_acch.ul_sacch_active)
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "UL-SACCH repetition: inactive => active\n");
 	else
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "UL-SACCH repetition: active => inactive\n");
