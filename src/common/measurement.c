@@ -791,7 +791,9 @@ static inline bool ms_to_valid(const struct gsm_lchan *lchan)
 
 /* Called every time a Measurement Result (TS 08.58 8.4.8) is received from
  * lower layers and has to be forwarded to BSC */
-int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigned int len)
+int handle_ms_meas_report(struct gsm_lchan *lchan,
+			  const struct gsm48_hdr *gh,
+			  unsigned int len)
 {
 	int timing_offset, rc;
 	struct lapdm_entity *le;
@@ -804,7 +806,7 @@ int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigne
 	le = &lchan->lapdm_ch.lapdm_acch;
 
 	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
-	rc = rsl_tx_meas_res(lchan, (uint8_t *)gh, len, timing_offset);
+	rc = rsl_tx_meas_res(lchan, (const uint8_t *)gh, len, timing_offset);
 	if (rc == 0) /* Count successful transmissions */
 		lchan->meas.res_nr++;
 
@@ -849,7 +851,7 @@ int handle_ms_meas_report(struct gsm_lchan *lchan, struct gsm48_hdr *gh, unsigne
 	lchan_ms_ta_ctrl(lchan, ms_ta, lchan->meas.ms_toa256);
 	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
 	if (gh)
-		lchan_bs_pwr_ctrl(lchan, (const struct gsm48_hdr *) gh);
+		lchan_bs_pwr_ctrl(lchan, gh);
 
 	/* Reset state for next iteration */
 	lchan->tch.dtx.dl_active = false;
