@@ -1299,17 +1299,17 @@ static void trx_sched_apply_att(const struct gsm_lchan *lchan,
 				struct trx_dl_burst_req *br)
 {
 	const struct trx_chan_desc *desc = &trx_chan_desc[br->chan];
-	const uint8_t overpower_db = lchan->top_acch_cap.overpower_db;
 
 	/* Current BS power reduction value in dB */
 	br->att = lchan->bs_power_ctrl.current;
 
 	/* Temporary Overpower for SACCH/FACCH bursts */
-	if (overpower_db == 0)
+	if (lchan->top_acch_cap.overpower_db == 0)
 		return;
-	if (desc->link_id == LID_SACCH || br->flags & TRX_BR_F_FACCH) {
-		if (br->att > overpower_db)
-			br->att -= overpower_db;
+	if ((lchan->top_acch_cap.sacch_enable && desc->link_id == LID_SACCH) ||
+	    (lchan->top_acch_cap.facch_enable && br->flags & TRX_BR_F_FACCH)) {
+		if (br->att > lchan->top_acch_cap.overpower_db)
+			br->att -= lchan->top_acch_cap.overpower_db;
 		else
 			br->att = 0;
 	}
