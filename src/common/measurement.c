@@ -833,6 +833,8 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
 		goto out;
 	meas_res = (const struct gsm48_meas_res *) gh->data;
+	if (meas_res->meas_valid != 0) /* 0 = valid */
+		goto out;
 
 	/* If the RXQUAL level at the MS drops under a certain threshold
 	 * we enable FACCH repetition. */
