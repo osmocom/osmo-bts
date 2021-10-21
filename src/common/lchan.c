@@ -67,7 +67,7 @@ static int t200_by_lchan(int *t200_ms_dcch, int *t200_ms_acch, struct gsm_lchan 
 	t200_ms_acch[DL_SAPI0] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
 	t200_ms_acch[DL_SAPI3] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
 
-	if (lchan->repeated_acch_capability.dl_facch_all && (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)) {
+	if (lchan->rep_acch_cap.dl_facch_all && (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)) {
 		t200_ms_acch[DL_SAPI0] *= 2;
 		t200_ms_acch[DL_SAPI3] *= 2;
 	}

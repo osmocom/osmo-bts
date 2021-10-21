@@ -304,7 +304,7 @@ struct gsm_lchan {
 	/* ECU (Error Concealment Unit) state */
 	struct osmo_ecu_state *ecu_state;
 
-	struct abis_rsl_osmo_rep_acch_cap repeated_acch_capability;
+	struct abis_rsl_osmo_rep_acch_cap rep_acch_cap;
 	bool repeated_dl_facch_active;
 	bool repeated_ul_sacch_active;
 	bool repeated_dl_sacch_active;

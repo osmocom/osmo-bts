@@ -1006,7 +1006,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan
 		 * If the MS explicitly indicated that repeated ACCH is
 		 * supported, than all FACCH frames may be repeated
 		 * see also: 3GPP TS 44.006, section 10.3). */
-		if (!(lchan->repeated_acch_capability.dl_facch_all || msg->data[0] & 0x02))
+		if (!(lchan->rep_acch_cap.dl_facch_all || msg->data[0] & 0x02))
 			return msg;
 
 		/* ... and store the message buffer for repetition. */
@@ -1147,7 +1147,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				p[0] |= 0x40; /* See also: 3GPP TS 44.004, section 7.1 */
 			p[1] = lchan->ta_ctrl.current;
 			le = &lchan->lapdm_ch.lapdm_acch;
-			if (lchan->repeated_acch_capability.dl_sacch) {
+			if (lchan->rep_acch_cap.dl_sacch) {
 				/* Check if MS requests SACCH repetition and update state accordingly */
 				if (lchan->meas.l1_info.srr_sro) {
 					if (lchan->repeated_dl_sacch_active == false)
@@ -1433,13 +1433,13 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 	 * there are no uplink SACCH repetition capabilities present.
 	 * However If the repeated UL-SACCH capabilities vanish for whatever
 	 * reason, we must be sure that UL-SACCH repetition is disabled. */
-	if (!lchan->repeated_acch_capability.ul_sacch) {
+	if (!lchan->rep_acch_cap.ul_sacch) {
 		lchan->repeated_ul_sacch_active = false;
 		goto out;
 	}
 
 	/* Threshold disabled (repetition is always on) */
-	if (lchan->repeated_acch_capability.rxqual == 0) {
+	if (lchan->rep_acch_cap.rxqual == 0) {
 		lchan->repeated_ul_sacch_active = true;
 		goto out;
 	}
@@ -1454,8 +1454,8 @@ static void repeated_ul_sacch_active_decision(struct gsm_lchan *lchan,
 	 * of the table in GSM 05.08, section 8.2.4. The lower vector is just
 	 * the upper vector shifted by 2. */
 
-	upper = ber10k_by_rxqual_upper[lchan->repeated_acch_capability.rxqual];
-	lower = ber10k_by_rxqual_lower[lchan->repeated_acch_capability.rxqual];
+	upper = ber10k_by_rxqual_upper[lchan->rep_acch_cap.rxqual];
+	lower = ber10k_by_rxqual_lower[lchan->rep_acch_cap.rxqual];
 
 	/* If upper/rxqual == 0, then repeated UL-SACCH is always on */
 	if (ber10k >= upper)

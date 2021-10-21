@@ -1574,16 +1574,16 @@ static int parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_pa
 	 * should be communicated in the RSL CHANNEL ACTIVATION. For osmo-bts
 	 * we will use a propritary IE. */
 
-	memset(&lchan->repeated_acch_capability, 0, sizeof(lchan->repeated_acch_capability));
+	memset(&lchan->rep_acch_cap, 0, sizeof(lchan->rep_acch_cap));
 
-	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP, sizeof(lchan->repeated_acch_capability)))
+	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_REP_ACCH_CAP, sizeof(lchan->rep_acch_cap)))
 		return 0;
 
 	if (!osmo_bts_has_feature(lchan->ts->trx->bts->features, BTS_FEAT_ACCH_REP))
 		return -RSL_ERR_OPT_IE_ERROR;
 
-	memcpy(&lchan->repeated_acch_capability, TLVP_VAL(tp, RSL_IE_OSMO_REP_ACCH_CAP),
-	       sizeof(lchan->repeated_acch_capability));
+	memcpy(&lchan->rep_acch_cap, TLVP_VAL(tp, RSL_IE_OSMO_REP_ACCH_CAP),
+	       sizeof(lchan->rep_acch_cap));
 
 	return 0;
 }

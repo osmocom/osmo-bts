@@ -1707,18 +1707,18 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 {
 	cfg_out(vty, "ACCH repetition:%s", VTY_NEWLINE);
 	indent += 2;
-	if (lchan->repeated_acch_capability.rxqual)
+	if (lchan->rep_acch_cap.rxqual)
 		cfg_out(vty, "Enable RXQUAL threshold: %u%s",
-			lchan->repeated_acch_capability.rxqual, VTY_NEWLINE);
+			lchan->rep_acch_cap.rxqual, VTY_NEWLINE);
 	else
 		cfg_out(vty, "Enable RXQUAL threshold: (none, alway on)%s",
 			VTY_NEWLINE);
 
 	cfg_out(vty, "DL-FACCH:%s", VTY_NEWLINE);
 	indent += 2;
-	if (lchan->repeated_acch_capability.dl_facch_all)
+	if (lchan->rep_acch_cap.dl_facch_all)
 		cfg_out(vty, "retramsit all LAPDM block types%s", VTY_NEWLINE);
-	else if (lchan->repeated_acch_capability.dl_facch_cmd)
+	else if (lchan->rep_acch_cap.dl_facch_cmd)
 		cfg_out(vty, "retramsit only LAPDM command blocks%s",
 			VTY_NEWLINE);
 	else
@@ -1732,7 +1732,7 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 
 	cfg_out(vty, "DL-SACCH:%s", VTY_NEWLINE);
 	indent += 2;
-	if (lchan->repeated_acch_capability.ul_sacch)
+	if (lchan->rep_acch_cap.ul_sacch)
 		cfg_out(vty, "retramsit all SACCH blocks for SAPI=0%s",
 			VTY_NEWLINE);
 	else
@@ -1746,7 +1746,7 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 
 	cfg_out(vty, "UL-SACCH:%s", VTY_NEWLINE);
 	indent += 2;
-	if (lchan->repeated_acch_capability.dl_sacch)
+	if (lchan->rep_acch_cap.dl_sacch)
 		cfg_out(vty, "retramsit all SACCH blocks for SAPI=0%s",
 			VTY_NEWLINE);
 	else

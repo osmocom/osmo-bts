@@ -804,14 +804,14 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	 * there are no FACCH repetition capabilities present. However If the
 	 * repeated FACCH capabilities vanish for whatever reason, we must be
 	 * sure that FACCH repetition is disabled. */
-	if (!lchan->repeated_acch_capability.dl_facch_cmd
-	    && !lchan->repeated_acch_capability.dl_facch_all) {
+	if (!lchan->rep_acch_cap.dl_facch_cmd
+	    && !lchan->rep_acch_cap.dl_facch_all) {
 		lchan->repeated_dl_facch_active = false;
 		goto out;
 	}
 
 	/* Threshold disabled (always on) */
-	if (lchan->repeated_acch_capability.rxqual == 0) {
+	if (lchan->rep_acch_cap.rxqual == 0) {
 		lchan->repeated_dl_facch_active = true;
 		goto out;
 	}
@@ -838,9 +838,9 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 
 	/* If the RXQUAL level at the MS drops under a certain threshold
 	 * we enable FACCH repetition. */
-	upper = lchan->repeated_acch_capability.rxqual;
+	upper = lchan->rep_acch_cap.rxqual;
 	if (upper > 2)
-		lower = lchan->repeated_acch_capability.rxqual - 2;
+		lower = lchan->rep_acch_cap.rxqual - 2;
 	else
 		lower = 0;
 
