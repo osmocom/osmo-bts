@@ -1299,7 +1299,7 @@ static void trx_sched_apply_att(const struct gsm_lchan *lchan,
 				struct trx_dl_burst_req *br)
 {
 	const struct trx_chan_desc *desc = &trx_chan_desc[br->chan];
-	const uint8_t overpower_db = lchan->bs_acch_overpower_db;
+	const uint8_t overpower_db = lchan->top_acch_cap.overpower_db;
 
 	/* Current BS power reduction value in dB */
 	br->att = lchan->bs_power_ctrl.current;

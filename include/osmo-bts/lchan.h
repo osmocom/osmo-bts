@@ -293,8 +293,8 @@ struct gsm_lchan {
 	struct gsm_power_ctrl_params ms_dpc_params;
 	struct gsm_power_ctrl_params bs_dpc_params;
 
-	/* Temporary Overpower for SACCH/FACCH */
-	uint8_t bs_acch_overpower_db;
+	/* Temporary ACCH overpower capabilities */
+	struct abis_rsl_osmo_temp_ovp_acch_cap top_acch_cap;
 
 	struct msgb *pending_rel_ind_msg;
 

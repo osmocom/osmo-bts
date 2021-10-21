@@ -1592,18 +1592,22 @@ static int parse_repeated_acch_capability(struct gsm_lchan *lchan, struct tlv_pa
 static int parse_temporary_overpower_acch_capability(struct gsm_lchan *lchan,
 						     const struct tlv_parsed *tp)
 {
-	struct abis_rsl_osmo_temp_ovp_acch_cap *top;
+	memset(&lchan->top_acch_cap, 0, sizeof(lchan->top_acch_cap));
 
-	lchan->bs_acch_overpower_db = 0;
-
-	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP, sizeof(*top)))
+	if (!TLVP_PRES_LEN(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP, sizeof(lchan->top_acch_cap)))
 		return 0;
 
 	if (!osmo_bts_has_feature(lchan->ts->trx->bts->features, BTS_FEAT_ACCH_TEMP_OVP))
 		return -RSL_ERR_OPT_IE_ERROR;
 
-	top = (struct abis_rsl_osmo_temp_ovp_acch_cap *)TLVP_VAL(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP);
-	lchan->bs_acch_overpower_db = top->overpower_db;
+	memcpy(&lchan->top_acch_cap,
+	       TLVP_VAL(tp, RSL_IE_OSMO_TEMP_OVP_ACCH_CAP),
+	       sizeof(lchan->top_acch_cap));
+
+	/* Simplify checking whether the overpower is enabled at all: allow
+	 * testing just one parameter (overpower_db > 0) instead of all three. */
+	if (!lchan->top_acch_cap.sacch_enable && !lchan->top_acch_cap.facch_enable)
+		lchan->top_acch_cap.overpower_db = 0;
 
 	return 0;
 }
