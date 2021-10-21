@@ -254,9 +254,6 @@ struct gsm_lchan {
 		uint8_t last_cmr;
 		uint32_t last_fn;
 
-		/* SLOT #0 and #1 to store FACCH for repetition */
-		struct gsm_rep_facch rep_facch[2];
-
 	} tch;
 
 	/* 3GPP TS 48.058 § 9.3.37: [0; 255] ok, -1 means invalid*/
@@ -311,7 +308,8 @@ struct gsm_lchan {
 		bool ul_sacch_active;
 		bool dl_sacch_active;
 
-		/* Message buffer to store DL-SACCH repeation candidate */
+		/* Message buffers to store repeation candidates */
+		struct gsm_rep_facch dl_facch[2];
 		struct msgb *dl_sacch_msg;
 	} rep_acch;
 

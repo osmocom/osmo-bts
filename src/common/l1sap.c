@@ -987,14 +987,14 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan
 
 	/* Note: The repeated version of the FACCH block must be scheduled 8 or 9 bursts after the original
 	 * transmission. see 3GPP TS 44.006, section 10.2 for a more detailed explaination. */
-	if (lchan->tch.rep_facch[0].msg && GSM_TDMA_FN_SUB(fn, lchan->tch.rep_facch[0].fn) >= 8) {
+	if (lchan->rep_acch.dl_facch[0].msg && GSM_TDMA_FN_SUB(fn, lchan->rep_acch.dl_facch[0].fn) >= 8) {
 		/* Re-use stored FACCH message buffer from SLOT #0 for repetition. */
-		msg = lchan->tch.rep_facch[0].msg;
-		lchan->tch.rep_facch[0].msg = NULL;
-	} else if (lchan->tch.rep_facch[1].msg && GSM_TDMA_FN_SUB(fn, lchan->tch.rep_facch[1].fn) >= 8) {
+		msg = lchan->rep_acch.dl_facch[0].msg;
+		lchan->rep_acch.dl_facch[0].msg = NULL;
+	} else if (lchan->rep_acch.dl_facch[1].msg && GSM_TDMA_FN_SUB(fn, lchan->rep_acch.dl_facch[1].fn) >= 8) {
 		/* Re-use stored FACCH message buffer from SLOT #1 for repetition. */
-		msg = lchan->tch.rep_facch[1].msg;
-		lchan->tch.rep_facch[1].msg = NULL;
+		msg = lchan->rep_acch.dl_facch[1].msg;
+		lchan->rep_acch.dl_facch[1].msg = NULL;
 	} else {
 		/* Fetch new FACCH from queue ... */
 		if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
@@ -1010,12 +1010,12 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan
 			return msg;
 
 		/* ... and store the message buffer for repetition. */
-		if (lchan->tch.rep_facch[0].msg == NULL) {
-			lchan->tch.rep_facch[0].msg = msgb_copy(msg, "rep_facch_0");
-			lchan->tch.rep_facch[0].fn = fn;
-		} else if (lchan->tch.rep_facch[1].msg == NULL) {
-			lchan->tch.rep_facch[1].msg = msgb_copy(msg, "rep_facch_1");
-			lchan->tch.rep_facch[1].fn = fn;
+		if (lchan->rep_acch.dl_facch[0].msg == NULL) {
+			lchan->rep_acch.dl_facch[0].msg = msgb_copy(msg, "rep_facch_0");
+			lchan->rep_acch.dl_facch[0].fn = fn;
+		} else if (lchan->rep_acch.dl_facch[1].msg == NULL) {
+			lchan->rep_acch.dl_facch[1].msg = msgb_copy(msg, "rep_facch_1");
+			lchan->rep_acch.dl_facch[1].fn = fn;
 		} else {
 			/* By definition 3GPP TS 05.02 does not allow more than two (for TCH/H only one) FACCH blocks
 			 * to be transmitted simultaniously. */
