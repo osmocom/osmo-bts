@@ -3569,6 +3569,15 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Handing RLL msg %s from LAPDm to MEAS REP\n",
 			  rsl_msg_name(rh->msg_type));
 
+		rc = handle_ms_meas_report(lchan, (struct gsm48_hdr *)msgb_l3(msg), msgb_l3len(msg));
+		msgb_free(msg);
+		return rc;
+	} else if (rslms_is_gprs_susp_req(msg)) {
+		return handle_gprs_susp_req(msg);
+	} else {
+		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Fwd RLL msg %s from LAPDm to A-bis\n",
+			  rsl_msg_name(rh->msg_type));
+
 		/* REL_IND handling */
 		if (rh->msg_type == RSL_MT_REL_IND &&
 			(lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)) {
@@ -3585,15 +3594,6 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 			lchan->pending_rel_ind_msg = msg;
 			return 0;
 		}
-
-		rc = handle_ms_meas_report(lchan, (struct gsm48_hdr *)msgb_l3(msg), msgb_l3len(msg));
-		msgb_free(msg);
-		return rc;
-	} else if (rslms_is_gprs_susp_req(msg)) {
-		return handle_gprs_susp_req(msg);
-	} else {
-		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Fwd RLL msg %s from LAPDm to A-bis\n",
-			  rsl_msg_name(rh->msg_type));
 
 		return abis_bts_rsl_sendmsg(msg);
 	}
