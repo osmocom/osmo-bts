@@ -1928,6 +1928,13 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	if (rc < 0)
 		return rsl_tx_chan_act_acknack(lchan, -rc);
 
+	/* Take the first ACCH overpower decision (if allowed): it can be
+	 * enabled immediately if the RxQual threshold is disabled (0). */
+	if (lchan->top_acch_cap.overpower_db > 0)
+		lchan->top_acch_active = !lchan->top_acch_cap.rxqual;
+	else
+		lchan->top_acch_active = false;
+
 	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
 	if (rc < 0)
@@ -2197,6 +2204,13 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	rc = parse_temporary_overpower_acch_capability(lchan, &tp);
 	if (rc < 0)
 		return rsl_tx_mode_modif_nack(lchan, -rc);
+
+	/* Immediately disable ACCH overpower if the value is 0 dB,
+	 * or enable if the RxQual threshold becomes disabled (0). */
+	if (lchan->top_acch_cap.overpower_db == 0)
+		lchan->top_acch_active = false;
+	else if (lchan->top_acch_cap.rxqual == 0)
+		lchan->top_acch_active = true;
 
 	l1sap_chan_modify(lchan->ts->trx, dch->chan_nr);
 

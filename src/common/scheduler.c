@@ -1310,7 +1310,7 @@ static void trx_sched_apply_att(const struct gsm_lchan *lchan,
 	br->att = lchan->bs_power_ctrl.current;
 
 	/* Temporary Overpower for SACCH/FACCH bursts */
-	if (lchan->top_acch_cap.overpower_db == 0)
+	if (!lchan->top_acch_active)
 		return;
 	if ((lchan->top_acch_cap.sacch_enable && desc->link_id == LID_SACCH) ||
 	    (lchan->top_acch_cap.facch_enable && br->flags & TRX_BR_F_FACCH)) {

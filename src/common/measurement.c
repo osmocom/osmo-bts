@@ -861,6 +861,43 @@ out:
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: active => inactive\n");
 }
 
+static void acch_overpower_active_decision(struct gsm_lchan *lchan,
+					   const struct gsm48_meas_res *meas_res)
+{
+	const bool old = lchan->top_acch_active;
+	uint8_t upper, lower, rxqual;
+
+	/* ACCH overpower is not allowed => nothing to do */
+	if (lchan->top_acch_cap.overpower_db == 0)
+		return;
+	/* RxQual threshold is disabled => overpower is always on */
+	if (lchan->top_acch_cap.rxqual == 0)
+		return;
+
+	/* If DTx is active on Downlink, use the '-SUB' */
+	if (meas_res->dtx_used)
+		rxqual = meas_res->rxqual_sub;
+	else /* ... otherwise use the '-FULL' */
+		rxqual = meas_res->rxqual_full;
+
+	upper = lchan->top_acch_cap.rxqual;
+	if (upper > 2)
+		lower = upper - 2;
+	else
+		lower = 0;
+
+	if (rxqual >= upper)
+		lchan->top_acch_active = true;
+	else if (rxqual <= lower)
+		lchan->top_acch_active = false;
+
+	if (lchan->top_acch_active != old) {
+		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "Temporary ACCH overpower: %s\n",
+			  lchan->top_acch_active ? "inactive => active"
+						  : "active => inactive");
+	}
+}
+
 static bool data_is_rr_meas_rep(const uint8_t *data)
 {
 	const struct gsm48_hdr *gh = (void *)(data + 5);
@@ -954,8 +991,10 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	}
 	lchan_ms_ta_ctrl(lchan, ms_ta, lchan->meas.ms_toa256);
 	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
-	if (mr && mr->meas_valid == 0) /* 0 = valid */
+	if (mr && mr->meas_valid == 0) { /* 0 = valid */
 		lchan_bs_pwr_ctrl(lchan, mr);
+		acch_overpower_active_decision(lchan, mr);
+	}
 
 	repeated_dl_facch_active_decision(lchan, mr);
 
