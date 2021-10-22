@@ -1759,6 +1759,34 @@ static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
 	indent -= 2;
 }
 
+static void lchan_acch_top_state_dump(struct vty *vty, unsigned int indent,
+				      const struct gsm_lchan *lchan)
+{
+	if (lchan->top_acch_cap.overpower_db == 0)
+		return;
+
+	cfg_out(vty, "Temporary ACCH overpower:%s", VTY_NEWLINE);
+	indent += 2;
+
+	cfg_out(vty, "Overpower value: %u dB%s",
+		lchan->top_acch_cap.overpower_db, VTY_NEWLINE);
+
+	cfg_out(vty, "SACCH overpower: %sabled%s",
+		lchan->top_acch_cap.sacch_enable ? "en" : "dis",
+		VTY_NEWLINE);
+	cfg_out(vty, "FACCH overpower: %sabled%s",
+		lchan->top_acch_cap.facch_enable ? "en" : "dis",
+		VTY_NEWLINE);
+
+	if (lchan->top_acch_cap.rxqual == 0) {
+		cfg_out(vty, "RxQual threshold: disabled "
+			"(overpower is always on)%s", VTY_NEWLINE);
+	} else {
+		cfg_out(vty, "RxQual threshold: %u%s",
+			lchan->top_acch_cap.rxqual, VTY_NEWLINE);
+	}
+}
+
 static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 {
 	struct in_addr ia;
@@ -1841,7 +1869,10 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	/* BS/MS Power Control state and parameters */
 	lchan_bs_power_ctrl_state_dump(vty, 2, lchan);
 	lchan_ms_power_ctrl_state_dump(vty, 2, lchan);
+
+	/* ACCH repetition / overpower state */
 	lchan_acch_rep_state_dump(vty, 2, lchan);
+	lchan_acch_top_state_dump(vty, 2, lchan);
 }
 
 static void lchan_dump_short_vty(struct vty *vty, const struct gsm_lchan *lchan)
