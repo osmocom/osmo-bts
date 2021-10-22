@@ -298,6 +298,11 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 		lchan->rep_acch.dl_facch[1].msg = NULL;
 		msgb_free(lchan->rep_acch.dl_sacch_msg);
 		lchan->rep_acch.dl_sacch_msg = NULL;
+		/* free() pending messages */
+		msgb_free(lchan->pending_rel_ind_msg);
+		lchan->pending_rel_ind_msg = NULL;
+		msgb_free(lchan->pending_chan_activ);
+		lchan->pending_chan_activ = NULL;
 		/* fall through */
 	default:
 		if (lchan->early_rr_ia) {
