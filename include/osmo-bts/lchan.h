@@ -365,3 +365,6 @@ static inline bool lchan_is_dcch(const struct gsm_lchan *lchan)
 		return false;
 	}
 }
+
+#define lchan_is_tch(lchan) \
+	((lchan)->type == GSM_LCHAN_TCH_F || (lchan)->type == GSM_LCHAN_TCH_H)

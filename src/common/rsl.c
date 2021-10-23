@@ -3579,8 +3579,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 			  rsl_msg_name(rh->msg_type));
 
 		/* REL_IND handling */
-		if (rh->msg_type == RSL_MT_REL_IND &&
-			(lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)) {
+		if (rh->msg_type == RSL_MT_REL_IND && lchan_is_tch(lchan)) {
 			LOGPLCHAN(lchan, DRSL, LOGL_INFO,
 				  "Scheduling %s to L3 in next associated TCH-RTS.ind\n",
 				  rsl_msg_name(rh->msg_type));
