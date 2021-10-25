@@ -162,7 +162,11 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
 	if (!msg) {
-		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
+		/* It's totally fine to get no block here, since PCU may submit
+		 * empty blocks when there's no MS listening. The scheduler will
+		 * take care of filling C0 with dummy bursts to keep expected
+		 * power transmit levels
+		 */
 		goto no_msg;
 	}
 
