@@ -1139,6 +1139,13 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			       rsl_chan_nr_str(chan_nr));
 			return 0;
 		}
+		if (lchan->pending_rel_ind_msg) {
+			LOGPGT(DRSL, LOGL_INFO, &g_time,
+			       "%s Forward RLL RELease INDication to the BSC\n",
+			       gsm_lchan_name(lchan));
+			abis_bts_rsl_sendmsg(lchan->pending_rel_ind_msg);
+			lchan->pending_rel_ind_msg = NULL;
+		}
 		if (L1SAP_IS_LINK_SACCH(link_id)) {
 			p = msgb_put(msg, GSM_MACBLOCK_LEN);
 			/* L1-header, if not set/modified by layer 1 */
@@ -1274,7 +1281,6 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr, marker = 0;
 	uint32_t fn;
-	int rc;
 
 	chan_nr = rts_ind->chan_nr;
 	fn = rts_ind->fn;
@@ -1316,16 +1322,6 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
 		resp_msg->l1h = resp_msg->data;
 		resp_l1sap = msgb_l1sap_prim(resp_msg);
-	}
-
-	/* check for pending REL_IND */
-	if (lchan->pending_rel_ind_msg) {
-		LOGPGT(DRSL, LOGL_INFO, &g_time, "%s Forward REL_IND to L3\n", gsm_lchan_name(lchan));
-		/* Forward it to L3 */
-		rc = abis_bts_rsl_sendmsg(lchan->pending_rel_ind_msg);
-		lchan->pending_rel_ind_msg = NULL;
-		if (rc < 0)
-			return rc;
 	}
 
 	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
