@@ -161,20 +161,11 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
-	if (msg)
-		goto got_msg;
-
-	LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
-
-no_msg:
-	/* free burst memory */
-	if (*bursts_p) {
-		talloc_free(*bursts_p);
-		*bursts_p = NULL;
+	if (!msg) {
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
+		goto no_msg;
 	}
-	return -ENODEV;
 
-got_msg:
 	/* BURST BYPASS */
 
 	/* allocate burst memory, if not already */
@@ -229,4 +220,12 @@ send_burst:
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
 	return 0;
+
+no_msg:
+	/* free burst memory */
+	if (*bursts_p) {
+		talloc_free(*bursts_p);
+		*bursts_p = NULL;
+	}
+	return -ENODEV;
 }
