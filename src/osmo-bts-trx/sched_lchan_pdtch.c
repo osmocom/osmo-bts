@@ -32,7 +32,6 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
-#include <osmo-bts/bts_trx.h>
 
 #include <sched_utils.h>
 
@@ -162,10 +161,8 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
-	if (!msg  || !msg->l2h) {
-		const struct gsm_bts_trx *trx = l1ts->ts->trx;
-		if (!msg  || trx == trx->bts->c0)
-			LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
+	if (!msg) {
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
 		goto no_msg;
 	}
 
