@@ -1085,6 +1085,12 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 	bool found = false;
 	int i;
 
+	if (!l1ts) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "%s lchan with uninitialized scheduler structure\n",
+			  (active) ? "Activating" : "Deactivating");
+		return -EINVAL;
+	}
+
 	/* VAMOS: convert Osmocom specific channel number to a generic one,
 	 * otherwise we won't match anything in trx_chan_desc[]. */
 	if (lchan->ts->vamos.is_shadow)
