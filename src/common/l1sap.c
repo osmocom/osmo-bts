@@ -1961,6 +1961,12 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	int rc;
 
+	if (lchan->state == LCHAN_S_ACTIVE) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Trying to activate already active channel %s\n",
+			  rsl_chan_nr_str(chan_nr));
+		return -1;
+	}
+
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Activating channel %s\n", rsl_chan_nr_str(chan_nr));
 
 	lchan->s = trx->bts->radio_link_timeout.current;
@@ -1994,6 +2000,13 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
+
+	if (lchan->state == LCHAN_S_NONE) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Trying to deactivate already deactivated channel %s\n",
+			  rsl_chan_nr_str(chan_nr));
+		return -1;
+	}
+
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Deactivating channel %s\n",
 		  rsl_chan_nr_str(chan_nr));
 
