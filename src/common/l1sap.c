@@ -694,16 +694,14 @@ static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool se
 }
 
 /* measurement information received from bts model */
-static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
+static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 				    struct osmo_phsap_prim *l1sap,
 				    enum osmo_ph_prim ind_type)
 {
 	struct bts_ul_meas ulm;
-	struct gsm_lchan *lchan;
 	struct info_meas_ind_param *info_meas_ind;
 	struct ph_data_param *ph_data_ind;
 	struct ph_tch_param *ph_tch_ind;
-	uint8_t chan_nr;
 	uint32_t fn;
 	const char *ind_name;
 
@@ -711,7 +709,6 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	case PRIM_MPH_INFO:
 		/* (legacy way, see also OS#2977) */
 	        info_meas_ind = &l1sap->u.info.u.meas_ind;
-		chan_nr = info_meas_ind->chan_nr;
 		fn = info_meas_ind->fn;
 		ind_name = "MPH INFO";
 		ulm = (struct bts_ul_meas) {
@@ -726,7 +723,6 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		ph_tch_ind = &l1sap->u.tch;
 		if (ph_tch_ind->rssi == 0)
 			return;
-		chan_nr = ph_tch_ind->chan_nr;
 		fn = ph_tch_ind->fn;
 		ind_name = "TCH";
 		ulm = (struct bts_ul_meas) {
@@ -741,7 +737,6 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		ph_data_ind = &l1sap->u.data;
 		if (ph_data_ind->rssi == 0)
 			return;
-		chan_nr = ph_data_ind->chan_nr;
 		fn = ph_data_ind->fn;
 		ind_name = "DATA";
 		ulm = (struct bts_ul_meas) {
@@ -756,23 +751,10 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 		OSMO_ASSERT(false);
 	}
 
-	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
-	if (!lchan) {
-		LOGPFN(DL1P, LOGL_ERROR, fn,
-		       "No lchan for %s MEAS IND (chan_nr=%s)\n",
-		       ind_name, rsl_chan_nr_str(chan_nr));
-		return;
-	}
-
 	DEBUGPFN(DL1P, fn,
 		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
 		 gsm_lchan_name(lchan), ind_name, ulm.ta_offs_256bits,
 		 ulm.ber10k, ulm.inv_rssi, ulm.c_i);
-
-	/* in the GPRS case we are not interested in measurement
-	 * processing.  The PCU will take care of it */
-	if (lchan->type == GSM_LCHAN_PDTCH)
-		return;
 
 	/* we assume that symbol period is 1 bit: */
 	set_ms_to_data(lchan, ulm.ta_offs_256bits / 256, true);
@@ -786,6 +768,8 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 	 struct osmo_phsap_prim *l1sap, struct mph_info_param *info)
 {
+	const struct info_meas_ind_param *meas_ind;
+	struct gsm_lchan *lchan;
 	int rc = 0;
 
 	switch (info->type) {
@@ -805,7 +789,17 @@ static int l1sap_mph_info_ind(struct gsm_bts_trx *trx,
 		if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
 			OSMO_ASSERT(false);
 
-		process_l1sap_meas_data(trx, l1sap, PRIM_MPH_INFO);
+		meas_ind = &l1sap->u.info.u.meas_ind;
+
+		lchan = get_active_lchan_by_chan_nr(trx, meas_ind->chan_nr);
+		if (!lchan) {
+			LOGPFN(DL1P, LOGL_ERROR, meas_ind->fn,
+			       "No lchan for chan_nr=%s\n",
+			       rsl_chan_nr_str(meas_ind->chan_nr));
+			return 0;
+		}
+
+		process_l1sap_meas_data(lchan, l1sap, PRIM_MPH_INFO);
 		break;
 	default:
 		LOGP(DL1P, LOGL_NOTICE, "unknown MPH_INFO ind type %d\n",
@@ -1488,12 +1482,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=%s link_id=0x%02x len=%d\n",
 		 rsl_chan_nr_str(chan_nr), link_id, len);
 
-	/* The ph_data_param contained in the l1sap primitive may contain
-	 * measurement data. If this data is present, forward it for
-	 * processing */
-	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
-		process_l1sap_meas_data(trx, l1sap, PRIM_PH_DATA);
-
 	if (ts_is_pdch(&trx->ts[tn])) {
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (!lchan)
@@ -1534,6 +1522,12 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
 		return 0;
 	}
+
+	/* The ph_data_param contained in the l1sap primitive may contain
+	 * measurement data. If this data is present, forward it for
+	 * processing */
+	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
+		process_l1sap_meas_data(lchan, l1sap, PRIM_PH_DATA);
 
 	if (L1SAP_IS_LINK_SACCH(link_id))
 		repeated_ul_sacch_active_decision(lchan, data_ind->ber10k);
@@ -1618,7 +1612,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * measurement data. If this data is present, forward it for
 	 * processing */
 	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
-		process_l1sap_meas_data(trx, l1sap, PRIM_TCH);
+		process_l1sap_meas_data(lchan, l1sap, PRIM_TCH);
 
 	msgb_pull_to_l2(msg);
 
