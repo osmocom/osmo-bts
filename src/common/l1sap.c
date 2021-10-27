@@ -1494,15 +1494,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind chan_nr=%s link_id=0x%02x len=%d\n",
 		 rsl_chan_nr_str(chan_nr), link_id, len);
 
-	/* Actually, there can be no DATA.ind on PTCCH/U (rather RACH.ind instead),
-	 * but some BTS models with buggy implementation may still be sending them
-	 * to us. Let's keep this for backwards compatibility. */
-	if (L1SAP_IS_CHAN_PDCH(chan_nr) && L1SAP_IS_PTCCH(fn)) {
-		LOGPGT(DL1P, LOGL_NOTICE, &g_time, "There can be no DATA.ind on PTCCH/U. "
-		       "This is probably a bug of the BTS model you're using, please fix!\n");
-		return -EINVAL;
-	}
-
 	/* The ph_data_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
 	 * processing */
@@ -1523,6 +1514,14 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			/* Return 1 to signal that we're still using msg
 			 * and it should not be freed */
 			return 1;
+		}
+
+		/* There can be no DATA.ind on PTCCH/U (rather RACH.ind instead), but some
+		 * BTS models with buggy implementation may still be sending them to us. */
+		if (L1SAP_IS_PTCCH(fn)) {
+			LOGPGT(DL1P, LOGL_NOTICE, &g_time, "There can be no DATA.ind on PTCCH/U. "
+			       "This is probably a bug of the BTS model you're using, please fix!\n");
+			return -EINVAL;
 		}
 
 		/* Drop all data from incomplete UL block */
