@@ -705,11 +705,6 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	struct ph_tch_param *ph_tch_ind;
 	uint8_t chan_nr;
 	uint32_t fn;
-	uint8_t inv_rssi;
-	uint8_t is_sub;
-	int16_t ta_offs_256bits;
-	uint16_t ber10k;
-	int16_t ci_cb;
 	const char *ind_name;
 
 	switch (ind_type) {
@@ -718,12 +713,14 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 	        info_meas_ind = &l1sap->u.info.u.meas_ind;
 		chan_nr = info_meas_ind->chan_nr;
 		fn = info_meas_ind->fn;
-		inv_rssi = info_meas_ind->inv_rssi;
-		is_sub = info_meas_ind->is_sub;
-		ta_offs_256bits = info_meas_ind->ta_offs_256bits;
-		ber10k = info_meas_ind->ber10k;
-		ci_cb = info_meas_ind->c_i_cb;
 		ind_name = "MPH INFO";
+		ulm = (struct bts_ul_meas) {
+			.ta_offs_256bits = info_meas_ind->ta_offs_256bits,
+			.inv_rssi = info_meas_ind->inv_rssi,
+			.ber10k = info_meas_ind->ber10k,
+			.c_i = info_meas_ind->c_i_cb,
+			.is_sub = info_meas_ind->is_sub,
+		};
 		break;
 	case PRIM_TCH:
 		ph_tch_ind = &l1sap->u.tch;
@@ -731,12 +728,14 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 			return;
 		chan_nr = ph_tch_ind->chan_nr;
 		fn = ph_tch_ind->fn;
-		inv_rssi = abs(ph_tch_ind->rssi);
-		is_sub = ph_tch_ind->is_sub;
-		ta_offs_256bits = ph_tch_ind->ta_offs_256bits;
-		ber10k = ph_tch_ind->ber10k;
-		ci_cb = ph_tch_ind->lqual_cb;
 		ind_name = "TCH";
+		ulm = (struct bts_ul_meas) {
+			.ta_offs_256bits = ph_tch_ind->ta_offs_256bits,
+			.inv_rssi = abs(ph_tch_ind->rssi),
+			.ber10k = ph_tch_ind->ber10k,
+			.c_i = ph_tch_ind->lqual_cb,
+			.is_sub = ph_tch_ind->is_sub,
+		};
 		break;
 	case PRIM_PH_DATA:
 		ph_data_ind = &l1sap->u.data;
@@ -744,12 +743,14 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 			return;
 		chan_nr = ph_data_ind->chan_nr;
 		fn = ph_data_ind->fn;
-		inv_rssi = abs(ph_data_ind->rssi);
-		is_sub = ph_data_ind->is_sub;
-		ta_offs_256bits = ph_data_ind->ta_offs_256bits;
-		ber10k = ph_data_ind->ber10k;
-		ci_cb = ph_data_ind->lqual_cb;
 		ind_name = "DATA";
+		ulm = (struct bts_ul_meas) {
+			.ta_offs_256bits = ph_data_ind->ta_offs_256bits,
+			.inv_rssi = abs(ph_data_ind->rssi),
+			.ber10k = ph_data_ind->ber10k,
+			.c_i = ph_data_ind->lqual_cb,
+			.is_sub = ph_data_ind->is_sub,
+		};
 		break;
 	default:
 		OSMO_ASSERT(false);
@@ -765,23 +766,16 @@ static void process_l1sap_meas_data(struct gsm_bts_trx *trx,
 
 	DEBUGPFN(DL1P, fn,
 		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
-		 gsm_lchan_name(lchan), ind_name, ta_offs_256bits, ber10k,
-		 inv_rssi, ci_cb);
+		 gsm_lchan_name(lchan), ind_name, ulm.ta_offs_256bits,
+		 ulm.ber10k, ulm.inv_rssi, ulm.c_i);
 
 	/* in the GPRS case we are not interested in measurement
 	 * processing.  The PCU will take care of it */
 	if (lchan->type == GSM_LCHAN_PDTCH)
 		return;
 
-	memset(&ulm, 0, sizeof(ulm));
-	ulm.ta_offs_256bits = ta_offs_256bits;
-	ulm.ber10k = ber10k;
-	ulm.c_i = ci_cb;
-	ulm.inv_rssi = inv_rssi;
-	ulm.is_sub = is_sub;
-
 	/* we assume that symbol period is 1 bit: */
-	set_ms_to_data(lchan, ta_offs_256bits / 256, true);
+	set_ms_to_data(lchan, ulm.ta_offs_256bits / 256, true);
 
 	lchan_meas_process_measurement(lchan, &ulm, fn);
 
