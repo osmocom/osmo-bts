@@ -3454,6 +3454,7 @@ static int handle_gprs_susp_req(struct msgb *msg)
 
 	if (!gh || msgb_l3len(msg) < sizeof(*gh)+sizeof(*gsr)) {
 		LOGP(DRSL, LOGL_NOTICE, "%s Short GPRS SUSPEND REQ received, ignoring\n", gsm_lchan_name(msg->lchan));
+		msgb_free(msg);
 		return -EINVAL;
 	}
 
