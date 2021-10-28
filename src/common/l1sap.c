@@ -695,13 +695,13 @@ static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool se
 
 /* measurement information received from bts model */
 static void process_l1sap_meas_data(struct gsm_lchan *lchan,
-				    struct osmo_phsap_prim *l1sap,
+				    const struct osmo_phsap_prim *l1sap,
 				    enum osmo_ph_prim ind_type)
 {
 	struct bts_ul_meas ulm;
-	struct info_meas_ind_param *info_meas_ind;
-	struct ph_data_param *ph_data_ind;
-	struct ph_tch_param *ph_tch_ind;
+	const struct info_meas_ind_param *info_meas_ind;
+	const struct ph_data_param *ph_data_ind;
+	const struct ph_tch_param *ph_tch_ind;
 	uint32_t fn;
 	const char *ind_name;
 
