@@ -795,9 +795,8 @@ static inline bool ms_to_valid(const struct gsm_lchan *lchan)
 /* Decide if repeated FACCH should be applied or not. If RXQUAL level, that the
  * MS reports is high enough, FACCH repetition is not needed. */
 static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
-					      const struct gsm48_hdr *gh)
+					      const struct gsm48_meas_res *meas_res)
 {
-	const struct gsm48_meas_res *meas_res;
 	uint8_t upper;
 	uint8_t lower;
 	uint8_t rxqual;
@@ -828,14 +827,8 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	}
 
 	/* Parse MS measurement results */
-	if (gh == NULL)
+	if (meas_res == NULL)
 		goto out;
-	/* Check if this is a Measurement Report */
-	if (gh->proto_discr != GSM48_PDISC_RR)
-		goto out;
-	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
-		goto out;
-	meas_res = (const struct gsm48_meas_res *) gh->data;
 	if (meas_res->meas_valid != 0) /* 0 = valid */
 		goto out;
 
@@ -964,7 +957,7 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	if (gh)
 		lchan_bs_pwr_ctrl(lchan, gh);
 
-	repeated_dl_facch_active_decision(lchan, gh);
+	repeated_dl_facch_active_decision(lchan, mr);
 
 	/* Reset state for next iteration */
 	lchan->tch.dtx.dl_active = false;
