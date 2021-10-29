@@ -951,7 +951,8 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	 */
 	if (gh && gh->msg_type == GSM48_MT_RR_MEAS_REP) {
 		mr = (const struct gsm48_meas_res *)gh->data;
-		dtxu_used = mr->dtx_used;
+		if (mr->meas_valid == 0) /* 0 = valid */
+			dtxu_used = mr->dtx_used;
 	}
 
 	if (dtxu_used) {
