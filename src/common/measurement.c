@@ -954,8 +954,8 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	}
 	lchan_ms_ta_ctrl(lchan, ms_ta, lchan->meas.ms_toa256);
 	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
-	if (gh)
-		lchan_bs_pwr_ctrl(lchan, gh);
+	if (mr && mr->meas_valid == 0) /* 0 = valid */
+		lchan_bs_pwr_ctrl(lchan, mr);
 
 	repeated_dl_facch_active_decision(lchan, mr);
 

@@ -47,14 +47,8 @@
 	{ DL_MEAS_FULL(rxqual, rxlev), \
 	  DL_MEAS_SUB(rxqual, rxlev) }
 
-#define DL_MEAS_FULL_SUB_INV(rxqual, rxlev) \
-	{ DL_MEAS_FULL(rxqual, rxlev), \
-	  DL_MEAS_SUB(rxqual, rxlev), \
-	  .invalid = true }
-
 enum power_test_step_type {
 	PWR_TEST_ST_IND_MEAS = 0,
-	PWR_TEST_ST_IND_DUMMY,
 	PWR_TEST_ST_SET_STATE,
 	PWR_TEST_ST_SET_CTRL_INTERVAL,
 	PWR_TEST_ST_SET_STEP_SIZE,
@@ -78,7 +72,6 @@ struct power_test_step {
 			uint8_t rxqual_sub;
 			uint8_t rxlev_full;
 			uint8_t rxlev_sub;
-			bool invalid;
 		} meas;
 		/* Increase / reduce step size */
 		struct {
@@ -123,28 +116,21 @@ static void init_test(const char *name)
 	printf("\nStarting test case '%s'\n", name);
 }
 
-static void enc_meas_rep(struct gsm48_hdr *gh,
+static void enc_meas_rep(struct gsm48_meas_res *mr,
 			 const unsigned int n,
 			 const struct power_test_step *step)
 {
-	struct gsm48_meas_res *mr = (struct gsm48_meas_res *) gh->data;
-
-	gh->proto_discr = GSM48_PDISC_RR;
-	gh->msg_type = GSM48_MT_RR_MEAS_REP;
-
 	*mr = (struct gsm48_meas_res) {
 		.rxlev_full = step->meas.rxlev_full,
 		.rxlev_sub = step->meas.rxlev_sub,
 		.rxqual_full = step->meas.rxqual_full,
 		.rxqual_sub = step->meas.rxqual_sub,
-		/* NOTE: inversed logic (1 means invalid) */
-		.meas_valid = step->meas.invalid,
 	};
 
-	printf("#%02u %s() -> Measurement Results (%svalid): "
+	printf("#%02u %s() -> Measurement Results (valid): "
 	       "RXLEV-FULL(%02u), RXQUAL-FULL(%u), "
 	       "RXLEV-SUB(%02u), RXQUAL-SUB(%u)\n",
-	       n, __func__, step->meas.invalid ? "in" : "",
+	       n, __func__,
 	       mr->rxlev_full, mr->rxqual_full,
 	       mr->rxlev_sub, mr->rxqual_sub);
 }
@@ -153,11 +139,8 @@ static int exec_power_step(struct gsm_lchan *lchan,
 			   const unsigned int n,
 			   const struct power_test_step *step)
 {
-	struct gsm48_hdr *gh;
+	struct gsm48_meas_res mr;
 	uint8_t old, new;
-	uint8_t buf[18];
-
-	gh = (struct gsm48_hdr *) buf;
 
 	switch (step->type) {
 	case PWR_TEST_ST_SET_STATE:
@@ -192,20 +175,16 @@ static int exec_power_step(struct gsm_lchan *lchan,
 		printf("#%02u %s() <- Enable DTXd\n", n, __func__);
 		lchan->tch.dtx.dl_active = true;
 		return 0; /* we're done */
-	case PWR_TEST_ST_IND_DUMMY:
-		printf("#%02u %s() <- Dummy block\n", n, __func__);
-		memset(buf, 0x2b, sizeof(buf));
-		break;
 	case PWR_TEST_ST_IND_MEAS:
-		enc_meas_rep(gh, n, step);
+		enc_meas_rep(&mr, n, step);
 		break;
 	}
 
-	printf("#%02u lchan_bs_pwr_ctrl() <- UL SACCH: %s\n",
-	       n, osmo_hexdump(buf, sizeof(buf)));
+	printf("#%02u lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 %s\n",
+	       n, osmo_hexdump((void *)&mr, sizeof(mr)));
 
 	old = lchan->bs_power_ctrl.current;
-	lchan_bs_pwr_ctrl(lchan, gh);
+	lchan_bs_pwr_ctrl(lchan, &mr);
 	new = lchan->bs_power_ctrl.current;
 
 	printf("#%02u lchan_bs_pwr_ctrl() -> BS power reduction: "
@@ -406,24 +385,6 @@ static const struct power_test_step TC_rxqual_ber[] = {
 	{ .meas = DL_MEAS_FULL_SUB(7, PWR_TEST_RXLEV_TARGET) }, /* max */
 };
 
-/* Verify that invalid and dummy SACCH blocks are ignored. */
-static const struct power_test_step TC_inval_dummy[] = {
-	/* Initial state: 16 dB, up to 20 dB */
-	{ .type = PWR_TEST_ST_SET_STATE,
-	  .state = { .current = 16, .max = 2 * 10 } },
-
-	/* MS sends invalid measurement results which must be ignored */
-	{ .meas = DL_MEAS_FULL_SUB_INV(7, 63),			.exp_txred = 16 },
-	{ .meas = DL_MEAS_FULL_SUB_INV(0, 0),			.exp_txred = 16 },
-
-	/* Let's say SMS (SAPI=3) blocks substitute some of the reports */
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
-	{ .type = PWR_TEST_ST_IND_DUMMY, /* not a report */	.exp_txred = 16 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
-	{ .type = PWR_TEST_ST_IND_DUMMY, /* not a report */	.exp_txred = 16 },
-	{ .meas = DL_MEAS_FULL_SUB(0, PWR_TEST_RXLEV_TARGET),	.exp_txred = 16 },
-};
-
 /* Verify handling of optional power control interval (P_Con_INTERVAL). */
 static const struct power_test_step TC_ctrl_interval[] = {
 	/* Initial state: 0 dB, up to 20 dB */
@@ -545,7 +506,6 @@ int main(int argc, char **argv)
 
 	exec_test(TC_dtxd_mode);
 	exec_test(TC_rxqual_ber);
-	exec_test(TC_inval_dummy);
 	exec_test(TC_ctrl_interval);
 
 	exec_test(TC_rxlev_hyst);

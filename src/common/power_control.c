@@ -311,46 +311,26 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 /*! compute the new Downlink attenuation value for the given logical channel.
  *  \param lchan logical channel for which to compute (and in which to store) new power value.
- *  \param[in] gh pointer to the beginning of (presumably) a Measurement Report.
+ *  \param[in] mr pointer to a *valid* Measurement Report.
  */
 int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
-		      const struct gsm48_hdr *gh)
+		      const struct gsm48_meas_res *mr)
 {
 	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
 	const struct gsm_power_ctrl_params *params = state->dpc_params;
-	uint8_t rxqual_full, rxqual_sub;
-	uint8_t rxlev_full, rxlev_sub;
 	uint8_t rxqual, rxqual_avg, rxlev, rxlev_avg;
 	int new_att;
 
 	/* Check if dynamic BS Power Control is enabled */
 	if (params == NULL)
 		return 0;
-	/* Check if this is a Measurement Report */
-	if (gh->proto_discr != GSM48_PDISC_RR)
-		return 0;
-	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
-		return 0;
-
-	/* Check if the measurement results are valid */
-	if ((gh->data[1] & 0x40) == 0x40) {
-		LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG,
-			  "The measurement results are not valid\n");
-		return 0;
-	}
-
-	/* See 3GPP TS 44.018, section 10.5.2.20 */
-	rxqual_full = (gh->data[2] >> 4) & 0x7;
-	rxqual_sub = (gh->data[2] >> 1) & 0x7;
-
-	rxlev_full = gh->data[0] & 0x3f;
-	rxlev_sub = gh->data[1] & 0x3f;
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Rx DL Measurement Report: "
 		  "RXLEV-FULL(%02u), RXQUAL-FULL(%u), "
 		  "RXLEV-SUB(%02u), RXQUAL-SUB(%u), "
 		  "DTx is %s => using %s\n",
-		  rxlev_full, rxqual_full, rxlev_sub, rxqual_sub,
+		  mr->rxlev_full, mr->rxqual_full,
+		  mr->rxlev_sub, mr->rxqual_sub,
 		  lchan->tch.dtx.dl_active ? "enabled" : "disabled",
 		  lchan->tch.dtx.dl_active ? "SUB" : "FULL");
 
@@ -360,11 +340,11 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 
 	/* If DTx is active on Downlink, use the '-SUB' */
 	if (lchan->tch.dtx.dl_active) {
-		rxqual = rxqual_sub;
-		rxlev = rxlev_sub;
+		rxqual = mr->rxqual_sub;
+		rxlev = mr->rxlev_sub;
 	} else { /* ... otherwise use the '-FULL' */
-		rxqual = rxqual_full;
-		rxlev = rxlev_full;
+		rxqual = mr->rxqual_full;
+		rxlev = mr->rxlev_full;
 	}
 
 	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, rxlev);

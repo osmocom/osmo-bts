@@ -130,14 +130,6 @@
 (bts=0,trx=0,ts=0,ss=0) Keeping DL attenuation at 0 dB: max 20 dB, RSSI[curr -80, avg -80, thresh -80..-80] dBm, RxQual[curr 7, avg 7, thresh 3..0]
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(7), RXLEV-SUB(30), RXQUAL-SUB(7), DTx is disabled => using FULL
 (bts=0,trx=0,ts=0,ss=0) Keeping DL attenuation at 0 dB: max 20 dB, RSSI[curr -80, avg -80, thresh -80..-80] dBm, RxQual[curr 7, avg 7, thresh 3..0]
-(bts=0,trx=0,ts=0,ss=0) The measurement results are not valid
-(bts=0,trx=0,ts=0,ss=0) The measurement results are not valid
-(bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping DL attenuation at 16 dB: max 20 dB, RSSI[curr -80, avg -80, thresh -80..-80] dBm, RxQual[curr 0, avg 0, thresh 3..0]
-(bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping DL attenuation at 16 dB: max 20 dB, RSSI[curr -80, avg -80, thresh -80..-80] dBm, RxQual[curr 0, avg 0, thresh 3..0]
-(bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0), DTx is disabled => using FULL
-(bts=0,trx=0,ts=0,ss=0) Keeping DL attenuation at 16 dB: max 20 dB, RSSI[curr -80, avg -80, thresh -80..-80] dBm, RxQual[curr 0, avg 0, thresh 3..0]
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL
 (bts=0,trx=0,ts=0,ss=0) Raising DL attenuation 0 dB => 2 dB:max 20 dB, RSSI[curr -50, avg -50, thresh -80..-80] dBm, RxQual[curr 0, avg 0, thresh 3..0]
 (bts=0,trx=0,ts=0,ss=0) Rx DL Measurement Report: RXLEV-FULL(60), RXQUAL-FULL(0), RXLEV-SUB(60), RXQUAL-SUB(0), DTx is disabled => using FULL

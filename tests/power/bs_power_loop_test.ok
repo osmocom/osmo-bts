@@ -243,31 +243,6 @@ Starting test case 'TC_rxqual_ber'
 #16 lchan_bs_pwr_ctrl() -> BS power reduction: 0 -> 0 (expected 0)
 Test case verdict: SUCCESS
 
-Starting test case 'TC_inval_dummy'
-#00 exec_power_step() <- State (re)set (current 16 dB, max 20 dB)
-#01 enc_meas_rep() -> Measurement Results (invalid): RXLEV-FULL(63), RXQUAL-FULL(7), RXLEV-SUB(63), RXQUAL-SUB(7)
-#01 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 3f 7f 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#01 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#02 enc_meas_rep() -> Measurement Results (invalid): RXLEV-FULL(00), RXQUAL-FULL(0), RXLEV-SUB(00), RXQUAL-SUB(0)
-#02 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#02 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#03 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
-#03 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#03 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#04 exec_power_step() <- Dummy block
-#04 lchan_bs_pwr_ctrl() <- UL SACCH: 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
-#04 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#05 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
-#05 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#05 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#06 exec_power_step() <- Dummy block
-#06 lchan_bs_pwr_ctrl() <- UL SACCH: 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 2b 
-#06 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-#07 enc_meas_rep() -> Measurement Results (valid): RXLEV-FULL(30), RXQUAL-FULL(0), RXLEV-SUB(30), RXQUAL-SUB(0)
-#07 lchan_bs_pwr_ctrl() <- UL SACCH: 06 15 1e 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-#07 lchan_bs_pwr_ctrl() -> BS power reduction: 16 -> 16 (expected 16)
-Test case verdict: SUCCESS
-
 Starting test case 'TC_ctrl_interval'
 #00 exec_power_step() <- State (re)set (current 0 dB, max 20 dB)
 #01 exec_power_step() <- (Re)set power control interval: 0 -> 0
