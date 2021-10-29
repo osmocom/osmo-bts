@@ -33,7 +33,6 @@
 #include <osmocom/gsm/l1sap.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/rsl.h>
-#include <osmocom/gsm/protocol/gsm_44_004.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
@@ -1470,7 +1469,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	uint8_t tn;
 	uint32_t fn;
 	enum osmo_ph_pres_info_type pr_info = data_ind->pdch_presence_info;
-	struct gsm_sacch_l1_hdr *l1_hdr;
 
 	chan_nr = data_ind->chan_nr;
 	link_id = data_ind->link_id;
@@ -1529,48 +1527,33 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	if (bts_internal_flag_get(trx->bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB))
 		process_l1sap_meas_data(lchan, l1sap, PRIM_PH_DATA);
 
-	if (L1SAP_IS_LINK_SACCH(link_id))
+	if (L1SAP_IS_LINK_SACCH(link_id)) {
 		repeated_ul_sacch_active_decision(lchan, data_ind->ber10k);
 
-	/* bad frame */
-	if (len == 0) {
-		if (L1SAP_IS_LINK_SACCH(link_id)) {
-			/* In case we loose a SACCH block, we must take care
-			 * that the related measurement report is sent via RSL.
-			 * This is a fallback method. The report will also
-			 * lack the measurement report from the MS side. See
-			 * also rsl.c:lapdm_rll_tx_cb() */
-			LOGPGT(DL1P, LOGL_INFO, &g_time, "Lost SACCH block, faking meas reports and ms pwr\n");
-			handle_ms_meas_report(lchan, NULL, 0);
-
+		/* Radio Link Timeout counter */
+		if (len == 0) {
+			LOGPGT(DL1P, LOGL_INFO, &g_time, "%s Lost SACCH block\n",
+			       gsm_lchan_name(lchan));
 			radio_link_timeout(lchan, true);
+		} else {
+			radio_link_timeout(lchan, false);
 		}
-		return -EINVAL;
+
+		/* Trigger the measurement reporting/processing logic */
+		lchan_meas_handle_sacch(lchan, msg);
 	}
+
+	/* bad frame */
+	if (len == 0)
+		return -EINVAL;
 
 	/* report first valid received frame to handover process */
 	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
 		handover_frame(lchan);
 
-	if (L1SAP_IS_LINK_SACCH(link_id)) {
-		radio_link_timeout(lchan, false);
+	if (L1SAP_IS_LINK_SACCH(link_id))
 		le = &lchan->lapdm_ch.lapdm_acch;
-		/* save the SACCH L1 header in the lchan struct for RSL MEAS RES */
-		if (len != GSM_MACBLOCK_LEN) {
-			LOGPGT(DL1P, LOGL_NOTICE, &g_time, "SACCH with odd len=%u!?!\n", len);
-			return -EINVAL;
-		}
-		/* Some brilliant engineer decided that the ordering of
-		 * fields on the Um interface is different from the
-		 * order of fields in RSL. See 3GPP TS 44.004 (section 7.2)
-		 * vs. 3GPP TS 48.058 (section 9.3.10). */
-		l1_hdr = (struct gsm_sacch_l1_hdr*)data;
-		lchan->meas.l1_info.ms_pwr = l1_hdr->ms_pwr;
-		lchan->meas.l1_info.fpc_epc = l1_hdr->fpc_epc;
-		lchan->meas.l1_info.srr_sro = l1_hdr->srr_sro;
-		lchan->meas.l1_info.ta = l1_hdr->ta;
-		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
-	} else
+	else
 		le = &lchan->lapdm_ch.lapdm_dcch;
 
 	if (check_for_first_ciphrd(lchan, data, len))

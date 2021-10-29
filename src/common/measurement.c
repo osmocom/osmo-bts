@@ -2,8 +2,11 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/core/endian.h>
+
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_44_004.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
@@ -865,24 +868,74 @@ out:
 		LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-FACCH repetition: active => inactive\n");
 }
 
-/* Called every time a Measurement Result (TS 08.58 8.4.8) is received from
- * lower layers and has to be forwarded to BSC */
-int handle_ms_meas_report(struct gsm_lchan *lchan,
-			  const struct gsm48_hdr *gh,
-			  unsigned int len)
+static bool data_is_rr_meas_rep(const uint8_t *data)
 {
+	const struct gsm48_hdr *gh = (void *)(data + 5);
+	const uint8_t *lapdm_hdr = (void *)(data + 2);
+
+	/* LAPDm address field: SAPI=0, C/R=0, EA=1 */
+	if (lapdm_hdr[0] != 0x01)
+		return false;
+	/* LAPDm control field: U, func=UI */
+	if (lapdm_hdr[1] != 0x03)
+		return false;
+	/* Protocol discriminator: RR */
+	if (gh->proto_discr != GSM48_PDISC_RR)
+		return false;
+
+	switch (gh->msg_type) {
+	case GSM48_MT_RR_EXT_MEAS_REP:
+	case GSM48_MT_RR_MEAS_REP:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Called every time a SACCH block is received from lower layers */
+void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
+{
+	const struct gsm48_meas_res *mr = NULL;
+	const struct gsm48_hdr *gh = NULL;
 	int timing_offset, rc;
 	struct lapdm_entity *le;
-	bool dtxu_used;
+	bool dtxu_used = true; /* safe default assumption */
 	uint8_t ms_pwr;
 	uint8_t ms_ta;
 	int8_t ul_rssi;
 	int16_t ul_ci_cb;
 
+	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
+		/* Some brilliant engineer decided that the ordering of
+		 * fields on the Um interface is different from the
+		 * order of fields in RSL. See 3GPP TS 44.004 (section 7.2)
+		 * vs. 3GPP TS 48.058 (section 9.3.10). */
+		const struct gsm_sacch_l1_hdr *l1h = msgb_l2(msg);
+		lchan->meas.l1_info.ms_pwr = l1h->ms_pwr;
+		lchan->meas.l1_info.fpc_epc = l1h->fpc_epc;
+		lchan->meas.l1_info.srr_sro = l1h->srr_sro;
+		lchan->meas.l1_info.ta = l1h->ta;
+		lchan->meas.flags |= LC_UL_M_F_L1_VALID;
+
+		/* Check if this is a Measurement Report */
+		if (data_is_rr_meas_rep(msgb_l2(msg))) {
+			/* Skip both L1 SACCH and LAPDm headers */
+			msg->l3h = (void *)(msg->l2h + 2 + 3);
+			gh = msgb_l3(msg);
+		}
+
+		ms_pwr = lchan->meas.l1_info.ms_pwr;
+		ms_ta = lchan->meas.l1_info.ta;
+	} else {
+		lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
+		ms_pwr = lchan->ms_power_ctrl.current;
+		ms_ta = lchan->ta_ctrl.current;
+	}
+
 	le = &lchan->lapdm_ch.lapdm_acch;
 
 	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
-	rc = rsl_tx_meas_res(lchan, (const uint8_t *)gh, len, timing_offset);
+	rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), timing_offset);
 	if (rc == 0) /* Count successful transmissions */
 		lchan->meas.res_nr++;
 
@@ -896,25 +949,9 @@ int handle_ms_meas_report(struct gsm_lchan *lchan,
 	 * feed the Control Loop with the measurements for the same
 	 * period (the previous one), which is stored in lchan->meas(.ul_res):
 	 */
-	if (len == 0) {
-		dtxu_used = true;
-		ms_ta = lchan->ta_ctrl.current;
-		ms_pwr = lchan->ms_power_ctrl.current;
-	} else {
-		/* if len!=0, it means we were able to parse L1Header in UL SACCH: */
-		OSMO_ASSERT(lchan->meas.flags & LC_UL_M_F_L1_VALID);
-
-		ms_ta = lchan->meas.l1_info.ta;
-		ms_pwr = lchan->meas.l1_info.ms_pwr;
-		switch (gh->msg_type) {
-		case GSM48_MT_RR_MEAS_REP:
-			dtxu_used = (len > sizeof(*gh) + 1) && !!(gh->data[0] & 0x40);
-			break;
-		case GSM48_MT_RR_EXT_MEAS_REP:
-		default:
-			dtxu_used = true; /* FIXME: not implemented */
-			break;
-		}
+	if (gh && gh->msg_type == GSM48_MT_RR_MEAS_REP) {
+		mr = (const struct gsm48_meas_res *)gh->data;
+		dtxu_used = mr->dtx_used;
 	}
 
 	if (dtxu_used) {
@@ -934,8 +971,6 @@ int handle_ms_meas_report(struct gsm_lchan *lchan,
 	/* Reset state for next iteration */
 	lchan->tch.dtx.dl_active = false;
 	lchan->meas.flags &= ~LC_UL_M_F_OSMO_EXT_VALID;
-	lchan->meas.flags &= ~LC_UL_M_F_L1_VALID;
 	lchan->ms_t_offs = -1;
 	lchan->p_offs = -1;
-	return rc;
 }

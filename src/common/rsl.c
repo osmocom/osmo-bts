@@ -3566,17 +3566,11 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 	msg->trx = lchan->ts->trx;
 	msg->lchan = lchan;
 
-	/* check if this is a measurement report from SACCH which needs special
-	 * processing before forwarding */
+	/* If this is a Measurement Report, then we simply ignore it,
+	 * because it has already been processed in l1sap_ph_data_ind(). */
 	if (rslms_is_meas_rep(msg)) {
-		int rc;
-
-		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Handing RLL msg %s from LAPDm to MEAS REP\n",
-			  rsl_msg_name(rh->msg_type));
-
-		rc = handle_ms_meas_report(lchan, (struct gsm48_hdr *)msgb_l3(msg), msgb_l3len(msg));
 		msgb_free(msg);
-		return rc;
+		return 0;
 	} else if (rslms_is_gprs_susp_req(msg)) {
 		return handle_gprs_susp_req(msg);
 	} else {
