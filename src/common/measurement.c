@@ -782,9 +782,9 @@ void lchan_meas_reset(struct gsm_lchan *lchan)
 	lchan->meas.last_fn = LCHAN_FN_DUMMY;
 }
 
-static inline uint8_t ms_to2rsl(const struct gsm_lchan *lchan, const struct lapdm_entity *le)
+static inline uint8_t ms_to2rsl(const struct gsm_lchan *lchan, uint8_t ta)
 {
-	return (lchan->ms_t_offs >= 0) ? lchan->ms_t_offs : (lchan->p_offs - le->ta);
+	return (lchan->ms_t_offs >= 0) ? lchan->ms_t_offs : (lchan->p_offs - ta);
 }
 
 static inline bool ms_to_valid(const struct gsm_lchan *lchan)
@@ -898,7 +898,6 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	const struct gsm48_meas_res *mr = NULL;
 	const struct gsm48_hdr *gh = NULL;
 	int timing_offset, rc;
-	struct lapdm_entity *le;
 	bool dtxu_used = true; /* safe default assumption */
 	uint8_t ms_pwr;
 	uint8_t ms_ta;
@@ -932,9 +931,7 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 		ms_ta = lchan->ta_ctrl.current;
 	}
 
-	le = &lchan->lapdm_ch.lapdm_acch;
-
-	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, le) : -1;
+	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, ms_ta) : -1;
 	rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), timing_offset);
 	if (rc == 0) /* Count successful transmissions */
 		lchan->meas.res_nr++;
