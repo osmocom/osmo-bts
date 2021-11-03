@@ -126,7 +126,7 @@ static int pick_next_bsc(struct osmo_fsm_inst *fi)
 
 	if (!priv->current_bsc || priv->current_bsc == last) /* Pick first one (wrap around): */
 		priv->current_bsc = (struct bsc_oml_host *)llist_first_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
-	else if (priv->current_bsc != last)
+	else
 		priv->current_bsc = (struct bsc_oml_host *)llist_entry(priv->current_bsc->list.next, struct bsc_oml_host, list);
 
 	return 0;
