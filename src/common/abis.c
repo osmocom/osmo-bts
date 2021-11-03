@@ -82,6 +82,7 @@ struct abis_link_fsm_priv {
 	struct bsc_oml_host *current_bsc;
 	struct gsm_bts *bts;
 	char *model_name;
+	bool reconnect_to_current_bsc;
 };
 
 static void reset_oml_link(struct gsm_bts *bts)
@@ -120,6 +121,13 @@ static int pick_next_bsc(struct osmo_fsm_inst *fi)
 	if (llist_empty(&bts->bsc_oml_hosts)) {
 		LOGPFSML(fi, LOGL_ERROR, "List of BSCs to connect to is empty!\n");
 		return -1;
+	}
+
+	/* Keep current pointer to priv->current_bsc: */
+	if (priv->reconnect_to_current_bsc) {
+		OSMO_ASSERT(priv->current_bsc);
+		priv->reconnect_to_current_bsc = false;
+		return 0;
 	}
 
 	last = (struct bsc_oml_host *)llist_last_entry(&bts->bsc_oml_hosts, struct bsc_oml_host, list);
@@ -233,6 +241,9 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 		 * line when something goes wrong... */
 	}
 	bts_model_abis_close(bts);
+
+	/* We want to try reconnecting to the current BSC at least once before switching to a new one: */
+	priv->reconnect_to_current_bsc = true;
 	osmo_fsm_inst_state_chg(fi, ABIS_LINK_ST_WAIT_RECONNECT, OML_RETRY_TIMER, 0);
 }
 
