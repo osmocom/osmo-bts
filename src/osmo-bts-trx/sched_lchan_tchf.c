@@ -398,12 +398,6 @@ inval_mode1:
 					msg_tch = msg2;
 			}
 		}
-	} else if (msg2) {
-		l1sap = msgb_l1sap_prim(msg2);
-		if (l1sap->oph.primitive == PRIM_TCH)
-			msg_tch = msg2;
-		else
-			msg_facch = msg2;
 	}
 
 	/* check validity of message */
