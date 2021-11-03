@@ -869,7 +869,7 @@ int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap
 	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
-	if (!l1sap->oph.msg->l2h) {
+	if (!l1sap->oph.msg->l2h || msgb_l2len(l1sap->oph.msg) == 0) {
 		msgb_free(l1sap->oph.msg);
 		return 0;
 	}
