@@ -829,7 +829,7 @@ static void repeated_dl_facch_active_decision(struct gsm_lchan *lchan,
 	/* Parse MS measurement results */
 	if (meas_res == NULL)
 		goto out;
-	if (meas_res->meas_valid != 0) /* 0 = valid */
+	if (!gsm48_meas_res_is_valid(meas_res))
 		goto out;
 
 	/* If the RXQUAL level at the MS drops under a certain threshold
@@ -978,7 +978,7 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	 */
 	if (gh && gh->msg_type == GSM48_MT_RR_MEAS_REP) {
 		mr = (const struct gsm48_meas_res *)gh->data;
-		if (mr->meas_valid == 0) /* 0 = valid */
+		if (gsm48_meas_res_is_valid(mr))
 			dtxu_used = mr->dtx_used;
 	}
 
@@ -991,7 +991,7 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	}
 	lchan_ms_ta_ctrl(lchan, ms_ta, lchan->meas.ms_toa256);
 	lchan_ms_pwr_ctrl(lchan, ms_pwr, ul_rssi, ul_ci_cb);
-	if (mr && mr->meas_valid == 0) { /* 0 = valid */
+	if (mr && gsm48_meas_res_is_valid(mr)) {
 		lchan_bs_pwr_ctrl(lchan, mr);
 		acch_overpower_active_decision(lchan, mr);
 	}
