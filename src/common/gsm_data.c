@@ -314,4 +314,8 @@ void gsm_ts_release(struct gsm_bts_trx_ts *ts)
 		struct gsm_lchan *lchan = &ts->lchan[ln];
 		gsm_lchan_release(lchan, LCHAN_REL_ACT_OML);
 	}
+	ts->pchan = GSM_PCHAN_NONE;
+	/* Make sure pchan_is is reset, since PCU act_req to release it will be
+	 * ignored as the lchan will already be released. */
+	ts->dyn.pchan_is = ts->dyn.pchan_want = GSM_PCHAN_NONE;
 }
