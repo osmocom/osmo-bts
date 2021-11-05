@@ -598,7 +598,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* 9.4.25 Interference Level Boundaries */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_INTERF_BOUND, 6)) {
 		payload = TLVP_VAL(&tp, NM_ATT_INTERF_BOUND);
-		for (i = 0; i < 6; i++) {
+		for (i = 0; i < ARRAY_SIZE(bts->interference.boundary); i++) {
 			const int16_t boundary = payload[i];
 			bts->interference.boundary[i] = -1 * boundary;
 		}
