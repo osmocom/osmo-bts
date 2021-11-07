@@ -1,6 +1,21 @@
-AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)/include
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOTRAU_CFLAGS) $(LIBOSMOCODEC_CFLAGS)
-LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOTRAU_LIBS) $(LIBOSMOCODEC_LIBS)
+AM_CPPFLAGS = \
+	$(all_includes) \
+	-I$(top_srcdir)/include \
+	-I$(top_builddir)/include \
+	$(NULL)
+
+AM_CFLAGS = \
+	-Wall \
+	$(LIBOSMOCORE_CFLAGS) \
+	$(LIBOSMOTRAU_CFLAGS) \
+	$(LIBOSMOCODEC_CFLAGS) \
+	$(NULL)
+
+LDADD = \
+	$(LIBOSMOCORE_LIBS) \
+	$(LIBOSMOTRAU_LIBS) \
+	$(LIBOSMOCODEC_LIBS) \
+	$(NULL)
 
 if ENABLE_LC15BTS
 AM_CFLAGS += -DENABLE_LC15BTS
