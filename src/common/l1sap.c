@@ -597,6 +597,11 @@ static void l1sap_interf_meas_calc_avg(struct gsm_bts_trx *trx)
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 
+		if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
+		if (ts->mo.nm_state.availability != NM_AVSTATE_OK)
+			continue;
+
 		for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
 			struct gsm_lchan *lchan = &ts->lchan[ln];
 

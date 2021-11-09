@@ -442,6 +442,11 @@ int rsl_tx_rf_res(struct gsm_bts_trx *trx)
 	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 
+		if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
+		if (ts->mo.nm_state.availability != NM_AVSTATE_OK)
+			continue;
+
 		for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++) {
 			const struct gsm_lchan *lchan = &ts->lchan[ln];
 

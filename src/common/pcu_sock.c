@@ -579,6 +579,10 @@ int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn)
 		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 		const struct gsm_lchan *lchan = &ts->lchan[0];
 
+		if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
+		if (ts->mo.nm_state.availability != NM_AVSTATE_OK)
+			continue;
 		if (ts_pchan(ts) != GSM_PCHAN_PDCH)
 			continue;
 
