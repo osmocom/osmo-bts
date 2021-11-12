@@ -468,9 +468,18 @@ void gsm_lchan_interf_meas_calc_avg(struct gsm_lchan *lchan)
 	 * boundaries (0, X1, ... X5).  It's not clear how to handle values
 	 * exceeding the outer boundaries (0 or X5), because bands 0 and 6 do
 	 * not exist (sigh).  Let's map such values to closest bands 1 and 5. */
-	for (b = 1; b < ARRAY_SIZE(bts->interference.boundary) - 1; b++) {
-		if (meas_avg >= bts->interference.boundary[b])
-			break; /* Current 'b' is the band value */
+	if (bts->interference.boundary[0] < bts->interference.boundary[5]) {
+		/* Ascending order (band=1 indicates lowest interference) */
+		for (b = 1; b < ARRAY_SIZE(bts->interference.boundary) - 1; b++) {
+			if (meas_avg < bts->interference.boundary[b])
+				break; /* Current 'b' is the band value */
+		}
+	} else {
+		/* Descending order (band=1 indicates highest interference) */
+		for (b = 1; b < ARRAY_SIZE(bts->interference.boundary) - 1; b++) {
+			if (meas_avg >= bts->interference.boundary[b])
+				break; /* Current 'b' is the band value */
+		}
 	}
 
 	LOGPLCHAN(lchan, DL1C, LOGL_DEBUG,
