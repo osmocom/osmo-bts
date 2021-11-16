@@ -7,11 +7,11 @@ Build-Depends: debhelper (>= 9),
                dh-autoreconf,
                autotools-dev,
                pkg-config,
-               libosmocore-dev (>= 1.5.0),
-               libosmo-abis-dev (>= 1.1.0),
+               libosmocore-dev (>= 1.6.0),
+               libosmo-abis-dev (>= 1.2.0),
                libgps-dev,
                txt2man,
-               osmo-gsm-manuals-dev (>= 1.1.0)
+               osmo-gsm-manuals-dev (>= 1.2.0)
 Standards-Version: 3.9.8
 Vcs-Browser: http://git.osmocom.org/osmo-bts/
 Vcs-Git: git://git.osmocom.org/osmo-bts
