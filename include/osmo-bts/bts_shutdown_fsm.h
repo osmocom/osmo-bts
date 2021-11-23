@@ -24,7 +24,6 @@
 
 #include <osmocom/core/fsm.h>
 
-/* 3GPP TS 24.008 § 4.1.3.3 GMM mobility management states on the network side */
 enum bts_shutdown_fsm_states {
 	BTS_SHUTDOWN_ST_NONE,
 	BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL,
