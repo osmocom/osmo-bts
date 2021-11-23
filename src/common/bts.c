@@ -219,6 +219,10 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 		osmo_fsm_inst_free(bts->mo.fi);
 		bts->mo.fi = NULL;
 	}
+	if (bts->shutdown_fi) {
+		osmo_fsm_inst_free(bts->shutdown_fi);
+		bts->shutdown_fi = NULL;
+	}
 	return 0;
 }
 
