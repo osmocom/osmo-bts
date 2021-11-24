@@ -332,7 +332,10 @@ static void bts_smscb_state_reset(struct bts_smscb_state *bts_ss)
 	}
 	bts_ss->queue_len = 0;
 	rate_ctr_group_reset(bts_ss->ctrs);
-	TALLOC_FREE(bts_ss->cur_msg);
+	/* avoid double-free of default_msg in case cur_msg == default_msg */
+	if (bts_ss->cur_msg && bts_ss->cur_msg != bts_ss->default_msg)
+		talloc_free(bts_ss->cur_msg);
+	bts_ss->cur_msg = NULL;
 	TALLOC_FREE(bts_ss->default_msg);
 }
 
