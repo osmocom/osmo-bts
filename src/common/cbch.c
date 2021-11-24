@@ -233,10 +233,10 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 		rate_ctr_inc2(bts_ss->ctrs, CBCH_CTR_RCVD_QUEUED);
 		break;
 	case RSL_CB_CMD_TYPE_DEFAULT:
-		/* old default msg will be free'd in get_smscb_block() if it is currently in transit
-		 * and we set a new default_msg here */
+		/* clear the cur_msg pointer if it is the old default message */
 		if (bts_ss->cur_msg && bts_ss->cur_msg == bts_ss->default_msg)
-			talloc_free(bts_ss->cur_msg);
+			bts_ss->cur_msg = NULL;
+		talloc_free(bts_ss->default_msg);
 		if (cmd_type.def_bcast == RSL_CB_CMD_DEFBCAST_NORMAL)
 			/* def_bcast == 0: normal message */
 			bts_ss->default_msg = scm;
