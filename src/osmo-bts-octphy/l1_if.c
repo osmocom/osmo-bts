@@ -1302,7 +1302,11 @@ static int retransmit_wlc_upto(struct octphy_hdl *fl1h, uint32_t trans_id)
 			wlc->num_retrans++;
 			msg = msgb_copy(wlc->cmd_msg, "PHY CMD Retrans");
 			msg_set_retrans_flag(msg);
-			osmo_wqueue_enqueue(&fl1h->phy_wq, msg);
+			if (osmo_wqueue_enqueue(&fl1h->phy_wq, msg) < 0) {
+				LOGP(DL1C, LOGL_ERROR, "Queue full on wlc retransmit\n");
+				msgb_free(msg);
+				return 0;
+			}
 			osmo_timer_schedule(&wlc->timer, CMD_TIMEOUT, 0);
 			count++;
 			LOGP(DL1C, LOGL_INFO, "Re-transmitting %s "

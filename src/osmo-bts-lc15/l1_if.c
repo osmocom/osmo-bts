@@ -553,7 +553,12 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		empty_req_from_l1sap(l1p, fl1, u8Tn, u32Fn, sapi, subCh, u8BlockNbr);
 	}
 	/* send message to DSP's queue */
-	osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg);
+	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg) < 0) {
+		LOGPFN(DL1P, LOGL_ERROR, u32Fn, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		msgb_free(nmsg);
+		return -ENOBUFS;
+	}
+
 	if (dtx_is_first_p1(lchan))
 		dtx_dispatch(lchan, E_FIRST);
 	else
