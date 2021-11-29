@@ -17,9 +17,25 @@ Vcs-Browser: http://git.osmocom.org/osmo-bts/
 Vcs-Git: git://git.osmocom.org/osmo-bts
 Homepage: https://projects.osmocom.org/projects/osmobts
 
+Package: osmo-bts
+Architecture: any
+Depends: osmo-bts-trx, osmo-bts-virtual, ${misc:Depends}
+Description: Base Transceiver Station for GSM
+ OsmoBTS is a software implementation of Layer2/3 of a BTS. It implements the
+ following protocols/interfaces:
+    LAPDm (GSM 04.06)
+    RTP
+    A-bis/IP in IPA multiplex
+    OML (GSM TS 12.21)
+    RSL (GSM TS 08.58)
+ .
+ OsmoBTS is modular and has support for multiple back-ends. A back-end talks to
+ a specific L1/PHY implementation of the respective BTS hardware. Based on this
+ architecture, it should be relatively easy to add a new back-end to support
+ so-far unsupported GSM PHY/L1 and associated hardware.
+
 Package: osmo-bts-trx
 Architecture: any
-Conflicts: osmo-bts
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: osmo-bts-trx GSM BTS with osmo-trx
  osmo-bts-trx to be used with the osmo-trx application
@@ -34,7 +50,6 @@ Description: Debug symbols for the osmo-bts-trx
 
 Package: osmo-bts-virtual
 Architecture: any
-Conflicts: osmo-bts
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Virtual Osmocom GSM BTS (no RF hardware; GSMTAP/UDP)
  This version of OsmoBTS doesn't use actual GSM PHY/Hardware/RF, but
