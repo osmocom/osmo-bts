@@ -580,6 +580,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	/* merge existing BTS attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(bts->mo.nm_attr, bts);
+	talloc_set_name_const(tp_merged, "oml_bts_attr");
 	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Ask BTS driver to validate new merged attributes */
@@ -737,6 +738,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* merge existing TRX attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx);
+	talloc_set_name_const(tp_merged, "oml_trx_attr");
 	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Ask BTS driver to validate new merged attributes */
@@ -951,6 +953,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	/* merge existing CHAN attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(ts->mo.nm_attr, ts->trx);
+	talloc_set_name_const(tp_merged, "oml_chan_attr");
 	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Call into BTS driver to check attribute values */
@@ -1395,6 +1398,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 		/* Success: replace old MO attributes with new */
 		/* merge existing MO attributes with new attributes */
 		tp_merged = osmo_tlvp_copy(mo->nm_attr, bts);
+		talloc_set_name_const(tp_merged, "oml_ipa_attr");
 		osmo_tlvp_merge(tp_merged, &tp);
 		talloc_free(mo->nm_attr);
 		mo->nm_attr = tp_merged;
