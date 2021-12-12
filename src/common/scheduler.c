@@ -662,18 +662,7 @@ static void trx_sched_clean_ts(struct gsm_bts_trx_ts *ts)
 	msgb_queue_flush(&l1ts->dl_prims);
 	rate_ctr_group_free(l1ts->ctrs);
 	l1ts->ctrs = NULL;
-	for (i = 0; i < _TRX_CHAN_MAX; i++) {
-		struct l1sched_chan_state *chan_state;
-		chan_state = &l1ts->chan_state[i];
-		if (chan_state->dl_bursts) {
-			talloc_free(chan_state->dl_bursts);
-			chan_state->dl_bursts = NULL;
-		}
-		if (chan_state->ul_bursts) {
-			talloc_free(chan_state->ul_bursts);
-			chan_state->ul_bursts = NULL;
-		}
-	}
+
 	/* clear lchan channel states */
 	for (i = 0; i < ARRAY_SIZE(ts->lchan); i++)
 		lchan_set_state(&ts->lchan[i], LCHAN_S_NONE);

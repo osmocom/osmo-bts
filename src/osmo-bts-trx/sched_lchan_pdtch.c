@@ -58,8 +58,7 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx,
-					     GSM0503_EGPRS_BURSTS_NBITS);
+		*bursts_p = talloc_zero_size(l1ts, GSM0503_EGPRS_BURSTS_NBITS);
 		if (!*bursts_p)
 			return -ENOMEM;
 	}
@@ -174,8 +173,7 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx,
-					     GSM0503_EGPRS_BURSTS_NBITS);
+		*bursts_p = talloc_zero_size(l1ts, GSM0503_EGPRS_BURSTS_NBITS);
 		if (!*bursts_p)
 			return -ENOMEM;
 	}

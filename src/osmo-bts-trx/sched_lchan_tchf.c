@@ -76,7 +76,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx, 928);
+		*bursts_p = talloc_zero_size(l1ts, 928);
 		if (!*bursts_p)
 			return -ENOMEM;
 	}
@@ -521,7 +521,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* allocate burst memory, if not already,
 	 * otherwise shift buffer by 4 bursts for interleaving */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx, 928);
+		*bursts_p = talloc_zero_size(l1ts, 928);
 		if (!*bursts_p)
 			return -ENOMEM;
 	} else {

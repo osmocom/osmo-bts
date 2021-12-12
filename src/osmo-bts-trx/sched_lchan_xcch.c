@@ -71,7 +71,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx, 464);
+		*bursts_p = talloc_zero_size(l1ts, 464);
 		if (!*bursts_p)
 			return -ENOMEM;
 	}
@@ -79,7 +79,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* UL-SACCH requires additional memory to keep a copy of each previous
 	 * burst set. */
 	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[bi->chan].link_id) && !chan_state->ul_bursts_prev) {
-		chan_state->ul_bursts_prev = talloc_zero_size(tall_bts_ctx, 464);
+		chan_state->ul_bursts_prev = talloc_zero_size(l1ts, 464);
 		if (!chan_state->ul_bursts_prev)
 			return -ENOMEM;
 	}
@@ -224,7 +224,7 @@ got_msg:
 
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(tall_bts_ctx, 464);
+		*bursts_p = talloc_zero_size(l1ts, 464);
 		if (!*bursts_p)
 			return -ENOMEM;
 	}
