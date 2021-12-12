@@ -198,7 +198,7 @@ int bts_process_smscb_cmd(struct gsm_bts *bts, struct rsl_ie_cb_cmd_type cmd_typ
 		return -EINVAL;
 	}
 
-	scm = talloc_zero_size(bts, sizeof(*scm));
+	scm = talloc_zero(bts, struct smscb_msg);
 	if (!scm)
 		return -1;
 
