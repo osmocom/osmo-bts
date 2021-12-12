@@ -735,7 +735,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
-	/* merge existing BTS attributes with new attributes */
+	/* merge existing TRX attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx);
 	osmo_tlvp_merge(tp_merged, &tp);
 
@@ -746,7 +746,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		return oml_fom_ack_nack(msg, -rc);
 	}
 
-	/* Success: replace old BTS attributes with new */
+	/* Success: replace old TRX attributes with new */
 	talloc_free(trx->mo.nm_attr);
 	trx->mo.nm_attr = tp_merged;
 
@@ -949,7 +949,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
-	/* merge existing BTS attributes with new attributes */
+	/* merge existing CHAN attributes with new attributes */
 	tp_merged = osmo_tlvp_copy(ts->mo.nm_attr, ts->trx);
 	osmo_tlvp_merge(tp_merged, &tp);
 
@@ -962,7 +962,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		return oml_fom_ack_nack(msg, -rc);
 	}
 
-	/* Success: replace old BTS attributes with new */
+	/* Success: replace old CHAN attributes with new */
 	talloc_free(ts->mo.nm_attr);
 	ts->mo.nm_attr = tp_merged;
 
