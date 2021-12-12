@@ -1109,6 +1109,10 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 			talloc_free(chan_state->ul_bursts);
 			chan_state->ul_bursts = NULL;
 		}
+		if (chan_state->ul_bursts_prev) {
+			talloc_free(chan_state->ul_bursts_prev);
+			chan_state->ul_bursts_prev = NULL;
+		}
 
 		if (active) {
 			/* Clean up everything */
