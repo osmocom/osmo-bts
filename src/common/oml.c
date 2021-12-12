@@ -736,7 +736,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	}
 
 	/* merge existing BTS attributes with new attributes */
-	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx->bts);
+	tp_merged = osmo_tlvp_copy(trx->mo.nm_attr, trx);
 	osmo_tlvp_merge(tp_merged, &tp);
 
 	/* Ask BTS driver to validate new merged attributes */
