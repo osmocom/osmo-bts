@@ -129,10 +129,12 @@ void phy_instance_destroy(struct phy_instance *pinst)
 	/* remove from list of instances in the link */
 	llist_del(&pinst->list);
 
-	/* remove reverse link from TRX */
-	OSMO_ASSERT(pinst->trx->pinst == pinst);
-	pinst->trx->pinst = NULL;
-	pinst->trx = NULL;
+	/* remove reverse link from TRX (if associated) */
+	if (pinst->trx != NULL) {
+		OSMO_ASSERT(pinst->trx->pinst == pinst);
+		pinst->trx->pinst = NULL;
+		pinst->trx = NULL;
+	}
 
 	talloc_free(pinst);
 }
