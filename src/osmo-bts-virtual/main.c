@@ -80,7 +80,7 @@ int bts_model_trx_init(struct gsm_bts_trx *trx)
 
 void bts_model_print_help()
 {
-	LOGP(DSUM, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	LOGP(DLGLOBAL, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 }
 
 int bts_model_handle_options(int argc, char **argv)
@@ -126,18 +126,18 @@ void bts_model_phy_link_set_defaults(struct phy_link *plink)
 
 void bts_model_phy_instance_set_defaults(struct phy_instance *pinst)
 {
-	LOGP(DSUM, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	LOGP(DLGLOBAL, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 }
 
 int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 {
-	LOGP(DSUM, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	LOGP(DLGLOBAL, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 	return -ENOTSUP;
 }
 
 void bts_model_ts_connect(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config as_pchan)
 {
-	LOGP(DSUM, LOGL_NOTICE, "Unimplemented %s\n", __func__);
+	LOGP(DLGLOBAL, LOGL_NOTICE, "Unimplemented %s\n", __func__);
 }
 
 int main(int argc, char **argv)

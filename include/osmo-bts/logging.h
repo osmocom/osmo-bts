@@ -20,7 +20,6 @@ enum {
 	DLOOP,
 	DABIS,
 	DRTP,
-	DSUM,
 };
 
 extern const struct log_info bts_log_info;

@@ -119,12 +119,6 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.color = "\033[0;34m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
-	[DSUM] = {
-		.name = "DSUM",
-		.description = "DSUM",
-		.loglevel = LOGL_NOTICE,
-		.enabled = 1,
-	},
 };
 
 static int osmo_bts_filter_fn(const struct log_context *ctx, struct log_target *tgt)

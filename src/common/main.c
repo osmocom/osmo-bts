@@ -303,6 +303,8 @@ int bts_main(int argc, char **argv)
 	bts_vty_init(tall_bts_ctx);
 	e1inp_vty_init();
 
+	logging_vty_add_deprecated_subsys(tall_bts_ctx, "sum");
+
 	handle_options(argc, argv);
 
 	fprintf(stderr, "((*))\n  |\n / \\ OsmoBTS\n");

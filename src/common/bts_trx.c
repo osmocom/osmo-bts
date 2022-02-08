@@ -222,7 +222,7 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 {
 	int rc;
 
-	LOGPTRX(trx, DSUM, LOGL_INFO, "RSL link up\n");
+	LOGPTRX(trx, DRSL, LOGL_INFO, "RSL link up\n");
 
 	osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_RSL_UP, NULL);
 	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_RSL_UP, NULL);

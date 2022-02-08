@@ -429,7 +429,7 @@ int bts_link_estab(struct gsm_bts *bts)
 {
 	int i, j;
 
-	LOGP(DSUM, LOGL_INFO, "Main link established, sending NM Status.\n");
+	LOGP(DOML, LOGL_INFO, "Main link established, sending NM Status.\n");
 
 	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS is DEPENDENCY */
 	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
@@ -652,7 +652,7 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 	struct gsm48_imm_ass_rej *imm_ass_cmd = msgb_l3(msg);
 
 	if (bts->agch_queue.length > hard_limit) {
-		LOGP(DSUM, LOGL_ERROR,
+		LOGP(DRR, LOGL_ERROR,
 		     "AGCH: too many messages in queue, "
 		     "refusing message type %s, length = %d/%d\n",
 		     gsm48_rr_msg_name(((struct gsm48_imm_ass *)msgb_l3(msg))->msg_type),
