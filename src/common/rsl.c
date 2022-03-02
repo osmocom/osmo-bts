@@ -2480,7 +2480,9 @@ int rsl_tx_ipac_dlcx_ind(struct gsm_lchan *lchan, uint8_t cause)
 {
 	struct msgb *nmsg;
 
-	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Sending RTP delete indication: cause = %s\n",
+	LOGPLCHAN(lchan, DRSL,
+		  (cause == RSL_ERR_NORMAL_UNSPEC) ? LOGL_INFO : LOGL_NOTICE,
+		  "Sending RTP delete indication: cause = %s\n",
 		  rsl_err_name(cause));
 
 	nmsg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
