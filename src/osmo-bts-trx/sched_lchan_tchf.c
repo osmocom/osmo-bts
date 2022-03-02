@@ -441,6 +441,10 @@ inval_mode1:
 			len = osmo_amr_rtp_dec(msg_tch->l2h, msgb_l2len(msg_tch),
 					       &cmr_codec, &cmi, &ft_codec,
 					       &bfi, &sti);
+			if (len < 0) {
+				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send invalid AMR payload\n");
+				goto free_bad_msg;
+			}
 			cmr = -1;
 			ft = -1;
 			for (i = 0; i < chan_state->codecs; i++) {
@@ -476,10 +480,6 @@ inval_mode1:
 		default:
 inval_mode2:
 			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "TCH mode invalid, please fix!\n");
-			goto free_bad_msg;
-		}
-		if (len < 0) {
-			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send invalid AMR payload\n");
 			goto free_bad_msg;
 		}
 		if (msgb_l2len(msg_tch) != len) {
