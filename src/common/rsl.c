@@ -1297,7 +1297,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 		return 0;
 	}
 
-	LOGP(DRSL, LOGL_NOTICE, "%s (ss=%d) %s Tx CHAN REL ACK\n",
+	LOGP(DRSL, LOGL_INFO, "%s (ss=%d) %s Tx CHAN REL ACK\n",
 	     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
 	     gsm_lchant_name(lchan->type));
 
@@ -1312,7 +1312,7 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
 	uint8_t ie[2];
 
-	LOGP(DRSL, LOGL_NOTICE, "%s (ss=%d) %s Tx CHAN ACT ACK\n",
+	LOGP(DRSL, LOGL_INFO, "%s (ss=%d) %s Tx CHAN ACT ACK\n",
 	     gsm_ts_and_pchan_name(lchan->ts), lchan->nr,
 	     gsm_lchant_name(lchan->type));
 

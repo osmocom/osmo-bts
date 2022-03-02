@@ -1163,7 +1163,7 @@ int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_c
 		 && trx_chan_desc[i].link_id == 0x00) {
 			struct l1sched_chan_state *chan_state = &l1ts->chan_state[i];
 
-			LOGP(DL1C, LOGL_NOTICE,
+			LOGP(DL1C, LOGL_INFO,
 			     "%s Set mode for %s (rsl_cmode=%u, tch_mode=%u, handover=%u)\n",
 			     gsm_ts_name(ts), trx_chan_desc[i].name,
 			     rsl_cmode, tch_mode, handover);
@@ -1230,7 +1230,7 @@ int trx_sched_set_cipher(struct gsm_lchan *lchan, uint8_t chan_nr, bool downlink
 			struct l1sched_ts *l1ts = lchan->ts->priv;
 			struct l1sched_chan_state *l1cs = &l1ts->chan_state[i];
 
-			LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "Set A5/%d %s for %s\n",
+			LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Set A5/%d %s for %s\n",
 				  algo, (downlink) ? "downlink" : "uplink",
 				  trx_chan_desc[i].name);
 
