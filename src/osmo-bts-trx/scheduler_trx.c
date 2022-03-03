@@ -690,7 +690,9 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 		.ci_cb  = (ci_cb_sum  / n),
 	};
 
-	LOGP(DMEAS, LOGL_DEBUG, "Measurement AVG (num=%u, shift=%u): "
-	     "RSSI %f, ToA256 %d, C/I %d cB\n", n, shift,
-	     avg->rssi, avg->toa256, avg->ci_cb);
+	LOGP(DMEAS, LOGL_DEBUG, "%s%sMeasurement AVG (num=%u, shift=%u): "
+	     "RSSI %f, ToA256 %d, C/I %d cB\n",
+	     chan_state->lchan ? gsm_lchan_name(chan_state->lchan) : "",
+	     chan_state->lchan ? " " : "",
+	     n, shift, avg->rssi, avg->toa256, avg->ci_cb);
 }
