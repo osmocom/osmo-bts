@@ -148,9 +148,12 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 	if (ts->fh_trx_list[idx] != NULL)
 		return ts->fh_trx_list[idx]->pinst;
 
+	struct bts_trx_priv *priv = (struct bts_trx_priv *) ts->trx->bts->model_priv;
+
 	/* The "cache" may not be filled yet, lookup the transceiver */
 	llist_for_each_entry(trx, &ts->trx->bts->trx_list, list) {
 		if (trx->arfcn == ts->hopping.arfcn_list[idx]) {
+			rate_ctr_inc2(priv->ctrs, BTSTRX_CTR_SCHED_DL_FH_CACHE_MISS);
 			ts->fh_trx_list[idx] = trx;
 			return trx->pinst;
 		}
@@ -160,7 +163,6 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 		"for a Downlink burst (fn=%u, tn=%u, " SCHED_FH_PARAMS_FMT ")\n",
 		br->fn, br->tn, SCHED_FH_PARAMS_VALS(ts));
 
-	struct bts_trx_priv *priv = (struct bts_trx_priv *) ts->trx->bts->model_priv;
 	rate_ctr_inc2(priv->ctrs, BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER);
 
 	return NULL;

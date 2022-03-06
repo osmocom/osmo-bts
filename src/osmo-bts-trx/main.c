@@ -70,6 +70,10 @@ static const struct rate_ctr_desc btstrx_ctr_desc[] = {
 		"trx_sched:dl_fh_no_carrier",
 		"Frequency hopping: no carrier found for a Downlink burst (check hopping parameters)"
 	},
+	[BTSTRX_CTR_SCHED_DL_FH_CACHE_MISS] = {
+		"trx_sched:dl_fh_cache_miss",
+		"Frequency hopping: no Downlink carrier found in cache (lookup performed)"
+	},
 	[BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER] = {
 		"trx_sched:ul_fh_no_carrier",
 		"Frequency hopping: no carrier found for an Uplink burst (check hopping parameters)"
