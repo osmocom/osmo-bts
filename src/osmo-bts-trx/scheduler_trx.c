@@ -161,7 +161,7 @@ static struct phy_instance *dlfh_route_br(const struct trx_dl_burst_req *br,
 		br->fn, br->tn, SCHED_FH_PARAMS_VALS(ts));
 
 	struct bts_trx_priv *priv = (struct bts_trx_priv *) ts->trx->bts->model_priv;
-	rate_ctr_inc(rate_ctr_group_get_ctr(priv->ctrs, BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER));
+	rate_ctr_inc2(priv->ctrs, BTSTRX_CTR_SCHED_DL_FH_NO_CARRIER);
 
 	return NULL;
 }
@@ -347,7 +347,7 @@ static struct gsm_bts_trx *ulfh_route_bi(const struct trx_ul_burst_ind *bi,
 		bi->fn, bi->tn, SCHED_FH_PARAMS_VALS(&src_trx->ts[bi->tn]));
 
 	struct bts_trx_priv *priv = (struct bts_trx_priv *) src_trx->bts->model_priv;
-	rate_ctr_inc(rate_ctr_group_get_ctr(priv->ctrs, BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER));
+	rate_ctr_inc2(priv->ctrs, BTSTRX_CTR_SCHED_UL_FH_NO_CARRIER);
 
 	return NULL;
 }
