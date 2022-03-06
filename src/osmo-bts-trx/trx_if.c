@@ -862,7 +862,7 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 
 	/* MTS (Modulation and Training Sequence) */
 	rc = trx_data_parse_mts(phy_inst, bi, buf[0]);
-	if (rc < 0)
+	if (OSMO_UNLIKELY(rc < 0))
 		return rc;
 
 	/* C/I: Carrier-to-Interference ratio (in centiBels) */
@@ -893,7 +893,7 @@ static int trx_data_handle_pdu_v2(struct phy_instance *phy_inst,
 
 	/* MTS (Modulation and Training Sequence) */
 	rc = trx_data_parse_mts(phy_inst, bi, buf[2]);
-	if (rc < 0)
+	if (OSMO_UNLIKELY(rc < 0))
 		return rc;
 
 	bi->rssi = -(int8_t)buf[3];
@@ -903,7 +903,7 @@ static int trx_data_handle_pdu_v2(struct phy_instance *phy_inst,
 
 	/* TDMA frame number is absent in batched PDUs */
 	if (bi->_num_pdus == 0) {
-		if (buf_len < sizeof(bi->fn) + TRX_UL_V2HDR_LEN) {
+		if (OSMO_UNLIKELY(buf_len < sizeof(bi->fn) + TRX_UL_V2HDR_LEN)) {
 			LOGPPHI(phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv2 PDU: not enough bytes "
 				"to parse TDMA frame number\n");
@@ -936,7 +936,7 @@ static int trx_data_handle_burst(struct trx_ul_burst_ind *bi,
 	};
 
 	bi->burst_len = bl[bi->mod];
-	if (buf_len < bi->burst_len)
+	if (OSMO_UNLIKELY(buf_len < bi->burst_len))
 		return -EINVAL;
 
 	/* Convert unsigned soft-bits [254..0] to soft-bits [-127..127] */
@@ -1009,7 +1009,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	uint8_t pdu_ver;
 
 	buf_len = recv(ofd->fd, trx_data_buf, sizeof(trx_data_buf), 0);
-	if (buf_len <= 0) {
+	if (OSMO_UNLIKELY(buf_len <= 0)) {
 		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"recv() failed on TRXD with rc=%zd (%s)\n",
@@ -1021,7 +1021,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	pdu_ver = buf[0] >> 4;
 
 	/* Make sure that PDU version matches our expectations */
-	if (pdu_ver != l1h->config.trxd_pdu_ver_use) {
+	if (OSMO_UNLIKELY(pdu_ver != l1h->config.trxd_pdu_ver_use)) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Rx TRXD PDU with unexpected version %u (expected %u)\n",
 			pdu_ver, l1h->config.trxd_pdu_ver_use);
@@ -1037,7 +1037,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		bi.flags = 0x00;
 
 		/* Make sure that we have enough bytes to parse the header */
-		if (buf_len < trx_data_rx_hdr_len[pdu_ver]) {
+		if (OSMO_UNLIKELY(buf_len < trx_data_rx_hdr_len[pdu_ver])) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
 				pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
@@ -1061,10 +1061,10 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		}
 
 		/* Header parsing error */
-		if (hdr_len < 0)
+		if (OSMO_UNLIKELY(hdr_len < 0))
 			return hdr_len;
 
-		if (bi.fn >= GSM_TDMA_HYPERFRAME) {
+		if (OSMO_UNLIKELY(bi.fn >= GSM_TDMA_HYPERFRAME)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: illegal TDMA fn=%u\n",
 				pdu_ver, bi.fn);
@@ -1076,7 +1076,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		buf += hdr_len;
 
 		/* Calculate burst length and parse it (if present) */
-		if (trx_data_handle_burst(&bi, buf, buf_len) != 0) {
+		if (OSMO_UNLIKELY(trx_data_handle_burst(&bi, buf, buf_len) != 0)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: odd burst length=%zd\n",
 				pdu_ver, buf_len);
@@ -1117,7 +1117,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	ssize_t snd_len, buf_len;
 
 	/* Make sure that the PHY is powered on */
-	if (!trx_if_powered(l1h)) {
+	if (OSMO_UNLIKELY(!trx_if_powered(l1h))) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Ignoring Tx data, transceiver is powered off\n");
 		return -ENODEV;
@@ -1190,7 +1190,7 @@ sendall:
 	pdu_num = 0;
 
 	snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, buf_len, 0);
-	if (snd_len <= 0) {
+	if (OSMO_UNLIKELY(snd_len <= 0)) {
 		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"send() failed on TRXD with rc=%zd (%s)\n",
