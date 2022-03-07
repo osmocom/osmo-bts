@@ -107,7 +107,7 @@ OsmoBTS# list
   show timer [(bts|abis)] [TNNNN]
   bts <0-0> trx <0-255> ts <0-7> (lchan|shadow-lchan) <0-7> rtp jitter-buffer <0-10000>
   test send-failure-event-report <0-255>
-  bts <0-255> c0-power-red <0-6>
+  bts <0-0> c0-power-red <0-6>
   show e1_driver
   show e1_line [<0-255>] [stats]
   show e1_timeslot [<0-255>] [<0-31>]

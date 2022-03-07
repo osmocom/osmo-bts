@@ -1329,7 +1329,7 @@ DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-t
 
 DEFUN(bts_c0_power_red,
       bts_c0_power_red_cmd,
-      "bts <0-255> c0-power-red <0-6>",
+      "bts <0-0> c0-power-red <0-6>",
       "BTS Specific Commands\n" BTS_NR_STR
       "BCCH carrier power reduction operation\n"
       "Power reduction value (in dB, even numbers only)\n")
