@@ -1902,21 +1902,21 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	/* Indicate which SAPIs should be enabled before the first RACH is received, for handover. See 3GPP TS 48.058
 	 * 4.1.3 and 4.1.4.
 	 *
-	 *          |          | Access ||  transmit         |  activate         |  This implementation
-	 *          | MS Power | Delay  ||  on main channel  |  dl SACCH         |  activates DL SACCH
+	 *          |          | Timing   ||  transmit         |  activate         |  This implementation
+	 *          | MS Power | Advance  ||  on main channel  |  dl SACCH         |  activates DL SACCH
 	 * -----------------------------------------------------------------------------------------
-	 * async ho   no         *     -->  yes                 no                  no
-	 * async ho   yes        *     -->  yes                 may be started      no
-	 * async ho   yes        yes   -->  yes                 may be started      yes
-	 * sync ho    no         no    -->  yes                 no                  no
-	 * sync ho    yes        no    -->  yes                 may be started      no
-	 * sync ho    yes        yes   -->  yes                 shall be started    yes
+	 * async ho   no         *       -->  yes                 no                  no
+	 * async ho   yes        *       -->  yes                 may be started      no
+	 * async ho   yes        yes     -->  yes                 may be started      yes
+	 * sync ho    no         no      -->  yes                 no                  no
+	 * sync ho    yes        no      -->  yes                 may be started      no
+	 * sync ho    yes        yes     -->  yes                 shall be started    yes
 	 */
 	switch (type) {
 	case RSL_ACT_INTER_ASYNC:
 	case RSL_ACT_INTER_SYNC:
 		lchan->want_dl_sacch_active = (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)
-					       && TLVP_PRES_LEN(&tp, RSL_IE_ACCESS_DELAY, 1));
+					       && TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1));
 		break;
 	default:
 		lchan->want_dl_sacch_active = true;
