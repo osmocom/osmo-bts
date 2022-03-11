@@ -269,7 +269,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
-		uint16_t ber10k = compute_ber10k(n_bits_total, n_errors);
 		if (lchan->nr == 0)
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
 		else
