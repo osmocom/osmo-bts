@@ -149,7 +149,10 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			fn_is_odd, &n_errors, &n_bits_total);
 		if (rc == (GSM_HR_BYTES + 1)) { /* only for valid *speech* frames */
 			/* gsm0503_tch_hr_decode() prepends a ToC octet (see RFC5993), skip it */
-			lchan_set_marker(osmo_hr_check_sid(&tch_data[1], GSM_HR_BYTES), lchan); /* DTXu */
+			bool is_sid = osmo_hr_check_sid(&tch_data[1], GSM_HR_BYTES);
+			if (is_sid) /* Mark SID frames as such: F = 0, FT = 010 */
+				tch_data[0] = (0x02 << 4);
+			lchan_set_marker(is_sid, lchan); /* DTXu */
 		}
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
