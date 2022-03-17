@@ -302,11 +302,8 @@ bfi:
 compose_l1sap:
 	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
-				      /* FIXME: what should we use for BFI here? */
-				      bfi_flag ? bi->toa256 : meas_avg.toa256, ber10k,
-				      bfi_flag ? bi->rssi : meas_avg.rssi,
-				      bfi_flag ? bi->ci_cb : meas_avg.ci_cb,
-				      is_sub);
+				      meas_avg.toa256, ber10k, meas_avg.rssi,
+				      meas_avg.ci_cb, is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
