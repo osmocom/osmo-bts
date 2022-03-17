@@ -92,7 +92,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		memcpy(*bursts_p, *bursts_p + 232, 232);
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		memset(*bursts_p + 464, 0, 232);
-		*mask = 0x0;
+		*mask = *mask << 2;
 	}
 
 	/* update mask */
@@ -113,13 +113,13 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	if (bi->bid != 1)
 		return 0;
 
-	/* check for complete set of bursts */
-	if ((*mask & 0x3) != 0x3) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
-			"Received incomplete frame (%u/%u)\n",
-			bi->fn % l1ts->mf_period, l1ts->mf_period);
+	/* fill up the burst buffer so that we have 6 bursts in there */
+	if (OSMO_UNLIKELY((*mask & 0x3f) != 0x3f)) {
+		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
+			"UL burst buffer is not filled up: mask=0x%02x != 0x3f\n",
+			*mask);
+		return 0; /* TODO: send BFI */
 	}
-	*mask = 0x0;
 
 	/* skip decoding of the last 4 bursts of FACCH/H */
 	if (chan_state->ul_ongoing_facch) {
