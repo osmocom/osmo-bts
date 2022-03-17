@@ -631,6 +631,16 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 	chan_state->meas.current = (current + 1) % hist_size;
 }
 
+/* Measurement averaging mode sets: [MODE] = { SHIFT, NUM } */
+static const uint8_t trx_sched_meas_modeset[][2] = {
+	[SCHED_MEAS_AVG_M_S4N4] = { 4, 4 },
+	[SCHED_MEAS_AVG_M_S8N8] = { 8, 8 },
+	[SCHED_MEAS_AVG_M_S6N6] = { 6, 6 },
+	[SCHED_MEAS_AVG_M_S8N4] = { 8, 4 },
+	[SCHED_MEAS_AVG_M_S6N2] = { 6, 2 },
+	[SCHED_MEAS_AVG_M_S4N2] = { 4, 2 },
+};
+
 /* Calculate the AVG of n measurements from the history */
 void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 			struct l1sched_meas_set *avg,
@@ -639,44 +649,17 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 	unsigned int hist_size = ARRAY_SIZE(chan_state->meas.buf);
 	unsigned int current = chan_state->meas.current;
 	const struct l1sched_meas_set *set;
-	unsigned int shift, pos, i, n;
+	unsigned int pos, i;
 
 	float rssi_sum = 0;
 	int toa256_sum = 0;
 	int ci_cb_sum = 0;
 
-	switch (mode) {
-	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
-	case SCHED_MEAS_AVG_M_S4N4:
-		n = 4; shift = n;
-		break;
-	/* last 8 bursts (default for TCH/F and FACCH/F) */
-	case SCHED_MEAS_AVG_M_S8N8:
-		n = 8; shift = n;
-		break;
-	/* last 6 bursts (default for FACCH/H) */
-	case SCHED_MEAS_AVG_M_S6N6:
-		n = 6; shift = n;
-		break;
-	/* first 4 of last 8 bursts */
-	case SCHED_MEAS_AVG_M_S8N4:
-		n = 4; shift = 8;
-		break;
-	/* first 2 of last 6 bursts */
-	case SCHED_MEAS_AVG_M_S6N2:
-		n = 2; shift = 6;
-		break;
-	/* middle 2 of last 6 bursts */
-	case SCHED_MEAS_AVG_M_S4N2:
-		n = 2; shift = 4;
-		break;
-	default:
-		/* Shall not happen */
-		OSMO_ASSERT(false);
-	}
+	const unsigned int shift = trx_sched_meas_modeset[mode][0];
+	const unsigned int num = trx_sched_meas_modeset[mode][1];
 
 	/* Calculate the sum of n entries starting from pos */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < num; i++) {
 		pos = (current + hist_size - shift + i) % hist_size;
 		set = &chan_state->meas.buf[pos];
 
@@ -687,14 +670,14 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 
 	/* Calculate the average for each value */
 	*avg = (struct l1sched_meas_set) {
-		.rssi   = (rssi_sum   / n),
-		.toa256 = (toa256_sum / n),
-		.ci_cb  = (ci_cb_sum  / n),
+		.rssi   = (rssi_sum   / num),
+		.toa256 = (toa256_sum / num),
+		.ci_cb  = (ci_cb_sum  / num),
 	};
 
 	LOGP(DMEAS, LOGL_DEBUG, "%s%sMeasurement AVG (num=%u, shift=%u): "
 	     "RSSI %f, ToA256 %d, C/I %d cB\n",
 	     chan_state->lchan ? gsm_lchan_name(chan_state->lchan) : "",
 	     chan_state->lchan ? " " : "",
-	     n, shift, avg->rssi, avg->toa256, avg->ci_cb);
+	     num, shift, avg->rssi, avg->toa256, avg->ci_cb);
 }
