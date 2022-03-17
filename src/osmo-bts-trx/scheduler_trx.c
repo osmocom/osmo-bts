@@ -635,6 +635,7 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 static const uint8_t trx_sched_meas_modeset[][2] = {
 	[SCHED_MEAS_AVG_M_S4N4] = { 4, 4 },
 	[SCHED_MEAS_AVG_M_S8N8] = { 8, 8 },
+	[SCHED_MEAS_AVG_M_S6N4] = { 6, 4 },
 	[SCHED_MEAS_AVG_M_S6N6] = { 6, 6 },
 	[SCHED_MEAS_AVG_M_S8N4] = { 8, 4 },
 	[SCHED_MEAS_AVG_M_S6N2] = { 6, 2 },

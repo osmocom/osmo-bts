@@ -306,10 +306,12 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi);
 
 /* Averaging mode for trx_sched_meas_avg() */
 enum sched_meas_avg_mode {
-	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
+	/* last 4 bursts (default for xCCH, PTCCH and PDTCH) */
 	SCHED_MEAS_AVG_M_S4N4,
 	/* last 8 bursts (default for TCH/F and FACCH/F) */
 	SCHED_MEAS_AVG_M_S8N8,
+	/* first 4 of last 6 bursts (default for TCH/H) */
+	SCHED_MEAS_AVG_M_S6N4,
 	/* last 6 bursts (default for FACCH/H) */
 	SCHED_MEAS_AVG_M_S6N6,
 	/* first 4 of last 8 bursts */

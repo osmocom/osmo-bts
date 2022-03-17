@@ -64,7 +64,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	 * Even FN ending at: 10,11,19,20,2,3
 	 */
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
-	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S4N4;
+	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S6N4;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
 	unsigned int fn_tch_end;
