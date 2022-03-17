@@ -647,27 +647,27 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 
 	switch (mode) {
 	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
-	case SCHED_MEAS_AVG_M_QUAD:
+	case SCHED_MEAS_AVG_M_S4N4:
 		n = 4; shift = n;
 		break;
 	/* last 8 bursts (default for TCH/F and FACCH/F) */
-	case SCHED_MEAS_AVG_M_OCTO:
+	case SCHED_MEAS_AVG_M_S8N8:
 		n = 8; shift = n;
 		break;
 	/* last 6 bursts (default for FACCH/H) */
-	case SCHED_MEAS_AVG_M_SIX:
+	case SCHED_MEAS_AVG_M_S6N6:
 		n = 6; shift = n;
 		break;
 	/* first 4 of last 8 bursts */
-	case SCHED_MEAS_AVG_M8_FIRST_QUAD:
+	case SCHED_MEAS_AVG_M_S8N4:
 		n = 4; shift = 8;
 		break;
 	/* first 2 of last 6 bursts */
-	case SCHED_MEAS_AVG_M6_FIRST_TWO:
+	case SCHED_MEAS_AVG_M_S6N2:
 		n = 2; shift = 6;
 		break;
 	/* middle 2 of last 6 bursts */
-	case SCHED_MEAS_AVG_M6_MIDDLE_TWO:
+	case SCHED_MEAS_AVG_M_S4N2:
 		n = 2; shift = 4;
 		break;
 	default:

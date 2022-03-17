@@ -307,17 +307,17 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi);
 /* Averaging mode for trx_sched_meas_avg() */
 enum sched_meas_avg_mode {
 	/* last 4 bursts (default for xCCH, TCH/H, PTCCH and PDTCH) */
-	SCHED_MEAS_AVG_M_QUAD,
+	SCHED_MEAS_AVG_M_S4N4,
 	/* last 8 bursts (default for TCH/F and FACCH/F) */
-	SCHED_MEAS_AVG_M_OCTO,
+	SCHED_MEAS_AVG_M_S8N8,
 	/* last 6 bursts (default for FACCH/H) */
-	SCHED_MEAS_AVG_M_SIX,
+	SCHED_MEAS_AVG_M_S6N6,
 	/* first 4 of last 8 bursts */
-	SCHED_MEAS_AVG_M8_FIRST_QUAD,
+	SCHED_MEAS_AVG_M_S8N4,
 	/* first 2 of last 6 bursts */
-	SCHED_MEAS_AVG_M6_FIRST_TWO,
+	SCHED_MEAS_AVG_M_S6N2,
 	/* middle 2 of last 6 bursts */
-	SCHED_MEAS_AVG_M6_MIDDLE_TWO,
+	SCHED_MEAS_AVG_M_S4N2,
 };
 
 void trx_sched_meas_push(struct l1sched_chan_state *chan_state,

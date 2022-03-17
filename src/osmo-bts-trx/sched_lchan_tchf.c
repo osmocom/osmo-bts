@@ -55,7 +55,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
-	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_OCTO;
+	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S8N8;
 	struct l1sched_meas_set meas_avg;
 	int rc, amr = 0;
 	int n_errors = 0;
@@ -175,11 +175,11 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		switch (chan_state->amr_last_dtx) {
 		case AFS_SID_FIRST:
 		case AFS_SID_UPDATE_CN:
-			meas_avg_mode = SCHED_MEAS_AVG_M8_FIRST_QUAD;
+			meas_avg_mode = SCHED_MEAS_AVG_M_S8N4;
 			break;
 		case AFS_SID_UPDATE:
 		case AFS_ONSET:
-			meas_avg_mode = SCHED_MEAS_AVG_M_QUAD;
+			meas_avg_mode = SCHED_MEAS_AVG_M_S4N4;
 			break;
 		}
 

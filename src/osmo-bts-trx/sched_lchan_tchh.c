@@ -64,7 +64,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	 * Even FN ending at: 10,11,19,20,2,3
 	 */
 	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
-	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_QUAD;
+	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S4N4;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
 	unsigned int fn_tch_end;
@@ -214,10 +214,10 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		case AHS_SID_UPDATE_CN:
 		case AHS_SID_FIRST_INH:
 		case AHS_SID_UPDATE_INH:
-			meas_avg_mode = SCHED_MEAS_AVG_M6_FIRST_TWO;
+			meas_avg_mode = SCHED_MEAS_AVG_M_S6N2;
 			break;
 		case AHS_ONSET:
-			meas_avg_mode = SCHED_MEAS_AVG_M6_MIDDLE_TWO;
+			meas_avg_mode = SCHED_MEAS_AVG_M_S4N2;
 			break;
 		}
 
@@ -250,7 +250,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* average measurements of the last N (depends on mode) bursts */
 	if (rc == GSM_MACBLOCK_LEN)
-		meas_avg_mode = SCHED_MEAS_AVG_M_SIX;
+		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 
 	/* Check if the frame is bad */

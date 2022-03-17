@@ -101,7 +101,7 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		return 0;
 
 	/* average measurements of the last 4 bursts */
-	trx_sched_meas_avg(chan_state, &meas_avg, SCHED_MEAS_AVG_M_QUAD);
+	trx_sched_meas_avg(chan_state, &meas_avg, SCHED_MEAS_AVG_M_S4N4);
 
 	/* check for complete set of bursts */
 	if ((*mask & 0xf) != 0xf) {
