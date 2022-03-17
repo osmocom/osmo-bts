@@ -131,8 +131,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * the first FN 4,13,21 defines that CMR is included in frame.
 		 * NOTE: A frame ends 7 FN after start.
 		 */
-		fn_begin = trx_sched_lookup_fn(chan_state, 8);
-		amr_is_cmr = !ul_amr_fn_is_cmi(fn_begin);
+		amr_is_cmr = !sched_tchf_ul_amr_cmi_map[bi->fn % 26];
 
 		/* The AFS_ONSET frame itself does not result into an RTP frame
 		 * since it only contains a recognition pattern that marks the

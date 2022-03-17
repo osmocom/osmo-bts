@@ -165,16 +165,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			break;
 		}
 
-		/* Calculate the frame number where the block begins.  Note that
-		 * we need to traverse the measurement histort back by 6 bursts,
-		 * not by 4 bursts.  The reason for this is that the burst shift
-		 * buffer we use for decoding is 6 bursts wide (one SACCH block) but
-		 * TCH/H blocks are only 4 bursts wide.  The decoder functions look
-		 * at the beginning of the buffer while we shift into it at the end,
-		 * this means that TCH/H blocks always decoded delayed by two frame
-		 * number positions late. */
-		fn_begin = trx_sched_lookup_fn(chan_state, 6);
-		fn_is_cmi = ul_amr_fn_is_cmi(fn_begin);
+		fn_is_cmi = sched_tchh_ul_amr_cmi_map[bi->fn % 26];
 
 		/* See comment in function rx_tchf_fn() */
 		amr = 2;
