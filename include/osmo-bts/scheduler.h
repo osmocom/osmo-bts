@@ -126,7 +126,6 @@ struct l1sched_chan_state {
 	uint8_t			dl_ongoing_facch; /* FACCH/H on downlink */
 	uint8_t			ul_ongoing_facch; /* FACCH/H on uplink */
 	struct l1sched_meas_set meas_avg_facch;   /* measurement results for last FACCH */
-	uint16_t		ber10k_facch;	  /* bit error rate for last FACCH */
 
 	uint8_t			dl_facch_bursts;  /* number of remaining DL FACCH bursts */
 

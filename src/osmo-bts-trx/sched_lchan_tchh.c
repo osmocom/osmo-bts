@@ -68,7 +68,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
 	unsigned int fn_tch_end;
-	uint16_t ber10k;
+	uint16_t ber10k = 0;
 	uint8_t is_sub = 0;
 	uint8_t ft;
 	bool mask_stolen_tch_block = false;
@@ -127,7 +127,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		/* we have already sent the first BFI when a FACCH/H frame
 		 * was decoded (see below), now send the second one. */
-		ber10k = 0;
 		memset(&meas_avg, 0, sizeof(meas_avg));
 		/* In order to provide an even stream of measurement reports
 		 * we ask the code below to mask the missing TCH/H block
@@ -289,12 +288,12 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * measurement result for the one missing TCH block
 		 * measurement */
 		memcpy(&chan_state->meas_avg_facch, &meas_avg, sizeof(meas_avg));
-		chan_state->ber10k_facch = ber10k;
 
 		/* Invalidate the current measurement result to prevent the
 		 * code below from handing up the current measurement a second
 		 * time. */
 		memset(&meas_avg, 0, sizeof(meas_avg));
+		ber10k = 0;
 bfi:
 		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
 		 * One is sent here, another will be sent two bursts later (see above). */
@@ -371,9 +370,7 @@ compose_l1sap:
 	 * from the FACCH transmission. */
 	if (mask_stolen_tch_block) {
 		memcpy(&meas_avg, &chan_state->meas_avg_facch, sizeof(meas_avg));
-		ber10k = chan_state->ber10k_facch;
 		memset(&chan_state->meas_avg_facch, 0, sizeof(meas_avg));
-		chan_state->ber10k_facch = 0;
 	}
 
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
