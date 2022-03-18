@@ -71,7 +71,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint16_t ber10k = 0;
 	uint8_t is_sub = 0;
 	uint8_t ft;
-	bool mask_stolen_tch_block = false;
 	bool fn_is_cmi;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
@@ -127,11 +126,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		/* we have already sent the first BFI when a FACCH/H frame
 		 * was decoded (see below), now send the second one. */
-		memset(&meas_avg, 0, sizeof(meas_avg));
-		/* In order to provide an even stream of measurement reports
-		 * we ask the code below to mask the missing TCH/H block
-		 * measurement report with the FACCH measurement results. */
-		mask_stolen_tch_block = true;
+		trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 		goto bfi;
 	}
 
@@ -248,8 +243,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* average measurements of the last N (depends on mode) bursts */
-	if (rc == GSM_MACBLOCK_LEN)
-		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 
 	/* Check if the frame is bad */
@@ -277,22 +270,15 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
 		else
 			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
+		/* In order to provide an even stream of measurement reports, here we
+		 * intentionally invalidate RSSI, so that this report gets dropped in
+		 * process_l1sap_meas_data().  The averaged results will still be sent
+		 * with the first BFI (see below). */
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
-			meas_avg.rssi, meas_avg.toa256,
-			meas_avg.ci_cb, ber10k,
+			0, /* intentionally invalidate RSSI */
+			meas_avg.toa256, meas_avg.ci_cb, ber10k,
 			PRES_INFO_UNKNOWN);
-
-		/* Keep a copy of the measurement results of the last FACCH
-		 * transmission in order to be able to create a replacement
-		 * measurement result for the one missing TCH block
-		 * measurement */
-		memcpy(&chan_state->meas_avg_facch, &meas_avg, sizeof(meas_avg));
-
-		/* Invalidate the current measurement result to prevent the
-		 * code below from handing up the current measurement a second
-		 * time. */
-		memset(&meas_avg, 0, sizeof(meas_avg));
 		ber10k = 0;
 bfi:
 		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
@@ -362,16 +348,6 @@ compose_l1sap:
 		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
 	else
 		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H1);
-
-	/* A FACCH/H transmission takes out two TCH/H voice blocks and the
-	 * related measurement results. The first measurement result is handed
-	 * up directly with the FACCH (see above), the second one needs to be
-	 * compensated by filling the gap with the measurement result we got
-	 * from the FACCH transmission. */
-	if (mask_stolen_tch_block) {
-		memcpy(&meas_avg, &chan_state->meas_avg_facch, sizeof(meas_avg));
-		memset(&chan_state->meas_avg_facch, 0, sizeof(meas_avg));
-	}
 
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      /* FIXME: what should we use for BFI here? */
