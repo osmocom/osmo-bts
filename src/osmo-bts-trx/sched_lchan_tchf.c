@@ -81,8 +81,9 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			return -ENOMEM;
 	}
 
-	/* clear burst */
+	/* shift the buffer by 4 bursts leftwards */
 	if (bi->bid == 0) {
+		memcpy(*bursts_p, *bursts_p + 464, 464);
 		memset(*bursts_p + 464, 0, 464);
 		*mask = 0x0;
 	}
@@ -205,7 +206,6 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			tch_mode);
 		return -EINVAL;
 	}
-	memcpy(*bursts_p, *bursts_p + 464, 464);
 
 	/* average measurements of the last N (depends on mode) bursts */
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);

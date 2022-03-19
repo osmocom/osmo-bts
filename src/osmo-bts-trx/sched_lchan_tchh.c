@@ -87,8 +87,10 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			return -ENOMEM;
 	}
 
-	/* clear burst */
+	/* shift the buffer by 2 bursts leftwards */
 	if (bi->bid == 0) {
+		memcpy(*bursts_p, *bursts_p + 232, 232);
+		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		memset(*bursts_p + 464, 0, 232);
 		*mask = 0x0;
 	}
@@ -122,8 +124,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* skip decoding of the last 4 bursts of FACCH/H */
 	if (chan_state->ul_ongoing_facch) {
 		chan_state->ul_ongoing_facch = 0;
-		memcpy(*bursts_p, *bursts_p + 232, 232);
-		memcpy(*bursts_p + 232, *bursts_p + 464, 232);
 		/* we have already sent the first BFI when a FACCH/H frame
 		 * was decoded (see below), now send the second one. */
 		trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
@@ -238,8 +238,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			tch_mode);
 		return -EINVAL;
 	}
-	memcpy(*bursts_p, *bursts_p + 232, 232);
-	memcpy(*bursts_p + 232, *bursts_p + 464, 232);
+
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* average measurements of the last N (depends on mode) bursts */
