@@ -67,7 +67,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S6N4;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
-	unsigned int fn_tch_end;
 	uint16_t ber10k = 0;
 	uint8_t is_sub = 0;
 	uint8_t ft;
@@ -127,6 +126,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		/* we have already sent the first BFI when a FACCH/H frame
 		 * was decoded (see below), now send the second one. */
 		trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
+		/* meas_avg.fn now contains TDMA frame number of the first burst */
+		fn_begin = meas_avg.fn;
 		goto bfi;
 	}
 
@@ -164,15 +165,15 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			break;
 		}
 
-		/* Calculate the frame number where the block begins */
-		if (bi->fn % 13 < 4)
-			fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 5);
-		else
-			fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 4);
-		if (lchan->nr == 0)
-			fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
-		else
-			fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H1);
+		/* Calculate the frame number where the block begins.  Note that
+		 * we need to traverse the measurement histort back by 6 bursts,
+		 * not by 4 bursts.  The reason for this is that the burst shift
+		 * buffer we use for decoding is 6 bursts wide (one SACCH block) but
+		 * TCH/H blocks are only 4 bursts wide.  The decoder functions look
+		 * at the beginning of the buffer while we shift into it at the end,
+		 * this means that TCH/H blocks always decoded delayed by two frame
+		 * number positions late. */
+		fn_begin = trx_sched_lookup_fn(chan_state, 6);
 		fn_is_cmi = ul_amr_fn_is_cmi(fn_begin);
 
 		/* See comment in function rx_tchf_fn() */
@@ -243,6 +244,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* average measurements of the last N (depends on mode) bursts */
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
+	/* meas_avg.fn now contains TDMA frame number of the first burst */
+	fn_begin = meas_avg.fn;
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
@@ -265,10 +268,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
-		if (lchan->nr == 0)
-			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H0);
-		else
-			fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_H1);
 		/* In order to provide an even stream of measurement reports, here we
 		 * intentionally invalidate RSSI, so that this report gets dropped in
 		 * process_l1sap_meas_data().  The averaged results will still be sent
@@ -329,25 +328,6 @@ bfi:
 
 compose_l1sap:
 	/* TCH or BFI */
-
-	/* The input to gsm0502_fn_remap() needs to get the frame number we
-	 * got two bursts ago. The reason for this is that the burst shift
-	 * buffer we use for decoding is 6 bursts wide (one SACCH block) but
-	 * TCH/H blocks are only 4 bursts wide. The decoder functions look
-	 * at the beginning of the buffer while we shift into it at the end,
-	 * this means that TCH/H blocks always decode delayed by two frame
-	 * number positions late. To calculatue the ending frame number of
-	 * the TCH/H we need to subtract 4 or 5 frames if there was a SACCH
-	 * in between. (Note: this is TCH/H, 4 frames ==> 2 bursts) */
-	if (bi->fn % 13 < 4)
-		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 5);
-	else
-		fn_tch_end = GSM_TDMA_FN_SUB(bi->fn, 4);
-	if (lchan->nr == 0)
-		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H0);
-	else
-		fn_begin = gsm0502_fn_remap(fn_tch_end, FN_REMAP_TCH_H1);
-
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      meas_avg.toa256, ber10k, meas_avg.rssi,
 				      meas_avg.ci_cb, is_sub);

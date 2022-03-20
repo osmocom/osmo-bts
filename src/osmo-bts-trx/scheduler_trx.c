@@ -623,6 +623,7 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 	unsigned int current = chan_state->meas.current;
 
 	chan_state->meas.buf[current] = (struct l1sched_meas_set) {
+		.fn = bi->fn,
 		.ci_cb = (bi->flags & TRX_BI_F_CI_CB) ? bi->ci_cb : 0,
 		.toa256 = bi->toa256,
 		.rssi = bi->rssi,
@@ -669,8 +670,13 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 		ci_cb_sum  += set->ci_cb;
 	}
 
+	/* First sample contains TDMA frame number of the first burst */
+	pos = (current + hist_size - shift) % hist_size;
+	set = &chan_state->meas.buf[pos];
+
 	/* Calculate the average for each value */
 	*avg = (struct l1sched_meas_set) {
+		.fn     = set->fn, /* first burst */
 		.rssi   = (rssi_sum   / num),
 		.toa256 = (toa256_sum / num),
 		.ci_cb  = (ci_cb_sum  / num),
@@ -681,4 +687,17 @@ void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 	     chan_state->lchan ? gsm_lchan_name(chan_state->lchan) : "",
 	     chan_state->lchan ? " " : "",
 	     num, shift, avg->rssi, avg->toa256, avg->ci_cb);
+}
+
+/* Lookup TDMA frame number of the N-th sample in the history */
+uint32_t trx_sched_lookup_fn(const struct l1sched_chan_state *chan_state,
+			     const unsigned int shift)
+{
+	const unsigned int hist_size = ARRAY_SIZE(chan_state->meas.buf);
+	const unsigned int current = chan_state->meas.current;
+	unsigned int pos;
+
+	/* First sample contains TDMA frame number of the first burst */
+	pos = (current + hist_size - shift) % hist_size;
+	return chan_state->meas.buf[pos].fn;
 }

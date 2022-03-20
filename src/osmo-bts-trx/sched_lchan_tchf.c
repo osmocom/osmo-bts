@@ -131,7 +131,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * the first FN 4,13,21 defines that CMR is included in frame.
 		 * NOTE: A frame ends 7 FN after start.
 		 */
-		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
+		fn_begin = trx_sched_lookup_fn(chan_state, 8);
 		amr_is_cmr = !ul_amr_fn_is_cmi(fn_begin);
 
 		/* The AFS_ONSET frame itself does not result into an RTP frame
@@ -209,6 +209,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* average measurements of the last N (depends on mode) bursts */
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
+	/* meas_avg.fn now contains TDMA frame number of the first burst */
+	fn_begin = meas_avg.fn;
 
 	/* Check if the frame is bad */
 	if (rc < 0) {
@@ -231,7 +233,6 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
-		fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_FACCH_F);
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
 			meas_avg.rssi, meas_avg.toa256,
@@ -300,7 +301,6 @@ bfi:
 
 	/* TCH or BFI */
 compose_l1sap:
-	fn_begin = gsm0502_fn_remap(bi->fn, FN_REMAP_TCH_F);
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      meas_avg.toa256, ber10k, meas_avg.rssi,
 				      meas_avg.ci_cb, is_sub);

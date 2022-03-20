@@ -80,6 +80,7 @@ enum trx_mod_type {
 
 /* A set of measurements belonging to one Uplink burst */
 struct l1sched_meas_set {
+	uint32_t		fn;		/* TDMA frame number */
 	int16_t			toa256;		/* Timing of Arrival (1/256 of a symbol) */
 	int16_t			ci_cb;		/* Carrier-to-Interference (cB) */
 	float			rssi;		/* RSSI (dBm) */
@@ -325,3 +326,5 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 void trx_sched_meas_avg(const struct l1sched_chan_state *chan_state,
 			struct l1sched_meas_set *avg,
 			enum sched_meas_avg_mode mode);
+uint32_t trx_sched_lookup_fn(const struct l1sched_chan_state *chan_state,
+			     const unsigned int shift);
