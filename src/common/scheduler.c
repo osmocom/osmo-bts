@@ -1546,16 +1546,9 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 
 	/* handle NOPE indications */
 	if (bi->flags & TRX_BI_F_NOPE_IND) {
-		switch (bi->chan) {
-		case TRXC_PTCCH:
-		case TRXC_RACH:
-			/* For some logical channel types NOPE.ind is valueless. */
-			return 0;
-		default:
-			/* NOTE: Uplink burst handler must check bi->burst_len before
-			 * accessing bi->burst to avoid uninitialized memory access. */
-			return func(l1ts, bi);
-		}
+		/* NOTE: Uplink burst handler must check bi->burst_len before
+		 * accessing bi->burst to avoid uninitialized memory access. */
+		return func(l1ts, bi);
 	}
 
 	/* decrypt */

@@ -112,6 +112,10 @@ int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint8_t ra;
 	int rc;
 
+	/* Ignore NOPE indications, they're of no use here */
+	if (bi->flags & TRX_BI_F_NOPE_IND)
+		return 0;
+
 	/* TSC (Training Sequence Code) is an optional parameter of the UL burst
 	 * indication. We need this information in order to decide whether an
 	 * Access Burst is 11-bit encoded or not (see OS#1854). If this information
