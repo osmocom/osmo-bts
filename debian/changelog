@@ -1,3 +1,9 @@
+osmo-bts (1.4.1) unstable; urgency=medium
+
+  * debian/control: add osmo-bts meta-package
+
+ -- Oliver Smith <osmith@sysmocom.de>  Mon, 21 Mar 2022 14:51:33 +0100
+
 osmo-bts (1.4.0) unstable; urgency=medium
 
   [ Philipp Maier ]
