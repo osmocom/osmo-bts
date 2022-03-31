@@ -883,22 +883,23 @@ int bts_supports_cm(const struct gsm_bts *bts,
 /* return the gsm_lchan for the CBCH (if it exists at all) */
 struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts)
 {
-	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts_trx *trx = bts->c0;
 
+	/* According to 3GPP TS 45.002, table 3, CBCH can be allocated
+	 * either on C0/TS0 (CCCH+SDCCH4) or on C0..n/TS0..3 (SDCCH/8). */
 	if (trx->ts[0].pchan == GSM_PCHAN_CCCH_SDCCH4_CBCH)
-		lchan = &trx->ts[0].lchan[2];
-	else {
-		int i;
-		for (i = 0; i < 8; i++) {
-			if (trx->ts[i].pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH) {
-				lchan = &trx->ts[i].lchan[2];
-				break;
-			}
+		return &trx->ts[0].lchan[2]; /* C0/TS0 */
+
+	llist_for_each_entry(trx, &bts->trx_list, list) { /* C0..n */
+		unsigned int tn;
+		for (tn = 0; tn <= 3; tn++) { /* TS0..3 */
+			struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+			if (ts->pchan == GSM_PCHAN_SDCCH8_SACCH8C_CBCH)
+				return &ts->lchan[2];
 		}
 	}
 
-	return lchan;
+	return NULL;
 }
 
 /* BCCH carrier power reduction (see 3GPP TS 45.008, section 7.1) */
