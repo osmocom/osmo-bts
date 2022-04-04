@@ -953,8 +953,8 @@ IEI followed by four bytes IPv4 address.
 
 This information element contains statistics about the RTP connection.
 
-It is encoded as 29 bytes, with the first byte as IEI and 28 bytes
-fixed-length payload encoded as follows:
+It is encoded as 30 bytes, with the first byte as IEI, the second byte as length
+(=28), and 28 bytes fixed-length payload encoded as follows:
 
 .A-bis/IP Connection Statistics
 [options="header",width="60%",cols="15%,15%,70%"]
