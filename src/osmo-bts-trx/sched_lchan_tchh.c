@@ -135,6 +135,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	 * also shift buffer by 4 bursts for interleaving */
 	switch (tch_mode) {
 	case GSM48_CMODE_SIGN:
+		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
+		/* fall-through */
 	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
 		/* Note on FN-10: If we are at FN 10, we decoded an even aligned
 		 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
@@ -259,13 +261,13 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		chan_state->ul_ongoing_facch = 1;
-		/* In order to provide an even stream of measurement reports, here we
-		 * intentionally invalidate RSSI, so that this report gets dropped in
-		 * process_l1sap_meas_data().  The averaged results will still be sent
-		 * with the first BFI (see below). */
+		/* In order to provide an even stream of measurement reports in *speech*
+		 * mode, here we intentionally invalidate RSSI for FACCH, so that this
+		 * report gets dropped in process_l1sap_meas_data().  The averaged results
+		 * will be sent with the first (see below) and second (see above) BFIs. */
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
 			tch_data + amr, GSM_MACBLOCK_LEN,
-			0, /* intentionally invalidate RSSI */
+			tch_mode == GSM48_CMODE_SIGN ? meas_avg.rssi : 0,
 			meas_avg.toa256, meas_avg.ci_cb, ber10k,
 			PRES_INFO_UNKNOWN);
 		ber10k = 0;
