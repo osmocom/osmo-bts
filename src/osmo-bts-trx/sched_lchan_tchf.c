@@ -116,8 +116,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* decode
 	 * also shift buffer by 4 bursts for interleaving */
-	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
-								: tch_mode) {
+	switch (tch_mode) {
+	case GSM48_CMODE_SIGN:
 	case GSM48_CMODE_SPEECH_V1: /* FR */
 		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
 		if (rc == GSM_FR_BYTES) /* only for valid *speech* frames */

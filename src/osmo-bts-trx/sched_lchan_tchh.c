@@ -133,8 +133,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* decode
 	 * also shift buffer by 4 bursts for interleaving */
-	switch ((rsl_cmode != RSL_CMOD_SPD_SPEECH) ? GSM48_CMODE_SPEECH_V1
-								: tch_mode) {
+	switch (tch_mode) {
+	case GSM48_CMODE_SIGN:
 	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
 		/* Note on FN-10: If we are at FN 10, we decoded an even aligned
 		 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
