@@ -404,9 +404,6 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 
 /* Default MS/BS Power Control parameters (see 3GPP TS 45.008, table A.1) */
 const struct gsm_power_ctrl_params power_ctrl_params_def = {
-
-	.ctrl_interval = 1, /* Trigger loop every second SACCH block. TS 45.008 sec 4.7.1 */
-
 	/* Power increasing/reducing step size (optimal defaults) */
 	.inc_step_size_db = 4, /* quickly increase MS/BS power */
 	.red_step_size_db = 2, /* slowly decrease MS/BS power */
@@ -569,7 +566,10 @@ const struct gsm_power_ctrl_params power_ctrl_params_def = {
 void power_ctrl_params_def_reset(struct gsm_power_ctrl_params *params, bool is_bs_pwr)
 {
 	*params = power_ctrl_params_def;
+
+	/* Trigger loop every N-th SACCH block.  See 3GPP TS 45.008 section 4.7.1. */
 	if (!is_bs_pwr)
-		/* Trigger loop every fourth SACCH block (1.92s). TS 45.008 sec 4.7.1: */
-		params->ctrl_interval = 2;
+		params->ctrl_interval = 2; /* N=4 (1.92s) */
+	else
+		params->ctrl_interval = 1; /* N=2 (0.960) */
 }
