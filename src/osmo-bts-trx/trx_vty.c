@@ -89,11 +89,16 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 		else
 			vty_out(vty, " bsic   : undefined%s", VTY_NEWLINE);
 
+		/* trx->ts[tn].priv is NULL in absence of the A-bis connection */
+		if (trx->rsl_link == NULL)
+			continue;
+
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 			const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 			const struct l1sched_ts *l1ts = ts->priv;
 			const struct trx_sched_multiframe *mf;
 
+			OSMO_ASSERT(l1ts != NULL);
 			mf = &trx_sched_multiframes[l1ts->mf_index];
 
 			vty_out(vty, "  timeslot #%u (%s)%s",
