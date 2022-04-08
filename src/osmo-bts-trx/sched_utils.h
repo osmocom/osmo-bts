@@ -37,24 +37,6 @@ static inline uint16_t compute_ber10k(int n_bits_total, int n_errors)
 		return 10000 * n_errors / n_bits_total;
 }
 
-/* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F */
-static const uint8_t sched_tchf_ul_amr_cmi_map[26] = {
-	[7]  = 1, /* TCH/F: first=0  / last=7 */
-	[16] = 1, /* TCH/F: first=8  / last=16 */
-	[24] = 1, /* TCH/F: first=17 / last=24 */
-};
-
-/* 3GPP TS 45.009, table 3.2.1.3-{2,4}: AMR on Uplink TCH/H */
-static const uint8_t sched_tchh_ul_amr_cmi_map[26] = {
-	[6]  = 1, /* TCH/H(0): first=0  / last=6 */
-	[15] = 1, /* TCH/H(0): first=8  / last=15 */
-	[23] = 1, /* TCH/H(0): first=17 / last=23 */
-
-	[7]  = 1, /* TCH/H(1): first=1  / last=7 */
-	[16] = 1, /* TCH/H(1): first=9  / last=16 */
-	[24] = 1, /* TCH/H(1): first=18 / last=24 */
-};
-
 /*! determine whether an uplink AMR block is CMI according to 3GPP TS 45.009.
  *  \param[in] fn_begin frame number of the beginning of the block.
  *  \returns true in case of CMI; false otherwise. */

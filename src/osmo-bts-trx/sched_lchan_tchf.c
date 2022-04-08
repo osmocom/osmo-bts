@@ -45,6 +45,13 @@
 #include <sched_utils.h>
 #include <loops.h>
 
+/* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F */
+static const uint8_t sched_tchf_ul_amr_cmi_map[26] = {
+	[7]  = 1, /* TCH/F: first=0  / last=7 */
+	[16] = 1, /* TCH/F: first=8  / last=16 */
+	[24] = 1, /* TCH/F: first=17 / last=24 */
+};
+
 /*! \brief a single TCH/F burst was received by the PHY, process it */
 int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
