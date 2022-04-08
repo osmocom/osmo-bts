@@ -45,11 +45,18 @@
 #include <sched_utils.h>
 #include <loops.h>
 
-/* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F */
+/* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F.
+ *
+ * +---+---+---+---+---+---+---+---+
+ * | a | b | c | d | e | f | g | h |  Burst 'a' received first
+ * +---+---+---+---+---+---+---+---+
+ *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   Speech/FACCH frame  (bursts 'a' .. 'h')
+ *
+ * TDMA frame number of burst 'h' is always used as the table index. */
 static const uint8_t sched_tchf_ul_amr_cmi_map[26] = {
-	[7]  = 1, /* TCH/F: first=0  / last=7 */
-	[16] = 1, /* TCH/F: first=8  / last=16 */
-	[24] = 1, /* TCH/F: first=17 / last=24 */
+	[7]  = 1, /* TCH/F: a=0  / h=7 */
+	[16] = 1, /* TCH/F: a=8  / h=16 */
+	[24] = 1, /* TCH/F: a=17 / h=24 */
 };
 
 /*! \brief a single TCH/F burst was received by the PHY, process it */
