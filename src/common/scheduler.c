@@ -996,12 +996,21 @@ static int rts_tchf_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_
 	return rts_tch_common(l1ts, br, true);
 }
 
+/* FACCH/H channel mapping for Downlink (see 3GPP TS 45.002, table 1).
+ * This mapping is valid for both FACCH/H(0) and FACCH/H(1). */
+static const uint8_t sched_tchh_dl_facch_map[26] = {
+	[4]  = 1, /* FACCH/H(0): B0(4,6,8,10,13,15) */
+	[5]  = 1, /* FACCH/H(1): B0(5,7,9,11,14,16) */
+	[13] = 1, /* FACCH/H(0): B1(13,15,17,19,21,23) */
+	[14] = 1, /* FACCH/H(1): B1(14,16,18,20,22,24) */
+	[21] = 1, /* FACCH/H(0): B2(21,23,0,2,4,6) */
+	[22] = 1, /* FACCH/H(1): B2(22,24,1,3,5,7) */
+};
 
 /* RTS for half rate traffic frame */
 static int rts_tchh_fn(const struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br)
 {
-	/* the FN 4/5, 13/14, 21/22 defines that FACCH may be included. */
-	return rts_tch_common(l1ts, br, ((br->fn % 26) >> 2) & 1);
+	return rts_tch_common(l1ts, br, sched_tchh_dl_facch_map[br->fn % 26]);
 }
 
 /* set multiframe scheduler to given pchan */
