@@ -854,9 +854,6 @@ int trx_sched_ph_data_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap
 		"PH-DATA.req: chan_nr=0x%02x link_id=0x%02x\n",
 		l1sap->u.data.chan_nr, l1sap->u.data.link_id);
 
-	OSMO_ASSERT(l1sap->oph.operation == PRIM_OP_REQUEST);
-	OSMO_ASSERT(l1sap->oph.msg);
-
 	/* ignore empty frame */
 	if (!l1sap->oph.msg->l2h || msgb_l2len(l1sap->oph.msg) == 0) {
 		msgb_free(l1sap->oph.msg);
@@ -879,9 +876,6 @@ int trx_sched_tch_req(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1ts, -1, l1sap->u.tch.fn,
 	       "TCH.req: chan_nr=0x%02x\n", l1sap->u.tch.chan_nr);
-
-	OSMO_ASSERT(l1sap->oph.operation == PRIM_OP_REQUEST);
-	OSMO_ASSERT(l1sap->oph.msg);
 
 	/* ignore empty frame */
 	if (!msgb_l2len(l1sap->oph.msg)) {
