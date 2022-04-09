@@ -374,14 +374,6 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* get TCH and/or FACCH */
 	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
-	/* check for FACCH alignment */
-	if (msg_facch && ((((br->fn + 4) % 26) >> 2) & 1)) {
-		LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
-			"Cannot transmit FACCH starting on even frames, please fix RTS!\n");
-		msgb_free(msg_facch);
-		msg_facch = NULL;
-	}
-
 	/* BURST BYPASS */
 
 	/* allocate burst memory, if not already,
