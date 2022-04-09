@@ -237,8 +237,7 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 static void tx_tch_common(struct l1sched_ts *l1ts,
 			  const struct trx_dl_burst_req *br,
-			  struct msgb **_msg_tch, struct msgb **_msg_facch,
-			  int codec_mode_request)
+			  struct msgb **_msg_tch, struct msgb **_msg_facch)
 {
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
@@ -419,7 +418,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	if (br->bid > 0)
 		return 0;
 
-	tx_tch_common(l1ts, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch) {
@@ -447,7 +446,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		return 0;
 
 	/* get TCH and/or FACCH */
-	tx_tch_common(l1ts, br, &msg_tch, &msg_facch, (((br->fn + 4) % 26) >> 2) & 1);
+	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
 	/* no message at all */
 	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
