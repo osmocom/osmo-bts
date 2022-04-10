@@ -64,6 +64,17 @@ static const uint8_t sched_tchh_ul_amr_cmi_map[26] = {
 	[3]  = 1, /* TCH/H(1): a=18 / d=24 / f=3 */
 };
 
+/* 3GPP TS 45.002, table 1 in clause 7: Mapping tables.
+ * TDMA frame number of burst 'f' is always used as the table index. */
+static const uint8_t sched_tchh_ul_facch_map[26] = {
+	[10] = 1, /* FACCH/H(0): B0(0,2,4,6,8,10) */
+	[11] = 1, /* FACCH/H(1): B0(1,3,5,7,9,11) */
+	[19] = 1, /* FACCH/H(0): B1(8,10,13,15,17,19) */
+	[20] = 1, /* FACCH/H(1): B1(9,11,14,16,18,20) */
+	[2]  = 1, /* FACCH/H(0): B2(17,19,21,23,0,2) */
+	[3]  = 1, /* FACCH/H(1): B2(18,20,22,24,1,3) */
+};
+
 /*! \brief a single TCH/H burst was received by the PHY, process it */
 int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
@@ -78,11 +89,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	int n_errors = 0;
 	int n_bits_total = 0;
 	bool bfi_flag = false;
-	/* Note on FN-10: If we are at FN 10, we decoded an even aligned
-	 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
-	 * Even FN ending at: 10,11,19,20,2,3
-	 */
-	int fn_is_odd = (((bi->fn + 26 - 10) % 26) >> 2) & 1;
 	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S6N4;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
@@ -157,12 +163,9 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
 		/* fall-through */
 	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
-		/* Note on FN-10: If we are at FN 10, we decoded an even aligned
-		 * TCH/FACCH frame, because our burst buffer carries 6 bursts.
-		 * Even FN ending at: 10,11,19,20,2,3
-		 */
 		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
-			fn_is_odd, &n_errors, &n_bits_total);
+					   !sched_tchh_ul_facch_map[bi->fn % 26],
+					   &n_errors, &n_bits_total);
 		if (rc == (GSM_HR_BYTES + 1)) { /* only for valid *speech* frames */
 			/* gsm0503_tch_hr_decode() prepends a ToC octet (see RFC5993), skip it */
 			bool is_sid = osmo_hr_check_sid(&tch_data[1], GSM_HR_BYTES);
@@ -191,9 +194,11 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		/* See comment in function rx_tchf_fn() */
 		amr = 2;
 		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, *bursts_p,
-			fn_is_odd, !fn_is_cmi, chan_state->codec,
-			chan_state->codecs, &chan_state->ul_ft,
-			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
+						!sched_tchh_ul_facch_map[bi->fn % 26],
+						!fn_is_cmi, chan_state->codec,
+						chan_state->codecs, &chan_state->ul_ft,
+						&chan_state->ul_cmr, &n_errors, &n_bits_total,
+						&chan_state->amr_last_dtx);
 
 		/* Tag all frames that are not regular AMR voice frames
 		   as SUB-Frames */
