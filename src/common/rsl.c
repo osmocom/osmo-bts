@@ -1855,10 +1855,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* 9.3.52 MultiRate Configuration */
 	rc = parse_multirate_config(lchan, &tp);
-	if (rc < 0) {
-		rsl_tx_error_report(msg->trx, -rc, &dch->chan_nr, NULL, msg);
+	if (rc < 0)
 		return rsl_tx_chan_act_acknack(lchan, -rc);
-	}
 
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
@@ -2204,10 +2202,8 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 
 	/* 9.3.52 MultiRate Configuration */
 	rc = parse_multirate_config(lchan, &tp);
-	if (rc < 0) {
-		rsl_tx_error_report(msg->trx, -rc, &dch->chan_nr, NULL, msg);
+	if (rc < 0)
 		return rsl_tx_mode_modif_nack(lchan, -rc);
-	}
 
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
