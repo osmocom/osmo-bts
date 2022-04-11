@@ -1617,6 +1617,28 @@ static int parse_temporary_overpower_acch_capability(struct gsm_lchan *lchan,
 	return 0;
 }
 
+/* Parse (O) MultiRate configuration IE (see 9.3.52) */
+static int parse_multirate_config(struct gsm_lchan *lchan,
+				  const struct tlv_parsed *tp)
+{
+	int rc;
+
+	if (!TLVP_PRESENT(tp, RSL_IE_MR_CONFIG))
+		return 0;
+
+	rc = amr_parse_mr_conf(&lchan->tch.amr_mr,
+			       TLVP_VAL(tp, RSL_IE_MR_CONFIG),
+			       TLVP_LEN(tp, RSL_IE_MR_CONFIG));
+	if (rc < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
+		return -RSL_ERR_IE_CONTENT;
+	}
+
+	amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
+	lchan->tch.last_cmr = AMR_CMR_NONE;
+	return 0;
+}
+
 /* 8.4.1 CHANnel ACTIVation is received */
 static int rsl_rx_chan_activ(struct msgb *msg)
 {
@@ -1830,20 +1852,14 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		/* use standard SACCH filling of the BTS */
 		copy_sacch_si_to_lchan(lchan);
 	}
-	/* 9.3.52 MultiRate Configuration */
-	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
-		rc = amr_parse_mr_conf(&lchan->tch.amr_mr,
-				       TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
-				       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
-		if (rc < 0) {
-			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
-			return rsl_tx_chan_act_acknack(lchan, RSL_ERR_IE_CONTENT);
-		}
 
-		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
-		lchan->tch.last_cmr = AMR_CMR_NONE;
+	/* 9.3.52 MultiRate Configuration */
+	rc = parse_multirate_config(lchan, &tp);
+	if (rc < 0) {
+		rsl_tx_error_report(msg->trx, -rc, &dch->chan_nr, NULL, msg);
+		return rsl_tx_chan_act_acknack(lchan, -rc);
 	}
+
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
@@ -2187,19 +2203,12 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	/* 9.3.45 Main channel reference */
 
 	/* 9.3.52 MultiRate Configuration */
-	if (TLVP_PRESENT(&tp, RSL_IE_MR_CONFIG)) {
-		rc = amr_parse_mr_conf(&lchan->tch.amr_mr,
-				       TLVP_VAL(&tp, RSL_IE_MR_CONFIG),
-				       TLVP_LEN(&tp, RSL_IE_MR_CONFIG));
-		if (rc < 0) {
-			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Error parsing MultiRate conf IE\n");
-			rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
-			return rsl_tx_mode_modif_nack(lchan, RSL_ERR_IE_CONTENT);;
-		}
-
-		amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
-		lchan->tch.last_cmr = AMR_CMR_NONE;
+	rc = parse_multirate_config(lchan, &tp);
+	if (rc < 0) {
+		rsl_tx_error_report(msg->trx, -rc, &dch->chan_nr, NULL, msg);
+		return rsl_tx_mode_modif_nack(lchan, -rc);
 	}
+
 	/* 9.3.53 MultiRate Control */
 	/* 9.3.54 Supported Codec Types */
 
