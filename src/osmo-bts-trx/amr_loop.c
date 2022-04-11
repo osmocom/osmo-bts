@@ -1,4 +1,4 @@
-/* Loop control for OsmoBTS-TRX */
+/* AMR link adaptation loop (see 3GPP TS 45.009, section 3) */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  *
@@ -33,7 +33,7 @@
 
 #include "trx_if.h"
 #include "l1_if.h"
-#include "loops.h"
+#include "amr_loop.h"
 
 void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 			int n_errors, int n_bits_total)

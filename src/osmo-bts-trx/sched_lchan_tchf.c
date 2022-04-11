@@ -43,7 +43,7 @@
 #include <osmo-bts/msg_utils.h>
 
 #include <sched_utils.h>
-#include <loops.h>
+#include <amr_loop.h>
 
 /* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F.
  *

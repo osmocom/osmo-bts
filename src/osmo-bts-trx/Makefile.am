@@ -32,7 +32,7 @@ noinst_HEADERS = \
 	sched_utils.h \
 	trx_if.h \
 	l1_if.h \
-	loops.h \
+	amr_loop.h \
 	trx_provision_fsm.h \
 	$(NULL)
 
@@ -51,7 +51,7 @@ osmo_bts_trx_SOURCES = \
 	sched_lchan_tchh.c \
 	trx_provision_fsm.c \
 	trx_vty.c \
-	loops.c \
+	amr_loop.c \
 	probes.d \
 	$(NULL)
 

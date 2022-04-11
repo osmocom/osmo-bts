@@ -46,7 +46,7 @@
 
 #include "l1_if.h"
 #include "trx_if.h"
-#include "loops.h"
+#include "amr_loop.h"
 
 #define X(x) (1 << x)
 
