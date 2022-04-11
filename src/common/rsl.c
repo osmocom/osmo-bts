@@ -1623,8 +1623,22 @@ static int parse_multirate_config(struct gsm_lchan *lchan,
 {
 	int rc;
 
-	if (!TLVP_PRESENT(tp, RSL_IE_MR_CONFIG))
+	if (!TLVP_PRESENT(tp, RSL_IE_MR_CONFIG)) {
+		/* Included if the Channel Mode indicates that a multi-rate codec is used */
+		if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Missing MultiRate conf IE "
+				  "(TCH mode is %s)\n", gsm48_chan_mode_name(lchan->tch_mode));
+			/* TODO: init lchan->tch.amr_mr with some default values */
+		}
 		return 0;
+	}
+
+	/* Included if the Channel Mode indicates that a multi-rate codec is used */
+	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Unexpected MultiRate conf IE "
+			  "(TCH mode is %s)\n", gsm48_chan_mode_name(lchan->tch_mode));
+		return -RSL_ERR_OPT_IE_ERROR;
+	}
 
 	rc = amr_parse_mr_conf(&lchan->tch.amr_mr,
 			       TLVP_VAL(tp, RSL_IE_MR_CONFIG),
