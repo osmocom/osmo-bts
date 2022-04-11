@@ -1,5 +1,4 @@
-#ifndef _TRX_LOOPS_H
-#define _TRX_LOOPS_H
+#pragma once
 
 #include <osmo-bts/scheduler.h>
 
@@ -15,5 +14,3 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 			int n_errors, int n_bits_total);
 
 void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop);
-
-#endif /* _TRX_LOOPS_H */
