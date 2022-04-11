@@ -1988,7 +1988,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->top_acch_active = false;
 
 	/* actually activate the channel in the BTS */
-	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr, &tp);
+	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr);
 	if (rc < 0)
 		return rsl_tx_chan_act_acknack(lchan, -rc);
 

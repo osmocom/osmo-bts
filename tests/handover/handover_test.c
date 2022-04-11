@@ -102,12 +102,12 @@ int main(int argc, char **argv)
 	/* create two lchans for handover */
 	lchan = &trx->ts[1].lchan[0];
 	lchan->type = GSM_LCHAN_SDCCH;
-	l1sap_chan_act(lchan->ts->trx, 0x09, NULL);
+	l1sap_chan_act(lchan->ts->trx, 0x09);
 	lchan = &trx->ts[2].lchan[0];
 	lchan->type = GSM_LCHAN_TCH_F;
 	lchan->ho.active = HANDOVER_ENABLED;
 	lchan->ho.ref = 23;
-	l1sap_chan_act(lchan->ts->trx, 0x0a, NULL);
+	l1sap_chan_act(lchan->ts->trx, 0x0a);
 	OSMO_ASSERT(msgb_dequeue(&trx->rsl_link->tx_list));
 	OSMO_ASSERT(msgb_dequeue(&trx->rsl_link->tx_list));
 	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));

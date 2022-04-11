@@ -884,7 +884,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 		return -EINVAL;
 	}
 	if (act_req->activate)
-		l1sap_chan_act(trx, gsm_lchan2chan_nr(lchan), NULL);
+		l1sap_chan_act(trx, gsm_lchan2chan_nr(lchan));
 	else
 		l1sap_chan_rel(trx, gsm_lchan2chan_nr(lchan));
 

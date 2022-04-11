@@ -1927,7 +1927,7 @@ static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	return l1sap_down(trx, &l1sap);
 }
 
-int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr, struct tlv_parsed *tp)
+int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr)
 {
 	struct gsm_lchan *lchan = get_lchan_by_chan_nr(trx, chan_nr);
 	int rc;
