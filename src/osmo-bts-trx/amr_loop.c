@@ -27,12 +27,8 @@
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/logging.h>
-#include <osmo-bts/l1sap.h>
-#include <osmocom/core/bits.h>
 #include <osmocom/gsm/gsm_utils.h>
 
-#include "trx_if.h"
-#include "l1_if.h"
 #include "amr_loop.h"
 
 void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
