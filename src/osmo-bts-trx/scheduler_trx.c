@@ -118,8 +118,7 @@ static void lchan_report_interf_meas(const struct gsm_lchan *lchan)
 	gsm_lchan_interf_meas_push((struct gsm_lchan *) lchan, interf_avg);
 }
 
-static void bts_report_interf_meas(const struct gsm_bts *bts,
-				   const uint32_t fn)
+static void bts_report_interf_meas(const struct gsm_bts *bts)
 {
 	const struct gsm_bts_trx *trx;
 	unsigned int tn, ln;
@@ -270,7 +269,7 @@ static void bts_sched_fn(struct gsm_bts *bts, const uint32_t fn)
 
 	/* Report interference measurements */
 	if (fn % 104 == 0) /* SACCH period */
-		bts_report_interf_meas(bts, fn);
+		bts_report_interf_meas(bts);
 
 	/* send time indication */
 	l1if_mph_time_ind(bts, fn);
