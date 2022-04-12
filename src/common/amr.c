@@ -6,6 +6,85 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/amr.h>
 
+/* Reasonable defaults for AMR-FR and AMR-HR rate configuration.
+ * The values are taken from 3GPP TS 51.010-1 (version 13.11.0).
+ * See 14.2.19.4.1 and 14.2.20.4.1 for AMR-FR and AMR-HR, respectively.
+ *
+ *                   ^ C/I (dB)             |  FR  /  HR  |
+ *            |      |
+ *            |      |
+ *   MODE4    |      |
+ *          = |  ----+----  THR_MX_Up(3)    | 20.5 / 18.0 |
+ *          | |      |
+ *          | =  ----+----  THR_MX_Dn(4)    | 18.5 / 16.0 |
+ *   MODE3  |        |
+ *          | =  ----+----  THR_MX_Up(2)    | 14.5 / 14.0 |
+ *          | |      |
+ *          = |  ----+----  THR_MX_Dn(3)    | 12.5 / 12.0 |
+ *   MODE2    |      |
+ *          = |  ----+----  THR_MX_Up(1)    |  8.5 / 10.0 |
+ *          | |      |
+ *          | =  ----+----  THR_MX_Dn(2)    |  6.5 /  8.0 |
+ *   MODE1  |        |
+ *          |        |
+ *          |        |
+ */
+static const struct gsm48_multi_rate_conf amr_fr_mr_cfg_def = {
+	.m4_75 = 1,
+	.m5_90 = 1,
+	.m7_95 = 1,
+	.m12_2 = 1,
+};
+static const struct amr_mode amr_fr_bts_mode_def[] = {
+	{
+		.mode = 0, /* 4.75k */
+		.threshold = 13, /* THR_MX_Dn(2): 6.5 dB */
+		.hysteresis = 4, /* THR_MX_Up(1): 8.5 dB */
+	},
+	{
+		.mode = 2, /* 5.90k */
+		.threshold = 25, /* THR_MX_Dn(3): 12.5 dB */
+		.hysteresis = 4, /* THR_MX_Up(2): 14.5 dB */
+	},
+	{
+		.mode = 5, /* 7.95k */
+		.threshold = 37, /* THR_MX_Dn(4): 18.5 dB */
+		.hysteresis = 4, /* THR_MX_Up(3): 20.5 dB */
+	},
+	{
+		.mode = 7, /* 12.2k */
+		/* this is the last mode, so no threshold */
+	},
+};
+
+static const struct gsm48_multi_rate_conf amr_hr_mr_cfg_def = {
+	.m4_75 = 1,
+	.m5_90 = 1,
+	.m6_70 = 1,
+	.m7_95 = 1,
+};
+static const struct amr_mode amr_hr_bts_mode_def[] = {
+	{
+		.mode = 0, /* 4.75k */
+		.threshold = 16, /* THR_MX_Dn(2):  8.0 dB */
+		.hysteresis = 4, /* THR_MX_Up(1): 10.0 dB */
+	},
+	{
+		.mode = 2, /* 5.90k */
+		.threshold = 24, /* THR_MX_Dn(3): 12.0 dB */
+		.hysteresis = 4, /* THR_MX_Up(2): 14.0 dB */
+	},
+	{
+		.mode = 3, /* 6.70k */
+		.threshold = 32, /* THR_MX_Dn(4): 16.0 dB */
+		.hysteresis = 4, /* THR_MX_Up(3): 18.0 dB */
+	},
+	{
+		.mode = 5, /* 7.95k */
+		/* this is the last mode, so no threshold */
+	},
+};
+
 void amr_log_mr_conf(int ss, int logl, const char *pfx,
 		     struct amr_multirate_conf *amr_mrc)
 {
@@ -170,4 +249,27 @@ unsigned int amr_get_initial_mode(struct gsm_lchan *lchan)
 			return 0;
 		}
 	}
+}
+
+void amr_init_mr_conf_def(struct gsm_lchan *lchan)
+{
+	const struct gsm48_multi_rate_conf *mr_cfg;
+	const struct amr_mode *bts_mode;
+	unsigned int num_modes;
+
+	if (lchan->type == GSM_LCHAN_TCH_F) {
+		num_modes = ARRAY_SIZE(amr_fr_bts_mode_def);
+		bts_mode = &amr_fr_bts_mode_def[0];
+		mr_cfg = &amr_fr_mr_cfg_def;
+	} else {
+		num_modes = ARRAY_SIZE(amr_hr_bts_mode_def);
+		bts_mode = &amr_hr_bts_mode_def[0];
+		mr_cfg = &amr_hr_mr_cfg_def;
+	}
+
+	memcpy(lchan->tch.amr_mr.gsm48_ie, mr_cfg,
+	       sizeof(lchan->tch.amr_mr.gsm48_ie));
+	memcpy(&lchan->tch.amr_mr.bts_mode[0], &bts_mode[0],
+	       sizeof(lchan->tch.amr_mr.bts_mode));
+	lchan->tch.amr_mr.num_modes = num_modes;
 }

@@ -1644,7 +1644,9 @@ static int parse_multirate_config(struct gsm_lchan *lchan,
 		if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Missing MultiRate conf IE "
 				  "(TCH mode is %s)\n", gsm48_chan_mode_name(lchan->tch_mode));
-			/* TODO: init lchan->tch.amr_mr with some default values */
+			/* Init lchan->tch.amr_mr with hard-coded default values */
+			amr_init_mr_conf_def(lchan);
+			goto parsed;
 		}
 		return 0;
 	}
@@ -1664,6 +1666,7 @@ static int parse_multirate_config(struct gsm_lchan *lchan,
 		return -RSL_ERR_IE_CONTENT;
 	}
 
+parsed:
 	amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
 	lchan->tch.last_cmr = AMR_CMR_NONE;
 	return 0;
