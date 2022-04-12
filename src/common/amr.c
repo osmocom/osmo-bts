@@ -200,19 +200,22 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 		}
 	}
 
+	/* skip the first two octets of the IE */
+	mr_conf += 2;
+
 	if (num_codecs >= 2) {
-		amr_mrc->bts_mode[0].threshold = mr_conf[1] & 0x3F;
-		amr_mrc->bts_mode[0].hysteresis = mr_conf[2] >> 4;
+		amr_mrc->bts_mode[0].threshold = mr_conf[0] & 0x3F;
+		amr_mrc->bts_mode[0].hysteresis = mr_conf[1] >> 4;
 	}
 	if (num_codecs >= 3) {
 		amr_mrc->bts_mode[1].threshold =
-			((mr_conf[2] & 0xF) << 2) | (mr_conf[3] >> 6);
-		amr_mrc->bts_mode[1].hysteresis = (mr_conf[3] >> 2) & 0xF;
+			((mr_conf[1] & 0xF) << 2) | (mr_conf[2] >> 6);
+		amr_mrc->bts_mode[1].hysteresis = (mr_conf[2] >> 2) & 0xF;
 	}
 	if (num_codecs >= 4) {
 		amr_mrc->bts_mode[2].threshold =
-			((mr_conf[3] & 0x3) << 4) | (mr_conf[4] >> 4);
-		amr_mrc->bts_mode[2].hysteresis = mr_conf[4] & 0xF;
+			((mr_conf[2] & 0x3) << 4) | (mr_conf[3] >> 4);
+		amr_mrc->bts_mode[2].hysteresis = mr_conf[3] & 0xF;
 	}
 
 	return num_codecs;
