@@ -6,6 +6,6 @@ LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOCODEC_LIBS) \
 noinst_PROGRAMS = amr_test
 EXTRA_DIST = amr_test.ok
 
-misc_test_SOURCES = amr_test.c
-misc_test_LDADD = $(top_builddir)/src/common/libbts.a \
+amr_test_SOURCES = amr_test.c
+amr_test_LDADD = $(top_builddir)/src/common/libbts.a \
 		$(LDADD)
