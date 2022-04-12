@@ -1,6 +1,7 @@
 /* AMR link adaptation loop (see 3GPP TS 45.009, section 3) */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
+ * (C) 2022 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -32,16 +33,11 @@
 #include "amr_loop.h"
 
 void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
-			int n_errors, int n_bits_total)
+			const struct l1sched_meas_set *meas_set)
 {
-	struct gsm_lchan *lchan = chan_state->lchan;
-	float ber;
-
-	/* calculate BER (Bit Error Ratio) */
-	if (n_bits_total == 0)
-		ber = 1.0; /* 100% BER */
-	else
-		ber = (float) n_errors / (float) n_bits_total;
+	const struct gsm_lchan *lchan = chan_state->lchan;
+	const struct amr_multirate_conf *cfg = &lchan->tch.amr_mr;
+	int lqual_cb = meas_set->ci_cb; /* cB (centibel) */
 
 	/* check if loop is enabled */
 	if (!chan_state->amr_loop)
@@ -51,47 +47,54 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	if (chan_state->ul_ft != chan_state->dl_cmr)
 		return;
 
-	/* count bit errors */
+	/* count per-block C/I samples for further averaging */
 	if (lchan->type == GSM_LCHAN_TCH_H) {
-		chan_state->ber_num += 2;
-		chan_state->ber_sum += (ber + ber);
+		chan_state->lqual_cb_num += 2;
+		chan_state->lqual_cb_sum += (lqual_cb + lqual_cb);
 	} else {
-		chan_state->ber_num++;
-		chan_state->ber_sum += ber;
+		chan_state->lqual_cb_num++;
+		chan_state->lqual_cb_sum += lqual_cb;
 	}
 
 	/* count frames */
-	if (chan_state->ber_num < 48)
+	if (chan_state->lqual_cb_num < 48)
 		return;
 
-	/* calculate average (reuse ber variable) */
-	ber = chan_state->ber_sum / chan_state->ber_num;
+	/* calculate average (reuse lqual_cb variable) */
+	lqual_cb = chan_state->lqual_cb_sum / chan_state->lqual_cb_num;
 
-	/* reset bit errors */
-	chan_state->ber_num = 0;
-	chan_state->ber_sum = 0;
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "AMR link quality (C/I) is %d cB, "
+		  "codec mode=%d\n", lqual_cb, chan_state->ul_ft);
 
-	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Current bit error rate (BER) %.6f "
-		"codec id %d\n", ber, chan_state->ul_ft);
+	/* reset the link quality measurements */
+	chan_state->lqual_cb_num = 0;
+	chan_state->lqual_cb_sum = 0;
 
-	/* degrade */
 	if (chan_state->dl_cmr > 0) {
-		/* degrade, if ber is above threshold FIXME: C/I */
-		if (ber >
-		   lchan->tch.amr_mr.mode[chan_state->dl_cmr-1].threshold) {
-			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
-				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr - 1);
+		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
+		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
+		const int thresh_lower_cb = cfg->mode[chan_state->dl_cmr - 1].threshold * 5;
+
+		/* Degrade if the link quality is below THR_MX_Dn(i - 1) */
+		if (lqual_cb < thresh_lower_cb) {
+			LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Degrading AMR codec mode: "
+				  "%d -> %d due to link quality %d cB < THR_MX_Dn=%d cB\n",
+				  chan_state->dl_cmr, chan_state->dl_cmr - 1,
+				  lqual_cb, thresh_lower_cb);
 			chan_state->dl_cmr--;
 		}
 	} else if (chan_state->dl_cmr < chan_state->codecs - 1) {
-		/* degrade, if ber is above threshold  FIXME: C/I*/
-		if (ber <
-		    lchan->tch.amr_mr.mode[chan_state->dl_cmr].threshold
-		  - lchan->tch.amr_mr.mode[chan_state->dl_cmr].hysteresis) {
-			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
-				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
-				chan_state->dl_cmr + 1);
+		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
+		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
+		const int thresh_upper_cb = cfg->mode[chan_state->dl_cmr].threshold * 5 \
+					  + cfg->mode[chan_state->dl_cmr].hysteresis * 5;
+
+		/* Upgrade if the link quality is above THR_MX_Up(i) */
+		if (lqual_cb > thresh_upper_cb) {
+			LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Upgrading AMR codec mode: "
+				  "%d -> %d due to link quality %d cB > THR_MX_Up=%d cB\n",
+				  chan_state->dl_cmr, chan_state->dl_cmr + 1,
+				  lqual_cb, thresh_upper_cb);
 			chan_state->dl_cmr++;
 		}
 	}
@@ -102,9 +105,9 @@ void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
 	if (chan_state->amr_loop == loop)
 		return;
 	if (!chan_state->amr_loop) {
-		/* reset bit errors */
-		chan_state->ber_num = 0;
-		chan_state->ber_sum = 0;
+		/* reset the link quality measurements */
+		chan_state->lqual_cb_num = 0;
+		chan_state->lqual_cb_sum = 0;
 	}
 
 	chan_state->amr_loop = loop;

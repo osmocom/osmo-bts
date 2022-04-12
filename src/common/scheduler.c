@@ -1185,8 +1185,8 @@ int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_c
 				chan_state->dl_ft = initial_id;
 				chan_state->ul_cmr = initial_id;
 				chan_state->dl_cmr = initial_id;
-				chan_state->ber_sum = 0;
-				chan_state->ber_num = 0;
+				chan_state->lqual_cb_sum = 0;
+				chan_state->lqual_cb_num = 0;
 			}
 			rc = 0;
 		}

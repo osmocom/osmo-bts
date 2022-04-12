@@ -197,8 +197,6 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			break;
 		}
 
-		if (rc)
-			trx_loop_amr_input(chan_state, n_errors, n_bits_total);
 		/* only good speech frames get rtp header */
 		if (rc != GSM_MACBLOCK_LEN && rc >= 4) {
 			if (chan_state->amr_last_dtx == AMR_OTHER) {
@@ -224,6 +222,9 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 	/* meas_avg.fn now contains TDMA frame number of the first burst */
 	fn_begin = meas_avg.fn;
+
+	if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+		trx_loop_amr_input(chan_state, &meas_avg);
 
 	/* Check if the frame is bad */
 	if (rc < 0) {

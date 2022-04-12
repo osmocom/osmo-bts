@@ -114,8 +114,8 @@ struct l1sched_chan_state {
 	/* AMR */
 	uint8_t			codec[4];	/* 4 possible codecs for amr */
 	int			codecs;		/* number of possible codecs */
-	float			ber_sum;	/* sum of bit error rates */
-	int			ber_num;	/* number of bit error rates */
+	int			lqual_cb_sum;	/* sum of link quality samples (in cB) */
+	int			lqual_cb_num;	/* number of link quality samples */
 	uint8_t			ul_ft;		/* current uplink FT index */
 	uint8_t			dl_ft;		/* current downlink FT index */
 	uint8_t			ul_cmr;		/* current uplink CMR index */

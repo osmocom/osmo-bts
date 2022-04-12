@@ -11,6 +11,6 @@
  */
 
 void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
-			int n_errors, int n_bits_total);
+			const struct l1sched_meas_set *meas_set);
 
 void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop);
