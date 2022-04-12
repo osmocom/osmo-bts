@@ -150,3 +150,12 @@ Downlink, AMR AFS: fn_begin=86, CMI=0
 Downlink, AMR AFS: fn_begin=91, CMI=1
 Downlink, AMR AFS: fn_begin=95, CMI=0
 Downlink, AMR AFS: fn_begin=99, CMI=1
+amr_parse_mr_conf() <- 20 a5 0d 46 52 54 
+amr_parse_mr_conf() -> num_modes=4
+  Mode[0] = 0/37/0
+  Mode[1] = 2/53/1
+  Mode[2] = 5/37/2
+  Mode[3] = 7/0/0
+amr_parse_mr_conf() <- 20 ff 0d 46 52 54 
+amr_parse_mr_conf() <- ff ff 0d 46 52 54 
+amr_parse_mr_conf() <- ff 

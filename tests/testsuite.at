@@ -67,5 +67,6 @@ AT_CLEANUP
 AT_SETUP([amr])
 AT_KEYWORDS([amr])
 cat $abs_srcdir/amr/amr_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/amr/amr_test], [], [expout], [ignore])
+cat $abs_srcdir/amr/amr_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/amr/amr_test], [], [expout], [experr])
 AT_CLEANUP
