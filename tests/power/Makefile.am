@@ -2,7 +2,7 @@ AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOCODEC_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOTRAU_CFLAGS)
 LDADD = $(LIBOSMOCORE_LIBS) $(LIBOSMOCODEC_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(LIBOSMOTRAU_LIBS)
 
-noinst_PROGRAMS = ms_power_loop_test bs_power_loop_test
+check_PROGRAMS = ms_power_loop_test bs_power_loop_test
 EXTRA_DIST = ms_power_loop_test.ok ms_power_loop_test.err \
 	     bs_power_loop_test.ok bs_power_loop_test.err
 
