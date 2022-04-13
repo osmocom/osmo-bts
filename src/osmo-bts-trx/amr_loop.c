@@ -37,6 +37,7 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 {
 	const struct gsm_lchan *lchan = chan_state->lchan;
 	const struct amr_multirate_conf *cfg = &lchan->tch.amr_mr;
+	const uint8_t mi = chan_state->ul_ft; /* mode index 0..3 */
 	int lqual_cb = meas_set->ci_cb; /* cB (centibel) */
 
 	/* check if loop is enabled */
@@ -44,7 +45,7 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 		return;
 
 	/* wait for MS to use the requested codec */
-	if (chan_state->ul_ft != chan_state->dl_cmr)
+	if (mi != chan_state->dl_cmr)
 		return;
 
 	/* count per-block C/I samples for further averaging */
@@ -64,36 +65,36 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	lqual_cb = chan_state->lqual_cb_sum / chan_state->lqual_cb_num;
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "AMR link quality (C/I) is %d cB, "
-		  "codec mode=%d\n", lqual_cb, chan_state->ul_ft);
+		  "codec mode[%u]=%u\n", lqual_cb, mi, cfg->mode[mi].mode);
 
 	/* reset the link quality measurements */
 	chan_state->lqual_cb_num = 0;
 	chan_state->lqual_cb_sum = 0;
 
-	if (chan_state->dl_cmr > 0) {
+	if (mi > 0) {
 		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
 		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
-		const int thresh_lower_cb = cfg->mode[chan_state->dl_cmr - 1].threshold * 5;
+		const int thresh_lower_cb = cfg->mode[mi - 1].threshold * 5;
 
 		/* Degrade if the link quality is below THR_MX_Dn(i - 1) */
 		if (lqual_cb < thresh_lower_cb) {
 			LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Degrading AMR codec mode: "
-				  "%d -> %d due to link quality %d cB < THR_MX_Dn=%d cB\n",
-				  chan_state->dl_cmr, chan_state->dl_cmr - 1,
+				  "[%u]=%u -> [%u]=%u due to link quality %d cB < THR_MX_Dn=%d cB\n",
+				  mi, cfg->mode[mi].mode, mi - 1, cfg->mode[mi - 1].mode,
 				  lqual_cb, thresh_lower_cb);
 			chan_state->dl_cmr--;
 		}
-	} else if (chan_state->dl_cmr < chan_state->codecs - 1) {
+	} else if (mi < chan_state->codecs - 1) {
 		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
 		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
-		const int thresh_upper_cb = cfg->mode[chan_state->dl_cmr].threshold * 5 \
-					  + cfg->mode[chan_state->dl_cmr].hysteresis * 5;
+		const int thresh_upper_cb = cfg->mode[mi].threshold * 5 \
+					  + cfg->mode[mi].hysteresis * 5;
 
 		/* Upgrade if the link quality is above THR_MX_Up(i) */
 		if (lqual_cb > thresh_upper_cb) {
 			LOGPLCHAN(lchan, DLOOP, LOGL_INFO, "Upgrading AMR codec mode: "
-				  "%d -> %d due to link quality %d cB > THR_MX_Up=%d cB\n",
-				  chan_state->dl_cmr, chan_state->dl_cmr + 1,
+				  "[%u]=%u -> [%u]=%u due to link quality %d cB > THR_MX_Up=%d cB\n",
+				  mi, cfg->mode[mi].mode, mi + 1, cfg->mode[mi + 1].mode,
 				  lqual_cb, thresh_upper_cb);
 			chan_state->dl_cmr++;
 		}
