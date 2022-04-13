@@ -116,7 +116,7 @@ static struct log_info_cat bts_log_info_cat[] = {
 	[DLOOP] = {
 		.name = "DLOOP",
 		.description = "Control loops",
-		.color = "\033[0;34m",
+		.color = "\033[0;94m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 };
