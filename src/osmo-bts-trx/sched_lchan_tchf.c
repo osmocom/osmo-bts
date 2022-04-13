@@ -384,7 +384,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 	if (msg_tch) {
 		int len;
 		uint8_t cmr_codec;
-		int cmr, ft, i;
+		int ft, i;
 		enum osmo_amr_type ft_codec;
 		enum osmo_amr_quality bfi;
 		int8_t sti, cmi;
@@ -416,21 +416,10 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send invalid AMR payload\n");
 				goto free_bad_msg;
 			}
-			cmr = -1;
 			ft = -1;
 			for (i = 0; i < chan_state->codecs; i++) {
-				if (chan_state->codec[i] == cmr_codec)
-					cmr = i;
 				if (chan_state->codec[i] == ft_codec)
 					ft = i;
-			}
-			if (cmr >= 0) { /* new request */
-				chan_state->dl_cmr = cmr;
-				/* disable AMR loop */
-				trx_loop_amr_set(chan_state, 0);
-			} else {
-				/* enable AMR loop */
-				trx_loop_amr_set(chan_state, 1);
 			}
 			if (ft < 0) {
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
