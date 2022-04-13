@@ -67,8 +67,7 @@ struct amr_mode {
 
 struct amr_multirate_conf {
 	uint8_t gsm48_ie[2];
-	struct amr_mode ms_mode[4];
-	struct amr_mode bts_mode[4];
+	struct amr_mode mode[4];
 	uint8_t num_modes;
 };
 

@@ -298,7 +298,7 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 		LOGP(DL1P, LOGL_NOTICE, "L1->RTP: overriding CMR IDX %u\n", cmr_idx);
 		cmr = AMR_CMR_NONE;
 	} else {
-		cmr = amr_mrc->bts_mode[cmr_idx].mode;
+		cmr = amr_mrc->mode[cmr_idx].mode;
 		lchan->tch.last_cmr = cmr;
 	}
 

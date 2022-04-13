@@ -159,9 +159,9 @@ static void test_amr_parse_mr_conf(void)
 	printf("amr_parse_mr_conf() -> num_modes=%u\n", mrc.num_modes);
 	for (i = 0; i < mrc.num_modes; i++) {
 		printf("  Mode[%u] = %u/%u/%u\n",
-		       i, mrc.bts_mode[i].mode,
-		       mrc.bts_mode[i].threshold,
-		       mrc.bts_mode[i].hysteresis);
+		       i, mrc.mode[i].mode,
+		       mrc.mode[i].threshold,
+		       mrc.mode[i].hysteresis);
 	}
 
 	mrc_enc[1] = 0xff; /* all codec modes active */

@@ -78,7 +78,7 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	if (chan_state->dl_cmr > 0) {
 		/* degrade, if ber is above threshold FIXME: C/I */
 		if (ber >
-		   lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr-1].threshold) {
+		   lchan->tch.amr_mr.mode[chan_state->dl_cmr-1].threshold) {
 			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Degrading due to BER %.6f "
 				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
 				chan_state->dl_cmr - 1);
@@ -87,8 +87,8 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	} else if (chan_state->dl_cmr < chan_state->codecs - 1) {
 		/* degrade, if ber is above threshold  FIXME: C/I*/
 		if (ber <
-		    lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr].threshold
-		  - lchan->tch.amr_mr.bts_mode[chan_state->dl_cmr].hysteresis) {
+		    lchan->tch.amr_mr.mode[chan_state->dl_cmr].threshold
+		  - lchan->tch.amr_mr.mode[chan_state->dl_cmr].hysteresis) {
 			LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Upgrading due to BER %.6f "
 				"from codec id %d to %d\n", ber, chan_state->dl_cmr,
 				chan_state->dl_cmr + 1);

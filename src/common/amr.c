@@ -95,9 +95,9 @@ void amr_log_mr_conf(int ss, int logl, const char *pfx,
 
 	for (i = 0; i < amr_mrc->num_modes; i++)
 		LOGPC(ss, logl, ", mode[%u] = %u/%u/%u",
-			i, amr_mrc->bts_mode[i].mode,
-			amr_mrc->bts_mode[i].threshold,
-			amr_mrc->bts_mode[i].hysteresis);
+			i, amr_mrc->mode[i].mode,
+			amr_mrc->mode[i].threshold,
+			amr_mrc->mode[i].hysteresis);
 	LOGPC(ss, logl, "\n");
 }
 
@@ -106,7 +106,7 @@ static inline int get_amr_mode_idx(const struct amr_multirate_conf *amr_mrc,
 {
 	unsigned int i;
 	for (i = 0; i < amr_mrc->num_modes; i++) {
-		if (amr_mrc->bts_mode[i].mode == cmi)
+		if (amr_mrc->mode[i].mode == cmi)
 			return i;
 	}
 	return -EINVAL;
@@ -196,7 +196,7 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 
 	for (i = 0; i < 8; i++) {
 		if (mr_conf[1] & (1 << i)) {
-			amr_mrc->bts_mode[j++].mode = i;
+			amr_mrc->mode[j++].mode = i;
 		}
 	}
 
@@ -204,18 +204,18 @@ int amr_parse_mr_conf(struct amr_multirate_conf *amr_mrc,
 	mr_conf += 2;
 
 	if (num_codecs >= 2) {
-		amr_mrc->bts_mode[0].threshold = mr_conf[0] & 0x3F;
-		amr_mrc->bts_mode[0].hysteresis = mr_conf[1] >> 4;
+		amr_mrc->mode[0].threshold = mr_conf[0] & 0x3F;
+		amr_mrc->mode[0].hysteresis = mr_conf[1] >> 4;
 	}
 	if (num_codecs >= 3) {
-		amr_mrc->bts_mode[1].threshold =
+		amr_mrc->mode[1].threshold =
 			((mr_conf[1] & 0xF) << 2) | (mr_conf[2] >> 6);
-		amr_mrc->bts_mode[1].hysteresis = (mr_conf[2] >> 2) & 0xF;
+		amr_mrc->mode[1].hysteresis = (mr_conf[2] >> 2) & 0xF;
 	}
 	if (num_codecs >= 4) {
-		amr_mrc->bts_mode[2].threshold =
+		amr_mrc->mode[2].threshold =
 			((mr_conf[2] & 0x3) << 4) | (mr_conf[3] >> 4);
-		amr_mrc->bts_mode[2].hysteresis = mr_conf[3] & 0xF;
+		amr_mrc->mode[2].hysteresis = mr_conf[3] & 0xF;
 	}
 
 	return num_codecs;
@@ -272,7 +272,7 @@ void amr_init_mr_conf_def(struct gsm_lchan *lchan)
 
 	memcpy(lchan->tch.amr_mr.gsm48_ie, mr_cfg,
 	       sizeof(lchan->tch.amr_mr.gsm48_ie));
-	memcpy(&lchan->tch.amr_mr.bts_mode[0], &bts_mode[0],
-	       sizeof(lchan->tch.amr_mr.bts_mode));
+	memcpy(&lchan->tch.amr_mr.mode[0], &bts_mode[0],
+	       sizeof(lchan->tch.amr_mr.mode));
 	lchan->tch.amr_mr.num_modes = num_modes;
 }
