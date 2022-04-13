@@ -71,6 +71,7 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	chan_state->lqual_cb_num = 0;
 	chan_state->lqual_cb_sum = 0;
 
+	/* If the current codec mode can be degraded */
 	if (mi > 0) {
 		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
 		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
@@ -83,8 +84,12 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 				  mi, cfg->mode[mi].mode, mi - 1, cfg->mode[mi - 1].mode,
 				  lqual_cb, thresh_lower_cb);
 			chan_state->dl_cmr--;
+			return;
 		}
-	} else if (mi < chan_state->codecs - 1) {
+	}
+
+	/* If the current codec mode can be upgraded */
+	if (mi < chan_state->codecs - 1) {
 		/* The threshold/hysteresis is in 0.5 dB steps, convert to cB:
 		 * 1dB is 10cB, so 0.5dB is 5cB - this is why we multiply by 5. */
 		const int thresh_upper_cb = cfg->mode[mi].threshold * 5 \
@@ -97,6 +102,7 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 				  mi, cfg->mode[mi].mode, mi + 1, cfg->mode[mi + 1].mode,
 				  lqual_cb, thresh_upper_cb);
 			chan_state->dl_cmr++;
+			return;
 		}
 	}
 }
