@@ -99,18 +99,13 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 
 void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
 {
-	if (chan_state->amr_loop && !loop) {
-		chan_state->amr_loop = 0;
+	if (chan_state->amr_loop == loop)
 		return;
-	}
-
-	if (!chan_state->amr_loop && loop) {
-		chan_state->amr_loop = 1;
-
+	if (!chan_state->amr_loop) {
 		/* reset bit errors */
 		chan_state->ber_num = 0;
 		chan_state->ber_sum = 0;
-
-		return;
 	}
+
+	chan_state->amr_loop = loop;
 }
