@@ -498,7 +498,11 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct gsm48_system_information_type_2quater *si2q;
 	struct bitvec bv;
 	const uint8_t *si_buf;
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
@@ -695,7 +699,10 @@ static int rsl_rx_paging_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	const uint8_t *identity_lv;
 	int rc;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_PAGING_GROUP) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_MS_IDENTITY))
@@ -730,7 +737,10 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	bool extended_cbch = false;
 	int rc;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_CB_CMD_TYPE) ||
 	    !TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
@@ -759,7 +769,10 @@ static int rsl_rx_osmo_etws_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct gsm_bts *bts = trx->bts;
 	struct tlv_parsed tp;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_SMSCB_MSG))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
@@ -848,7 +861,10 @@ static int rsl_rx_sacch_fill(struct gsm_bts_trx *trx, struct msgb *msg)
 	uint8_t rsl_si;
 	enum osmo_sysinfo_type osmo_si;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
+	}
 
 	/* 9.3.30 System Info Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_SYSINFO_TYPE))
@@ -1105,14 +1121,11 @@ static int rsl_rx_meas_preproc_dft(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct gsm_power_ctrl_params *params;
 	const struct tlv_p_entry *ie;
 	struct tlv_parsed tp;
-	int rc;
 
 	LOGPTRX(trx, DRSL, LOGL_INFO, "Rx Measurement Pre-processing Defaults\n");
 
-	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
-	if (rc < 0) {
-		LOGPTRX(trx, DRSL, LOGL_ERROR, "Failed to parse ip.access specific "
-			"Measurement Pre-processing Defaults for MS/BS Power control\n");
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
 		return rsl_tx_error_report(trx, RSL_ERR_PROTO, NULL, NULL, msg);
 	}
 
@@ -1161,7 +1174,10 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_FULL_IMM_ASS_INFO))
 		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
@@ -1713,7 +1729,10 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		.current = 0,
 	};
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_PROTO);
+	}
 
 	/* 9.3.3 Activation Type */
 	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
@@ -2068,7 +2087,8 @@ static int rsl_rx_encr_cmd(struct msgb *msg)
 	uint8_t link_id;
 
 	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
-		return rsl_tx_error_report(msg->trx, RSL_ERR_IE_CONTENT, &dch->chan_nr, NULL, msg);
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_PROTO, &dch->chan_nr, NULL, msg);
 	}
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_ENCR_INFO) ||
@@ -2189,7 +2209,10 @@ static int rsl_rx_mode_modif(struct msgb *msg)
 	uint8_t cause;
 	int rc;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_mode_modif_nack(lchan, RSL_ERR_PROTO);
+	}
 
 	/* 9.3.6 Channel Mode */
 	if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
@@ -2255,7 +2278,10 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 	uint8_t pwr;
 	int max_pwr, curr_pwr;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_PROTO, &dch->chan_nr, NULL, msg);
+	}
 
 	/* 9.3.13 MS Power (M) */
 	if (!TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1))
@@ -2318,7 +2344,10 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t old, new;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &dch->chan_nr, NULL, msg);
+	}
 
 	/* 9.3.4 BS Power (M) */
 	if (!TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1))
@@ -2391,7 +2420,10 @@ static int rsl_rx_sacch_inf_mod(struct msgb *msg)
 	struct tlv_parsed tp;
 	uint8_t rsl_si, osmo_si;
 
-	rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(msg->trx, RSL_ERR_PROTO, &dch->chan_nr, NULL, msg);
+	}
 
 	if (TLVP_PRESENT(&tp, RSL_IE_STARTNG_TIME)) {
 		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "Starting time not supported\n");
@@ -2730,10 +2762,10 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		return tx_ipac_XXcx_nack(lchan, 0x52,
 					 0, dch->c.msg_type);
 
-	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
-	if (rc < 0)
-		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
-					 0, dch->c.msg_type);
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return tx_ipac_XXcx_nack(lchan, RSL_ERR_PROTO, 0, dch->c.msg_type);
+	}
 
 	LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "IPAC_%s: ", name);
 	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_IP, 4)) {
@@ -2908,9 +2940,10 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	int rc, inc_conn_id = 0;
 
-	rc = rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg));
-	if (rc < 0)
-		return rsl_tx_ipac_dlcx_nack(lchan, 0, RSL_ERR_MAND_IE_ERROR);
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_ipac_dlcx_nack(lchan, 0, RSL_ERR_PROTO);
+	}
 
 	if (TLVP_PRESENT(&tp, RSL_IE_IPAC_CONN_ID))
 		inc_conn_id = 1;
