@@ -2647,15 +2647,15 @@ static int rsl_tx_ipac_dlcx_nack(struct gsm_lchan *lchan, int inc_conn_id,
 }
 
 
-/* transmit an CRCX NACK for the lchan */
+/* Send an xxCX NACK for the given xxCX message type and lchan */
 static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 			     int inc_ipport, uint8_t orig_msgtype)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
+	uint8_t msg_type = orig_msgtype + 2;
 
-	/* FIXME: allocate new msgb and copy old over */
-	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "RSL Tx IPAC_BIND_NACK\n");
+	LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "RSL Tx %s\n", rsl_ipac_msg_name(msg_type));
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
@@ -2675,7 +2675,7 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 	msgb_tlv_put(msg, RSL_IE_CAUSE, 1, &cause);
 
 	/* push the header in front */
-	rsl_ipa_push_hdr(msg, orig_msgtype + 2, chan_nr);
+	rsl_ipa_push_hdr(msg, msg_type, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_bts_rsl_sendmsg(msg);
