@@ -105,6 +105,9 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 			return;
 		}
 	}
+
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Keeping the current AMR codec "
+		  "mode[%u]=%u\n", mi, cfg->mode[mi].mode);
 }
 
 void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
