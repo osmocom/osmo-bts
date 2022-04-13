@@ -40,10 +40,6 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	const uint8_t mi = chan_state->ul_ft; /* mode index 0..3 */
 	int lqual_cb = meas_set->ci_cb; /* cB (centibel) */
 
-	/* check if loop is enabled */
-	if (!chan_state->amr_loop)
-		return;
-
 	/* count per-block C/I samples for further averaging */
 	if (lchan->type == GSM_LCHAN_TCH_H) {
 		chan_state->lqual_cb_num += 2;
@@ -108,17 +104,4 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Keeping the current AMR codec "
 		  "mode[%u]=%u\n", mi, cfg->mode[mi].mode);
-}
-
-void trx_loop_amr_set(struct l1sched_chan_state *chan_state, int loop)
-{
-	if (chan_state->amr_loop == loop)
-		return;
-	if (!chan_state->amr_loop) {
-		/* reset the link quality measurements */
-		chan_state->lqual_cb_num = 0;
-		chan_state->lqual_cb_sum = 0;
-	}
-
-	chan_state->amr_loop = loop;
 }
