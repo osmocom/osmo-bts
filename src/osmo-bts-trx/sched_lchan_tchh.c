@@ -408,6 +408,8 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No TCH or FACCH prim for transmit.\n");
 		gsm0503_tch_hr_encode(*bursts_p, dummy, sizeof(dummy));
+		chan_state->dl_ongoing_facch = 1;
+		chan_state->dl_facch_bursts = 6;
 		goto send_burst;
 	}
 
