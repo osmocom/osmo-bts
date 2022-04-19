@@ -353,17 +353,15 @@ compose_l1sap:
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
  * FIXME: this function is over-complicated, refactor / get rid of it. */
-extern void tx_tch_common(struct l1sched_ts *l1ts,
-			  const struct trx_dl_burst_req *br,
-			  struct msgb **_msg_tch, struct msgb **_msg_facch);
+extern struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
 
 /* obtain a to-be-transmitted TCH/H (Half Traffic Channel) burst */
 int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
+	struct msgb *msg;
 
 	/* send burst, if we already got a frame */
 	if (br->bid > 0) {
@@ -371,9 +369,6 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			return -ENODEV;
 		goto send_burst;
 	}
-
-	/* get TCH and/or FACCH */
-	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
 	/* BURST BYPASS */
 
@@ -393,8 +388,11 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		}
 	}
 
+	/* dequeue a message to be transmitted */
+	msg = tch_dl_dequeue(l1ts, br);
+
 	/* no message at all, send a dummy L2 frame on FACCH */
-	if (!msg_tch && !msg_facch && !chan_state->dl_ongoing_facch) {
+	if (msg == NULL && !chan_state->dl_ongoing_facch) {
 		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
 			0x03, 0x03, 0x01, /* TODO: use randomized padding */
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
@@ -406,9 +404,9 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		goto send_burst;
 	}
 
-	/* encode bursts (prioritize FACCH) */
-	if (msg_facch) {
-		gsm0503_tch_hr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch));
+	/* populate the buffer with bursts */
+	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
+		gsm0503_tch_hr_encode(*bursts_p, msg->l2h, msgb_l2len(msg));
 		chan_state->dl_ongoing_facch = 1; /* first of two TCH frames */
 		chan_state->dl_facch_bursts = 6;
 	} else if (chan_state->dl_ongoing_facch) /* second of two TCH frames */
@@ -417,19 +415,16 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
-		gsm0503_tch_ahs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, !dl_amr_fn_is_cmi(br->fn),
+		gsm0503_tch_ahs_encode(*bursts_p, msg->l2h + 2,
+			msgb_l2len(msg) - 2, !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
 	else
-		gsm0503_tch_hr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch));
+		gsm0503_tch_hr_encode(*bursts_p, msg->l2h, msgb_l2len(msg));
 
 	/* free message */
-	if (msg_tch)
-		msgb_free(msg_tch);
-	if (msg_facch)
-		msgb_free(msg_facch);
+	msgb_free(msg);
 
 send_burst:
 	/* compose burst */

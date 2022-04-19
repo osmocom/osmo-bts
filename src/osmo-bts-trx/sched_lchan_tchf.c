@@ -322,8 +322,7 @@ compose_l1sap:
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
  * FIXME: this function is over-complicated, refactor / get rid of it. */
-void tx_tch_common(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br,
-		   struct msgb **_msg_tch, struct msgb **_msg_facch)
+struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
@@ -365,7 +364,8 @@ void tx_tch_common(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br,
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
 					"Failed to encode AMR_BAD frame (rc=%d), "
 					"not sending BFI\n", len);
-				return;
+				len = 0;
+				break;
 			}
 			memset(tch_data + 2, 0, len - 2);
 			break;
@@ -420,8 +420,19 @@ inval_mode1:
 		msg_facch = NULL;
 	}
 
+	/* prioritize FACCH over speech */
+	if (msg_facch) {
+		/* Unlike SACCH, FACCH has no dedicated slots on the multiframe layout.
+		 * It's multiplexed together with TCH (speech or data) frames basically
+		 * by replacing (stealing) them.  This is common for both TCH/F and
+		 * TCH/H, with the only difference that FACCH/H steals two TCH frames
+		 * (not just one) due to a longer interleaving period. */
+		msgb_free(msg_tch);
+		return msg_facch;
+	}
+
 	/* check validity of message, get AMR ft and cmr */
-	if (!msg_facch && msg_tch) {
+	if (msg_tch) {
 		int len;
 		uint8_t cmr_codec;
 		int cmr, ft, i;
@@ -501,22 +512,19 @@ free_bad_msg:
 			/* free message */
 			msgb_free(msg_tch);
 			msg_tch = NULL;
-			goto send_frame;
 		}
 	}
 
-send_frame:
-	*_msg_tch = msg_tch;
-	*_msg_facch = msg_facch;
+	return msg_tch;
 }
 
 /* obtain a to-be-transmitted TCH/F (Full Traffic Channel) burst */
 int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
-	struct msgb *msg_tch = NULL, *msg_facch = NULL;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
+	struct msgb *msg;
 
 	/* send burst, if we already got a frame */
 	if (br->bid > 0) {
@@ -524,8 +532,6 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			return -ENODEV;
 		goto send_burst;
 	}
-
-	tx_tch_common(l1ts, br, &msg_tch, &msg_facch);
 
 	/* BURST BYPASS */
 
@@ -540,8 +546,11 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		memset(*bursts_p + 464, 0, 464);
 	}
 
+	/* dequeue a message to be transmitted */
+	msg = tch_dl_dequeue(l1ts, br);
+
 	/* no message at all, send a dummy L2 frame on FACCH */
-	if (!msg_tch && !msg_facch) {
+	if (msg == NULL) {
 		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
 			0x03, 0x03, 0x01, /* TODO: use randomized padding */
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
@@ -553,28 +562,24 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		goto send_burst;
 	}
 
-	/* encode bursts (prioritize FACCH) */
-	if (msg_facch) {
-		gsm0503_tch_fr_encode(*bursts_p, msg_facch->l2h, msgb_l2len(msg_facch),
-			1);
+	/* populate the buffer with bursts */
+	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
+		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
 		chan_state->dl_facch_bursts = 8;
 	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
-		gsm0503_tch_afs_encode(*bursts_p, msg_tch->l2h + 2,
-			msgb_l2len(msg_tch) - 2, !dl_amr_fn_is_cmi(br->fn),
+		gsm0503_tch_afs_encode(*bursts_p, msg->l2h + 2,
+			msgb_l2len(msg) - 2, !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
 	else
-		gsm0503_tch_fr_encode(*bursts_p, msg_tch->l2h, msgb_l2len(msg_tch), 1);
+		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
 
 	/* free message */
-	if (msg_tch)
-		msgb_free(msg_tch);
-	if (msg_facch)
-		msgb_free(msg_facch);
+	msgb_free(msg);
 
 send_burst:
 	/* compose burst */
