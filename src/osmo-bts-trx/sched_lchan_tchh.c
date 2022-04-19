@@ -75,6 +75,9 @@ static const uint8_t sched_tchh_ul_facch_map[26] = {
 	[3]  = 1, /* FACCH/H(1): B2(18,20,22,24,1,3) */
 };
 
+/* TDMA frame number of burst 'a' is used as the table index. */
+extern const uint8_t sched_tchh_dl_facch_map[26];
+
 /*! \brief a single TCH/H burst was received by the PHY, process it */
 int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
@@ -407,6 +410,15 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		};
 
 		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No TCH or FACCH prim for transmit.\n");
+
+		/* FACCH/H can only be scheduled at specific TDMA offset */
+		if (!sched_tchh_dl_facch_map[br->fn % 26]) {
+			/* FACCH/H is not allowed, send half-filled bursts with even numbered
+			 * bits contaning 232 encoded bits of the previous L2 frame, and 232
+			 * odd numbered bits all set to 0. */
+			goto send_burst;
+		}
+
 		gsm0503_tch_hr_encode(*bursts_p, dummy, sizeof(dummy));
 		chan_state->dl_ongoing_facch = 1;
 		chan_state->dl_facch_bursts = 6;
