@@ -321,17 +321,17 @@ static inline bool dtx_amr_sid_optional(struct gsm_lchan *lchan, uint32_t fn)
 		   already: we rely here on the order of RTS arrival from L1 - we
 		   expect that PH-DATA.req ALWAYS comes before PH-TCH.req for the
 		   same FN */
-		if(lchan->type == GSM_LCHAN_TCH_H) {
+		if (lchan->type == GSM_LCHAN_TCH_H) {
 			if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY &&
 			    lchan->tch.dtx.fn != LCHAN_FN_WAIT) {
 				/* FACCH interruption is over */
 				dtx_dispatch(lchan, E_COMPL);
 				return false;
-			} else if(lchan->tch.dtx.fn == LCHAN_FN_DUMMY) {
+			} else if (lchan->tch.dtx.fn == LCHAN_FN_DUMMY) {
 				lchan->tch.dtx.fn = LCHAN_FN_WAIT;
 			} else
 				lchan->tch.dtx.fn = fn;
-		} else if(lchan->type == GSM_LCHAN_TCH_F) {
+		} else if (lchan->type == GSM_LCHAN_TCH_F) {
 			if (lchan->tch.dtx.fn != LCHAN_FN_DUMMY) {
 				/* FACCH interruption is over */
 				dtx_dispatch(lchan, E_COMPL);

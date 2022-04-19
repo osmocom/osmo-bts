@@ -1243,7 +1243,7 @@ static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_l
 	#define AMR_PADDING1(rtp_pl) (rtp_pl[0] & 0x0f)
 	#define AMR_PADDING2(rtp_pl) (rtp_pl[1] & 0x03)
 
-	if(payload_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
+	if (payload_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
 		return false;
 
 	return true;
@@ -1253,7 +1253,7 @@ static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 {
 	/* Avoid sending bw-efficient AMR to lower layers, most bts models
 	 * don't support it. */
-	if(lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
 		!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
 		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE,
 			  "RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
@@ -1302,7 +1302,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	if (!resp_msg) {
 		DEBUGPGT(DL1P, &g_time, "%s DL TCH Tx queue underrun\n", gsm_lchan_name(lchan));
 		resp_l1sap = &empty_l1sap;
-	} else if(!rtppayload_is_valid(lchan, resp_msg)) {
+	} else if (!rtppayload_is_valid(lchan, resp_msg)) {
 		msgb_free(resp_msg);
 		resp_msg = NULL;
 		resp_l1sap = &empty_l1sap;

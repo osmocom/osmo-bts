@@ -3659,7 +3659,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 				  "Scheduling %s to L3 in next associated TCH-RTS.ind\n",
 				  rsl_msg_name(rh->msg_type));
 
-			if(lchan->pending_rel_ind_msg) {
+			if (lchan->pending_rel_ind_msg) {
 				LOGPLCHAN(lchan, DRSL, LOGL_INFO,
 					  "Dropping pending release indication message\n");
 				msgb_free(lchan->pending_rel_ind_msg);
