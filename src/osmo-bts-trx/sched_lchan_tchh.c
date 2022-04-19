@@ -391,8 +391,15 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* dequeue a message to be transmitted */
 	msg = tch_dl_dequeue(l1ts, br);
 
+	/* if we're sending 2 middle bursts of FACCH/H */
+	if (chan_state->dl_ongoing_facch) {
+		msgb_free(msg); /* drop 2nd speech frame */
+		chan_state->dl_ongoing_facch = 0;
+		goto send_burst;
+	}
+
 	/* no message at all, send a dummy L2 frame on FACCH */
-	if (msg == NULL && !chan_state->dl_ongoing_facch) {
+	if (msg == NULL) {
 		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
 			0x03, 0x03, 0x01, /* TODO: use randomized padding */
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
@@ -409,9 +416,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		gsm0503_tch_hr_encode(*bursts_p, msg->l2h, msgb_l2len(msg));
 		chan_state->dl_ongoing_facch = 1; /* first of two TCH frames */
 		chan_state->dl_facch_bursts = 6;
-	} else if (chan_state->dl_ongoing_facch) /* second of two TCH frames */
-		chan_state->dl_ongoing_facch = 0; /* we are done with FACCH */
-	else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
