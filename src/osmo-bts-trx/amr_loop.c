@@ -44,10 +44,6 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 	if (!chan_state->amr_loop)
 		return;
 
-	/* wait for MS to use the requested codec */
-	if (mi != chan_state->dl_cmr)
-		return;
-
 	/* count per-block C/I samples for further averaging */
 	if (lchan->type == GSM_LCHAN_TCH_H) {
 		chan_state->lqual_cb_num += 2;
@@ -56,6 +52,10 @@ void trx_loop_amr_input(struct l1sched_chan_state *chan_state,
 		chan_state->lqual_cb_num++;
 		chan_state->lqual_cb_sum += lqual_cb;
 	}
+
+	/* wait for MS to use the requested codec */
+	if (mi != chan_state->dl_cmr)
+		return;
 
 	/* count frames */
 	if (chan_state->lqual_cb_num < 48)
