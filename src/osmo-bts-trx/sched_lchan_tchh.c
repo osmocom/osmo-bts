@@ -85,7 +85,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
 	uint8_t tch_data[128]; /* just to be safe */
-	int rc, amr = 0;
+	int rc = 0; /* initialize to make gcc happy */
+	int amr = 0;
 	int n_errors = 0;
 	int n_bits_total = 0;
 	bool bfi_flag = false;
