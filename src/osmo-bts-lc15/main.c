@@ -105,6 +105,7 @@ int bts_model_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_EGPRS);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_PAGING_COORDINATION);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_EFR);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
