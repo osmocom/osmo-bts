@@ -138,21 +138,22 @@ int bts_model_init(struct gsm_bts *bts)
 	 */
 	bts->c0->nominal_power = 23;
 
-	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_EGPRS);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_EFR);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_HOPPING);
+	/* order alphabetically */
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ACCH_REP);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_MULTI_TSC);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_VAMOS);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_BCCH_POWER_RED);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ACCH_TEMP_OVP);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_BCCH_POWER_RED);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_EGPRS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_HOPPING);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_MULTI_TSC);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_EFR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_VAMOS);
 
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB);
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_INTERF_MEAS);
