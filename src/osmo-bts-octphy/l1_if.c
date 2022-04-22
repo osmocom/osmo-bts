@@ -773,11 +773,12 @@ int bts_model_init(struct gsm_bts *bts)
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;
 
-	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
+	/* order alphabetically */
 #if defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_FCCH_SCH_BCCH_CCCH_SDCCH4_CBCH_SACCHC4) && defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_SDCCH8_CBCH_SACCHC8)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
 #endif
+	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
 

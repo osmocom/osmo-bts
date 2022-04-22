@@ -203,9 +203,10 @@ uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx)
 int bts_model_init(struct gsm_bts *bts)
 {
 	bts->variant = BTS_OSMO_OMLDUMMY;
+	/* order alphabetically */
+	osmo_bts_set_feature(bts->features, BTS_FEAT_BCCH_POWER_RED);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_HOPPING);
-	osmo_bts_set_feature(bts->features, BTS_FEAT_BCCH_POWER_RED);
 	return 0;
 }
 
