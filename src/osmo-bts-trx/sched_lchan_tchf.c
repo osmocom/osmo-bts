@@ -167,8 +167,10 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		/* Tag all frames that are not regular AMR voice frames as
 		 * SUB-Frames */
 		if (chan_state->amr_last_dtx != AMR_OTHER) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received AMR SID frame: %s\n",
-			       gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
+			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
+				"Received AMR DTX frame (rc=%d, BER %d/%d): %s\n",
+				rc, n_errors, n_bits_total,
+				gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
 			is_sub = 1;
 		}
 
