@@ -171,7 +171,11 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 				"Received AMR DTX frame (rc=%d, BER %d/%d): %s\n",
 				rc, n_errors, n_bits_total,
 				gsm0503_amr_dtx_frame_name(chan_state->amr_last_dtx));
-			is_sub = 1;
+			/* ... except AFS_SID_UPDATE, which is in fact a precursor of
+			 * the actual SID UPDATE frame (AFS_SID_UPDATE_CN) and only
+			 * used internally by gsm0503_tch_afs_decode_dtx() */
+			if (chan_state->amr_last_dtx != AFS_SID_UPDATE)
+				is_sub = 1;
 		}
 
 		/* The occurrence of the following frames indicates that we
