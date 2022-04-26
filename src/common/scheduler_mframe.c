@@ -1000,7 +1000,7 @@ int find_sched_mframe_idx(enum gsm_phys_chan_config pchan, uint8_t tn)
 }
 
 /* Determine if given frame number contains SACCH (true) or other (false) burst */
-bool trx_sched_is_sacch_fn(struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink)
+bool trx_sched_is_sacch_fn(const struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink)
 {
 	int i;
 	const struct trx_sched_multiframe *sched;
