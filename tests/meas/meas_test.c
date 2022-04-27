@@ -329,7 +329,7 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 
 	ulm.ber10k = 0;
 	ulm.ta_offs_256bits = 256;
-	ulm.c_i = 0;
+	ulm.ci_cb = 0;
 	ulm.is_sub = 0;
 	ulm.inv_rssi = 90;
 

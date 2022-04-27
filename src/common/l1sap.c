@@ -719,7 +719,7 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.ta_offs_256bits = info_meas_ind->ta_offs_256bits,
 			.inv_rssi = info_meas_ind->inv_rssi,
 			.ber10k = info_meas_ind->ber10k,
-			.c_i = info_meas_ind->c_i_cb,
+			.ci_cb = info_meas_ind->c_i_cb,
 			.is_sub = info_meas_ind->is_sub,
 		};
 		break;
@@ -733,7 +733,7 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.ta_offs_256bits = ph_tch_ind->ta_offs_256bits,
 			.inv_rssi = abs(ph_tch_ind->rssi),
 			.ber10k = ph_tch_ind->ber10k,
-			.c_i = ph_tch_ind->lqual_cb,
+			.ci_cb = ph_tch_ind->lqual_cb,
 			.is_sub = ph_tch_ind->is_sub,
 		};
 		break;
@@ -747,7 +747,7 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.ta_offs_256bits = ph_data_ind->ta_offs_256bits,
 			.inv_rssi = abs(ph_data_ind->rssi),
 			.ber10k = ph_data_ind->ber10k,
-			.c_i = ph_data_ind->lqual_cb,
+			.ci_cb = ph_data_ind->lqual_cb,
 			.is_sub = ph_data_ind->is_sub,
 		};
 		break;
@@ -758,7 +758,7 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 	DEBUGPFN(DL1P, fn,
 		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
 		 gsm_lchan_name(lchan), ind_name, ulm.ta_offs_256bits,
-		 ulm.ber10k, ulm.inv_rssi, ulm.c_i);
+		 ulm.ber10k, ulm.inv_rssi, ulm.ci_cb);
 
 	/* we assume that symbol period is 1 bit: */
 	set_ms_to_data(lchan, ulm.ta_offs_256bits / 256, true);

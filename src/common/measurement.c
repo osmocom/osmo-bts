@@ -31,7 +31,7 @@ static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
 static const struct bts_ul_meas measurement_dummy = {
 	.ber10k = MEASUREMENT_DUMMY_BER,
 	.ta_offs_256bits = 0,
-	.c_i = 0,
+	.ci_cb = 0,
 	.is_sub = 0,
 	.inv_rssi = MEASUREMENT_DUMMY_IRSSI
 };
@@ -348,7 +348,7 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan,
 
 	DEBUGPFN(DMEAS, fn, "%s adding measurement (ber10k=%u, ta_offs=%d, ci_cB=%d, is_sub=%u, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
 		 gsm_lchan_name(lchan), ulm->ber10k, ulm->ta_offs_256bits,
-		 ulm->c_i, dest->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
+		 ulm->ci_cb, dest->is_sub, ulm->inv_rssi, lchan->meas.num_ul_meas,
 		 fn_mod);
 
 	lchan->meas.last_fn = fn;
@@ -631,13 +631,13 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 			m = &lchan->meas.uplink[i + num_ul_meas_excess];
 			if (m->is_sub) {
 				irssi_sub_sum += m->inv_rssi;
-				ci_sub_sum += m->c_i;
+				ci_sub_sum += m->ci_cb;
 				num_meas_sub_actual++;
 				is_sub = true;
 			}
 			irssi_full_sum += m->inv_rssi;
 			ta256b_sum += m->ta_offs_256bits;
-			ci_full_sum += m->c_i;
+			ci_full_sum += m->ci_cb;
 
 			num_ul_meas_actual++;
 		} else {

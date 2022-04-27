@@ -52,7 +52,7 @@ struct bts_ul_meas {
 	/* timing advance offset (in 1/256 bits) */
 	int16_t ta_offs_256bits;
 	/* C/I ratio in cB */
-	int16_t c_i;
+	int16_t ci_cb;
 	/* flags */
 	uint8_t is_sub:1;
 	/* RSSI in dBm * -1 */
