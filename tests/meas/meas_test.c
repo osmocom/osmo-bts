@@ -464,8 +464,7 @@ static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
 		lchan->tch_mode = GSM48_CMODE_SPEECH_V1;
 	}
 
-	printf(" TS=%u ", ts);
-	printf("SS=%u", ss);
+	printf(" TS=%u SS=%u\n", ts, ss);
 
 	/* Walk trough the first 100 intervals and check for unexpected
 	 * results (false positive and false negative) */
@@ -474,19 +473,15 @@ static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
 		if (rc) {
 			if (!test_ts45008_83_is_sub_is_sacch(i)
 			    && !test_ts45008_83_is_sub_is_sub(i, ss)) {
-				printf("==> Unexpected SUB frame at fn=%u", i);
-				OSMO_ASSERT(false);
+				printf("  ==> Unexpected SUB frame at fn=%u\n", i);
 			}
 		} else {
 			if (test_ts45008_83_is_sub_is_sacch(i)
 			    && test_ts45008_83_is_sub_is_sub(i, ss)) {
-				printf("==> Unexpected non-SUB frame at fn=%u",
-				       i);
-				OSMO_ASSERT(false);
+				printf("  ==> Unexpected non-SUB frame at fn=%u\n", i);
 			}
 		}
 	}
-	printf("\n");
 }
 
 static void test_ts45008_83_is_sub(void)
