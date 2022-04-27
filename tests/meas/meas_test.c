@@ -373,28 +373,6 @@ void test_lchan_meas_process_measurement(bool no_sacch, bool dropouts)
 	}
 }
 
-static bool test_ts45008_83_is_sub_is_sacch(uint32_t fn)
-{
-	if (fn % 104 == 12)
-		return true;
-	if (fn % 104 == 25)
-		return true;
-	if (fn % 104 == 38)
-		return true;
-	if (fn % 104 == 51)
-		return true;
-	if (fn % 104 == 64)
-		return true;
-	if (fn % 104 == 77)
-		return true;
-	if (fn % 104 == 90)
-		return true;
-	if (fn % 104 == 103)
-		return true;
-
-	return false;
-}
-
 static bool test_ts45008_83_is_sub_is_sub(const struct gsm_lchan *lchan, uint32_t fn)
 {
 	fn = fn % 104;
@@ -473,16 +451,9 @@ static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
 	 * results (false positive and false negative) */
 	for (i = 0; i < 104 * 100; i++) {
 		rc = ts45008_83_is_sub(lchan, i);
-		if (rc) {
-			if (!test_ts45008_83_is_sub_is_sacch(i)
-			    && !test_ts45008_83_is_sub_is_sub(lchan, i)) {
-				printf("  ==> Unexpected SUB frame at fn=%u\n", i);
-			}
-		} else {
-			if (test_ts45008_83_is_sub_is_sacch(i)
-			    && test_ts45008_83_is_sub_is_sub(lchan, i)) {
-				printf("  ==> Unexpected non-SUB frame at fn=%u\n", i);
-			}
+		if (rc != test_ts45008_83_is_sub_is_sub(lchan, i)) {
+			printf("  ==> ts45008_83_is_sub(fn=%u) yields %s, expected %s\n",
+			       i, rc ? "true" : "false", !rc ? "true" : "false");
 		}
 	}
 }

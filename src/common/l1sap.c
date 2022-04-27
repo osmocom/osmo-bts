@@ -697,6 +697,8 @@ static inline void set_ms_to_data(struct gsm_lchan *lchan, int16_t data, bool se
 	}
 }
 
+bool trx_sched_is_sacch_fn(const struct gsm_bts_trx_ts *ts, uint32_t fn, bool uplink);
+
 /* measurement information received from bts model */
 static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 				    const struct osmo_phsap_prim *l1sap,
@@ -720,8 +722,10 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.inv_rssi = info_meas_ind->inv_rssi,
 			.ber10k = info_meas_ind->ber10k,
 			.ci_cb = info_meas_ind->c_i_cb,
-			.is_sub = info_meas_ind->is_sub,
 		};
+		/* additionally treat SACCH frames (match by TDMA FN) as SUB frames */
+		if (info_meas_ind->is_sub || trx_sched_is_sacch_fn(lchan->ts, fn, true))
+			ulm.is_sub = 1;
 		break;
 	case PRIM_TCH:
 		ph_tch_ind = &l1sap->u.tch;
@@ -736,6 +740,7 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.ci_cb = ph_tch_ind->lqual_cb,
 			.is_sub = ph_tch_ind->is_sub,
 		};
+		/* PRIM_TCH always carries DCCH, not SACCH */
 		break;
 	case PRIM_PH_DATA:
 		ph_data_ind = &l1sap->u.data;
@@ -748,8 +753,10 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 			.inv_rssi = abs(ph_data_ind->rssi),
 			.ber10k = ph_data_ind->ber10k,
 			.ci_cb = ph_data_ind->lqual_cb,
-			.is_sub = ph_data_ind->is_sub,
 		};
+		/* additionally treat SACCH frames (match by RSL link ID) as SUB frames */
+		if (ph_data_ind->is_sub || L1SAP_IS_LINK_SACCH(ph_data_ind->link_id))
+			ulm.is_sub = 1;
 		break;
 	default:
 		OSMO_ASSERT(false);

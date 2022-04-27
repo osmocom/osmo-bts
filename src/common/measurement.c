@@ -56,18 +56,16 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	/* See TS 45.008 Sections 8.3 and 8.4 for a detailed descriptions of the rules
 	 * implemented here. We only implement the logic for Voice, not CSD */
 
+	/* AMR is special, SID frames may be scheduled dynamically at any time */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		return false;
+
 	switch (lchan->type) {
 	case GSM_LCHAN_TCH_F:
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_EFR:
-			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
-				return true;
 			if (ARRAY_CONTAINS(ts45008_83_tch_f, fn104))
-				return true;
-			break;
-		case GSM48_CMODE_SPEECH_AMR:
-			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
 				return true;
 			break;
 		case GSM48_CMODE_SIGN:
@@ -83,8 +81,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	case GSM_LCHAN_TCH_H:
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
-			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
-				return true;
 			switch (lchan->nr) {
 			case 0:
 				if (ARRAY_CONTAINS(ts45008_83_tch_hs0, fn104))
@@ -97,10 +93,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			default:
 				OSMO_ASSERT(0);
 			}
-			break;
-		case GSM48_CMODE_SPEECH_AMR:
-			if (trx_sched_is_sacch_fn(lchan->ts, fn, true))
-				return true;
 			break;
 		case GSM48_CMODE_SIGN:
 			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
