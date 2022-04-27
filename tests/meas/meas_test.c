@@ -379,44 +379,17 @@ static bool test_ts45008_83_is_sub_is_sub(const struct gsm_lchan *lchan, uint32_
 
 	switch (lchan->type) {
 	case GSM_LCHAN_TCH_F:
-		return (fn >= 52 && fn <= 59);
+		/* block {52, 53, 54, 55, 56, 57, 58, 59} */
+		return fn == 52;
 	case GSM_LCHAN_TCH_H:
-		if (lchan->nr == 0) {
-			if (fn == 0)
-				return true;
-			if (fn == 2)
-				return true;
-			if (fn == 4)
-				return true;
-			if (fn == 6)
-				return true;
-			if (fn == 52)
-				return true;
-			if (fn == 54)
-				return true;
-			if (fn == 56)
-				return true;
-			if (fn == 58)
-				return true;
-		} else if (lchan->nr == 1) {
-			if (fn == 14)
-				return true;
-			if (fn == 16)
-				return true;
-			if (fn == 18)
-				return true;
-			if (fn == 20)
-				return true;
-			if (fn == 66)
-				return true;
-			if (fn == 68)
-				return true;
-			if (fn == 70)
-				return true;
-			if (fn == 72)
-				return true;
-		} else
-			OSMO_ASSERT(false);
+		if (fn == 0)	/* H0 block { 0,  2,  4,  6} */
+			return true;
+		if (fn == 52)	/* H0 block {52, 54, 56, 58} */
+			return true;
+		if (fn == 14)	/* H1 block {14, 16, 18, 20} */
+			return true;
+		if (fn == 66)	/* H1 block {66, 68, 70, 72} */
+			return true;
 		return false;
 	default:
 		return false;

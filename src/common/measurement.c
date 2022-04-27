@@ -16,10 +16,17 @@
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/ta_control.h>
 
-/* Tables as per TS 45.008 Section 8.3 */
-static const uint8_t ts45008_83_tch_f[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
-static const uint8_t ts45008_83_tch_hs0[] = { 0, 2, 4, 6, 52, 54, 56, 58 };
-static const uint8_t ts45008_83_tch_hs1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
+/* Active TDMA frame subset for TCH/H in DTX mode (see 3GPP TS 45.008 Section 8.3).
+ * This mapping is used to determine if a L2 block starting at the given TDMA FN
+ * belongs to the SUB set and thus shall always be transmitted in DTX mode. */
+static const uint8_t ts45008_dtx_tchh_fn_map[104] = {
+	/* TCH/H(0): 0, 2, 4, 6, 52, 54, 56, 58 */
+	[0]  = 1, /* block { 0,  2,  4,  6} */
+	[52] = 1, /* block {52, 54, 56, 58} */
+	/* TCH/H(1): 14, 16, 18, 20, 66, 68, 70, 72 */
+	[14] = 1, /* block {14, 16, 18, 20} */
+	[66] = 1, /* block {66, 68, 70, 72} */
+};
 
 /* In cases where we less measurements than we expect we must assume that we
  * just did not receive the block because it was lost due to bad channel
@@ -35,17 +42,6 @@ static const struct bts_ul_meas measurement_dummy = {
 	.is_sub = 0,
 	.inv_rssi = MEASUREMENT_DUMMY_IRSSI
 };
-
-/* find out if an array contains a given key as element */
-#define ARRAY_CONTAINS(arr, val) array_contains(arr, ARRAY_SIZE(arr), val)
-static bool array_contains(const uint8_t *arr, unsigned int len, uint8_t val) {
-	int i;
-	for (i = 0; i < len; i++) {
-		if (arr[i] == val)
-			return true;
-	}
-	return false;
-}
 
 /* Decide if a given frame number is part of the "-SUB" measurements (true) or not (false)
  * (this function is only used internally, it is public to call it from unit-tests) */
@@ -65,7 +61,11 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_EFR:
-			if (ARRAY_CONTAINS(ts45008_83_tch_f, fn104))
+			/* Active TDMA frame subset for TCH/F: 52, 53, 54, 55, 56, 57, 58, 59.
+			 * There is only one *complete* block in this subset starting at FN=52.
+			 * Incomplete blocks {... 52, 53, 54, 55} and {56, 57, 58, 59 ...}
+			 * contain only 50% of the useful bits (partial SID) and thus ~50% BER. */
+			if (fn104 == 52)
 				return true;
 			break;
 		case GSM48_CMODE_SIGN:
@@ -81,18 +81,8 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	case GSM_LCHAN_TCH_H:
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
-			switch (lchan->nr) {
-			case 0:
-				if (ARRAY_CONTAINS(ts45008_83_tch_hs0, fn104))
-					return true;
-				break;
-			case 1:
-				if (ARRAY_CONTAINS(ts45008_83_tch_hs1, fn104))
-					return true;
-				break;
-			default:
-				OSMO_ASSERT(0);
-			}
+			if (ts45008_dtx_tchh_fn_map[fn104])
+				return true;
 			break;
 		case GSM48_CMODE_SIGN:
 			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
@@ -432,16 +422,16 @@ static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 			/* 1 block SACCH, 24 blocks TCH (see note 1) */
 			return 25;
 		} else {
-			/* 1 block SACCH, 2 blocks TCH */
-			return 3;
+			/* 1 block SACCH, 1 block TCH */
+			return 2;
 		}
 	case GSM_PCHAN_TCH_H:
 		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
 			/* 1 block SACCH, 12 blocks TCH (see ynote 1) */
 			return 13;
 		} else {
-			/* 1 block SACCH, 4 blocks TCH */
-			return 5;
+			/* 1 block SACCH, 2 blocks TCH */
+			return 3;
 		}
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
