@@ -395,51 +395,54 @@ static bool test_ts45008_83_is_sub_is_sacch(uint32_t fn)
 	return false;
 }
 
-static bool test_ts45008_83_is_sub_is_sub(uint32_t fn, uint8_t ss)
+static bool test_ts45008_83_is_sub_is_sub(const struct gsm_lchan *lchan, uint32_t fn)
 {
 	fn = fn % 104;
 
-	if (fn >= 52 && fn <= 59)
-		return true;
-
-	if (ss == 0) {
-		if (fn == 0)
-			return true;
-		if (fn == 2)
-			return true;
-		if (fn == 4)
-			return true;
-		if (fn == 6)
-			return true;
-		if (fn == 52)
-			return true;
-		if (fn == 54)
-			return true;
-		if (fn == 56)
-			return true;
-		if (fn == 58)
-			return true;
-	} else if (ss == 1) {
-		if (fn == 14)
-			return true;
-		if (fn == 16)
-			return true;
-		if (fn == 18)
-			return true;
-		if (fn == 20)
-			return true;
-		if (fn == 66)
-			return true;
-		if (fn == 68)
-			return true;
-		if (fn == 70)
-			return true;
-		if (fn == 72)
-			return true;
-	} else
-		OSMO_ASSERT(false);
-
-	return false;
+	switch (lchan->type) {
+	case GSM_LCHAN_TCH_F:
+		return (fn >= 52 && fn <= 59);
+	case GSM_LCHAN_TCH_H:
+		if (lchan->nr == 0) {
+			if (fn == 0)
+				return true;
+			if (fn == 2)
+				return true;
+			if (fn == 4)
+				return true;
+			if (fn == 6)
+				return true;
+			if (fn == 52)
+				return true;
+			if (fn == 54)
+				return true;
+			if (fn == 56)
+				return true;
+			if (fn == 58)
+				return true;
+		} else if (lchan->nr == 1) {
+			if (fn == 14)
+				return true;
+			if (fn == 16)
+				return true;
+			if (fn == 18)
+				return true;
+			if (fn == 20)
+				return true;
+			if (fn == 66)
+				return true;
+			if (fn == 68)
+				return true;
+			if (fn == 70)
+				return true;
+			if (fn == 72)
+				return true;
+		} else
+			OSMO_ASSERT(false);
+		return false;
+	default:
+		return false;
+	}
 }
 
 static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
@@ -472,12 +475,12 @@ static void test_ts45008_83_is_sub_single(uint8_t ts, uint8_t ss, bool fr)
 		rc = ts45008_83_is_sub(lchan, i);
 		if (rc) {
 			if (!test_ts45008_83_is_sub_is_sacch(i)
-			    && !test_ts45008_83_is_sub_is_sub(i, ss)) {
+			    && !test_ts45008_83_is_sub_is_sub(lchan, i)) {
 				printf("  ==> Unexpected SUB frame at fn=%u\n", i);
 			}
 		} else {
 			if (test_ts45008_83_is_sub_is_sacch(i)
-			    && test_ts45008_83_is_sub_is_sub(i, ss)) {
+			    && test_ts45008_83_is_sub_is_sub(lchan, i)) {
 				printf("  ==> Unexpected non-SUB frame at fn=%u\n", i);
 			}
 		}
