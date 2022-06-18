@@ -27,16 +27,16 @@ Homepage
 --------
 
 The official homepage of the project is
-https://osmocom.org/projects/osmobts/wiki
+<https://osmocom.org/projects/osmobts/wiki>
 
 GIT Repository
 --------------
 
 You can clone from the official osmo-bts.git repository using
 
-	git clone git://git.osmocom.org/osmo-bts.git
+	git clone https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
 
-There is a cgit interface at https://git.osmocom.org/osmo-bts/
+There is a web interface at <https://gitea.osmocom.org/cellular-infrastructure/osmo-bts>
 
 Documentation
 -------------

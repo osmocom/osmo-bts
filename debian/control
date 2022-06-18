@@ -13,8 +13,8 @@ Build-Depends: debhelper (>= 9),
                txt2man,
                osmo-gsm-manuals-dev (>= 1.2.0)
 Standards-Version: 3.9.8
-Vcs-Browser: http://git.osmocom.org/osmo-bts/
-Vcs-Git: git://git.osmocom.org/osmo-bts
+Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
+Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
 Homepage: https://projects.osmocom.org/projects/osmobts
 
 Package: osmo-bts
