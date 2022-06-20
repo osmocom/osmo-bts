@@ -541,8 +541,8 @@ int sysmobts_mgr_calib_init(struct sysmobts_mgr_instance *mgr)
 		return 0;
 	}
 
-	mgr->calib.bts_conn = ipa_client_conn_create(tall_mgr_ctx, NULL, 0,
-					"localhost", 4238,
+	mgr->calib.bts_conn = ipa_client_conn_create2(tall_mgr_ctx, NULL, 0,
+					NULL, 0, "localhost", 4238,
 					bts_updown_cb, bts_read_cb,
 					NULL, mgr);
 	if (!mgr->calib.bts_conn) {
