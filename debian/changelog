@@ -1,3 +1,118 @@
+osmo-bts (1.5.0) unstable; urgency=medium
+
+  [ Pau Espin Pedrol ]
+  * bts_shutdown_fsm.h: Remove wrong comment describing enum
+  * bts: Properly free bts->shutdown_fi when struct gsm_bts is freed
+  * bts-trx: amr: Fix return code of osmo_amr_rtp_dec() checked too late
+  * Change some log levels NOTICE->INFO
+  * rsl: Conditionally decrease log level if cause is normal event
+  * bts-trx: Log lchan if avaialble in Meas Avg
+  * doc: rsl: Fix description of 'IP Connection Statistics' IE
+  * bts-trx: sched_lchan_tchh.c: Workaround gcc false positive error
+  * bts-sysmo: Replace use of deprecated ipa_client_conn_create API
+
+  [ Harald Welte ]
+  * cbch: Fix bts_smscb_state_reset() to avoid double-free
+  * cbch: Fix dangling cur_msg leading to double-free in bts_cbch_reset()
+  * [lc15,oc2g,octphy] Fix memory leak on write queue overflow
+  * update git URLs (git -> https; gitea)
+
+  [ Oliver Smith ]
+  * debian/control: add osmo-bts meta-package
+  * treewide: remove FSF address
+  * model_init: order features alphabetically
+  * model_init: set BTS_FEAT_PAGINATION_COORDINATION
+  * model_init: order features alphabetically, part 2
+  * src/common/bts.c: set BTS_FEAT_PAGING_COORDINATION
+  * src/common/bts.c: set BTS_FEAT_CCN
+
+  [ Vadim Yanitskiy ]
+  * oml: use proper talloc context in oml_rx_set_radio_attr()
+  * oml: use ts->trx as talloc-context in oml_rx_set_chan_attr()
+  * oml: fix copy-pasted comments in oml_rx_set_*_attr()
+  * oml: assign unique names to 'struct tlv_parsed' chunks
+  * osmo-bts-trx: use l1ts as talloc context for burst buffers
+  * osmo-bts-trx: fix a memleak in trx_sched_set_lchan()
+  * cbch: cosmetic: use talloc_zero() in bts_process_smscb_cmd()
+  * phy_instance_destroy(): fix NULL pointer dereference
+  * logging: get rid of logging category DSUM
+  * osmo-bts-trx: make use of OSMO_UNLIKELY() when handling TRXD PDUs
+  * osmo-bts-trx: cosmetic: use rate_ctr_inc2() instead of rate_ctr_inc()
+  * osmo-bts-trx: new rate counter 'trx_sched:dl_fh_cache_miss'
+  * VTY: fix ambiguity in BTS specific command definitions
+  * osmo-bts-trx: do not run osmo_{fr,hr}_check_sid() on FACCH/U frames
+  * osmo-bts-trx: rx_tchh_fn(): do not calculate BER10k for FACCH twice
+  * rsl: fix wrong IE being checked in rsl_rx_chan_activ()
+  * osmo-bts-trx: rx_tchh_fn(): fix HR SID detection (wrong offset)
+  * osmo-bts-trx: rx_tchh_fn(): mark valid SID frames as such
+  * osmo-bts-trx: use consistent naming for 'enum sched_meas_avg_mode'
+  * osmo-bts-trx: use a lookup table in trx_sched_meas_avg()
+  * osmo-bts-trx: rx_tchh_fn(): use proper meas averaging mode
+  * trx_sched_ul_burst(): get rid of the 'switch' statement
+  * fix gsm_bts_get_cbch(): CBCH can be allocated on Cn
+  * osmo-bts-trx: rx_tchh_fn(): indicate BER10k=0 for FACCH BFIs
+  * osmo-bts-trx: rx_tchh_fn(): get rid of chan_state->meas_avg_facch
+  * osmo-bts-trx: rx_{tchf,tchh}_fn(): also use meas_avg for BFI
+  * osmo-bts-trx: rx_{tchf,tchh}_fn(): shift Rx burst buffer on bid=0
+  * osmo-bts-trx: rx_{tchf,tchh}_fn(): ensure complete set of bursts
+  * osmo-bts-trx: rx_{tchf,tchh}_fn(): get TDMA FN from meas history
+  * osmo-bts-trx: rx_{tchh,tchf}_fn(): use AMR CMI lookup tables
+  * osmo-bts-trx: rx_{tchh,tchf}_fn(): use tch_mode directly
+  * osmo-bts-trx: rx_tchh_fn(): fix meas reporting in signalling mode
+  * osmo-bts-trx: move AMR CMI lookup tables to the respective files
+  * osmo-bts-trx: rx_tchh_fn(): fix indexes in the AMR CMI lookup table
+  * osmo-bts-trx: rx_tchf_fn(): clarify indexes in the AMR CMI lookup table
+  * power_ctrl_params_def_reset(): set .ctrl_interval for both UL/DL
+  * scheduler: remove redundant OSMO_ASSERT() statements
+  * scheduler: rts_tchh_fn(): use a lookup table for FACCH/H
+  * osmo-bts-trx: rx_tchh_fn(): use a lookup table for FACCH/H
+  * osmo-bts-{trx,virtual}: tx_tchh_fn(): remove FACCH/H alignment check
+  * osmo-bts-trx: rename 'loops.[ch]' to 'amr_loop.[ch]'
+  * osmo-bts-trx: use '#pragma once' in amr_loop.h
+  * osmo-bts-trx: amr_loop: remove unneeded #includes
+  * rsl: de-duplicate parsing of MultiRate configuration IE
+  * rsl: rsl_rx_chan_{activ,modif}: do not sent an Error Report
+  * rsl: parse_multirate_config(): check if AMR codec is used
+  * logging: use a different color tone for DLOOP
+  * rsl: always check return value of rsl_tlv_parse()
+  * rsl: misc / cosmetic fixes for tx_ipac_XXcx_nack()
+  * osmo-bts-virtual: remove unused 'codec_mode_request' argument
+  * l1sap: l1sap_chan_act(): alloc DTX FSM only for TCH
+  * l1sap: l1sap_chan_act(): remove unused *tp argument
+  * osmo-bts-trx: bts_report_interf_meas(): remove unused fn param
+  * rsl: use hard-coded defaults if the MultiRate conf IE is absent
+  * tests/amr/Makefile.am: use proper binary name prefix 'amr_test_'
+  * tests/amr: add a unit test for amr_parse_mr_conf()
+  * amr: fix parsing of threshold and hysteresis in amr_parse_mr_conf()
+  * tests: use 'check_PROGRAMS' instead of 'noinst_PROGRAMS'
+  * struct amr_multirate_conf: remove ms_mode[], raname bts_mode[]
+  * common: fix coding style: if is not a function
+  * osmo-bts-trx: amr_loop: simplify trx_loop_amr_set()
+  * osmo-bts-trx: use C/I in the AMR link adaptation loop
+  * osmo-bts-trx: amr_loop: improve logging in trx_loop_amr_input()
+  * osmo-bts-trx: amr_loop: allow upgrading codec mode > 0
+  * osmo-bts-trx: amr_loop: log if AMR mode remains unchanged
+  * osmo-bts-trx: amr_loop: do not miss C/I samples
+  * osmo-bts-trx: prioritize FACCH in s/tx_tch_common()/tch_dl_dequeue()/s
+  * osmo-bts-trx: tx_tchh_fn(): make handling of FACCH/H cleaner
+  * osmo-bts-trx: fix scheduling of dummy FACCH/H and FACCH/F
+  * VTY: fix NULL-pointer dereference in 'show transceiver'
+  * osmo-bts-trx: check if scheduling of [dummy] FACCH/H is allowed
+  * osmo-bts-trx: rx_{tchh,tchf}_fn(): improve logging of AMR DTX frames
+  * pcu_sock: comment out {dl,ul}_tbf_ext related warnings
+  * osmo-bts-trx: drop Uplink loss detection from Downlink path
+  * scheduler: trx_sched_is_sacch_fn(): make ts pointer const
+  * struct bts_ul_meas: reflect C/I units in field name s/c_i/ci_cb/
+  * tests/meas: improve logging in test_ts45008_83_is_sub_single()
+  * tests/meas: improve test_ts45008_83_is_sub_is_sub()
+  * measurement: log SUB/FULL as text in lchan_new_ul_meas()
+  * measurement: move SACCH detection to process_l1sap_meas_data()
+  * measurement: fix matching of SUB frames by TDMA FN
+  * osmo-bts-trx: rx_tchf_fn(): do not treat AFS_SID_UPDATE as SUB frame
+  * Revert "osmo-bts-trx: rx_tchf_fn(): do not treat AFS_SID_UPDATE as SUB frame"
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 29 Jun 2022 09:41:38 +0200
+
 osmo-bts (1.4.0) unstable; urgency=medium
 
   [ Philipp Maier ]

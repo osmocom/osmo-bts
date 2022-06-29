@@ -69,14 +69,14 @@ then
 fi
 
 dnl checks for libraries
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding >= 1.6.0)
-PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 1.2.0)
-PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 1.2.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOCTRL, libosmoctrl >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOCODEC, libosmocodec >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOCODING, libosmocoding >= 1.7.0)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 1.3.0)
+PKG_CHECK_MODULES(LIBOSMOTRAU, libosmotrau >= 1.3.0)
 
 AC_MSG_CHECKING([whether to enable support for sysmobts calibration tool])
 AC_ARG_ENABLE(sysmobts-calib,
