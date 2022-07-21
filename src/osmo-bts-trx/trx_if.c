@@ -685,8 +685,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
 	/* abort timer and send next message, if any */
-	if (osmo_timer_pending(&l1h->trx_ctrl_timer))
-		osmo_timer_del(&l1h->trx_ctrl_timer);
+	osmo_timer_del(&l1h->trx_ctrl_timer);
 
 	/* get command for response message */
 	if (llist_empty(&l1h->trx_ctrl_list)) {
@@ -1222,8 +1221,7 @@ void trx_if_flush(struct trx_l1h *l1h)
 	l1h->last_acked = NULL;
 
 	/* Tx queue is now empty, so there's no point in keeping the retrans timer armed: */
-	if (osmo_timer_pending(&l1h->trx_ctrl_timer))
-		osmo_timer_del(&l1h->trx_ctrl_timer);
+	osmo_timer_del(&l1h->trx_ctrl_timer);
 }
 
 /*! close the TRX for given handle (data + control socket) */
