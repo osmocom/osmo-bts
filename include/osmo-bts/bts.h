@@ -5,6 +5,7 @@
 #include <osmocom/core/socket.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_trx.h>
+#include <osmo-bts/osmux.h>
 
 
 struct gsm_bts_trx;
@@ -368,6 +369,8 @@ struct gsm_bts {
 		uint32_t sapi_mask;
 		uint8_t sapi_acch;
 	} gsmtap;
+
+	struct osmux_state osmux;
 
 	struct osmo_fsm_inst *shutdown_fi; /* FSM instance to manage shutdown procedure during process exit */
 	bool shutdown_fi_exit_proc; /* exit process when shutdown_fsm is finished? */

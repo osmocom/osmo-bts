@@ -1,0 +1,39 @@
+include::{commondir}/chapters/osmux/osmux.adoc[]
+
+=== Osmux Support in {program-name}
+
+Osmux usage in {program-name} in managed through the VTY commands in node
+`osmux`. Command `use (on|off|only)` is used to configure use policy of Osmux
+within {program-name}. Once enabled (`on` or `only`), {program-name} will
+announce the _OSMUX_ BTS feature towards the BSC over OML. This way, the BSC
+becomes aware that this BTS supports using Osmux to transfer voice call user
+data when the AMR codec is selected.
+
+It is then up to the BSC to decide whether to use Osmux or not when establishing
+a new call. If the BSC decides to use Osmux for a given call, then the _IPACC
+CRCX/MDCX_ messages sent by the BSC will contain an extra _Osmux CID_ IE
+appended, which contains the Osmux CID to be used by the BTS to send Osmux
+frames to the co-located BSC MGW (aka the BSC MGW' local CID, or {program-name}'
+remote CID). The IP address and port provided in the same messages refer to the
+address and port where Osmux frames with the provided CID are expected to be
+received. Similarly, {program-name} appends an _Osmux CID_ IE to the _IPACC
+CRCX/MDCX ACK_ message it generates, this time with its own local Osmux CID.
+Same goes for the BTS' local IP address and port where Osmux frames are expected
+to be received.
+
+{program-name} will behave differently during call set up based on the VTY
+command  `use (on|off|only)` presented above:
+
+* `off`: If _IPACC CRCX_ from BSC contains _Osmux CID_ IE, meaning
+  BSC wants to use Osmux for this call, then {program-name} will reject the
+  request and the call set up will fail.
+* `on`: {program-name} will support and accept both Osmux and non-Osmux (RTP)
+  upon call set up. If _IPACC CRCX_ from BSC contains the _Osmux CID_ IE on a
+  AMR call (`Channel Mode GSM3`), it will set up an Osmux stream on its end and
+  provide the BSC with the BTS-local CID. If the BSC provides no _Osmux CID_ IE,
+  then {program-name} will set up a regular RTP based call.
+* `only`: Same as per `on`, except that {program-name} will accept only Osmux
+  calls on the CN-side, this is, if  _IPACC CRCX_ from BSC doesn't
+  contain an _Osmux CID_ IE, it will reject the assignment and the call set up
+  will fail. This means also that only AMR calls (`Channel Mode GSM3`) are
+  allowed.

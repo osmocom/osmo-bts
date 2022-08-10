@@ -119,6 +119,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_NOTICE,
 		.enabled = 1,
 	},
+	[DOSMUX] = {
+		.name = "DOSMUX",
+		.description = "Osmux (Osmocom RTP multiplexing)",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
+	},
 };
 
 static int osmo_bts_filter_fn(const struct log_context *ctx, struct log_target *tgt)

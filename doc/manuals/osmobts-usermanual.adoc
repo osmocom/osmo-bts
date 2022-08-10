@@ -1,4 +1,5 @@
 :gfdl-enabled:
+:program-name: OsmoBTS
 
 OsmoBTS User Manual
 ===================
@@ -29,6 +30,8 @@ include::{srcdir}/chapters/dynamic-timeslots.adoc[]
 include::{srcdir}/chapters/bts-models.adoc[]
 
 include::{srcdir}/chapters/architecture.adoc[]
+
+include::{srcdir}/chapters/osmux_bts.adoc[]
 
 include::./common/chapters/qos-dscp-pcp.adoc[]
 

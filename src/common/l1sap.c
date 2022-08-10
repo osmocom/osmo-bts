@@ -157,8 +157,8 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
  * in front and behind data pointer */
 struct msgb *l1sap_msgb_alloc(unsigned int l2_len)
 {
-	int headroom = 128;
-	int size = headroom + sizeof(struct osmo_phsap_prim) + l2_len;
+	const int headroom = L1SAP_MSGB_HEADROOM;
+	const int size = headroom + sizeof(struct osmo_phsap_prim) + l2_len;
 	struct msgb *msg = msgb_alloc_headroom(size, headroom, "l1sap_prim");
 
 	if (!msg)
@@ -1602,9 +1602,13 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * good enough. */
 	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
 		/* hand msg to RTP code for transmission */
-		if (lchan->abis_ip.rtp_socket)
+		if (lchan->abis_ip.osmux.use) {
+			lchan_osmux_send_frame(lchan, msg->data, msg->len,
+					       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+		} else if (lchan->abis_ip.rtp_socket) {
 			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
 				msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+		}
 		/* if loopback is enabled, also queue received RTP data */
 		if (lchan->loopback) {
 			/* add new frame to queue, make sure the queue doesn't get too long */
@@ -1617,7 +1621,9 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	} else {
 		DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
 			 chan_nr);
-		if (lchan->abis_ip.rtp_socket)
+		if (lchan->abis_ip.osmux.use)
+			lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
+		else if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
 		lchan->rtp_tx_marker = true;
 	}

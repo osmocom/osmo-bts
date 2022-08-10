@@ -204,6 +204,8 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
 			"Closing RTP socket on Channel Release ");
 		lchan_rtp_socket_free(lchan);
+	} else if (lchan->abis_ip.osmux.use) {
+		lchan_osmux_release(lchan);
 	}
 
 	/* FIXME: right now we allow creating the rtp_socket even if chan is not

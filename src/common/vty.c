@@ -57,6 +57,7 @@
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/osmux.h>
 
 #define VTY_STR	"Configure the VTY\n"
 
@@ -140,6 +141,7 @@ int bts_vty_is_config_node(struct vty *vty, int node)
 	case BTS_NODE:
 	case PHY_NODE:
 	case PHY_INST_NODE:
+	case OSMUX_NODE:
 		return 1;
 	default:
 		return 0;
@@ -189,6 +191,12 @@ static struct cmd_node trx_node = {
 	1,
 };
 
+static struct cmd_node osmux_node = {
+	OSMUX_NODE,
+	"%s(osmux)# ",
+	1,
+};
+
 gDEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
 	"auto-band",
 	"Automatically select band for ARFCN based on configured band\n")
@@ -206,6 +214,90 @@ gDEFUN(cfg_bts_no_auto_band, cfg_bts_no_auto_band_cmd,
 	struct gsm_bts *bts = vty->index;
 
 	bts->auto_band = 0;
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_osmux, cfg_bts_osmux_cmd,
+	   "osmux",
+	   "Configure Osmux\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	vty->node = OSMUX_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_osmux_use, cfg_bts_osmux_use_cmd,
+	   "use (off|on|only)",
+	   "Configure Osmux usage\n"
+	   "Never use Osmux\n"
+	   "Use Osmux if requested by BSC (default)\n"
+	   "Always use Osmux, reject non-Osmux BSC requests\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+	if (strcmp(argv[0], "off") == 0)
+		bts->osmux.use = OSMUX_USAGE_OFF;
+	else if (strcmp(argv[0], "on") == 0)
+		bts->osmux.use = OSMUX_USAGE_ON;
+	else if (strcmp(argv[0], "only") == 0)
+		bts->osmux.use = OSMUX_USAGE_ONLY;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_osmux_ip,
+      cfg_bts_osmux_ip_cmd,
+      "local-ip " VTY_IPV46_CMD,
+      IP_STR
+      "IPv4 Address to bind to\n"
+      "IPv6 Address to bind to\n")
+{
+	struct gsm_bts *bts = vty->index;
+	osmo_talloc_replace_string(bts, &bts->osmux.local_addr, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_osmux_port,
+      cfg_bts_osmux_port_cmd,
+      "local-port <1-65535>",
+      "Osmux port\n" "UDP port\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->osmux.local_port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_osmux_batch_factor,
+      cfg_bts_osmux_batch_factor_cmd,
+      "batch-factor <1-8>",
+      "Batching factor\n" "Number of messages in the batch\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->osmux.batch_factor = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_osmux_batch_size,
+      cfg_bts_osmux_batch_size_cmd,
+      "batch-size <1-65535>",
+      "Batch size\n" "Batch size in bytes\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->osmux.batch_size = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_osmux_dummy_padding,
+      cfg_bts_osmux_dummy_padding_cmd,
+      "dummy-padding (on|off)",
+      "Dummy padding\n"
+      "Enable dummy padding\n"
+      "Disable dummy padding (default)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	if (strcmp(argv[0], "on") == 0)
+		bts->osmux.dummy_padding = true;
+	else if (strcmp(argv[0], "off") == 0)
+		bts->osmux.dummy_padding = false;
 	return CMD_SUCCESS;
 }
 
@@ -276,6 +368,29 @@ static void config_write_dpc_params(struct vty *vty, const char *prefix,
 		vty_out(vty, " no %s-power-filtering%s", prefix, VTY_NEWLINE);
 		break;
 	}
+}
+
+static void config_write_osmux(struct vty *vty, const char *prefix, const struct gsm_bts *bts)
+{
+	vty_out(vty, "%sosmux%s", prefix, VTY_NEWLINE);
+	vty_out(vty, "%s use ", prefix);
+	switch (bts->osmux.use) {
+	case OSMUX_USAGE_ON:
+		vty_out(vty, "on%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_ONLY:
+		vty_out(vty, "only%s", VTY_NEWLINE);
+		break;
+	case OSMUX_USAGE_OFF:
+	default:
+		vty_out(vty, "off%s", VTY_NEWLINE);
+		break;
+	}
+	vty_out(vty, "%s local-ip %s%s", prefix, bts->osmux.local_addr, VTY_NEWLINE);
+	vty_out(vty, "%s batch-factor %d%s", prefix, bts->osmux.batch_factor, VTY_NEWLINE);
+	vty_out(vty, "%s batch-size %u%s", prefix, bts->osmux.batch_size, VTY_NEWLINE);
+	vty_out(vty, "%s port %u%s", prefix, bts->osmux.local_port, VTY_NEWLINE);
+	vty_out(vty, "%s dummy-padding %s%s", prefix, bts->osmux.dummy_padding ? "on" : "off", VTY_NEWLINE);
 }
 
 static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
@@ -350,6 +465,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	vty_out(vty, " smscb queue-max-length %d%s", bts->smscb_queue_max_len, VTY_NEWLINE);
 	vty_out(vty, " smscb queue-target-length %d%s", bts->smscb_queue_tgt_len, VTY_NEWLINE);
 	vty_out(vty, " smscb queue-hysteresis %d%s", bts->smscb_queue_hyst, VTY_NEWLINE);
+
+	config_write_osmux(vty, " ", bts);
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -2531,6 +2648,17 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_all_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_gsmtap_sapi_cmd);
+
+	/* Osmux Node */
+	install_element(BTS_NODE, &cfg_bts_osmux_cmd);
+	install_node(&osmux_node, config_write_dummy);
+
+	install_element(OSMUX_NODE, &cfg_bts_osmux_use_cmd);
+	install_element(OSMUX_NODE, &cfg_bts_osmux_ip_cmd);
+	install_element(OSMUX_NODE, &cfg_bts_osmux_port_cmd);
+	install_element(OSMUX_NODE, &cfg_bts_osmux_batch_factor_cmd);
+	install_element(OSMUX_NODE, &cfg_bts_osmux_batch_size_cmd);
+	install_element(OSMUX_NODE, &cfg_bts_osmux_dummy_padding_cmd);
 
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);

@@ -254,6 +254,7 @@ OsmoBTS(bts)# list
   gsmtap-sapi (enable-all|disable-all)
   gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
   no gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
+  osmux
   trx <0-254>
 ...
 OsmoBTS(bts)# ?
@@ -274,6 +275,7 @@ OsmoBTS(bts)# ?
   smscb               SMSCB (SMS Cell Broadcast) / CBCH configuration
   gsmtap-remote-host  Enable GSMTAP Um logging (see also 'gsmtap-sapi')
   gsmtap-sapi         Enable/disable sending of UL/DL messages over GSMTAP
+  osmux               Configure Osmux
   trx                 Select a TRX to configure
 ...
 OsmoBTS(bts)# trx 0
@@ -295,3 +297,14 @@ OsmoBTS(trx)# ?
   ta-control        Timing Advance Control Parameters
   phy               Configure PHY Link+Instance for this TRX
 ...
+OsmoBTS(trx)# exit
+OsmoBTS(bts)# osmux
+OsmoBTS(osmux)# ?
+...
+  use            Configure Osmux usage
+  local-ip       IP information
+  local-port     Osmux port
+  batch-factor   Batching factor
+  batch-size     Batch size
+  dummy-padding  Dummy padding
+

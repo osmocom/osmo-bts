@@ -15,6 +15,7 @@
 #include <osmocom/gsm/gsm48_rest_octets.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/meas_rep.h>
+#include <osmocom/netif/osmux.h>
 
 #include <osmo-bts/power_control.h>
 
@@ -163,6 +164,18 @@ struct gsm_lchan {
 		uint8_t rtp_payload;
 		uint8_t rtp_payload2;
 		uint8_t speech_mode;
+		struct {
+			bool use;
+			uint8_t local_cid;
+			uint8_t remote_cid;
+			/* Rx Osmux -> RTP, one allocated & owned per lchan */
+			struct osmux_out_handle *out;
+			 /* Tx RTP -> Osmux, shared by all lchans sharing a
+			  * remote endp (addr+port), see "struct osmux_handle" */
+			struct osmux_in_handle *in;
+			/* Used to build rtp messages we send to osmux */
+			struct osmo_rtp_handle *rtpst;
+		} osmux;
 		struct osmo_rtp_socket *rtp_socket;
 	} abis_ip;
 

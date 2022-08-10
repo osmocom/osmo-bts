@@ -2581,6 +2581,11 @@ static int rsl_tx_ipac_XXcx_ack(struct gsm_lchan *lchan, int inc_pt2,
 					lchan->abis_ip.rtp_payload2);
 	}
 
+	/* Osmocom Extension: Osmux CID */
+	if (lchan->abis_ip.osmux.use)
+		msgb_tlv_put(msg, RSL_IE_OSMO_OSMUX_CID, 1,
+			     &lchan->abis_ip.osmux.local_cid);
+
 	/* push the header in front */
 	rsl_ipa_push_hdr(msg, orig_msgt + 1, chan_nr);
 	msg->trx = lchan->ts->trx;
@@ -2696,7 +2701,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
-	const uint8_t *payload_type, *speech_mode, *payload_type2;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	const uint8_t *payload_type, *speech_mode, *payload_type2, *osmux_cid;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0;
@@ -2745,6 +2751,10 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	if (payload_type2)
 		LOGPC(DRSL, LOGL_DEBUG, "payload_type2=%u ", *payload_type2);
 
+	osmux_cid = TLVP_VAL(&tp, RSL_IE_OSMO_OSMUX_CID);
+	if (osmux_cid)
+		LOGPC(DRSL, LOGL_DEBUG, "osmux_cid=%u ", *osmux_cid);
+
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX && connect_ip && connect_port)
 		inc_ip_port = 1;
 
@@ -2755,51 +2765,95 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 					 inc_ip_port, dch->c.msg_type);
 	}
 
-	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
-		char *ipstr = NULL;
-		if (connect_ip && connect_port) {
-			/* if CRCX specifies a remote IP, we can bind()
-			 * here to 0.0.0.0 and wait for the connect()
-			 * below, after which the kernel will have
-			 * selected the local IP address.  */
-			ipstr = "0.0.0.0";
-		} else {
-			/* if CRCX does not specify a remote IP, we will
-			 * not do any connect() below, and thus the
-			 * local socket will remain bound to 0.0.0.0 -
-			 * which however we cannot legitimately report
-			 * back to the BSC in the CRCX_ACK */
-			ipstr = get_rsl_local_ip(lchan->ts->trx);
-		}
-		rc = lchan_rtp_socket_create(lchan, ipstr);
-		if (rc < 0)
-			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
-						 inc_ip_port, dch->c.msg_type);
-	} else {
-		/* MDCX */
-		if (!lchan->abis_ip.rtp_socket) {
-			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC MDCX, "
-				  "but we have no RTP socket!\n");
+	if (!osmux_cid) { /* Regular RTP */
+		if (bts->osmux.use == OSMUX_USAGE_ONLY) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC XXcx without Osmux CID"
+				  "goes against configured Osmux policy 'only'\n");
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
 		}
-	}
 
+		if (dch->c.msg_type == RSL_MT_IPAC_CRCX) { /* CRCX */
+			char *ipstr = NULL;
+			if (connect_ip && connect_port) {
+				/* if CRCX specifies a remote IP, we can bind()
+				 * here to 0.0.0.0 and wait for the connect()
+				 * below, after which the kernel will have
+				 * selected the local IP address.  */
+				ipstr = "0.0.0.0";
+			} else {
+				/* if CRCX does not specify a remote IP, we will
+				 * not do any connect() below, and thus the
+				 * local socket will remain bound to 0.0.0.0 -
+				 * which however we cannot legitimately report
+				 * back to the BSC in the CRCX_ACK */
+				ipstr = get_rsl_local_ip(lchan->ts->trx);
+			}
+			rc = lchan_rtp_socket_create(lchan, ipstr);
+			if (rc < 0)
+				return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+							 inc_ip_port, dch->c.msg_type);
+		} else { /* MDCX */
+			if (!lchan->abis_ip.rtp_socket) {
+				LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC MDCX, "
+					  "but we have no RTP socket!\n");
+				return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+							 inc_ip_port, dch->c.msg_type);
+			}
+		}
 
-	/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
-	 * address */
-	if (connect_ip == 0) {
-		struct e1inp_sign_link *sign_link =
-					lchan->ts->trx->rsl_link;
+		/* Special rule: If connect_ip == 0.0.0.0, use RSL IP
+		 * address */
+		if (connect_ip == 0) {
+			struct e1inp_sign_link *sign_link =
+						lchan->ts->trx->rsl_link;
 
-		ia.s_addr = htonl(get_signlink_remote_ip(sign_link));
-	} else
-		ia.s_addr = connect_ip;
-	rc = lchan_rtp_socket_connect(lchan, &ia, connect_port);
-	if (rc < 0) {
-		lchan_rtp_socket_free(lchan);
-		return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
-					 inc_ip_port, dch->c.msg_type);
+			ia.s_addr = htonl(get_signlink_remote_ip(sign_link));
+		} else
+			ia.s_addr = connect_ip;
+		rc = lchan_rtp_socket_connect(lchan, &ia, connect_port);
+		if (rc < 0) {
+			lchan_rtp_socket_free(lchan);
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
+		}
+
+	} else { /* Osmux */
+		if (bts->osmux.use == OSMUX_USAGE_OFF) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC XXcx with Osmux CID"
+				  "goes against configured Osmux policy 'off'\n");
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+						 inc_ip_port, dch->c.msg_type);
+		}
+
+		if (dch->c.msg_type == RSL_MT_IPAC_CRCX) { /* CRCX */
+			rc = lchan_osmux_init(lchan, payload_type ? *payload_type : 0);
+			if (rc < 0)
+				return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+							 inc_ip_port, dch->c.msg_type);
+		} else {  /* MDCX */
+			if (!lchan->abis_ip.osmux.use) {
+				LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC MDCX with Osmux CID, "
+					  "CRCX was configured as RTP!\n");
+				return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+							 inc_ip_port, dch->c.msg_type);
+			}
+		}
+
+		if (connect_ip != 0)
+			lchan->abis_ip.connect_ip = connect_ip;
+		if (connect_port != 0)
+			lchan->abis_ip.connect_port = connect_port;
+		lchan->abis_ip.osmux.remote_cid = *osmux_cid;
+		if (lchan->abis_ip.connect_ip && lchan->abis_ip.connect_port &&
+		    !lchan_osmux_connected(lchan)) {
+			rc = lchan_osmux_connect(lchan);
+			if (rc < 0) {
+				lchan_osmux_release(lchan);
+				return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
+							 inc_ip_port, dch->c.msg_type);
+			}
+		}
 	}
 
 	/* Everything has succeeded, we can store new values in lchan */

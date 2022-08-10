@@ -407,6 +407,11 @@ int bts_main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
+	if (bts_osmux_open(g_bts) < 0) {
+		fprintf(stderr, "Osmux setup failed\n");
+		exit(1);
+	}
+
 	if (vty_test_mode) {
 		/* Just select-loop without connecting to the BSC, don't exit. This allows running tests on the VTY
 		 * telnet port. */

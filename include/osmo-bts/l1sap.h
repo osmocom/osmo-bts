@@ -4,6 +4,8 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 
+#define L1SAP_MSGB_HEADROOM 128
+
 /* lchan link ID */
 #define LID_SACCH 0x40
 #define LID_DEDIC 0x00

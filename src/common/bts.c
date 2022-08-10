@@ -54,6 +54,7 @@
 #include <osmo-bts/bts_shutdown_fsm.h>
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/power_control.h>
+#include <osmo-bts/osmux.h>
 
 #define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
@@ -223,6 +224,8 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 		osmo_fsm_inst_free(bts->shutdown_fi);
 		bts->shutdown_fi = NULL;
 	}
+
+	bts_osmux_release(bts);
 	return 0;
 }
 
@@ -378,6 +381,13 @@ int bts_init(struct gsm_bts *bts)
 	 * to the libc malloc all the time */
 	tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
 	osmo_rtp_init(tall_rtp_ctx);
+
+	/* Osmux */
+	rc = bts_osmux_init(bts);
+	if (rc < 0) {
+		llist_del(&bts->list);
+		return rc;
+	}
 
 	/* features implemented in 'common', available for all models,
 	 * order alphabetically */

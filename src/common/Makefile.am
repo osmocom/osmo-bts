@@ -31,6 +31,7 @@ libbts_a_SOURCES = \
 	abis.c \
 	abis_osmo.c \
 	oml.c \
+	osmux.c \
 	bts.c \
 	bts_trx.c \
 	rsl.c \
