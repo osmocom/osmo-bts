@@ -84,17 +84,6 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_NOTICE,
 		.enabled = 1,
 	},
-	[DABIS] = {
-		.name = "DABIS",
-		.description = "A-bis Intput Subsystem",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
-	[DRTP] = {
-		.name = "DRTP",
-		.description = "Realtime Transfer Protocol",
-		.loglevel = LOGL_NOTICE,
-		.enabled = 1,
-	},
 	[DPCU] = {
 		.name = "DPCU",
 		.description = "PCU interface",
@@ -118,6 +107,17 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.description = "Control loops",
 		.color = "\033[0;94m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DABIS] = {
+		.name = "DABIS",
+		.description = "A-bis Intput Subsystem",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DRTP] = {
+		.name = "DRTP",
+		.description = "Realtime Transfer Protocol",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
 	},
 };
 
