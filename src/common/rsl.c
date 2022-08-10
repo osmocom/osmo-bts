@@ -2793,6 +2793,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	LOGPC(DRSL, LOGL_DEBUG, "\n");
 
 	payload_type2 = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_PAYLOAD2);
+	if (payload_type2)
+		LOGPC(DRSL, LOGL_DEBUG, "payload_type2=%u ", *payload_type2);
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX && connect_ip && connect_port)
 		inc_ip_port = 1;
