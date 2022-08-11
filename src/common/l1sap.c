@@ -153,17 +153,16 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 }
 
 /*! limit number of queue entries to %u; drops any surplus messages */
-static void queue_limit_to(const char *prefix, struct llist_head *queue, unsigned int limit)
+static void lchan_dl_tch_queue_enqueue(struct gsm_lchan *lchan, struct msgb *msg, unsigned int limit)
 {
-	unsigned int count = llist_count(queue);
-
-	if (count > limit)
-		LOGP(DL1P, LOGL_NOTICE, "%s: freeing %d queued frames\n", prefix, count-limit);
-	while (count > limit) {
-		struct msgb *tmp = msgb_dequeue(queue);
+	if (lchan->dl_tch_queue_len > limit)
+		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "freeing %d queued frames\n",
+			  lchan->dl_tch_queue_len - limit);
+	while (lchan->dl_tch_queue_len > limit) {
+		struct msgb *tmp = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 		msgb_free(tmp);
-		count--;
 	}
+	msgb_enqueue_count(&lchan->dl_tch_queue, msg, &lchan->dl_tch_queue_len);
 }
 
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data
@@ -915,7 +914,7 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	uint8_t *p;
 
 	/* de-queue response message (loopback) */
-	loop_msg = msgb_dequeue(&lchan->dl_tch_queue);
+	loop_msg = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 	if (!loop_msg) {
 		LOGPGT(DL1P, LOGL_NOTICE, tm, "%s: no looped PDTCH message, sending empty\n",
 		     gsm_lchan_name(lchan));
@@ -1305,7 +1304,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
 	}
 	/* get a msgb from the dl_tx_queue */
-	resp_msg = msgb_dequeue(&lchan->dl_tch_queue);
+	resp_msg = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 	if (!resp_msg) {
 		DEBUGPGT(DL1P, &g_time, "%s DL TCH Tx queue underrun\n", gsm_lchan_name(lchan));
 		resp_l1sap = &empty_l1sap;
@@ -1500,8 +1499,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			/* we are in loopback mode (for BER testing)
 			 * mode and need to enqeue the frame to be
 			 * returned in downlink */
-			queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
-			msgb_enqueue(&lchan->dl_tch_queue, msg);
+			lchan_dl_tch_queue_enqueue(lchan, msg, 1);
 
 			/* Return 1 to signal that we're still using msg
 			 * and it should not be freed */
@@ -1622,10 +1620,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 				msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
 		/* if loopback is enabled, also queue received RTP data */
 		if (lchan->loopback) {
-			/* make sure the queue doesn't get too long */
-			queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
-			/* add new frame to queue */
-			msgb_enqueue(&lchan->dl_tch_queue, msg);
+			/* add new frame to queue, make sure the queue doesn't get too long */
+			lchan_dl_tch_queue_enqueue(lchan, msg, 1);
 			/* Return 1 to signal that we're still using msg and it should not be freed */
 			return 1;
 		}
@@ -1914,9 +1910,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	rtpmsg_ts(msg) = timestamp;
 
 	/* make sure the queue doesn't get too long */
-	queue_limit_to(gsm_lchan_name(lchan), &lchan->dl_tch_queue, 1);
-
-	msgb_enqueue(&lchan->dl_tch_queue, msg);
+	lchan_dl_tch_queue_enqueue(lchan, msg, 1);
 }
 
 static int l1sap_chan_act_dact_modify(struct gsm_bts_trx *trx, uint8_t chan_nr,

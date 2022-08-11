@@ -132,6 +132,7 @@ void gsm_lchan_init(struct gsm_lchan *lchan, struct gsm_bts_trx_ts *ts, unsigned
 
 	INIT_LLIST_HEAD(&lchan->sapi_cmds);
 	INIT_LLIST_HEAD(&lchan->dl_tch_queue);
+	lchan->dl_tch_queue_len = 0;
 }
 
 void gsm_lchan_name_update(struct gsm_lchan *lchan)
@@ -638,4 +639,5 @@ void lchan_rtp_socket_free(struct gsm_lchan *lchan)
 	osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
 	lchan->abis_ip.rtp_socket = NULL;
 	msgb_queue_flush(&lchan->dl_tch_queue);
+	lchan->dl_tch_queue_len = 0;
 }
