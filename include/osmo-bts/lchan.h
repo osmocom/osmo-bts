@@ -360,6 +360,8 @@ int lchan_rtp_socket_create(struct gsm_lchan *lchan, const char *bind_ip);
 int lchan_rtp_socket_connect(struct gsm_lchan *lchan, const struct in_addr *ia, uint16_t connect_port);
 void lchan_rtp_socket_free(struct gsm_lchan *lchan);
 
+void lchan_dl_tch_queue_enqueue(struct gsm_lchan *lchan, struct msgb *msg, unsigned int limit);
+
 static inline bool lchan_is_dcch(const struct gsm_lchan *lchan)
 {
 	switch (lchan->type) {

@@ -152,19 +152,6 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 	return GSM_RTP_DURATION;
 }
 
-/*! limit number of queue entries to %u; drops any surplus messages */
-static void lchan_dl_tch_queue_enqueue(struct gsm_lchan *lchan, struct msgb *msg, unsigned int limit)
-{
-	if (lchan->dl_tch_queue_len > limit)
-		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "freeing %d queued frames\n",
-			  lchan->dl_tch_queue_len - limit);
-	while (lchan->dl_tch_queue_len > limit) {
-		struct msgb *tmp = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
-		msgb_free(tmp);
-	}
-	msgb_enqueue_count(&lchan->dl_tch_queue, msg, &lchan->dl_tch_queue_len);
-}
-
 /* allocate a msgb containing a osmo_phsap_prim + optional l2 data
  * in order to wrap femtobts header around l2 data, there must be enough space
  * in front and behind data pointer */
