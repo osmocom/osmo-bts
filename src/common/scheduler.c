@@ -659,7 +659,7 @@ static void trx_sched_clean_ts(struct gsm_bts_trx_ts *ts)
 	struct l1sched_ts *l1ts = ts->priv;
 	unsigned int i;
 
-	msgb_queue_flush(&l1ts->dl_prims);
+	msgb_queue_free(&l1ts->dl_prims);
 	rate_ctr_group_free(l1ts->ctrs);
 	l1ts->ctrs = NULL;
 

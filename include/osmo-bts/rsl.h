@@ -4,8 +4,6 @@
 #define LCHAN_FN_DUMMY 0xFFFFFFFF
 #define LCHAN_FN_WAIT 0xFFFFFFFE
 
-int msgb_queue_flush(struct llist_head *list);
-
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg);
 int rsl_tx_rf_res(struct gsm_bts_trx *trx);
 int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,

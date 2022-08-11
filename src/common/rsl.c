@@ -88,19 +88,6 @@ int osmo_in_array(unsigned int search, const unsigned int *arr, unsigned int siz
 }
 #define OSMO_IN_ARRAY(search, arr) osmo_in_array(search, arr, ARRAY_SIZE(arr))
 
-int msgb_queue_flush(struct llist_head *list)
-{
-	struct msgb *msg, *msg2;
-	int count = 0;
-
-	llist_for_each_entry_safe(msg, msg2, list, list) {
-		msgb_free(msg);
-		count++;
-	}
-
-	return count;
-}
-
 /* FIXME: move this to libosmocore */
 void gsm48_gen_starting_time(uint8_t *out, struct gsm_time *gtime)
 {
