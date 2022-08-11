@@ -2702,7 +2702,6 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	int rc, inc_ip_port = 0;
 	char *name;
 	struct in_addr ia;
-	struct in_addr addr;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
 		name = "CRCX";
@@ -2721,6 +2720,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 
 	LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "IPAC_%s: ", name);
 	if (TLVP_PRES_LEN(&tp, RSL_IE_IPAC_REMOTE_IP, 4)) {
+		struct in_addr addr;
 		connect_ip = tlvp_val32_unal(&tp, RSL_IE_IPAC_REMOTE_IP);
 		addr.s_addr = connect_ip;
 		LOGPC(DRSL, LOGL_DEBUG, "connect_ip=%s ", inet_ntoa(addr));
