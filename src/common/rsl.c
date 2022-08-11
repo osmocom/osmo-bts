@@ -21,8 +21,6 @@
  *
  */
 
-#include "btsconfig.h"	/* for PACKAGE_VERSION */
-
 #include <stdio.h>
 #include <errno.h>
 #include <netdb.h>
@@ -2706,51 +2704,15 @@ static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
 	return hostbuf;
 }
 
-static int bind_rtp(struct gsm_bts *bts, struct osmo_rtp_socket *rs, const char *ip)
-{
-	int rc;
-	unsigned int i;
-	unsigned int tries;
-
-	tries = (bts->rtp_port_range_end - bts->rtp_port_range_start) / 2;
-	for (i = 0; i < tries; i++) {
-
-		if (bts->rtp_port_range_next >= bts->rtp_port_range_end)
-			bts->rtp_port_range_next = bts->rtp_port_range_start;
-
-		rc = osmo_rtp_socket_bind(rs, ip, bts->rtp_port_range_next);
-
-		bts->rtp_port_range_next += 2;
-
-		if (rc != 0)
-			continue;
-
-		if (bts->rtp_ip_dscp != -1) {
-			if (osmo_rtp_socket_set_dscp(rs, bts->rtp_ip_dscp))
-				LOGP(DRSL, LOGL_ERROR, "failed to set DSCP=%i: %s\n",
-					bts->rtp_ip_dscp, strerror(errno));
-		}
-		if (bts->rtp_priority != -1) {
-			if (osmo_rtp_socket_set_priority(rs, bts->rtp_priority))
-				LOGP(DRSL, LOGL_ERROR, "failed to set socket priority %d: %s\n",
-					bts->rtp_priority, strerror(errno));
-		}
-		return 0;
-	}
-
-	return -1;
-}
-
 static int rsl_rx_ipac_XXcx(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dch = msgb_l2(msg);
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
 	const uint8_t *payload_type, *speech_mode, *payload_type2;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
-	int rc, inc_ip_port = 0, port;
+	int rc, inc_ip_port = 0;
 	char *name;
 	struct in_addr ia;
 	struct in_addr addr;
@@ -2807,41 +2769,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX) {
-		char cname[256+4];
 		char *ipstr = NULL;
-		if (lchan->abis_ip.rtp_socket) {
-			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC CRCX, "
-				  "but we already have socket!\n");
-			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
-						 inc_ip_port, dch->c.msg_type);
-		}
-		/* FIXME: select default value depending on speech_mode */
-		//if (!payload_type)
-		lchan->tch.last_fn = LCHAN_FN_DUMMY;
-		lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx,
-								OSMO_RTP_F_POLL);
-		if (!lchan->abis_ip.rtp_socket) {
-			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to create RTP/RTCP sockets\n");
-			oml_tx_failure_event_rep(&lchan->ts->trx->mo,
-						 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
-						 "%s IPAC Failed to create RTP/RTCP sockets",
-						 gsm_lchan_name(lchan));
-			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
-						 inc_ip_port, dch->c.msg_type);
-		}
-		rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-					       bts->rtp_jitter_adaptive ?
-					       OSMO_RTP_P_JIT_ADAP :
-					       OSMO_RTP_P_JITBUF,
-					       bts->rtp_jitter_buf_ms);
-		if (rc < 0)
-			LOGPLCHAN(lchan, DRTP, LOGL_ERROR,
-				  "IPAC Failed to set RTP socket parameters: %s\n", strerror(-rc));
-		else
-			LOGPLCHAN(lchan, DRTP, LOGL_INFO, "IPAC set RTP socket parameters: %d\n", rc);
-		lchan->abis_ip.rtp_socket->priv = lchan;
-		lchan->abis_ip.rtp_socket->rx_cb = &l1sap_rtp_rx_cb;
-
 		if (connect_ip && connect_port) {
 			/* if CRCX specifies a remote IP, we can bind()
 			 * here to 0.0.0.0 and wait for the connect()
@@ -2856,26 +2784,10 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			 * back to the BSC in the CRCX_ACK */
 			ipstr = get_rsl_local_ip(lchan->ts->trx);
 		}
-		rc = bind_rtp(bts, lchan->abis_ip.rtp_socket, ipstr);
-		if (rc < 0) {
-			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to bind RTP/RTCP sockets\n");
-			oml_tx_failure_event_rep(&lchan->ts->trx->mo,
-						 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
-						 "%s IPAC Failed to bind RTP/RTCP sockets",
-						 gsm_lchan_name(lchan));
-			osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
-			msgb_queue_flush(&lchan->dl_tch_queue);
+		rc = lchan_rtp_socket_create(lchan, ipstr);
+		if (rc < 0)
 			return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 						 inc_ip_port, dch->c.msg_type);
-		}
-		/* Ensure RTCP SDES contains some useful information */
-		snprintf(cname, sizeof(cname), "bts@%s", ipstr);
-		osmo_rtp_set_source_desc(lchan->abis_ip.rtp_socket, cname,
-					 gsm_lchan_name(lchan), NULL, NULL,
-					 gsm_trx_unit_id(lchan->ts->trx),
-					 "OsmoBTS-" PACKAGE_VERSION, NULL);
-		/* FIXME: multiplex connection, BSC proxy */
 	} else {
 		/* MDCX */
 		if (!lchan->abis_ip.rtp_socket) {
@@ -2896,26 +2808,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		ia.s_addr = htonl(get_signlink_remote_ip(sign_link));
 	} else
 		ia.s_addr = connect_ip;
-	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
-				     inet_ntoa(ia), connect_port);
+	rc = lchan_rtp_socket_connect(lchan, &ia, connect_port);
 	if (rc < 0) {
-		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "Failed to connect RTP/RTCP sockets\n");
-		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-		lchan->abis_ip.rtp_socket = NULL;
-		msgb_queue_flush(&lchan->dl_tch_queue);
+		lchan_rtp_socket_free(lchan);
 		return tx_ipac_XXcx_nack(lchan, RSL_ERR_RES_UNAVAIL,
 					 inc_ip_port, dch->c.msg_type);
 	}
-	/* save IP address and port number */
-	lchan->abis_ip.connect_ip = ntohl(ia.s_addr);
-	lchan->abis_ip.connect_port = connect_port;
-
-	rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
-					&lchan->abis_ip.bound_ip,
-					&port);
-	if (rc < 0)
-		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC cannot obtain locally bound IP/port: %d\n", rc);
-	lchan->abis_ip.bound_port = port;
 
 	/* Everything has succeeded, we can store new values in lchan */
 	if (payload_type) {
@@ -2957,9 +2855,7 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 	if (lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
 					  "Closing RTP socket on DLCX ");
-		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-		lchan->abis_ip.rtp_socket = NULL;
-		msgb_queue_flush(&lchan->dl_tch_queue);
+		lchan_rtp_socket_free(lchan);
 	}
 	return rc;
 }

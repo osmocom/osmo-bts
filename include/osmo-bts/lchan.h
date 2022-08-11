@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <netinet/in.h>
 
 #include <osmocom/core/timer.h>
 #include <osmocom/core/linuxlist.h>
@@ -353,6 +354,10 @@ void gsm_lchan_interf_meas_calc_avg(struct gsm_lchan *lchan);
 int lchan2ecu_codec(const struct gsm_lchan *lchan);
 
 void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state);
+
+int lchan_rtp_socket_create(struct gsm_lchan *lchan, const char *bind_ip);
+int lchan_rtp_socket_connect(struct gsm_lchan *lchan, const struct in_addr *ia, uint16_t connect_port);
+void lchan_rtp_socket_free(struct gsm_lchan *lchan);
 
 static inline bool lchan_is_dcch(const struct gsm_lchan *lchan)
 {

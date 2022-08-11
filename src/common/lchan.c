@@ -19,6 +19,8 @@
  *
  */
 
+#include "btsconfig.h"	/* for PACKAGE_VERSION */
+
 #include <osmocom/core/logging.h>
 
 #include <osmocom/trau/osmo_ortp.h>
@@ -200,9 +202,7 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
 		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
 			"Closing RTP socket on Channel Release ");
-		osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
-		lchan->abis_ip.rtp_socket = NULL;
-		msgb_queue_flush(&lchan->dl_tch_queue);
+		lchan_rtp_socket_free(lchan);
 	}
 
 	/* FIXME: right now we allow creating the rtp_socket even if chan is not
@@ -509,4 +509,133 @@ int lchan2ecu_codec(const struct gsm_lchan *lchan)
 	default:
 		return -1;
 	}
+}
+
+static int bind_rtp(struct gsm_bts *bts, struct osmo_rtp_socket *rs, const char *ip)
+{
+	int rc;
+	unsigned int i;
+	unsigned int tries;
+
+	tries = (bts->rtp_port_range_end - bts->rtp_port_range_start) / 2;
+	for (i = 0; i < tries; i++) {
+
+		if (bts->rtp_port_range_next >= bts->rtp_port_range_end)
+			bts->rtp_port_range_next = bts->rtp_port_range_start;
+
+		rc = osmo_rtp_socket_bind(rs, ip, bts->rtp_port_range_next);
+
+		bts->rtp_port_range_next += 2;
+
+		if (rc != 0)
+			continue;
+
+		if (bts->rtp_ip_dscp != -1) {
+			if (osmo_rtp_socket_set_dscp(rs, bts->rtp_ip_dscp))
+				LOGP(DRSL, LOGL_ERROR, "failed to set DSCP=%d: %s\n",
+					bts->rtp_ip_dscp, strerror(errno));
+		}
+		if (bts->rtp_priority != -1) {
+			if (osmo_rtp_socket_set_priority(rs, bts->rtp_priority))
+				LOGP(DRSL, LOGL_ERROR, "failed to set socket priority %d: %s\n",
+					bts->rtp_priority, strerror(errno));
+		}
+		return 0;
+	}
+
+	return -1;
+}
+
+int lchan_rtp_socket_create(struct gsm_lchan *lchan, const char *bind_ip)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	char cname[256+4];
+	int rc;
+
+	if (lchan->abis_ip.rtp_socket) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC CRCX, "
+			  "but we already have socket!\n");
+		return -EALREADY;
+	}
+
+	/* FIXME: select default value depending on speech_mode */
+	//if (!payload_type)
+	lchan->tch.last_fn = LCHAN_FN_DUMMY;
+	lchan->abis_ip.rtp_socket = osmo_rtp_socket_create(lchan->ts->trx,
+							OSMO_RTP_F_POLL);
+
+	if (!lchan->abis_ip.rtp_socket) {
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to create RTP/RTCP sockets\n");
+		oml_tx_failure_event_rep(&lchan->ts->trx->mo,
+					 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
+					 "%s IPAC Failed to create RTP/RTCP sockets",
+					 gsm_lchan_name(lchan));
+		return -ENOTCONN;
+	}
+
+	rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
+				       bts->rtp_jitter_adaptive ?
+				       OSMO_RTP_P_JIT_ADAP :
+				       OSMO_RTP_P_JITBUF,
+				       bts->rtp_jitter_buf_ms);
+	if (rc < 0)
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR,
+			  "IPAC Failed to set RTP socket parameters: %s\n", strerror(-rc));
+	else
+		LOGPLCHAN(lchan, DRTP, LOGL_INFO, "IPAC set RTP socket parameters: %d\n", rc);
+
+	lchan->abis_ip.rtp_socket->priv = lchan;
+	lchan->abis_ip.rtp_socket->rx_cb = &l1sap_rtp_rx_cb;
+
+	rc = bind_rtp(bts, lchan->abis_ip.rtp_socket, bind_ip);
+	if (rc < 0) {
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to bind RTP/RTCP sockets\n");
+		oml_tx_failure_event_rep(&lchan->ts->trx->mo,
+					 NM_SEVER_MINOR, OSMO_EVT_CRIT_RTP_TOUT,
+					 "%s IPAC Failed to bind RTP/RTCP sockets",
+					 gsm_lchan_name(lchan));
+		lchan_rtp_socket_free(lchan);
+		return -EBADFD;
+	}
+
+	/* Ensure RTCP SDES contains some useful information */
+	snprintf(cname, sizeof(cname), "bts@%s", bind_ip);
+	osmo_rtp_set_source_desc(lchan->abis_ip.rtp_socket, cname,
+				 gsm_lchan_name(lchan), NULL, NULL,
+				 gsm_trx_unit_id(lchan->ts->trx),
+				 "OsmoBTS-" PACKAGE_VERSION, NULL);
+	/* FIXME: multiplex connection, BSC proxy */
+	return 0;
+}
+
+
+int lchan_rtp_socket_connect(struct gsm_lchan *lchan, const struct in_addr *ia, uint16_t connect_port)
+{
+	int bound_port = 0;
+	int rc;
+
+	rc = osmo_rtp_socket_connect(lchan->abis_ip.rtp_socket,
+				     inet_ntoa(*ia), connect_port);
+	if (rc < 0) {
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "Failed to connect RTP/RTCP sockets\n");
+		return -ECONNREFUSED;
+	}
+	/* save IP address and port number */
+	lchan->abis_ip.connect_ip = ntohl(ia->s_addr);
+	lchan->abis_ip.connect_port = connect_port;
+
+	rc = osmo_rtp_get_bound_ip_port(lchan->abis_ip.rtp_socket,
+					&lchan->abis_ip.bound_ip,
+					&bound_port);
+	if (rc < 0)
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC cannot obtain locally bound IP/port: %d\n", rc);
+	lchan->abis_ip.bound_port = bound_port;
+	return 0;
+}
+
+void lchan_rtp_socket_free(struct gsm_lchan *lchan)
+{
+	osmo_rtp_socket_free(lchan->abis_ip.rtp_socket);
+	lchan->abis_ip.rtp_socket = NULL;
+	msgb_queue_flush(&lchan->dl_tch_queue);
 }
