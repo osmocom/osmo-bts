@@ -326,8 +326,8 @@ static uint8_t trx_set_ts(struct gsm_bts_trx_ts *ts)
 /* enable ciphering */
 static int l1if_set_ciphering(struct gsm_lchan *lchan, uint8_t chan_nr, int downlink)
 {
-	/* ciphering already enabled in both directions */
-	if (lchan->ciph_state == LCHAN_CIPH_RXTX_CONF)
+	/* ignore the request when the channel is not active */
+	if (lchan->state != LCHAN_S_ACTIVE)
 		return -EINVAL;
 
 	if (!downlink) {
@@ -463,6 +463,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					lchan->tch.amr_mr.mode[3].mode,
 					amr_get_initial_mode(lchan),
 					0);
+				/* update ciphering params */
+				l1if_set_ciphering(lchan, chan_nr, 0);
+				l1if_set_ciphering(lchan, chan_nr, 1);
+				if (lchan->encr.alg_id)
+					lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
+				else
+					lchan->ciph_state = LCHAN_CIPH_NONE;
 				break;
 			}
 			/* here, type == PRIM_INFO_DEACTIVATE */
