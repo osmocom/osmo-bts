@@ -505,7 +505,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
 		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
 		chan_state->dl_facch_bursts = 8;
-	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR)
+	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
@@ -514,8 +514,9 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
-	else
+	} else {
 		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
+	}
 
 	/* free message */
 	msgb_free(msg);
