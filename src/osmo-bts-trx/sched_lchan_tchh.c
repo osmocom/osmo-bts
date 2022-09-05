@@ -35,6 +35,8 @@
 #include <osmocom/coding/gsm0503_coding.h>
 #include <osmocom/coding/gsm0503_amr_dtx.h>
 
+#include <osmocom/netif/amr.h>
+
 #include <osmo-bts/bts.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/logging.h>
@@ -196,7 +198,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		fn_is_cmi = sched_tchh_ul_amr_cmi_map[bi->fn % 26];
 
 		/* See comment in function rx_tchf_fn() */
-		amr = 2;
+		amr = sizeof(struct amr_hdr);
 		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, *bursts_p,
 						!sched_tchh_ul_facch_map[bi->fn % 26],
 						!fn_is_cmi, chan_state->codec,
@@ -336,7 +338,7 @@ bfi:
 					       "not sending BFI\n", rc);
 					return -EINVAL;
 				}
-				memset(tch_data + 2, 0, rc - 2);
+				memset(tch_data + sizeof(struct amr_hdr), 0, rc - sizeof(struct amr_hdr));
 				break;
 			default:
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
@@ -436,8 +438,8 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
-		gsm0503_tch_ahs_encode(*bursts_p, msg->l2h + 2,
-			msgb_l2len(msg) - 2, !dl_amr_fn_is_cmi(br->fn),
+		gsm0503_tch_ahs_encode(*bursts_p, msg->l2h + sizeof(struct amr_hdr),
+			msgb_l2len(msg) - sizeof(struct amr_hdr), !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);

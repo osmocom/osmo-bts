@@ -35,6 +35,8 @@
 #include <osmocom/coding/gsm0503_coding.h>
 #include <osmocom/coding/gsm0503_amr_dtx.h>
 
+#include <osmocom/netif/amr.h>
+
 #include <osmo-bts/bts.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/logging.h>
@@ -155,11 +157,13 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		if (chan_state->amr_last_dtx == AFS_ONSET)
 			lchan_set_marker(false, lchan);
 
-		/* we store tch_data + 2 header bytes, the amr variable set to
-		 * 2 will allow us to skip the first 2 bytes in case we did
-		 * receive an FACCH frame instead of a voice frame (we do not
-		 * know this before we actually decode the frame) */
-		amr = 2;
+		/* Store AMR payload in tch-data with an offset of 2 bytes, so
+		 * that we can easily prepend/fill the RTP AMR header (struct
+		 * amr_hdr) with osmo_amr_rtp_enc() later on. The amr variable
+		 * is used far below to account for the decoded offset in case
+		 * we receive an FACCH frame instead of a voice frame (we
+		 * do not know this before we actually decode the frame) */
+		amr = sizeof(struct amr_hdr);
 		rc = gsm0503_tch_afs_decode_dtx(tch_data + amr, *bursts_p,
 			amr_is_cmr, chan_state->codec, chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
@@ -302,7 +306,7 @@ bfi:
 					       "not sending BFI\n", rc);
 					return -EINVAL;
 				}
-				memset(tch_data + 2, 0, rc - 2);
+				memset(tch_data + sizeof(struct amr_hdr), 0, rc - sizeof(struct amr_hdr));
 				break;
 			default:
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
@@ -509,8 +513,8 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
-		gsm0503_tch_afs_encode(*bursts_p, msg->l2h + 2,
-			msgb_l2len(msg) - 2, !dl_amr_fn_is_cmi(br->fn),
+		gsm0503_tch_afs_encode(*bursts_p, msg->l2h + sizeof(struct amr_hdr),
+			msgb_l2len(msg) - sizeof(struct amr_hdr), !dl_amr_fn_is_cmi(br->fn),
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
