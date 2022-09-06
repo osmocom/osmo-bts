@@ -6,6 +6,7 @@ AM_CFLAGS = \
 	$(LIBOSMOGSM_CFLAGS) \
 	$(LIBOSMOVTY_CFLAGS) \
 	$(LIBOSMOTRAU_CFLAGS) \
+	$(LIBOSMONETIF_CFAGS) \
 	$(NULL)
 LDADD = \
 	$(LIBOSMOCORE_LIBS) \
@@ -13,6 +14,7 @@ LDADD = \
 	$(LIBOSMOGSM_LIBS) \
 	$(LIBOSMOVTY_LIBS) \
 	$(LIBOSMOTRAU_LIBS) \
+	$(LIBOSMONETIF_LIBS) \
 	$(NULL)
 
 check_PROGRAMS = ms_power_loop_test bs_power_loop_test

@@ -10,6 +10,7 @@ export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
 export LD_LIBRARY_PATH="$inst/lib"
 
 osmo-build-dep.sh libosmo-abis
+osmo-build-dep.sh libosmo-netif "" --disable-doxygen
 
 cd "$deps"
 osmo-layer1-headers.sh lc15 "$FIRMWARE_VERSION"
