@@ -4,6 +4,8 @@ Description=osmo-bts for LC15 / sysmoBTS 2100
 [Service]
 Type=simple
 ExecStart=/usr/bin/osmo-bts-lc15 -t 2 -s -c /etc/osmocom/osmo-bts-lc15.cfg -M
+StateDirectory=osmocom
+WorkingDirectory=%S/osmocom
 RuntimeDirectory=osmo-bts
 Restart=always
 RestartSec=2

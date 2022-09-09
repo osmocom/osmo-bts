@@ -4,6 +4,8 @@ Description=Osmocom osmo-bts for osmo-trx
 [Service]
 Type=simple
 ExecStart=/usr/bin/osmo-bts-trx -s -c /etc/osmocom/osmo-bts-trx.cfg
+StateDirectory=osmocom
+WorkingDirectory=%S/osmocom
 Restart=always
 RestartSec=2
 

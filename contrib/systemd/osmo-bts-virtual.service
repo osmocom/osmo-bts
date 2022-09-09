@@ -4,6 +4,8 @@ Description=Osmocom GSM BTS for virtual Um layer based on GSMTAP/UDP
 [Service]
 Type=simple
 ExecStart=/usr/bin/osmo-bts-virtual -s -c /etc/osmocom/osmo-bts-virtual.cfg
+StateDirectory=osmocom
+WorkingDirectory=%S/osmocom
 Restart=always
 RestartSec=2
 

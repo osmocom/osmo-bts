@@ -4,6 +4,8 @@ Description=osmo-bts for OC-2G
 [Service]
 Type=simple
 ExecStart=/usr/bin/osmo-bts-oc2g -s -c /etc/osmocom/osmo-bts-oc2g.cfg -M
+StateDirectory=osmocom
+WorkingDirectory=%S/osmocom
 RuntimeDirectory=osmo-bts
 Restart=always
 RestartSec=2

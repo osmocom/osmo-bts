@@ -4,6 +4,8 @@ Description=osmo-bts manager for sysmoBTS
 [Service]
 Type=simple
 ExecStart=/usr/bin/sysmobts-mgr -ns -c /etc/osmocom/sysmobts-mgr.cfg
+StateDirectory=osmocom
+WorkingDirectory=%S/osmocom
 Restart=always
 RestartSec=2
 
