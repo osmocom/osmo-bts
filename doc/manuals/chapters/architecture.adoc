@@ -89,7 +89,6 @@ order to specify which PHY instance is allocated to this specific TRX.
 | common | phy_links_open() | Iterate over list of configured PHY links
 | bts-specific | bts_model_phy_link_open() | Open each of the configured PHY links
 | bts-specific | bts_model_phy_link_close() | Close each of the configured PHY links
-| common | write_pid_file() | Generate the pid file
 | common | osmo_daemonize() | Fork as daemon in background (if configured)
 | common | bts_main() | Run main loop until global variable quit >= 2
 |===

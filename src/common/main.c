@@ -257,25 +257,6 @@ static void signal_handler(int signum)
 	}
 }
 
-static int write_pid_file(char *procname)
-{
-	FILE *outf;
-	char tmp[PATH_MAX+1];
-
-	snprintf(tmp, sizeof(tmp)-1, "/var/run/%s.pid", procname);
-	tmp[PATH_MAX-1] = '\0';
-
-	outf = fopen(tmp, "w");
-	if (!outf)
-		return -1;
-
-	fprintf(outf, "%d\n", getpid());
-
-	fclose(outf);
-
-	return 0;
-}
-
 int bts_main(int argc, char **argv)
 {
 	struct gsm_bts_trx *trx;
@@ -357,8 +338,6 @@ int bts_main(int argc, char **argv)
 			exit(1);
 		}
 	}
-
-	write_pid_file("osmo-bts");
 
 	/* Accept a GSMTAP host from VTY config, but a commandline option overrides that. */
 	if (gsmtap_ip != NULL) {
