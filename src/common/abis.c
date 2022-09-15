@@ -230,6 +230,14 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 			trx->rsl_link = NULL;
 			if (trx == trx->bts->c0)
 				load_timer_stop(trx->bts);
+		} else {
+			/* If we have no rsl_link yet it may mean that lower
+			 * layers are still establishing the socket (TCP, IPA).
+			 * Let's tell it to stop connection establishment since
+			 * we are shutting down. */
+			struct e1inp_line *line = e1inp_line_find(0);
+			if (line)
+				e1inp_ipa_bts_rsl_close_n(line, trx->nr);
 		}
 		/* Note: Here we could send NM_EV_RSL_DOWN to each
 		 * trx->(bb_transc.)mo.fi, but we are starting shutdown of the
