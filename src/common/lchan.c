@@ -207,6 +207,8 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 	} else if (lchan->abis_ip.osmux.use) {
 		lchan_osmux_release(lchan);
 	}
+	/* reset all Abis related config: */
+	memset(&lchan->abis_ip, 0, sizeof(lchan->abis_ip));
 
 	/* FIXME: right now we allow creating the rtp_socket even if chan is not
 	 * activated... Once we check for that, we can move this check at the
