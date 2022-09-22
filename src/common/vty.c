@@ -1946,7 +1946,7 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	}
 	if (lchan->abis_ip.connect_ip) {
 		ia.s_addr = htonl(lchan->abis_ip.connect_ip);
-		vty_out(vty, "  Conn. IP: %s Port %u RTP_TYPE=%u SPEECH_MODE=0x%02u%s",
+		vty_out(vty, "  Conn. IP: %s Port %u RTP_TYPE=%u SPEECH_MODE=0x%02x%s",
 			inet_ntoa(ia), lchan->abis_ip.connect_port,
 			lchan->abis_ip.rtp_payload, lchan->abis_ip.speech_mode,
 			VTY_NEWLINE);
