@@ -5,7 +5,7 @@
 
 extern int pcu_direct;
 
-#define PCUIF_HDR_SIZE ( sizeof(struct gsm_pcu_if) - sizeof(((struct gsm_pcu_if *)0)->u) )
+#define PCUIF_HDR_SIZE (sizeof(struct gsm_pcu_if) - sizeof(((struct gsm_pcu_if *)0)->u))
 
 int pcu_tx_info_ind(void);
 int pcu_tx_si(const struct gsm_bts *bts, enum osmo_sysinfo_type si_type, bool enable);

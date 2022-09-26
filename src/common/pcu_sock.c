@@ -899,7 +899,7 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 			     "size is %zu, discarding\n", prim_len, #prim_msg, _len); \
 			return -EINVAL; \
 		} \
-	} while(0);
+	} while (0)
 static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
 	struct gsm_pcu_if *pcu_prim, size_t prim_len)
 {
