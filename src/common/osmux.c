@@ -130,13 +130,6 @@ static void osmux_handle_put(struct gsm_bts *bts, struct osmux_in_handle *in)
 				LOGP(DOSMUX, LOGL_INFO,
 				     "Releasing unused osmux handle for %s\n",
 				     osmo_sockaddr_to_str(&h->rem_addr));
-				LOGP(DOSMUX, LOGL_INFO, "Stats: "
-				     "input RTP msgs: %u bytes: %" PRIu64 " "
-				     "output osmux msgs: %u bytes: %" PRIu64 "\n",
-				     in->stats.input_rtp_msgs,
-				     in->stats.input_rtp_bytes,
-				     in->stats.output_osmux_msgs,
-				     in->stats.output_osmux_bytes);
 				llist_del(&h->head);
 				TALLOC_FREE(h->in);
 				talloc_free(h);
