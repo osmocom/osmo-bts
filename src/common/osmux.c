@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <osmocom/core/logging.h>
 #include <osmocom/core/utils.h>
@@ -288,14 +289,19 @@ int bts_osmux_init(struct gsm_bts *bts)
 	bts->osmux.batch_size = OSMUX_BATCH_DEFAULT_MAX;
 	bts->osmux.dummy_padding = false;
 	INIT_LLIST_HEAD(&bts->osmux.osmux_handle_list);
+	bts->osmux.fd.fd = -1;
 	return 0;
 }
 
 void bts_osmux_release(struct gsm_bts *bts)
 {
-	/* FIXME: not needed? YES,we probably need to iterare over
-	   bts->osmux.osmux_handle_list and free everything there, see
-	   osmux_handle_put() */
+	/* bts->osmux.osmux_handle_list should end up empty when all lchans are
+	 * released/freed upon talloc_free(bts). */
+	/* If bts->osmux.fd.data is NULL, bts is being released/freed without
+	 * passing bts_osmux_init()/through bts_osmux_open() and hence fd is
+	 * probably 0 (memzeored). Avoid accessing it if not initialized. */
+	if (bts->osmux.fd.fd != -1 && bts->osmux.fd.data)
+		osmo_fd_close(&bts->osmux.fd);
 }
 
 /* Called after config file read, start services */
