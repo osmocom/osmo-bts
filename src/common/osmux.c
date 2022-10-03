@@ -237,6 +237,8 @@ static struct gsm_lchan *osmux_lchan_find(struct gsm_bts *bts, const struct osmo
 				struct osmux_handle *h;
 				if (!lchan->abis_ip.osmux.use)
 					continue;
+				if (!lchan_osmux_connected(lchan))
+					continue;
 				if (lchan->abis_ip.osmux.local_cid != osmux_cid)
 					continue;
 				h = osmux_xfrm_input_get_deliver_cb_data(lchan->abis_ip.osmux.in);
