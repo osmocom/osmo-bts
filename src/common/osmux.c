@@ -427,8 +427,10 @@ void lchan_osmux_release(struct gsm_lchan *lchan)
 		osmux_handle_put(bts, lchan->abis_ip.osmux.in);
 		lchan->abis_ip.osmux.in = NULL;
 	}
-	if (lchan->abis_ip.osmux.rtpst)
+	if (lchan->abis_ip.osmux.rtpst) {
 		osmo_rtp_handle_free(lchan->abis_ip.osmux.rtpst);
+		lchan->abis_ip.osmux.rtpst = NULL;
+	}
 
 	lchan->abis_ip.osmux.use = false;
 }
