@@ -263,9 +263,11 @@ static int osmux_read_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	while ((osmuxh = osmux_xfrm_output_pull(msg)) != NULL) {
 		struct gsm_lchan *lchan = osmux_lchan_find(bts, &rem_addr, osmuxh->circuit_id);
 		if (!lchan) {
+			char addr_str[64];
+			osmo_sockaddr_to_str_buf(addr_str, sizeof(addr_str), &rem_addr);
 			LOGP(DOSMUX, LOGL_NOTICE,
-			     "Cannot find lchan for circuit_id=%d\n",
-			     osmuxh->circuit_id);
+			     "Cannot find lchan for %s CID=%d\n",
+			     addr_str, osmuxh->circuit_id);
 			continue;
 		}
 		osmux_xfrm_output_sched(lchan->abis_ip.osmux.out, osmuxh);
