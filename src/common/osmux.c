@@ -234,10 +234,15 @@ static struct gsm_lchan *osmux_lchan_find(struct gsm_bts *bts, const struct osmo
 			subslots = ts_subslots(ts);
 			for (subslot = 0; subslot < subslots; subslot++) {
 				struct gsm_lchan *lchan = &ts->lchan[subslot];
+				struct osmux_handle *h;
 				if (!lchan->abis_ip.osmux.use)
 					continue;
-				if (lchan->abis_ip.osmux.local_cid == osmux_cid)
-					return lchan;
+				if (lchan->abis_ip.osmux.local_cid != osmux_cid)
+					continue;
+				h = osmux_xfrm_input_get_deliver_cb_data(lchan->abis_ip.osmux.in);
+				if (osmo_sockaddr_cmp(&h->rem_addr, rem_addr) != 0)
+					continue;
+				return lchan; /* Found it! */
 			}
 		}
 	}
