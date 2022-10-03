@@ -826,13 +826,18 @@ static inline int trx_data_parse_mts(struct phy_instance *phy_inst,
 
 	/* | 7 6 5 4 3 2 1 0 | Bitmask / description
 	 * | . 0 0 X X . . . | GMSK, 4 TSC sets (0..3)
-	 * | . 0 1 0 X . . . | 8-PSK, 2 TSC sets (0..1) */
+	 * | . 0 1 0 X . . . | 8-PSK, 2 TSC sets (0..1)
+	 * | . 0 1 1 0 . . . | GMSK, Access Burst */
 	if ((mts >> 5) == 0x00) {
 		bi->mod = TRX_MOD_T_GMSK;
 		bi->tsc_set = (mts >> 3) & 0x03;
 	} else if ((mts >> 4) == 0x02) {
 		bi->mod = TRX_MOD_T_8PSK;
 		bi->tsc_set = (mts >> 3) & 0x01;
+	} else if ((mts >> 3) == 0x06) {
+		bi->flags |= TRX_BI_F_ACCESS_BURST;
+		bi->mod = TRX_MOD_T_GMSK;
+		bi->tsc_set = 0;
 	} else {
 		LOGPPHI(phy_inst, DTRX, LOGL_ERROR,
 			"Rx TRXD PDU with unknown or not supported "

@@ -240,6 +240,7 @@ extern const struct trx_sched_multiframe trx_sched_multiframes[];
 #define TRX_BI_F_TRX_NUM	(1 << 4)
 #define TRX_BI_F_BATCH_IND	(1 << 5)
 #define TRX_BI_F_SHADOW_IND	(1 << 6)
+#define TRX_BI_F_ACCESS_BURST	(1 << 7)
 
 /*! UL burst indication with the corresponding meta info */
 struct trx_ul_burst_ind {

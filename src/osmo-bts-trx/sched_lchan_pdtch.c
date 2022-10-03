@@ -56,6 +56,10 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received PDTCH bid=%u\n", bi->bid);
 
+	/* An MS may be polled to send an ACK in form of four Access Bursts */
+	if (bi->flags & TRX_BI_F_ACCESS_BURST)
+		return rx_rach_fn(l1ts, bi);
+
 	/* allocate burst memory, if not already */
 	if (!*bursts_p) {
 		*bursts_p = talloc_zero_size(l1ts, GSM0503_EGPRS_BURSTS_NBITS);
