@@ -137,7 +137,7 @@ int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
 	       "Received%s RACH (%s): rssi=%d toa256=%d",
-	       (bi->chan != TRXC_RACH) ? " handover" : "",
+	       TRX_CHAN_IS_DEDIC(bi->chan) ? " handover" : "",
 	       get_value_string(rach_synch_seq_names, synch_seq),
 	       bi->rssi, bi->toa256);
 	if (bi->flags & TRX_BI_F_CI_CB)
