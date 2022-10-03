@@ -265,7 +265,7 @@ static int osmux_read_fd_cb(struct osmo_fd *ofd, unsigned int what)
 		if (!lchan) {
 			char addr_str[64];
 			osmo_sockaddr_to_str_buf(addr_str, sizeof(addr_str), &rem_addr);
-			LOGP(DOSMUX, LOGL_NOTICE,
+			LOGP(DOSMUX, LOGL_DEBUG,
 			     "Cannot find lchan for %s CID=%d\n",
 			     addr_str, osmuxh->circuit_id);
 			continue;
