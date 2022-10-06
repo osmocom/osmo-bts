@@ -349,7 +349,7 @@ static int gsmtap_ph_data(const struct osmo_phsap_prim *l1sap,
 	uint8_t chan_nr, link_id;
 
 	*data = msgb_l2(msg);
-	*len = msgb_l2len(msg);
+	*len = msgb_l2(msg) ? msgb_l2len(msg) : 0;
 	chan_nr = l1sap->u.data.chan_nr;
 	link_id = l1sap->u.data.link_id;
 
@@ -391,7 +391,7 @@ static int gsmtap_pdch(const struct osmo_phsap_prim *l1sap,
 	struct msgb *msg = l1sap->oph.msg;
 
 	*data = msgb_l2(msg);
-	*len = msgb_l2len(msg);
+	*len = msgb_l2(msg) ? msgb_l2len(msg) : 0;
 
 	if (L1SAP_IS_PTCCH(fn)) {
 		*chan_type = GSMTAP_CHANNEL_PTCCH;
