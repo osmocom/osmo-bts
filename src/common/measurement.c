@@ -916,6 +916,8 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	uint8_t ms_ta;
 	int8_t ul_rssi;
 	int16_t ul_ci_cb;
+	uint8_t *l3;
+	unsigned int l3_len;
 
 	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
 		/* Some brilliant engineer decided that the ordering of
@@ -945,7 +947,9 @@ void lchan_meas_handle_sacch(struct gsm_lchan *lchan, struct msgb *msg)
 	}
 
 	timing_offset = ms_to_valid(lchan) ? ms_to2rsl(lchan, ms_ta) : -1;
-	rc = rsl_tx_meas_res(lchan, msgb_l3(msg), msgb_l3len(msg), timing_offset);
+	l3 = msgb_l3(msg);
+	l3_len = l3 ? msgb_l3len(msg) : 0;
+	rc = rsl_tx_meas_res(lchan, l3, l3_len, timing_offset);
 	if (rc == 0) /* Count successful transmissions */
 		lchan->meas.res_nr++;
 
