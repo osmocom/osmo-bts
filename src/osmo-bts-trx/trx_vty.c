@@ -394,12 +394,13 @@ DEFUN_USRATTR(cfg_phyinst_rxgain, cfg_phyinst_rxgain_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
-	"osmotrx tx-attenuation (oml|<0-50>)",
-	OSMOTRX_STR
-	"Set the transmitter attenuation\n"
-	"Use NM_ATT_RF_MAXPOWR_R (max power reduction) from BSC via OML (default)\n"
-	"Fixed attenuation in dB, overriding OML (default)\n")
+DEFUN_ATTR(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
+	   "osmotrx tx-attenuation (oml|<0-50>)",
+	   OSMOTRX_STR
+	   "Set the transmitter attenuation\n"
+	   "Use NM_ATT_RF_MAXPOWR_R (max power reduction) from BSC via OML (default)\n"
+	   "Fixed attenuation in dB, overriding OML (default)\n",
+	   CMD_ATTR_IMMEDIATE)
 {
 	struct phy_instance *pinst = vty->index;
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -408,6 +409,9 @@ DEFUN(cfg_phyinst_tx_atten, cfg_phyinst_tx_atten_cmd,
 		l1h->config.forced_max_power_red = -1;
 	else
 		l1h->config.forced_max_power_red = atoi(argv[0]);
+
+	if (pinst->trx && pinst->trx->mo.nm_state.operational == NM_OPSTATE_ENABLED)
+		l1if_trx_start_power_ramp(pinst->trx, NULL);
 
 	return CMD_SUCCESS;
 }
