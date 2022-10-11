@@ -30,6 +30,6 @@ void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc);
 
 int rsl_tx_cbch_load_indication(struct gsm_bts *bts, bool ext_cbch, bool overflow, uint8_t amount);
 
-int rsl_tx_meas_res(struct gsm_lchan *lchan, const uint8_t *l3, int l3_len, int timing_offset);
+int rsl_tx_meas_res(struct gsm_lchan *lchan, const uint8_t *l3, unsigned int l3_len, int timing_offset);
 
 #endif // _RSL_H */
