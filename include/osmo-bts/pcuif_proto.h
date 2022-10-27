@@ -58,6 +58,8 @@
 #define PCU_IF_ADDR_TYPE_IPV4	0x04	/* IPv4 address */
 #define PCU_IF_ADDR_TYPE_IPV6	0x29	/* IPv6 address */
 
+#define PCU_IF_NUM_NSVC 2
+
 enum gsm_pcu_if_text_type {
 	PCU_VERSION,
 	PCU_OML_ALERT,
@@ -169,14 +171,14 @@ struct gsm_pcu_if_info_ind {
 	uint8_t		initial_cs;
 	uint8_t		initial_mcs;
 	/* NSVC */
-	uint16_t	nsvci[2];
-	uint16_t	local_port[2];
-	uint16_t	remote_port[2];
-	uint8_t		address_type[2];
+	uint16_t	nsvci[PCU_IF_NUM_NSVC];
+	uint16_t	local_port[PCU_IF_NUM_NSVC];
+	uint16_t	remote_port[PCU_IF_NUM_NSVC];
+	uint8_t		address_type[PCU_IF_NUM_NSVC];
 	union {
 		struct in_addr v4;
 		struct in6_addr v6;
-	} remote_ip[2];
+	} remote_ip[PCU_IF_NUM_NSVC];
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_act_req {
