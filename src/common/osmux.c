@@ -493,6 +493,12 @@ int lchan_osmux_send_frame(struct gsm_lchan *lchan, const uint8_t *payload,
 	rtph = (struct rtp_hdr *)msgb_data(msg);
 	rtph->marker = marker;
 
+	/* Avoid using the osmux.in if not yet connected. */
+	if (!lchan_osmux_connected(lchan)) {
+		msgb_free(msg);
+		return -1;
+	}
+
 	while ((rc = osmux_xfrm_input(lchan->abis_ip.osmux.in, msg,
 				      lchan->abis_ip.osmux.remote_cid)) > 0) {
 		/* batch full, build and deliver it */
