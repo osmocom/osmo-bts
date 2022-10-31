@@ -66,6 +66,18 @@ static const uint8_t sched_tchh_ul_amr_cmi_map[26] = {
 	[3]  = 1, /* TCH/H(1): a=18 / d=24 / f=3 */
 };
 
+/* TDMA frame number of burst 'a' should be used as the table index.
+ * This mapping is valid for both FACCH/H(0) and FACCH/H(1). */
+const uint8_t sched_tchh_dl_amr_cmi_map[26] = {
+	[4]  = 1, /* TCH/H(0): a=4 */
+	[13] = 1, /* TCH/H(0): a=13 */
+	[21] = 1, /* TCH/H(0): a=21 */
+
+	[5]  = 1, /* TCH/H(1): a=5 */
+	[14] = 1, /* TCH/H(1): a=14 */
+	[22] = 1, /* TCH/H(1): a=22 */
+};
+
 /* 3GPP TS 45.002, table 1 in clause 7: Mapping tables.
  * TDMA frame number of burst 'f' is always used as the table index. */
 static const uint8_t sched_tchh_ul_facch_map[26] = {
@@ -439,7 +451,8 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
 		gsm0503_tch_ahs_encode(*bursts_p, msg->l2h + sizeof(struct amr_hdr),
-			msgb_l2len(msg) - sizeof(struct amr_hdr), !dl_amr_fn_is_cmi(br->fn),
+			msgb_l2len(msg) - sizeof(struct amr_hdr),
+			!sched_tchh_dl_amr_cmi_map[br->fn % 26],
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);

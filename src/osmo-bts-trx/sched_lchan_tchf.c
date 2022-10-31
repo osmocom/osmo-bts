@@ -61,6 +61,15 @@ static const uint8_t sched_tchf_ul_amr_cmi_map[26] = {
 	[24] = 1, /* TCH/F: a=17 / h=24 */
 };
 
+/* TDMA frame number of burst 'a' should be used as the table index. */
+static const uint8_t sched_tchf_dl_amr_cmi_map[26] = {
+	[4]  = 1, /* TCH/F: a=4 */
+	[13] = 1, /* TCH/F: a=13 */
+	[21] = 1, /* TCH/F: a=21 */
+};
+
+extern const uint8_t sched_tchh_dl_amr_cmi_map[26];
+
 /*! \brief a single TCH/F burst was received by the PHY, process it */
 int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
@@ -392,7 +401,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 		enum osmo_amr_type ft_codec;
 		enum osmo_amr_quality bfi;
 		int8_t sti, cmi;
-		bool amr_is_cmr = !dl_amr_fn_is_cmi(br->fn);
+		bool amr_is_cmr;
 
 		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
 			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Dropping speech frame, "
@@ -430,6 +439,10 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 					"Codec (FT = %d) of RTP frame not in list\n", ft_codec);
 				goto free_bad_msg;
 			}
+			if (br->chan == TRXC_TCHF)
+				amr_is_cmr = !sched_tchf_dl_amr_cmi_map[br->fn % 26];
+			else /* TRXC_TCHH_0 or TRXC_TCHH_1 */
+				amr_is_cmr = !sched_tchh_dl_amr_cmi_map[br->fn % 26];
 			if (amr_is_cmr && chan_state->dl_ft != ft) {
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Codec (FT = %d) "
 					" of RTP cannot be changed now, but in next frame\n", ft_codec);
@@ -514,7 +527,8 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
 		gsm0503_tch_afs_encode(*bursts_p, msg->l2h + sizeof(struct amr_hdr),
-			msgb_l2len(msg) - sizeof(struct amr_hdr), !dl_amr_fn_is_cmi(br->fn),
+			msgb_l2len(msg) - sizeof(struct amr_hdr),
+			!sched_tchf_dl_amr_cmi_map[br->fn % 26],
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
