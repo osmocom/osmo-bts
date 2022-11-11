@@ -149,7 +149,8 @@ int bts_vty_is_config_node(struct vty *vty, int node)
 }
 
 static const char osmobts_copyright[] =
-	"Copyright (C) 2010, 2011 by Harald Welte, Andreas Eversberg and On-Waves\r\n"
+	"Copyright (C) 2010-2011 by Harald Welte, Andreas Eversberg and On-Waves\r\n"
+	"Copyright (C) 2011-2022 by sysmocom - s.f.m.c. GmbH\r\n"
 	"License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
 	"This is free software: you are free to change and redistribute it.\r\n"
 	 "There is NO WARRANTY, to the extent permitted by law.\r\n";
