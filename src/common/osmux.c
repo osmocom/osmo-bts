@@ -43,26 +43,46 @@
 /* Bitmask containing Allocated Osmux circuit ID. +7 to round up to 8 bit boundary. */
 static uint8_t osmux_cid_bitmap[OSMO_BYTES_FOR_BITS(OSMUX_CID_MAX + 1)];
 
-/*! Find and reserve a free OSMUX cid.
+/*! Find and reserve a free OSMUX cid. Keep state of last allocated CID to
+ *  rotate allocated CIDs over time. This helps in letting CIDs unused for some
+ *  time after last use.
  *  \returns OSMUX cid */
 static int osmux_get_local_cid(void)
 {
-	int i, j;
+	static uint8_t next_free_osmux_cid_lookup = 0;
+	uint8_t start_i, start_j;
+	uint8_t i, j, cid;
 
-	for (i = 0; i < sizeof(osmux_cid_bitmap); i++) {
-		for (j = 0; j < 8; j++) {
+	/* i = octet index, j = bit index inside ith octet */
+	start_i = next_free_osmux_cid_lookup >> 3;
+	start_j = next_free_osmux_cid_lookup & 0x07;
+
+	for (i = start_i; i < sizeof(osmux_cid_bitmap); i++) {
+		for (j = start_j; j < 8; j++) {
 			if (osmux_cid_bitmap[i] & (1 << j))
 				continue;
+			goto found;
+		}
+	}
 
-			osmux_cid_bitmap[i] |= (1 << j);
-			LOGP(DOSMUX, LOGL_DEBUG,
-			     "Allocating Osmux CID %u from pool\n", (i * 8) + j);
-			return (i * 8) + j;
+	for (i = 0; i <= start_i; i++) {
+		for (j = 0; j < start_j; j++) {
+			if (osmux_cid_bitmap[i] & (1 << j))
+				continue;
+			goto found;
 		}
 	}
 
 	LOGP(DOSMUX, LOGL_ERROR, "All Osmux circuits are in use!\n");
 	return -1;
+
+found:
+	osmux_cid_bitmap[i] |= (1 << j);
+	cid = (i << 3) | j;
+	next_free_osmux_cid_lookup = (cid + 1) & 0xff;
+	LOGP(DOSMUX, LOGL_DEBUG,
+		"Allocating Osmux CID %u from pool\n", cid);
+	return cid;
 }
 
 /*! put back a no longer used OSMUX cid.
