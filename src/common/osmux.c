@@ -165,6 +165,7 @@ static void osmux_handle_put(struct gsm_bts *bts, struct osmux_in_handle *in)
 static struct osmux_handle *osmux_handle_alloc(struct gsm_bts *bts, const struct osmo_sockaddr *rem_addr)
 {
 	struct osmux_handle *h;
+	char name[128] = "to_";
 
 	h = talloc_zero(bts, struct osmux_handle);
 	if (!h)
@@ -178,6 +179,9 @@ static struct osmux_handle *osmux_handle_alloc(struct gsm_bts *bts, const struct
 		talloc_free(h);
 		return NULL;
 	}
+
+	osmo_sockaddr_to_str_buf(name + 3, sizeof(name) - 3, rem_addr);
+	osmux_xfrm_input_set_name(h->in, name);
 	/* sequence number to start OSMUX message from */
 	osmux_xfrm_input_set_initial_seqnum(h->in, 0);
 	osmux_xfrm_input_set_batch_factor(h->in, bts->osmux.batch_factor);
