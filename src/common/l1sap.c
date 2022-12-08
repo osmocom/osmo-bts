@@ -1882,7 +1882,6 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 {
 	struct gsm_lchan *lchan = rs->priv;
 	struct msgb *msg;
-	struct osmo_phsap_prim *l1sap;
 
 	/* if we're in loopback mode, we don't accept frames from the
 	 * RTP socket anymore */
@@ -1893,7 +1892,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	if (!msg)
 		return;
 	memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
-	msgb_pull(msg, sizeof(*l1sap));
+	msgb_pull(msg, sizeof(struct osmo_phsap_prim));
 
 	/* Store RTP header Marker bit in control buffer */
 	rtpmsg_marker_bit(msg) = marker;
