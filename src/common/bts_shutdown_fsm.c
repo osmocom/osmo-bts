@@ -56,6 +56,7 @@ static unsigned int count_trx_operational(struct gsm_bts *bts) {
 static void st_none(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
+	bool do_power_ramping = *(bool *)data;
 	unsigned int count;
 	switch(event) {
 	case BTS_SHUTDOWN_EV_START:
@@ -63,10 +64,10 @@ static void st_none(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 		osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SHUTDOWN_START, NULL);
 
 		count = count_trx_operational(bts);
-		if (count) {
+		if (count && do_power_ramping) {
 			bts_shutdown_fsm_state_chg(fi, BTS_SHUTDOWN_ST_WAIT_RAMP_DOWN_COMPL);
 		} else {
-			/* we can skip ramp down since no TRX is running anyway.
+			/* we can skip ramp down if it was requested or no TRX is running anyway.
 			 * Let's jump into WAIT_TRX_CLOSED to make sure we
 			 * tell lower layer to close all TRX in case there's some
 			 * open() WIP */
@@ -250,7 +251,7 @@ bool bts_shutdown_in_progress(const struct gsm_bts *bts)
 	return fi->state != BTS_SHUTDOWN_ST_NONE;
 }
 
-void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
+void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc, bool do_power_ramp)
 {
 	struct osmo_fsm_inst *fi = bts->shutdown_fi;
 	if (bts_shutdown_in_progress(bts)) {
@@ -262,12 +263,12 @@ void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
 	bts->shutdown_fi_exit_proc = exit_proc;
 	LOGPFSML(fi, LOGL_NOTICE, "Shutting down BTS, exit %u, reason: %s\n",
 		 exit_proc, reason);
-	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_START, NULL);
+	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_START, &do_power_ramp);
 }
 
 void bts_shutdown(struct gsm_bts *bts, const char *reason)
 {
-	bts_shutdown_ext(bts, reason, true);
+	bts_shutdown_ext(bts, reason, true, false);
 }
 
 void bts_model_trx_close_cb(struct gsm_bts_trx *trx, int rc)

@@ -233,7 +233,7 @@ static void signal_handler(int signum)
 			oml_tx_failure_event_rep(&g_bts->mo,
 						 NM_SEVER_CRITICAL, OSMO_EVT_CRIT_PROC_STOP,
 						 "BTS: SIGINT received -> shutdown");
-			bts_shutdown(g_bts, "SIGINT");
+			bts_shutdown_ext(g_bts, "SIGINT", true, false);
 		}
 		quit++;
 		break;
