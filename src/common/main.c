@@ -365,7 +365,7 @@ int bts_main(int argc, char **argv)
 		gsmtap_source_add_sink(g_bts->gsmtap.inst);
 	}
 
-	bts_controlif_setup(g_bts, ctrl_vty_get_bind_addr(), OSMO_CTRL_PORT_BTS);
+	bts_controlif_setup(g_bts, OSMO_CTRL_PORT_BTS);
 
 	rc = telnet_init_dynif(tall_bts_ctx, NULL, vty_get_bind_addr(),
 			       g_vty_port_num);

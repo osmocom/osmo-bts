@@ -88,14 +88,12 @@ err_index:
 	return -ERANGE;
 }
 
-struct ctrl_handle *bts_controlif_setup(struct gsm_bts *bts,
-					const char *bind_addr, uint16_t port)
+struct ctrl_handle *bts_controlif_setup(struct gsm_bts *bts, uint16_t port)
 {
 	struct ctrl_handle *hdl;
 	int rc = 0;
 
-	hdl = ctrl_interface_setup_dynip(bts, bind_addr, port,
-					 bts_ctrl_node_lookup);
+	hdl = ctrl_interface_setup(bts, port, bts_ctrl_node_lookup);
 	if (!hdl)
 		return NULL;
 
