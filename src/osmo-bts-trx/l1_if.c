@@ -195,7 +195,7 @@ void bts_model_abis_close(struct gsm_bts *bts)
 {
 	/* Go into shutdown state deactivating transceivers until Abis link
 	 * becomes up again */
-	bts_shutdown_ext(bts, "Abis close", false, false);
+	bts_shutdown_ext(bts, "Abis close", false);
 }
 
 int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)

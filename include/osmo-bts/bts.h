@@ -396,7 +396,7 @@ struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num);
 
 int bts_init(struct gsm_bts *bts);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);
-void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc, bool do_power_ramp);
+void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc);
 
 int bts_link_estab(struct gsm_bts *bts);
 
