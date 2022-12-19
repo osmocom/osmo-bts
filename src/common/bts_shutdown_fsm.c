@@ -89,7 +89,10 @@ static void st_wait_ramp_down_compl_on_enter(struct osmo_fsm_inst *fi, uint32_t 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED)
 			continue;
-		power_ramp_start(trx, to_mdB(BTS_SHUTDOWN_POWER_RAMP_TGT), 1, ramp_down_compl_cb);
+		if (bts->shutdown_fi_skip_power_ramp)
+			power_ramp_force(trx, to_mdB(BTS_SHUTDOWN_POWER_RAMP_TGT), 1, ramp_down_compl_cb);
+		else
+			power_ramp_start(trx, to_mdB(BTS_SHUTDOWN_POWER_RAMP_TGT), 1, ramp_down_compl_cb);
 	}
 }
 
@@ -250,7 +253,7 @@ bool bts_shutdown_in_progress(const struct gsm_bts *bts)
 	return fi->state != BTS_SHUTDOWN_ST_NONE;
 }
 
-void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
+void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc, bool skip_power_ramp)
 {
 	struct osmo_fsm_inst *fi = bts->shutdown_fi;
 	if (bts_shutdown_in_progress(bts)) {
@@ -260,6 +263,7 @@ void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
 		return;
 	}
 	bts->shutdown_fi_exit_proc = exit_proc;
+	bts->shutdown_fi_skip_power_ramp = skip_power_ramp;
 	LOGPFSML(fi, LOGL_NOTICE, "Shutting down BTS, exit %u, reason: %s\n",
 		 exit_proc, reason);
 	osmo_fsm_inst_dispatch(fi, BTS_SHUTDOWN_EV_START, NULL);
@@ -267,7 +271,7 @@ void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc)
 
 void bts_shutdown(struct gsm_bts *bts, const char *reason)
 {
-	bts_shutdown_ext(bts, reason, true);
+	bts_shutdown_ext(bts, reason, true, true);
 }
 
 void bts_model_trx_close_cb(struct gsm_bts_trx *trx, int rc)
