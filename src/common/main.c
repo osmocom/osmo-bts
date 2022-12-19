@@ -367,8 +367,7 @@ int bts_main(int argc, char **argv)
 
 	bts_controlif_setup(g_bts, OSMO_CTRL_PORT_BTS);
 
-	rc = telnet_init_dynif(tall_bts_ctx, NULL, vty_get_bind_addr(),
-			       g_vty_port_num);
+	rc = telnet_init_default(tall_bts_ctx, NULL, g_vty_port_num);
 	if (rc < 0) {
 		fprintf(stderr, "Error initializing telnet\n");
 		exit(1);
