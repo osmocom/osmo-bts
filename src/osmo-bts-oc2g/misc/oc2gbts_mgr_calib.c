@@ -171,7 +171,12 @@ static void mgr_gps_checkfix(struct oc2gbts_mgr_instance *mgr)
 		return;
 	}
 
+#if GPSD_API_MAJOR_VERSION >= 9
+	mgr->gps.gps_fix_now = data->fix.time.tv_sec;
+#else
 	mgr->gps.gps_fix_now = (time_t) data->fix.time;
+#endif
+
 	LOGP(DCALIB, LOGL_INFO, "Got a GPS fix, satellites used: %d, timestamp: %ld\n",
 			data->satellites_used, mgr->gps.gps_fix_now);
 	osmo_timer_del(&mgr->gps.fix_timeout);
