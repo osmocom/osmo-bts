@@ -239,8 +239,7 @@ static void power_ramp_do_step(struct gsm_bts_trx *trx, int first)
 	osmo_timer_schedule(&tpp->ramp.step_timer, tpp->ramp.step_interval_sec, 0);
 }
 
-
-int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, ramp_compl_cb_t ramp_compl_cb)
+int _power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, ramp_compl_cb_t ramp_compl_cb, bool skip_ramping)
 {
 	struct trx_power_params *tpp = &trx->power_params;
 
@@ -265,7 +264,12 @@ int power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass, 
 	tpp->p_total_tgt_mdBm = p_total_tgt_mdBm;
 	tpp->ramp.compl_cb = ramp_compl_cb;
 
-	if (we_are_ramping_up(trx)) {
+	if (skip_ramping) {
+		/* Jump straight to the target power */
+		tpp->p_total_cur_mdBm = p_total_tgt_mdBm;
+		tpp->ramp.attenuation_mdB = 0;
+		power_ramp_timer_cb(trx);
+	} else if (we_are_ramping_up(trx)) {
 		if (tpp->p_total_tgt_mdBm <= tpp->ramp.max_initial_pout_mdBm) {
 			LOGPTRX(trx, DL1C, LOGL_INFO,
 				"target_power (%d mdBm) is below or equal to 'power ramp max-initial' power (%d mdBm)\n",
