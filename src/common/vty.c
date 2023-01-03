@@ -388,9 +388,9 @@ static void config_write_osmux(struct vty *vty, const char *prefix, const struct
 		break;
 	}
 	vty_out(vty, "%s local-ip %s%s", prefix, bts->osmux.local_addr, VTY_NEWLINE);
+	vty_out(vty, "%s local-port %u%s", prefix, bts->osmux.local_port, VTY_NEWLINE);
 	vty_out(vty, "%s batch-factor %d%s", prefix, bts->osmux.batch_factor, VTY_NEWLINE);
 	vty_out(vty, "%s batch-size %u%s", prefix, bts->osmux.batch_size, VTY_NEWLINE);
-	vty_out(vty, "%s port %u%s", prefix, bts->osmux.local_port, VTY_NEWLINE);
 	vty_out(vty, "%s dummy-padding %s%s", prefix, bts->osmux.dummy_padding ? "on" : "off", VTY_NEWLINE);
 }
 
