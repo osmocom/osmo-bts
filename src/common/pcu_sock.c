@@ -351,7 +351,7 @@ int pcu_tx_info_ind(void)
 			LOGPTRX(trx, DPCU, LOGL_NOTICE, "PCU interface (version %u) "
 				"cannot handle more than %zu transceivers => skipped\n",
 				PCU_IF_VERSION, ARRAY_SIZE(info_ind->trx));
-			continue;
+			break;
 		}
 
 		info_ind_fill_trx(&info_ind->trx[trx->nr], trx);
