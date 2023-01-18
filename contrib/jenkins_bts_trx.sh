@@ -9,7 +9,7 @@ export LD_LIBRARY_PATH="$inst/lib"
 
 osmo-build-dep.sh libosmocore "" --disable-doxygen
 
-osmo-build-dep.sh libosmo-abis
+osmo-build-dep.sh libosmo-abis "" --disable-dahdi
 osmo-build-dep.sh libosmo-netif "" --disable-doxygen
 
 cd "$deps"
