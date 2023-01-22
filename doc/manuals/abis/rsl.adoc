@@ -192,6 +192,7 @@ Conforms to 3GPP TS 48.058 § 8.4.20, with these exceptions:
 | 0x06 | RSL_SYSTEM_INFO_6
 | 0x0d | RSL_SYSTEM_INFO_5bis
 | 0x0e | RSL_SYSTEM_INFO_5ter
+| 0x0f | RSL_SYSTEM_INFO_10
 | 0x47 | RSL_EXT_MEAS_ORDER
 | 0x48 | RSL_MEAS_INFO
 |===

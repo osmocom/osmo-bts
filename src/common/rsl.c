@@ -72,6 +72,7 @@ static const unsigned int rsl_sacch_sitypes[] = {
 	RSL_SYSTEM_INFO_6,
 	RSL_SYSTEM_INFO_5bis,
 	RSL_SYSTEM_INFO_5ter,
+	RSL_SYSTEM_INFO_10,
 	RSL_EXT_MEAS_ORDER,
 	RSL_MEAS_INFO,
 };
