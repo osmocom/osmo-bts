@@ -2270,7 +2270,7 @@ DEFUN(cfg_bts_gsmtap_sapi, cfg_bts_gsmtap_sapi_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_trx_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
+DEFUN(cfg_bts_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
 	"HIDDEN", "HIDDEN")
 {
 	struct gsm_bts *bts = vty->index;
