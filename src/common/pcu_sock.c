@@ -203,7 +203,7 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 		return;
 	}
 
-	for (tn = 0; tn < 8; tn++) {
+	for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 		const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 
 		if (ts->mo.nm_state.operational != NM_OPSTATE_ENABLED)
