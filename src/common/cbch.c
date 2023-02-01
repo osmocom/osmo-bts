@@ -139,12 +139,8 @@ static int get_smscb_block(struct bts_smscb_state *bts_ss, uint8_t *out, uint8_t
 		block_type->seq_nr = block_nr;
 
 	/* determine if this is the last block */
-	if (block_nr + 1 == msg->num_segs)
-		block_type->lb = 1;
-	else
-		block_type->lb = 0;
-
-	if (block_nr == 4) {
+	block_type->lb = (block_nr + 1 == msg->num_segs);
+	if (block_type->lb) {
 		if (msg != bts_ss->default_msg) {
 			DEBUGPGT(DLSMS, g_time, "%s: deleting fully-transmitted message %p\n",
 				 chan_name, msg);
