@@ -7,6 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what	        description / commit summary line
-libosmocore     >1.7.0          BTS_FEAT_OSMUX, RSL_IE_OSMO_OSMUX_CID
-libosmo-netif   >1.2.0          OSMUX_DEFAULT_PORT, new osmux APIs
-libosmo-abis    >1.3.0          e1inp_ipa_bts_rsl_close_n()

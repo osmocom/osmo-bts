@@ -1,3 +1,93 @@
+osmo-bts (1.6.0) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * osmo-bts-trx: call osmo_timer_del() unconditionally
+  * osmo-bts-trx: amr_loop: trigger the loop unconditionally
+  * osmo-bts-trx: fix handling of ciphering params in PRIM_INFO_MODIFY
+  * osmo-bts-trx: rx_rach_fn(): properly detect handover RACH
+  * osmo-bts-trx: handle MTS 0b0110 indicating an Access Burst
+  * osmo-bts-trx: use lookup tables for checking AMR CMI/CMR on Downlink
+  * osmo-bts-trx: drop ul_amr_fn_is_cmi() / dl_amr_fn_is_cmi()
+
+  [ Pau Espin Pedrol ]
+  * rsl: rx ipac crcx/mdcx: Log payload_type2
+  * logging: Move category descriptions to be in order with enum
+  * Clean up osmo-bts-*/Makefile.am
+  * Split out lchan rtp socket creation from rsl handling code
+  * Avoid counting lchan->dl_tch_queue length every time a msg is enqueued
+  * Use libosmocore API msgb_queue_free() to free lists
+  * rsl: Reduce scope of variable
+  * Move lchan_dl_tch_queue_enqueue to lchan.c and make it public
+  * cosmetic: Fix formatting of if-else block brackets
+  * Depend on libosmo-netif
+  * Clarify RTP AMR header offset in TCH enc/dec
+  * tests/*/Makefile.am: Fix typo in LIBOSMONETIF_CFLAGS
+  * tests/*/Makefile.am: Add missing libosmo-netif cflags
+  * oc2g: Makefile.am Fix typo in LIBOSMONETIF_LIBS
+  * Introduce Osmux support
+  * abis: Avoid TCP/IPA RSL sockets continue conn establishment while shutting down
+  * osmux: Log sendto() error
+  * lchan: Reset Abis RTP/Osmux config during lchan release
+  * vty: Fix SPEECH_MODE printed with hex prefix but dec value
+  * vty: Print Osmux CID on lchans using Osmux
+  * Allocate struct osmux_in_handle through new libosmo-netif APIs
+  * osmux: Drop logging of osmux internal counters
+  * osmux: Match remote address in osmux_lchan_find()
+  * osmux: Log remote address upon rx of osmux pkt
+  * osmux: Lower log level when osmux batch received for unknown CID
+  * osmux: nullify osmux.rtpst after freeing it
+  * osmux: Skip lchans in lookup which still have no remote associated
+  * osmux: Close osmux socket when bts is freed
+  * osmux: Fix null ptr dereference sending UL data before the remote is configured
+  * osmux: Rotate over available Osmux CID when allocating a new one
+  * osmux: Use new osmux_xfrm_input API to set name on each link
+  * vty: Fix typo in write-config: osmux / local-port
+  * vty: Fix typo in symbol name
+
+  [ Max ]
+  * Set working directory in systemd service file
+  * Don't manually create pid file
+  * Document realtime options in .service units
+  * Update realtime scheduling priority in service file
+  * ctrl: take both address and port from vty config
+  * Add SI10 support
+
+  [ Philipp Maier ]
+  * pcu_sock: fix sourcecode formatting
+  * measurement: do not call msgb_l3len without checking
+  * l1sap: do not call msgb_l2hlen without checking
+  * rsl: use unsigned int
+  * pcuif_proto: cosmetic: add constant PCU_IF_NUM_NSVC and replace magic numbers
+  * sched_lchan_tchf: replace numeric constant with define constant
+  * l1sap: remove unused pointer variable
+  * pcuif_proto: use define constant to specify nax number of trx
+  * pcu_sock: use ARRAY_SIZE rather then magic number
+
+  [ Keith ]
+  * osmo-bts-trx: respond to tx-attenuation config in real time.
+
+  [ Harald Welte ]
+  * update outdated vty copyright statement
+
+  [ Daniel Willmann ]
+  * shutdown_fsm: Only ramp down power when stopping bts through Ctrl-C
+  * shutdown_fsm: Add power_ramp_force() to jump straight to the tgt power
+
+  [ daniel ]
+  * Revert "shutdown_fsm: Only ramp down power when stopping bts through Ctrl-C"
+
+  [ Alexander Couzens ]
+  * OML: NSVC[1] MO should have the same initial state as NVSC[0]
+
+  [ Oliver Smith ]
+  * oc2gbts_mgr_calib: fix build against gpsd >= 3.20
+  * contrib/jenkins: build libosmo-abis without dahdi
+
+  [ arehbein ]
+  * osmo-bts: Transition to use of 'telnet_init_default'
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 07 Feb 2023 17:15:52 +0100
+
 osmo-bts (1.5.0) unstable; urgency=medium
 
   [ Pau Espin Pedrol ]
