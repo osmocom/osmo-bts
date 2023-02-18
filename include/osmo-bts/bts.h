@@ -366,6 +366,7 @@ struct gsm_bts {
 	struct {
 		struct gsmtap_inst *inst;
 		char *remote_host;
+		char *local_host;
 		uint32_t sapi_mask;
 		uint8_t sapi_acch;
 	} gsmtap;

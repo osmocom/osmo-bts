@@ -251,6 +251,8 @@ OsmoBTS(bts)# list
   smscb queue-hysteresis <0-30>
   gsmtap-remote-host [HOSTNAME]
   no gsmtap-remote-host
+  gsmtap-local-host HOSTNAME
+  no gsmtap-local-host
   gsmtap-sapi (enable-all|disable-all)
   gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
   no gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
@@ -274,6 +276,7 @@ OsmoBTS(bts)# ?
   supp-meas-info      Configure the RSL Supplementary Measurement Info
   smscb               SMSCB (SMS Cell Broadcast) / CBCH configuration
   gsmtap-remote-host  Enable GSMTAP Um logging (see also 'gsmtap-sapi')
+  gsmtap-local-host   Enable local bind for GSMTAP Um logging (see also 'gsmtap-sapi')
   gsmtap-sapi         Enable/disable sending of UL/DL messages over GSMTAP
   osmux               Configure Osmux
   trx                 Select a TRX to configure

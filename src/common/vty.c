@@ -2217,6 +2217,22 @@ DEFUN(cfg_bts_gsmtap_remote_host,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gsmtap_local_host,
+      cfg_bts_gsmtap_local_host_cmd,
+      "gsmtap-local-host HOSTNAME",
+      "Enable local bind for GSMTAP Um logging (see also 'gsmtap-sapi')\n"
+      "Local IP address or hostname\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	osmo_talloc_replace_string(bts, &bts->gsmtap.local_host, argv[0]);
+
+	if (vty->type != VTY_FILE)
+		vty_out(vty, "%% This command requires restart%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_no_gsmtap_remote_host,
       cfg_bts_no_gsmtap_remote_host_cmd,
       "no gsmtap-remote-host",
@@ -2227,6 +2243,24 @@ DEFUN(cfg_bts_no_gsmtap_remote_host,
 	if (bts->gsmtap.remote_host != NULL)
 		talloc_free(bts->gsmtap.remote_host);
 	bts->gsmtap.remote_host = NULL;
+
+	if (vty->type != VTY_FILE)
+		vty_out(vty, "%% This command requires restart%s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_gsmtap_local_host,
+      cfg_bts_no_gsmtap_local_host_cmd,
+      "no gsmtap-local-host",
+      NO_STR "Disable local bind for GSMTAP Um logging\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->gsmtap.local_host != NULL)
+		talloc_free(bts->gsmtap.local_host);
+
+	bts->gsmtap.local_host = NULL;
 
 	if (vty->type != VTY_FILE)
 		vty_out(vty, "%% This command requires restart%s", VTY_NEWLINE);
@@ -2652,6 +2686,8 @@ int bts_vty_init(void *ctx)
 
 	install_element(BTS_NODE, &cfg_bts_gsmtap_remote_host_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_gsmtap_remote_host_cmd);
+	install_element(BTS_NODE, &cfg_bts_gsmtap_local_host_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_gsmtap_local_host_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_all_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_gsmtap_sapi_cmd);
