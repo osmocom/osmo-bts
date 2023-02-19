@@ -541,6 +541,9 @@ int vbts_sched_start(struct gsm_bts *bts)
 	struct bts_virt_priv *bts_virt = (struct bts_virt_priv *)bts->model_priv;
 	LOGP(DL1P, LOGL_NOTICE, "starting VBTS scheduler\n");
 
+	if (!bts_virt)
+		return -EINVAL;
+
 	memset(&bts_virt->fn_timer, 0, sizeof(bts_virt->fn_timer));
 	bts_virt->fn_timer.cb = vbts_fn_timer_cb;
 	bts_virt->fn_timer.data = bts;

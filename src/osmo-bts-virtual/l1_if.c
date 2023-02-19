@@ -187,6 +187,19 @@ nomessage:
 /* called by common part once OML link is established */
 int bts_model_oml_estab(struct gsm_bts *bts)
 {
+	struct phy_instance *pinst = trx_phy_instance(bts->c0);
+
+	if (vbts_sched_start(pinst->trx->bts) < 0)
+		return -ENOLINK;
+
+	/* Only start the scheduler for the transceiver on C0.
+	 * If we have multiple transceivers, CCCH is always on C0
+	 * and has to be auto active */
+	pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
+
+	/* Other TRX are activated via OML by a PRIM_INFO_MODIFY / PRIM_INFO_ACTIVATE */
+	lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
+
 	return 0;
 }
 
@@ -217,17 +230,6 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		if (pinst->trx == NULL)
 			continue;
 		trx_sched_init(pinst->trx);
-		/* Only start the scheduler for the transceiver on C0.
-		 * If we have multiple transceivers, CCCH is always on C0
-		 * and has to be auto active */
-		/* Other TRX are activated via OML by a PRIM_INFO_MODIFY
-		 * / PRIM_INFO_ACTIVATE */
-		if (pinst->trx == pinst->trx->bts->c0) {
-			vbts_sched_start(pinst->trx->bts);
-			/* FIXME: This is probably the wrong location to set the CCCH to active... the OML link def. needs to be reworked and fixed. */
-			pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
-			lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
-		}
 	}
 
 	/* this will automatically update the MO state of all associated TRX objects */
