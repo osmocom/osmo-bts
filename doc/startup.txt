@@ -21,7 +21,7 @@ The start-up procedure of OsmoBTS can be described as follows:
 | bts-specific | bts_model_phy_instance_set_defaults() | Called for every PHY Instance created
 | common | bts_controlif_setup() | Initialization of Control Interface
 | bts-specific | bts_model_ctrl_cmds_install()
-| common | telnet_init() | Initialization of telnet interface
+| common | telnet_init_default() | Initialization of telnet interface
 | common | pcu_sock_init() | Initialization of PCU socket
 | common | main() | Installation of signal handlers
 | common | abis_open() | Start of the A-bis connection to BSC
