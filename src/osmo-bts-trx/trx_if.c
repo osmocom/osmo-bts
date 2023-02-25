@@ -1232,7 +1232,8 @@ void trx_if_flush(struct trx_l1h *l1h)
 /*! close the TRX for given handle (data + control socket) */
 void trx_if_close(struct trx_l1h *l1h)
 {
-	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Closing TRXC/TRXD connections\n");
+	LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Closing TRXC/TRXD connections to %s\n",
+		l1h->phy_inst->phy_link->u.osmotrx.remote_ip);
 
 	trx_if_flush(l1h);
 
@@ -1263,7 +1264,7 @@ static int trx_if_open(struct trx_l1h *l1h)
 	struct phy_link *plink = pinst->phy_link;
 	int rc;
 
-	LOGPPHI(pinst, DTRX, LOGL_NOTICE, "Opening TRXC/TRXD connections\n");
+	LOGPPHI(pinst, DTRX, LOGL_NOTICE, "Opening TRXC/TRXD connections to %s\n", plink->u.osmotrx.remote_ip);
 
 	/* open sockets */
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
