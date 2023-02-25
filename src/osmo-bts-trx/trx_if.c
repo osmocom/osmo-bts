@@ -1243,7 +1243,7 @@ void trx_if_close(struct trx_l1h *l1h)
 }
 
 /*! compute UDP port number used for TRX protocol */
-static uint16_t compute_port(struct phy_instance *pinst, int remote, int is_data)
+static uint16_t compute_port(struct phy_instance *pinst, bool remote, bool is_data)
 {
 	struct phy_link *plink = pinst->phy_link;
 	uint16_t inc = 1;
@@ -1269,16 +1269,16 @@ static int trx_if_open(struct trx_l1h *l1h)
 	/* open sockets */
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
 			  plink->u.osmotrx.local_ip,
-			  compute_port(pinst, 0, 0),
+			  compute_port(pinst, false, false),
 			  plink->u.osmotrx.remote_ip,
-			  compute_port(pinst, 1, 0), trx_ctrl_read_cb);
+			  compute_port(pinst, true, false), trx_ctrl_read_cb);
 	if (rc < 0)
 		return rc;
 	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
 			  plink->u.osmotrx.local_ip,
-			  compute_port(pinst, 0, 1),
+			  compute_port(pinst, false, true),
 			  plink->u.osmotrx.remote_ip,
-			  compute_port(pinst, 1, 1), trx_data_read_cb);
+			  compute_port(pinst, true, true), trx_data_read_cb);
 	if (rc < 0)
 		return rc;
 
