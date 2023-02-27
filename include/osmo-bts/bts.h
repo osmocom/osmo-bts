@@ -137,6 +137,8 @@ struct bsc_oml_host {
 	char *addr;
 };
 
+#define BTS_PCU_SOCK_WQUEUE_LEN_DEFAULT 10
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in g_bts_sm->bts_list */
