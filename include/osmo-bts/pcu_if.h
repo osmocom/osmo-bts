@@ -27,7 +27,7 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t tlli);
 int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
 int pcu_sock_send(struct msgb *msg);
 
-int pcu_sock_init(const char *path);
+int pcu_sock_init(const char *path, int qlength_max);
 void pcu_sock_exit(void);
 
 bool pcu_connected(void);

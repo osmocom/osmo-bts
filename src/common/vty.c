@@ -22,6 +22,7 @@
 #include "btsconfig.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -70,6 +71,9 @@
 #define BTS_TRX_STR BTS_NR_STR TRX_NR_STR
 #define BTS_TRX_TS_STR BTS_TRX_STR TS_NR_STR
 #define BTS_TRX_TS_LCHAN_STR BTS_TRX_TS_STR LCHAN_NR_STR
+/* INT32_MAX, because osmo_wqueue_init takes int as an argument
+ * and INT_MAX can't be stringified as a decimal */
+#define BTS_CFG_PCU_SOCK_WQUEUE_LEN_MAX_MAX 2147483647
 
 #define X(x) (1 << x)
 
@@ -466,6 +470,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (strcmp(bts->pcu.sock_path, PCU_SOCK_DEFAULT))
 		vty_out(vty, " pcu-socket %s%s", bts->pcu.sock_path, VTY_NEWLINE);
+	if (bts->pcu.sock_wqueue_len_max != BTS_CFG_PCU_SOCK_WQUEUE_LEN_MAX_MAX)
+		vty_out(vty, " pcu-socket-wqueue-length %u%s", bts->pcu.sock_wqueue_len_max, VTY_NEWLINE);
 	if (bts->supp_meas_toa256)
 		vty_out(vty, " supp-meas-info toa256%s", VTY_NEWLINE);
 	vty_out(vty, " smscb queue-max-length %d%s", bts->smscb_queue_max_len, VTY_NEWLINE);
@@ -1023,7 +1029,7 @@ DEFUN_ATTR(cfg_bts_max_ber_rach, cfg_bts_max_ber_rach_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
+DEFUN(cfg_bts_pcu_sock_path, cfg_bts_pcu_sock_path_cmd,
 	"pcu-socket PATH",
 	"Configure the PCU socket file/path name\n"
 	"UNIX socket path\n")
@@ -1033,6 +1039,16 @@ DEFUN(cfg_bts_pcu_sock, cfg_bts_pcu_sock_cmd,
 	osmo_talloc_replace_string(bts, &bts->pcu.sock_path, argv[0]);
 
 	/* FIXME: re-open the interface? */
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_pcu_sock_ql, cfg_bts_pcu_sock_ql_cmd,
+	"pcu-socket-wqueue-length <1-" OSMO_STRINGIFY_VAL(BTS_CFG_PCU_SOCK_WQUEUE_LEN_MAX_MAX) ">",
+	"Configure the PCU socket queue length\n"
+	"Queue length\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->pcu.sock_wqueue_len_max = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2741,7 +2757,8 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_min_qual_rach_cmd);
 	install_element(BTS_NODE, &cfg_bts_min_qual_norm_cmd);
 	install_element(BTS_NODE, &cfg_bts_max_ber_rach_cmd);
-	install_element(BTS_NODE, &cfg_bts_pcu_sock_cmd);
+	install_element(BTS_NODE, &cfg_bts_pcu_sock_path_cmd);
+	install_element(BTS_NODE, &cfg_bts_pcu_sock_ql_cmd);
 	install_element(BTS_NODE, &cfg_bts_supp_meas_toa256_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_supp_meas_toa256_cmd);
 	install_element(BTS_NODE, &cfg_bts_smscb_max_qlen_cmd);

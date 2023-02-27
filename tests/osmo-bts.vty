@@ -249,6 +249,7 @@ OsmoBTS(bts)# list
   min-qual-norm <-100-100>
   max-ber10k-rach <0-10000>
   pcu-socket PATH
+  pcu-socket-wqueue-length <1-2147483647>
   supp-meas-info toa256
   no supp-meas-info toa256
   smscb queue-max-length <1-60>
@@ -266,25 +267,26 @@ OsmoBTS(bts)# list
 ...
 OsmoBTS(bts)# ?
 ...
-  ipa                 ip.access RSL commands
-  oml                 OML Parameters
-  no                  Negate a command or set its defaults
-  rtp                 RTP parameters
-  band                Set the frequency band of this BTS
-  description         Save human-readable description of the object
-  paging              Paging related parameters
-  agch-queue-mgmt     AGCH queue mgmt
-  min-qual-rach       Set the minimum link quality level of Access Bursts to be accepted
-  min-qual-norm       Set the minimum link quality level of Normal Bursts to be accepted
-  max-ber10k-rach     Set the maximum BER for valid RACH requests
-  pcu-socket          Configure the PCU socket file/path name
-  supp-meas-info      Configure the RSL Supplementary Measurement Info
-  smscb               SMSCB (SMS Cell Broadcast) / CBCH configuration
-  gsmtap-remote-host  Enable GSMTAP Um logging (see also 'gsmtap-sapi')
-  gsmtap-local-host   Enable local bind for GSMTAP Um logging (see also 'gsmtap-sapi')
-  gsmtap-sapi         Enable/disable sending of UL/DL messages over GSMTAP
-  osmux               Configure Osmux
-  trx                 Select a TRX to configure
+  ipa                       ip.access RSL commands
+  oml                       OML Parameters
+  no                        Negate a command or set its defaults
+  rtp                       RTP parameters
+  band                      Set the frequency band of this BTS
+  description               Save human-readable description of the object
+  paging                    Paging related parameters
+  agch-queue-mgmt           AGCH queue mgmt
+  min-qual-rach             Set the minimum link quality level of Access Bursts to be accepted
+  min-qual-norm             Set the minimum link quality level of Normal Bursts to be accepted
+  max-ber10k-rach           Set the maximum BER for valid RACH requests
+  pcu-socket                Configure the PCU socket file/path name
+  pcu-socket-wqueue-length  Configure the PCU socket queue length
+  supp-meas-info            Configure the RSL Supplementary Measurement Info
+  smscb                     SMSCB (SMS Cell Broadcast) / CBCH configuration
+  gsmtap-remote-host        Enable GSMTAP Um logging (see also 'gsmtap-sapi')
+  gsmtap-local-host         Enable local bind for GSMTAP Um logging (see also 'gsmtap-sapi')
+  gsmtap-sapi               Enable/disable sending of UL/DL messages over GSMTAP
+  osmux                     Configure Osmux
+  trx                       Select a TRX to configure
 ...
 OsmoBTS(bts)# trx 0
 OsmoBTS(trx)# list

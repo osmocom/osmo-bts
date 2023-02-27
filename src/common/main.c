@@ -380,7 +380,7 @@ int bts_main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (pcu_sock_init(g_bts->pcu.sock_path)) {
+	if (pcu_sock_init(g_bts->pcu.sock_path, g_bts->pcu.sock_wqueue_len_max)) {
 		fprintf(stderr, "PCU L1 socket failed\n");
 		exit(1);
 	}

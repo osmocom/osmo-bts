@@ -356,6 +356,7 @@ struct gsm_bts {
 
 	struct {
 		char *sock_path;
+		unsigned int sock_wqueue_len_max;
 	} pcu;
 
 	/* GSMTAP Um logging (disabled by default) */

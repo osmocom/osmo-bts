@@ -1167,7 +1167,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	return 0;
 }
 
-int pcu_sock_init(const char *path)
+int pcu_sock_init(const char *path, int qlength_max)
 {
 	struct pcu_sock_state *state;
 	struct osmo_fd *bfd;
@@ -1177,7 +1177,7 @@ int pcu_sock_init(const char *path)
 	if (!state)
 		return -ENOMEM;
 
-	osmo_wqueue_init(&state->upqueue, BTS_PCU_SOCK_WQUEUE_LEN_DEFAULT);
+	osmo_wqueue_init(&state->upqueue, qlength_max);
 	state->upqueue.read_cb = pcu_sock_read;
 	state->upqueue.write_cb = pcu_sock_write;
 	state->upqueue.bfd.fd = -1;
