@@ -268,8 +268,8 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 }
 
 /* Add an IMM.ASS message to the paging queue */
-int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
-                       uint8_t len, bool from_pcu)
+int paging_add_imm_ass(struct paging_state *ps,
+		       const uint8_t *data, uint8_t len)
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
@@ -277,7 +277,7 @@ int paging_add_imm_ass(struct paging_state *ps, const uint8_t *data,
 
 	check_congestion(ps);
 
-	if (ps->cs_priority_active && from_pcu) {
+	if (ps->cs_priority_active) {
 		LOGP(DPAG, LOGL_NOTICE, "Dropping paging for PS, queue congested (%u)\n",
 			ps->num_paging);
 		rate_ctr_inc2(ps->bts->ctrs, BTS_CTR_PAGING_DROP_PS);
