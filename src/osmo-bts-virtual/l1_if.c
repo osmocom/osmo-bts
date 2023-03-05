@@ -356,6 +356,13 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		else /* u.act_req used by PRIM_INFO_{ACTIVATE,DEACTIVATE,MODIFY} */
 			chan_nr = l1sap->u.info.u.act_req.chan_nr;
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
+		if (OSMO_UNLIKELY(lchan == NULL)) {
+			LOGP(DL1C, LOGL_ERROR,
+			     "Rx MPH-INFO.req (type=0x%02x) for non-existent lchan (%s)\n",
+			     l1sap->u.info.type, rsl_chan_nr_str(chan_nr));
+			rc = -ENODEV;
+			break;
+		}
 
 		switch (l1sap->u.info.type) {
 		case PRIM_INFO_ACT_CIPH:
