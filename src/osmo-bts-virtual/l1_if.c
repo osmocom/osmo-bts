@@ -336,7 +336,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 {
 	struct msgb *msg = l1sap->oph.msg;
 	uint8_t chan_nr;
-	uint8_t tn, ss;
 	int rc = 0;
 	struct gsm_lchan *lchan;
 
@@ -352,74 +351,65 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		/* put data into scheduler's queue */
 		return trx_sched_tch_req(trx, l1sap);
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
+		if (l1sap->u.info.type == PRIM_INFO_ACT_CIPH)
+			chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
+		else /* u.act_req used by PRIM_INFO_{ACTIVATE,DEACTIVATE,MODIFY} */
+			chan_nr = l1sap->u.info.u.act_req.chan_nr;
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
+
 		switch (l1sap->u.info.type) {
 		case PRIM_INFO_ACT_CIPH:
-			chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
-			tn = L1SAP_CHAN2TS(chan_nr);
-			ss = l1sap_chan2ss(chan_nr);
-			lchan = &trx->ts[tn].lchan[ss];
 			if (l1sap->u.info.u.ciph_req.uplink)
 				l1if_set_ciphering(lchan, chan_nr, 0);
 			if (l1sap->u.info.u.ciph_req.downlink)
 				l1if_set_ciphering(lchan, chan_nr, 1);
 			break;
 		case PRIM_INFO_ACTIVATE:
-		case PRIM_INFO_DEACTIVATE:
-		case PRIM_INFO_MODIFY:
-			chan_nr = l1sap->u.info.u.act_req.chan_nr;
-			tn = L1SAP_CHAN2TS(chan_nr);
-			ss = l1sap_chan2ss(chan_nr);
-			lchan = &trx->ts[tn].lchan[ss];
-			/* we receive a channel activation request from the BSC,
-			 * e.g. as a response to a channel req on RACH */
-			if (l1sap->u.info.type == PRIM_INFO_ACTIVATE) {
-				if ((chan_nr & 0xE0) == 0x80) {
-					LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot activate"
-						  " channel %s\n", rsl_chan_nr_str(chan_nr));
-					break;
-				}
-				/* activate dedicated channel */
-				trx_sched_set_lchan(lchan, chan_nr, LID_DEDIC, true);
-				/* activate associated channel */
-				trx_sched_set_lchan(lchan, chan_nr, LID_SACCH, true);
-				/* set mode */
-				trx_sched_set_mode(lchan->ts, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode,
-					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.mode[0].mode,
-					lchan->tch.amr_mr.mode[1].mode,
-					lchan->tch.amr_mr.mode[2].mode,
-					lchan->tch.amr_mr.mode[3].mode,
-					amr_get_initial_mode(lchan),
-					(lchan->ho.active == 1));
-				/* set lchan active */
-				lchan_set_state(lchan, LCHAN_S_ACTIVE);
-				/* set initial ciphering */
-				l1if_set_ciphering(lchan, chan_nr, 0);
-				l1if_set_ciphering(lchan, chan_nr, 1);
-				if (lchan->encr.alg_id)
-					lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
-				else
-					lchan->ciph_state = LCHAN_CIPH_NONE;
+			if ((chan_nr & 0xE0) == 0x80) {
+				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot activate"
+					  " channel %s\n", rsl_chan_nr_str(chan_nr));
+				break;
+			}
+			/* activate dedicated channel */
+			trx_sched_set_lchan(lchan, chan_nr, LID_DEDIC, true);
+			/* activate associated channel */
+			trx_sched_set_lchan(lchan, chan_nr, LID_SACCH, true);
+			/* set mode */
+			trx_sched_set_mode(lchan->ts, chan_nr,
+					   lchan->rsl_cmode, lchan->tch_mode,
+					   lchan->tch.amr_mr.num_modes,
+					   lchan->tch.amr_mr.mode[0].mode,
+					   lchan->tch.amr_mr.mode[1].mode,
+					   lchan->tch.amr_mr.mode[2].mode,
+					   lchan->tch.amr_mr.mode[3].mode,
+					   amr_get_initial_mode(lchan),
+					   (lchan->ho.active == 1));
+			/* set lchan active */
+			lchan_set_state(lchan, LCHAN_S_ACTIVE);
+			/* set initial ciphering */
+			l1if_set_ciphering(lchan, chan_nr, 0);
+			l1if_set_ciphering(lchan, chan_nr, 1);
+			if (lchan->encr.alg_id)
+				lchan->ciph_state = LCHAN_CIPH_RXTX_CONF;
+			else
+				lchan->ciph_state = LCHAN_CIPH_NONE;
 
-				/* confirm */
-				mph_info_chan_confirm(trx, chan_nr,
-					PRIM_INFO_ACTIVATE, 0);
-				break;
-			}
-			if (l1sap->u.info.type == PRIM_INFO_MODIFY) {
-				/* change mode */
-				trx_sched_set_mode(lchan->ts, chan_nr,
-					lchan->rsl_cmode, lchan->tch_mode,
-					lchan->tch.amr_mr.num_modes,
-					lchan->tch.amr_mr.mode[0].mode,
-					lchan->tch.amr_mr.mode[1].mode,
-					lchan->tch.amr_mr.mode[2].mode,
-					lchan->tch.amr_mr.mode[3].mode,
-					amr_get_initial_mode(lchan),
-					0);
-				break;
-			}
+			/* confirm */
+			mph_info_chan_confirm(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
+			break;
+		case PRIM_INFO_MODIFY:
+			/* change mode */
+			trx_sched_set_mode(lchan->ts, chan_nr,
+					   lchan->rsl_cmode, lchan->tch_mode,
+					   lchan->tch.amr_mr.num_modes,
+					   lchan->tch.amr_mr.mode[0].mode,
+					   lchan->tch.amr_mr.mode[1].mode,
+					   lchan->tch.amr_mr.mode[2].mode,
+					   lchan->tch.amr_mr.mode[3].mode,
+					   amr_get_initial_mode(lchan),
+					   0);
+			break;
+		case PRIM_INFO_DEACTIVATE:
 			if ((chan_nr & 0xE0) == 0x80) {
 				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot deactivate"
 					  " channel %s\n", rsl_chan_nr_str(chan_nr));
