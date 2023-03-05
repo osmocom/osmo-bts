@@ -69,21 +69,6 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received Data, bid=%u\n", bi->bid);
 
-	/* allocate burst memory, if not already */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, 464);
-		if (!*bursts_p)
-			return -ENOMEM;
-	}
-
-	/* UL-SACCH requires additional memory to keep a copy of each previous
-	 * burst set. */
-	if (L1SAP_IS_LINK_SACCH(trx_chan_desc[bi->chan].link_id) && !chan_state->ul_bursts_prev) {
-		chan_state->ul_bursts_prev = talloc_zero_size(l1ts, 464);
-		if (!chan_state->ul_bursts_prev)
-			return -ENOMEM;
-	}
-
 	/* clear burst & store frame number of first burst */
 	if (bi->bid == 0) {
 		memset(*bursts_p, 0, 464);
@@ -174,45 +159,26 @@ int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	ubit_t *burst, **bursts_p = &l1ts->chan_state[br->chan].dl_bursts;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0) {
-		if (!*bursts_p)
-			return -ENODEV;
+	if (br->bid > 0)
 		goto send_burst;
-	}
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
-	if (msg)
-		goto got_msg;
-
-	LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
-
-no_msg:
-	/* free burst memory */
-	if (*bursts_p) {
-		talloc_free(*bursts_p);
-		*bursts_p = NULL;
+	if (msg == NULL) {
+		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No prim for transmit.\n");
+		return -ENODEV;
 	}
-	return -ENODEV;
 
-got_msg:
 	/* check validity of message */
 	if (msgb_l2len(msg) != GSM_MACBLOCK_LEN) {
 		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim has odd len=%u != %u\n",
 			msgb_l2len(msg), GSM_MACBLOCK_LEN);
 		/* free message */
 		msgb_free(msg);
-		goto no_msg;
+		return -EINVAL;
 	}
 
 	/* BURST BYPASS */
-
-	/* allocate burst memory, if not already */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, 464);
-		if (!*bursts_p)
-			return -ENOMEM;
-	}
 
 	/* encode bursts */
 	gsm0503_xcch_encode(*bursts_p, msg->l2h);

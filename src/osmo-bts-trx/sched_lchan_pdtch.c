@@ -60,13 +60,6 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	if (bi->flags & TRX_BI_F_ACCESS_BURST)
 		return rx_rach_fn(l1ts, bi);
 
-	/* allocate burst memory, if not already */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, GSM0503_EGPRS_BURSTS_NBITS);
-		if (!*bursts_p)
-			return -ENOMEM;
-	}
-
 	/* clear burst */
 	if (bi->bid == 0) {
 		memset(*bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
@@ -156,11 +149,8 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	int rc = 0;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0) {
-		if (!*bursts_p)
-			return -ENODEV;
+	if (br->bid > 0)
 		goto send_burst;
-	}
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
@@ -170,17 +160,10 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * take care of filling C0 with dummy bursts to keep expected
 		 * power transmit levels
 		 */
-		goto no_msg;
+		return -ENODEV;
 	}
 
 	/* BURST BYPASS */
-
-	/* allocate burst memory, if not already */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, GSM0503_EGPRS_BURSTS_NBITS);
-		if (!*bursts_p)
-			return -ENOMEM;
-	}
 
 	/* encode bursts */
 	rc = gsm0503_pdtch_egprs_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
@@ -193,7 +176,7 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			"(len=%ld)\n", (long)(msg->tail - msg->l2h));
 		/* free message */
 		msgb_free(msg);
-		goto no_msg;
+		return -EINVAL;
 	} else if (rc == GSM0503_EGPRS_BURSTS_NBITS) {
 		*mod = TRX_MOD_T_8PSK;
 	} else {
@@ -226,12 +209,4 @@ send_burst:
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
 	return 0;
-
-no_msg:
-	/* free burst memory */
-	if (*bursts_p) {
-		talloc_free(*bursts_p);
-		*bursts_p = NULL;
-	}
-	return -ENODEV;
 }

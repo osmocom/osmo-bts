@@ -35,6 +35,7 @@
 #include <osmocom/core/stats.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
+#include <osmocom/gsm/gsm0502.h>
 #include <osmocom/gsm/a5.h>
 
 #include <osmo-bts/gsm_data.h>
@@ -542,9 +543,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.chan_nr = RSL_CHAN_OSMO_PDCH,
 
 		/* Rx and Tx, multiple coding schemes: CS-2..4 and MCS-1..9 (3GPP TS
-		 * 05.03, chapter 5), regular interleaving as specified for xCCH.
-		 * NOTE: the burst buffer is three times bigger because the
-		 * payload of EDGE bursts is three times longer. */
+		 * 05.03, chapter 5), regular interleaving as specified for xCCH. */
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_pdtch_fn,
 		.ul_fn = rx_pdtch_fn,
@@ -1070,26 +1069,24 @@ static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
 		  (active) ? "Activating" : "Deactivating",
 		  trx_chan_desc[chan].name);
 
-	/* free burst memory, to cleanly start with burst 0 */
-	if (chan_state->dl_bursts) {
-		talloc_free(chan_state->dl_bursts);
-		chan_state->dl_bursts = NULL;
-	}
-	if (chan_state->ul_bursts) {
-		talloc_free(chan_state->ul_bursts);
-		chan_state->ul_bursts = NULL;
-	}
-	if (chan_state->ul_bursts_prev) {
-		talloc_free(chan_state->ul_bursts_prev);
-		chan_state->ul_bursts_prev = NULL;
-	}
-
 	if (active) {
 		/* Clean up everything */
 		memset(chan_state, 0, sizeof(*chan_state));
 
 		/* Bind to generic 'struct gsm_lchan' */
 		chan_state->lchan = lchan;
+
+		/* Allocate memory for Rx/Tx burst buffers.  Use the maximim size
+		 * of 4 * (3 * 2 * 58) bytes, which is sufficient to store 4 8PSK
+		 * modulated bursts. */
+		const size_t buf_size = 4 * GSM_NBITS_NB_8PSK_PAYLOAD;
+		if (trx_chan_desc[chan].dl_fn != NULL)
+			chan_state->dl_bursts = talloc_zero_size(l1ts, buf_size);
+		if (trx_chan_desc[chan].ul_fn != NULL) {
+			chan_state->ul_bursts = talloc_zero_size(l1ts, buf_size);
+			if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
+				chan_state->ul_bursts_prev = talloc_zero_size(l1ts, buf_size);
+		}
 	} else {
 		chan_state->ho_rach_detect = 0;
 
@@ -1097,6 +1094,11 @@ static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
 		trx_sched_queue_filter(&l1ts->dl_prims,
 				       trx_chan_desc[chan].chan_nr,
 				       trx_chan_desc[chan].link_id);
+
+		/* Release memory used by Rx/Tx burst buffers */
+		TALLOC_FREE(chan_state->dl_bursts);
+		TALLOC_FREE(chan_state->ul_bursts);
+		TALLOC_FREE(chan_state->ul_bursts_prev);
 	}
 
 	chan_state->active = active;

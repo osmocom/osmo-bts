@@ -99,13 +99,6 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received TCH/F, bid=%u\n", bi->bid);
 
-	/* allocate burst memory, if not already */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, 928);
-		if (!*bursts_p)
-			return -ENOMEM;
-	}
-
 	/* shift the buffer by 4 bursts leftwards */
 	if (bi->bid == 0) {
 		memcpy(*bursts_p, *bursts_p + 464, 464);
@@ -460,24 +453,14 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	struct msgb *msg;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0) {
-		if (!*bursts_p)
-			return -ENODEV;
+	if (br->bid > 0)
 		goto send_burst;
-	}
 
 	/* BURST BYPASS */
 
-	/* allocate burst memory, if not already,
-	 * otherwise shift buffer by 4 bursts for interleaving */
-	if (!*bursts_p) {
-		*bursts_p = talloc_zero_size(l1ts, 928);
-		if (!*bursts_p)
-			return -ENOMEM;
-	} else {
-		memcpy(*bursts_p, *bursts_p + 464, 464);
-		memset(*bursts_p + 464, 0, 464);
-	}
+	 /* shift buffer by 4 bursts for interleaving */
+	memcpy(*bursts_p, *bursts_p + 464, 464);
+	memset(*bursts_p + 464, 0, 464);
 
 	/* dequeue a message to be transmitted */
 	msg = tch_dl_dequeue(l1ts, br);
