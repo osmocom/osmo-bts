@@ -375,6 +375,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			if ((chan_nr & 0xE0) == 0x80) {
 				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot activate"
 					  " channel %s\n", rsl_chan_nr_str(chan_nr));
+				rc = -EPERM;
 				break;
 			}
 			/* activate dedicated channel */
@@ -420,6 +421,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			if ((chan_nr & 0xE0) == 0x80) {
 				LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Cannot deactivate"
 					  " channel %s\n", rsl_chan_nr_str(chan_nr));
+				rc = -EPERM;
 				break;
 			}
 			/* deactivate associated channel */
