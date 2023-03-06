@@ -1160,11 +1160,11 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	struct osmo_fd *conn_bfd = &state->conn_bfd;
 	struct sockaddr_un un_addr;
 	socklen_t len;
-	int rc;
+	int fd;
 
 	len = sizeof(un_addr);
-	rc = accept(bfd->fd, (struct sockaddr *) &un_addr, &len);
-	if (rc < 0) {
+	fd = accept(bfd->fd, (struct sockaddr *) &un_addr, &len);
+	if (fd < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Failed to accept a new connection\n");
 		return -1;
 	}
@@ -1174,11 +1174,11 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 			"another active connection ?!?\n");
 		/* We already have one PCU connected, this is all we support */
 		state->listen_bfd.when &= ~OSMO_FD_READ;
-		close(rc);
+		close(fd);
 		return 0;
 	}
 
-	osmo_fd_setup(conn_bfd, rc, OSMO_FD_READ, pcu_sock_cb, state, 0);
+	osmo_fd_setup(conn_bfd, fd, OSMO_FD_READ, pcu_sock_cb, state, 0);
 
 	if (osmo_fd_register(conn_bfd) != 0) {
 		LOGP(DPCU, LOGL_ERROR, "Failed to register new connection "
