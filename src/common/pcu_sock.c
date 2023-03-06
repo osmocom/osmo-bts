@@ -1170,8 +1170,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	}
 
 	if (conn_bfd->fd >= 0) {
-		LOGP(DPCU, LOGL_NOTICE, "PCU connects but we already have "
-			"another active connection ?!?\n");
+		LOGP(DPCU, LOGL_NOTICE, "PCU connects but we already have another active connection ?!?\n");
 		/* We already have one PCU connected, this is all we support */
 		state->listen_bfd.when &= ~OSMO_FD_READ;
 		close(fd);
@@ -1181,8 +1180,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	osmo_fd_setup(conn_bfd, fd, OSMO_FD_READ, pcu_sock_cb, state, 0);
 
 	if (osmo_fd_register(conn_bfd) != 0) {
-		LOGP(DPCU, LOGL_ERROR, "Failed to register new connection "
-			"fd\n");
+		LOGP(DPCU, LOGL_ERROR, "Failed to register new connection fd\n");
 		close(conn_bfd->fd);
 		conn_bfd->fd = -1;
 		return -1;
