@@ -1163,7 +1163,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	int fd;
 
 	len = sizeof(un_addr);
-	fd = accept(bfd->fd, (struct sockaddr *) &un_addr, &len);
+	fd = accept(bfd->fd, (struct sockaddr *)&un_addr, &len);
 	if (fd < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Failed to accept a new connection\n");
 		return -1;
