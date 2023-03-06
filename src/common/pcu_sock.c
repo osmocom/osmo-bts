@@ -1172,7 +1172,7 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	if (conn_bfd->fd >= 0) {
 		LOGP(DPCU, LOGL_NOTICE, "PCU connects but we already have another active connection ?!?\n");
 		/* We already have one PCU connected, this is all we support */
-		state->listen_bfd.when &= ~OSMO_FD_READ;
+		osmo_fd_read_disable(&state->listen_bfd);
 		close(fd);
 		return 0;
 	}
