@@ -58,6 +58,7 @@ struct gsm_network {
 /* lchans 0..3 are SDCCH in combined channel configuration,
    use 4 as magic number for BCCH hack - see osmo-bts-../oml.c:opstart_compl() */
 #define CCCH_LCHAN 4
+#define CBCH_LCHAN 2
 
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
