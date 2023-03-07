@@ -440,6 +440,10 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " gsmtap-remote-host %s%s",
 			bts->gsmtap.remote_host,
 			VTY_NEWLINE);
+	if (bts->gsmtap.local_host != NULL)
+		vty_out(vty, " gsmtap-local-host %s%s",
+			bts->gsmtap.local_host,
+			VTY_NEWLINE);
 	for (i = 0; i < sizeof(uint32_t) * 8; i++) {
 		if (bts->gsmtap.sapi_mask & ((uint32_t) 1 << i)) {
 			sapi_buf = get_value_string_or_null(gsmtap_sapi_names, i);
