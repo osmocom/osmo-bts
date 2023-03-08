@@ -253,11 +253,11 @@ static void update_ts_data(struct trx_l1h *l1h, struct trx_prov_ev_cfg_ts_data *
 	l1h->config.setslot_sent[data->tn] = false;
 }
 
-/* Whether a given TRX is fully configured and can be powered on */
+/* Whether a given TRX is fully configured */
 static bool trx_is_provisioned(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
-	if (l1h->config.enabled && l1h->config.rxtune_acked && l1h->config.txtune_acked &&
+	if (l1h->config.rxtune_acked && l1h->config.txtune_acked &&
 	    (l1h->config.bsic_acked || !pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
 	    (l1h->config.tsc_acked || pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
 	    (l1h->config.nomtxpower_acked || l1h->config.nominal_power_set_by_vty) &&
@@ -267,6 +267,11 @@ static bool trx_is_provisioned(struct trx_l1h *l1h)
 	return false;
 }
 
+/* Whether a given TRX is fully configured and can be powered on */
+static bool trx_is_provisioned_and_enabled(struct trx_l1h *l1h)
+{
+	return l1h->config.enabled && trx_is_provisioned(l1h);
+}
 
 static void trx_signal_ready_trx0(struct trx_l1h *l1h)
 {
@@ -282,7 +287,7 @@ static void trx_signal_ready_trx0(struct trx_l1h *l1h)
 	}
 }
 
-/* Called from TRX0 to check if other TRX are already configured and powered so POWERON can be sent */
+/* Called from TRX0 to check if other TRX are already configured so POWERON can be sent */
 static bool trx_other_trx0_ready(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
@@ -293,7 +298,7 @@ static bool trx_other_trx0_ready(struct trx_l1h *l1h)
 		struct trx_l1h *l1h_it = pinst_it->u.osmotrx.hdl;
 		if (l1h_it->phy_inst->num == 0)
 			continue;
-		if (l1h_it->provision_fi->state != TRX_PROV_ST_OPEN_POWERON)
+		if (!trx_is_provisioned(l1h_it))
 			return false;
 	}
 	return true;
@@ -389,7 +394,8 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	uint16_t arfcn;
 	int nominal_power;
 	int status;
-	bool others_ready;
+	bool waiting_other_trx;
+	bool was_ready = trx_is_provisioned(l1h);
 
 	switch (event) {
 	case TRX_PROV_EV_CLOSE:
@@ -485,22 +491,22 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 
 	l1if_provision_transceiver_trx(l1h);
 
-	if (l1h->phy_inst->num == 0)
-		others_ready = trx_other_trx0_ready(l1h);
-	else
-		others_ready = true; /* we don't care about others in TRX!=0 */
+	if (l1h->phy_inst->num == 0) {
+		waiting_other_trx = !trx_other_trx0_ready(l1h);
+	} else {
+		waiting_other_trx = false; /* we don't care about others in TRX!=0 */
+		/* If we just became ready for TRX0 POWERON (aka this TRX becomes provisioned), signal it to TRX0: */
+		if (l1h->phy_inst->num != 0 && (!was_ready && trx_is_provisioned(l1h)))
+			trx_signal_ready_trx0(l1h);
+	}
 
 	/* if we gathered all data and could go forward. For TRX0, only after
 	 * all other TRX are prepared, since it will send POWERON commad */
-	if (trx_is_provisioned(l1h) &&
-	    (l1h->phy_inst->num != 0 || others_ready)) {
-		if (l1h->phy_inst->num != 0) {
+	if (trx_is_provisioned_and_enabled(l1h) && !waiting_other_trx) {
+		if (l1h->phy_inst->num != 0)
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_POWERON);
-			/* Once we are powered on, signal TRX0 in case it was waiting for us */
-			trx_signal_ready_trx0(l1h);
-		} else {
+		else
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
-		}
 	} else {
 		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s%s\n",
 			l1h->config.enabled ? "" :" enable",
@@ -512,7 +518,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.txtune_acked ? "" : " txtune-ack",
 			l1h->config.nominal_power_set_by_vty ? "" : (l1h->config.nomtxpower_acked ? "" : " nomtxpower-ack"),
 			l1h->config.setformat_acked ? "" : " setformat-ack",
-			(l1h->phy_inst->num != 0 || others_ready) ? "" : " other-trx"
+			waiting_other_trx ? "" : " other-trx"
 			);
 	}
 }
