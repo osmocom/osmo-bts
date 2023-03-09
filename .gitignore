@@ -93,6 +93,7 @@ debian/tmp/
 doc/manuals/*.html
 doc/manuals/*.svg
 doc/manuals/*.pdf
+doc/manuals/vty/*.pdf
 doc/manuals/*__*.png
 doc/manuals/*.check
 doc/manuals/generated/
