@@ -517,6 +517,7 @@ number*.
 | Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
 | IP Speech Mode | <<RSL_IE_IPAC_SPEECH_MODE>> | O | TV | 2
 | RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+| RTP CSD Format | <<RSL_IE_IPAC_RTP_CSD_FORMAT>> | O | TV | 2
 |===
 
 [[rsl_crcx_msg_ack]]
@@ -577,6 +578,7 @@ properties of a user-plane RTP connection.
 | Destination IP Port | <<RSL_IE_IPAC_REMOTE_PORT>> | O | TV | 3
 | IP Speech Mode | <<RSL_IE_IPAC_SPEECH_MODE>> | O | TV | 2
 | RTP Payload Type 2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>> | O | TV | 2
+| RTP CSD Format | <<RSL_IE_IPAC_RTP_CSD_FORMAT>> | O | TV | 2
 |===
 
 [[rsl_mdcx_msg_ack]]
@@ -872,6 +874,7 @@ addition to those indicated in 3GPP TS 48.058 Section 9.3:
 | 0xf5 | RSL_IE_IPAC_LOCAL_IP | <<RSL_IE_IPAC_LOCAL_IP>>
 | 0xf6 | RSL_IE_IPAC_CONN_STAT | <<RSL_IE_IPAC_CONN_STAT>>
 | 0xf8 | RSL_IE_IPAC_CONN_ID | <<RSL_IE_IPAC_CONN_ID>>
+| 0xf9 | RSL_IE_IPAC_RTP_CSD_FORMAT | <<RSL_IE_IPAC_RTP_CSD_FORMAT>>
 | 0xfc | RSL_IE_IPAC_RTP_PAYLOAD2 | <<RSL_IE_IPAC_RTP_PAYLOAD2>>
 |===
 
@@ -1084,6 +1087,39 @@ for future use.
 | 6 | 'Training Sequence Code (TSC) 6'
 | 7 | 'Training Sequence Code (TSC) 7'
 | 8..255 | reserved values
+|===
+
+[[RSL_IE_IPAC_RTP_CSD_FORMAT]]
+==== RSL_IE_IPAC_RTP_CSD_FORMAT
+
+This information element contains the RTP Circuit Switched Data format.
+
+.A-bis/IP RTP CSD Format
+[options="header",width="60%",cols="15%,15%,70%"]
+|===
+| Offset | Size | Description
+| 0 | 4 | RTP CSD Format D
+| 4 | 4 | RTP CSD Format IR
+|===
+
+.A-bis/IP RTP CSD Format D Values
+[options="header",width="40%",cols="20%,80%"]
+|===
+| Value | Description
+| 0 | External TRAU format
+| 1 | Non-TRAU Packed format
+| 2 | TRAU within the BTS
+| 3 | IWF-Free BTS-BTS Data
+|===
+
+.A-bis/IP RTP CSD Format IR Values
+[options="header",width="40%",cols="20%,80%"]
+|===
+| Value | Description
+| 0 | 8 kb/s
+| 1 | 16 kb/s
+| 2 | 32 kb/s
+| 3 | 48 kb/s
 |===
 
 === A-bis RSL Initialization / BTS bring-up
