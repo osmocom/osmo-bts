@@ -2703,12 +2703,14 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	const uint8_t *payload_type, *speech_mode, *payload_type2, *osmux_cid;
+	const uint8_t *payload_type, *speech_mode, *payload_type2, *osmux_cid, *csd_fmt;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0;
 	char *name;
 	struct in_addr ia;
+	enum rsl_ipac_rtp_csd_format_d csd_fmt_d;
+	enum rsl_ipac_rtp_csd_format_ir csd_fmt_ir;
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX)
 		name = "CRCX";
@@ -2764,6 +2766,17 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 			"RTP_PT and RTP_PT2 in same msg !?!\n", name);
 		return tx_ipac_XXcx_nack(lchan, RSL_ERR_MAND_IE_ERROR,
 					 inc_ip_port, dch->c.msg_type);
+	}
+
+	if ((csd_fmt = TLVP_VAL(&tp, RSL_IE_IPAC_RTP_CSD_FMT))) {
+		csd_fmt_d = *csd_fmt & 0xf;
+		csd_fmt_ir = *csd_fmt >> 4;
+		LOGPC(DRSL, LOGL_DEBUG, "csd_fmt_d=%d csd_fmt_ir=%d ", csd_fmt_d, csd_fmt_ir);
+		if (csd_fmt_d != RSL_IPAC_RTP_CSD_TRAU_BTS) {
+			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Rx RSL IPAC %s, csd_fmt_d=%d is not supported\n",
+				  name, csd_fmt_d);
+			return tx_ipac_XXcx_nack(lchan, RSL_ERR_SERV_OPT_UNIMPL, inc_ip_port, dch->c.msg_type);
+		}
 	}
 
 	if (!osmux_cid) { /* Regular RTP */
