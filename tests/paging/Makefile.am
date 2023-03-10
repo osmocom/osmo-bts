@@ -18,6 +18,7 @@ LDADD = \
 	$(LIBOSMOTRAU_LIBS) \
 	$(LIBOSMONETIF_LIBS) \
 	$(NULL)
+AM_LDFLAGS = -no-install
 
 check_PROGRAMS = paging_test
 EXTRA_DIST = paging_test.ok
