@@ -1295,7 +1295,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	}
 
 	if (!send_rel_ack) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "%s not sending REL ACK\n", gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "not sending REL ACK\n");
 		return 0;
 	}
 
