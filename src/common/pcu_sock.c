@@ -999,9 +999,9 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 
 	bts->pcu_version[0] = '\0';
 
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
-	osmo_fd_unregister(bfd);
 
 	/* patch SI3 to remove GPRS indicator */
 	regenerate_si3_restoctets(bts);
