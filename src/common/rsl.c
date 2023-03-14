@@ -1295,7 +1295,7 @@ int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan)
 	}
 
 	if (!send_rel_ack) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "not sending REL ACK\n");
+		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "not sending REL ACK\n");
 		return 0;
 	}
 
@@ -1386,7 +1386,7 @@ static int rsl_tx_chan_act_nack(struct gsm_lchan *lchan, uint8_t cause) {
 int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause)
 {
 	if (lchan->rel_act_kind != LCHAN_REL_ACT_RSL) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "not sending CHAN ACT %s\n",
+		LOGPLCHAN(lchan, DRSL, LOGL_INFO, "not sending CHAN ACT %s\n",
 			  cause ? "NACK" : "ACK");
 		return 0;
 	}
