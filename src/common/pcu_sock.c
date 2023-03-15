@@ -28,6 +28,7 @@
 #include <inttypes.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/socket.h>
 #include <osmocom/gsm/gsm23003.h>
@@ -1087,48 +1088,33 @@ close:
 static int pcu_sock_write(struct osmo_fd *bfd)
 {
 	struct pcu_sock_state *state = bfd->data;
+	struct msgb *msg;
 	int rc;
 
-	while (!llist_empty(&state->upqueue)) {
-		struct msgb *msg, *msg2;
-		struct gsm_pcu_if *pcu_prim;
-
-		/* peek at the beginning of the queue */
-		msg = llist_entry(state->upqueue.next, struct msgb, list);
-		pcu_prim = (struct gsm_pcu_if *)msg->data;
-
-		osmo_fd_write_disable(bfd);
-
+	while ((msg = msgb_dequeue(&state->upqueue))) {
 		/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
-		if (!msgb_length(msg)) {
-			LOGP(DPCU, LOGL_ERROR, "message type (%d) with ZERO "
-				"bytes!\n", pcu_prim->msg_type);
-			goto dontsend;
-		}
+		OSMO_ASSERT(msgb_length(msg) > 0);
 
 		/* try to send it over the socket */
 		rc = write(bfd->fd, msgb_data(msg), msgb_length(msg));
-		if (rc == 0)
+		if (OSMO_UNLIKELY(rc == 0))
 			goto close;
-		if (rc < 0) {
+		if (OSMO_UNLIKELY(rc < 0)) {
 			if (errno == EAGAIN) {
-				osmo_fd_write_enable(bfd);
-				break;
+				/* Re-insert at the start of the queue, skip disabling fd WRITE */
+				llist_add(&msg->list, &state->upqueue);
+				return 0;
 			}
 			goto close;
 		}
-
-dontsend:
-		/* _after_ we send it, we can deueue */
-		msg2 = msgb_dequeue(&state->upqueue);
-		assert(msg == msg2);
 		msgb_free(msg);
 	}
+	osmo_fd_write_disable(bfd);
 	return 0;
 
 close:
+	msgb_free(msg);
 	pcu_sock_close(state);
-
 	return -1;
 }
 
