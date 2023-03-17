@@ -367,13 +367,13 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 		cbits = ABIS_RSL_CHAN_NR_CBITS_BCCH;
 		break;
 	case GSM_PCHAN_NONE:
-		LOGP(DRSL, LOGL_ERROR, "Physical channel %s not expected!\n",
-		     gsm_pchan_name(pchan));
+		LOGP(DRSL, LOGL_ERROR, "ts=%u,ss=%u Physical channel %s not expected!\n",
+		     ts_nr, lchan_nr, gsm_pchan_name(pchan));
 		cbits = 0x00;
 		break;
 	default:
-		LOGP(DRSL, LOGL_ERROR, "Physical channel %s (0x%02x) not expected!\n",
-		     gsm_pchan_name(pchan), (int)pchan);
+		LOGP(DRSL, LOGL_ERROR, "ts=%u,ss=%u Physical channel %s (0x%02x) not expected!\n",
+		     ts_nr, lchan_nr, gsm_pchan_name(pchan), (int)pchan);
 		OSMO_ASSERT(0);
 		break;
 	}
