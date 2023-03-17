@@ -27,8 +27,8 @@ struct gsm_bts_trx {
 	uint16_t arfcn;
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
-        uint8_t max_power_backoff_8psk; /* in actual dB OC-2G only */
-        uint8_t c0_idle_power_red;      /* in actual dB OC-2G only */
+	uint8_t max_power_backoff_8psk; /* in actual dB OC-2G only */
+	uint8_t c0_idle_power_red;      /* in actual dB OC-2G only */
 
 	uint8_t ta_ctrl_interval; /* 1 step is 2 SACCH periods */
 
