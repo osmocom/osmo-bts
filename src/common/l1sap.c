@@ -615,6 +615,9 @@ static void l1sap_interf_meas_report(struct gsm_bts *bts)
 		return;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+		    trx->bb_transc.mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
 		/* Calculate the average of all received samples */
 		l1sap_interf_meas_calc_avg(trx);
 		/* Report to the BSC over the A-bis/RSL */

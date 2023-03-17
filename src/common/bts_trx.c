@@ -227,10 +227,13 @@ int trx_link_estab(struct gsm_bts_trx *trx)
 	osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_RSL_UP, NULL);
 	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_RSL_UP, NULL);
 
-	if ((rc = rsl_tx_rf_res(trx)) < 0)
-		oml_tx_failure_event_rep(&trx->bb_transc.mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_RSL_FAIL,
-					 "Failed to establish RSL link (%d)", rc);
-
+	if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED ||
+	    trx->bb_transc.mo.nm_state.operational == NM_OPSTATE_ENABLED) {
+		rc = rsl_tx_rf_res(trx);
+		if (rc < 0)
+			oml_tx_failure_event_rep(&trx->bb_transc.mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_RSL_FAIL,
+						 "Failed to establish RSL link (%d)", rc);
+	}
 	if (trx == trx->bts->c0)
 		load_timer_start(trx->bts);
 
