@@ -322,7 +322,7 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 	}
 }
 
-/* See Table 10.5.25 of GSM04.08 */
+/* See 3GPP TS 44.018 Table 10.5.2.5.1 "Channel Description information element" */
 static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 			  uint8_t ts_nr, uint8_t lchan_nr)
 {
@@ -369,7 +369,7 @@ static uint8_t gsm_pchan2chan_nr(enum gsm_phys_chan_config pchan,
 	case GSM_PCHAN_NONE:
 		LOGP(DRSL, LOGL_ERROR, "ts=%u,ss=%u Physical channel %s not expected!\n",
 		     ts_nr, lchan_nr, gsm_pchan_name(pchan));
-		cbits = 0x00;
+		cbits = 0x00; /* Reserved */
 		break;
 	default:
 		LOGP(DRSL, LOGL_ERROR, "ts=%u,ss=%u Physical channel %s (0x%02x) not expected!\n",
