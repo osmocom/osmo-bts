@@ -1013,8 +1013,8 @@ int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pch
 	struct l1sched_ts *l1ts = ts->priv;
 	int i = find_sched_mframe_idx(pchan, ts->nr);
 	if (i < 0) {
-		LOGP(DL1C, LOGL_NOTICE, "%s Failed to configure multiframe\n",
-		     gsm_ts_name(ts));
+		LOGP(DL1C, LOGL_NOTICE, "%s Failed to configure multiframe (pchan=0x%02x)\n",
+		     gsm_ts_name(ts), pchan);
 		return -ENOTSUP;
 	}
 	l1ts->mf_index = i;
