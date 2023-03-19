@@ -100,7 +100,29 @@ static uint8_t vbts_set_trx(struct gsm_bts_trx *trx)
 
 static uint8_t vbts_set_ts(struct gsm_bts_trx_ts *ts)
 {
-	if (trx_sched_set_pchan(ts, ts->pchan) != 0)
+	enum gsm_phys_chan_config pchan;
+
+	/* For dynamic timeslots, pick the pchan type that should currently be
+	 * active. This should only be called during init, PDCH transitions
+	 * will call trx_set_ts_as_pchan() directly. */
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F_PDCH:
+		OSMO_ASSERT((ts->flags & TS_F_PDCH_PENDING_MASK) == 0);
+		if (ts->flags & TS_F_PDCH_ACTIVE)
+			pchan = GSM_PCHAN_PDCH;
+		else
+			pchan = GSM_PCHAN_TCH_F;
+		break;
+	case GSM_PCHAN_OSMO_DYN:
+		OSMO_ASSERT(ts->dyn.pchan_is == ts->dyn.pchan_want);
+		pchan = ts->dyn.pchan_is;
+		break;
+	default:
+		pchan = ts->pchan;
+		break;
+	}
+
+	if (trx_sched_set_pchan(ts, pchan) != 0)
 		return NM_NACK_RES_NOTAVAIL;
 
 	return 0;
