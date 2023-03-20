@@ -36,8 +36,6 @@ BuildRequires:  pkgconfig(libosmovty) >= 1.8.0
 BuildRequires:  pkgconfig(libosmoabis) >= 1.4.0
 BuildRequires:  pkgconfig(libosmotrau) >= 1.4.0
 BuildRequires:  pkgconfig(libosmo-netif) >= 1.3.0
-### FIXME: DependencyHACK to include  osmocom/gprs/protocol/gsm_04_60.h
-BuildRequires:  pkgconfig(libosmogb)
 %{?systemd_requires}
 
 %description
