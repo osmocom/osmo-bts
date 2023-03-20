@@ -505,7 +505,6 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	/* create new message and fill data */
 	if (msg) {
-		msgb_pull(msg, sizeof(*l1sap));
 		/* create new message */
 		nmsg = l1p_msgb_alloc();
 		if (!nmsg)
@@ -514,7 +513,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		rc = l1if_tch_encode(lchan,
 				     l1p->u.phDataReq.msgUnitParam.u8Buffer,
 				     &l1p->u.phDataReq.msgUnitParam.u8Size,
-				     msg->data, msg->len, u32Fn, use_cache,
+				     msgb_l2(msg), msgb_l2len(msg), u32Fn, use_cache,
 				     l1sap->u.tch.marker);
 		if (rc < 0) {
 		/* no data encoded for L1: smth will be generated below */

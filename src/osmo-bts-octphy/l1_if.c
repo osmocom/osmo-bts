@@ -593,7 +593,6 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			return -ENOMEM;
 		}
 
-		msgb_pull(msg, sizeof(*l1sap));
 		tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *data_req =
 			(tOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD *)
 			msgb_put(nmsg, sizeof(*data_req));
@@ -615,7 +614,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 				&data_req->Data.ulPayloadType,
 				data_req->Data.abyDataContent,
 				&data_req->Data.ulDataLength,
-				msg->data, msg->len);
+				msgb_l2(msg), msgb_l2len(msg));
 
 		mOCTVC1_GSM_MSG_TRX_REQUEST_LOGICAL_CHANNEL_DATA_CMD_SWAP(data_req);
 	} else {
