@@ -124,6 +124,11 @@ static void bts_report_interf_meas(const struct gsm_bts *bts)
 	unsigned int tn, ln;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
+		/* Skip pushing interf_meas for disabled TRX */
+		if (trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+		    trx->bb_transc.mo.nm_state.operational != NM_OPSTATE_ENABLED)
+			continue;
+
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
 			const struct gsm_bts_trx_ts *ts = &trx->ts[tn];
 			for (ln = 0; ln < ARRAY_SIZE(ts->lchan); ln++)
