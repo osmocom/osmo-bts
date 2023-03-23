@@ -161,14 +161,14 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 		lchan->tch_mode = GSM48_CMODE_SPEECH_AMR;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM4):
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V4;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM5):
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_SPEECH, RSL_CMOD_SP_GSM6):
-		/* TODO: also handle RSL_CMOD_SP_{GSM4,GSM5,GSM6} */
-		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
-			  "unhandled speech coding algorithm 0x%02x\n",
-			  cm->chan_rate);
-		*cause = RSL_ERR_IE_CONTENT;
-		return -ENOTSUP;
+		lchan->tch_mode = GSM48_CMODE_SPEECH_V6;
+		break;
 
 	/* If octet 4 indicates non-transparent data */
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_14k5):
@@ -181,35 +181,59 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_43k5):
+		lchan->tch_mode = GSM48_CMODE_DATA_43k5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_28k8):
+		/* 28.8 kbit/s services, 29.0 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_29k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_43k5_14k5):
+		lchan->tch_mode = GSM48_CMODE_DATA_43k5_14k5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_29k0_14k5):
+		lchan->tch_mode = GSM48_CMODE_DATA_29k0_14k5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_43k5_29k0):
+		lchan->tch_mode = GSM48_CMODE_DATA_43k5_29k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_14k5_43k5):
+		lchan->tch_mode = GSM48_CMODE_DATA_14k5_43k5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_14k5_29k0):
+		lchan->tch_mode = GSM48_CMODE_DATA_14k5_29k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_29k0_43k5):
-		/* TODO: also handle other non-transparent data rates */
-		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
-			  "unhandled non-transparent CSD data rate 0x%02x\n",
-			  cm->chan_rate & 0x3f);
-		*cause = RSL_ERR_IE_CONTENT;
-		return -ENOTSUP;
+		lchan->tch_mode = GSM48_CMODE_DATA_29k0_43k5;
+		break;
 
 	/* If octet 4 indicates transparent data */
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_32000):
+		/* 32.0 kbit/s services, 32.0 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_32k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_29000):
+		/* 29.0 kbit/s services, 29.0 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_29k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_14400):
+		/* 14.4 kbit/s services, 14.5 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_9600):
+		/* 9.6 kbit/s services, 12.0 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_4800):
+		/* 4.8 kbit/s services, 6.0 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_2400):
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200):
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_600):
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200_75):
-		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
-			  "unhandled transparent CSD data rate 0x%02x\n",
-			  cm->chan_rate & 0x3f);
-		*cause = RSL_ERR_IE_CONTENT;
-		return -ENOTSUP;
+		/* 2.4 kbit/s *and less* services, 3.6 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_3k6;
+		break;
 
 	default:
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel Mode IE contains "
