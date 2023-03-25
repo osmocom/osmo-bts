@@ -1209,7 +1209,7 @@ int pcu_sock_init(const char *path)
 
 	g_bts_sm->gprs.pcu_state = state;
 
-	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket: %s\n", path);
+	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket (PCU IF v%u): %s\n", PCU_IF_VERSION, path);
 
 	return 0;
 }
