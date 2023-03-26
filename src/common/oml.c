@@ -1743,24 +1743,18 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		mo = &bts->mo;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		mo = &trx->mo;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		mo = &trx->bb_transc.mo;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		mo = &trx->ts[obj_inst->ts_nr].mo;
@@ -1814,24 +1808,18 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		obj = bts;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr >= bts->num_trx) {
+		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		obj = &trx->ts[obj_inst->ts_nr];
