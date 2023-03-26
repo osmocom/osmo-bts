@@ -534,6 +534,7 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	const struct gsm_abis_mo *mo;
 	struct tlv_parsed tp;
 	int rc;
+	enum abis_nm_nack_cause c;
 
 	if (!foh || !bts)
 		return -EINVAL;
@@ -541,10 +542,9 @@ static int oml_rx_get_attr(struct gsm_bts *bts, struct msgb *msg)
 	DEBUGPFOH(DOML, foh, "Rx GET ATTR\n");
 
 	/* Determine which OML object is addressed */
-	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-	if (!mo) {
+	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL) {
 		LOGPFOH(DOML, LOGL_ERROR, foh, "Get Attributes for unknown Object Instance\n");
-		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+		return oml_fom_ack_nack(msg, c);
 	}
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
@@ -1096,13 +1096,14 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 	struct gsm_abis_mo *mo;
 	void *obj;
 	int rc;
+	enum abis_nm_nack_cause c;
 
 	DEBUGPFOH(DOML, foh, "Rx OPSTART\n");
 
 	/* Step 1: Resolve MO by obj_class/obj_inst */
-	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-	obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-	if (!mo || !obj)
+	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
 	/* Step 2: Do some global dependency/consistency checking */
@@ -1128,6 +1129,7 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	uint8_t adm_state;
 	void *obj;
 	int rc;
+	enum abis_nm_nack_cause c;
 
 	DEBUGPFOH(DOML, foh, "Rx CHG ADM STATE\n");
 
@@ -1145,9 +1147,9 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	adm_state = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
 
 	/* Step 1: Resolve MO by obj_class/obj_inst */
-	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-	obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-	if (!mo || !obj)
+	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
 	/* Step 2: Do some global dependency/consistency checking */
@@ -1473,23 +1475,23 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	struct tlv_parsed tp, *tp_merged;
 	void *obj;
 	int rc;
+	enum abis_nm_nack_cause c;
 
 	DEBUGPFOH(DOML, foh, "Rx IPA SET ATTR\n");
 
 	rc = oml_tlv_parse(&tp, foh->data, msgb_l3len(msg) - sizeof(*foh));
 	if (rc < 0) {
-		mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-		if (!mo)
-			return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+		if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+			return oml_fom_ack_nack(msg, c);
 		oml_tx_failure_event_rep(mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UNSUP_ATTR,
 					 "New value for IPAC Set Attribute not supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_INCORR_STRUCT);
 	}
 
 	/* Resolve MO by obj_class/obj_inst */
-	mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-	obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-	if (!mo || !obj)
+	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
 
@@ -1730,10 +1732,11 @@ void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	mo->nm_state.administrative = NM_STATE_LOCKED;
 }
 
-/* obtain the MO structure for a given object instance */
-struct gsm_abis_mo *
-gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
-	    const struct abis_om_obj_inst *obj_inst)
+/* Obtain the MO structure for a given object instance
+ *  \param[out] c nack cause for reply in case of error. Ignored if NULL */
+struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
+				    const struct abis_om_obj_inst *obj_inst,
+				    enum abis_nm_nack_cause *c)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_abis_mo *mo = NULL;
@@ -1744,19 +1747,19 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_RADIO_CARRIER:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		mo = &trx->mo;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		mo = &trx->bb_transc.mo;
 		break;
 	case NM_OC_CHANNEL:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		if (obj_inst->ts_nr >= TRX_NR_TS)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		mo = &trx->ts[obj_inst->ts_nr].mo;
 		break;
 	case NM_OC_SITE_MANAGER:
@@ -1764,7 +1767,7 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_GPRS_NSE:
 		if (obj_inst->bts_nr > 0)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		mo = &g_bts_sm->gprs.nse.mo;
 		break;
 	case NM_OC_GPRS_CELL:
@@ -1772,13 +1775,22 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_GPRS_NSVC:
 		if (obj_inst->bts_nr > 0)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		mo = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr].mo;
 		break;
 	}
 	return mo;
+
+nm_nack_trxnr_unkn:
+	if (c != NULL)
+		*c = NM_NACK_TRXNR_UNKN;
+	return NULL;
+nm_nack_objinst_unkn:
+	if (c != NULL)
+		*c = NM_NACK_OBJINST_UNKN;
+	return NULL;
 }
 
 /* obtain the in-memory data structure of a given object instance */
