@@ -1781,20 +1781,6 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 	return mo;
 }
 
-/* obtain the gsm_nm_state data structure for a given object instance */
-struct gsm_nm_state *
-gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
-		 const struct abis_om_obj_inst *obj_inst)
-{
-	struct gsm_abis_mo *mo;
-
-	mo = gsm_objclass2mo(bts, obj_class, obj_inst);
-	if (!mo)
-		return NULL;
-
-	return &mo->nm_state;
-}
-
 /* obtain the in-memory data structure of a given object instance */
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
