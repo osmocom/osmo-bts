@@ -505,7 +505,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 {
 	GsmL1_Prim_t *l1p = msgb_l1prim(l1p_msg);
 	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
-	uint8_t *payload, payload_type, payload_len, sid_first[9] = { 0 };
+	uint8_t *payload, payload_type, payload_len;
 	struct msgb *rmsg = NULL;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
@@ -602,14 +602,8 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		break;
 #endif
 	case GsmL1_TchPlType_Amr:
-		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
-		break;
 	case GsmL1_TchPlType_Amr_SidFirstP1:
-		memcpy(sid_first, payload, payload_len);
-		int len = osmo_amr_rtp_enc(sid_first, 0, AMR_SID, AMR_GOOD);
-		if (len < 0)
-			return 0;
-		rmsg = l1_to_rtppayload_amr(sid_first, len, lchan);
+		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
 		break;
 	/* FIXME: what about GsmL1_TchPlType_Amr_SidBad? not well documented. */
 	}
