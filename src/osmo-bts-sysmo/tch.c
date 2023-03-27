@@ -549,6 +549,8 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		if (lchan->type != GSM_LCHAN_TCH_H &&
 		    lchan->type != GSM_LCHAN_TCH_F)
 			goto err_payload_match;
+		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received ONSET from L1 "
+		       "(%d bytes)\n", payload_len);
 		/* according to 3GPP TS 26.093 ONSET frames precede the first
 		   speech frame of a speech burst - set the marker for next RTP
 		   frame */
