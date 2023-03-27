@@ -1173,7 +1173,7 @@ static int app_info_compl_cb(struct octphy_hdl *fl1h, struct msgb *resp,
 	tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *air =
 		(tOCTVC1_MAIN_MSG_APPLICATION_INFO_RSP *) resp->l2h;
 
-	snprintf(ver_hdr, sizeof(ver_hdr), "%02i.%02i.%02i-B%i",
+	snprintf(ver_hdr, sizeof(ver_hdr), "%02d.%02d.%02d-B%d",
 		cOCTVC1_MAIN_VERSION_MAJOR, cOCTVC1_MAIN_VERSION_MINOR,
 		cOCTVC1_MAIN_VERSION_MAINTENANCE, cOCTVC1_MAIN_VERSION_BUILD);
 

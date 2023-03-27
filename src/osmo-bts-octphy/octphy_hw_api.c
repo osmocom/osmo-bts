@@ -119,7 +119,7 @@ static int rf_port_stats_compl_cb(struct octphy_hdl *fl1, struct msgb *resp,
 
 	LOGP(DL1C, LOGL_INFO, "RF-PORT-STATS.resp Idx=%u RadioStandard=%s, "
 		"Rx(Bytes=%u, Overflow=%u, AvgBps=%u, Period=%uus, Freq=%u) "
-		"Tx(Bytes=%i, Underflow=%u, AvgBps=%u, Period=%uus, Freq=%u)\n",
+		"Tx(Bytes=%d, Underflow=%u, AvgBps=%u, Period=%uus, Freq=%u)\n",
 		psr->ulPortIndex,
 		get_value_string(radio_std_vals, psr->ulRadioStandard),
 		psr->RxStats.ulRxByteCnt, psr->RxStats.ulRxOverflowCnt,

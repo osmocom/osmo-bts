@@ -418,9 +418,9 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	vty_out(vty, " rtp port-range %u %u%s", bts->rtp_port_range_start,
 		bts->rtp_port_range_end, VTY_NEWLINE);
 	if (bts->rtp_ip_dscp != -1)
-		vty_out(vty, " rtp ip-dscp %i%s", bts->rtp_ip_dscp, VTY_NEWLINE);
+		vty_out(vty, " rtp ip-dscp %d%s", bts->rtp_ip_dscp, VTY_NEWLINE);
 	if (bts->rtp_priority != -1)
-		vty_out(vty, " rtp socket-priority %i%s", bts->rtp_priority, VTY_NEWLINE);
+		vty_out(vty, " rtp socket-priority %d%s", bts->rtp_priority, VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
