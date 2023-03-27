@@ -37,4 +37,8 @@ extern const struct log_info bts_log_info;
 #define DEBUGPFN(ss, fn, fmt, args...) \
 	LOGP(ss, LOGL_DEBUG, "%s " fmt, gsm_fn_as_gsmtime_str(fn), ## args)
 
+/* LOGP with lchan + frame number prefix */
+#define LOGPLCFN(lchan, ss, lvl, fn, fmt, args...) \
+	LOGP(ss, lvl, "%s %s " fmt, gsm_lchan_name(lchan), gsm_fn_as_gsmtime_str(fn), ## args)
+
 #endif /* _LOGGING_H */
