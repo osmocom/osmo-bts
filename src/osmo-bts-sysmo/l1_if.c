@@ -980,6 +980,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
+	/* send empty TCH block to make RTP clock continue ticking in case of FACCH */
+	l1if_tch_rx(trx, chan_nr, NULL);
+
 	/* fill L1SAP header */
 	sap_msg = l1sap_msgb_alloc(data_ind->msgUnitParam.u8Size);
 	l1sap = msgb_l1sap_prim(sap_msg);

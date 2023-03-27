@@ -1007,6 +1007,9 @@ static int handle_ph_data_ind(struct lc15l1_hdl *fl1, GsmL1_PhDataInd_t *data_in
 		return rc;
 	}
 
+	/* send empty TCH block to make RTP clock continue ticking in case of FACCH */
+	l1if_tch_rx(trx, chan_nr, NULL);
+
 	/* get rssi */
 	rssi = (int8_t) (data_ind->measParam.fRssi);
 	/* get data pointer and length */

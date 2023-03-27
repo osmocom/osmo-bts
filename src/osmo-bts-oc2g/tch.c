@@ -358,8 +358,8 @@ static int is_recv_only(uint8_t speech_mode)
 /*! \brief receive a traffic L1 primitive for a given lchan */
 int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 {
-	GsmL1_Prim_t *l1p = msgb_l1prim(l1p_msg);
-	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
+	GsmL1_Prim_t *l1p;
+	GsmL1_PhDataInd_t *data_ind;
 	uint8_t *payload, payload_type, payload_len, sid_first[9] = { 0 };
 	struct msgb *rmsg = NULL;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
@@ -367,7 +367,12 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	if (is_recv_only(lchan->abis_ip.speech_mode))
 		return -EAGAIN;
 
-	if (data_ind->msgUnitParam.u8Size < 1) {
+	if (l1p_msg) {
+		l1p = msgb_l1prim(l1p_msg);
+		data_ind = &l1p->u.phDataInd;
+	}
+
+	if (!l1p_msg || data_ind->msgUnitParam.u8Size < 1) {
 		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "chan_nr %d Rx Payload size 0\n", chan_nr);
 		/* Push empty payload to upper layers */
 		rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
