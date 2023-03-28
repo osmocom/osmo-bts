@@ -2012,9 +2012,6 @@ int l1if_rsl_chan_act(struct gsm_lchan *lchan)
  */
 int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 {
-	const struct lchan_sapis *s4l = &sapis_for_lchan[lchan->type];
-	unsigned int i;
-
 	if (lchan->ho.active == HANDOVER_NONE)
 		return -1;
 
