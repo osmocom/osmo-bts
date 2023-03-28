@@ -1935,7 +1935,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		break;
 	case NM_OC_CHANNEL:
 		ts = (struct gsm_bts_trx_ts*) obj;
-		rc = ts_opstart(obj);
+		rc = ts_opstart(ts);
 		break;
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
