@@ -46,6 +46,8 @@
 #include "femtobts.h"
 #include "utils.h"
 
+static void dump_lch_par(int logl, GsmL1_LogChParam_t *lch_par, GsmL1_Sapi_t sapi);
+
 static int mph_info_chan_confirm(struct gsm_lchan *lchan,
 			enum osmo_mph_info_type type, uint8_t cause)
 {
@@ -1105,6 +1107,7 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, %s ",
 		gsm_lchan_name(lchan), act_req->hLayer2,
 		get_value_string(femtobts_l1sapi_names, act_req->sapi));
+	dump_lch_par(LOGL_INFO, lch_par, act_req->sapi);
 	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, act_req->dir));
 
