@@ -1279,8 +1279,8 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	} else {
 		if (bts_lc15->led_ctrl_mode == LC15_LED_CONTROL_BTS)
 			bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
-			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
-			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
+		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
+		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_DISABLE, NULL);
 	}
 
 	msgb_free(resp);
