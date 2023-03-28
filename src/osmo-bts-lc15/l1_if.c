@@ -1248,7 +1248,6 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	Litecell15_Prim_t *sysp = msgb_sysprim(resp);
 	GsmL1_Status_t status;
 	int on = 0;
-	unsigned int i;
 
 	if (sysp->id == Litecell15_PrimId_ActivateRfCnf)
 		on = 1;
