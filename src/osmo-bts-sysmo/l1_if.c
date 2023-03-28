@@ -966,7 +966,7 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx PH-DATA.ind %s (hL2 %08x): %s, " LOG_FMT_MEAS "\n",
+	LOGPGT(DL1P, LOGL_INFO, &g_time, "Rx PH-DATA.ind %s (hL2 %08x): %s, " LOG_FMT_MEAS "\n",
 		get_value_string(femtobts_l1sapi_names, data_ind->sapi), data_ind->hLayer2,
 		osmo_hexdump(data_ind->msgUnitParam.u8Buffer, data_ind->msgUnitParam.u8Size),
 		LOG_PARAM_MEAS(&data_ind->measParam));
@@ -979,6 +979,9 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		msgb_free(l1p_msg);
 		return rc;
 	}
+
+	if (data_ind->sapi == GsmL1_Sapi_FacchF)
+		LOGPFN(DL1P, LOGL_INFO, data_ind->u32Fn, "Rx SAPI FACCH\n");
 
 	/* fill L1SAP header */
 	sap_msg = l1sap_msgb_alloc(data_ind->msgUnitParam.u8Size);

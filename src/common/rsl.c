@@ -1677,7 +1677,7 @@ static int parse_multirate_config(struct gsm_lchan *lchan,
 	}
 
 parsed:
-	amr_log_mr_conf(DRTP, LOGL_DEBUG, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
+	amr_log_mr_conf(DRTP, LOGL_INFO, gsm_lchan_name(lchan), &lchan->tch.amr_mr);
 	lchan->tch.last_cmr = AMR_CMR_NONE;
 	return 0;
 }

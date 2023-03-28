@@ -56,7 +56,7 @@ enum l1prim_type {
 };
 
 #if !defined(SUPERFEMTO_API_VERSION) || SUPERFEMTO_API_VERSION < SUPERFEMTO_API(2,1,0)
-enum uperfemto_clk_src {
+enum Superfemto_clk_src {
 	SF_CLKSRC_NONE  = 0,
 	SF_CLKSRC_OCXO  = 1,
 	SF_CLKSRC_TCXO  = 2,

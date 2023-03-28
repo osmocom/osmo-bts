@@ -137,17 +137,24 @@ static uint32_t fn_ms_adj(uint32_t fn, const struct gsm_lchan *lchan)
 		/* 12/13 frames usable for audio in TCH,
 		   160 samples per RTP packet,
 		   1 RTP packet per 4 frames */
+
+		/*! Return the difference of two specified TDMA frame numbers (subtraction) */
+		const uint32_t _num_fn = (fn - lchan->tch.last_fn) * 12 * 160 / (13 * 4); //GSM_TDMA_FN_SUB(fn, lchan->tch.last_fn);
 		const uint32_t num_fn = GSM_TDMA_FN_SUB(fn, lchan->tch.last_fn);
+
 		samples_passed = num_fn * 12 * 160 / (13 * 4);
+		//LOGPLCHAN(lchan, DRTP, LOGL_NOTICE, "OLD [%d], NEW [%d]\n", _num_fn, samples_passed);
 		/* round number of samples to the nearest multiple of
-		   GSM_RTP_DURATION */
+		   GSM_RTP_DURATION = 160 */
 		r = samples_passed + GSM_RTP_DURATION / 2;
 		r -= r % GSM_RTP_DURATION;
 
-		if (r != GSM_RTP_DURATION)
+		if (r != GSM_RTP_DURATION) {
 			LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "RTP clock out of sync with lower layer:"
-				  " %"PRIu32" vs %d (%"PRIu32"->%"PRIu32")\n",
-				  r, GSM_RTP_DURATION, lchan->tch.last_fn, fn);
+				  " %"PRIu32" vs %d (%"PRIu32"->%"PRIu32") DIFF[%d] SAMPLES[%d]\n ",
+				  r, GSM_RTP_DURATION, lchan->tch.last_fn, fn, num_fn, samples_passed);
+			//return r;
+		}
 	}
 	return GSM_RTP_DURATION;
 }
@@ -181,7 +188,8 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 {
 	struct osmo_phsap_prim *l1sap;
 
-	LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "Rx -> RTP: %s\n", osmo_hexdump(rmsg->data, rmsg->len));
+	if (rmsg->len > 0)
+		LOGPLCHAN(lchan, DL1P, LOGL_INFO, "Rx -> RTP: %s\n", osmo_hexdump(rmsg->data, rmsg->len));
 
 	rmsg->l2h = rmsg->data;
 	rmsg->l1h = msgb_push(rmsg, sizeof(*l1sap));
@@ -635,7 +643,7 @@ static int l1sap_info_time_ind(struct gsm_bts *bts,
 	unsigned int frames_expired;
 	unsigned int i;
 
-	DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
+	//DEBUGPFN(DL1P, info_time_ind->fn, "Rx MPH_INFO time ind\n");
 
 	/* Calculate and check frame difference */
 	frames_expired = GSM_TDMA_FN_SUB(info_time_ind->fn, bts->gsm_time.fn);
@@ -1603,35 +1611,54 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * the content is not available due to decoding issues. Content not
 	 * available is expected as empty payload. We also check if quality is
 	 * good enough. */
-	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
-		/* hand msg to RTP code for transmission */
-		if (lchan->abis_ip.osmux.use) {
-			lchan_osmux_send_frame(lchan, msg->data, msg->len,
-					       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-		} else if (lchan->abis_ip.rtp_socket) {
-			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-				msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-		}
-		/* if loopback is enabled, also queue received RTP data */
-		if (lchan->loopback) {
-			/* add new frame to queue, make sure the queue doesn't get too long */
-			lchan_dl_tch_queue_enqueue(lchan, msg, 1);
-			/* Return 1 to signal that we're still using msg and it should not be freed */
-			return 1;
-		}
-		/* Only clear the marker bit once we have sent a RTP packet with it */
-		lchan->rtp_tx_marker = false;
-	} else {
-		DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
+	//if (1 == 1) {
+	if (!msg->len || (tch_ind->lqual_cb / 10 < bts->min_qual_norm)) {
+		LOGPGT(DRTP, LOGL_NOTICE, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
 			 chan_nr);
 		if (lchan->abis_ip.osmux.use)
 			lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
 		else if (lchan->abis_ip.rtp_socket)
 			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
+
 		lchan->rtp_tx_marker = true;
+		lchan->tch.last_fn = fn;
+		//lchan->tch.dtx.is_speech_resume = false;
+		return 0;
 	}
 
+	if (lchan->abis_ip.osmux.use) {
+		lchan_osmux_send_frame(lchan, msg->data, msg->len,
+				       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+	} else if (lchan->abis_ip.rtp_socket) {
+		if (msg->len > 0 || lchan->rtp_tx_marker)
+			LOGPGT(DL1P, LOGL_INFO, &g_time, "Send RTP Frame [%d]--> %s\n",
+				msg->len, osmo_hexdump(msg->data, msg->len));
+		/* 
+		int osmo_rtp_send_frame_ext(struct osmo_rtp_socket *rs, const uint8_t *payload,
+		    unsigned int payload_len, unsigned int duration,
+		    bool marker);
+
+		    --> duration in number of RTP clock ticks.
+		    The duration is the timestamp increase
+
+		*/
+		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+			msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+	}
+		/* if loopback is enabled, also queue received RTP data */
+	if (lchan->loopback) {
+		/* add new frame to queue, make sure the queue doesn't get too long */
+		lchan_dl_tch_queue_enqueue(lchan, msg, 1);
+		/* Return 1 to signal that we're still using msg and it should not be freed */
+		return 1;
+	}
+	/* Only clear the marker bit once we have sent a RTP packet with it */
+	//lchan->rtp_tx_marker = false;
+
 	lchan->tch.last_fn = fn;
+	if (lchan->tch.dtx.is_speech_resume)
+		lchan->tch.dtx.is_speech_resume = false;
+
 	return 0;
 }
 

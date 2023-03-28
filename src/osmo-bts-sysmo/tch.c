@@ -56,6 +56,7 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 {
 	struct msgb *msg;
 	uint8_t *cur;
+	bool t;
 
 	msg = msgb_alloc_headroom(1024, 128, "L1P-to-RTP");
 	if (!msg)
@@ -76,8 +77,9 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 
 	cur[0] |= 0xD0;
 #endif /* USE_L1_RTP_MODE */
-
-	lchan_set_marker(osmo_fr_check_sid(l1_payload, payload_len), lchan);
+	t = osmo_fr_check_sid(l1_payload, payload_len);
+	lchan_set_marker(t, lchan);
+	LOGP(DL1P, LOGL_ERROR, "FR SID:%d\n", t);
 
 	return msg;
 }
@@ -280,11 +282,12 @@ static struct msgb *l1_to_rtppayload_amr(uint8_t *l1_payload, uint8_t payload_le
 	 * Audiocode's MGW doesn't like receiving CMRs that are not
 	 * the same as the previous one. This means we need to patch
 	 * the content here.
-	 */
+	
 	if ((cur[0] & 0xF0) == 0xF0)
 		cur[0]= lchan->tch.last_cmr << 4;
 	else
 		lchan->tch.last_cmr = cur[0] >> 4;
+	*/
 #else
 	u_int8_t cmr;
 	uint8_t ft = l1_payload[2] & 0xF;
@@ -508,12 +511,13 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	uint8_t *payload, payload_type, payload_len, sid_first[9] = { 0 };
 	struct msgb *rmsg = NULL;
 	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
+	int len;
 
 	if (is_recv_only(lchan->abis_ip.speech_mode))
 		return -EAGAIN;
 
 	if (data_ind->msgUnitParam.u8Size < 1) {
-		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "chan_nr %d Rx Payload size 0\n", chan_nr);
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "chan_nr %d Rx Payload size 0\n", chan_nr);
 		/* Push empty payload to upper layers */
 		rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr, data_ind->u32Fn,
@@ -527,6 +531,10 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	payload_type = data_ind->msgUnitParam.u8Buffer[0];
 	payload = data_ind->msgUnitParam.u8Buffer + 1;
 	payload_len = data_ind->msgUnitParam.u8Size - 1;
+
+	/* clear RTP marker if the marker has previously sent */
+	if (!lchan->tch.dtx.is_speech_resume)
+		lchan->rtp_tx_marker = false;
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:
@@ -544,40 +552,47 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		if (lchan->type != GSM_LCHAN_TCH_H &&
 		    lchan->type != GSM_LCHAN_TCH_F)
 			goto err_payload_match;
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received Speech from L1 "
+		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_Onset:
 		if (lchan->type != GSM_LCHAN_TCH_H &&
 		    lchan->type != GSM_LCHAN_TCH_F)
 			goto err_payload_match;
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received ONSET from L1 "
+		     "(%d bytes)\n", payload_len);
 		/* according to 3GPP TS 26.093 ONSET frames precede the first
 		   speech frame of a speech burst - set the marker for next RTP
 		   frame */
+		lchan->tch.dtx.is_speech_resume = true;
 		lchan->rtp_tx_marker = true;
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstP1:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_P1 from L1 "
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received SID_FIRST_P1 from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstP2:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_P2 from L1 "
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received SID_FIRST_P2 from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
+		lchan->tch.dtx.is_speech_resume = true;
 		lchan->rtp_tx_marker = true;
-		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_INH from L1 "
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received SID_FIRST_INH from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidUpdateInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
+		lchan->tch.dtx.is_speech_resume = true;
 		lchan->rtp_tx_marker = true;
-		LOGPFN(DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_UPDATE_INH from L1 "
+		LOGPFN(DL1P, LOGL_NOTICE, data_ind->u32Fn, "DTX: received SID_UPDATE_INH from L1 "
 		     "(%d bytes)\n", payload_len);
 		break;
 	default:
@@ -586,7 +601,6 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 			get_value_string(femtobts_tch_pl_names, payload_type));
 		break;
 	}
-
 
 	switch (payload_type) {
 	case GsmL1_TchPlType_Fr:
@@ -603,12 +617,24 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	case GsmL1_TchPlType_Amr:
 		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
 		break;
-	case GsmL1_TchPlType_Amr_SidFirstP1:
-		memcpy(sid_first, payload, payload_len);
-		int len = osmo_amr_rtp_enc(sid_first, 0, AMR_SID, AMR_GOOD);
+	case GsmL1_TchPlType_Amr_Onset:
+		/*memcpy(sid_first+2, payload, payload_len);
+		len = osmo_amr_rtp_enc(sid_first, 15, AMR_SID, AMR_GOOD);
+		LOGPFN(DL1P, LOGL_INFO, data_ind->u32Fn, "ONSET resulted in length [%d]\n", len);
 		if (len < 0)
 			return 0;
-		rmsg = l1_to_rtppayload_amr(sid_first, len, lchan);
+		len = len+2;
+		rmsg = l1_to_rtppayload_amr(sid_first, len, lchan);*/
+		break;
+	case GsmL1_TchPlType_Amr_SidFirstP1:
+		rmsg = l1_to_rtppayload_amr(payload, payload_len, lchan);
+		lchan->rtp_tx_marker = false;
+		/*memcpy(sid_first, payload, payload_len);
+		len = osmo_amr_rtp_enc(sid_first, 0, AMR_SID, AMR_GOOD);
+		LOGPFN(DL1P, LOGL_INFO, data_ind->u32Fn, "SID P1 resulted in length [%d]\n", len);
+		if (len < 0)
+			return 0;
+		rmsg = l1_to_rtppayload_amr(sid_first, len, lchan);*/
 		break;
 	/* FIXME: what about GsmL1_TchPlType_Amr_SidBad? not well documented. */
 	}

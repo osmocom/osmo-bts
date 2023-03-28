@@ -434,7 +434,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 				if (chan_state->codec[i] == ft_codec)
 					ft = i;
 			}
-			if (ft < 0) {
+			if (ft_codec != 8 && ft < 0) {
 				LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
 					"Codec (FT = %d) of RTP frame not in list\n", ft_codec);
 				goto free_bad_msg;
