@@ -623,6 +623,29 @@ err_payload_match:
 	return -EINVAL;
 }
 
+/*! \brief provide an RTP empty payload "tick" to upper layers upon FACCH */
+int l1if_tch_rx_facch(struct gsm_bts_trx *trx, uint8_t chan_nr,
+		      struct msgb *l1p_msg)
+{
+	GsmL1_Prim_t *l1p = msgb_l1prim(l1p_msg);
+	GsmL1_PhDataInd_t *data_ind = &l1p->u.phDataInd;
+	struct msgb *rmsg = NULL;
+	struct gsm_lchan *lchan = &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
+
+	if (is_recv_only(lchan->abis_ip.speech_mode))
+		return -EAGAIN;
+
+	LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "chan_nr %d Rx FACCH\n", chan_nr);
+	/* Push empty payload to upper layers */
+	rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
+	return add_l1sap_header(trx, rmsg, lchan, chan_nr, data_ind->u32Fn,
+				data_ind->measParam.fBer * 10000,
+				data_ind->measParam.fLinkQuality * 10,
+				0,	/* suppress RSSI like in osmo-bts-trx */
+				data_ind->measParam.i16BurstTiming * 64,
+				0);
+}
+
 struct msgb *gen_empty_tch_msg(struct gsm_lchan *lchan, uint32_t fn)
 {
 	struct msgb *msg;

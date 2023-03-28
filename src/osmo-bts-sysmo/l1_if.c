@@ -980,6 +980,25 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
+	/* If we got FACCH, the RTP clock needs to account for it,
+	 * and if we have rtp continuous-streaming enabled,
+	 * an actual BFI packet will be emitted.
+	 *
+	 * Only the case of TCH/F is currently handled; the task of
+	 * supporting TCH/H is left as a FIXME for other/later
+	 * developers.  The difficulty with supporting FACCH/H is that
+	 * only one GsmL1_Sapi_FacchH message will be received,
+	 * covering 40 ms of time, but two RTP "tick" output calls
+	 * will need to be made, with appropriately adjusted frame
+	 * numbers.  As a further consideration for rtp continuous-streaming
+	 * mode, having the two RTP BFI packets sent directly back to back,
+	 * as opposed to proper 20 ms timing, may be so undesirable
+	 * that some deployments may rather disable TCH/H (use only TCH/F)
+	 * than deal with the extra pain, or use TCH/H only on SDR-based
+	 * BTS with osmo-bts-trx where correct timing is easily achieved. */
+	if (data_ind->sapi == GsmL1_Sapi_FacchF)
+		l1if_tch_rx_facch(trx, chan_nr, l1p_msg);
+
 	/* fill L1SAP header */
 	sap_msg = l1sap_msgb_alloc(data_ind->msgUnitParam.u8Size);
 	l1sap = msgb_l1sap_prim(sap_msg);
