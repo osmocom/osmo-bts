@@ -43,6 +43,7 @@
 #include <osmocom/core/sockaddr_str.h>
 #include <osmocom/trau/osmo_ortp.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/codec/codec.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -1941,6 +1942,19 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
 		gsm48_chan_mode_name(lchan->tch_mode),
 		VTY_NEWLINE);
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+		const struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
+		const struct gsm48_multi_rate_conf *mr_conf =
+			(const struct gsm48_multi_rate_conf *) amr_mrc->gsm48_ie;
+		vty_out(vty, "  AMR Multi-Rate Configuration: ICMI=%u, Start Mode=%u gsm48=%02x%02x%s",
+			mr_conf->icmi, mr_conf->smod, amr_mrc->gsm48_ie[0], amr_mrc->gsm48_ie[1], VTY_NEWLINE);
+		for (uint8_t i = 0; i < amr_mrc->num_modes; i++) {
+			const struct amr_mode *amode = &amr_mrc->mode[i];
+			vty_out(vty, "    AMR Mode %u (%s), threshold=%u, hysteresis=%u%s",
+				amode->mode, osmo_amr_type_name(amode->mode),
+				amode->threshold, amode->hysteresis, VTY_NEWLINE);
+		}
+	}
 
 	if (lchan->abis_ip.bound_ip) {
 		ia.s_addr = htonl(lchan->abis_ip.bound_ip);
