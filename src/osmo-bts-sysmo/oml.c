@@ -981,7 +981,9 @@ static int lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 	case GSM48_CMODE_SPEECH_AMR:
 		lch_par->tch.tchPlType = GsmL1_TchPlType_Amr;
 		set_payload_format(lch_par);
-		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd; /* FIXME? */
+		/* At call set-up, after every successful handover and after a channel mode modify, the
+		 * default phase (odd) shall be used in downlink direction. */
+		lch_par->tch.amrCmiPhase = GsmL1_AmrCmiPhase_Odd;
 		lch_par->tch.amrInitCodecMode = amr_get_initial_mode(lchan);
 
 		/* initialize to clean state */
