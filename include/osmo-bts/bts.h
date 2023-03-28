@@ -314,6 +314,8 @@ struct gsm_bts {
 	int rtp_ip_dscp;
 	int rtp_priority;
 
+	bool rtp_nogaps_mode;		/* emit RTP stream without any gaps */
+
 	struct {
 		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
 	} support;

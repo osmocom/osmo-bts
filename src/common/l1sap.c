@@ -1247,6 +1247,18 @@ static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_l
 
 static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 {
+	/* If rtp continuous-streaming is enabled, we shall emit RTP packets
+	 * with zero-length payloads as BFI markers. In a TrFO scenario such
+	 * RTP packets sent by call leg A will be received by call leg B,
+	 * hence we need to handle them gracefully. For the purposes of a BTS
+	 * that runs on its own TDMA timing and does not need timing ticks from
+	 * an incoming RTP stream, the correct action upon receiving such
+	 * timing-tick-only RTP packets should be the same as when receiving
+	 * no RTP packet at all. The simplest way to produce that behavior
+	 * is to treat zero-length RTP payloads as invalid. */
+	if (resp_msg->len == 0)
+		return false;
+
 	/* Avoid sending bw-efficient AMR to lower layers, most bts models
 	 * don't support it. */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
@@ -1567,6 +1579,21 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
+/* a helper function for the logic in l1sap_tch_ind() */
+static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
+			       const uint8_t *rtp_pl, uint16_t rtp_pl_len)
+{
+	if (lchan->abis_ip.osmux.use) {
+		lchan_osmux_send_frame(lchan, rtp_pl, rtp_pl_len,
+				       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+	} else if (lchan->abis_ip.rtp_socket) {
+		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+			rtp_pl, rtp_pl_len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+	}
+	/* Only clear the marker bit once we have sent a RTP packet with it */
+	lchan->rtp_tx_marker = false;
+}
+
 /* TCH received from bts model */
 static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct ph_tch_param *tch_ind)
@@ -1605,13 +1632,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * good enough. */
 	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
 		/* hand msg to RTP code for transmission */
-		if (lchan->abis_ip.osmux.use) {
-			lchan_osmux_send_frame(lchan, msg->data, msg->len,
-					       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-		} else if (lchan->abis_ip.rtp_socket) {
-			osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-				msg->data, msg->len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-		}
+		send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 		/* if loopback is enabled, also queue received RTP data */
 		if (lchan->loopback) {
 			/* add new frame to queue, make sure the queue doesn't get too long */
@@ -1619,16 +1640,20 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			/* Return 1 to signal that we're still using msg and it should not be freed */
 			return 1;
 		}
-		/* Only clear the marker bit once we have sent a RTP packet with it */
-		lchan->rtp_tx_marker = false;
 	} else {
-		DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
-			 chan_nr);
-		if (lchan->abis_ip.osmux.use)
-			lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
-		else if (lchan->abis_ip.rtp_socket)
-			osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
-		lchan->rtp_tx_marker = true;
+		/* Are we in rtp continuous-stream special mode? If so, send
+		 * out a BFI packet as zero-length RTP payload. */
+		if (bts->rtp_nogaps_mode) {
+			send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+		} else {
+			DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
+				 chan_nr);
+			if (lchan->abis_ip.osmux.use)
+				lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
+			else if (lchan->abis_ip.rtp_socket)
+				osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
+			lchan->rtp_tx_marker = true;
+		}
 	}
 
 	lchan->tch.last_fn = fn;
