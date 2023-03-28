@@ -1844,7 +1844,6 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 	int rc;
 	struct gsm_bts_trx *trx;
 	struct lc15l1_hdl *fl1h;
-	uint8_t cell_size;
 
 	/* TODO: NM Object without FSM: */
 	switch (foh->obj_class) {
@@ -1858,10 +1857,11 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 	case NM_MT_SET_RADIO_ATTR:
 		trx = obj;
 		fl1h = trx_lc15l1_hdl(trx);
-		/* convert max TA to max cell size in qbits */
-		cell_size = bts->max_ta << 2;
 
 #if LITECELL15_API_VERSION >= LITECELL15_API(2,1,7)
+	{
+		/* convert max TA to max cell size in qbits */
+		uint8_t cell_size = bts->max_ta << 2;
 		/* We do not need to check for L1 handle
 		 * because the max cell size parameter can receive before MphInit */
 		if (fl1h->phy_inst->u.lc15.max_cell_size != cell_size) {
@@ -1870,6 +1870,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 			/* update current max cell size */
 			fl1h->phy_inst->u.lc15.max_cell_size = cell_size;
 		}
+	}
 #endif
 
 		/* Did we go through MphInit yet? If yes fire and forget */
