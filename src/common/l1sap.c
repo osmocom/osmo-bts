@@ -751,10 +751,9 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 		OSMO_ASSERT(false);
 	}
 
-	DEBUGPFN(DL1P, fn,
-		 "%s %s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
-		 gsm_lchan_name(lchan), ind_name, ulm.ta_offs_256bits,
-		 ulm.ber10k, ulm.inv_rssi, ulm.ci_cb);
+	LOGPLCFN(lchan, DL1P, LOGL_DEBUG, fn,
+		 "%s meas ind, ta_offs_256bits=%d, ber10k=%d, inv_rssi=%u, C/I=%d cB\n",
+		 ind_name, ulm.ta_offs_256bits, ulm.ber10k, ulm.inv_rssi, ulm.ci_cb);
 
 	/* we assume that symbol period is 1 bit: */
 	set_ms_to_data(lchan, ulm.ta_offs_256bits / 256, true);

@@ -241,8 +241,7 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint32_t *payload_type,
 	uint8_t *l1_payload;
 	int rc = -1;
 
-	DEBUGP(DRTP, "%s RTP IN: %s\n", gsm_lchan_name(lchan),
-	       osmo_hexdump(rtp_pl, rtp_pl_len));
+	LOGPLCHAN(lchan, DRTP, LOGL_DEBUG, "RTP IN: %s\n", osmo_hexdump(rtp_pl, rtp_pl_len));
 
 	l1_payload = &data[0];
 
@@ -271,13 +270,11 @@ void l1if_tch_encode(struct gsm_lchan *lchan, uint32_t *payload_type,
 	}
 
 	if (rc < 0) {
-		LOGP(DRTP, LOGL_ERROR, "%s unable to parse RTP payload\n",
-		     gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "unable to parse RTP payload\n");
 		return;
 	}
 
 	*len = rc;
 
-	DEBUGP(DRTP, "%s RTP->L1: %s\n", gsm_lchan_name(lchan),
-	       osmo_hexdump(data, *len));
+	LOGPLCHAN(lchan, DRTP, LOGL_DEBUG, "RTP->L1: %s\n", osmo_hexdump(data, *len));
 }

@@ -1386,7 +1386,7 @@ static int _rsl_tx_chan_act_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uint8
 	struct msgb *msg;
 
 	if (lchan)
-		LOGP(DRSL, LOGL_NOTICE, "%s: ", gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "");
 	else
 		LOGP(DRSL, LOGL_NOTICE, "0x%02x: ", chan_nr);
 	LOGPC(DRSL, LOGL_NOTICE, "Sending Channel Activated NACK: cause = 0x%02x\n", cause);
@@ -2170,7 +2170,7 @@ static int _rsl_tx_mode_modif_nack(struct gsm_bts_trx *trx, uint8_t chan_nr, uin
 	struct msgb *msg;
 
 	if (lchan)
-		LOGP(DRSL, LOGL_NOTICE, "%s: ", gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "");
 	else
 		LOGP(DRSL, LOGL_NOTICE, "0x%02x: ", chan_nr);
 	LOGPC(DRSL, LOGL_NOTICE, "Tx MODE MODIFY NACK (cause = 0x%02x)\n", cause);
@@ -3086,7 +3086,6 @@ static void rsl_rx_dyn_pdch(struct msgb *msg, bool pdch_act)
 	if (pdch_act) {
 		/* Clear TCH state. Only first lchan matters for PDCH */
 		clear_lchan_for_pdch_activ(ts->lchan);
-
 		/* First, disconnect the TCH channel, to connect PDTCH later */
 		rc = bts_model_ts_disconnect(ts);
 	} else {
@@ -3115,14 +3114,12 @@ static void ipacc_dyn_pdch_ts_disconnected(struct gsm_bts_trx_ts *ts)
 	enum gsm_phys_chan_config as_pchan;
 
 	if (ts->flags & TS_F_PDCH_DEACT_PENDING) {
-		LOGP(DRSL, LOGL_DEBUG,
-		     "%s PDCH DEACT operation: channel disconnected, will reconnect as TCH\n",
-		     gsm_lchan_name(ts->lchan));
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG,
+			  "PDCH DEACT operation: channel disconnected, will reconnect as TCH\n");
 		as_pchan = GSM_PCHAN_TCH_F;
 	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
-		LOGP(DRSL, LOGL_DEBUG,
-		     "%s PDCH ACT operation: channel disconnected, will reconnect as PDTCH\n",
-		     gsm_lchan_name(ts->lchan));
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG,
+		     "PDCH ACT operation: channel disconnected, will reconnect as PDTCH\n");
 		as_pchan = GSM_PCHAN_PDCH;
 	} else
 		/* No reconnect pending. */
@@ -3183,39 +3180,31 @@ void cb_ts_disconnected(struct gsm_bts_trx_ts *ts)
 static void ipacc_dyn_pdch_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 {
 	if (rc) {
-		LOGP(DRSL, LOGL_NOTICE, "%s PDCH ACT IPA operation failed (%d) in bts model\n",
-		     gsm_lchan_name(ts->lchan), rc);
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_NOTICE, "PDCH ACT IPA operation failed (%d) in bts model\n", rc);
 		ipacc_dyn_pdch_complete(ts, rc);
 		return;
 	}
 
 	if (ts->flags & TS_F_PDCH_DEACT_PENDING) {
-		if (ts->lchan[0].type != GSM_LCHAN_TCH_F)
-			LOGP(DRSL, LOGL_ERROR, "%s PDCH DEACT error:"
-			     " timeslot connected, so expecting"
-			     " lchan type TCH/F, but is %s\n",
-			     gsm_lchan_name(ts->lchan),
-			     gsm_lchant_name(ts->lchan[0].type));
+		if (ts->lchan[0].type != GSM_LCHAN_TCH_F) {
+			LOGPLCHAN(ts->lchan, DRSL, LOGL_ERROR, "PDCH DEACT error: timeslot connected, so "
+				  "expecting lchan type TCH/F, but is %s\n", gsm_lchant_name(ts->lchan[0].type));
+		}
 
-		LOGP(DRSL, LOGL_DEBUG, "%s PDCH DEACT operation:"
-		     " timeslot connected as TCH/F\n",
-		     gsm_lchan_name(ts->lchan));
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG, "PDCH DEACT operation: timeslot connected as TCH/F\n");
 
 		/* During PDCH DEACT, we're done right after the TCH/F came
 		 * back up. */
 		ipacc_dyn_pdch_complete(ts, 0);
 
 	} else if (ts->flags & TS_F_PDCH_ACT_PENDING) {
-		if (ts->lchan[0].type != GSM_LCHAN_PDTCH)
-			LOGP(DRSL, LOGL_ERROR, "%s PDCH ACT error:"
-			     " timeslot connected, so expecting"
-			     " lchan type PDTCH, but is %s\n",
-			     gsm_lchan_name(ts->lchan),
+		if (ts->lchan[0].type != GSM_LCHAN_PDTCH) {
+			LOGPLCHAN(ts->lchan, DRSL, LOGL_ERROR, "PDCH ACT error: timeslot connected, "
+				  "so expecting lchan type PDTCH, but is %s\n",
 			     gsm_lchant_name(ts->lchan[0].type));
+		}
 
-		LOGP(DRSL, LOGL_DEBUG, "%s PDCH ACT operation:"
-		     " timeslot connected as PDTCH\n",
-		     gsm_lchan_name(ts->lchan));
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG, "PDCH ACT operation: timeslot connected as PDTCH\n");
 
 		/* The PDTCH is connected, now tell the PCU about it. Except
 		 * when the PCU is not connected (yet), then there's nothing
@@ -3241,8 +3230,7 @@ static void osmo_dyn_ts_connected(struct gsm_bts_trx_ts *ts, int rc)
 	unsigned int ln;
 
 	if (rc) {
-		LOGP(DRSL, LOGL_NOTICE, "%s PDCH ACT OSMO operation failed (%d) in bts model\n",
-		     gsm_lchan_name(ts->lchan), rc);
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_NOTICE, "PDCH ACT OSMO operation failed (%d) in bts model\n", rc);
 		ipacc_dyn_pdch_complete(ts, rc);
 		return;
 	}
@@ -3287,10 +3275,10 @@ void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 
 	pdch_act = ts->flags & TS_F_PDCH_ACT_PENDING;
 
-	if ((ts->flags & TS_F_PDCH_PENDING_MASK) == TS_F_PDCH_PENDING_MASK)
-		LOGP(DRSL, LOGL_ERROR,
-		     "%s Internal Error: both PDCH ACT and PDCH DEACT pending\n",
-		     gsm_lchan_name(ts->lchan));
+	if ((ts->flags & TS_F_PDCH_PENDING_MASK) == TS_F_PDCH_PENDING_MASK) {
+		LOGPLCHAN(ts->lchan, DRSL, LOGL_ERROR,
+			  "Internal Error: both PDCH ACT and PDCH DEACT pending\n");
+	}
 
 	ts->flags &= ~TS_F_PDCH_PENDING_MASK;
 
@@ -3306,9 +3294,8 @@ void ipacc_dyn_pdch_complete(struct gsm_bts_trx_ts *ts, int rc)
 		ts->flags |= TS_F_PDCH_ACTIVE;
 	else
 		ts->flags &= ~TS_F_PDCH_ACTIVE;
-	DEBUGP(DRSL, "%s %s switched to %s mode (ts->flags == %x)\n",
-	       gsm_lchan_name(ts->lchan), gsm_pchan_name(ts->pchan),
-	       pdch_act? "PDCH" : "TCH/F", ts->flags);
+	LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG, "%s switched to %s mode (ts->flags == %x)\n",
+		  gsm_pchan_name(ts->pchan), pdch_act ? "PDCH" : "TCH/F", ts->flags);
 
 	rc = rsl_tx_dyn_pdch_ack(ts->lchan, pdch_act);
 	if (rc)
@@ -3410,8 +3397,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 		return -1;
 	}
 
-	DEBUGP(DRLL, "%s Rx RLL %s Abis -> LAPDm\n", gsm_lchan_name(lchan),
-		rsl_msg_name(rh->c.msg_type));
+	LOGPLCHAN(lchan, DRLL, LOGL_DEBUG, "Rx RLL %s Abis -> LAPDm\n", rsl_msg_name(rh->c.msg_type));
 
 	/* make copy of RLL header, as the message will be free'd in case of erroneous return */
 	rh2 = *rh;
@@ -3506,7 +3492,7 @@ static int handle_gprs_susp_req(struct msgb *msg)
 	int rc;
 
 	if (!gh || msgb_l3len(msg) < sizeof(*gh)+sizeof(*gsr)) {
-		LOGP(DRSL, LOGL_NOTICE, "%s Short GPRS SUSPEND REQ received, ignoring\n", gsm_lchan_name(msg->lchan));
+		LOGPLCHAN(msg->lchan, DRSL, LOGL_NOTICE, "Short GPRS SUSPEND REQ received, ignoring\n");
 		msgb_free(msg);
 		return -EINVAL;
 	}
@@ -3514,8 +3500,7 @@ static int handle_gprs_susp_req(struct msgb *msg)
 	gsr = (struct gsm48_gprs_susp_req *) gh->data;
 	tlli = osmo_ntohl(gsr->tlli);
 
-	LOGP(DRSL, LOGL_INFO, "%s Fwd GPRS SUSPEND REQ for TLLI=0x%08x to PCU\n",
-		gsm_lchan_name(msg->lchan), tlli);
+	LOGPLCHAN(msg->lchan, DRSL, LOGL_INFO, "Fwd GPRS SUSPEND REQ for TLLI=0x%08x to PCU\n", tlli);
 	rc = pcu_tx_susp_req(msg->lchan, tlli, gsr->ra_id, gsr->cause);
 
 	msgb_free(msg);

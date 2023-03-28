@@ -536,10 +536,9 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	cr->u8Tn = ts->nr;
 	cr->logChComb = pchan_to_logChComb[pchan];
 
-	DEBUGP(DL1C, "%s pchan=%s ts_connect_as(%s) logChComb=%s\n",
-	       gsm_lchan_name(ts->lchan), gsm_pchan_name(ts->pchan),
-	       gsm_pchan_name(pchan), get_value_string(femtobts_chcomb_names,
-						       cr->logChComb));
+	LOGPLCHAN(ts->lchan, DL1C, LOGL_DEBUG, "pchan=%s ts_connect_as(%s) logChComb=%s\n",
+		    gsm_pchan_name(ts->pchan), gsm_pchan_name(pchan),
+		    get_value_string(femtobts_chcomb_names, cr->logChComb));
 
 	return l1if_gsm_req_compl(fl1h, msg, cb, NULL);
 }
@@ -572,8 +571,7 @@ GsmL1_Sapi_t lchan_to_GsmL1_Sapi_t(const struct gsm_lchan *lchan)
 	case GSM_LCHAN_TCH_H:
 		return GsmL1_Sapi_TchH;
 	default:
-		LOGP(DL1C, LOGL_NOTICE, "%s cannot determine L1 SAPI\n",
-			gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "cannot determine L1 SAPI\n");
 		break;
 	}
 	return GsmL1_Sapi_Idle;
@@ -785,12 +783,8 @@ static void sapi_queue_dispatch(struct gsm_lchan *lchan, int status)
 	talloc_free(cmd);
 
 	if (end || llist_empty(&lchan->sapi_cmds)) {
-		LOGP(DL1C, LOGL_DEBUG,
-			"%s End of SAPI cmd queue encountered.%s\n",
-			gsm_lchan_name(lchan),
-			llist_empty(&lchan->sapi_cmds)
-				? " Queue is now empty."
-				: " More pending.");
+		LOGPLCHAN(lchan, DL1C, LOGL_DEBUG, "End of SAPI cmd queue encountered.%s\n",
+			  llist_empty(&lchan->sapi_cmds) ? " Queue is now empty." : " More pending.");
 		return;
 	}
 
@@ -830,8 +824,7 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		goto err;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.conf (%s ",
-		gsm_lchan_name(lchan),
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-ACTIVATE.conf (%s ",
 		get_value_string(femtobts_l1sapi_names, ic->sapi));
 	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, ic->dir));
@@ -853,19 +846,15 @@ static int lchan_act_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		lchan->sapis_ul[ic->sapi] = status;
 
 	if (llist_empty(&lchan->sapi_cmds)) {
-		LOGP(DL1C, LOGL_ERROR,
-				"%s Got activation confirmation with empty queue\n",
-				gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Got activation confirmation with empty queue\n");
 		goto err;
 	}
 
 	cmd = llist_entry(lchan->sapi_cmds.next, struct sapi_cmd, entry);
 	if (cmd->sapi != ic->sapi || cmd->dir != ic->dir ||
 			cmd->type != SAPI_CMD_ACTIVATE) {
-		LOGP(DL1C, LOGL_ERROR,
-				"%s Confirmation mismatch (%d, %d) (%d, %d)\n",
-				gsm_lchan_name(lchan), cmd->sapi, cmd->dir,
-				ic->sapi, ic->dir);
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Confirmation mismatch (%d, %d) (%d, %d)\n",
+			  cmd->sapi, cmd->dir, ic->sapi, ic->dir);
 		goto err;
 	}
 
@@ -952,8 +941,7 @@ static int lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 			(struct gsm48_multi_rate_conf *) amr_mrc->gsm48_ie;
 	int j;
 
-	LOGP(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
-		gsm_lchan_name(lchan), __func__, lchan->tch_mode);
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, ": %s tch_mode=0x%02x\n", __func__, lchan->tch_mode);
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SIGN:
@@ -1106,9 +1094,8 @@ static int mph_send_activate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd)
 		break;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-ACTIVATE.req (hL2=0x%08x, %s ",
-		gsm_lchan_name(lchan), act_req->hLayer2,
-		get_value_string(femtobts_l1sapi_names, act_req->sapi));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-ACTIVATE.req (hL2=0x%08x, %s ", act_req->hLayer2,
+		  get_value_string(femtobts_l1sapi_names, act_req->sapi));
 	dump_lch_par(LOGL_INFO, lch_par, act_req->sapi);
 	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, act_req->dir));
@@ -1133,9 +1120,7 @@ static int sapi_activate_cb(struct gsm_lchan *lchan, int status)
 
 	/* FIXME: Error handling */
 	if (status != GsmL1_Status_Success) {
-		LOGP(DL1C, LOGL_ERROR,
-			"%s act failed mark broken due status: %d\n",
-			gsm_lchan_name(lchan), status);
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "act failed mark broken due status: %d\n", status);
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
 		mph_info_chan_confirm(lchan, PRIM_INFO_ACTIVATE, RSL_ERR_PROCESSOR_OVERLOAD);
@@ -1182,9 +1167,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 	lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	if (!llist_empty(&lchan->sapi_cmds))
-		LOGP(DL1C, LOGL_ERROR,
-			"%s Trying to activate lchan, but commands in queue\n",
-			gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Trying to activate lchan, but commands in queue\n");
 
 	/* For handover, always start the main channel immediately. lchan->want_dl_sacch_active indicates whether dl
 	 * SACCH should be activated. Also, for HO, start the RACH SAPI. */
@@ -1294,9 +1277,8 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		goto err;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.conf (%s) ",
-		gsm_lchan_name(lchan),
-		get_value_string(femtobts_l1cfgt_names, cc->cfgParamId));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-CONFIG.conf (%s) ",
+		  get_value_string(femtobts_l1cfgt_names, cc->cfgParamId));
 
 	switch (cc->cfgParamId) {
 	case GsmL1_ConfigParamId_SetLogChParams:
@@ -1328,9 +1310,7 @@ static int chmod_modif_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 			break;
 		}
 		if (llist_empty(&lchan->sapi_cmds)) {
-			LOGP(DL1C, LOGL_ERROR,
-				"%s Got ciphering conf with empty queue\n",
-				gsm_lchan_name(lchan));
+			LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Got ciphering conf with empty queue\n");
 			goto err;
 		}
 
@@ -1381,10 +1361,8 @@ static int mph_send_config_logchpar(struct gsm_lchan *lchan, struct sapi_cmd *cm
 
 	/* FIXME: update encryption */
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-CONFIG.req (%s) ",
-		gsm_lchan_name(lchan),
-		get_value_string(femtobts_l1sapi_names,
-				 conf_req->cfgParams.setLogChParams.sapi));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-CONFIG.req (%s) ",
+		  get_value_string(femtobts_l1sapi_names, conf_req->cfgParams.setLogChParams.sapi));
 	LOGPC(DL1C, LOGL_INFO, "cfgParams Tn=%u, subCh=%u, dir=0x%x ",
 			conf_req->cfgParams.setLogChParams.u8Tn,
 			conf_req->cfgParams.setLogChParams.subCh,
@@ -1451,11 +1429,9 @@ static int mph_send_config_ciphering(struct gsm_lchan *lchan, struct sapi_cmd *c
 		return -EINVAL;
 	cfgr->cfgParams.setCipheringParams.cipherId = rsl2l1_ciph[lchan->encr.alg_id];
 
-	LOGP(DL1C, LOGL_NOTICE, "%s SET_CIPHERING (ALG=%u %s)\n",
-		gsm_lchan_name(lchan),
-		cfgr->cfgParams.setCipheringParams.cipherId,
-		get_value_string(femtobts_dir_names,
-				 cfgr->cfgParams.setCipheringParams.dir));
+	LOGPLCHAN(lchan, DL1C, LOGL_NOTICE, "SET_CIPHERING (ALG=%u %s)\n",
+		  cfgr->cfgParams.setCipheringParams.cipherId,
+		  get_value_string(femtobts_dir_names, cfgr->cfgParams.setCipheringParams.dir));
 
 	memcpy(cfgr->cfgParams.setCipheringParams.u8Kc,
 	       lchan->encr.key, lchan->encr.key_len);
@@ -1533,9 +1509,8 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 		goto err;
 	}
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.conf (%s ",
-		gsm_lchan_name(lchan),
-		get_value_string(femtobts_l1sapi_names, ic->sapi));
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-DEACTIVATE.conf (%s ",
+		  get_value_string(femtobts_l1sapi_names, ic->sapi));
 	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, ic->dir));
 
@@ -1557,19 +1532,15 @@ static int lchan_deact_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 
 
 	if (llist_empty(&lchan->sapi_cmds)) {
-		LOGP(DL1C, LOGL_ERROR,
-				"%s Got de-activation confirmation with empty queue\n",
-				gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Got de-activation confirmation with empty queue\n");
 		goto err;
 	}
 
 	cmd = llist_entry(lchan->sapi_cmds.next, struct sapi_cmd, entry);
 	if (cmd->sapi != ic->sapi || cmd->dir != ic->dir ||
 			cmd->type != SAPI_CMD_DEACTIVATE) {
-		LOGP(DL1C, LOGL_ERROR,
-				"%s Confirmation mismatch (%d, %d) (%d, %d)\n",
-				gsm_lchan_name(lchan), cmd->sapi, cmd->dir,
-				ic->sapi, ic->dir);
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Confirmation mismatch (%d, %d) (%d, %d)\n",
+			 cmd->sapi, cmd->dir, ic->sapi, ic->dir);
 		goto err;
 	}
 
@@ -1594,8 +1565,7 @@ static int mph_send_deactivate_req(struct gsm_lchan *lchan, struct sapi_cmd *cmd
 	deact_req->sapi = cmd->sapi;
 	deact_req->hLayer3 = l1if_lchan_to_hLayer(lchan);
 
-	LOGP(DL1C, LOGL_INFO, "%s MPH-DEACTIVATE.req (%s ",
-		gsm_lchan_name(lchan),
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "MPH-DEACTIVATE.req (%s ",
 		get_value_string(femtobts_l1sapi_names, deact_req->sapi));
 	LOGPC(DL1C, LOGL_INFO, "%s)\n",
 		get_value_string(femtobts_dir_names, deact_req->dir));
@@ -1608,8 +1578,7 @@ static int sapi_deactivate_cb(struct gsm_lchan *lchan, int status)
 {
 	/* FIXME: Error handling. There is no NACK... */
 	if (status != GsmL1_Status_Success && lchan->state == LCHAN_S_REL_REQ) {
-		LOGP(DL1C, LOGL_ERROR, "%s is now broken. Stopping the release.\n",
-			gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "is now broken. Stopping the release.\n");
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		sapi_clear_queue(&lchan->sapi_cmds);
 		mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
@@ -1694,8 +1663,7 @@ static int lchan_deactivate_sapis(struct gsm_lchan *lchan)
 
 	/* nothing was queued */
 	if (res == 0) {
-		LOGP(DL1C, LOGL_ERROR, "%s all SAPIs already released?\n",
-			gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "all SAPIs already released?\n");
 		lchan_set_state(lchan, LCHAN_S_BROKEN);
 		mph_info_chan_confirm(lchan, PRIM_INFO_DEACTIVATE, 0);
 	}
@@ -1895,8 +1863,7 @@ int l1if_rsl_chan_mod(struct gsm_lchan *lchan)
 	if (lchan->ho.active == HANDOVER_NONE)
 		return -1;
 
-	LOGP(DHO, LOGL_ERROR, "%s modifying channel for handover\n",
-		gsm_lchan_name(lchan));
+	LOGPLCHAN(lchan, DHO, LOGL_ERROR, "modifying channel for handover\n");
 
 	/* Give up listening to RACH bursts */
 	release_sapi_ul_rach(lchan);
@@ -1921,8 +1888,7 @@ int l1if_rsl_chan_rel(struct gsm_lchan *lchan)
 {
 	/* A duplicate RF Release Request, ignore it */
 	if (lchan->state == LCHAN_S_REL_REQ) {
-		LOGP(DL1C, LOGL_ERROR, "%s already in release request state.\n",
-			gsm_lchan_name(lchan));
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "already in release request state.\n");
 		return 0;
 	}
 
@@ -1958,8 +1924,7 @@ static int ts_disconnect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	struct gsm_bts_trx_ts *ts = &trx->ts[cnf->u8Tn];
 	OSMO_ASSERT(cnf->u8Tn < TRX_NR_TS);
 
-	LOGP(DL1C, LOGL_DEBUG, "%s Rx mphDisconnectCnf\n",
-	     gsm_lchan_name(ts->lchan));
+	LOGPLCHAN(ts->lchan, DL1C, LOGL_DEBUG, "Rx mphDisconnectCnf\n");
 
 	cb_ts_disconnected(ts);
 
@@ -1972,7 +1937,7 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(ts->trx);
 	GsmL1_MphDisconnectReq_t *cr;
 
-	DEBUGP(DRSL, "%s TS disconnect\n", gsm_lchan_name(ts->lchan));
+	LOGPLCHAN(ts->lchan, DRSL, LOGL_DEBUG, "TS disconnect\n");
 	cr = prim_init(msgb_l1prim(msg), GsmL1_PrimId_MphDisconnectReq, fl1h,
 		       l1p_handle_for_ts(ts));
 	cr->u8Tn = ts->nr;
@@ -1988,8 +1953,7 @@ static int ts_connect_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
 	struct gsm_bts_trx_ts *ts = &trx->ts[cnf->u8Tn];
 	OSMO_ASSERT(cnf->u8Tn < TRX_NR_TS);
 
-	DEBUGP(DL1C, "%s %s Rx mphConnectCnf flags=%s%s%s\n",
-	       gsm_lchan_name(ts->lchan),
+	LOGPLCHAN(ts->lchan, DL1C, LOGL_DEBUG, "%s Rx mphConnectCnf flags=%s%s%s\n",
 	       gsm_pchan_name(ts->pchan),
 	       ts->flags & TS_F_PDCH_ACTIVE ? "ACTIVE " : "",
 	       ts->flags & TS_F_PDCH_ACT_PENDING ? "ACT_PENDING " : "",

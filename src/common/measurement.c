@@ -327,8 +327,8 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan,
 	if (!ulm->is_sub)
 		dest->is_sub = ts45008_83_is_sub(lchan, fn);
 
-	DEBUGPFN(DMEAS, fn, "%s adding a %s measurement (ber10k=%u, ta_offs=%d, ci_cB=%d, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
-		 gsm_lchan_name(lchan),
+	LOGPLCFN(lchan, DMEAS, LOGL_DEBUG, fn,
+		 "adding a %s measurement (ber10k=%u, ta_offs=%d, ci_cB=%d, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
 		 dest->is_sub ? "SUB" : "FULL",
 		 ulm->ber10k, ulm->ta_offs_256bits, ulm->ci_cb, ulm->inv_rssi,
 		 lchan->meas.num_ul_meas, fn_mod);
