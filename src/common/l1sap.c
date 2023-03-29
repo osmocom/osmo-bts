@@ -1641,10 +1641,10 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			return 1;
 		}
 	} else {
-		/* Are we in rtp continuous-stream special mode? If so, send
+		/* Are we in rtp continuous-streaming special mode? If so, send
 		 * out a BFI packet as zero-length RTP payload. */
 		if (bts->rtp_nogaps_mode) {
-			send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+			send_ul_rtp_packet(lchan, fn, NULL, 0);
 		} else {
 			DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
 				 chan_nr);
