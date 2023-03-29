@@ -41,4 +41,8 @@ extern const struct log_info bts_log_info;
 #define LOGPLCFN(lchan, ss, lvl, fn, fmt, args...) \
 	LOGP(ss, lvl, "%s %s " fmt, gsm_lchan_name(lchan), gsm_fn_as_gsmtime_str(fn), ## args)
 
+/* LOGP with lchan + gsm_time prefix */
+#define LOGPLCGT(lchan, gt, ss, lvl, fmt, args...) \
+	LOGP(ss, lvl, "%s %s " fmt, gsm_lchan_name(lchan), osmo_dump_gsmtime(gt), ## args)
+
 #endif /* _LOGGING_H */

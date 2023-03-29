@@ -905,14 +905,13 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	/* de-queue response message (loopback) */
 	loop_msg = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 	if (!loop_msg) {
-		LOGPGT(DL1P, LOGL_NOTICE, tm, "%s: no looped PDTCH message, sending empty\n",
-		     gsm_lchan_name(lchan));
+		LOGPLCGT(lchan, tm, DL1P, LOGL_NOTICE, "no looped PDTCH message, sending empty\n");
 		/* empty downlink message */
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
 		memset(p, 0, GSM_MACBLOCK_LEN);
 	} else {
-		LOGPGT(DL1P, LOGL_NOTICE, tm, "%s: looped PDTCH message of %u bytes\n",
-		     gsm_lchan_name(lchan), msgb_l2len(loop_msg));
+		LOGPLCGT(lchan, tm, DL1P, LOGL_NOTICE, "looped PDTCH message of %u bytes\n",
+			 msgb_l2len(loop_msg));
 		/* copy over data from queued response message */
 		p = msgb_put(msg, msgb_l2len(loop_msg));
 		memcpy(p, msgb_l2(loop_msg), msgb_l2len(loop_msg));
@@ -1127,9 +1126,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			return 0;
 		}
 		if (lchan->pending_rel_ind_msg) {
-			LOGPGT(DRSL, LOGL_INFO, &g_time,
-			       "%s Forward RLL RELease INDication to the BSC\n",
-			       gsm_lchan_name(lchan));
+			LOGPLCGT(lchan, &g_time, DRSL, LOGL_INFO, "Forward RLL RELease INDication to the BSC\n");
 			abis_bts_rsl_sendmsg(lchan->pending_rel_ind_msg);
 			lchan->pending_rel_ind_msg = NULL;
 		}
@@ -1286,12 +1283,12 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	DEBUGPGT(DL1P, &g_time, "Rx TCH-RTS.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
-
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
 		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for PH-RTS.ind (chan_nr=%s)\n", rsl_chan_nr_str(chan_nr));
 		return 0;
+	} else {
+		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH-RTS.ind\n");
 	}
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
@@ -1307,7 +1304,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	/* get a msgb from the dl_tx_queue */
 	resp_msg = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 	if (!resp_msg) {
-		DEBUGPGT(DL1P, &g_time, "%s DL TCH Tx queue underrun\n", gsm_lchan_name(lchan));
+		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "DL TCH Tx queue underrun\n");
 		resp_l1sap = &empty_l1sap;
 	} else if (!rtppayload_is_valid(lchan, resp_msg)) {
 		msgb_free(resp_msg);
@@ -1330,7 +1327,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	resp_l1sap->u.tch.fn = fn;
 	resp_l1sap->u.tch.marker = marker;
 
-	DEBUGPGT(DL1P, &g_time, "Tx TCH.req chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
+	LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Tx TCH.req\n");
 
 	l1sap_down(trx, resp_l1sap);
 
@@ -1543,8 +1540,7 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 
 		/* Radio Link Timeout counter */
 		if (len == 0) {
-			LOGPGT(DL1P, LOGL_INFO, &g_time, "%s Lost SACCH block\n",
-			       gsm_lchan_name(lchan));
+			LOGPLCGT(lchan, &g_time, DL1P, LOGL_INFO, "Lost SACCH block\n");
 			radio_link_timeout(lchan, true);
 		} else {
 			radio_link_timeout(lchan, false);
@@ -1609,13 +1605,14 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 
 	gsm_fn2gsmtime(&g_time, fn);
 
-	LOGPGT(DL1P, LOGL_DEBUG, &g_time, "Rx TCH.ind chan_nr=%s\n", rsl_chan_nr_str(chan_nr));
-
 	lchan = get_active_lchan_by_chan_nr(trx, chan_nr);
 	if (!lchan) {
 		LOGPGT(DL1P, LOGL_ERROR, &g_time, "No lchan for TCH.ind (chan_nr=%s)\n", rsl_chan_nr_str(chan_nr));
 		return 0;
+	} else {
+		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH.ind\n");
 	}
+
 
 	/* The ph_tch_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
@@ -1645,8 +1642,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		if (bts->rtp_nogaps_mode) {
 			send_ul_rtp_packet(lchan, fn, NULL, 0);
 		} else {
-			DEBUGPGT(DRTP, &g_time, "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n",
-				 chan_nr);
+			LOGPLCGT(lchan, &g_time, DRTP, LOGL_DEBUG,
+				 "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n", chan_nr);
 			if (lchan->abis_ip.osmux.use)
 				lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
 			else if (lchan->abis_ip.rtp_socket)
