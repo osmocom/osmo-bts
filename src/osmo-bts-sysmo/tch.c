@@ -512,7 +512,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		return -EAGAIN;
 
 	if (data_ind->msgUnitParam.u8Size < 1) {
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "chan_nr %d Rx Payload size 0\n", chan_nr);
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "chan_nr %d Rx Payload size 0\n", chan_nr);
 		/* Push empty payload to upper layers */
 		rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr, data_ind->u32Fn,
@@ -548,8 +548,8 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 		if (lchan->type != GSM_LCHAN_TCH_H &&
 		    lchan->type != GSM_LCHAN_TCH_F)
 			goto err_payload_match;
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received ONSET from L1 "
-			 "(%d bytes)\n", payload_len);
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "DTX: received ONSET from L1 " "(%d bytes)\n",
+			 payload_len);
 		/* according to 3GPP TS 26.093 ONSET frames precede the first
 		   speech frame of a speech burst - set the marker for next RTP
 		   frame */
@@ -558,31 +558,31 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	case GsmL1_TchPlType_Amr_SidFirstP1:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_P1 from L1 "
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_P1 from L1 "
 			 "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstP2:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_P2 from L1 "
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_P2 from L1 "
 			 "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidFirstInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
 		lchan->rtp_tx_marker = true;
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_FIRST_INH from L1 "
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "DTX: received SID_FIRST_INH from L1 "
 			 "(%d bytes)\n", payload_len);
 		break;
 	case GsmL1_TchPlType_Amr_SidUpdateInH:
 		if (lchan->type != GSM_LCHAN_TCH_H)
 			goto err_payload_match;
 		lchan->rtp_tx_marker = true;
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, data_ind->u32Fn, "DTX: received SID_UPDATE_INH from L1 "
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_DEBUG, "DTX: received SID_UPDATE_INH from L1 "
 			 "(%d bytes)\n", payload_len);
 		break;
 	default:
-		LOGPLCFN(lchan, DL1P, LOGL_NOTICE, data_ind->u32Fn, "%s Rx Payload Type %s is unsupported\n",
+		LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_NOTICE, "%s Rx Payload Type %s is unsupported\n",
 			 gsm_lchan_name(lchan), get_value_string(femtobts_tch_pl_names, payload_type));
 		break;
 	}
@@ -618,8 +618,8 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr, struct msgb *l1p_msg)
 	return 0;
 
 err_payload_match:
-	LOGPLCFN(lchan, DL1P, LOGL_ERROR, data_ind->u32Fn, "%s Rx Payload Type %s incompatible with lchan\n",
-		gsm_lchan_name(lchan), get_value_string(femtobts_tch_pl_names, payload_type));
+	LOGPLCFN(lchan, data_ind->u32Fn, DL1P, LOGL_ERROR, "%s Rx Payload Type %s incompatible with lchan\n",
+		 gsm_lchan_name(lchan), get_value_string(femtobts_tch_pl_names, payload_type));
 	return -EINVAL;
 }
 

@@ -319,10 +319,10 @@ static int l1if_process_meas_res(struct gsm_bts_trx *trx, uint8_t tn, uint32_t f
 	/* 100% BER is n_bits_total is 0 */
 	float ber = n_bits_total==0 ? 1.0 : (float)n_errors / (float)n_bits_total;
 
-	LOGPLCFN(lchan, DMEAS, LOGL_DEBUG, fn, "RX L1 frame chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
-		 "ber=%.2f%% (%d/%d bits) L1_ta=%d ta_ctrl.current=%d toa=%.2f\n",
-		 chan_nr, ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max),
-		 rssi, ber*100, n_errors, n_bits_total, lchan->meas.l1_info.ta, lchan->ta_ctrl.current, toa);
+	LOGPLCFN(lchan, fn, DMEAS, LOGL_DEBUG, "RX L1 frame chan_nr=0x%02x MS pwr=%ddBm rssi=%.1f dBFS "
+		 "ber=%.2f%% (%d/%d bits) L1_ta=%d ta_ctrl.current=%d toa=%.2f\n", chan_nr,
+		 ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power_ctrl.max), rssi, ber * 100, n_errors,
+		 n_bits_total, lchan->meas.l1_info.ta, lchan->ta_ctrl.current, toa);
 
 	l1if_fill_meas_res(&l1sap, chan_nr, lchan->ta_ctrl.current + toa, ber, rssi, fn);
 

@@ -589,7 +589,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (msg) {
 		nmsg = l1p_msgb_alloc();
 		if (!nmsg) {
-			LOGPLCFN(lchan, DL1C, LOGL_FATAL, u32Fn, "L1SAP PH-TCH.req msg alloc failed\n");
+			LOGPLCFN(lchan, u32Fn, DL1C, LOGL_FATAL, "L1SAP PH-TCH.req msg alloc failed\n");
 			return -ENOMEM;
 		}
 

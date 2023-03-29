@@ -73,8 +73,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			 * SUB */
 			return true;
 		default:
-			LOGPLCFN(lchan, DMEAS, LOGL_ERROR, fn, "Unsupported lchan->tch_mode %u\n",
-				 lchan->tch_mode);
+			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
 		break;
@@ -89,8 +88,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			 * SUB */
 			return true;
 		default:
-			LOGPLCFN(lchan, DMEAS, LOGL_ERROR, fn, "Unsupported lchan->tch_mode %u\n",
-				 lchan->tch_mode);
+			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
 		break;
@@ -269,9 +267,8 @@ int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 	}
 
 	if (rc == 1) {
-		LOGPLCFN(lchan, DMEAS, LOGL_DEBUG, fn,
-		       "meas period end fn_mod:%d, status:%d, pchan:%s\n",
-		       fn_mod, rc, gsm_pchan_name(pchan));
+		LOGPLCFN(lchan, fn, DMEAS, LOGL_DEBUG, "meas period end fn_mod:%d, status:%d, pchan:%s\n", fn_mod,
+			 rc, gsm_pchan_name(pchan));
 	}
 
 	return rc;
@@ -307,15 +304,15 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan,
 	struct bts_ul_meas *dest;
 
 	if (lchan->state != LCHAN_S_ACTIVE) {
-		LOGPLCFN(lchan, DMEAS, LOGL_NOTICE, fn,
+		LOGPLCFN(lchan, fn, DMEAS, LOGL_NOTICE,
 			 "measurement during state: %s, num_ul_meas=%d, fn_mod=%u\n",
 			 gsm_lchans_name(lchan->state), lchan->meas.num_ul_meas, fn_mod);
 	}
 
 	if (lchan->meas.num_ul_meas >= ARRAY_SIZE(lchan->meas.uplink)) {
-		LOGPLCFN(lchan, DMEAS, LOGL_NOTICE, fn,
-			 "no space for uplink measurement, num_ul_meas=%d, fn_mod=%u\n",
-			 lchan->meas.num_ul_meas, fn_mod);
+		LOGPLCFN(lchan, fn, DMEAS, LOGL_NOTICE,
+			 "no space for uplink measurement, num_ul_meas=%d, fn_mod=%u\n", lchan->meas.num_ul_meas,
+			 fn_mod);
 		return -ENOSPC;
 	}
 
@@ -327,10 +324,9 @@ int lchan_new_ul_meas(struct gsm_lchan *lchan,
 	if (!ulm->is_sub)
 		dest->is_sub = ts45008_83_is_sub(lchan, fn);
 
-	LOGPLCFN(lchan, DMEAS, LOGL_DEBUG, fn,
+	LOGPLCFN(lchan, fn, DMEAS, LOGL_DEBUG,
 		 "adding a %s measurement (ber10k=%u, ta_offs=%d, ci_cB=%d, rssi=-%u), num_ul_meas=%d, fn_mod=%u\n",
-		 dest->is_sub ? "SUB" : "FULL",
-		 ulm->ber10k, ulm->ta_offs_256bits, ulm->ci_cb, ulm->inv_rssi,
+		 dest->is_sub ? "SUB" : "FULL", ulm->ber10k, ulm->ta_offs_256bits, ulm->ci_cb, ulm->inv_rssi,
 		 lchan->meas.num_ul_meas, fn_mod);
 
 	lchan->meas.last_fn = fn;

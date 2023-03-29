@@ -146,7 +146,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	    &trx->ts[L1SAP_CHAN2TS(chan_nr)].lchan[l1sap_chan2ss(chan_nr)];
 
 	if (data_ind->Data.ulDataLength < 1) {
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, fn, "chan_nr %d Rx Payload size 0\n", chan_nr);
+		LOGPLCFN(lchan, fn, DL1P, LOGL_DEBUG, "chan_nr %d Rx Payload size 0\n", chan_nr);
 		/* Push empty payload to upper layers */
 		rmsg = msgb_alloc_headroom(256, 128, "L1P-to-RTP");
 		return add_l1sap_header(trx, rmsg, lchan, chan_nr,
@@ -173,13 +173,13 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 			goto err_payload_match;
 		break;
 	default:
-		LOGPLCFN(lchan, DL1P, LOGL_NOTICE, fn, "%s Rx Payload Type %d is unsupported\n",
+		LOGPLCFN(lchan, fn, DL1P, LOGL_NOTICE, "%s Rx Payload Type %d is unsupported\n",
 			 gsm_lchan_name(lchan), payload_type);
 		break;
 	}
 
-	LOGPLCFN(lchan, DL1P, LOGL_DEBUG, fn, "%s Rx codec frame (%u): %s\n", gsm_lchan_name(lchan),
-		 payload_len, osmo_hexdump(payload, payload_len));
+	LOGPLCFN(lchan, fn, DL1P, LOGL_DEBUG, "%s Rx codec frame (%u): %s\n", gsm_lchan_name(lchan), payload_len,
+		 osmo_hexdump(payload, payload_len));
 
 	switch (payload_type) {
 	case cOCTVC1_GSM_PAYLOAD_TYPE_ENUM_FULL_RATE:
@@ -201,7 +201,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 		rmsg = l1_to_rtppayload_amr(payload, payload_len,
 				&lchan->tch.amr_mr);
 #else
-		LOGPLCFN(lchan, DL1P, LOGL_ERROR, fn, "OctPHY only supports FR!\n");
+		LOGPLCFN(lchan, fn, DL1P, LOGL_ERROR, "OctPHY only supports FR!\n");
 		return -1;
 #endif
 		break;
@@ -215,7 +215,7 @@ int l1if_tch_rx(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	return 0;
 
 err_payload_match:
-	LOGPLCFN(lchan, DL1P, LOGL_ERROR, fn, "%s Rx Payload Type %d incompatible with lchan\n",
+	LOGPLCFN(lchan, fn, DL1P, LOGL_ERROR, "%s Rx Payload Type %d incompatible with lchan\n",
 		 gsm_lchan_name(lchan), payload_type);
 	return -EINVAL;
 }

@@ -440,9 +440,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		else
 			sapi = GsmL1_Sapi_Agch;
 	} else {
-		LOGPLCFN(lchan, DL1C, LOGL_NOTICE, u32Fn, "unknown prim %d op %d "
-			 "chan_nr %d link_id %d\n", l1sap->oph.primitive,
-			 l1sap->oph.operation, chan_nr, link_id);
+		LOGPLCFN(lchan, u32Fn, DL1C, LOGL_NOTICE, "unknown prim %d op %d " "chan_nr %d link_id %d\n",
+			 l1sap->oph.primitive, l1sap->oph.operation, chan_nr, link_id);
 		msgb_free(l1msg);
 		return -EINVAL;
 	}
@@ -503,9 +502,8 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 			memcpy(l1p->u.phDataReq.msgUnitParam.u8Buffer, msg->l2h,
 			       msgb_l2len(msg));
 		}
-		LOGPLCFN(lchan, DL1P, LOGL_DEBUG, u32Fn, "PH-DATA.req(%s)\n",
-			 osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer,
-				      l1p->u.phDataReq.msgUnitParam.u8Size));
+		LOGPLCFN(lchan, u32Fn, DL1P, LOGL_DEBUG, "PH-DATA.req(%s)\n",
+			 osmo_hexdump(l1p->u.phDataReq.msgUnitParam.u8Buffer, l1p->u.phDataReq.msgUnitParam.u8Size));
 	} else {
 		GsmL1_Prim_t *l1p = msgb_l1prim(l1msg);
 		if (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN)
@@ -523,7 +521,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 
 	/* send message to DSP's queue */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], l1msg) != 0) {
-		LOGPLCFN(lchan, DL1P, LOGL_ERROR, u32Fn, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		LOGPLCFN(lchan, u32Fn, DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(l1msg);
 	} else
 		dtx_int_signal(lchan);
@@ -606,7 +604,7 @@ static int ph_tch_req(struct gsm_bts_trx *trx, struct msgb *msg,
 	}
 	/* send message to DSP's queue */
 	if (osmo_wqueue_enqueue(&fl1->write_q[MQ_L1_WRITE], nmsg) < 0) {
-		LOGPLCFN(lchan, DL1P, LOGL_ERROR, u32Fn, "MQ_L1_WRITE queue full. Dropping msg.\n");
+		LOGPLCFN(lchan, u32Fn, DL1P, LOGL_ERROR, "MQ_L1_WRITE queue full. Dropping msg.\n");
 		msgb_free(nmsg);
 		return -ENOBUFS;
 	}
