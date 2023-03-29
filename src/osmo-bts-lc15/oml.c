@@ -945,7 +945,7 @@ static int lchan2lch_par(GsmL1_LogChParam_t *lch_par, struct gsm_lchan *lchan)
 	int j;
 
 	LOGP(DL1C, LOGL_INFO, "%s: %s tch_mode=0x%02x\n",
-		gsm_lchan_name(lchan), __FUNCTION__, lchan->tch_mode);
+		gsm_lchan_name(lchan), __func__, lchan->tch_mode);
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SIGN:

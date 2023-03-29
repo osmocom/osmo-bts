@@ -124,13 +124,13 @@ static void test_agch_queue(void)
 
 	for (round = 1; round <= num_rounds; round++) {
 		for (idx = 0; idx < num_ima_per_round; idx++) {
-			msg = msgb_alloc(GSM_MACBLOCK_LEN, __FUNCTION__);
+			msg = msgb_alloc(GSM_MACBLOCK_LEN, __func__);
 			put_imm_ass(msg, ++count);
 			bts_agch_enqueue(bts, msg);
 			imm_ass_count++;
 		}
 		for (idx = 0; idx < num_rej_per_round; idx++) {
-			msg = msgb_alloc(GSM_MACBLOCK_LEN, __FUNCTION__);
+			msg = msgb_alloc(GSM_MACBLOCK_LEN, __func__);
 			put_imm_ass_rej(msg, ++count, 10);
 			bts_agch_enqueue(bts, msg);
 			imm_ass_rej_count++;
