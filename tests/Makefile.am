@@ -32,10 +32,10 @@ TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
 if ENABLE_EXT_TESTS
-python-tests: $(BUILT_SOURCES)
+python-tests:
 	$(MAKE) vty-test
 else
-python-tests: $(BUILT_SOURCES)
+python-tests:
 	echo "Not running python-based tests (determined at configure-time)"
 endif
 
@@ -45,7 +45,7 @@ VTY_TEST ?= *.vty
 # To update the VTY script from current application behavior,
 # pass -u to vty_script_runner.py by doing:
 #   make vty-test U=-u
-vty-test:
+vty-test: $(top_builddir)/src/osmo-bts-virtual/osmo-bts-virtual
 	osmo_verify_transcript_vty.py -v \
 		-n OsmoBTS -p 4241 \
 		-r "$(top_builddir)/src/osmo-bts-virtual/osmo-bts-virtual --vty-test -c $(top_srcdir)/doc/examples/virtual/osmo-bts-virtual.cfg" \
