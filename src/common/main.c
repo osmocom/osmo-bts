@@ -177,7 +177,7 @@ static void handle_options(int argc, char **argv)
 			config_file = optarg;
 			break;
 		case 'T':
-			log_set_print_timestamp(osmo_stderr_target, 1);
+			log_set_print_timestamp2(osmo_stderr_target, LOG_TIMESTAMP_CTIME);
 			break;
 		case 'V':
 			print_version(1);
