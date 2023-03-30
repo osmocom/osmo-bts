@@ -294,11 +294,14 @@ static int rsl_handle_osmo_tsc_ie(struct gsm_lchan *lchan,
 	if (TLVP_PRES_LEN(tp, RSL_IE_OSMO_TRAINING_SEQUENCE, 2)) {
 		const uint8_t *ie = TLVP_VAL(tp, RSL_IE_OSMO_TRAINING_SEQUENCE);
 		lchan->ts->tsc_set = ie[0] & 0x03; /* Range: 0..3 */
-		lchan->ts->tsc     = ie[1] & 0x07; /* Range: 0..7 */
+		lchan->ts->tsc_rsl = ie[1] & 0x07; /* Range: 0..7 */
+		lchan->ts->tsc_rsl_configured = true;
 	} else {
-		lchan->ts->tsc = lchan->ts->tsc_oml;
+		lchan->ts->tsc_rsl_configured = false;
+		lchan->ts->tsc_rsl = 0xff;
 		lchan->ts->tsc_set = 0;
 	}
+	gsm_ts_apply_configured_tsc(lchan->ts);
 
 	return 0;
 }

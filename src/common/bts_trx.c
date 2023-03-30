@@ -74,6 +74,10 @@ static void gsm_bts_trx_init_ts(struct gsm_bts_trx *trx)
 		ts->trx = trx;
 		ts->nr = tn;
 
+		ts->tsc_oml_configured = false;
+		ts->tsc_rsl_configured = false;
+		ts->tsc = ts->tsc_oml = ts->tsc_rsl = 0xff;
+
 		ts->mo.fi = osmo_fsm_inst_alloc(&nm_chan_fsm, trx, ts,
 						LOGL_INFO, NULL);
 		osmo_fsm_inst_update_id_f(ts->mo.fi, "%s-ts%u",
@@ -98,6 +102,10 @@ void gsm_bts_trx_init_shadow_ts(struct gsm_bts_trx *trx)
 
 		ts->trx = trx;
 		ts->nr = tn;
+
+		ts->tsc_oml_configured = false;
+		ts->tsc_rsl_configured = false;
+		ts->tsc = ts->tsc_oml = ts->tsc_rsl = 0xff;
 
 		/* Link both primary and shadow */
 		trx->ts[tn].vamos.peer = ts;

@@ -158,6 +158,7 @@ struct gsm_bts {
 	/* Base Station Identification Code (BSIC), lower 3 bits is BCC,
 	 * which is used as TSC for the CCCH */
 	uint8_t bsic;
+	bool bsic_configured;
 	/* type of BTS */
 	enum gsm_bts_type_variant variant;
 	enum gsm_band band;

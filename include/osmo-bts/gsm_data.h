@@ -91,7 +91,10 @@ struct gsm_bts_trx_ts {
 
 	/* Training Sequence Code (range 0..7) */
 	uint8_t tsc_oml; /* configured via OML */
-	uint8_t tsc; /* currently in use */
+	bool tsc_oml_configured;
+	uint8_t tsc_rsl; /* configured via RSL (Osmo extension) */
+	bool tsc_rsl_configured;
+	uint8_t tsc; /* TSC currently in use. Preference: RSL, OML, BTS-BSIC-OML */
 	/* Training Sequence Set (range 0..3) */
 	uint8_t tsc_set;
 
@@ -193,6 +196,8 @@ int conf_lchans_as_pchan(struct gsm_bts_trx_ts *ts,
 #define CIPHER_A5(x) (1 << (x-1))
 
 bool ts_is_pdch(const struct gsm_bts_trx_ts *ts);
+
+void gsm_ts_apply_configured_tsc(struct gsm_bts_trx_ts *ts);
 
 void gsm_ts_release(struct gsm_bts_trx_ts *ts);
 

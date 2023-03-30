@@ -60,6 +60,8 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
 	/* Reset state: */
 	bts->si_valid = 0;
+	bts->bsic_configured = false;
+	bts->bsic = 0xff; /* invalid value */
 	TALLOC_FREE(bts->mo.nm_attr);
 	bts_cbch_reset(bts);
 

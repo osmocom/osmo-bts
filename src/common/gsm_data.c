@@ -306,6 +306,29 @@ bool ts_is_pdch(const struct gsm_bts_trx_ts *ts)
 	}
 }
 
+/* Apply ts->tsc based on what was configured coming from different sources.
+ * Priorities (preferred first, overrides ones afterward):
+ * 1- RSL OSMO_TSC IE
+ * 2- OML SetChannelAttr TSC IE
+ * 3- OML SetBtsAttr BSIC IE
+ */
+void gsm_ts_apply_configured_tsc(struct gsm_bts_trx_ts *ts)
+{
+	if (ts->tsc_rsl_configured) {
+		ts->tsc = ts->tsc_rsl;
+		return;
+	}
+	if (ts->tsc_oml_configured) {
+		ts->tsc = ts->tsc_oml;
+		return;
+	}
+	if (ts->trx->bts->bsic_configured) {
+		ts->tsc = BTS_TSC(ts->trx->bts);
+		return;
+	}
+	ts->tsc = 0xff; /* invalid value */
+}
+
 void gsm_ts_release(struct gsm_bts_trx_ts *ts)
 {
 	unsigned int ln;
@@ -318,4 +341,8 @@ void gsm_ts_release(struct gsm_bts_trx_ts *ts)
 	/* Make sure pchan_is is reset, since PCU act_req to release it will be
 	 * ignored as the lchan will already be released. */
 	ts->dyn.pchan_is = ts->dyn.pchan_want = GSM_PCHAN_NONE;
+
+	ts->tsc_oml_configured = false;
+	ts->tsc_rsl_configured = false;
+	ts->tsc = ts->tsc_oml = ts->tsc_rsl = 0xff;
 }

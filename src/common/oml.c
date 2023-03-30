@@ -712,8 +712,35 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		bts->c0->arfcn = ntohs(tlvp_val16_unal(&tp, NM_ATT_BCCH_ARFCN));
 
 	/* 9.4.9 BSIC */
-	if (TLVP_PRES_LEN(&tp, NM_ATT_BSIC, 1))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_BSIC, 1)) {
+		struct gsm_bts_trx *trx;
+		uint8_t bts_tsc;
+
 		bts->bsic = *TLVP_VAL(&tp, NM_ATT_BSIC);
+		bts->bsic_configured = true;
+		bts_tsc = BTS_TSC(bts);
+
+		/* Apply TSC update on each TS if required: */
+		llist_for_each_entry(trx, &bts->trx_list, list) { /* C0..n */
+			unsigned int tn;
+			for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+				struct gsm_bts_trx_ts *ts = &trx->ts[tn];
+
+				/* First some config validation: */
+				if (ts->tsc_oml_configured &&
+				    ts->tsc_oml != bts_tsc &&
+				    !osmo_bts_has_feature(bts->features, BTS_FEAT_MULTI_TSC)) {
+					LOGPFOH(DOML, LOGL_ERROR, foh, "SET BTS ATTR: this BTS model does not "
+						"support TSC %u != BSIC-BCC %u (TSC %u)\n",
+						ts->tsc_oml, bts->bsic, bts_tsc);
+					return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
+				}
+
+				/* Now update TS TSC if needed: */
+				gsm_ts_apply_configured_tsc(ts);
+			}
+		}
+	}
 
 	/* call into BTS driver to apply new attributes to hardware */
 	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_BTS, bts);
@@ -984,20 +1011,25 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	/* 9.4.60 TSC */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_TSC, 1)) {
-		ts->tsc_oml = ts->tsc = *TLVP_VAL(&tp, NM_ATT_TSC);
-		if (ts->tsc != BTS_TSC(bts) &&
+		ts->tsc_oml = *TLVP_VAL(&tp, NM_ATT_TSC);
+		ts->tsc_oml_configured = true;
+	}
+
+	if (ts->tsc_oml_configured) {
+		if (bts->bsic_configured &&
+		    ts->tsc_oml != BTS_TSC(bts) &&
 		    !osmo_bts_has_feature(bts->features, BTS_FEAT_MULTI_TSC)) {
 			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: this BTS model does not "
-				"support TSC %u != BSIC-BCC %u\n", ts->tsc, BTS_TSC(bts));
+				"support TSC %u != BSIC-BCC %u\n", ts->tsc_oml, BTS_TSC(bts));
 			talloc_free(tp_merged);
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
-	} else {
-		/* If there is no TSC specified, use the BCC */
-		ts->tsc_oml = ts->tsc = BTS_TSC(bts);
+		gsm_ts_apply_configured_tsc(ts);
 	}
-	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%u pchan=%s",
-		ts->tsc, gsm_pchan_name(ts->pchan));
+
+	LOGPFOH(DOML, LOGL_INFO, foh, "SET CHAN ATTR (TSC=%d pchan=%s",
+		ts->tsc_oml_configured ? (int)ts->tsc_oml : -1,
+		gsm_pchan_name(ts->pchan));
 	if (ts->hopping.enabled)
 		LOGPC(DOML, LOGL_INFO, " hsn=%u maio=%u chan_num=%u",
 		      ts->hopping.hsn, ts->hopping.maio, ts->hopping.arfcn_num);

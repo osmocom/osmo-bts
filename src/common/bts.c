@@ -351,6 +351,8 @@ int bts_init(struct gsm_bts *bts)
 	power_ctrl_params_def_reset(&bts->ms_dpc_params, false);
 
 	/* configurable via OML */
+	bts->bsic = 0xff; /* invalid value, guarded by bsc_configured=false */
+	bts->bsic_configured = false;
 	bts->load.ccch.load_ind_period = 112;
 	bts->rtp_jitter_buf_ms = 100;
 	bts->max_ta = 63;
