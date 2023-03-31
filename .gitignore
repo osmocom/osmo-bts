@@ -105,6 +105,5 @@ doc/manuals/common
 doc/manuals/build
 
 contrib/osmo-bts.spec
-contrib/ber/codec_bit_class.h
 contrib/ber/rtp_ber
 contrib/ber/rtp_gen_map

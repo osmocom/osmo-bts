@@ -20,12 +20,9 @@ LDADD = \
 
 noinst_PROGRAMS = rtp_ber rtp_gen_map
 
-BUILT_SOURCES = codec_bit_class.h
-DISTCLEANFILES = codec_bit_class.h
-
-codec_bit_class.h: rtp_gen_map
-	$(AM_V_GEN)./$< > $@
-
 rtp_ber_SOURCES = rtp_ber.c codec_bit_class.h
 
 rtp_gen_map_SOURCES = rtp_gen_map.c
+
+update_codec_bit_class_h: rtp_gen_map
+	$(AM_V_GEN)./$< > $(top_srcdir)/contrib/ber/codec_bit_class.h
