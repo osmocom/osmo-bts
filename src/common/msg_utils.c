@@ -380,15 +380,19 @@ static inline bool dtx_sched_optional(struct gsm_lchan *lchan, uint32_t fn)
 	static const uint8_t f[] = { 52, 53, 54, 55, 56, 57, 58, 59 },
 				h0[] = { 0, 2, 4, 6, 52, 54, 56, 58 },
 				h1[] = { 14, 16, 18, 20, 66, 68, 70, 72 };
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
 			return fn_chk(f, fn, ARRAY_SIZE(f));
 		else
 			return fn_chk(lchan->nr ? h1 : h0, fn,
 				      lchan->nr ? ARRAY_SIZE(h1) :
 				      ARRAY_SIZE(h0));
+	case GSM48_CMODE_SPEECH_EFR:
+		return fn_chk(f, fn, ARRAY_SIZE(f));
+	default:
+		return false;
 	}
-	return false;
 }
 
 /*! \brief Check if DTX DL AMR is enabled for a given lchan (it have proper type,
@@ -466,10 +470,6 @@ void dtx_int_signal(struct gsm_lchan *lchan)
  */
 uint8_t repeat_last_sid(struct gsm_lchan *lchan, uint8_t *dst, uint32_t fn)
 {
-	/* FIXME: add EFR support */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)
-		return 0;
-
 	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
 		if (dtx_sched_optional(lchan, fn))
 			return 0;
