@@ -1727,14 +1727,6 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 	struct gsm_bts_trx *trx;
 	struct femtol1_hdl *fl1h;
 
-	/* TODO: NM Object without FSM: */
-	switch (foh->obj_class) {
-	case NM_OC_GPRS_NSE:
-	case NM_OC_GPRS_CELL:
-	case NM_OC_GPRS_NSVC:
-		return oml_fom_ack_nack(ev_data.msg, ev_data.cause);
-	}
-
 	switch (foh->msg_type) {
 	case NM_MT_SET_RADIO_ATTR:
 		trx = obj;
