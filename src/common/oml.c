@@ -48,6 +48,7 @@
 #include <osmo-bts/bts.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/phy_link.h>
+#include <osmo-bts/nm_common_fsm.h>
 
 #define LOGPFOH(ss, lvl, foh, fmt, args ...) LOGP(ss, lvl, "%s: " fmt, abis_nm_dump_foh(foh), ## args)
 #define DEBUGPFOH(ss, foh, fmt, args ...) LOGPFOH(ss, LOGL_DEBUG, foh, fmt, ## args)
@@ -472,6 +473,15 @@ int oml_fom_ack_nack(struct msgb *msg, uint8_t cause)
 	return 1;
 }
 
+/* Copy msg before calling oml_fom_ack_nack(), which takes its ownership */
+int oml_fom_ack_nack_copy_msg(const struct msgb *old_msg, uint8_t cause)
+{
+	struct msgb *msg = msgb_copy(old_msg, "OML-ack_nack");
+	msg->trx = old_msg->trx;
+	oml_fom_ack_nack(msg, cause);
+	return 0;
+}
+
 /*
  * Formatted O&M messages
  */
@@ -549,6 +559,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	struct tlv_parsed tp, *tp_merged;
 	int rc, i;
 	const uint8_t *payload;
+	struct nm_fsm_ev_setattr_data ev_data;
 
 	DEBUGPFOH(DOML, foh, "Rx SET BTS ATTR\n");
 
@@ -742,8 +753,15 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 		}
 	}
 
-	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_BTS, bts);
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+		.tp = tp_merged,
+	};
+
+	rc = osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
+	return rc;
 }
 
 /* 8.6.2 Set Radio Attributes has been received */
@@ -752,6 +770,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct tlv_parsed tp, *tp_merged;
 	int rc;
+	struct nm_fsm_ev_setattr_data ev_data;
 
 	DEBUGPFOH(DOML, foh, "Rx SET RADIO CARRIER ATTR\n");
 
@@ -830,8 +849,17 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		trx->arfcn = arfcn;
 	}
 #endif
-	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(trx->bts, msg, tp_merged, NM_OC_RADIO_CARRIER, trx);
+
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+		.tp = tp_merged,
+	};
+
+	rc = osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
+	return rc;
+
 }
 
 static int handle_chan_comb(struct gsm_bts_trx_ts *ts, const uint8_t comb)
@@ -927,6 +955,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	struct gsm_bts *bts = ts->trx->bts;
 	struct tlv_parsed tp, *tp_merged;
 	int rc, i;
+	struct nm_fsm_ev_setattr_data ev_data;
 
 	DEBUGPFOH(DOML, foh, "Rx SET CHAN ATTR\n");
 
@@ -1035,8 +1064,15 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 		      ts->hopping.hsn, ts->hopping.maio, ts->hopping.arfcn_num);
 	LOGPC(DOML, LOGL_INFO, ")\n");
 
-	/* call into BTS driver to apply new attributes to hardware */
-	return bts_model_apply_oml(bts, msg, tp_merged, NM_OC_CHANNEL, ts);
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+		.tp = tp_merged,
+	};
+
+	rc = osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
+	return rc;
 }
 
 /* 8.9.2 Opstart has been received */

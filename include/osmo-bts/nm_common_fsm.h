@@ -30,6 +30,7 @@
 /* Common */
 enum nm_fsm_events {
 	NM_EV_SW_ACT,
+	NM_EV_RX_SETATTR, /* data: struct nm_fsm_ev_setattr_data */
 	NM_EV_SETATTR_ACK, /* data: struct nm_fsm_ev_setattr_data */
 	NM_EV_SETATTR_NACK, /* data: struct nm_fsm_ev_setattr_data */
 	NM_EV_OPSTART_ACK,
@@ -50,8 +51,9 @@ enum nm_fsm_events {
 extern const struct value_string nm_fsm_event_names[];
 
 struct nm_fsm_ev_setattr_data {
-	struct msgb *msg; /* msgb ownership is transferred to FSM */
-	int cause;
+	struct msgb *msg;
+	struct tlv_parsed *tp;
+	int cause; /* set in NM_EV_SETATTR_(N)ACK */
 };
 
 

@@ -63,6 +63,7 @@ int oml_tx_state_changed(const struct gsm_abis_mo *mo);
 int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo);
 
 int oml_fom_ack_nack(struct msgb *old_msg, uint8_t cause);
+int oml_fom_ack_nack_copy_msg(const struct msgb *old_msg, uint8_t cause);
 
 int oml_mo_fom_ack_nack(const struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 			uint8_t cause);

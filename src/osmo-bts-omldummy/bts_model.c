@@ -119,8 +119,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 	rc = osmo_fsm_inst_dispatch(mo->fi,
 				    ev_data.cause == 0 ? NM_EV_SETATTR_ACK : NM_EV_SETATTR_NACK,
 				    &ev_data);
-	/* msgb ownsership is transferred to FSM if it received ev: */
-	return rc == 0 ? 1 : 0;
+	return rc;
 }
 
 /* MO: TS 12.21 Managed Object */

@@ -111,13 +111,20 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
 	struct nm_fsm_ev_setattr_data *setattr_data;
+	int rc;
 
 	switch (event) {
+	case NM_EV_RX_SETATTR:
+		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
+		rc = bts_model_apply_oml(bts, setattr_data->msg, setattr_data->tp,
+					 NM_OC_BTS, bts);
+		(void)rc;
+		break;
 	case NM_EV_SETATTR_ACK:
 	case NM_EV_SETATTR_NACK:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		bts->mo.setattr_success = setattr_data->cause == 0;
-		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		oml_fom_ack_nack_copy_msg(setattr_data->msg, setattr_data->cause);
 		break;
 	case NM_EV_OPSTART_ACK:
 		bts->mo.opstart_success = true;
@@ -178,6 +185,7 @@ static struct osmo_fsm_state nm_bts_fsm_states[] = {
 	},
 	[NM_BTS_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_RX_SETATTR) |
 			X(NM_EV_SETATTR_ACK) |
 			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |

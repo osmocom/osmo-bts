@@ -92,7 +92,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	case NM_EV_SETATTR_NACK:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		site_mgr->mo.setattr_success = setattr_data->cause == 0;
-		oml_fom_ack_nack(setattr_data->msg, setattr_data->cause);
+		oml_fom_ack_nack_copy_msg(setattr_data->msg, setattr_data->cause);
 		break;
 	case NM_EV_OPSTART_ACK:
 		site_mgr->mo.opstart_success = true;

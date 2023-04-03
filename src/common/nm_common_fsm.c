@@ -25,6 +25,7 @@
 
 const struct value_string nm_fsm_event_names[] = {
 	{ NM_EV_SW_ACT, "SW_ACT" },
+	{ NM_EV_SETATTR_ACK, "RX_SETATTR" },
 	{ NM_EV_SETATTR_ACK, "SETATTR_ACK" },
 	{ NM_EV_SETATTR_NACK, "SETATTR_NACK" },
 	{ NM_EV_OPSTART_ACK, "OPSTART_ACK" },
