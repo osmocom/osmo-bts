@@ -1714,16 +1714,10 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 }
 
 /* callback from OML */
-int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
+int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg,
 			struct tlv_parsed *new_attr, int kind, void *obj)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
-	struct gsm_abis_mo *mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst);
-	struct nm_fsm_ev_setattr_data ev_data = {
-		.msg = msg,
-		.cause = 0,
-	};
-	int rc;
 	struct gsm_bts_trx *trx;
 	struct femtol1_hdl *fl1h;
 
@@ -1738,10 +1732,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 		break;
 	}
 
-	rc = osmo_fsm_inst_dispatch(mo->fi,
-				    ev_data.cause == 0 ? NM_EV_SETATTR_ACK : NM_EV_SETATTR_NACK,
-				    &ev_data);
-	return rc;
+	return 0;
 }
 
 /* callback from OML */

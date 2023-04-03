@@ -101,13 +101,8 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg, setattr_data->tp,
 					 NM_OC_CHANNEL, ts);
-		(void)rc;
-		break;
-	case NM_EV_SETATTR_ACK:
-	case NM_EV_SETATTR_NACK:
-		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
-		ts->mo.setattr_success = setattr_data->cause == 0;
-		oml_fom_ack_nack_copy_msg(setattr_data->msg, setattr_data->cause);
+		ts->mo.setattr_success = rc == 0;
+		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
 	case NM_EV_OPSTART_ACK:
 		 LOGPFSML(fi, LOGL_NOTICE, "BSC trying to activate TS while still in avail=dependency. "
@@ -152,13 +147,8 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg, setattr_data->tp,
 					 NM_OC_CHANNEL, ts);
-		(void)rc;
-		break;
-	case NM_EV_SETATTR_ACK:
-	case NM_EV_SETATTR_NACK:
-		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
-		ts->mo.setattr_success = setattr_data->cause == 0;
-		oml_fom_ack_nack_copy_msg(setattr_data->msg, setattr_data->cause);
+		ts->mo.setattr_success = rc == 0;
+		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
 	case NM_EV_OPSTART_ACK:
 		ts->mo.opstart_success = true;
@@ -235,8 +225,6 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_DEPENDENCY] = {
 		.in_event_mask =
 			X(NM_EV_RX_SETATTR) |
-			X(NM_EV_SETATTR_ACK) |
-			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |  /* backward compatibility, buggy BSC */
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_BBTRANSC_ENABLED) |
@@ -254,8 +242,6 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
 			X(NM_EV_RX_SETATTR) |
-			X(NM_EV_SETATTR_ACK) |
-			X(NM_EV_SETATTR_NACK) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_BBTRANSC_DISABLED) |
