@@ -104,9 +104,12 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 		ts->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
+	case NM_EV_RX_OPSTART:
+		LOGPFSML(fi, LOGL_NOTICE, "BSC trying to activate TS while still in avail=dependency. "
+			 "Allowing it to stay backward-compatible with older osmo-bts versions, but BSC is wrong.\n");
+		bts_model_opstart(ts->trx->bts, &ts->mo, ts);
+		break;
 	case NM_EV_OPSTART_ACK:
-		 LOGPFSML(fi, LOGL_NOTICE, "BSC trying to activate TS while still in avail=dependency. "
-			  "Allowing it to stay backward-compatible with older osmo-bts versions, but BSC is wrong.\n");
 		ts->mo.opstart_success = true;
 		oml_mo_opstart_ack(&ts->mo);
 		nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_ENABLED);
@@ -149,6 +152,9 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 					 &ts->mo, ts);
 		ts->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
+		break;
+	case NM_EV_RX_OPSTART:
+		bts_model_opstart(ts->trx->bts, &ts->mo, ts);
 		break;
 	case NM_EV_OPSTART_ACK:
 		ts->mo.opstart_success = true;
@@ -225,8 +231,9 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_DEPENDENCY] = {
 		.in_event_mask =
 			X(NM_EV_RX_SETATTR) |
-			X(NM_EV_OPSTART_ACK) |  /* backward compatibility, buggy BSC */
-			X(NM_EV_OPSTART_NACK) |
+			X(NM_EV_RX_OPSTART) | /* backward compatibility, buggy BSC */
+			X(NM_EV_OPSTART_ACK) | /* backward compatibility, buggy BSC */
+			X(NM_EV_OPSTART_NACK) | /* backward compatibility, buggy BSC */
 			X(NM_EV_BBTRANSC_ENABLED) |
 			X(NM_EV_RCARRIER_ENABLED) |
 			X(NM_EV_BBTRANSC_DISABLED) |
@@ -242,6 +249,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
 			X(NM_EV_RX_SETATTR) |
+			X(NM_EV_RX_OPSTART) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_BBTRANSC_DISABLED) |

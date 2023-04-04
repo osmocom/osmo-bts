@@ -132,6 +132,9 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		bb_transc->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
+	case NM_EV_RX_OPSTART:
+		bts_model_opstart(trx->bts, &bb_transc->mo, bb_transc);
+		break;
 	case NM_EV_OPSTART_ACK:
 		bb_transc->mo.opstart_success = true;
 		oml_mo_opstart_ack(&bb_transc->mo);
@@ -248,6 +251,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 	[NM_BBTRANSC_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
 			X(NM_EV_RX_SETATTR) |
+			X(NM_EV_RX_OPSTART) |
 			X(NM_EV_OPSTART_ACK) |
 			X(NM_EV_OPSTART_NACK) |
 			X(NM_EV_RSL_UP) |

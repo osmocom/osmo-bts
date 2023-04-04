@@ -31,6 +31,7 @@
 enum nm_fsm_events {
 	NM_EV_SW_ACT,
 	NM_EV_RX_SETATTR, /* data: struct nm_fsm_ev_setattr_data */
+	NM_EV_RX_OPSTART,
 	NM_EV_OPSTART_ACK,
 	NM_EV_OPSTART_NACK,
 	NM_EV_SHUTDOWN_START,

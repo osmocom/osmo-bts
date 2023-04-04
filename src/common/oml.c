@@ -1078,6 +1078,7 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_abis_mo *mo;
 	void *obj;
+	int rc;
 
 	DEBUGPFOH(DOML, foh, "Rx OPSTART\n");
 
@@ -1093,8 +1094,17 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 		return oml_mo_opstart_ack(mo);
 	}
 
-	/* Step 3: Ask BTS driver to apply the opstart */
-	return bts_model_opstart(bts, mo, obj);
+	if (!mo->fi) {
+		/* Some NM objets still don't have FSMs implemented, such as
+		 * NM_OC_GPRS_NSE, NM_OC_GPRS_CELL or NM_OC_GPRS_NSVC. For those, don't go through FSM:
+		 */
+		return bts_model_opstart(bts, mo, obj);
+	}
+
+	rc = osmo_fsm_inst_dispatch(mo->fi, NM_EV_RX_OPSTART, NULL);
+	if (rc < 0)
+		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
+	return rc;
 }
 
 static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
