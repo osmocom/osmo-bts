@@ -50,7 +50,6 @@ extern const struct value_string nm_fsm_event_names[];
 
 struct nm_fsm_ev_setattr_data {
 	const struct msgb *msg;
-	struct tlv_parsed *tp;
 };
 
 

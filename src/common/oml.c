@@ -755,7 +755,6 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 
 	ev_data = (struct nm_fsm_ev_setattr_data){
 		.msg = msg,
-		.tp = tp_merged,
 	};
 
 	rc = osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_RX_SETATTR, &ev_data);
@@ -852,7 +851,6 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	ev_data = (struct nm_fsm_ev_setattr_data){
 		.msg = msg,
-		.tp = tp_merged,
 	};
 
 	rc = osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_RX_SETATTR, &ev_data);
@@ -1066,7 +1064,6 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	ev_data = (struct nm_fsm_ev_setattr_data){
 		.msg = msg,
-		.tp = tp_merged,
 	};
 
 	rc = osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_RX_SETATTR, &ev_data);

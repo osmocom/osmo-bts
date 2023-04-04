@@ -20,8 +20,7 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 			struct tlv_parsed *old_attr, struct tlv_parsed *new_attr,
 			void *obj);
 
-int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg,
-			struct tlv_parsed *new_attr, int obj_kind, void *obj);
+int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg, int obj_kind, void *obj);
 
 int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo,
 		      void *obj);
