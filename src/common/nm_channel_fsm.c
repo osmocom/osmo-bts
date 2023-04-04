@@ -107,6 +107,10 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 	case NM_EV_RX_OPSTART:
 		LOGPFSML(fi, LOGL_NOTICE, "BSC trying to activate TS while still in avail=dependency. "
 			 "Allowing it to stay backward-compatible with older osmo-bts versions, but BSC is wrong.\n");
+		if (!ts->mo.setattr_success) {
+			oml_mo_opstart_nack(&ts->mo, NM_NACK_CANT_PERFORM);
+			return;
+		}
 		bts_model_opstart(ts->trx->bts, &ts->mo, ts);
 		break;
 	case NM_EV_OPSTART_ACK:
@@ -154,6 +158,10 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
 	case NM_EV_RX_OPSTART:
+		if (!ts->mo.setattr_success) {
+			oml_mo_opstart_nack(&ts->mo, NM_NACK_CANT_PERFORM);
+			return;
+		}
 		bts_model_opstart(ts->trx->bts, &ts->mo, ts);
 		break;
 	case NM_EV_OPSTART_ACK:

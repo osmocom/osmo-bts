@@ -121,6 +121,10 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
 	case NM_EV_RX_OPSTART:
+		if (!bts->mo.setattr_success) {
+			oml_mo_opstart_nack(&bts->mo, NM_NACK_CANT_PERFORM);
+			return;
+		}
 		bts_model_opstart(bts, &bts->mo, bts);
 		break;
 	case NM_EV_OPSTART_ACK:
