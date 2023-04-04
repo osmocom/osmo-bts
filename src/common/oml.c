@@ -1096,7 +1096,7 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 
 	if (!mo->fi) {
 		/* Some NM objets still don't have FSMs implemented, such as
-		 * NM_OC_GPRS_NSE, NM_OC_GPRS_CELL or NM_OC_GPRS_NSVC. For those, don't go through FSM:
+		 * NM_OC_GPRS_CELL or NM_OC_GPRS_NSVC. For those, don't go through FSM:
 		 */
 		return bts_model_opstart(bts, mo, obj);
 	}
@@ -1257,16 +1257,21 @@ static int down_fom(struct gsm_bts *bts, struct msgb *msg)
  * manufacturer related messages
  */
 
-static int oml_ipa_mo_set_attr_nse(void *obj, const struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_nse(void *obj,
+				   const struct msgb *msg,
+				   const struct tlv_parsed *tp)
 {
-	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.nse);
+	struct gsm_gprs_nse *nse = obj;
+	struct gsm_bts *bts = gsm_gprs_nse_get_bts(nse);
+	struct nm_fsm_ev_setattr_data ev_data;
+	int rc;
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSEI, 2))
-		bts->gprs.nse.nsei =
+		nse->nsei =
 			ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_NSEI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NS_CFG, 7)) {
-		memcpy(&bts->gprs.nse.timer,
+		memcpy(&nse->timer,
 		       TLVP_VAL(tp, NM_ATT_IPACC_NS_CFG), 7);
 	}
 
@@ -1274,6 +1279,13 @@ static int oml_ipa_mo_set_attr_nse(void *obj, const struct tlv_parsed *tp)
 		memcpy(&bts->gprs.cell.timer,
 		       TLVP_VAL(tp, NM_ATT_IPACC_BSSGP_CFG), 11);
 	}
+
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+	};
+	rc = osmo_fsm_inst_dispatch(nse->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return NM_NACK_CANT_PERFORM;
 
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSE_ATTR, bts);
 
@@ -1420,28 +1432,6 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr(struct gsm_bts *bts, const struct gsm_abis_mo *mo,
-				void *obj, const struct tlv_parsed *tp)
-{
-	int rc;
-
-	switch (mo->obj_class) {
-	case NM_OC_GPRS_NSE:
-		rc = oml_ipa_mo_set_attr_nse(obj, tp);
-		break;
-	case NM_OC_GPRS_CELL:
-		rc = oml_ipa_mo_set_attr_cell(obj, tp);
-		break;
-	case NM_OC_GPRS_NSVC:
-		rc = oml_ipa_mo_set_attr_nsvc(obj, tp);
-		break;
-	default:
-		rc = NM_NACK_OBJINST_UNKN;
-	}
-
-	return rc;
-}
-
 static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
@@ -1468,18 +1458,37 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (!mo || !obj)
 		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
 
-	rc = oml_ipa_mo_set_attr(bts, mo, obj, &tp);
-	if (rc == 0) {
-		/* Success: replace old MO attributes with new */
-		/* merge existing MO attributes with new attributes */
-		tp_merged = osmo_tlvp_copy(mo->nm_attr, bts);
-		talloc_set_name_const(tp_merged, "oml_ipa_attr");
-		osmo_tlvp_merge(tp_merged, &tp);
-		talloc_free(mo->nm_attr);
-		mo->nm_attr = tp_merged;
+
+	switch (mo->obj_class) {
+	case NM_OC_GPRS_NSE:
+		rc =  oml_ipa_mo_set_attr_nse(obj, msg, &tp);
+		break;
+	case NM_OC_GPRS_CELL:
+		rc = oml_ipa_mo_set_attr_cell(obj, &tp);
+		break;
+	case NM_OC_GPRS_NSVC:
+		rc = oml_ipa_mo_set_attr_nsvc(obj, &tp);
+		break;
+	default:
+		rc = NM_NACK_OBJINST_UNKN;
 	}
 
-	return oml_fom_ack_nack(msg, rc);
+	if (rc != 0)
+		return oml_fom_ack_nack(msg, rc);
+
+	/* Success: replace old MO attributes with new */
+	/* merge existing MO attributes with new attributes */
+	tp_merged = osmo_tlvp_copy(mo->nm_attr, bts);
+	talloc_set_name_const(tp_merged, "oml_ipa_attr");
+	osmo_tlvp_merge(tp_merged, &tp);
+	talloc_free(mo->nm_attr);
+	mo->nm_attr = tp_merged;
+
+	/* These are not yet handled through NM FSM: */
+	if (mo->obj_class == NM_OC_GPRS_CELL ||
+	    mo->obj_class == NM_OC_GPRS_NSVC)
+		return oml_fom_ack_nack(msg, rc);
+	return rc;
 }
 
 static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,

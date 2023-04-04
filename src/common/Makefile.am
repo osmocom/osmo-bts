@@ -61,6 +61,7 @@ libbts_a_SOURCES = \
 	nm_bts_fsm.c \
 	nm_bb_transc_fsm.c \
 	nm_channel_fsm.c \
+	nm_gprs_nse_fsm.c \
 	nm_radio_carrier_fsm.c \
 	probes.d \
 	$(NULL)

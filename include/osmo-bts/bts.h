@@ -136,6 +136,13 @@ struct gsm_bts_sm {
 	struct gsm_abis_mo mo;
 };
 
+/* GPRS NSE; ip.access specific NM Object */
+struct gsm_gprs_nse {
+	struct gsm_abis_mo mo;
+	uint16_t nsei;
+	uint8_t timer[7];
+};
+
 /* Struct that holds one OML-Address (Address of the BSC) */
 struct bsc_oml_host {
 	struct llist_head list;
@@ -224,11 +231,7 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
-		struct {
-			struct gsm_abis_mo mo;
-			uint16_t nsei;
-			uint8_t timer[7];
-		} nse;
+		struct gsm_gprs_nse nse;
 		struct {
 			struct gsm_abis_mo mo;
 			uint16_t bvci;
@@ -394,6 +397,11 @@ extern void *tall_bts_ctx;
 
 static inline struct gsm_bts *gsm_bts_sm_get_bts(struct gsm_bts_sm *site_mgr) {
 	return (struct gsm_bts *)container_of(site_mgr, struct gsm_bts, site_mgr);
+}
+
+static inline struct gsm_bts *gsm_gprs_nse_get_bts(struct gsm_gprs_nse *nse)
+{
+	return (struct gsm_bts *)container_of(nse, struct gsm_bts, gprs.nse);
 }
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx, uint8_t bts_num);

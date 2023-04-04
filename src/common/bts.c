@@ -251,15 +251,25 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 					       LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);
 
+	/* NM SITE_MGR */
 	bts->site_mgr.mo.fi = osmo_fsm_inst_alloc(&nm_bts_sm_fsm, bts, &bts->site_mgr,
 						  LOGL_INFO, "bts_sm");
 	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
 		    0xff, 0xff, 0xff);
 
+	/* NM BTS */
 	bts->mo.fi = osmo_fsm_inst_alloc(&nm_bts_fsm, bts, bts,
 					 LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(bts->mo.fi, "bts%d", bts->nr);
 	gsm_mo_init(&bts->mo, bts, NM_OC_BTS, bts->nr, 0xff, 0xff);
+
+	/* NM GPRS NSE */
+	bts->gprs.nse.mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nse_fsm, bts, &bts->gprs.nse,
+						  LOGL_INFO, NULL);
+	osmo_fsm_inst_update_id_f(bts->gprs.nse.mo.fi, "gprs_nse%d", bts->nr);
+	gsm_mo_init(&bts->gprs.nse.mo, bts, NM_OC_GPRS_NSE, bts->nr, 0xff, 0xff);
+	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
+		sizeof(bts->gprs.nse.timer));
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
@@ -267,10 +277,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts, NM_OC_GPRS_NSVC,
 				bts->nr, i, 0xff);
 	}
-	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
-		sizeof(bts->gprs.nse.timer));
-	gsm_mo_init(&bts->gprs.nse.mo, bts, NM_OC_GPRS_NSE,
-			bts->nr, 0xff, 0xff);
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
 		sizeof(bts->gprs.cell.timer));
 	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
@@ -372,9 +378,9 @@ int bts_init(struct gsm_bts *bts)
 	/* Start with the site manager */
 	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	/* set BTS attr to dependency */
-	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[0].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
@@ -446,12 +452,12 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	LOGP(DOML, LOGL_INFO, "Main link established, sending NM Status.\n");
 
-	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS is DEPENDENCY */
+	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE is DEPENDENCY */
 	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
 	osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_SW_ACT, NULL);
+	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, NM_EV_SW_ACT, NULL);
 
 	/* those should all be in DEPENDENCY */
-	oml_tx_state_changed(&bts->gprs.nse.mo);
 	oml_tx_state_changed(&bts->gprs.cell.mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
