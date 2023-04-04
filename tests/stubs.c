@@ -18,7 +18,8 @@ int bts_model_init(struct gsm_bts *bts)
 { return 0; }
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 { return 0; }
-int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg, int kind, void *obj)
+int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg,
+			 struct gsm_abis_mo *mo, void *obj)
 { return 0; }
 
 int bts_model_trx_deact_rf(struct gsm_bts_trx *trx)

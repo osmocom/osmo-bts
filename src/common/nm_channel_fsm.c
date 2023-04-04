@@ -100,7 +100,7 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 	case NM_EV_RX_SETATTR:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg,
-					 NM_OC_CHANNEL, ts);
+					 &ts->mo, ts);
 		ts->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;
@@ -146,7 +146,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	case NM_EV_RX_SETATTR:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg,
-					 NM_OC_CHANNEL, ts);
+					 &ts->mo, ts);
 		ts->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
 		break;

@@ -1801,7 +1801,8 @@ int bts_model_check_oml(struct gsm_bts *bts, uint8_t msg_type,
 }
 
 /* callback from OML */
-int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg, int kind, void *obj)
+int bts_model_apply_oml(struct gsm_bts *bts, const struct msgb *msg,
+			struct gsm_abis_mo *mo, void *obj)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts_trx *trx;
