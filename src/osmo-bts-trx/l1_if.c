@@ -206,7 +206,7 @@ int bts_model_adjst_ms_pwr(struct gsm_lchan *lchan)
 }
 
 /* set bts attributes */
-static uint8_t trx_set_bts(struct gsm_bts *bts, struct tlv_parsed *new_attr)
+static uint8_t trx_set_bts(struct gsm_bts *bts)
 {
 	struct phy_instance *pinst = trx_phy_instance(bts->c0);
 	struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -569,7 +569,7 @@ int bts_model_apply_oml(struct gsm_bts *bts, struct msgb *msg,
 
 	switch (foh->msg_type) {
 	case NM_MT_SET_BTS_ATTR:
-		ev_data.cause = trx_set_bts(obj, new_attr);
+		ev_data.cause = trx_set_bts(obj);
 		break;
 	case NM_MT_SET_RADIO_ATTR:
 		ev_data.cause = trx_set_trx(obj);
