@@ -30,8 +30,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/pcuif_proto.h>
-
-extern struct gsm_network bts_gsmnet;
+#include <osmo-bts/bts_sm.h>
 
 #define OM_HEADROOM_SIZE	128
 
@@ -106,7 +105,7 @@ static int rx_down_osmo_pcu(struct gsm_bts *bts, struct msgb *msg)
 	/* Trim Abis lower layers: */
 	msgb_pull_to_l2(msg);
 	/* we simply forward it to PCUIF: */
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 /* incoming IPA/OSMO extension Abis message from BSC */

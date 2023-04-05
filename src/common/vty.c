@@ -50,6 +50,7 @@
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
@@ -173,13 +174,6 @@ struct vty_app_info bts_vty_info = {
 		[BTS_VTY_TRX_POWERCYCLE] = 'p',
 	},
 };
-
-extern struct gsm_network bts_gsmnet;
-
-struct gsm_network *gsmnet_from_vty(struct vty *v)
-{
-	return &bts_gsmnet;
-}
 
 static struct cmd_node bts_node = {
 	BTS_NODE,
@@ -506,10 +500,9 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 
 static int config_write_bts(struct vty *vty)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_bts *bts;
 
-	llist_for_each_entry(bts, &net->bts_list, list)
+	llist_for_each_entry(bts, &g_bts_sm->bts_list, list)
 		config_write_bts_single(vty, bts);
 
 	osmo_tdef_vty_groups_write(vty, "");
@@ -568,16 +561,15 @@ DEFUN_ATTR(cfg_bts,
 	   "BTS Number\n",
 	   CMD_ATTR_IMMEDIATE)
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
 	struct gsm_bts *bts;
 
-	if (bts_nr >= gsmnet->num_bts) {
+	if (bts_nr >= g_bts_sm->num_bts) {
 		vty_out(vty, "%% Unknown BTS number %u (num %u)%s",
-			bts_nr, gsmnet->num_bts, VTY_NEWLINE);
+			bts_nr, g_bts_sm->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
 	} else
-		bts = gsm_bts_num(gsmnet, bts_nr);
+		bts = gsm_bts_num(g_bts_sm, bts_nr);
 
 	vty->index = bts;
 	vty->index_sub = &bts->description;
@@ -1278,7 +1270,7 @@ static void bts_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
-	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
+	net_dump_nmstate(vty, &g_bts_sm->mo.nm_state);
 	if (strnlen(bts->pcu_version, MAX_VERSION_LENGTH))
 		vty_out(vty, "  PCU version %s connected%s",
 			bts->pcu_version, VTY_NEWLINE);
@@ -1337,23 +1329,22 @@ DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
       SHOW_STR "Display information about a BTS\n"
       BTS_NR_STR)
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr;
 
 	if (argc != 0) {
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
-		if (bts_nr >= net->num_bts) {
+		if (bts_nr >= g_bts_sm->num_bts) {
 			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
+		bts_dump_vty(vty, gsm_bts_num(g_bts_sm, bts_nr));
 		return CMD_SUCCESS;
 	}
 	/* print all BTS's */
-	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
-		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
+	for (bts_nr = 0; bts_nr < g_bts_sm->num_bts; bts_nr++)
+		bts_dump_vty(vty, gsm_bts_num(g_bts_sm, bts_nr));
 
 	return CMD_SUCCESS;
 }
@@ -1411,10 +1402,9 @@ DEFUN(show_bts_gprs, show_bts_gprs_cmd,
       SHOW_STR "Display information about a BTS\n"
       BTS_NR_STR "GPRS/EGPRS configuration\n")
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_bts *bts;
 
-	bts = gsm_bts_num(net, atoi(argv[0]));
+	bts = gsm_bts_num(g_bts_sm, atoi(argv[0]));
 	if (bts == NULL) {
 		vty_out(vty, "%% can't find BTS '%s'%s",
 			argv[0], VTY_NEWLINE);
@@ -1430,16 +1420,15 @@ DEFUN(test_send_failure_event_report, test_send_failure_event_report_cmd, "test 
       "Various testing commands\n"
       "Send a test OML failure event report to the BSC\n" BTS_NR_STR)
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
 	const struct gsm_bts *bts;
 
-	if (bts_nr >= net->num_bts) {
+	if (bts_nr >= g_bts_sm->num_bts) {
 		vty_out(vty, "%% can't find BTS '%s'%s", argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	bts = gsm_bts_num(net, bts_nr);
+	bts = gsm_bts_num(g_bts_sm, bts_nr);
 	oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MINOR, OSMO_EVT_WARN_SW_WARN, "test message sent from VTY");
 
 	return CMD_SUCCESS;
@@ -1451,9 +1440,8 @@ DEFUN_HIDDEN(radio_link_timeout, radio_link_timeout_cmd, "bts <0-0> radio-link-t
 		"Use infinite timeout (DANGEROUS: only use during testing!)\n"
 		"Number of lost SACCH blocks\n")
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
-	struct gsm_bts *bts = gsm_bts_num(net, bts_nr);
+	struct gsm_bts *bts = gsm_bts_num(g_bts_sm, bts_nr);
 
 	if (!bts) {
 		vty_out(vty, "%% can't find BTS '%s'%s", argv[0], VTY_NEWLINE);
@@ -1482,12 +1470,11 @@ DEFUN(bts_c0_power_red,
       "BCCH carrier power reduction operation\n"
       "Power reduction value (in dB, even numbers only)\n")
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	const int bts_nr = atoi(argv[0]);
 	const int red = atoi(argv[1]);
 	struct gsm_bts *bts;
 
-	bts = gsm_bts_num(net, atoi(argv[0]));
+	bts = gsm_bts_num(g_bts_sm, atoi(argv[0]));
 	if (bts == NULL) {
 		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
 		return CMD_WARNING;
@@ -1637,19 +1624,18 @@ DEFUN(show_trx,
 	SHOW_STR "Display information about a TRX\n"
 	BTS_TRX_STR)
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_bts *bts = NULL;
 	int bts_nr, trx_nr;
 
 	if (argc >= 1) {
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
-		if (bts_nr >= net->num_bts) {
+		if (bts_nr >= g_bts_sm->num_bts) {
 			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = gsm_bts_num(net, bts_nr);
+		bts = gsm_bts_num(g_bts_sm, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -1667,8 +1653,8 @@ DEFUN(show_trx,
 		return CMD_SUCCESS;
 	}
 
-	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
-		print_all_trx(vty, gsm_bts_num(net, bts_nr));
+	for (bts_nr = 0; bts_nr < g_bts_sm->num_bts; bts_nr++)
+		print_all_trx(vty, gsm_bts_num(g_bts_sm, bts_nr));
 
 	return CMD_SUCCESS;
 }
@@ -1693,7 +1679,6 @@ DEFUN(show_ts,
 	SHOW_STR "Display information about a TS\n"
 	BTS_TRX_TS_STR)
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_bts *bts = NULL;
 	const struct gsm_bts_trx *trx = NULL;
 	const struct gsm_bts_trx_ts *ts = NULL;
@@ -1702,12 +1687,12 @@ DEFUN(show_ts,
 	if (argc >= 1) {
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
-		if (bts_nr >= net->num_bts) {
+		if (bts_nr >= g_bts_sm->num_bts) {
 			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = gsm_bts_num(net, bts_nr);
+		bts = gsm_bts_num(g_bts_sm, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -1748,8 +1733,8 @@ DEFUN(show_ts,
 		}
 	} else {
 		/* Iterate over all BTS, TRX in each BTS, TS in each TRX */
-		for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-			bts = gsm_bts_num(net, bts_nr);
+		for (bts_nr = 0; bts_nr < g_bts_sm->num_bts; bts_nr++) {
+			bts = gsm_bts_num(g_bts_sm, bts_nr);
 			for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
 				trx = gsm_bts_trx_num(bts, trx_nr);
 				for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
@@ -2112,7 +2097,6 @@ static int dump_lchan_bts(const struct gsm_bts *bts, struct vty *vty,
 static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, const struct gsm_lchan *))
 {
-	const struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_bts *bts = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
 	const struct gsm_bts_trx *trx = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
 	const struct gsm_bts_trx_ts *ts = NULL; /* initialize to avoid uninitialized false warnings on some gcc versions (11.1.0) */
@@ -2122,12 +2106,12 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 	if (argc >= 1) {
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
-		if (bts_nr >= net->num_bts) {
+		if (bts_nr >= g_bts_sm->num_bts) {
 			vty_out(vty, "%% can't find BTS %s%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = gsm_bts_num(net, bts_nr);
+		bts = gsm_bts_num(g_bts_sm, bts_nr);
 
 		if (argc == 1)
 			return dump_lchan_bts(bts, vty, dump_cb);
@@ -2168,8 +2152,8 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 		return CMD_SUCCESS;
 	}
 
-	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = gsm_bts_num(net, bts_nr);
+	for (bts_nr = 0; bts_nr < g_bts_sm->num_bts; bts_nr++) {
+		bts = gsm_bts_num(g_bts_sm, bts_nr);
 		dump_lchan_bts(bts, vty, dump_cb);
 	}
 
@@ -2195,8 +2179,7 @@ DEFUN(show_lchan_summary,
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
-static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
-				       const char **argv, int idx)
+static struct gsm_lchan *resolve_lchan(const char **argv, int idx)
 {
 	int bts_nr = atoi(argv[idx+0]);
 	int trx_nr = atoi(argv[idx+1]);
@@ -2207,7 +2190,7 @@ static struct gsm_lchan *resolve_lchan(const struct gsm_network *net,
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 
-	bts = gsm_bts_num(net, bts_nr);
+	bts = gsm_bts_num(g_bts_sm, bts_nr);
 	if (!bts)
 		return NULL;
 
@@ -2472,11 +2455,10 @@ DEFUN(bts_t_t_l_jitter_buf,
 	BTS_T_T_L_STR "RTP settings\n"
 	"Jitter buffer\n" "Size of jitter buffer in (ms)\n")
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
 	int jitbuf_ms = atoi(argv[4]), rc;
 
-	lchan = resolve_lchan(net, argv, 0);
+	lchan = resolve_lchan(argv, 0);
 	if (!lchan) {
 		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
@@ -2505,10 +2487,9 @@ DEFUN_ATTR(bts_t_t_l_loopback,
 	   BTS_T_T_L_STR "Set loopback\n",
 	   CMD_ATTR_HIDDEN)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
 
-	lchan = resolve_lchan(net, argv, 0);
+	lchan = resolve_lchan(argv, 0);
 	if (!lchan) {
 		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
@@ -2524,10 +2505,9 @@ DEFUN_ATTR(no_bts_t_t_l_loopback,
 	   NO_STR BTS_T_T_L_STR "Set loopback\n",
 	   CMD_ATTR_HIDDEN)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_lchan *lchan;
 
-	lchan = resolve_lchan(net, argv, 0);
+	lchan = resolve_lchan(argv, 0);
 	if (!lchan) {
 		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
@@ -2550,13 +2530,12 @@ DEFUN_ATTR(bts_t_t_l_power_ctrl_mode,
 	   "Enable the power control loop\n",
 	   CMD_ATTR_HIDDEN)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	const struct gsm_power_ctrl_params *params;
 	struct lchan_power_ctrl_state *state;
 	const char **args = argv + 4;
 	struct gsm_lchan *lchan;
 
-	lchan = resolve_lchan(net, argv, 0);
+	lchan = resolve_lchan(argv, 0);
 	if (!lchan) {
 		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;
@@ -2587,12 +2566,11 @@ DEFUN_ATTR(bts_t_t_l_power_ctrl_current_max,
 	   "BS power reduction (in dB) or MS power level\n",
 	   CMD_ATTR_HIDDEN)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct lchan_power_ctrl_state *state;
 	const char **args = argv + 4;
 	struct gsm_lchan *lchan;
 
-	lchan = resolve_lchan(net, argv, 0);
+	lchan = resolve_lchan(argv, 0);
 	if (!lchan) {
 		vty_out(vty, "%% Could not resolve logical channel%s", VTY_NEWLINE);
 		return CMD_WARNING;

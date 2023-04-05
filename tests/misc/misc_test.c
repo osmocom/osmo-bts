@@ -21,6 +21,7 @@
  */
 
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/logging.h>
 
@@ -165,7 +166,8 @@ static void test_bts_supports_cm(void)
 	struct rsl_ie_chan_mode cm;
 	struct gsm_bts *bts;
 
-	bts = gsm_bts_alloc(ctx, 0);
+	g_bts_sm = gsm_bts_sm_alloc(ctx);
+	bts = gsm_bts_alloc(g_bts_sm, 0);
 
 	/* Signalling shall be supported regardless of the features */
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,

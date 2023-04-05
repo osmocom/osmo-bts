@@ -38,6 +38,7 @@
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/l1sap.h>
@@ -46,7 +47,6 @@
 
 uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx);
 
-extern struct gsm_network bts_gsmnet;
 int pcu_direct = 0;
 static int avail_lai = 0, avail_nse = 0, avail_cell = 0, avail_nsvc[2] = {0, 0};
 
@@ -231,7 +231,6 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 
 int pcu_tx_info_ind(void)
 {
-	struct gsm_network *net = &bts_gsmnet;
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_info_ind *info_ind;
@@ -244,7 +243,7 @@ int pcu_tx_info_ind(void)
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
 
 	/* FIXME: allow multiple BTS */
-	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
+	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
 	nse = &bts->gprs.nse;
 	rlcc = &bts->gprs.cell.rlc_cfg;
 
@@ -266,9 +265,9 @@ int pcu_tx_info_ind(void)
 
 	info_ind->bsic = bts->bsic;
 	/* RAI */
-	info_ind->mcc = net->plmn.mcc;
-	info_ind->mnc = net->plmn.mnc;
-	info_ind->mnc_3_digits = net->plmn.mnc_3_digits;
+	info_ind->mcc = g_bts_sm->plmn.mcc;
+	info_ind->mnc = g_bts_sm->plmn.mnc;
+	info_ind->mnc_3_digits = g_bts_sm->plmn.mnc_3_digits;
 	info_ind->lac = bts->location_area_code;
 	info_ind->rac = bts->gprs.rac;
 
@@ -358,13 +357,12 @@ int pcu_tx_info_ind(void)
 		info_ind_fill_trx(&info_ind->trx[trx->nr], trx);
 	}
 
-	return pcu_sock_send(net, msg);
+	return pcu_sock_send(msg);
 }
 
 static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 	void *hdlr_data, void *signal_data)
 {
-	struct gsm_network *net = &bts_gsmnet;
 	struct gsm_gprs_nsvc *nsvc;
 	struct gsm_bts *bts;
 	struct gsm48_system_information_type_3 *si3;
@@ -380,7 +378,7 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 			break;
 		si3 = (struct gsm48_system_information_type_3 *)
 						bts->si_buf[SYSINFO_TYPE_3];
-		osmo_plmn_from_bcd(si3->lai.digits, &net->plmn);
+		osmo_plmn_from_bcd(si3->lai.digits, &g_bts_sm->plmn);
 		bts->location_area_code = ntohs(si3->lai.lac);
 		bts->cell_identity = ntohs(si3->cell_identity);
 		avail_lai = 1;
@@ -436,7 +434,7 @@ int pcu_tx_app_info_req(struct gsm_bts *bts, uint8_t app_type, uint8_t len, cons
 	ai_req->len = len;
 	memcpy(ai_req->data, app_data, ai_req->len);
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
@@ -463,7 +461,7 @@ int pcu_tx_rts_req(struct gsm_bts_trx_ts *ts, uint8_t is_ptcch, uint32_t fn,
 	rts_req->ts_nr = ts->nr;
 	rts_req->block_nr = block_nr;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
@@ -498,7 +496,7 @@ int pcu_tx_data_ind(struct gsm_bts_trx_ts *ts, uint8_t sapi, uint32_t fn,
 		memcpy(data_ind->data, data, len);
 	data_ind->len = len;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_rach_ind(uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
@@ -527,7 +525,7 @@ int pcu_tx_rach_ind(uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
 	rach_ind->trx_nr = trx_nr;
 	rach_ind->ts_nr = ts_nr;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_time_ind(uint32_t fn)
@@ -549,7 +547,7 @@ int pcu_tx_time_ind(uint32_t fn)
 
 	time_ind->fn = fn;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn)
@@ -582,12 +580,12 @@ int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn)
 		interf_ind->interf[tn] = -1 * lchan->meas.interf_meas_avg_dbm;
 	}
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 {
-	struct pcu_sock_state *state = bts_gsmnet.pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->pcu_state;
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_pag_req *pag_req;
@@ -615,19 +613,18 @@ int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 	pag_req->chan_needed = chan_needed;
 	memcpy(pag_req->identity_lv, identity_lv, identity_lv[0] + 1);
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 {
-	struct gsm_network *net = &bts_gsmnet;
 	struct gsm_bts *bts;
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_data *data_cnf;
 
 	/* FIXME: allow multiple BTS */
-	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
+	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_DEBUG, "Sending PCH confirm\n");
 
@@ -642,7 +639,7 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
 	memcpy(data_cnf->data, data, len);
 	data_cnf->len = len;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 /* forward data from a RR GPRS SUSPEND REQ towards PCU */
@@ -659,7 +656,7 @@ int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id
 	memcpy(pcu_prim->u.susp_req.ra_id, ra_id, sizeof(pcu_prim->u.susp_req.ra_id));
 	pcu_prim->u.susp_req.cause = cause;
 
-	return pcu_sock_send(&bts_gsmnet, msg);
+	return pcu_sock_send(msg);
 }
 
 static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
@@ -897,14 +894,13 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 			return -EINVAL; \
 		} \
 	} while (0)
-static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
-	struct gsm_pcu_if *pcu_prim, size_t prim_len)
+static int pcu_rx(uint8_t msg_type, struct gsm_pcu_if *pcu_prim, size_t prim_len)
 {
 	int rc = 0;
 	struct gsm_bts *bts;
 	size_t exp_len;
 
-	if ((bts = gsm_bts_num(net, pcu_prim->bts_nr)) == NULL) {
+	if ((bts = gsm_bts_num(g_bts_sm, pcu_prim->bts_nr)) == NULL) {
 		LOGP(DPCU, LOGL_ERROR, "Received PCU Prim for non-existent BTS %u\n", pcu_prim->bts_nr);
 		return -EINVAL;
 	}
@@ -951,15 +947,15 @@ static int pcu_rx(struct gsm_network *net, uint8_t msg_type,
  */
 
 struct pcu_sock_state {
-	struct gsm_network *net;
+	struct gsm_bts_sm *bts_sm;
 	struct osmo_fd listen_bfd;	/* fd for listen socket */
 	struct osmo_fd conn_bfd;	/* fd for connection to lcr */
 	struct llist_head upqueue;	/* queue for sending messages */
 };
 
-int pcu_sock_send(struct gsm_network *net, struct msgb *msg)
+int pcu_sock_send(struct msgb *msg)
 {
-	struct pcu_sock_state *state = net->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->pcu_state;
 	struct osmo_fd *conn_bfd;
 	struct gsm_pcu_if *pcu_prim = (struct gsm_pcu_if *) msg->data;
 
@@ -994,7 +990,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	unsigned int tn;
 
 	/* FIXME: allow multiple BTS */
-	bts = llist_entry(state->net->bts_list.next, struct gsm_bts, list);
+	bts = llist_entry(state->bts_sm->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket has LOST connection\n");
 	oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_MAJOR, OSMO_EVT_PCU_VERS,
@@ -1073,7 +1069,7 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	rc = pcu_rx(state->net, pcu_prim->msg_type, pcu_prim, rc);
+	rc = pcu_rx(pcu_prim->msg_type, pcu_prim, rc);
 
 	/* as we always synchronously process the message in pcu_rx() and
 	 * its callbacks, we can free the message here. */
@@ -1187,7 +1183,7 @@ int pcu_sock_init(const char *path)
 		return -ENOMEM;
 
 	INIT_LLIST_HEAD(&state->upqueue);
-	state->net = &bts_gsmnet;
+	state->bts_sm = g_bts_sm;
 	state->conn_bfd.fd = -1;
 
 	bfd = &state->listen_bfd;
@@ -1213,7 +1209,7 @@ int pcu_sock_init(const char *path)
 
 	osmo_signal_register_handler(SS_GLOBAL, pcu_if_signal_cb, NULL);
 
-	bts_gsmnet.pcu_state = state;
+	g_bts_sm->pcu_state = state;
 
 	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket: %s\n", path);
 
@@ -1222,7 +1218,7 @@ int pcu_sock_init(const char *path)
 
 void pcu_sock_exit(void)
 {
-	struct pcu_sock_state *state = bts_gsmnet.pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->pcu_state;
 	struct osmo_fd *bfd, *conn_bfd;
 
 	if (!state)
@@ -1236,12 +1232,11 @@ void pcu_sock_exit(void)
 	close(bfd->fd);
 	osmo_fd_unregister(bfd);
 	talloc_free(state);
-	bts_gsmnet.pcu_state = NULL;
+	g_bts_sm->pcu_state = NULL;
 }
 
 bool pcu_connected(void) {
-	struct gsm_network *net = &bts_gsmnet;
-	struct pcu_sock_state *state = net->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->pcu_state;
 
 	if (!state)
 		return false;

@@ -119,11 +119,6 @@ struct bts_power_ctrl_params {
 	} pf;
 };
 
-/* BTS Site Manager */
-struct gsm_bts_sm {
-	struct gsm_abis_mo mo;
-};
-
 /* GPRS NSVC; ip.access specific NM Object */
 struct gsm_gprs_nse;
 struct gsm_gprs_nsvc {
@@ -161,7 +156,7 @@ struct bsc_oml_host {
 
 /* One BTS */
 struct gsm_bts {
-	/* list header in net->bts_list */
+	/* list header in g_bts_sm->bts_list */
 	struct llist_head list;
 
 	/* number of the BTS in network */
@@ -211,7 +206,7 @@ struct gsm_bts {
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;
 
-	struct gsm_bts_sm site_mgr;
+	struct gsm_bts_sm *site_mgr;
 
 	/* bitmask of all SI that are present/valid in si_buf */
 	uint32_t si_valid;
@@ -399,10 +394,6 @@ extern void *tall_bts_ctx;
 #define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
 #define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
 
-static inline struct gsm_bts *gsm_bts_sm_get_bts(struct gsm_bts_sm *site_mgr) {
-	return (struct gsm_bts *)container_of(site_mgr, struct gsm_bts, site_mgr);
-}
-
 static inline struct gsm_bts *gsm_gprs_nse_get_bts(struct gsm_gprs_nse *nse)
 {
 	return (struct gsm_bts *)container_of(nse, struct gsm_bts, gprs.nse);
@@ -413,8 +404,8 @@ static inline struct gsm_bts *gsm_gprs_cell_get_bts(struct gsm_gprs_cell *cell)
 	return (struct gsm_bts *)container_of(cell, struct gsm_bts, gprs.cell);
 }
 
-struct gsm_bts *gsm_bts_alloc(void *talloc_ctx, uint8_t bts_num);
-struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num);
+struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num);
+struct gsm_bts *gsm_bts_num(const struct gsm_bts_sm *bts_sm, int num);
 
 int bts_init(struct gsm_bts *bts);
 void bts_shutdown(struct gsm_bts *bts, const char *reason);

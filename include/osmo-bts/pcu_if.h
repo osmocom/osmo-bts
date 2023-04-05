@@ -3,6 +3,8 @@
 
 #include <osmo-bts/pcuif_proto.h>
 
+struct gsm_bts_sm;
+
 extern int pcu_direct;
 
 #define PCUIF_HDR_SIZE (sizeof(struct gsm_pcu_if) - sizeof(((struct gsm_pcu_if *)0)->u))
@@ -23,7 +25,7 @@ int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn);
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed);
 int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len);
 int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
-int pcu_sock_send(struct gsm_network *net, struct msgb *msg);
+int pcu_sock_send(struct msgb *msg);
 
 int pcu_sock_init(const char *path);
 void pcu_sock_exit(void);

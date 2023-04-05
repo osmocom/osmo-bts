@@ -49,6 +49,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
@@ -292,7 +293,13 @@ int bts_main(int argc, char **argv)
 	if (vty_test_mode)
 		fprintf(stderr, "--- VTY test mode: not connecting to BSC, not exiting ---\n");
 
-	g_bts = gsm_bts_alloc(tall_bts_ctx, 0);
+	g_bts_sm = gsm_bts_sm_alloc(tall_bts_ctx);
+	if (!g_bts_sm) {
+		fprintf(stderr, "Failed to create BTS Site Manager structure\n");
+		exit(1);
+	}
+
+	g_bts = gsm_bts_alloc(g_bts_sm, 0);
 	if (!g_bts) {
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);

@@ -29,6 +29,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/nm_common_fsm.h>
 
 #define X(s) (1 << (s))
@@ -60,7 +61,7 @@ static void st_none(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 	switch(event) {
 	case BTS_SHUTDOWN_EV_START:
 		/* Firt announce to NM objects that we are starting a shutdown procedure: */
-		osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SHUTDOWN_START, NULL);
+		osmo_fsm_inst_dispatch(bts->site_mgr->mo.fi, NM_EV_SHUTDOWN_START, NULL);
 
 		count = count_trx_operational(bts);
 		if (count) {
@@ -164,7 +165,7 @@ static void st_exit_on_enter(struct osmo_fsm_inst *fi, uint32_t prev_state)
 {
 	struct gsm_bts *bts = (struct gsm_bts *)fi->priv;
 
-	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SHUTDOWN_FINISH, NULL);
+	osmo_fsm_inst_dispatch(bts->site_mgr->mo.fi, NM_EV_SHUTDOWN_FINISH, NULL);
 
 	if (bts->shutdown_fi_exit_proc) {
 		LOGPFSML(fi, LOGL_NOTICE, "Shutdown process completed successfully, exiting process\n");

@@ -34,6 +34,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/gsm/tlv.h>
@@ -46,6 +47,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/nm_common_fsm.h>
@@ -132,6 +134,7 @@ int oml_send_msg(struct msgb *msg, int is_manuf)
 int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_type)
 {
 	struct abis_om_fom_hdr *foh;
+	struct gsm_bts *bts;
 
 	msg->l3h = msgb_push(msg, sizeof(*foh));
 	foh = (struct abis_om_fom_hdr *) msg->l3h;
@@ -139,8 +142,22 @@ int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_
 	foh->obj_class = mo->obj_class;
 	memcpy(&foh->obj_inst, &mo->obj_inst, sizeof(foh->obj_inst));
 
-	/* FIXME: This assumption may not always be correct */
-	msg->trx = mo->bts->c0;
+	/* Find and set OML TRX on msg: */
+	switch (mo->obj_class) {
+	case NM_OC_SITE_MANAGER:
+		/* Pick the first BTS: */
+		bts = gsm_bts_num(g_bts_sm, 0);
+		break;
+	default:
+		/* Other objects should have a valid BTS available: */
+		bts = gsm_bts_num(g_bts_sm, mo->obj_inst.bts_nr);
+	}
+	if (OSMO_UNLIKELY(!bts)) {
+		LOGPFOH(DOML, LOGL_NOTICE, foh,
+			"Sending FOM failed (no related BTS object found)\n");
+		return -EINVAL;
+	}
+	msg->trx = bts->c0;
 
 	DEBUGPFOH(DOML, foh, "Tx %s\n", get_value_string(abis_nm_msgtype_names, foh->msg_type));
 
@@ -1740,7 +1757,7 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		mo = &trx->ts[obj_inst->ts_nr].mo;
 		break;
 	case NM_OC_SITE_MANAGER:
-		mo = &bts->site_mgr.mo;
+		mo = &g_bts_sm->mo;
 		break;
 	case NM_OC_GPRS_NSE:
 		mo = &bts->gprs.nse.mo;
@@ -1807,7 +1824,7 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		obj = &trx->ts[obj_inst->ts_nr];
 		break;
 	case NM_OC_SITE_MANAGER:
-		obj = &bts->site_mgr;
+		obj = g_bts_sm;
 		break;
 	case NM_OC_GPRS_NSE:
 		obj = &bts->gprs.nse;

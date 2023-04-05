@@ -47,6 +47,7 @@
 #include <osmo-bts/signal.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/phy_link.h>
@@ -412,7 +413,6 @@ DEFUN(cfg_phy_c0_idle_red_pwr, cfg_phy_c0_idle_red_pwr_cmd,
 
 DEFUN(trigger_ho_cause, trigger_ho_cause_cmd, "HIDDEN", TRX_STR)
 {
-	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
@@ -422,7 +422,7 @@ DEFUN(trigger_ho_cause, trigger_ho_cause_cmd, "HIDDEN", TRX_STR)
 	/* uint8_t old_ho_cause; */
 
 	/* get BTS pointer */
-	bts = gsm_bts_num(net, 0);
+	bts = gsm_bts_num(g_bts_sm, 0);
 	if (!bts) {
 		vty_out(vty, "Can not get BTS node %s", VTY_NEWLINE);
 		return CMD_WARNING;

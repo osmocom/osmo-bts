@@ -44,6 +44,7 @@
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/rsl.h>
@@ -60,11 +61,6 @@
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
 
 static void bts_update_agch_max_queue_length(struct gsm_bts *bts);
-
-struct gsm_network bts_gsmnet = {
-	.bts_list = { &bts_gsmnet.bts_list, &bts_gsmnet.bts_list },
-	.num_bts = 0,
-};
 
 void *tall_bts_ctx;
 
@@ -212,10 +208,6 @@ const struct value_string bts_impl_flag_desc[] = {
 
 static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 {
-	if (bts->site_mgr.mo.fi) {
-		osmo_fsm_inst_free(bts->site_mgr.mo.fi);
-		bts->site_mgr.mo.fi = NULL;
-	}
 	if (bts->mo.fi) {
 		osmo_fsm_inst_free(bts->mo.fi);
 		bts->mo.fi = NULL;
@@ -231,9 +223,9 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 	return 0;
 }
 
-struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
+struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num)
 {
-	struct gsm_bts *bts = talloc_zero(ctx, struct gsm_bts);
+	struct gsm_bts *bts = talloc_zero(bts_sm, struct gsm_bts);
 	struct gsm_gprs_nse *nse = &bts->gprs.nse;
 	int i;
 
@@ -243,8 +235,9 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	talloc_set_destructor(bts, gsm_bts_talloc_destructor);
 
 	/* add to list of BTSs */
-	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
+	llist_add_tail(&bts->list, &bts_sm->bts_list);
 
+	bts->site_mgr = bts_sm;
 	bts->nr = bts_num;
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
@@ -256,12 +249,6 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	bts->shutdown_fi = osmo_fsm_inst_alloc(&bts_shutdown_fsm, bts, bts,
 					       LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(bts->shutdown_fi, "bts%d", bts->nr);
-
-	/* NM SITE_MGR */
-	bts->site_mgr.mo.fi = osmo_fsm_inst_alloc(&nm_bts_sm_fsm, bts, &bts->site_mgr,
-						  LOGL_INFO, "bts_sm");
-	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
-		    0xff, 0xff, 0xff);
 
 	/* NM BTS */
 	bts->mo.fi = osmo_fsm_inst_alloc(&nm_bts_fsm, bts, bts,
@@ -310,14 +297,14 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	return bts;
 }
 
-struct gsm_bts *gsm_bts_num(const struct gsm_network *net, int num)
+struct gsm_bts *gsm_bts_num(const struct gsm_bts_sm *bts_sm, int num)
 {
 	struct gsm_bts *bts;
 
-	if (num >= net->num_bts)
+	if (num >= bts_sm->num_bts)
 		return NULL;
 
-	llist_for_each_entry(bts, &net->bts_list, list) {
+	llist_for_each_entry(bts, &bts_sm->bts_list, list) {
 		if (bts->nr == num)
 			return bts;
 	}
@@ -382,8 +369,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->radio_link_timeout.oml = 32;
 	bts->radio_link_timeout.current = bts->radio_link_timeout.oml;
 
-	/* Start with the site manager */
-	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	/* Start with the BTS */
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
@@ -417,7 +403,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* TRX0 was allocated early during gsm_bts_alloc, not later through VTY */
 	bts_model_trx_init(bts->c0);
-	bts_gsmnet.num_bts++;
+	g_bts_sm->num_bts++;
 
 	if (!initialized) {
 		osmo_signal_register_handler(SS_GLOBAL, bts_signal_cbfn, NULL);
@@ -456,7 +442,7 @@ int bts_link_estab(struct gsm_bts *bts)
 	LOGP(DOML, LOGL_INFO, "Main link established, sending NM Status.\n");
 
 	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE, etc. is DEPENDENCY */
-	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
+	osmo_fsm_inst_dispatch(bts->site_mgr->mo.fi, NM_EV_SW_ACT, NULL);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {

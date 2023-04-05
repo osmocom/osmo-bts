@@ -28,6 +28,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/vty.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcu_if.h>
@@ -71,7 +72,12 @@ int main(int argc, char **argv)
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
 	osmo_stderr_target->categories[DHO].loglevel = LOGL_DEBUG;
 
-	bts = gsm_bts_alloc(tall_bts_ctx, 0);
+	g_bts_sm = gsm_bts_sm_alloc(tall_bts_ctx);
+	if (!g_bts_sm) {
+		fprintf(stderr, "Failed to create BTS Site Manager structure\n");
+		exit(1);
+	}
+	bts = gsm_bts_alloc(g_bts_sm, 0);
 	if (!bts) {
 		fprintf(stderr, "Failed to create BTS structure\n");
 		exit(1);

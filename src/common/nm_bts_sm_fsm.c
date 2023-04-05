@@ -32,6 +32,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/phy_link.h>
@@ -44,9 +45,11 @@
 
 static void ev_dispatch_children(struct gsm_bts_sm *site_mgr, uint32_t event)
 {
-	struct gsm_bts *bts = gsm_bts_sm_get_bts(site_mgr);
-	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, event, NULL);
-	osmo_fsm_inst_dispatch(bts->mo.fi, event, NULL);
+	struct gsm_bts *bts;
+	llist_for_each_entry(bts, &site_mgr->bts_list, list) {
+		osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, event, NULL);
+		osmo_fsm_inst_dispatch(bts->mo.fi, event, NULL);
+	}
 }
 
 //////////////////////////
