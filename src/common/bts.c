@@ -271,18 +271,20 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
 		sizeof(bts->gprs.nse.timer));
 
+	/* NM GPRS CELL */
+	bts->gprs.cell.mo.fi = osmo_fsm_inst_alloc(&nm_gprs_cell_fsm, bts, &bts->gprs.cell,
+						  LOGL_INFO, NULL);
+	osmo_fsm_inst_update_id_f(bts->gprs.cell.mo.fi, "gprs_cell%d-0", bts->nr);
+	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL, bts->nr, 0, 0xff);
+	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default, sizeof(bts->gprs.cell.rlc_cfg));
+	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default, sizeof(bts->gprs.cell.timer));
+
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
 		bts->gprs.nsvc[i].id = i;
 		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts, NM_OC_GPRS_NSVC,
 				bts->nr, i, 0xff);
 	}
-	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
-		sizeof(bts->gprs.cell.timer));
-	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
-			bts->nr, 0, 0xff);
-	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default,
-		sizeof(bts->gprs.cell.rlc_cfg));
 
 	/* create our primary TRX. It will be initialized during bts_init() */
 	bts->c0 = gsm_bts_trx_alloc(bts);
@@ -379,9 +381,9 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->site_mgr.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	/* set BTS attr to dependency */
-	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[0].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 	oml_mo_state_init(&bts->gprs.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 
@@ -458,7 +460,6 @@ int bts_link_estab(struct gsm_bts *bts)
 	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, NM_EV_SW_ACT, NULL);
 
 	/* those should all be in DEPENDENCY */
-	oml_tx_state_changed(&bts->gprs.cell.mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
 	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
 

@@ -44,10 +44,10 @@
 
 static void ev_dispatch_children(struct gsm_gprs_nse *nse, uint32_t event)
 {
-	/* TODO: once we have FSMs for GPRS Cell and GPRS NSVC: */
-#if 0
 	struct gsm_bts *bts = gsm_gprs_nse_get_bts(nse);
 	osmo_fsm_inst_dispatch(bts->gprs.cell.mo.fi, event, NULL);
+	/* TODO: once we have FSMs for GPRS Cell and GPRS NSVC: */
+#if 0
 	if (bts->gprs.nsvc[0].fi)
 		osmo_fsm_inst_dispatch(bts->gprs.nsvc[0].fi, event, NULL);
 	if (bts->gprs.nsvc[1].fi)
@@ -84,6 +84,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	switch (event) {
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&nse->mo);
+		ev_dispatch_children(nse, event);
 		if (nse_can_be_enabled(nse))
 			nm_gprs_nse_fsm_state_chg(fi, NM_GPRS_NSE_ST_OP_DISABLED_OFFLINE);
 		else

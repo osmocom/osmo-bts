@@ -1096,7 +1096,7 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 
 	if (!mo->fi) {
 		/* Some NM objets still don't have FSMs implemented, such as
-		 * NM_OC_GPRS_CELL or NM_OC_GPRS_NSVC. For those, don't go through FSM:
+		 * NM_OC_GPRS_NSVC. For those, don't go through FSM:
 		 */
 		return bts_model_opstart(bts, mo, obj);
 	}
@@ -1292,10 +1292,15 @@ static int oml_ipa_mo_set_attr_nse(void *obj,
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr_cell(void *obj, const struct tlv_parsed *tp)
+static int oml_ipa_mo_set_attr_cell(void *obj,
+				    const struct msgb *msg,
+				    const struct tlv_parsed *tp)
 {
-	struct gsm_bts *bts = container_of(obj, struct gsm_bts, gprs.cell);
-	struct gprs_rlc_cfg *rlcc = &bts->gprs.cell.rlc_cfg;
+	struct gsm_gprs_cell *gprs_cell = obj;
+	struct gsm_bts *bts = gsm_gprs_cell_get_bts(gprs_cell);
+	struct gprs_rlc_cfg *rlcc = &gprs_cell->rlc_cfg;
+	struct nm_fsm_ev_setattr_data ev_data;
+	int rc;
 	const uint8_t *cur;
 	uint16_t _cur_s;
 
@@ -1309,8 +1314,7 @@ static int oml_ipa_mo_set_attr_cell(void *obj, const struct tlv_parsed *tp)
 	}
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_BVCI, 2))
-		bts->gprs.cell.bvci =
-			ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_BVCI));
+		gprs_cell->bvci = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_BVCI));
 
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG, 9)) {
 		cur = TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG);
@@ -1356,6 +1360,13 @@ static int oml_ipa_mo_set_attr_cell(void *obj, const struct tlv_parsed *tp)
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_RLC_CFG_3, 1)) {
 		rlcc->initial_mcs = *TLVP_VAL(tp, NM_ATT_IPACC_RLC_CFG_3);
 	}
+
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+	};
+	rc = osmo_fsm_inst_dispatch(gprs_cell->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return NM_NACK_CANT_PERFORM;
 
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_CELL_ATTR, bts);
 
@@ -1464,7 +1475,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 		rc =  oml_ipa_mo_set_attr_nse(obj, msg, &tp);
 		break;
 	case NM_OC_GPRS_CELL:
-		rc = oml_ipa_mo_set_attr_cell(obj, &tp);
+		rc = oml_ipa_mo_set_attr_cell(obj, msg, &tp);
 		break;
 	case NM_OC_GPRS_NSVC:
 		rc = oml_ipa_mo_set_attr_nsvc(obj, &tp);
@@ -1485,8 +1496,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	mo->nm_attr = tp_merged;
 
 	/* These are not yet handled through NM FSM: */
-	if (mo->obj_class == NM_OC_GPRS_CELL ||
-	    mo->obj_class == NM_OC_GPRS_NSVC)
+	if (mo->obj_class == NM_OC_GPRS_NSVC)
 		return oml_fom_ack_nack(msg, rc);
 	return rc;
 }
