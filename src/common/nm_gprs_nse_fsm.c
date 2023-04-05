@@ -44,15 +44,14 @@
 
 static void ev_dispatch_children(struct gsm_gprs_nse *nse, uint32_t event)
 {
+	unsigned int i;
 	struct gsm_bts *bts = gsm_gprs_nse_get_bts(nse);
+
 	osmo_fsm_inst_dispatch(bts->gprs.cell.mo.fi, event, NULL);
-	/* TODO: once we have FSMs for GPRS Cell and GPRS NSVC: */
-#if 0
-	if (bts->gprs.nsvc[0].fi)
-		osmo_fsm_inst_dispatch(bts->gprs.nsvc[0].fi, event, NULL);
-	if (bts->gprs.nsvc[1].fi)
-		osmo_fsm_inst_dispatch(bts->gprs.nsvc[1].fi, event, NULL);
-#endif
+	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
+		struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
+		osmo_fsm_inst_dispatch(nsvc->mo.fi, event, NULL);
+	}
 }
 
 /* Can the NSE be enabled (OPSTARTed)? aka should it stay in "Disabled Dependency" state? */

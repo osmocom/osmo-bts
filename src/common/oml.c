@@ -1094,12 +1094,8 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 		return oml_mo_opstart_ack(mo);
 	}
 
-	if (!mo->fi) {
-		/* Some NM objets still don't have FSMs implemented, such as
-		 * NM_OC_GPRS_NSVC. For those, don't go through FSM:
-		 */
-		return bts_model_opstart(bts, mo, obj);
-	}
+	/* Make sure all NM objects already have an FSM implemented: */
+	OSMO_ASSERT(mo->fi);
 
 	rc = osmo_fsm_inst_dispatch(mo->fi, NM_EV_RX_OPSTART, NULL);
 	if (rc < 0)
@@ -1374,8 +1370,12 @@ static int oml_ipa_mo_set_attr_cell(void *obj,
 }
 
 static int oml_ipa_mo_set_attr_nsvc(struct gsm_gprs_nsvc *nsvc,
+				    const struct msgb *msg,
 				    const struct tlv_parsed *tp)
 {
+	struct nm_fsm_ev_setattr_data ev_data;
+	int rc;
+
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSVCI, 2))
 		nsvc->nsvci = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_NSVCI));
 
@@ -1437,6 +1437,12 @@ static int oml_ipa_mo_set_attr_nsvc(struct gsm_gprs_nsvc *nsvc,
 		}
 	}
 
+	ev_data = (struct nm_fsm_ev_setattr_data){
+		.msg = msg,
+	};
+	rc = osmo_fsm_inst_dispatch(nsvc->mo.fi, NM_EV_RX_SETATTR, &ev_data);
+	if (rc < 0)
+		return NM_NACK_CANT_PERFORM;
 
 	osmo_signal_dispatch(SS_GLOBAL, S_NEW_NSVC_ATTR, nsvc);
 
@@ -1478,7 +1484,7 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 		rc = oml_ipa_mo_set_attr_cell(obj, msg, &tp);
 		break;
 	case NM_OC_GPRS_NSVC:
-		rc = oml_ipa_mo_set_attr_nsvc(obj, &tp);
+		rc = oml_ipa_mo_set_attr_nsvc(obj, msg, &tp);
 		break;
 	default:
 		rc = NM_NACK_OBJINST_UNKN;
@@ -1495,9 +1501,6 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	talloc_free(mo->nm_attr);
 	mo->nm_attr = tp_merged;
 
-	/* These are not yet handled through NM FSM: */
-	if (mo->obj_class == NM_OC_GPRS_NSVC)
-		return oml_fom_ack_nack(msg, rc);
 	return rc;
 }
 

@@ -1772,6 +1772,7 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	case NM_OC_BASEB_TRANSC:
 	case NM_OC_GPRS_NSE:
 	case NM_OC_GPRS_CELL:
+	case NM_OC_GPRS_NSVC:
 		rc = osmo_fsm_inst_dispatch(mo->fi, NM_EV_OPSTART_ACK, NULL);
 		break;
 	case NM_OC_RADIO_CARRIER:
@@ -1781,10 +1782,6 @@ int bts_model_opstart(struct gsm_bts *bts, struct gsm_abis_mo *mo, void *obj)
 	case NM_OC_CHANNEL:
 		ts = (struct gsm_bts_trx_ts*) obj;
 		rc = ts_connect_as(ts, ts->pchan, pchan_act_compl_cb, NULL);
-		break;
-	case NM_OC_GPRS_NSVC:
-		oml_mo_state_chg(mo, NM_OPSTATE_ENABLED, -1, -1);
-		rc = oml_mo_opstart_ack(mo);
 		break;
 	default:
 		rc = oml_mo_opstart_nack(mo, NM_NACK_OBJCLASS_NOTSUPP);

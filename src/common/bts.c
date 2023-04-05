@@ -284,10 +284,15 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default, sizeof(bts->gprs.cell.rlc_cfg));
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default, sizeof(bts->gprs.cell.timer));
 
+	/* NM GPRS NSVCs */
 	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
 		struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
 		nsvc->nse = nse;
 		nsvc->id = i;
+		nsvc->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nsvc_fsm, bts, nsvc,
+						 LOGL_INFO, NULL);
+		osmo_fsm_inst_update_id_f(nsvc->mo.fi, "gprs_nsvc%d-%d",
+					  nse->mo.obj_inst.bts_nr, i);
 		gsm_mo_init(&nsvc->mo, bts, NM_OC_GPRS_NSVC, nse->mo.obj_inst.bts_nr, i, 0xff);
 	}
 
@@ -382,10 +387,10 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-
-	/* set BTS attr to dependency */
-	oml_mo_state_init(&bts->gprs.nse.nsvc[0].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
-	oml_mo_state_init(&bts->gprs.nse.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nse.nsvc); i++) {
+		struct gsm_gprs_nsvc *nsvc = &bts->gprs.nse.nsvc[i];
+		oml_mo_state_init(&nsvc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	}
 
 	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
 	 * to the libc malloc all the time */
@@ -450,14 +455,10 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	LOGP(DOML, LOGL_INFO, "Main link established, sending NM Status.\n");
 
-	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE is DEPENDENCY */
+	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE, etc. is DEPENDENCY */
 	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
 	osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_SW_ACT, NULL);
 	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, NM_EV_SW_ACT, NULL);
-
-	/* those should all be in DEPENDENCY */
-	oml_tx_state_changed(&bts->gprs.nse.nsvc[0].mo);
-	oml_tx_state_changed(&bts->gprs.nse.nsvc[1].mo);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
