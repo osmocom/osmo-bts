@@ -72,18 +72,6 @@ const char *btsvariant2str(enum gsm_bts_type_variant v);
 #define bts_internal_flag_set(bts, flag) \
 	bts->flags |= (typeof(bts->flags)) flag
 
-struct gsm_bts_gprs_nsvc {
-	struct gsm_bts *bts;
-	/* data read via VTY config file, to configure the BTS
-	 * via OML from BSC */
-	int id;
-	uint16_t nsvci;
-	struct osmo_sockaddr local;	/* on the BTS */
-	struct osmo_sockaddr remote;	/* on the SGSN */
-
-	struct gsm_abis_mo mo;
-};
-
 struct gprs_rlc_cfg {
 	uint16_t parameter[_NUM_RLC_PAR];
 	struct {
@@ -134,6 +122,18 @@ struct bts_power_ctrl_params {
 /* BTS Site Manager */
 struct gsm_bts_sm {
 	struct gsm_abis_mo mo;
+};
+
+/* GPRS NSVC; ip.access specific NM Object */
+struct gsm_bts_gprs_nsvc {
+	struct gsm_abis_mo mo;
+	struct gsm_bts *bts;
+	/* data read via VTY config file, to configure the BTS
+	 * via OML from BSC */
+	int id;
+	uint16_t nsvci;
+	struct osmo_sockaddr local;	/* on the BTS */
+	struct osmo_sockaddr remote;	/* on the SGSN */
 };
 
 /* GPRS NSE; ip.access specific NM Object */
