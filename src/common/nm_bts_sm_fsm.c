@@ -69,6 +69,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&site_mgr->mo);
 		nm_bts_sm_fsm_state_chg(fi, NM_BTS_SM_ST_OP_DISABLED_OFFLINE);
+		ev_dispatch_children(site_mgr, event);
 		return;
 	default:
 		OSMO_ASSERT(0);

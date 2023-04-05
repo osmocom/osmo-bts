@@ -457,8 +457,6 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE, etc. is DEPENDENCY */
 	osmo_fsm_inst_dispatch(bts->site_mgr.mo.fi, NM_EV_SW_ACT, NULL);
-	osmo_fsm_inst_dispatch(bts->mo.fi, NM_EV_SW_ACT, NULL);
-	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, NM_EV_SW_ACT, NULL);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {
