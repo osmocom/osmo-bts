@@ -226,6 +226,8 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 	}
 
 	bts_osmux_release(bts);
+
+	llist_del(&bts->list);
 	return 0;
 }
 
@@ -239,6 +241,9 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 		return NULL;
 
 	talloc_set_destructor(bts, gsm_bts_talloc_destructor);
+
+	/* add to list of BTSs */
+	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
 
 	bts->nr = bts_num;
 	bts->num_trx = 0;
@@ -323,19 +328,14 @@ int bts_init(struct gsm_bts *bts)
 	static int initialized = 0;
 	void *tall_rtp_ctx;
 
-	/* add to list of BTSs */
-	llist_add_tail(&bts->list, &bts_gsmnet.bts_list);
-
 	bts->band = GSM_BAND_1800;
 
 	INIT_LLIST_HEAD(&bts->agch_queue.queue);
 	bts->agch_queue.length = 0;
 
 	bts->ctrs = rate_ctr_group_alloc(bts, &bts_ctrg_desc, bts->nr);
-	if (!bts->ctrs) {
-		llist_del(&bts->list);
+	if (!bts->ctrs)
 		return -1;
-	}
 
 	/* enable management with default levels,
 	 * raise threshold to GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DISABLE to
@@ -394,10 +394,8 @@ int bts_init(struct gsm_bts *bts)
 
 	/* Osmux */
 	rc = bts_osmux_init(bts);
-	if (rc < 0) {
-		llist_del(&bts->list);
+	if (rc < 0)
 		return rc;
-	}
 
 	/* features implemented in 'common', available for all models,
 	 * order alphabetically */
@@ -409,10 +407,8 @@ int bts_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_PAGING_COORDINATION);
 
 	rc = bts_model_init(bts);
-	if (rc < 0) {
-		llist_del(&bts->list);
+	if (rc < 0)
 		return rc;
-	}
 
 	/* TRX0 was allocated early during gsm_bts_alloc, not later through VTY */
 	bts_model_trx_init(bts->c0);
