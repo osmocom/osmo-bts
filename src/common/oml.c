@@ -1373,7 +1373,7 @@ static int oml_ipa_mo_set_attr_cell(void *obj,
 	return 0;
 }
 
-static int oml_ipa_mo_set_attr_nsvc(struct gsm_bts_gprs_nsvc *nsvc,
+static int oml_ipa_mo_set_attr_nsvc(struct gsm_gprs_nsvc *nsvc,
 				    const struct tlv_parsed *tp)
 {
 	if (TLVP_PRES_LEN(tp, NM_ATT_IPACC_NSVCI, 2))
@@ -1746,9 +1746,9 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		mo = &bts->gprs.cell.mo;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nse.nsvc))
 			return NULL;
-		mo = &bts->gprs.nsvc[obj_inst->trx_nr].mo;
+		mo = &bts->gprs.nse.nsvc[obj_inst->trx_nr].mo;
 		break;
 	}
 	return mo;
@@ -1813,9 +1813,9 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		obj = &bts->gprs.cell;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nse.nsvc))
 			return NULL;
-		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
+		obj = &bts->gprs.nse.nsvc[obj_inst->trx_nr];
 		break;
 	}
 	return obj;

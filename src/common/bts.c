@@ -232,6 +232,7 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 {
 	struct gsm_bts *bts = talloc_zero(ctx, struct gsm_bts);
+	struct gsm_gprs_nse *nse = &bts->gprs.nse;
 	int i;
 
 	if (!bts)
@@ -264,12 +265,11 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	gsm_mo_init(&bts->mo, bts, NM_OC_BTS, bts->nr, 0xff, 0xff);
 
 	/* NM GPRS NSE */
-	bts->gprs.nse.mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nse_fsm, bts, &bts->gprs.nse,
+	nse->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nse_fsm, bts, nse,
 						  LOGL_INFO, NULL);
-	osmo_fsm_inst_update_id_f(bts->gprs.nse.mo.fi, "gprs_nse%d", bts->nr);
-	gsm_mo_init(&bts->gprs.nse.mo, bts, NM_OC_GPRS_NSE, bts->nr, 0xff, 0xff);
-	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
-		sizeof(bts->gprs.nse.timer));
+	osmo_fsm_inst_update_id_f(nse->mo.fi, "gprs_nse%d", bts->nr);
+	gsm_mo_init(&nse->mo, bts, NM_OC_GPRS_NSE, bts->nr, 0xff, 0xff);
+	memcpy(&nse->timer, bts_nse_timer_default, sizeof(nse->timer));
 
 	/* NM GPRS CELL */
 	bts->gprs.cell.mo.fi = osmo_fsm_inst_alloc(&nm_gprs_cell_fsm, bts, &bts->gprs.cell,
@@ -279,11 +279,11 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default, sizeof(bts->gprs.cell.rlc_cfg));
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default, sizeof(bts->gprs.cell.timer));
 
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-		bts->gprs.nsvc[i].bts = bts;
-		bts->gprs.nsvc[i].id = i;
-		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts, NM_OC_GPRS_NSVC,
-				bts->nr, i, 0xff);
+	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
+		struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
+		nsvc->nse = nse;
+		nsvc->id = i;
+		gsm_mo_init(&nsvc->mo, bts, NM_OC_GPRS_NSVC, nse->mo.obj_inst.bts_nr, i, 0xff);
 	}
 
 	/* create our primary TRX. It will be initialized during bts_init() */
@@ -384,8 +384,8 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	/* set BTS attr to dependency */
-	oml_mo_state_init(&bts->gprs.nsvc[0].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
-	oml_mo_state_init(&bts->gprs.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_init(&bts->gprs.nse.nsvc[0].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
+	oml_mo_state_init(&bts->gprs.nse.nsvc[1].mo, NM_OPSTATE_DISABLED, NM_AVSTATE_DEPENDENCY);
 
 	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
 	 * to the libc malloc all the time */
@@ -460,8 +460,8 @@ int bts_link_estab(struct gsm_bts *bts)
 	osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, NM_EV_SW_ACT, NULL);
 
 	/* those should all be in DEPENDENCY */
-	oml_tx_state_changed(&bts->gprs.nsvc[0].mo);
-	oml_tx_state_changed(&bts->gprs.nsvc[1].mo);
+	oml_tx_state_changed(&bts->gprs.nse.nsvc[0].mo);
+	oml_tx_state_changed(&bts->gprs.nse.nsvc[1].mo);
 
 	/* All other objects start off-line until the BTS Model code says otherwise */
 	for (i = 0; i < bts->num_trx; i++) {

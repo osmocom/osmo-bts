@@ -239,11 +239,13 @@ int pcu_tx_info_ind(void)
 	struct gprs_rlc_cfg *rlcc;
 	struct gsm_bts_trx *trx;
 	int i;
+	struct gsm_gprs_nse *nse;
 
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
 
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(net->bts_list.next, struct gsm_bts, list);
+	nse = &bts->gprs.nse;
 	rlcc = &bts->gprs.cell.rlc_cfg;
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_INFO_IND, bts->nr);
@@ -271,8 +273,8 @@ int pcu_tx_info_ind(void)
 	info_ind->rac = bts->gprs.rac;
 
 	/* NSE */
-	info_ind->nsei = bts->gprs.nse.nsei;
-	memcpy(info_ind->nse_timer, bts->gprs.nse.timer, 7);
+	info_ind->nsei = nse->nsei;
+	memcpy(info_ind->nse_timer, nse->timer, 7);
 	memcpy(info_ind->cell_timer, bts->gprs.cell.timer, 11);
 
 	/* cell attributes */
@@ -323,8 +325,8 @@ int pcu_tx_info_ind(void)
 	info_ind->initial_mcs = rlcc->initial_mcs;
 
 	/* NSVC */
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-		const struct gsm_bts_gprs_nsvc *nsvc = &bts->gprs.nsvc[i];
+	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
+		const struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
 		info_ind->nsvci[i] = nsvc->nsvci;
 		/* PCUIF beauty: the NSVC addresses are sent in the network byte order,
 		 * while the port numbers need to be send in the host order.  Sigh. */
@@ -363,7 +365,7 @@ static int pcu_if_signal_cb(unsigned int subsys, unsigned int signal,
 	void *hdlr_data, void *signal_data)
 {
 	struct gsm_network *net = &bts_gsmnet;
-	struct gsm_bts_gprs_nsvc *nsvc;
+	struct gsm_gprs_nsvc *nsvc;
 	struct gsm_bts *bts;
 	struct gsm48_system_information_type_3 *si3;
 	int id;

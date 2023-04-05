@@ -1361,21 +1361,22 @@ DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
 static void gprs_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 {
 	unsigned int i;
+	const struct gsm_gprs_nse *nse = &bts->gprs.nse;
 
 	/* GPRS parameters received from the BSC */
 	vty_out(vty, "BTS %u, RAC %u, NSEI %u, BVCI %u%s",
 		bts->nr, bts->gprs.rac,
-		bts->gprs.nse.nsei,
+		nse->nsei,
 		bts->gprs.cell.bvci,
 		VTY_NEWLINE);
 
 	vty_out(vty, "  Cell NM state: ");
 	net_dump_nmstate(vty, &bts->gprs.cell.mo.nm_state);
 	vty_out(vty, "  NSE NM state: ");
-	net_dump_nmstate(vty, &bts->gprs.nse.mo.nm_state);
+	net_dump_nmstate(vty, &nse->mo.nm_state);
 
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-		const struct gsm_bts_gprs_nsvc *nsvc = &bts->gprs.nsvc[i];
+	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
+		const struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
 
 		vty_out(vty, "  NSVC%u (NSVCI %u) NM state: ", i, nsvc->nsvci);
 		net_dump_nmstate(vty, &nsvc->mo.nm_state);

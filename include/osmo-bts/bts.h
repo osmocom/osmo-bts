@@ -125,9 +125,10 @@ struct gsm_bts_sm {
 };
 
 /* GPRS NSVC; ip.access specific NM Object */
-struct gsm_bts_gprs_nsvc {
+struct gsm_gprs_nse;
+struct gsm_gprs_nsvc {
 	struct gsm_abis_mo mo;
-	struct gsm_bts *bts;
+	struct gsm_gprs_nse *nse;
 	/* data read via VTY config file, to configure the BTS
 	 * via OML from BSC */
 	int id;
@@ -141,6 +142,7 @@ struct gsm_gprs_nse {
 	struct gsm_abis_mo mo;
 	uint16_t nsei;
 	uint8_t timer[7];
+	struct gsm_gprs_nsvc nsvc[2];
 };
 
 /* GPRS CELL; ip.access specific NM Object */
@@ -241,7 +243,6 @@ struct gsm_bts {
 	struct {
 		struct gsm_gprs_nse nse;
 		struct gsm_gprs_cell cell;
-		struct gsm_bts_gprs_nsvc nsvc[2];
 		uint8_t rac;
 	} gprs;
 
