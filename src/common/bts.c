@@ -280,7 +280,7 @@ struct gsm_bts *gsm_bts_alloc(void *ctx, uint8_t bts_num)
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
 		sizeof(bts->gprs.cell.timer));
 	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
-			bts->nr, 0xff, 0xff);
+			bts->nr, 0, 0xff);
 	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default,
 		sizeof(bts->gprs.cell.rlc_cfg));
 
