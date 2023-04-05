@@ -217,7 +217,7 @@ static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_tr
 			add_trx_attr(out_msg, trx);
 			break;
 		default:
-			LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes [%u], %s is unsupported by TRX.\n",
+			LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes [%u], %s is unsupported by TRX\n",
 			     gsm_trx_name(trx), i, get_value_string(abis_nm_att_names, attr[i]));
 			/* Push this tag to the list of unsupported attributes */
 			buf = msgb_push(out_msg, 1);
@@ -256,7 +256,7 @@ static inline int handle_attrs_bts(struct msgb *out_msg, const struct gsm_bts *b
 			add_bts_feat(out_msg, bts);
 			break;
 		default:
-			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS.\n", i,
+			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS\n", i,
 			     get_value_string(abis_nm_att_names, attr[i]));
 			/* Push this tag to the list of unsupported attributes */
 			buf = msgb_push(out_msg, 1);
@@ -450,13 +450,13 @@ int oml_fom_ack_nack(struct msgb *msg, uint8_t cause)
 
 	/* alter message type */
 	if (cause) {
-		LOGPFOH(DOML, LOGL_NOTICE, foh, "Sending FOM NACK with cause %s.\n",
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "Sending FOM NACK with cause %s\n",
 			abis_nm_nack_cause_name(cause));
 		foh->msg_type += 2; /* nack */
 		/* add cause */
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, cause);
 	} else {
-		LOGPFOH(DOML, LOGL_DEBUG, foh, "Sending FOM ACK.\n");
+		LOGPFOH(DOML, LOGL_DEBUG, foh, "Sending FOM ACK\n");
 		foh->msg_type++; /* ack */
 	}
 
@@ -566,7 +566,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is not supported",
 						 arfcn);
-			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %u is not supported.\n", arfcn);
+			LOGPFOH(DOML, LOGL_ERROR, foh, "Given ARFCN %u is not supported\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 	}
@@ -697,7 +697,7 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BTS_AIR_TIMER, 1)) {
 		uint8_t t3105 = *TLVP_VAL(&tp, NM_ATT_BTS_AIR_TIMER);
 		if (t3105 == 0) {
-			LOGPFOH(DOML, LOGL_NOTICE, foh, "T3105 must have a value != 0.\n");
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "T3105 must have a value != 0\n");
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
 		bts->t3105_ms = t3105 * 10;
@@ -824,7 +824,7 @@ static int oml_rx_set_radio_attr(struct gsm_bts_trx *trx, struct msgb *msg)
 		if (arfcn >= 1024) { /* 0 .. 1023 (1024 channels total) */
 			oml_tx_failure_event_rep(&trx->bts->mo, NM_SEVER_MAJOR, OSMO_EVT_WARN_SW_WARN,
 						 "Given ARFCN %u is unsupported", arfcn);
-			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given ARFCN %u is unsupported.\n", arfcn);
+			LOGPFOH(DOML, LOGL_NOTICE, foh, "Given ARFCN %u is unsupported\n", arfcn);
 			return oml_fom_ack_nack(msg, NM_NACK_FREQ_NOTAVAIL);
 		}
 		trx->arfcn = arfcn;
@@ -940,7 +940,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 	/* Check frequency hopping parameters (HSN, MAIO, ARFCN list) */
 	if (TLVP_PRESENT(&tp, NM_ATT_HSN) || TLVP_PRESENT(&tp, NM_ATT_MAIO)) {
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_HOPPING)) {
-			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: Frequency hopping not supported.\n");
+			LOGPFOH(DOML, LOGL_ERROR, foh, "SET CHAN ATTR: Frequency hopping not supported\n");
 			return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 		}
 
@@ -974,7 +974,7 @@ static int oml_rx_set_chan_attr(struct gsm_bts_trx_ts *ts, struct msgb *msg)
 
 	/* 9.4.52 Starting Time */
 	if (TLVP_PRESENT(&tp, NM_ATT_START_TIME)) {
-		LOGPFOH(DOML, LOGL_NOTICE, foh, "SET CHAN ATTR: Starting time not supported.\n");
+		LOGPFOH(DOML, LOGL_NOTICE, foh, "SET CHAN ATTR: Starting time not supported\n");
 		return oml_fom_ack_nack(msg, NM_NACK_SPEC_IMPL_NOTSUPP);
 	}
 
