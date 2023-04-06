@@ -93,6 +93,11 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 		}
 
 		nm_bts_fsm_state_chg(fi, NM_BTS_ST_OP_DISABLED_OFFLINE);
+
+		/* Avoid submitting NM_EV_SW_ACT to children NM objects
+		 * (RCARRIER, BBTRANSC), the lower layers (bts_model) are in charge
+		 * of submitting them once the TRX becomes available
+		 */
 		return;
 	default:
 		OSMO_ASSERT(0);

@@ -414,10 +414,17 @@ int bts_link_estab(struct gsm_bts *bts)
 
 	LOGP(DOML, LOGL_INFO, "Main link established, sending NM Status.\n");
 
-	/* BTS SITE MGR becomes Offline (tx SW ACT Report), BTS, NSE, etc. is DEPENDENCY */
+	/* BTS SITE MGR becomes Offline (tx SW ACT Report) and dispatches same
+	 * event to its children objects (except TRX level and below, see comment
+	 * below)
+	 */
 	osmo_fsm_inst_dispatch(bts->site_mgr->mo.fi, NM_EV_SW_ACT, NULL);
 
-	/* All other objects start off-line until the BTS Model code says otherwise */
+	/* TRX objects are SW_ACTed by the lower layers (bts_model) when they
+	 * become available. Since that may happen before the OML link becomes
+	 * established, we need to manually trigger tx of state reports to the BSC
+	 * so it learns current state and can go on bringing them up.
+	 */
 	for (i = 0; i < bts->num_trx; i++) {
 		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
 
