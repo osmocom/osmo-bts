@@ -84,6 +84,7 @@ static void gsm_bts_trx_init_ts(struct gsm_bts_trx *trx)
 					  trx->bb_transc.mo.fi->id, ts->nr);
 		gsm_mo_init(&ts->mo, trx->bts, NM_OC_CHANNEL,
 			    trx->bts->nr, trx->nr, ts->nr);
+		oml_mo_state_init(&ts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 		gsm_bts_trx_ts_init_lchan(ts);
 	}
@@ -156,14 +157,14 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	trx->mo.fi = osmo_fsm_inst_alloc(&nm_rcarrier_fsm, trx, trx,
 						  LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(trx->mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
-	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
-		    bts->nr, trx->nr, 0xff);
+	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER, bts->nr, trx->nr, 0xff);
+	oml_mo_state_init(&trx->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	trx->bb_transc.mo.fi = osmo_fsm_inst_alloc(&nm_bb_transc_fsm, trx, &trx->bb_transc,
 						  LOGL_INFO, NULL);
 	osmo_fsm_inst_update_id_f(trx->bb_transc.mo.fi, "bts%d-trx%d", bts->nr, trx->nr);
-	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
-		    bts->nr, trx->nr, 0xff);
+	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC, bts->nr, trx->nr, 0xff);
+	oml_mo_state_init(&trx->bb_transc.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
 	gsm_bts_trx_init_ts(trx);
 

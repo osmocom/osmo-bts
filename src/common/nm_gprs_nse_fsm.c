@@ -82,7 +82,8 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_gprs_nse *nse = (struct gsm_gprs_nse *)fi->priv;
 
 	switch (event) {
-	case NM_EV_SW_ACT:
+	case NM_EV_OML_UP:
+		/* automatic SW_ACT upon OML link establishment: */
 		oml_mo_tx_sw_act_rep(&nse->mo);
 		ev_dispatch_children(nse, event);
 		if (nse_can_be_enabled(nse))
@@ -216,7 +217,7 @@ static void nm_gprs_nse_allstate(struct osmo_fsm_inst *fi, uint32_t event, void 
 static struct osmo_fsm_state nm_gprs_nse_fsm_states[] = {
 	[NM_GPRS_NSE_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_SW_ACT),
+			X(NM_EV_OML_UP),
 		.out_state_mask =
 			X(NM_GPRS_NSE_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_GPRS_NSE_ST_OP_DISABLED_DEPENDENCY) |

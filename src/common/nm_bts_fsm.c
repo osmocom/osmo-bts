@@ -76,7 +76,8 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_bts_trx *trx;
 
 	switch (event) {
-	case NM_EV_SW_ACT:
+	case NM_EV_OML_UP:
+		/* automatic SW_ACT upon OML link establishment: */
 		oml_mo_tx_sw_act_rep(&bts->mo);
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -93,11 +94,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 		}
 
 		nm_bts_fsm_state_chg(fi, NM_BTS_ST_OP_DISABLED_OFFLINE);
-
-		/* Avoid submitting NM_EV_SW_ACT to children NM objects
-		 * (RCARRIER, BBTRANSC), the lower layers (bts_model) are in charge
-		 * of submitting them once the TRX becomes available
-		 */
+		ev_dispatch_children(bts, event);
 		return;
 	default:
 		OSMO_ASSERT(0);
@@ -181,7 +178,7 @@ static void nm_bts_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *data
 static struct osmo_fsm_state nm_bts_fsm_states[] = {
 	[NM_BTS_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_SW_ACT),
+			X(NM_EV_OML_UP),
 		.out_state_mask =
 			X(NM_BTS_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BTS_ST_OP_DISABLED_OFFLINE),

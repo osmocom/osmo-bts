@@ -71,6 +71,10 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
 
 	switch (event) {
+	case NM_EV_OML_UP:
+		/* Report current state: */
+		oml_tx_state_changed(&ts->mo);
+		return;
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&ts->mo);
 		if (ts_can_be_enabled(ts))
@@ -97,6 +101,10 @@ static void st_op_disabled_dependency(struct osmo_fsm_inst *fi, uint32_t event, 
 	int rc;
 
 	switch (event) {
+	case NM_EV_OML_UP:
+		/* Report current state: */
+		oml_tx_state_changed(&ts->mo);
+		return;
 	case NM_EV_RX_SETATTR:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg,
@@ -150,6 +158,10 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	int rc;
 
 	switch (event) {
+	case NM_EV_OML_UP:
+		/* Report current state: */
+		oml_tx_state_changed(&ts->mo);
+		return;
 	case NM_EV_RX_SETATTR:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(ts->trx->bts, setattr_data->msg,
@@ -227,7 +239,8 @@ static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_SW_ACT),
+			X(NM_EV_SW_ACT) |
+			X(NM_EV_OML_UP),
 		.out_state_mask =
 			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |
@@ -238,6 +251,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	},
 	[NM_CHAN_ST_OP_DISABLED_DEPENDENCY] = {
 		.in_event_mask =
+			X(NM_EV_OML_UP) |
 			X(NM_EV_RX_SETATTR) |
 			X(NM_EV_RX_OPSTART) | /* backward compatibility, buggy BSC */
 			X(NM_EV_OPSTART_ACK) | /* backward compatibility, buggy BSC */
@@ -256,6 +270,7 @@ static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	},
 	[NM_CHAN_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_OML_UP) |
 			X(NM_EV_RX_SETATTR) |
 			X(NM_EV_RX_OPSTART) |
 			X(NM_EV_OPSTART_ACK) |

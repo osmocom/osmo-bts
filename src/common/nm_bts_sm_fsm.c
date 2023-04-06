@@ -69,7 +69,8 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_bts_sm *site_mgr = (struct gsm_bts_sm *)fi->priv;
 
 	switch (event) {
-	case NM_EV_SW_ACT:
+	case NM_EV_OML_UP:
+		/* automatic SW_ACT upon OML link establishment: */
 		oml_mo_tx_sw_act_rep(&site_mgr->mo);
 		nm_bts_sm_fsm_state_chg(fi, NM_BTS_SM_ST_OP_DISABLED_OFFLINE);
 		ev_dispatch_children(site_mgr, event);
@@ -160,7 +161,7 @@ static void nm_bts_sm_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *d
 static struct osmo_fsm_state nm_bts_sm_fsm_states[] = {
 	[NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_SW_ACT),
+			X(NM_EV_OML_UP),
 		.out_state_mask =
 			X(NM_BTS_SM_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_BTS_SM_ST_OP_DISABLED_OFFLINE),

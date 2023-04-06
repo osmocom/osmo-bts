@@ -77,6 +77,11 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_OFFLINE);
 		ev_dispatch_children(bb_transc, event);
 		return;
+	case NM_EV_OML_UP:
+		/* Report current state: */
+		oml_tx_state_changed(&bb_transc->mo);
+		ev_dispatch_children(bb_transc, event);
+		return;
 	case NM_EV_RSL_UP:
 		return;
 	case NM_EV_RSL_DOWN:
@@ -120,6 +125,11 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	int rc;
 
 	switch (event) {
+	case NM_EV_OML_UP:
+		/* Report current state: */
+		oml_tx_state_changed(&bb_transc->mo);
+		ev_dispatch_children(bb_transc, event);
+		return;
 	case NM_EV_RX_SETATTR:
 		setattr_data = (struct nm_fsm_ev_setattr_data *)data;
 		rc = bts_model_apply_oml(trx->bts, setattr_data->msg,
@@ -238,6 +248,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 	[NM_BBTRANSC_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
 			X(NM_EV_SW_ACT) |
+			X(NM_EV_OML_UP) |
 			X(NM_EV_RSL_UP) |
 			X(NM_EV_RSL_DOWN) |
 			X(NM_EV_PHYLINK_UP) |
@@ -252,6 +263,7 @@ static struct osmo_fsm_state nm_bb_transc_fsm_states[] = {
 	},
 	[NM_BBTRANSC_ST_OP_DISABLED_OFFLINE] = {
 		.in_event_mask =
+			X(NM_EV_OML_UP) |
 			X(NM_EV_RX_SETATTR) |
 			X(NM_EV_RX_OPSTART) |
 			X(NM_EV_OPSTART_ACK) |

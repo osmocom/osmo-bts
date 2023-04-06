@@ -67,7 +67,8 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_gprs_nsvc *nsvc = (struct gsm_gprs_nsvc *)fi->priv;
 
 	switch (event) {
-	case NM_EV_SW_ACT:
+	case NM_EV_OML_UP:
+		/* automatic SW_ACT upon OML link establishment: */
 		oml_mo_tx_sw_act_rep(&nsvc->mo);
 		if (gprs_nsvc_can_be_enabled(nsvc))
 			nm_gprs_nsvc_fsm_state_chg(fi, NM_GPRS_NSVC_ST_OP_DISABLED_OFFLINE);
@@ -195,7 +196,7 @@ static void nm_gprs_nsvc_allstate(struct osmo_fsm_inst *fi, uint32_t event, void
 static struct osmo_fsm_state nm_gprs_nsvc_fsm_states[] = {
 	[NM_GPRS_NSVC_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_SW_ACT),
+			X(NM_EV_OML_UP),
 		.out_state_mask =
 			X(NM_GPRS_NSVC_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_GPRS_NSVC_ST_OP_DISABLED_DEPENDENCY) |
