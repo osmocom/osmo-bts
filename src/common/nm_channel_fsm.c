@@ -71,7 +71,7 @@ static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event
 	struct gsm_bts_trx_ts *ts = (struct gsm_bts_trx_ts *)fi->priv;
 
 	switch (event) {
-	case NM_EV_BBTRANSC_INSTALLED:
+	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&ts->mo);
 		if (ts_can_be_enabled(ts))
 			nm_chan_fsm_state_chg(fi, NM_CHAN_ST_OP_DISABLED_OFFLINE);
@@ -227,7 +227,7 @@ static void nm_chan_allstate(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 static struct osmo_fsm_state nm_chan_fsm_states[] = {
 	[NM_CHAN_ST_OP_DISABLED_NOTINSTALLED] = {
 		.in_event_mask =
-			X(NM_EV_BBTRANSC_INSTALLED),
+			X(NM_EV_SW_ACT),
 		.out_state_mask =
 			X(NM_CHAN_ST_OP_DISABLED_NOTINSTALLED) |
 			X(NM_CHAN_ST_OP_DISABLED_OFFLINE) |

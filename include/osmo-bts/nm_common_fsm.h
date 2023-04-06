@@ -41,7 +41,6 @@ enum nm_fsm_events {
 	NM_EV_PHYLINK_UP, /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_PHYLINK_DOWN,  /* RadioCarrier and BaseBand Transceiver only */
 	NM_EV_DISABLE,  /* RadioCarrier and BaseBand Transceiver only */
-	NM_EV_BBTRANSC_INSTALLED, /* Radio Channel only */
 	NM_EV_BBTRANSC_ENABLED, /* Radio Channel only */
 	NM_EV_BBTRANSC_DISABLED, /* Radio Channel only */
 	NM_EV_RCARRIER_ENABLED, /* Radio Channel only */

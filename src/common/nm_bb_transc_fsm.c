@@ -70,17 +70,12 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 static void st_op_disabled_notinstalled(struct osmo_fsm_inst *fi, uint32_t event, void *data)
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
-	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
-	int i;
 
 	switch (event) {
 	case NM_EV_SW_ACT:
 		oml_mo_tx_sw_act_rep(&bb_transc->mo);
 		nm_bb_transc_fsm_state_chg(fi, NM_BBTRANSC_ST_OP_DISABLED_OFFLINE);
-		for (i = 0; i < TRX_NR_TS; i++) {
-			struct gsm_bts_trx_ts *ts = &trx->ts[i];
-			osmo_fsm_inst_dispatch(ts->mo.fi, NM_EV_BBTRANSC_INSTALLED, NULL);
-		}
+		ev_dispatch_children(bb_transc, event);
 		return;
 	case NM_EV_RSL_UP:
 		return;
