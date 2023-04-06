@@ -32,6 +32,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
 
@@ -44,7 +45,7 @@
 static bool gprs_cell_can_be_enabled(struct gsm_gprs_cell *cell)
 {
 	struct gsm_bts *bts = gsm_gprs_cell_get_bts(cell);
-	return bts->gprs.nse.mo.nm_state.operational == NM_OPSTATE_ENABLED;
+	return bts->site_mgr->gprs.nse.mo.nm_state.operational == NM_OPSTATE_ENABLED;
 }
 
 

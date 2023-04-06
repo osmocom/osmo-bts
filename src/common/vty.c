@@ -1352,7 +1352,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts [<0-255>]",
 static void gprs_dump_vty(struct vty *vty, const struct gsm_bts *bts)
 {
 	unsigned int i;
-	const struct gsm_gprs_nse *nse = &bts->gprs.nse;
+	const struct gsm_gprs_nse *nse = &bts->site_mgr->gprs.nse;
 
 	/* GPRS parameters received from the BSC */
 	vty_out(vty, "BTS %u, RAC %u, NSEI %u, BVCI %u%s",

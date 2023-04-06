@@ -119,27 +119,6 @@ struct bts_power_ctrl_params {
 	} pf;
 };
 
-/* GPRS NSVC; ip.access specific NM Object */
-struct gsm_gprs_nse;
-struct gsm_gprs_nsvc {
-	struct gsm_abis_mo mo;
-	struct gsm_gprs_nse *nse;
-	/* data read via VTY config file, to configure the BTS
-	 * via OML from BSC */
-	int id;
-	uint16_t nsvci;
-	struct osmo_sockaddr local;	/* on the BTS */
-	struct osmo_sockaddr remote;	/* on the SGSN */
-};
-
-/* GPRS NSE; ip.access specific NM Object */
-struct gsm_gprs_nse {
-	struct gsm_abis_mo mo;
-	uint16_t nsei;
-	uint8_t timer[7];
-	struct gsm_gprs_nsvc nsvc[2];
-};
-
 /* GPRS CELL; ip.access specific NM Object */
 struct gsm_gprs_cell {
 	struct gsm_abis_mo mo;
@@ -236,7 +215,6 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
-		struct gsm_gprs_nse nse;
 		struct gsm_gprs_cell cell;
 		uint8_t rac;
 	} gprs;
@@ -393,11 +371,6 @@ extern void *tall_bts_ctx;
 #define GSM_BTS_SI2Q(bts, i)   (struct gsm48_system_information_type_2quater *)((bts)->si_buf[SYSINFO_TYPE_2quater][i])
 #define GSM_BTS_HAS_SI(bts, i) ((bts)->si_valid & (1 << i))
 #define GSM_BTS_SI(bts, i)     (void *)((bts)->si_buf[i][0])
-
-static inline struct gsm_bts *gsm_gprs_nse_get_bts(struct gsm_gprs_nse *nse)
-{
-	return (struct gsm_bts *)container_of(nse, struct gsm_bts, gprs.nse);
-}
 
 static inline struct gsm_bts *gsm_gprs_cell_get_bts(struct gsm_gprs_cell *cell)
 {

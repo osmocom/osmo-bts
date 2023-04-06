@@ -145,7 +145,6 @@ struct osmo_tdef abis_T_defs[] = {
 	{}
 };
 
-static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
 static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
 static const struct gprs_rlc_cfg rlc_cfg_default = {
@@ -226,8 +225,6 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num)
 {
 	struct gsm_bts *bts = talloc_zero(bts_sm, struct gsm_bts);
-	struct gsm_gprs_nse *nse = &bts->gprs.nse;
-	int i;
 
 	if (!bts)
 		return NULL;
@@ -256,13 +253,6 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num)
 	osmo_fsm_inst_update_id_f(bts->mo.fi, "bts%d", bts->nr);
 	gsm_mo_init(&bts->mo, bts, NM_OC_BTS, bts->nr, 0xff, 0xff);
 
-	/* NM GPRS NSE */
-	nse->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nse_fsm, bts, nse,
-						  LOGL_INFO, NULL);
-	osmo_fsm_inst_update_id_f(nse->mo.fi, "gprs_nse%d", bts->nr);
-	gsm_mo_init(&nse->mo, bts, NM_OC_GPRS_NSE, bts->nr, 0xff, 0xff);
-	memcpy(&nse->timer, bts_nse_timer_default, sizeof(nse->timer));
-
 	/* NM GPRS CELL */
 	bts->gprs.cell.mo.fi = osmo_fsm_inst_alloc(&nm_gprs_cell_fsm, bts, &bts->gprs.cell,
 						  LOGL_INFO, NULL);
@@ -270,18 +260,6 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num)
 	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL, bts->nr, 0, 0xff);
 	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default, sizeof(bts->gprs.cell.rlc_cfg));
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default, sizeof(bts->gprs.cell.timer));
-
-	/* NM GPRS NSVCs */
-	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
-		struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
-		nsvc->nse = nse;
-		nsvc->id = i;
-		nsvc->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nsvc_fsm, bts, nsvc,
-						 LOGL_INFO, NULL);
-		osmo_fsm_inst_update_id_f(nsvc->mo.fi, "gprs_nsvc%d-%d",
-					  nse->mo.obj_inst.bts_nr, i);
-		gsm_mo_init(&nsvc->mo, bts, NM_OC_GPRS_NSVC, nse->mo.obj_inst.bts_nr, i, 0xff);
-	}
 
 	/* create our primary TRX. It will be initialized during bts_init() */
 	bts->c0 = gsm_bts_trx_alloc(bts);
@@ -371,12 +349,7 @@ int bts_init(struct gsm_bts *bts)
 
 	/* Start with the BTS */
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-	oml_mo_state_init(&bts->gprs.nse.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nse.nsvc); i++) {
-		struct gsm_gprs_nsvc *nsvc = &bts->gprs.nse.nsvc[i];
-		oml_mo_state_init(&nsvc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
-	}
 
 	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
 	 * to the libc malloc all the time */

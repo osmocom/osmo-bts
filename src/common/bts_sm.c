@@ -29,6 +29,13 @@
 
 struct gsm_bts_sm *g_bts_sm;
 
+static const uint8_t nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
+
+struct gsm_bts *gsm_gprs_nse_get_bts(const struct gsm_gprs_nse *nse)
+{
+	return gsm_bts_num(g_bts_sm, nse->mo.obj_inst.bts_nr);
+}
+
 static int gsm_bts_sm_talloc_destructor(struct gsm_bts_sm *bts_sm)
 {
 	struct gsm_bts *bts;
@@ -47,6 +54,8 @@ static int gsm_bts_sm_talloc_destructor(struct gsm_bts_sm *bts_sm)
 struct gsm_bts_sm *gsm_bts_sm_alloc(void *talloc_ctx)
 {
 	struct gsm_bts_sm *bts_sm = talloc_zero(talloc_ctx, struct gsm_bts_sm);
+	struct gsm_gprs_nse *nse = &bts_sm->gprs.nse;
+	unsigned int i;
 
 	if (!bts_sm)
 		return NULL;
@@ -60,8 +69,27 @@ struct gsm_bts_sm *gsm_bts_sm_alloc(void *talloc_ctx)
 					    LOGL_INFO, "bts_sm");
 	gsm_mo_init(&bts_sm->mo, NULL, NM_OC_SITE_MANAGER,
 		    0xff, 0xff, 0xff);
-
 	oml_mo_state_init(&bts_sm->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+
+	/* NM GPRS NSE */
+	nse->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nse_fsm, bts_sm, nse,
+					 LOGL_INFO, "gprs_nse0");
+	gsm_mo_init(&nse->mo, NULL, NM_OC_GPRS_NSE, 0, 0xff, 0xff);
+	oml_mo_state_init(&nse->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	memcpy(&nse->timer, nse_timer_default, sizeof(nse->timer));
+
+	/* NM GPRS NSVCs */
+	for (i = 0; i < ARRAY_SIZE(nse->nsvc); i++) {
+		struct gsm_gprs_nsvc *nsvc = &nse->nsvc[i];
+		nsvc->nse = nse;
+		nsvc->id = i;
+		nsvc->mo.fi = osmo_fsm_inst_alloc(&nm_gprs_nsvc_fsm, bts_sm, nsvc,
+						  LOGL_INFO, NULL);
+		osmo_fsm_inst_update_id_f(nsvc->mo.fi, "gprs_nsvc%d-%d",
+					  nse->mo.obj_inst.bts_nr, i);
+		gsm_mo_init(&nsvc->mo, NULL, NM_OC_GPRS_NSVC, nse->mo.obj_inst.bts_nr, i, 0xff);
+		oml_mo_state_init(&nsvc->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
+	}
 
 	return bts_sm;
 }

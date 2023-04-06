@@ -1760,15 +1760,19 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		mo = &g_bts_sm->mo;
 		break;
 	case NM_OC_GPRS_NSE:
-		mo = &bts->gprs.nse.mo;
+		if (obj_inst->bts_nr > 0)
+			return NULL;
+		mo = &g_bts_sm->gprs.nse.mo;
 		break;
 	case NM_OC_GPRS_CELL:
 		mo = &bts->gprs.cell.mo;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nse.nsvc))
+		if (obj_inst->bts_nr > 0)
 			return NULL;
-		mo = &bts->gprs.nse.nsvc[obj_inst->trx_nr].mo;
+		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
+			return NULL;
+		mo = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr].mo;
 		break;
 	}
 	return mo;
@@ -1827,15 +1831,19 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		obj = g_bts_sm;
 		break;
 	case NM_OC_GPRS_NSE:
-		obj = &bts->gprs.nse;
+		if (obj_inst->bts_nr > 0)
+			return NULL;
+		obj = &g_bts_sm->gprs.nse;
 		break;
 	case NM_OC_GPRS_CELL:
 		obj = &bts->gprs.cell;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nse.nsvc))
+		if (obj_inst->bts_nr > 0)
 			return NULL;
-		obj = &bts->gprs.nse.nsvc[obj_inst->trx_nr];
+		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
+			return NULL;
+		obj = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr];
 		break;
 	}
 	return obj;

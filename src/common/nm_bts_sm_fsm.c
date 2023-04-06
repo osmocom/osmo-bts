@@ -46,8 +46,8 @@
 static void ev_dispatch_children(struct gsm_bts_sm *site_mgr, uint32_t event)
 {
 	struct gsm_bts *bts;
+	osmo_fsm_inst_dispatch(site_mgr->gprs.nse.mo.fi, event, NULL);
 	llist_for_each_entry(bts, &site_mgr->bts_list, list) {
-		osmo_fsm_inst_dispatch(bts->gprs.nse.mo.fi, event, NULL);
 		osmo_fsm_inst_dispatch(bts->mo.fi, event, NULL);
 	}
 }

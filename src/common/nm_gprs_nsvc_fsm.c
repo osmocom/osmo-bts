@@ -32,6 +32,7 @@
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/bts_sm.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
 

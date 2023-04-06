@@ -242,9 +242,9 @@ int pcu_tx_info_ind(void)
 
 	LOGP(DPCU, LOGL_INFO, "Sending info\n");
 
+	nse = &g_bts_sm->gprs.nse;
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
-	nse = &bts->gprs.nse;
 	rlcc = &bts->gprs.cell.rlc_cfg;
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_INFO_IND, bts->nr);
