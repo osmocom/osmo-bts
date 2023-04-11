@@ -37,8 +37,8 @@ struct gsm_bts_sm {
 	struct llist_head bts_list;
 	unsigned int num_bts;
 	struct osmo_plmn_id plmn;
-	struct pcu_sock_state *pcu_state;
 	struct {
+		struct pcu_sock_state *pcu_state;
 		struct gsm_gprs_nse nse;
 	} gprs;
 };

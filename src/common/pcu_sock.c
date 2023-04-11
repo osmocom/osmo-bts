@@ -585,7 +585,7 @@ int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn)
 
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 {
-	struct pcu_sock_state *state = g_bts_sm->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
 	struct gsm_pcu_if_pag_req *pag_req;
@@ -955,7 +955,7 @@ struct pcu_sock_state {
 
 int pcu_sock_send(struct msgb *msg)
 {
-	struct pcu_sock_state *state = g_bts_sm->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
 	struct osmo_fd *conn_bfd;
 	struct gsm_pcu_if *pcu_prim = (struct gsm_pcu_if *) msg->data;
 
@@ -1209,7 +1209,7 @@ int pcu_sock_init(const char *path)
 
 	osmo_signal_register_handler(SS_GLOBAL, pcu_if_signal_cb, NULL);
 
-	g_bts_sm->pcu_state = state;
+	g_bts_sm->gprs.pcu_state = state;
 
 	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket: %s\n", path);
 
@@ -1218,7 +1218,7 @@ int pcu_sock_init(const char *path)
 
 void pcu_sock_exit(void)
 {
-	struct pcu_sock_state *state = g_bts_sm->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
 	struct osmo_fd *bfd, *conn_bfd;
 
 	if (!state)
@@ -1232,11 +1232,11 @@ void pcu_sock_exit(void)
 	close(bfd->fd);
 	osmo_fd_unregister(bfd);
 	talloc_free(state);
-	g_bts_sm->pcu_state = NULL;
+	g_bts_sm->gprs.pcu_state = NULL;
 }
 
 bool pcu_connected(void) {
-	struct pcu_sock_state *state = g_bts_sm->pcu_state;
+	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
 
 	if (!state)
 		return false;
