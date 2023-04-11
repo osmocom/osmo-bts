@@ -219,6 +219,7 @@ static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 	bts_osmux_release(bts);
 
 	llist_del(&bts->list);
+	g_bts_sm->num_bts--;
 	return 0;
 }
 
@@ -233,6 +234,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_bts_sm *bts_sm, uint8_t bts_num)
 
 	/* add to list of BTSs */
 	llist_add_tail(&bts->list, &bts_sm->bts_list);
+	g_bts_sm->num_bts++;
 
 	bts->site_mgr = bts_sm;
 	bts->nr = bts_num;
@@ -376,7 +378,6 @@ int bts_init(struct gsm_bts *bts)
 
 	/* TRX0 was allocated early during gsm_bts_alloc, not later through VTY */
 	bts_model_trx_init(bts->c0);
-	g_bts_sm->num_bts++;
 
 	if (!initialized) {
 		osmo_signal_register_handler(SS_GLOBAL, bts_signal_cbfn, NULL);
