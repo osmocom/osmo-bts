@@ -1515,6 +1515,8 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 
 	msgb_free(resp);
 
+	phy_link_state_set(trx->pinst->phy_link, PHY_LINK_CONNECTED);
+
 	/* FIXME: clock related */
 	return 0;
 }
@@ -1916,8 +1918,6 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	hdl = pinst->u.sysmobts.hdl;
 	osmo_strlcpy(bts->sub_model, sysmobts_model(hdl->hw_info.model_nr, hdl->hw_info.trx_nr), sizeof(bts->sub_model));
-
-	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 
 	return 0;
 }
