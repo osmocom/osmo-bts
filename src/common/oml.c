@@ -1521,16 +1521,17 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	return rc;
 }
 
-static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
+static int rx_oml_ipa_rsl_connect(struct gsm_bts *bts, struct msgb *msg,
 				  const struct tlv_parsed *tp)
 {
-	struct e1inp_sign_link *oml_link = trx->bts->oml_link;
-	uint16_t port = IPA_TCP_PORT_RSL;
-	const char *trx_name = gsm_trx_name(trx);
+	struct e1inp_sign_link *oml_link = bts->oml_link;
+	const struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+	const char *trx_name;
 	struct in_addr in;
-	int rc;
-
+	uint16_t port = IPA_TCP_PORT_RSL;
 	uint8_t stream_id = 0;
+	int rc;
 
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP))
 		in.s_addr = tlvp_val32_unal(tp, NM_ATT_IPACC_DST_IP);
@@ -1542,17 +1543,31 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID))
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
 
+	if (!trx) {
+		LOGP(DOML, LOGL_ERROR, "Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x for unknown TRX_NR=%u\n",
+		     inet_ntoa(in), port, stream_id, foh->obj_inst.trx_nr);
+		rc = NM_NACK_TRXNR_UNKN;
+		goto tx_ack_nack;
+	}
+
+	trx_name = gsm_trx_name(trx);
+
 	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
 	     trx_name, inet_ntoa(in), port, stream_id);
 
-	if (trx->bts->variant == BTS_OSMO_OMLDUMMY) {
+	if (bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
 		LOGP(DOML, LOGL_NOTICE, "%s: Not connecting RSL in OML-DUMMY!\n", trx_name);
 	} else {
 		trx->rsl_tei = stream_id;
 		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port, trx->nr);
+		if (rc < 0) {
+			LOGP(DOML, LOGL_NOTICE, "%s: Error connecting IPA RSL: %d\n", trx_name, rc);
+			rc = NM_NACK_CANT_PERFORM;
+		}
 	}
 
+tx_ack_nack:
 	/* The ACK/NACK is expected to contain all IEs */
 	if (!TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP)) /* TV32 */
 		msgb_tv_fixed_put(msg, NM_ATT_IPACC_DST_IP, sizeof(in),
@@ -1562,12 +1577,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts_trx *trx, struct msgb *msg,
 	if (!TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID)) /* TV */
 		msgb_tv_put(msg, NM_ATT_IPACC_STREAM_ID, stream_id);
 
-	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "%s: Error in abis_open(RSL): %d\n", trx_name, rc);
-		return oml_fom_ack_nack(msg, NM_NACK_CANT_PERFORM);
-	}
-
-	return oml_fom_ack_nack(msg, 0);
+	return oml_fom_ack_nack(msg, rc);
 }
 
 static int down_mom(struct gsm_bts *bts, struct msgb *msg)
@@ -1616,8 +1626,7 @@ static int down_mom(struct gsm_bts *bts, struct msgb *msg)
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT:
-		trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
-		ret = rx_oml_ipa_rsl_connect(trx, msg, &tp);
+		ret = rx_oml_ipa_rsl_connect(bts, msg, &tp);
 		break;
 	case NM_MT_IPACC_SET_ATTR:
 		ret = oml_ipa_set_attr(bts, msg);
