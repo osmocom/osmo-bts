@@ -1474,10 +1474,12 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	fl1h->hw_info.ver_minor = sic->boardVersion.option;
 #endif
 
-	LOGP(DL1C, LOGL_INFO, "DSP v%u.%u.%u, FPGA v%u.%u.%u\nn",
-		sic->dspVersion.major, sic->dspVersion.minor,
-		sic->dspVersion.build, sic->fpgaVersion.major,
-		sic->fpgaVersion.minor, sic->fpgaVersion.build);
+	snprintf(trx->pinst->version, sizeof(trx->pinst->version), "%u.%u dsp %u.%u.%u fpga %u.%u.%u",
+		 fl1h->hw_info.ver_major, fl1h->hw_info.ver_minor,
+		 fl1h->hw_info.dsp_version[0], fl1h->hw_info.dsp_version[1], fl1h->hw_info.dsp_version[2],
+		 fl1h->hw_info.fpga_version[0], fl1h->hw_info.fpga_version[1], fl1h->hw_info.fpga_version[2]);
+
+	LOGP(DL1C, LOGL_INFO, "%s\n", trx->pinst->version);
 
 #ifdef HW_SYSMOBTS_V1
 	if (sic->rfBand.gsm850)
@@ -1914,10 +1916,6 @@ int bts_model_phy_link_open(struct phy_link *plink)
 
 	hdl = pinst->u.sysmobts.hdl;
 	osmo_strlcpy(bts->sub_model, sysmobts_model(hdl->hw_info.model_nr, hdl->hw_info.trx_nr), sizeof(bts->sub_model));
-	snprintf(pinst->version, sizeof(pinst->version), "%u.%u dsp %u.%u.%u fpga %u.%u.%u",
-		 hdl->hw_info.ver_major, hdl->hw_info.ver_minor,
-		 hdl->hw_info.dsp_version[0], hdl->hw_info.dsp_version[1], hdl->hw_info.dsp_version[2],
-		 hdl->hw_info.fpga_version[0], hdl->hw_info.fpga_version[1], hdl->hw_info.fpga_version[2]);
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTED);
 
