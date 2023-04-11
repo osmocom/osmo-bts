@@ -947,7 +947,6 @@ static int pcu_rx(uint8_t msg_type, struct gsm_pcu_if *pcu_prim, size_t prim_len
  */
 
 struct pcu_sock_state {
-	struct gsm_bts_sm *bts_sm;
 	struct osmo_fd listen_bfd;	/* fd for listen socket */
 	struct osmo_fd conn_bfd;	/* fd for connection to lcr */
 	struct llist_head upqueue;	/* queue for sending messages */
@@ -990,7 +989,7 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 	unsigned int tn;
 
 	/* FIXME: allow multiple BTS */
-	bts = llist_entry(state->bts_sm->bts_list.next, struct gsm_bts, list);
+	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket has LOST connection\n");
 	oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_MAJOR, OSMO_EVT_PCU_VERS,
@@ -1183,7 +1182,6 @@ int pcu_sock_init(const char *path)
 		return -ENOMEM;
 
 	INIT_LLIST_HEAD(&state->upqueue);
-	state->bts_sm = g_bts_sm;
 	state->conn_bfd.fd = -1;
 
 	bfd = &state->listen_bfd;
