@@ -1178,7 +1178,7 @@ int pcu_sock_init(const char *path)
 	struct osmo_fd *bfd;
 	int rc;
 
-	state = talloc_zero(NULL, struct pcu_sock_state);
+	state = talloc_zero(g_bts_sm, struct pcu_sock_state);
 	if (!state)
 		return -ENOMEM;
 
