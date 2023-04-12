@@ -150,6 +150,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.desc = "Frequency correction channel",
 
 		/* Tx only, frequency correction bursts */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.dl_fn = tx_fcch_fn,
 	},
 	[TRXC_SCH] = {
@@ -157,6 +158,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.desc = "Synchronization channel",
 
 		/* Tx only, synchronization bursts */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.dl_fn = tx_sch_fn,
 	},
 	[TRXC_BCCH] = {
@@ -167,6 +169,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		/* Tx only, xCCH convolutional coding (3GPP TS 05.03, section 4.4),
 		 * regular interleaving (3GPP TS 05.02, clause 7, table 3):
 		 * a L2 frame is interleaved over 4 consecutive bursts. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 	},
@@ -176,6 +179,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.chan_nr = RSL_CHAN_RACH,
 
 		/* Rx only, RACH convolutional coding (3GPP TS 05.03, section 4.6). */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.ul_fn = rx_rach_fn,
 	},
 	[TRXC_CCCH] = {
@@ -186,6 +190,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		/* Tx only, xCCH convolutional coding (3GPP TS 05.03, section 4.4),
 		 * regular interleaving (3GPP TS 05.02, clause 7, table 3):
 		 * a L2 frame is interleaved over 4 consecutive bursts. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 	},
@@ -570,6 +575,7 @@ const struct trx_chan_desc trx_chan_desc[_TRX_CHAN_MAX] = {
 		.chan_nr = RSL_CHAN_OSMO_CBCH4,
 
 		/* Tx only, same as for TRXC_BCCH (xCCH), see above. */
+		.flags = TRX_CHAN_FLAG_AUTO_ACTIVE,
 		.rts_fn = rts_data_fn,
 		.dl_fn = tx_data_fn,
 	},
@@ -1056,52 +1062,6 @@ static void trx_sched_queue_filter(struct llist_head *q, uint8_t chan_nr, uint8_
 	}
 }
 
-static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
-				 enum trx_chan_type chan,
-				 bool active)
-{
-	struct l1sched_ts *l1ts = lchan->ts->priv;
-	struct l1sched_chan_state *chan_state;
-
-	OSMO_ASSERT(l1ts != NULL);
-	chan_state = &l1ts->chan_state[chan];
-
-	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "%s %s\n",
-		  (active) ? "Activating" : "Deactivating",
-		  trx_chan_desc[chan].name);
-
-	/* free burst memory, to cleanly start with burst 0 */
-	if (chan_state->dl_bursts) {
-		talloc_free(chan_state->dl_bursts);
-		chan_state->dl_bursts = NULL;
-	}
-	if (chan_state->ul_bursts) {
-		talloc_free(chan_state->ul_bursts);
-		chan_state->ul_bursts = NULL;
-	}
-	if (chan_state->ul_bursts_prev) {
-		talloc_free(chan_state->ul_bursts_prev);
-		chan_state->ul_bursts_prev = NULL;
-	}
-
-	if (active) {
-		/* Clean up everything */
-		memset(chan_state, 0, sizeof(*chan_state));
-
-		/* Bind to generic 'struct gsm_lchan' */
-		chan_state->lchan = lchan;
-	} else {
-		chan_state->ho_rach_detect = 0;
-
-		/* Remove pending Tx prims belonging to this lchan */
-		trx_sched_queue_filter(&l1ts->dl_prims,
-				       trx_chan_desc[chan].chan_nr,
-				       trx_chan_desc[chan].link_id);
-	}
-
-	chan_state->active = active;
-}
-
 /* setting all logical channels given attributes to active/inactive */
 int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_id, bool active)
 {
@@ -1109,6 +1069,7 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
 	uint8_t ss = l1sap_chan2ss(chan_nr);
 	bool found = false;
+	int i;
 
 	if (!l1ts) {
 		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "%s lchan with uninitialized scheduler structure\n",
@@ -1122,15 +1083,48 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 		chan_nr &= ~RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* look for all matching chan_nr/link_id */
-	for (enum trx_chan_type chan = 0; chan < _TRX_CHAN_MAX; chan++) {
-		if (trx_chan_desc[chan].chan_nr != (chan_nr & RSL_CHAN_NR_MASK))
+	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		struct l1sched_chan_state *chan_state = &l1ts->chan_state[i];
+
+		if (trx_chan_desc[i].chan_nr != (chan_nr & RSL_CHAN_NR_MASK))
 			continue;
-		if (trx_chan_desc[chan].link_id != link_id)
+		if (trx_chan_desc[i].link_id != link_id)
 			continue;
-		if (l1ts->chan_state[chan].active == active)
+		if (chan_state->active == active)
 			continue;
 		found = true;
-		_trx_sched_set_lchan(lchan, chan, active);
+
+		LOGPLCHAN(lchan, DL1C, LOGL_INFO, "%s %s\n",
+			  (active) ? "Activating" : "Deactivating",
+			  trx_chan_desc[i].name);
+		/* free burst memory, to cleanly start with burst 0 */
+		if (chan_state->dl_bursts) {
+			talloc_free(chan_state->dl_bursts);
+			chan_state->dl_bursts = NULL;
+		}
+		if (chan_state->ul_bursts) {
+			talloc_free(chan_state->ul_bursts);
+			chan_state->ul_bursts = NULL;
+		}
+		if (chan_state->ul_bursts_prev) {
+			talloc_free(chan_state->ul_bursts_prev);
+			chan_state->ul_bursts_prev = NULL;
+		}
+
+		if (active) {
+			/* Clean up everything */
+			memset(chan_state, 0, sizeof(*chan_state));
+
+			/* Bind to generic 'struct gsm_lchan' */
+			chan_state->lchan = lchan;
+		} else {
+			chan_state->ho_rach_detect = 0;
+
+			/* Remove pending Tx prims belonging to this lchan */
+			trx_sched_queue_filter(&l1ts->dl_prims, chan_nr, link_id);
+		}
+
+		chan_state->active = active;
 	}
 
 	/* disable handover detection (on deactivation) */
@@ -1138,31 +1132,6 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 		_sched_act_rach_det(lchan->ts->trx, tn, ss, 0);
 
 	return found ? 0 : -EINVAL;
-}
-
-int trx_sched_set_bcch_ccch(struct gsm_lchan *lchan, bool active)
-{
-	struct l1sched_ts *l1ts = lchan->ts->priv;
-	static const enum trx_chan_type chans[] = {
-		TRXC_FCCH,
-		TRXC_SCH,
-		TRXC_BCCH,
-		TRXC_RACH,
-		TRXC_CCCH,
-	};
-
-	if (!l1ts)
-		return -EINVAL;
-
-	for (unsigned int i = 0; i < ARRAY_SIZE(chans); i++) {
-		enum trx_chan_type chan = chans[i];
-
-		if (l1ts->chan_state[chan].active == active)
-			continue;
-		_trx_sched_set_lchan(lchan, chan, active);
-	}
-
-	return 0;
 }
 
 /* setting all logical channels given attributes to active/inactive */
@@ -1308,7 +1277,7 @@ int _sched_rts(const struct l1sched_ts *l1ts, uint32_t fn)
 		return 0;
 
 	/* check if channel is active */
-	if (!l1ts->chan_state[chan].active)
+	if (!TRX_CHAN_IS_ACTIVE(&l1ts->chan_state[chan], chan))
 	 	return -EINVAL;
 
 	/* There is no burst, just for logging */
@@ -1365,7 +1334,7 @@ void _sched_dl_burst(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	l1cs = &l1ts->chan_state[br->chan];
 
 	/* check if channel is active */
-	if (!l1cs->active)
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, br->chan))
 		return;
 
 	/* Training Sequence Code and Set */
@@ -1554,7 +1523,7 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi)
 	func = trx_chan_desc[bi->chan].ul_fn;
 
 	/* check if channel is active */
-	if (!l1cs->active) {
+	if (!TRX_CHAN_IS_ACTIVE(l1cs, bi->chan)) {
 		/* handle noise measurements on dedicated and idle channels */
 		if (TRX_CHAN_IS_DEDIC(bi->chan) || bi->chan == TRXC_IDLE)
 			trx_sched_noise_meas(l1cs, bi);

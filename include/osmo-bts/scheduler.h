@@ -5,6 +5,13 @@
 
 #include <osmo-bts/gsm_data.h>
 
+/* Whether a logical channel must be activated automatically */
+#define TRX_CHAN_FLAG_AUTO_ACTIVE	(1 << 0)
+
+/* FIXME: we should actually activate 'auto-active' channels */
+#define TRX_CHAN_IS_ACTIVE(state, chan) \
+	(trx_chan_desc[chan].flags & TRX_CHAN_FLAG_AUTO_ACTIVE || (state)->active)
+
 #define TRX_GMSK_NB_TSC(br) \
 	_sched_train_seq_gmsk_nb[(br)->tsc_set][(br)->tsc]
 
@@ -184,9 +191,6 @@ int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pch
 
 /*! \brief set all matching logical channels active/inactive */
 int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_id, bool active);
-
-/*! \brief set all logical channels of BCCH/CCCH active/inactive */
-int trx_sched_set_bcch_ccch(struct gsm_lchan *lchan, bool active);
 
 /*! \brief set mode of all matching logical channels to given mode(s) */
 int trx_sched_set_mode(struct gsm_bts_trx_ts *ts, uint8_t chan_nr, uint8_t rsl_cmode,
