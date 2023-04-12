@@ -192,14 +192,6 @@ int bts_model_oml_estab(struct gsm_bts *bts)
 	if (vbts_sched_start(pinst->trx->bts) < 0)
 		return -ENOLINK;
 
-	/* Only start the scheduler for the transceiver on C0.
-	 * If we have multiple transceivers, CCCH is always on C0
-	 * and has to be auto active */
-	pinst->trx->ts[0].lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
-
-	/* Other TRX are activated via OML by a PRIM_INFO_MODIFY / PRIM_INFO_ACTIVATE */
-	lchan_set_state(&pinst->trx->ts[0].lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
-
 	return 0;
 }
 

@@ -125,6 +125,28 @@ static uint8_t vbts_set_ts(struct gsm_bts_trx_ts *ts)
 	if (trx_sched_set_pchan(ts, pchan) != 0)
 		return NM_NACK_RES_NOTAVAIL;
 
+	/* activate lchans for [CBCH/]BCCH/CCCH */
+	switch (pchan) {
+	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
+		/* using RSL_CHAN_OSMO_CBCH4 is correct here, because the scheduler
+		 * does not distinguish between SDCCH/4+CBCH abd SDCCH/8+CBCH. */
+		trx_sched_set_lchan(&ts->lchan[CBCH_LCHAN],
+				    RSL_CHAN_OSMO_CBCH4, LID_DEDIC, true);
+		break;
+	case GSM_PCHAN_CCCH_SDCCH4_CBCH:
+		trx_sched_set_lchan(&ts->lchan[CBCH_LCHAN],
+				    RSL_CHAN_OSMO_CBCH4, LID_DEDIC, true);
+		/* fall-through */
+	case GSM_PCHAN_CCCH_SDCCH4:
+	case GSM_PCHAN_CCCH:
+		trx_sched_set_bcch_ccch(&ts->lchan[CCCH_LCHAN], true);
+		ts->lchan[CCCH_LCHAN].rel_act_kind = LCHAN_REL_ACT_OML;
+		lchan_set_state(&ts->lchan[CCCH_LCHAN], LCHAN_S_ACTIVE);
+		break;
+	default:
+		break;
+	}
+
 	return 0;
 }
 
