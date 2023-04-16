@@ -53,24 +53,28 @@ enum gsm_bts_type_variant {
 };
 const char *btsvariant2str(enum gsm_bts_type_variant v);
 
-/* TODO: add a brief description of this flag */
-#define BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP		(1 << 0)
-/* When this flag is set then the measurement data is included in
- * (PRIM_PH_DATA) and struct ph_tch_param (PRIM_TCH). Otherwise the
- * measurement data is passed using a separate MPH INFO MEAS IND.
- * (See also ticket: OS#2977) */
-#define BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB		(1 << 1)
-/* Whether the BTS model requires RadioCarrier MO to be in Enabled state
- * (OPSTARTed) before OPSTARTing the RadioChannel MOs. See OS#5157 */
-#define BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER	(1 << 2)
-/* Whether the BTS model reports interference measurements to L1SAP. */
-#define BTS_INTERNAL_FLAG_INTERF_MEAS			(1 << 3)
+enum bts_impl_flag {
+	/* TODO: add a brief description of this flag */
+	BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP,
+	/* When this flag is set then the measurement data is included in
+	 * (PRIM_PH_DATA) and struct ph_tch_param (PRIM_TCH). Otherwise the
+	 * measurement data is passed using a separate MPH INFO MEAS IND.
+	 * (See also ticket: OS#2977) */
+	BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB,
+	/* Whether the BTS model requires RadioCarrier MO to be in Enabled state
+	 * (OPSTARTed) before OPSTARTing the RadioChannel MOs. See OS#5157 */
+	BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER,
+	/* Whether the BTS model reports interference measurements to L1SAP. */
+	BTS_INTERNAL_FLAG_INTERF_MEAS,
+
+	_BTS_INTERNAL_FLAG_NUM, /* must be at the end */
+};
 
 /* BTS implementation flags (internal use, not exposed via OML) */
 #define bts_internal_flag_get(bts, flag) \
-	((bts->flags & (typeof(bts->flags)) flag) != 0)
+	((bts->flags & (typeof(bts->flags))(1 << flag)) != 0)
 #define bts_internal_flag_set(bts, flag) \
-	bts->flags |= (typeof(bts->flags)) flag
+	bts->flags |= (typeof(bts->flags))(1 << flag)
 
 struct gprs_rlc_cfg {
 	uint16_t parameter[_NUM_RLC_PAR];
