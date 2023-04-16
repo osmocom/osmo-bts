@@ -202,6 +202,8 @@ const char *btsatttr2str(enum bts_attribute v)
 const struct value_string bts_impl_flag_desc[] = {
 	{ BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP,	"DSP/HW based MS Power Control Loop" },
 	{ BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB,	"Measurement and Payload data combined" },
+	{ BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER, "OML RadioChannel MO depends on RadioCarrier MO" },
+	{ BTS_INTERNAL_FLAG_INTERF_MEAS,	"Uplink interference measurements" },
 	{ 0, NULL }
 };
 
