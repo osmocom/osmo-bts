@@ -207,6 +207,9 @@ const struct value_string bts_impl_flag_desc[] = {
 	{ 0, NULL }
 };
 
+/* Ensure that all BTS_INTERNAL_FLAG_* entries are present in bts_impl_flag_desc[] */
+osmo_static_assert(ARRAY_SIZE(bts_impl_flag_desc) == _BTS_INTERNAL_FLAG_NUM + 1, _bts_impl_flag_desc);
+
 static int gsm_bts_talloc_destructor(struct gsm_bts *bts)
 {
 	if (bts->mo.fi) {
