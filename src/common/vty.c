@@ -477,7 +477,7 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		const struct phy_instance *pinst = trx_phy_instance(trx);
 		vty_out(vty, " trx %u%s", trx->nr, VTY_NEWLINE);
 
-		if (trx->power_params.user_gain_mdB)
+		if (tpp->user_gain_mdB)
 			vty_out(vty, "  user-gain %u mdB%s",
 				tpp->user_gain_mdB, VTY_NEWLINE);
 		vty_out(vty, "  power-ramp max-initial %d mdBm%s",
