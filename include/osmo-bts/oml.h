@@ -82,6 +82,7 @@ struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 				    enum abis_nm_nack_cause *c);
 
 void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-		       const struct abis_om_obj_inst *obj_inst);
+		       const struct abis_om_obj_inst *obj_inst,
+		       enum abis_nm_nack_cause *c);
 
 #endif // _OML_H */

@@ -1103,8 +1103,8 @@ static int oml_rx_opstart(struct gsm_bts *bts, struct msgb *msg)
 	/* Step 1: Resolve MO by obj_class/obj_inst */
 	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
 		return oml_fom_ack_nack(msg, c);
-	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
-		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
 
 	/* Step 2: Do some global dependency/consistency checking */
 	if (mo->nm_state.operational == NM_OPSTATE_ENABLED) {
@@ -1149,8 +1149,8 @@ static int oml_rx_chg_adm_state(struct gsm_bts *bts, struct msgb *msg)
 	/* Step 1: Resolve MO by obj_class/obj_inst */
 	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
 		return oml_fom_ack_nack(msg, c);
-	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
-		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
 
 	/* Step 2: Do some global dependency/consistency checking */
 	if (mo->nm_state.administrative == adm_state) {
@@ -1491,8 +1491,8 @@ static int oml_ipa_set_attr(struct gsm_bts *bts, struct msgb *msg)
 	/* Resolve MO by obj_class/obj_inst */
 	if ((mo = gsm_objclass2mo(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
 		return oml_fom_ack_nack(msg, c);
-	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst)) == NULL)
-		return oml_fom_ack_nack(msg, NM_NACK_OBJINST_UNKN);
+	if ((obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst, &c)) == NULL)
+		return oml_fom_ack_nack(msg, c);
 
 
 	switch (mo->obj_class) {
@@ -1793,10 +1793,11 @@ nm_nack_objinst_unkn:
 	return NULL;
 }
 
-/* obtain the in-memory data structure of a given object instance */
-void *
-gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-	     const struct abis_om_obj_inst *obj_inst)
+/* Obtain the in-memory data structure of a given object instance
+ *  \param[out] c nack cause for reply in case of error. Ignored if NULL */
+void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
+		       const struct abis_om_obj_inst *obj_inst,
+		       enum abis_nm_nack_cause *c)
 {
 	struct gsm_bts_trx *trx;
 	void *obj = NULL;
@@ -1807,19 +1808,19 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_RADIO_CARRIER:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
-			return NULL;
+			goto nm_nack_trxnr_unkn;
 		if (obj_inst->ts_nr >= TRX_NR_TS)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		obj = &trx->ts[obj_inst->ts_nr];
 		break;
 	case NM_OC_SITE_MANAGER:
@@ -1827,7 +1828,7 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_GPRS_NSE:
 		if (obj_inst->bts_nr > 0)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		obj = &g_bts_sm->gprs.nse;
 		break;
 	case NM_OC_GPRS_CELL:
@@ -1835,11 +1836,20 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		break;
 	case NM_OC_GPRS_NSVC:
 		if (obj_inst->bts_nr > 0)
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
-			return NULL;
+			goto nm_nack_objinst_unkn;
 		obj = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr];
 		break;
 	}
 	return obj;
+
+nm_nack_trxnr_unkn:
+	if (c != NULL)
+		*c = NM_NACK_TRXNR_UNKN;
+	return NULL;
+nm_nack_objinst_unkn:
+	if (c != NULL)
+		*c = NM_NACK_OBJINST_UNKN;
+	return NULL;
 }

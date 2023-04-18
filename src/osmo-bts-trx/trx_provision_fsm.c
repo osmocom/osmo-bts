@@ -340,7 +340,7 @@ static int trx_prov_fsm_signal_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	if (nsd->old_state != NM_OPSTATE_ENABLED && nsd->new_state == NM_OPSTATE_ENABLED) {
-		trx = gsm_objclass2obj(nsd->mo->bts, nsd->mo->obj_class, &nsd->mo->obj_inst);
+		trx = gsm_objclass2obj(nsd->mo->bts, nsd->mo->obj_class, &nsd->mo->obj_inst, NULL);
 		l1if_trx_start_power_ramp(trx, NULL);
 	}
 	return 0;
