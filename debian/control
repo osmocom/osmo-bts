@@ -2,7 +2,7 @@ Source: osmo-bts
 Maintainer: Osmocom team <openbsc@lists.osmocom.org>
 Section: net
 Priority: optional
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper (>= 10),
                pkg-config,
                dh-autoreconf,
                autotools-dev,
