@@ -64,6 +64,8 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 	bts->bsic = 0xff; /* invalid value */
 	TALLOC_FREE(bts->mo.nm_attr);
 	bts_cbch_reset(bts);
+	if (bts->c0_power_red_db > 0)
+		bts_set_c0_pwr_red(bts, 0);
 
 	bts->mo.setattr_success = false;
 	bts->mo.opstart_success = false;
