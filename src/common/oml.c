@@ -1739,49 +1739,40 @@ struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 				    enum abis_nm_nack_cause *c)
 {
 	struct gsm_bts_trx *trx;
-	struct gsm_abis_mo *mo = NULL;
 
 	switch (obj_class) {
 	case NM_OC_BTS:
-		mo = &bts->mo;
-		break;
+		return &bts->mo;
 	case NM_OC_RADIO_CARRIER:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
-		mo = &trx->mo;
-		break;
+		return &trx->mo;
 	case NM_OC_BASEB_TRANSC:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
-		mo = &trx->bb_transc.mo;
-		break;
+		return &trx->bb_transc.mo;
 	case NM_OC_CHANNEL:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			goto nm_nack_objinst_unkn;
-		mo = &trx->ts[obj_inst->ts_nr].mo;
-		break;
+		return &trx->ts[obj_inst->ts_nr].mo;
 	case NM_OC_SITE_MANAGER:
-		mo = &g_bts_sm->mo;
-		break;
+		return &g_bts_sm->mo;
 	case NM_OC_GPRS_NSE:
 		if (obj_inst->bts_nr > 0)
 			goto nm_nack_objinst_unkn;
-		mo = &g_bts_sm->gprs.nse.mo;
-		break;
+		return &g_bts_sm->gprs.nse.mo;
 	case NM_OC_GPRS_CELL:
-		mo = &bts->gprs.cell.mo;
-		break;
+		return &bts->gprs.cell.mo;
 	case NM_OC_GPRS_NSVC:
 		if (obj_inst->bts_nr > 0)
 			goto nm_nack_objinst_unkn;
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
 			goto nm_nack_objinst_unkn;
-		mo = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr].mo;
-		break;
+		return &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr].mo;
 	}
-	return mo;
+	return NULL;
 
 nm_nack_trxnr_unkn:
 	if (c != NULL)
@@ -1800,49 +1791,40 @@ void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		       enum abis_nm_nack_cause *c)
 {
 	struct gsm_bts_trx *trx;
-	void *obj = NULL;
 
 	switch (obj_class) {
 	case NM_OC_BTS:
-		obj = bts;
-		break;
+		return bts;
 	case NM_OC_RADIO_CARRIER:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
-		obj = trx;
-		break;
+		return trx;
 	case NM_OC_BASEB_TRANSC:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
-		obj = &trx->bb_transc;
-		break;
+		return &trx->bb_transc;
 	case NM_OC_CHANNEL:
 		if (!(trx = gsm_bts_trx_num(bts, obj_inst->trx_nr)))
 			goto nm_nack_trxnr_unkn;
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			goto nm_nack_objinst_unkn;
-		obj = &trx->ts[obj_inst->ts_nr];
-		break;
+		return &trx->ts[obj_inst->ts_nr];
 	case NM_OC_SITE_MANAGER:
-		obj = g_bts_sm;
-		break;
+		return g_bts_sm;
 	case NM_OC_GPRS_NSE:
 		if (obj_inst->bts_nr > 0)
 			goto nm_nack_objinst_unkn;
-		obj = &g_bts_sm->gprs.nse;
-		break;
+		return &g_bts_sm->gprs.nse;
 	case NM_OC_GPRS_CELL:
-		obj = &bts->gprs.cell;
-		break;
+		return &bts->gprs.cell;
 	case NM_OC_GPRS_NSVC:
 		if (obj_inst->bts_nr > 0)
 			goto nm_nack_objinst_unkn;
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
 			goto nm_nack_objinst_unkn;
-		obj = &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr];
-		break;
+		return &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr];
 	}
-	return obj;
+	return NULL;
 
 nm_nack_trxnr_unkn:
 	if (c != NULL)
