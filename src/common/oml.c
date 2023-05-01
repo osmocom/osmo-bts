@@ -1740,7 +1740,7 @@ struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 {
 	struct gsm_bts_trx *trx;
 
-	switch (obj_class) {
+	switch ((enum abis_nm_obj_class)obj_class) {
 	case NM_OC_BTS:
 		return &bts->mo;
 	case NM_OC_RADIO_CARRIER:
@@ -1771,8 +1771,11 @@ struct gsm_abis_mo *gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
 			goto nm_nack_objinst_unkn;
 		return &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr].mo;
+	default:
+		if (c != NULL)
+			*c = NM_NACK_OBJCLASS_NOTSUPP;
+		return NULL;
 	}
-	return NULL;
 
 nm_nack_trxnr_unkn:
 	if (c != NULL)
@@ -1792,7 +1795,7 @@ void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 {
 	struct gsm_bts_trx *trx;
 
-	switch (obj_class) {
+	switch ((enum abis_nm_obj_class)obj_class) {
 	case NM_OC_BTS:
 		return bts;
 	case NM_OC_RADIO_CARRIER:
@@ -1823,8 +1826,11 @@ void *gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 		if (obj_inst->trx_nr >= ARRAY_SIZE(g_bts_sm->gprs.nse.nsvc))
 			goto nm_nack_objinst_unkn;
 		return &g_bts_sm->gprs.nse.nsvc[obj_inst->trx_nr];
+	default:
+		if (c != NULL)
+			*c = NM_NACK_OBJCLASS_NOTSUPP;
+		return NULL;
 	}
-	return NULL;
 
 nm_nack_trxnr_unkn:
 	if (c != NULL)
