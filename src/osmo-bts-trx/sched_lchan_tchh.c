@@ -184,7 +184,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
 					   !sched_tchh_ul_facch_map[bi->fn % 26],
 					   &n_errors, &n_bits_total);
-		if (rc == (GSM_HR_BYTES + 1)) { /* only for valid *speech* frames */
+		if (rc == GSM_HR_BYTES_RTP_RFC5993) { /* only for valid *speech* frames */
 			/* gsm0503_tch_hr_decode() prepends a ToC octet (see RFC5993), skip it */
 			bool is_sid = osmo_hr_check_sid(&tch_data[1], GSM_HR_BYTES);
 			if (is_sid) /* Mark SID frames as such: F = 0, FT = 010 */
