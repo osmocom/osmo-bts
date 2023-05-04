@@ -1515,8 +1515,7 @@ static int ts_connect_as(struct gsm_bts_trx_ts *ts,
 	struct phy_instance *pinst = trx_phy_instance(ts->trx);
 	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
-	tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD *oc =
-	    (tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD *) oc;
+	tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD *oc;
 
 	oc = (tOCTVC1_GSM_MSG_TRX_ACTIVATE_PHYSICAL_CHANNEL_CMD*)
 		msgb_put(msg, sizeof(*oc));
@@ -1800,8 +1799,7 @@ int bts_model_ts_disconnect(struct gsm_bts_trx_ts *ts)
 	struct phy_instance *pinst = trx_phy_instance(ts->trx);
 	struct octphy_hdl *fl1h = pinst->phy_link->u.octphy.hdl;
 	struct msgb *msg = l1p_msgb_alloc();
-	tOCTVC1_GSM_MSG_TRX_DEACTIVATE_PHYSICAL_CHANNEL_CMD *oc =
-	    (tOCTVC1_GSM_MSG_TRX_DEACTIVATE_PHYSICAL_CHANNEL_CMD *) oc;
+	tOCTVC1_GSM_MSG_TRX_DEACTIVATE_PHYSICAL_CHANNEL_CMD *oc;
 
 	oc = (tOCTVC1_GSM_MSG_TRX_DEACTIVATE_PHYSICAL_CHANNEL_CMD *)
 	    msgb_put(msg, sizeof(*oc));
