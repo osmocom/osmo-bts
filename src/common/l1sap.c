@@ -1255,7 +1255,7 @@ static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 	if (resp_msg->len == 0)
 		return false;
 
-	/* Avoid sending bw-efficient AMR to lower layers, most bts models
+	/* Avoid forwarding bw-efficient AMR to lower layers, most bts models
 	 * don't support it. */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
 		!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
