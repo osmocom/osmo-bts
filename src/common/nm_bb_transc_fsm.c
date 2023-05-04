@@ -136,7 +136,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 					 &bb_transc->mo, bb_transc);
 		bb_transc->mo.setattr_success = rc == 0;
 		oml_fom_ack_nack_copy_msg(setattr_data->msg, rc);
-		break;
+		return;
 	case NM_EV_RX_OPSTART:
 #if 0
 		/* Disabled because osmo-bsc doesn't send SetAttr on BB_TRANSC object */
@@ -146,7 +146,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 		}
 #endif
 		bts_model_opstart(trx->bts, &bb_transc->mo, bb_transc);
-		break;
+		return;
 	case NM_EV_OPSTART_ACK:
 		bb_transc->mo.opstart_success = true;
 		oml_mo_opstart_ack(&bb_transc->mo);
