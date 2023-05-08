@@ -37,6 +37,8 @@
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
 
+#include <osmocom/codec/codec.h>
+
 #include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
@@ -1241,6 +1243,24 @@ static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_l
 	return true;
 }
 
+static bool rtppayload_validate_fr(struct msgb *msg)
+{
+	if (msg->len != GSM_FR_BYTES)
+		return false;
+	if ((msg->data[0] & 0xF0) != 0xD0)
+		return false;
+	return osmo_fr_sid_preen(msg->data);
+}
+
+static bool rtppayload_validate_efr(struct msgb *msg)
+{
+	if (msg->len != GSM_EFR_BYTES)
+		return false;
+	if ((msg->data[0] & 0xF0) != 0xC0)
+		return false;
+	return osmo_efr_sid_preen(msg->data);
+}
+
 static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 {
 	/* If rtp continuous-streaming is enabled, we shall emit RTP packets
@@ -1255,16 +1275,27 @@ static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
 	if (resp_msg->len == 0)
 		return false;
 
-	/* Avoid forwarding bw-efficient AMR to lower layers, most bts models
-	 * don't support it. */
-	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR &&
-		!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
-		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE,
-			  "RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
-			  osmo_hexdump(resp_msg->data, resp_msg->len));
-		return false;
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			return rtppayload_validate_fr(resp_msg);
+		else
+			return true;	/* FIXME: implement preening for HR1 */
+	case GSM48_CMODE_SPEECH_EFR:
+		return rtppayload_validate_efr(resp_msg);
+	case GSM48_CMODE_SPEECH_AMR:
+		/* Avoid forwarding bw-efficient AMR to lower layers,
+		 * most bts models don't support it. */
+		if (!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
+			LOGPLCHAN(lchan, DL1P, LOGL_NOTICE,
+				  "RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
+				  osmo_hexdump(resp_msg->data, resp_msg->len));
+			return false;
+		}
+		return true;
+	default:
+		return true;
 	}
-	return true;
 }
 
 /* TCH-RTS-IND prim received from bts model */
