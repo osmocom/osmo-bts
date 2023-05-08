@@ -321,6 +321,11 @@ int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi
 
 /* abstract representation of P1 rest octets; we only implement those parts we need for now */
 struct p1_rest_octets {
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
 	bool packet_page_ind[2];
 	bool r8_present;
 	struct {
@@ -364,7 +369,13 @@ static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t pag
 static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro)
 {
 	/* Paging 1 RO (at least 10 bits before ETWS struct) */
-	bitvec_set_bit(bv, L);		/* no NLN */
+	if (p1ro->nln_pch.present) {
+		bitvec_set_bit(bv, H);
+		bitvec_set_uint(bv, p1ro->nln_pch.nln, 2);
+		bitvec_set_uint(bv, p1ro->nln_pch.nln_status, 1);
+	} else {
+		bitvec_set_bit(bv, L);		/* no NLN */
+	}
 	bitvec_set_bit(bv, L);		/* no Priority1 */
 	bitvec_set_bit(bv, L);		/* no Priority2 */
 	bitvec_set_bit(bv, L);		/* no Group Call Info */
@@ -543,6 +554,7 @@ static void sort_pr_tmsi_imsi(struct paging_record *pr[], unsigned int n)
 static void build_p1_rest_octets(struct p1_rest_octets *p1ro, struct gsm_bts *bts)
 {
 	memset(p1ro, 0, sizeof(*p1ro));
+	p1ro->nln_pch.present = false;
 	p1ro->packet_page_ind[0] = false;
 	p1ro->packet_page_ind[1] = false;
 	p1ro->r8_present = true;
