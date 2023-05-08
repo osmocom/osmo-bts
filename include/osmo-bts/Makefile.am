@@ -31,5 +31,6 @@ noinst_HEADERS = \
 	dtx_dl_amr_fsm.h \
 	ta_control.h \
 	nm_common_fsm.h \
+	notification.h \
 	osmux.h \
 	$(NULL)

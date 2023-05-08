@@ -288,6 +288,11 @@ struct gsm_bts {
 		bool pni;		/* Primary Notification Identifier */
 	} etws;
 
+	/* Advanced Speech Call Items (VBS/VGCS) + NCH related bits */
+	struct {
+		struct llist_head notifications;
+	} asci;
+
 	struct paging_state *paging_state;
 	struct llist_head bsc_oml_hosts;
 	unsigned int rtp_jitter_buf_ms;

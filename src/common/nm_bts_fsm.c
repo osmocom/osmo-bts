@@ -36,6 +36,7 @@
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/cbch.h>
+#include <osmo-bts/notification.h>
 
 #define X(s) (1 << (s))
 
@@ -64,6 +65,7 @@ static void st_op_disabled_notinstalled_on_enter(struct osmo_fsm_inst *fi, uint3
 	bts->bsic = 0xff; /* invalid value */
 	TALLOC_FREE(bts->mo.nm_attr);
 	bts_cbch_reset(bts);
+	bts_asci_notification_reset(bts);
 	if (bts->c0_power_red_db > 0)
 		bts_set_c0_pwr_red(bts, 0);
 

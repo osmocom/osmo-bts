@@ -56,6 +56,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/pcuif_proto.h>
+#include <osmo-bts/notification.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -773,6 +774,49 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
 
 	return 0;
+}
+
+/* 8.5.10 NOTIFICATION COMMAND */
+static int rsl_rx_notification_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
+{
+	struct abis_rsl_cchan_hdr *cch = msgb_l2(msg);
+	struct tlv_parsed tp;
+	uint8_t command_indicator;
+	int rc;
+
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_error_report(trx, RSL_ERR_PROTO, &cch->chan_nr, NULL, msg);
+	}
+
+	/* FIXME: check if chan_nr matches downlink CCCH */
+
+	if (!TLVP_PRES_LEN(&tp, RSL_IE_CMD_INDICATOR, 1))
+		return rsl_tx_error_report(trx, RSL_ERR_MAND_IE_ERROR, &cch->chan_nr, NULL, msg);
+	command_indicator = *TLVP_VAL(&tp, RSL_IE_CMD_INDICATOR);
+
+	switch (command_indicator) {
+	case RSL_CMD_INDICATOR_START:
+		/* we need at least a Group Call Reference to start notification */
+		if (!TLVP_PRES_LEN(&tp, RSL_IE_GROUP_CALL_REF, 5))
+			return rsl_tx_error_report(trx, RSL_ERR_OPT_IE_ERROR, &cch->chan_nr, NULL, msg);
+		rc = bts_asci_notification_add(trx->bts, TLVP_VAL(&tp, RSL_IE_GROUP_CALL_REF),
+					       TLVP_VAL(&tp, RSL_IE_CHAN_DESC), TLVP_LEN(&tp, RSL_IE_CHAN_DESC),
+					       (struct rsl_ie_nch_drx_info *) TLVP_VAL(&tp, RSL_IE_NCH_DRX_INFO));
+		break;
+	case RSL_CMD_INDICATOR_STOP:
+		if (!TLVP_PRES_LEN(&tp, RSL_IE_GROUP_CALL_REF, 5)) {
+			/* interpret this as stopping of all notification */
+			rc = bts_asci_notification_reset(trx->bts);
+		} else {
+			rc = bts_asci_notification_del(trx->bts, TLVP_VAL(&tp, RSL_IE_GROUP_CALL_REF));
+		}
+		break;
+	default:
+		return rsl_tx_error_report(trx, RSL_ERR_IE_CONTENT, &cch->chan_nr, NULL, msg);
+	}
+
+	return rc;
 }
 
 /* OSMO_ETWS_CMD - proprietary extension as TS 48.058 has no standardized way to do this :( */
@@ -3680,8 +3724,10 @@ static int rsl_rx_cchan(struct gsm_bts_trx *trx, struct msgb *msg)
 	case RSL_MT_SMS_BC_CMD:
 		ret = rsl_rx_sms_bcast_cmd(trx, msg);
 		break;
-	case RSL_MT_SMS_BC_REQ:
 	case RSL_MT_NOT_CMD:
+		ret = rsl_rx_notification_cmd(trx, msg);
+		break;
+	case RSL_MT_SMS_BC_REQ:
 		LOGPLCHAN(msg->lchan, DRSL, LOGL_NOTICE, "unimplemented RSL cchan msg_type %s\n",
 			  rsl_msg_name(cch->c.msg_type));
 		rsl_tx_error_report(trx, RSL_ERR_MSG_TYPE, &cch->chan_nr, NULL, msg);
