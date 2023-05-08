@@ -43,6 +43,7 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/pcu_if.h>
+#include <osmo-bts/notification.h>
 
 #define MAX_PAGING_BLOCKS_CCCH	9
 #define MAX_BS_PA_MFRMS		9
@@ -366,7 +367,8 @@ static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t pag
 }
 
 /* 3GPP TS 44.018 10.5.2.23 append P1 Rest Octets to given bit-vector */
-static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro)
+static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro,
+				  const struct asci_notification *notif)
 {
 	/* Paging 1 RO (at least 10 bits before ETWS struct) */
 	if (p1ro->nln_pch.present) {
@@ -378,7 +380,14 @@ static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets
 	}
 	bitvec_set_bit(bv, L);		/* no Priority1 */
 	bitvec_set_bit(bv, L);		/* no Priority2 */
-	bitvec_set_bit(bv, L);		/* no Group Call Info */
+	if (notif) {
+		bitvec_set_bit(bv, H);		/* Group Call Info */
+		append_group_call_information(bv, notif->group_call_ref,
+					      notif->chan_desc.present ? notif->chan_desc.value : NULL,
+					      notif->chan_desc.len);
+	} else {
+		bitvec_set_bit(bv, L);		/* no Group Call Info */
+	}
 	if (p1ro->packet_page_ind[0])
 		bitvec_set_bit(bv, H);		/* Packet Page Indication 1 */
 	else
@@ -405,7 +414,8 @@ static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets
 
 static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan1, const uint8_t *identity2_lv,
-				uint8_t chan2, const struct p1_rest_octets *p1ro)
+				uint8_t chan2, const struct p1_rest_octets *p1ro,
+				const struct asci_notification *notif)
 {
 	struct gsm48_paging1 *pt1 = (struct gsm48_paging1 *) out_buf;
 	unsigned int ro_len;
@@ -436,7 +446,7 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 			.data = cur,
 		};
 
-		append_p1_rest_octets(&bv, p1ro);
+		append_p1_rest_octets(&bv, p1ro, notif);
 	}
 
 	return GSM_MACBLOCK_LEN;
@@ -582,6 +592,7 @@ static void build_p1_rest_octets(struct p1_rest_octets *p1ro, struct gsm_bts *bt
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
 		   int *is_empty)
 {
+	const struct asci_notification *notif;
 	struct llist_head *group_q;
 	struct gsm_bts *bts = ps->bts;
 	int group;
@@ -607,12 +618,16 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 	if (ps->bts->etws.prim_notif) {
 		struct p1_rest_octets p1ro;
 		build_p1_rest_octets(&p1ro, bts);
-		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, &p1ro);
+		/* we intentioanally don't try to add notifications here, as ETWS is more critical */
+		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, &p1ro, NULL);
 	} else if (llist_empty(group_q)) {
 		/* There is nobody to be paged, send Type1 with two empty ID */
 		//DEBUGP(DPAG, "Tx PAGING TYPE 1 (empty)\n");
-		len = fill_paging_type_1(out_buf, empty_id_lv, 0,
-					 NULL, 0, NULL);
+		/* for now, we only send VGCS/VBS notfication if we have nothing else to page;
+		 * this is the safe choice.  For other situations with mobile identities in the
+		 * paging type 1, we'd need to check if there's sufficient space in the rest octets. */
+		notif = bts_asci_notification_get_next(bts);
+		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, NULL, notif);
 		*is_empty = 1;
 	} else {
 		struct paging_record *pr[4];
@@ -688,19 +703,21 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			}
 		} else if (num_pr == 1) {
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (1 xMSI,1 empty)\n");
+			/* TODO: check if we can include an ASCI notification */
 			len = fill_paging_type_1(out_buf,
 						 pr[0]->u.normal.identity_lv,
 						 pr[0]->u.normal.chan_needed,
-						 NULL, 0, NULL);
+						 NULL, 0, NULL, NULL);
 		} else {
 			/* 2 (any type) or
 			 * 3 or 4, of which only 2 will be sent */
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (2 xMSI)\n");
+			/* TODO: check if we can include an ASCI notification */
 			len = fill_paging_type_1(out_buf,
 						 pr[0]->u.normal.identity_lv,
 						 pr[0]->u.normal.chan_needed,
 						 pr[1]->u.normal.identity_lv,
-						 pr[1]->u.normal.chan_needed, NULL);
+						 pr[1]->u.normal.chan_needed, NULL, NULL);
 			if (num_pr >= 3) {
 				/* re-add #4 for next time */
 				llist_add(&pr[2]->list, group_q);

@@ -400,6 +400,8 @@ int bts_init(struct gsm_bts *bts)
 	bts->smscb_queue_tgt_len = 2;
 	bts->smscb_queue_hyst = 2;
 
+	INIT_LLIST_HEAD(&bts->asci.notifications);
+
 	INIT_LLIST_HEAD(&bts->bsc_oml_hosts);
 
 	/* register DTX DL FSM */
