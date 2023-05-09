@@ -101,12 +101,8 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload,
 	/* new L1 can deliver bits like we need them */
 	cur = msgb_put(msg, GSM_EFR_BYTES);
 	memcpy(cur, l1_payload, GSM_EFR_BYTES);
-	enum osmo_amr_type ft;
-	enum osmo_amr_quality bfi;
-	uint8_t cmr;
-	int8_t sti, cmi;
-	osmo_amr_rtp_dec(l1_payload, payload_len, &cmr, &cmi, &ft, &bfi, &sti);
-	lchan_set_marker(ft == AMR_GSM_EFR_SID, lchan);
+
+	lchan_set_marker(osmo_efr_check_sid(l1_payload, payload_len), lchan);
 
 	return msg;
 }
@@ -259,7 +255,10 @@ int l1if_tch_encode(struct gsm_lchan *lchan, uint8_t *data, uint8_t *len,
 		*payload_type = GsmL1_TchPlType_Efr;
 		rc = rtppayload_to_l1_efr(l1_payload, rtp_pl,
 					  rtp_pl_len);
-		/* FIXME: detect and save EFR SID */
+		if (rc && lchan->ts->trx->bts->dtxd)
+			is_sid = osmo_efr_check_sid(rtp_pl, rtp_pl_len);
+		if (is_sid)
+			dtx_cache_payload(lchan, rtp_pl, rtp_pl_len, fn, -1);
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
 		if (use_cache) {
