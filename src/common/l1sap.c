@@ -1623,6 +1623,23 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH.ind\n");
 	}
 
+	/* it's not quite sorted out yet whether the per-BTS model is responsible of not pushing uplink
+	 * TCH frames in situations where they're not permitted.  In any case, probably good to have a
+	 * safeguard here in the common path */
+	switch (lchan->rsl_chan_rt) {
+	case RSL_CMOD_CRT_TCH_BCAST_Bm:
+	case RSL_CMOD_CRT_TCH_BCAST_Lm:
+		/* broadcast channels have no uplink RTP, ever */
+		return 0;
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+		/* group call channels have uplink RTP only when talker is active */
+		if (lchan->asci.talker_active != VGCS_TALKER_ACTIVE)
+			return 0;
+		break;
+	default:
+		break;
+	}
 
 	/* The ph_tch_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
