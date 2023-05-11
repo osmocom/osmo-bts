@@ -790,6 +790,16 @@ int bts_supports_cm(const struct gsm_bts *bts,
 		return 1;
 	case RSL_CMOD_SPD_SPEECH:
 		break;
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VGCS))
+			return 0;
+		break;
+	case RSL_CMOD_CRT_TCH_BCAST_Bm:
+	case RSL_CMOD_CRT_TCH_BCAST_Lm:
+		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VBS))
+			return 0;
+		break;
 	case RSL_CMOD_SPD_DATA:
 	default:
 		return 0;
@@ -803,6 +813,8 @@ int bts_supports_cm(const struct gsm_bts *bts,
 			return 0;
 		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_BCAST_Bm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_F_V1;
@@ -824,6 +836,8 @@ int bts_supports_cm(const struct gsm_bts *bts,
 			return 0;
 		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Lm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+	case RSL_CMOD_CRT_TCH_BCAST_Lm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_H_V1;
