@@ -35,9 +35,10 @@ int paging_si_update(struct paging_state *ps, struct gsm48_control_channel_descr
 int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 			const uint8_t *identity_lv, uint8_t chan_needed);
 
-/* Add an IMM.ASS message to the paging queue */
-int paging_add_imm_ass(struct paging_state *ps,
-		       const uint8_t *data, uint8_t len);
+/* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
+ * PAGING COMMAND (from the PCU) */
+int paging_add_macblock(struct paging_state *ps,
+			const uint8_t *data, uint8_t len);
 
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,

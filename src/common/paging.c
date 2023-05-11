@@ -48,8 +48,8 @@
 #define MAX_BS_PA_MFRMS		9
 
 enum paging_record_type {
-	PAGING_RECORD_PAGING,
-	PAGING_RECORD_IMM_ASS
+	PAGING_RECORD_NORMAL,
+	PAGING_RECORD_MACBLOCK
 };
 
 struct paging_record {
@@ -60,10 +60,10 @@ struct paging_record {
 			time_t expiration_time;
 			uint8_t chan_needed;
 			uint8_t identity_lv[9];
-		} paging;
+		} normal;
 		struct {
 			uint8_t msg[GSM_MACBLOCK_LEN];
-		} imm_ass;
+		} macblock;
 	} u;
 };
 
@@ -88,9 +88,9 @@ struct paging_state {
 
 /* The prioritization of cs pagings is controlled by a hysteresis. When the
  * fill state of the paging queue exceeds the upper fill level
- * THRESHOLD_CONGESTED [%], then PS pagings (immediate assignments) will be
- * dropped until fill state of the paging queue drops under the lower fill
- * level THRESHOLD_CLEAR [%]. */
+ * THRESHOLD_CONGESTED [%], then PS pagings (immediate assignments and pagings
+ * from the PCU) will be dropped until fill state of the paging queue drops
+ * under the lower fill level THRESHOLD_CLEAR [%]. */
 #define THRESHOLD_CONGESTED 66 /* (percent of num_paging_max) */
 #define THRESHOLD_CLEAR 50 /* (percent of num_paging_max) */
 
@@ -230,13 +230,13 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 	/* Check if we already have this identity */
 	llist_for_each_entry(pr, group_q, list) {
-		if (pr->type != PAGING_RECORD_PAGING)
+		if (pr->type != PAGING_RECORD_NORMAL)
 			continue;
-		if (identity_lv[0] == pr->u.paging.identity_lv[0] &&
-		    !memcmp(identity_lv+1, pr->u.paging.identity_lv+1,
+		if (identity_lv[0] == pr->u.normal.identity_lv[0] &&
+		    !memcmp(identity_lv+1, pr->u.normal.identity_lv+1,
 							identity_lv[0])) {
 			LOGP(DPAG, LOGL_INFO, "Ignoring duplicate paging\n");
-			pr->u.paging.expiration_time =
+			pr->u.normal.expiration_time =
 					time(NULL) + ps->paging_lifetime;
 			return -EEXIST;
 		}
@@ -245,9 +245,9 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	pr = talloc_zero(ps, struct paging_record);
 	if (!pr)
 		return -ENOMEM;
-	pr->type = PAGING_RECORD_PAGING;
+	pr->type = PAGING_RECORD_NORMAL;
 
-	if (*identity_lv + 1 > sizeof(pr->u.paging.identity_lv)) {
+	if (*identity_lv + 1 > sizeof(pr->u.normal.identity_lv)) {
 		talloc_free(pr);
 		return -E2BIG;
 	}
@@ -255,9 +255,9 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	LOGP(DPAG, LOGL_INFO, "Add paging to queue (group=%u, queue_len=%u)\n",
 		paging_group, ps->num_paging+1);
 
-	pr->u.paging.expiration_time = time(NULL) + ps->paging_lifetime;
-	pr->u.paging.chan_needed = chan_needed;
-	memcpy(&pr->u.paging.identity_lv, identity_lv, identity_lv[0]+1);
+	pr->u.normal.expiration_time = time(NULL) + ps->paging_lifetime;
+	pr->u.normal.chan_needed = chan_needed;
+	memcpy(&pr->u.normal.identity_lv, identity_lv, identity_lv[0]+1);
 
 	/* enqueue the new identity to the HEAD of the queue,
 	 * to ensure it will be paged quickly at least once.  */
@@ -267,9 +267,10 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	return 0;
 }
 
-/* Add an IMM.ASS message to the paging queue */
-int paging_add_imm_ass(struct paging_state *ps,
-		       const uint8_t *data, uint8_t len)
+/* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
+ * PAGING COMMAND (from the PCU) */
+int paging_add_macblock(struct paging_state *ps,
+			const uint8_t *data, uint8_t len)
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
@@ -285,7 +286,7 @@ int paging_add_imm_ass(struct paging_state *ps,
 	}
 
 	if (len != GSM_MACBLOCK_LEN + 3) {
-		LOGP(DPAG, LOGL_ERROR, "IMM.ASS invalid length %d\n", len);
+		LOGP(DPAG, LOGL_ERROR, "MAC block with invalid length %d (GSM_MACBLOCK_LEN + 3)\n", len);
 		return -EINVAL;
 	}
 	len -= 3;
@@ -300,11 +301,11 @@ int paging_add_imm_ass(struct paging_state *ps,
 	pr = talloc_zero(ps, struct paging_record);
 	if (!pr)
 		return -ENOMEM;
-	pr->type = PAGING_RECORD_IMM_ASS;
+	pr->type = PAGING_RECORD_MACBLOCK;
 
-	LOGP(DPAG, LOGL_INFO, "Add IMM.ASS to queue (group=%u)\n",
+	LOGP(DPAG, LOGL_INFO, "Add MAC block to paging queue (group=%u)\n",
 		paging_group);
-	memcpy(pr->u.imm_ass.msg, data, GSM_MACBLOCK_LEN);
+	memcpy(pr->u.macblock.msg, data, GSM_MACBLOCK_LEN);
 
 	/* enqueue the new message to the HEAD of the queue */
 	llist_add(&pr->list, group_q);
@@ -509,7 +510,7 @@ static struct paging_record *dequeue_pr(struct llist_head *group_q)
 
 static int pr_is_imsi(struct paging_record *pr)
 {
-	if ((pr->u.paging.identity_lv[1] & 7) == GSM_MI_TYPE_IMSI)
+	if ((pr->u.normal.identity_lv[1] & 7) == GSM_MI_TYPE_IMSI)
 		return 1;
 	else
 		return 0;
@@ -599,7 +600,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		*is_empty = 1;
 	} else {
 		struct paging_record *pr[4];
-		unsigned int num_pr = 0, imm_ass = 0;
+		unsigned int num_pr = 0, macblock = 0;
 		time_t now = time(NULL);
 		unsigned int i, num_imsi = 0;
 
@@ -611,9 +612,9 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 				break;
 			pr[i] = dequeue_pr(group_q);
 
-			/* check for IMM.ASS */
-			if (pr[i]->type == PAGING_RECORD_IMM_ASS) {
-				imm_ass = 1;
+			/* check for MAC block */
+			if (pr[i]->type == PAGING_RECORD_MACBLOCK) {
+				macblock = 1;
 				break;
 			}
 
@@ -624,16 +625,16 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 				num_imsi++;
 		}
 
-		/* if we have an IMMEDIATE ASSIGNMENT */
-		if (imm_ass) {
-			/* re-add paging records */
+		/* if we have a MAC block (from the PCU), we send a conformation back */
+		if (macblock) {
+			/* re-add normal paging records */
 			for (i = 0; i < num_pr; i++)
 				llist_add(&pr[i]->list, group_q);
 
-			/* get message and free record */
-			memcpy(out_buf, pr[num_pr]->u.imm_ass.msg,
+			/* get MAC block message and free record */
+			memcpy(out_buf, pr[num_pr]->u.macblock.msg,
 							GSM_MACBLOCK_LEN);
-			pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.imm_ass.msg,
+			pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.macblock.msg,
 							GSM_MACBLOCK_LEN);
 			talloc_free(pr[num_pr]);
 			return GSM_MACBLOCK_LEN;
@@ -646,23 +647,23 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* No IMSI: easy case, can use TYPE 3 */
 			DEBUGP(DPAG, "Tx PAGING TYPE 3 (4 TMSI)\n");
 			len = fill_paging_type_3(out_buf,
-						 pr[0]->u.paging.identity_lv,
-						 pr[0]->u.paging.chan_needed,
-						 pr[1]->u.paging.identity_lv,
-						 pr[1]->u.paging.chan_needed,
-						 pr[2]->u.paging.identity_lv,
-						 pr[2]->u.paging.chan_needed,
-						 pr[3]->u.paging.identity_lv,
-						 pr[3]->u.paging.chan_needed);
+						 pr[0]->u.normal.identity_lv,
+						 pr[0]->u.normal.chan_needed,
+						 pr[1]->u.normal.identity_lv,
+						 pr[1]->u.normal.chan_needed,
+						 pr[2]->u.normal.identity_lv,
+						 pr[2]->u.normal.chan_needed,
+						 pr[3]->u.normal.identity_lv,
+						 pr[3]->u.normal.chan_needed);
 		} else if (num_pr >= 3 && num_imsi <= 1) {
 			/* 3 or 4, of which only up to 1 is IMSI */
 			DEBUGP(DPAG, "Tx PAGING TYPE 2 (2 TMSI,1 xMSI)\n");
 			len = fill_paging_type_2(out_buf,
-						 pr[0]->u.paging.identity_lv,
-						 pr[0]->u.paging.chan_needed,
-						 pr[1]->u.paging.identity_lv,
-						 pr[1]->u.paging.chan_needed,
-						 pr[2]->u.paging.identity_lv);
+						 pr[0]->u.normal.identity_lv,
+						 pr[0]->u.normal.chan_needed,
+						 pr[1]->u.normal.identity_lv,
+						 pr[1]->u.normal.chan_needed,
+						 pr[2]->u.normal.identity_lv);
 			if (num_pr == 4) {
 				/* re-add #4 for next time */
 				llist_add(&pr[3]->list, group_q);
@@ -671,18 +672,18 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		} else if (num_pr == 1) {
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (1 xMSI,1 empty)\n");
 			len = fill_paging_type_1(out_buf,
-						 pr[0]->u.paging.identity_lv,
-						 pr[0]->u.paging.chan_needed,
+						 pr[0]->u.normal.identity_lv,
+						 pr[0]->u.normal.chan_needed,
 						 NULL, 0, NULL);
 		} else {
 			/* 2 (any type) or
 			 * 3 or 4, of which only 2 will be sent */
 			DEBUGP(DPAG, "Tx PAGING TYPE 1 (2 xMSI)\n");
 			len = fill_paging_type_1(out_buf,
-						 pr[0]->u.paging.identity_lv,
-						 pr[0]->u.paging.chan_needed,
-						 pr[1]->u.paging.identity_lv,
-						 pr[1]->u.paging.chan_needed, NULL);
+						 pr[0]->u.normal.identity_lv,
+						 pr[0]->u.normal.chan_needed,
+						 pr[1]->u.normal.identity_lv,
+						 pr[1]->u.normal.chan_needed, NULL);
 			if (num_pr >= 3) {
 				/* re-add #4 for next time */
 				llist_add(&pr[2]->list, group_q);
@@ -702,7 +703,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			rate_ctr_inc2(bts->ctrs, BTS_CTR_PAGING_SENT);
 			/* check if we can expire the paging record,
 			 * or if we need to re-queue it */
-			if (pr[i]->u.paging.expiration_time <= now) {
+			if (pr[i]->u.normal.expiration_time <= now) {
 				talloc_free(pr[i]);
 				ps->num_paging--;
 				LOGP(DPAG, LOGL_INFO, "Removed paging record, queue_len=%u\n",
