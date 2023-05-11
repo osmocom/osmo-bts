@@ -113,6 +113,7 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 
 	cm = (const struct rsl_ie_chan_mode *) TLVP_VAL(tp, RSL_IE_CHAN_MODE);
 	lchan->rsl_cmode = cm->spd_ind;
+	lchan->rsl_chan_rt = cm->chan_rt;
 	lchan->ts->trx->bts->dtxd = (cm->dtx_dtu & RSL_CMOD_DTXd) ? true : false;
 
 	/* Octet 5: Channel rate and type */
@@ -120,6 +121,10 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	case RSL_CMOD_CRT_SDCCH:
 	case RSL_CMOD_CRT_TCH_Bm:
 	case RSL_CMOD_CRT_TCH_Lm:
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+	case RSL_CMOD_CRT_TCH_BCAST_Bm:
+	case RSL_CMOD_CRT_TCH_BCAST_Lm:
 		break;
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
