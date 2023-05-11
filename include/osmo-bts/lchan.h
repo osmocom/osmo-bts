@@ -140,6 +140,8 @@ struct gsm_lchan {
 	uint8_t nr;
 	/* The logical channel type */
 	enum gsm_chan_t type;
+	/* RSL channel rate and type */
+	enum rsl_cmod_crt rsl_chan_rt;
 	/* RSL channel mode */
 	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
