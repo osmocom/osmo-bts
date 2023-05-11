@@ -125,6 +125,13 @@ static struct log_info_cat bts_log_info_cat[] = {
 		.loglevel = LOGL_NOTICE,
 		.enabled = 1,
 	},
+	[DASCI] = {
+		.name = "DASCI",
+		.description = "ASCI (Advanced Speech Call Items: VGCS/VBS)",
+		.loglevel = LOGL_NOTICE,
+		.enabled = 1,
+	},
+
 };
 
 static int osmo_bts_filter_fn(const struct log_context *ctx, struct log_target *tgt)

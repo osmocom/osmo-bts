@@ -21,6 +21,7 @@ enum {
 	DABIS,
 	DRTP,
 	DOSMUX,
+	DASCI,
 };
 
 extern const struct log_info bts_log_info;
