@@ -33,6 +33,7 @@
 #include <osmo-bts/handover.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/asci.h>
 #include <errno.h>
 
 static const struct value_string lchan_s_names[] = {
@@ -218,6 +219,7 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 
 	/* release handover state */
 	handover_reset(lchan);
+	vgcs_talker_reset(lchan);
 
 	lchan->rel_act_kind = rel_kind;
 

@@ -54,6 +54,7 @@
 #include <osmo-bts/msg_utils.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
+#include <osmo-bts/asci.h>
 
 
 #define CB_FCCH		-1
@@ -1341,6 +1342,11 @@ static void radio_link_timeout(struct gsm_lchan *lchan, bool bad_frame)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
+	/* Bypass radio link timeout on VGCS/VBS channels: There is no
+	 * uplink SACCH on these. */
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt))
+		return;
+
 	/* Bypass radio link timeout if set to -1 */
 	if (bts->radio_link_timeout.current < 0)
 		return;
@@ -1558,6 +1564,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
 		handover_frame(lchan);
 
+	/* report first valid received frame to VGCS talker process */
+	if (lchan->asci.talker_active == VGCS_TALKER_WAIT_FRAME)
+		vgcs_talker_frame(lchan);
+
 	if (L1SAP_IS_LINK_SACCH(link_id))
 		le = &lchan->lapdm_ch.lapdm_acch;
 	else
@@ -1694,17 +1704,26 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 	return true;
 }
 
-/* Special case where handover RACH is detected */
-static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
+/* Special case where RACH on DCCH uplink is detected */
+static int l1sap_dcch_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
 {
+	struct gsm_lchan *lchan;
+
 	/* Filter out noise / interference / ghosts */
 	if (!rach_pass_filter(rach_ind, trx->bts, "handover")) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
 
-	handover_rach(get_lchan_by_chan_nr(trx, rach_ind->chan_nr),
-		rach_ind->ra, rach_ind->acc_delay);
+	lchan = get_lchan_by_chan_nr(trx, rach_ind->chan_nr);
+	/* Differentiate + dispatch hand-over and VGCS RACH */
+	if (rsl_chan_rt_is_vgcs(lchan->rsl_chan_rt)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_VGCS);
+		vgcs_rach(lchan, rach_ind->ra, rach_ind->acc_delay, rach_ind->fn);
+	} else {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
+		handover_rach(lchan, rach_ind->ra, rach_ind->acc_delay);
+	}
 
 	/* must return 0, so in case of msg at l1sap, it will be freed */
 	return 0;
@@ -1755,8 +1774,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		/* TODO: do we need to count Access Bursts on PDCH? */
 		return l1sap_pdch_rach(trx, rach_ind);
 	default:
-		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
-		return l1sap_handover_rach(trx, rach_ind);
+		return l1sap_dcch_rach(trx, rach_ind);
 	}
 
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);

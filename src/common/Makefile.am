@@ -40,6 +40,7 @@ libbts_a_SOURCES = \
 	paging.c \
 	measurement.c \
 	amr.c \
+	asci.c \
 	lchan.c \
 	load_indication.c \
 	pcu_sock.c \

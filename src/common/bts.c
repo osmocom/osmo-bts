@@ -94,6 +94,7 @@ static const struct rate_ctr_desc bts_ctr_desc[] = {
 	[BTS_CTR_RACH_RCVD] =		{"rach:rcvd", "Received RACH requests (Um)"},
 	[BTS_CTR_RACH_DROP] =		{"rach:drop", "Dropped RACH requests (Um)"},
 	[BTS_CTR_RACH_HO] =		{"rach:handover", "Received RACH requests (Handover)"},
+	[BTS_CTR_RACH_VGCS] =		{"rach:vgcs", "Received RACH requests (VGCS)"},
 	[BTS_CTR_RACH_CS] =		{"rach:cs", "Received RACH requests (CS/Abis)"},
 	[BTS_CTR_RACH_PS] =		{"rach:ps", "Received RACH requests (PS/PCU)"},
 
@@ -342,7 +343,9 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_jitter_buf_ms = 100;
 	bts->max_ta = 63;
 	bts->ny1 = 4;
+	bts->ny2 = 4;
 	bts->t3105_ms = 300;
+	bts->t3115_ms = 300;
 	bts->min_qual_rach = MIN_QUAL_RACH;
 	bts->min_qual_norm = MIN_QUAL_NORM;
 	bts->max_ber10k_rach = 1707; /* 7 of 41 bits is Eb/N0 of 0 dB = 0.1707 */

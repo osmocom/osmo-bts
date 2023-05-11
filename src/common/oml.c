@@ -729,11 +729,16 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 			return oml_fom_ack_nack(msg, NM_NACK_PARAM_RANGE);
 		}
 		bts->t3105_ms = t3105 * 10;
+		/* there are no OML IEs for T3115; let's use T3105 as HO detection is a similar procedure */
+		bts->t3115_ms = bts->t3105_ms;
 	}
 
 	/* 9.4.37 NY1 */
-	if (TLVP_PRES_LEN(&tp, NM_ATT_NY1, 1))
+	if (TLVP_PRES_LEN(&tp, NM_ATT_NY1, 1)) {
 		bts->ny1 = *TLVP_VAL(&tp, NM_ATT_NY1);
+		/* there are no OML IEs for NY2; let's use NY1 as HO detection is a similar procedure */
+		bts->ny2 = bts->ny1;
+	}
 
 	/* 9.4.8 BCCH ARFCN */
 	if (TLVP_PRES_LEN(&tp, NM_ATT_BCCH_ARFCN, 2))

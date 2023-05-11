@@ -64,6 +64,31 @@
 #define BS_POWER2DB(bs_power) \
 	((bs_power & 0x0f) * 2)
 
+bool rsl_chan_rt_is_asci(enum rsl_cmod_crt chan_rt)
+{
+	switch (chan_rt) {
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+	case RSL_CMOD_CRT_TCH_BCAST_Bm:
+	case RSL_CMOD_CRT_TCH_BCAST_Lm:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool rsl_chan_rt_is_vgcs(enum rsl_cmod_crt chan_rt)
+{
+	switch (chan_rt) {
+	case RSL_CMOD_CRT_TCH_GROUP_Bm:
+	case RSL_CMOD_CRT_TCH_GROUP_Lm:
+		return true;
+	default:
+		return false;
+	}
+}
+
+
 static int rsl_tx_error_report(struct gsm_bts_trx *trx, uint8_t cause, const uint8_t *chan_nr,
 				const uint8_t *link_id, const struct msgb *orig_msg);
 
@@ -1409,26 +1434,48 @@ static int rsl_tx_chan_act_ack(struct gsm_lchan *lchan)
 	return abis_bts_rsl_sendmsg(msg);
 }
 
-/* 8.4.7 sending HANDOver DETection */
-int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
+/* common helper function for *_DETECT */
+static int _rsl_tx_detect(struct gsm_lchan *lchan, uint8_t msg_type, uint8_t *acc_delay)
 {
 	struct msgb *msg;
 	uint8_t chan_nr = gsm_lchan2chan_nr_rsl(lchan);
-
-	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Sending HANDOver DETect\n");
 
 	msg = rsl_msgb_alloc(sizeof(struct abis_rsl_dchan_hdr));
 	if (!msg)
 		return -ENOMEM;
 
 	/* 9.3.17 Access Delay */
-	if (ho_delay)
-		msgb_tv_put(msg, RSL_IE_ACCESS_DELAY, *ho_delay);
+	if (acc_delay)
+		msgb_tv_put(msg, RSL_IE_ACCESS_DELAY, *acc_delay);
 
-	rsl_dch_push_hdr(msg, RSL_MT_HANDO_DET, chan_nr);
+	rsl_dch_push_hdr(msg, msg_type, chan_nr);
 	msg->trx = lchan->ts->trx;
 
 	return abis_bts_rsl_sendmsg(msg);
+}
+
+/* 8.4.7 sending HANDOver DETection */
+int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay)
+{
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Sending HANDOver DETect\n");
+
+	return _rsl_tx_detect(lchan, RSL_MT_HANDO_DET, ho_delay);
+}
+
+/* 8.4.22 sending LISTENER DETection */
+int rsl_tx_listener_det(struct gsm_lchan *lchan, uint8_t *acc_delay)
+{
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Sending LISTENER DETect\n");
+
+	return _rsl_tx_detect(lchan, RSL_MT_LISTENER_DET, acc_delay);
+}
+
+/* 8.4.21 sending TALKER DETection */
+int rsl_tx_talker_det(struct gsm_lchan *lchan, uint8_t *acc_delay)
+{
+	LOGPLCHAN(lchan, DRSL, LOGL_INFO, "Sending TALKER DETect\n");
+
+	return _rsl_tx_detect(lchan, RSL_MT_TALKER_DET, acc_delay);
 }
 
 /* 8.4.3 sending CHANnel ACTIVation Negative ACK */
