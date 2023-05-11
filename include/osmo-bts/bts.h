@@ -25,6 +25,7 @@ enum {
 	BTS_CTR_RACH_RCVD,
 	BTS_CTR_RACH_DROP,
 	BTS_CTR_RACH_HO,
+	BTS_CTR_RACH_VGCS,
 	BTS_CTR_RACH_CS,
 	BTS_CTR_RACH_PS,
 	BTS_CTR_AGCH_RCVD,
@@ -239,6 +240,7 @@ struct gsm_bts {
 	} interference;
 	unsigned int t200_ms[7];
 	unsigned int t3105_ms;
+	unsigned int t3115_ms;	/* VGCS UPLINK GRANT repeat timer */
 	struct {
 		uint8_t overload_period;
 		struct {
@@ -261,6 +263,7 @@ struct gsm_bts {
 		} rach;
 	} load;
 	uint8_t ny1;
+	uint8_t ny2;	/* maximum number of repetitions for the VGCS UPLINK GRANT */
 	uint8_t max_ta;
 
 	/* AGCH queuing */

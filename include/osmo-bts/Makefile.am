@@ -1,6 +1,7 @@
 noinst_HEADERS = \
 	abis.h \
 	abis_osmo.h \
+	asci.h \
 	bts.h \
 	bts_model.h \
 	bts_shutdown_fsm.h \

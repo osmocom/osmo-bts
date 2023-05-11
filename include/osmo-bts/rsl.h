@@ -4,6 +4,9 @@
 #define LCHAN_FN_DUMMY 0xFFFFFFFF
 #define LCHAN_FN_WAIT 0xFFFFFFFE
 
+bool rsl_chan_rt_is_asci(enum rsl_cmod_crt chan_rt);
+bool rsl_chan_rt_is_vgcs(enum rsl_cmod_crt chan_rt);
+
 int down_rsl(struct gsm_bts_trx *trx, struct msgb *msg);
 int rsl_tx_rf_res(struct gsm_bts_trx *trx);
 int rsl_tx_chan_rqd(struct gsm_bts_trx *trx, struct gsm_time *gtime,
@@ -14,6 +17,8 @@ int rsl_tx_chan_act_acknack(struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_conn_fail(const struct gsm_lchan *lchan, uint8_t cause);
 int rsl_tx_rf_rel_ack(struct gsm_lchan *lchan);
 int rsl_tx_hando_det(struct gsm_lchan *lchan, uint8_t *ho_delay);
+int rsl_tx_listener_det(struct gsm_lchan *lchan, uint8_t *acc_delay);
+int rsl_tx_talker_det(struct gsm_lchan *lchan, uint8_t *acc_delay);
 
 /* call-back for LAPDm code, called when it wants to send msgs UP */
 int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx);

@@ -141,6 +141,8 @@ int add_l1sap_header(struct gsm_bts_trx *trx, struct msgb *rmsg,
 
 #define msgb_l1sap_prim(msg) ((struct osmo_phsap_prim *)(msg)->l1h)
 
+void radio_link_timeout_reset(struct gsm_lchan *lchan);
+
 int bts_check_for_first_ciphrd(struct gsm_lchan *lchan,
 				uint8_t *data, int len);
 

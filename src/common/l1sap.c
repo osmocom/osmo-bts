@@ -57,6 +57,7 @@
 #include <osmo-bts/rtp_input_preen.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
+#include <osmo-bts/asci.h>
 
 /* determine the CCCH block number based on the frame number */
 unsigned int l1sap_fn2ccch_block(uint32_t fn)
@@ -676,6 +677,10 @@ static void process_l1sap_meas_data(struct gsm_lchan *lchan,
 	const struct ph_tch_param *ph_tch_ind;
 	uint32_t fn;
 	const char *ind_name;
+
+	/* Do not process measurement reports from non-active VGCS calls. */
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt) && lchan->asci.talker_active != VGCS_TALKER_ACTIVE)
+		return;
 
 	switch (ind_type) {
 	case PRIM_MPH_INFO:
@@ -1540,12 +1545,25 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	return 0;
 }
 
+/* Reset link timeout to current value. */
+void radio_link_timeout_reset(struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+
+	lchan->s = bts->radio_link_timeout.current;
+}
+
 /* process radio link timeout counter S. Follows TS 05.08 Section 5.2
  * "MS Procedure" as the "BSS Procedure [...] shall be determined by the
  * network operator." */
 static void radio_link_timeout(struct gsm_lchan *lchan, bool bad_frame)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
+
+	/* Bypass radio link timeout on VGCS/VBS channels: There is no
+	 * uplink SACCH on these when talker is not active. */
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt) && lchan->asci.talker_active != VGCS_TALKER_ACTIVE)
+		return;
 
 	/* Bypass radio link timeout if set to -1 */
 	if (bts->radio_link_timeout.current < 0)
@@ -1764,6 +1782,10 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
 		handover_frame(lchan);
 
+	/* report first valid received frame to VGCS talker process */
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt) && lchan->asci.talker_active == VGCS_TALKER_WAIT_FRAME)
+		vgcs_talker_frame(lchan);
+
 	if (L1SAP_IS_LINK_SACCH(link_id))
 		le = &lchan->lapdm_ch.lapdm_acch;
 	else
@@ -1882,7 +1904,6 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH.ind\n");
 	}
 
-
 	/* The ph_tch_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for
 	 * processing */
@@ -1958,17 +1979,26 @@ static bool rach_pass_filter(struct ph_rach_ind_param *rach_ind, struct gsm_bts 
 	return true;
 }
 
-/* Special case where handover RACH is detected */
-static int l1sap_handover_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
+/* Special case where RACH on DCCH uplink is detected */
+static int l1sap_dcch_rach(struct gsm_bts_trx *trx, struct ph_rach_ind_param *rach_ind)
 {
+	struct gsm_lchan *lchan;
+
 	/* Filter out noise / interference / ghosts */
-	if (!rach_pass_filter(rach_ind, trx->bts, "handover")) {
+	if (!rach_pass_filter(rach_ind, trx->bts, "DCCH")) {
 		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_DROP);
 		return 0;
 	}
 
-	handover_rach(get_lchan_by_chan_nr(trx, rach_ind->chan_nr),
-		rach_ind->ra, rach_ind->acc_delay);
+	lchan = get_lchan_by_chan_nr(trx, rach_ind->chan_nr);
+	/* Differentiate + dispatch hand-over and VGCS RACH */
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt)) {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_VGCS);
+		vgcs_rach(lchan, rach_ind->ra, rach_ind->acc_delay, rach_ind->fn);
+	} else {
+		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
+		handover_rach(lchan, rach_ind->ra, rach_ind->acc_delay);
+	}
 
 	/* must return 0, so in case of msg at l1sap, it will be freed */
 	return 0;
@@ -2019,8 +2049,7 @@ static int l1sap_ph_rach_ind(struct gsm_bts_trx *trx,
 		/* TODO: do we need to count Access Bursts on PDCH? */
 		return l1sap_pdch_rach(trx, rach_ind);
 	default:
-		rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_HO);
-		return l1sap_handover_rach(trx, rach_ind);
+		return l1sap_dcch_rach(trx, rach_ind);
 	}
 
 	rate_ctr_inc2(trx->bts->ctrs, BTS_CTR_RACH_RCVD);
@@ -2238,7 +2267,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Activating channel %s\n", rsl_chan_nr_str(chan_nr));
 
-	lchan->s = trx->bts->radio_link_timeout.current;
+	radio_link_timeout_reset(lchan);
 
 	rc = l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 	if (rc)

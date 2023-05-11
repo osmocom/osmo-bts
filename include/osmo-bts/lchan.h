@@ -303,6 +303,16 @@ struct gsm_lchan {
 		/* counts up to Ny1 */
 		unsigned int phys_info_count;
 	} ho;
+	struct {
+		bool listener_detected;
+		uint8_t talker_active;
+		uint8_t ref;
+		uint32_t fn;
+		/* T3115: VGCS UPLINK GRANT retransmission */
+		struct osmo_timer_list t3115;
+		/* counts up to Ny2 */
+		unsigned int vgcs_ul_grant_count;
+	} asci;
 	/* S counter for link loss */
 	int s;
 	/* Kind of the release/activation. E.g. RSL or PCU */
