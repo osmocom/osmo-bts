@@ -42,7 +42,7 @@
 int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
-	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
 	uint32_t first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	struct l1sched_meas_set meas_avg;
@@ -62,7 +62,7 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* clear burst */
 	if (bi->bid == 0) {
-		memset(*bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
+		memset(bursts_p, 0, GSM0503_EGPRS_BURSTS_NBITS);
 		*mask = 0x0;
 	}
 
@@ -75,20 +75,20 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* copy burst to buffer of 4 bursts */
 	switch (bi->burst_len) {
 	case EGPRS_BURST_LEN:
-		burst = *bursts_p + bi->bid * 348;
+		burst = bursts_p + bi->bid * 348;
 		memcpy(burst, bi->burst + 9, 174);
 		memcpy(burst + 174, bi->burst + 261, 174);
 		n_bursts_bits = GSM0503_EGPRS_BURSTS_NBITS;
 		break;
 	case GSM_BURST_LEN:
-		burst = *bursts_p + bi->bid * 116;
+		burst = bursts_p + bi->bid * 116;
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
 		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
 		break;
 	case 0:
 		/* NOPE.ind, assume GPRS? */
-		burst = *bursts_p + bi->bid * 116;
+		burst = bursts_p + bi->bid * 116;
 		memset(burst, 0, 116);
 		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
 	}
@@ -113,11 +113,11 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	 * then we incur decoding overhead of 31 bits on the Type 3 EGPRS
 	 * header, which is tolerable.
 	 */
-	rc = gsm0503_pdtch_egprs_decode(l2, *bursts_p, n_bursts_bits,
+	rc = gsm0503_pdtch_egprs_decode(l2, bursts_p, n_bursts_bits,
 				NULL, &n_errors, &n_bits_total);
 
 	if ((bi->burst_len == GSM_BURST_LEN) && (rc < 0)) {
-		rc = gsm0503_pdtch_decode(l2, *bursts_p, NULL,
+		rc = gsm0503_pdtch_decode(l2, bursts_p, NULL,
 				  &n_errors, &n_bits_total);
 	}
 
@@ -144,7 +144,7 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
-	ubit_t *burst, **bursts_p = &l1ts->chan_state[br->chan].dl_bursts;
+	ubit_t *burst, *bursts_p = l1ts->chan_state[br->chan].dl_bursts;
 	enum trx_mod_type *mod = &l1ts->chan_state[br->chan].dl_mod_type;
 	int rc = 0;
 
@@ -166,9 +166,9 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* BURST BYPASS */
 
 	/* encode bursts */
-	rc = gsm0503_pdtch_egprs_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
+	rc = gsm0503_pdtch_egprs_encode(bursts_p, msg->l2h, msg->tail - msg->l2h);
 	if (rc < 0)
-		rc = gsm0503_pdtch_encode(*bursts_p, msg->l2h, msg->tail - msg->l2h);
+		rc = gsm0503_pdtch_encode(bursts_p, msg->l2h, msg->tail - msg->l2h);
 
 	/* check validity of message */
 	if (rc < 0) {
@@ -189,7 +189,7 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 send_burst:
 	/* compose burst */
 	if (*mod == TRX_MOD_T_8PSK) {
-		burst = *bursts_p + br->bid * 348;
+		burst = bursts_p + br->bid * 348;
 		memset(br->burst, 1, 9);
 		memcpy(br->burst + 9, burst, 174);
 		memcpy(br->burst + 183, TRX_8PSK_NB_TSC(br), 78);
@@ -198,7 +198,7 @@ send_burst:
 
 		br->burst_len = EGPRS_BURST_LEN;
 	} else {
-		burst = *bursts_p + br->bid * 116;
+		burst = bursts_p + br->bid * 116;
 		memcpy(br->burst + 3, burst, 58);
 		memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 		memcpy(br->burst + 87, burst + 58, 58);

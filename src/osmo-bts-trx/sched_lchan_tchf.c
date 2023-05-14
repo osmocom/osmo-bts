@@ -75,7 +75,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	struct gsm_lchan *lchan = chan_state->lchan;
-	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -101,8 +101,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* shift the buffer by 4 bursts leftwards */
 	if (bi->bid == 0) {
-		memcpy(*bursts_p, *bursts_p + 464, 464);
-		memset(*bursts_p + 464, 0, 464);
+		memcpy(bursts_p, bursts_p + 464, 464);
+		memset(bursts_p + 464, 0, 464);
 		*mask = *mask << 4;
 	}
 
@@ -113,7 +113,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	trx_sched_meas_push(chan_state, bi);
 
 	/* copy burst to end of buffer of 8 bursts */
-	burst = *bursts_p + bi->bid * 116 + 464;
+	burst = bursts_p + bi->bid * 116 + 464;
 	if (bi->burst_len > 0) {
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
@@ -137,12 +137,12 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	switch (tch_mode) {
 	case GSM48_CMODE_SIGN:
 	case GSM48_CMODE_SPEECH_V1: /* FR */
-		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 0, &n_errors, &n_bits_total);
+		rc = gsm0503_tch_fr_decode(tch_data, bursts_p, 1, 0, &n_errors, &n_bits_total);
 		if (rc == GSM_FR_BYTES) /* only for valid *speech* frames */
 			lchan_set_marker(osmo_fr_is_any_sid(tch_data), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
-		rc = gsm0503_tch_fr_decode(tch_data, *bursts_p, 1, 1, &n_errors, &n_bits_total);
+		rc = gsm0503_tch_fr_decode(tch_data, bursts_p, 1, 1, &n_errors, &n_bits_total);
 		if (rc == GSM_EFR_BYTES) /* only for valid *speech* frames */
 			lchan_set_marker(osmo_efr_is_any_sid(tch_data), lchan); /* DTXu */
 		break;
@@ -168,7 +168,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * we receive an FACCH frame instead of a voice frame (we
 		 * do not know this before we actually decode the frame) */
 		amr = sizeof(struct amr_hdr);
-		rc = gsm0503_tch_afs_decode_dtx(tch_data + amr, *bursts_p,
+		rc = gsm0503_tch_afs_decode_dtx(tch_data + amr, bursts_p,
 			amr_is_cmr, chan_state->codec, chan_state->codecs, &chan_state->ul_ft,
 			&chan_state->ul_cmr, &n_errors, &n_bits_total, &chan_state->amr_last_dtx);
 
@@ -449,7 +449,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t tch_mode = chan_state->tch_mode;
-	ubit_t *burst, **bursts_p = &chan_state->dl_bursts;
+	ubit_t *burst, *bursts_p = chan_state->dl_bursts;
 	struct msgb *msg;
 
 	/* send burst, if we already got a frame */
@@ -459,8 +459,8 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* BURST BYPASS */
 
 	 /* shift buffer by 4 bursts for interleaving */
-	memcpy(*bursts_p, *bursts_p + 464, 464);
-	memset(*bursts_p + 464, 0, 464);
+	memcpy(bursts_p, bursts_p + 464, 464);
+	memset(bursts_p + 464, 0, 464);
 
 	/* dequeue a message to be transmitted */
 	msg = tch_dl_dequeue(l1ts, br);
@@ -474,27 +474,27 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		};
 
 		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "No TCH or FACCH prim for transmit.\n");
-		gsm0503_tch_fr_encode(*bursts_p, dummy, sizeof(dummy), 1);
+		gsm0503_tch_fr_encode(bursts_p, dummy, sizeof(dummy), 1);
 		chan_state->dl_facch_bursts = 8;
 		goto send_burst;
 	}
 
 	/* populate the buffer with bursts */
 	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
-		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
+		gsm0503_tch_fr_encode(bursts_p, msg->l2h, msgb_l2len(msg), 1);
 		chan_state->dl_facch_bursts = 8;
 	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
-		gsm0503_tch_afs_encode(*bursts_p, msg->l2h + sizeof(struct amr_hdr),
+		gsm0503_tch_afs_encode(bursts_p, msg->l2h + sizeof(struct amr_hdr),
 			msgb_l2len(msg) - sizeof(struct amr_hdr),
 			!sched_tchf_dl_amr_cmi_map[br->fn % 26],
 			chan_state->codec, chan_state->codecs,
 			chan_state->dl_ft,
 			chan_state->dl_cmr);
 	} else {
-		gsm0503_tch_fr_encode(*bursts_p, msg->l2h, msgb_l2len(msg), 1);
+		gsm0503_tch_fr_encode(bursts_p, msg->l2h, msgb_l2len(msg), 1);
 	}
 
 	/* free message */
@@ -502,7 +502,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 send_burst:
 	/* compose burst */
-	burst = *bursts_p + br->bid * 116;
+	burst = bursts_p + br->bid * 116;
 	memcpy(br->burst + 3, burst, 58);
 	memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 	memcpy(br->burst + 87, burst + 58, 58);

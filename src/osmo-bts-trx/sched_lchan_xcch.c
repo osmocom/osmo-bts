@@ -50,7 +50,7 @@ static void add_sbits(sbit_t * current, const sbit_t * previous)
 int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
-	sbit_t *burst, **bursts_p = &chan_state->ul_bursts;
+	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
@@ -71,7 +71,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* clear burst & store frame number of first burst */
 	if (bi->bid == 0) {
-		memset(*bursts_p, 0, 464);
+		memset(bursts_p, 0, 464);
 		*mask = 0x0;
 		*first_fn = bi->fn;
 	}
@@ -84,7 +84,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* Copy burst to buffer of 4 bursts. If the burst indication contains
 	 * no data, ensure that the buffer does not stay uninitialized */
-	burst = *bursts_p + bi->bid * 116;
+	burst = bursts_p + bi->bid * 116;
 	if (bi->burst_len > 0) {
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
@@ -112,7 +112,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	*mask = 0x0;
 
 	/* decode */
-	rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
+	rc = gsm0503_xcch_decode(l2, bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
 		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received bad data (%u/%u)\n",
 			bi->fn % l1ts->mf_period, l1ts->mf_period);
@@ -123,8 +123,8 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * information from the previous SACCH block. See also:
 		 * 3GPP TS 44.006, section 11.2 */
 		if (rep_sacch) {
-			add_sbits(*bursts_p, chan_state->ul_bursts_prev);
-			rc = gsm0503_xcch_decode(l2, *bursts_p, &n_errors, &n_bits_total);
+			add_sbits(bursts_p, chan_state->ul_bursts_prev);
+			rc = gsm0503_xcch_decode(l2, bursts_p, &n_errors, &n_bits_total);
 			if (rc) {
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block also yields bad data (%u/%u)\n",
@@ -143,7 +143,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* Keep a copy to ease decoding in the next repetition pass */
 	if (rep_sacch)
-		memcpy(chan_state->ul_bursts_prev, *bursts_p, 464);
+		memcpy(chan_state->ul_bursts_prev, bursts_p, 464);
 
 	return _sched_compose_ph_data_ind(l1ts, *first_fn,
 					  bi->chan, l2, l2_len,
@@ -156,7 +156,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
-	ubit_t *burst, **bursts_p = &l1ts->chan_state[br->chan].dl_bursts;
+	ubit_t *burst, *bursts_p = l1ts->chan_state[br->chan].dl_bursts;
 
 	/* send burst, if we already got a frame */
 	if (br->bid > 0)
@@ -181,14 +181,14 @@ int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* BURST BYPASS */
 
 	/* encode bursts */
-	gsm0503_xcch_encode(*bursts_p, msg->l2h);
+	gsm0503_xcch_encode(bursts_p, msg->l2h);
 
 	/* free message */
 	msgb_free(msg);
 
 send_burst:
 	/* compose burst */
-	burst = *bursts_p + br->bid * 116;
+	burst = bursts_p + br->bid * 116;
 	memcpy(br->burst + 3, burst, 58);
 	memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 	memcpy(br->burst + 87, burst + 58, 58);
