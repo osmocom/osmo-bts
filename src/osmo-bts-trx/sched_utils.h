@@ -23,6 +23,16 @@
 
 #include <stdint.h>
 
+/* Burst Payload LENgth (short alias) */
+#define BPLEN GSM_NBITS_NB_GMSK_PAYLOAD
+
+/* Burst BUFfer capacity (in BPLEN units) */
+#define BUFMAX 24
+
+/* Burst BUFfer position macros */
+#define BUFPOS(buf, n) &buf[(n) * BPLEN]
+#define BUFTAIL8(buf) BUFPOS(buf, (BUFMAX - 8))
+
 extern void *tall_bts_ctx;
 
 /* Compute the bit error rate in 1/10000 units */

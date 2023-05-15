@@ -52,7 +52,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
 	uint32_t *first_fn = &chan_state->ul_first_fn;
-	uint8_t *mask = &chan_state->ul_mask;
+	uint32_t *mask = &chan_state->ul_mask;
 	uint8_t l2[GSM_MACBLOCK_LEN], l2_len;
 	struct l1sched_meas_set meas_avg;
 	int n_errors = 0;

@@ -638,6 +638,8 @@ void trx_sched_meas_push(struct l1sched_chan_state *chan_state,
 
 /* Measurement averaging mode sets: [MODE] = { SHIFT, NUM } */
 static const uint8_t trx_sched_meas_modeset[][2] = {
+	[SCHED_MEAS_AVG_M_S24N22] = { 24, 22 },
+	[SCHED_MEAS_AVG_M_S22N22] = { 22, 22 },
 	[SCHED_MEAS_AVG_M_S4N4] = { 4, 4 },
 	[SCHED_MEAS_AVG_M_S8N8] = { 8, 8 },
 	[SCHED_MEAS_AVG_M_S6N4] = { 6, 4 },

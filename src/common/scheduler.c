@@ -1079,9 +1079,9 @@ static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
 		chan_state->lchan = lchan;
 
 		/* Allocate memory for Rx/Tx burst buffers.  Use the maximim size
-		 * of 4 * (3 * 2 * 58) bytes, which is sufficient to store 4 8PSK
-		 * modulated bursts. */
-		const size_t buf_size = 4 * GSM_NBITS_NB_8PSK_PAYLOAD;
+		 * of 24 * (2 * 58) bytes, which is sufficient to store up to 24 GMSK
+		 * modulated bursts for CSD or up to 8 8PSK modulated bursts for EGPRS. */
+		const size_t buf_size = 24 * GSM_NBITS_NB_GMSK_PAYLOAD;
 		if (trx_chan_desc[chan].dl_fn != NULL)
 			chan_state->dl_bursts = talloc_zero_size(l1ts, buf_size);
 		if (trx_chan_desc[chan].ul_fn != NULL) {

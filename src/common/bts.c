@@ -780,22 +780,10 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 	return &bts->gsm_time;
 }
 
-bool bts_supports_cm(const struct gsm_bts *bts,
-		     const struct rsl_ie_chan_mode *cm)
+bool bts_supports_cm_speech(const struct gsm_bts *bts,
+			    const struct rsl_ie_chan_mode *cm)
 {
 	enum osmo_bts_features feature = _NUM_BTS_FEAT;
-
-	switch (cm->spd_ind) {
-	case RSL_CMOD_SPD_SIGN:
-		/* We assume that signalling support is mandatory,
-		 * there is no BTS_FEAT_* definition to check that. */
-		return true;
-	case RSL_CMOD_SPD_SPEECH:
-		break;
-	case RSL_CMOD_SPD_DATA:
-	default:
-		return false;
-	}
 
 	/* Stage 1: check support for the requested channel type */
 	switch (cm->chan_rt) {
@@ -867,6 +855,52 @@ bool bts_supports_cm(const struct gsm_bts *bts,
 		return true;
 
 	return false;
+}
+
+static bool bts_supports_cm_data(const struct gsm_bts *bts,
+				 const struct rsl_ie_chan_mode *cm)
+{
+	switch (bts->variant) {
+	case BTS_OSMO_TRX:
+		switch (cm->chan_rate) {
+		case RSL_CMOD_CSD_T_14k4:
+		case RSL_CMOD_CSD_T_9k6:
+			if (cm->chan_rt != RSL_CMOD_CRT_TCH_Bm)
+				return false; /* invalid */
+			/* fall-through */
+		case RSL_CMOD_CSD_T_4k8:
+			return true;
+		case RSL_CMOD_CSD_T_2k4:
+		case RSL_CMOD_CSD_T_1k2:
+		case RSL_CMOD_CSD_T_600:
+		case RSL_CMOD_CSD_T_1200_75:
+			/* TODO: osmo-bts-trx does not support TCH/F2.4 */
+			if (cm->chan_rt == RSL_CMOD_CRT_TCH_Bm)
+				return false;
+			return true;
+		default:
+			return false;
+		}
+	default:
+		return 0;
+	}
+}
+
+bool bts_supports_cm(const struct gsm_bts *bts,
+		     const struct rsl_ie_chan_mode *cm)
+{
+	switch (cm->spd_ind) {
+	case RSL_CMOD_SPD_SIGN:
+		/* We assume that signalling support is mandatory,
+		 * there is no BTS_FEAT_* definition to check that. */
+		return true;
+	case RSL_CMOD_SPD_SPEECH:
+		return bts_supports_cm_speech(bts, cm);
+	case RSL_CMOD_SPD_DATA:
+		return bts_supports_cm_data(bts, cm);
+	default:
+		return false;
+	}
 }
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */

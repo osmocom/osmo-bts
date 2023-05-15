@@ -94,7 +94,7 @@ struct l1sched_chan_state {
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
 	sbit_t			*ul_bursts_prev;/* previous burst buffer for RX (repeated SACCH) */
 	uint32_t		ul_first_fn;	/* fn of first burst */
-	uint8_t			ul_mask;	/* mask of received bursts */
+	uint32_t		ul_mask;	/* mask of received bursts */
 
 	/* loss detection */
 	uint32_t		last_tdma_fn;	/* last processed TDMA frame number */
@@ -132,7 +132,7 @@ struct l1sched_chan_state {
 	/* Uplink measurements */
 	struct {
 		/* Active channel measurements (simple ring buffer) */
-		struct l1sched_meas_set buf[8]; /* up to 8 entries */
+		struct l1sched_meas_set buf[24]; /* up to 24 entries */
 		unsigned int current; /* current position */
 
 		/* Interference measurements */
@@ -301,6 +301,10 @@ int trx_sched_ul_burst(struct l1sched_ts *l1ts, struct trx_ul_burst_ind *bi);
 
 /* Averaging mode for trx_sched_meas_avg() */
 enum sched_meas_avg_mode {
+	/* first 22 of last 24 bursts (for TCH/F14.4, TCH/F9.6, TCH/F4.8) */
+	SCHED_MEAS_AVG_M_S24N22,
+	/* last 22 bursts (for TCH/H4.8, TCH/H2.4) */
+	SCHED_MEAS_AVG_M_S22N22,
 	/* last 4 bursts (default for xCCH, PTCCH and PDTCH) */
 	SCHED_MEAS_AVG_M_S4N4,
 	/* last 8 bursts (default for TCH/F and FACCH/F) */

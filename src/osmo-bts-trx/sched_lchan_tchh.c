@@ -1,7 +1,7 @@
 /*
  * (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
- * Contributions by sysmocom - s.f.m.c. GmbH
+ * (C) 2020-2023 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
@@ -91,16 +91,51 @@ static const uint8_t sched_tchh_ul_facch_map[26] = {
 /* TDMA frame number of burst 'a' is used as the table index. */
 extern const uint8_t sched_tchh_dl_facch_map[26];
 
+/* 3GPP TS 45.002, table 2 in clause 7: Mapping tables for TCH/H2.4 and TCH/H4.8.
+ *
+ * +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+ * | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v |
+ * +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+ *
+ * TCH/H(0): B0(0,2,4,6,8,10,13,15,17,19,21,23,0,2,4,6,8,10,13,15,17,19)
+ * TCH/H(1): B0(1,3,5,7,9,11,14,16,18,20,22,24,1,3,5,7,9,11,14,16,18,20)
+ * TCH/H(0): B1(8,10,13,15,17,19,21,23,0,2,4,6,8,10,13,15,17,19,21,23,0,2)
+ * TCH/H(1): B1(9,11,14,16,18,20,22,24,1,3,5,7,9,11,14,16,18,20,22,24,1,3)
+ * TCH/H(0): B2(17,19,21,23,0,2,4,6,8,10,13,15,17,19,21,23,0,2,4,6,8,10)
+ * TCH/H(1): B2(18,20,22,24,1,3,5,7,9,11,14,16,18,20,22,24,1,3,5,7,9,11)
+ *
+ * TDMA frame number of burst 'v' % 26 is the table index.
+ * This mapping is valid for both TCH/H(0) and TCH/H(1). */
+static const uint8_t sched_tchh_ul_csd_map[26] = {
+	[19] = 1, /* TCH/H(0): B0(0  ... 19) */
+	[20] = 1, /* TCH/H(1): B0(1  ... 20) */
+	[2]  = 1, /* TCH/H(0): B1(8  ... 2) */
+	[3]  = 1, /* TCH/H(1): B1(9  ... 3) */
+	[10] = 1, /* TCH/H(0): B2(17 ... 10) */
+	[11] = 1, /* TCH/H(1): B2(18 ... 11) */
+};
+
+/* TDMA frame number of burst 'a' % 26 is the table index.
+ * This mapping is valid for both TCH/H(0) and TCH/H(1). */
+static const uint8_t sched_tchh_dl_csd_map[26] = {
+	[0]  = 1, /* TCH/H(0): B0(0  ... 19) */
+	[1]  = 1, /* TCH/H(1): B0(1  ... 20) */
+	[8]  = 1, /* TCH/H(0): B1(8  ... 2) */
+	[9]  = 1, /* TCH/H(1): B1(9  ... 3) */
+	[17] = 1, /* TCH/H(0): B2(17 ... 10) */
+	[18] = 1, /* TCH/H(1): B2(18 ... 11) */
+};
+
 /*! \brief a single TCH/H burst was received by the PHY, process it */
 int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	struct gsm_lchan *lchan = chan_state->lchan;
 	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
-	uint8_t *mask = &chan_state->ul_mask;
+	uint32_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
-	uint8_t tch_data[128]; /* just to be safe */
+	uint8_t tch_data[240]; /* large enough to hold 240 unpacked bits for CSD */
 	int rc = 0; /* initialize to make gcc happy */
 	int amr = 0;
 	int n_errors = 0;
@@ -123,9 +158,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* shift the buffer by 2 bursts leftwards */
 	if (bi->bid == 0) {
-		memcpy(bursts_p, bursts_p + 232, 232);
-		memcpy(bursts_p + 232, bursts_p + 464, 232);
-		memset(bursts_p + 464, 0, 232);
+		memmove(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 2), 20 * BPLEN);
+		memset(BUFPOS(bursts_p, 20), 0, 2 * BPLEN);
 		*mask = *mask << 2;
 	}
 
@@ -135,8 +169,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* store measurements */
 	trx_sched_meas_push(chan_state, bi);
 
-	/* copy burst to end of buffer of 6 bursts */
-	burst = bursts_p + bi->bid * 116 + 464;
+	/* copy burst to end of buffer of 24 bursts */
+	burst = BUFPOS(bursts_p, 20 + bi->bid);
 	if (bi->burst_len > 0) {
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
@@ -165,14 +199,16 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		goto bfi;
 	}
 
-	/* decode
-	 * also shift buffer by 4 bursts for interleaving */
+	/* TCH/H: speech and signalling frames are interleaved over 4 and 6 bursts,
+	 * respectively, while CSD frames are interleaved over 22 bursts.  Unless
+	 * we're in CSD mode, decode only the last 6 bursts to avoid introducing
+	 * additional delays. */
 	switch (tch_mode) {
 	case GSM48_CMODE_SIGN:
 		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
 		/* fall-through */
 	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
-		rc = gsm0503_tch_hr_decode2(tch_data, bursts_p,
+		rc = gsm0503_tch_hr_decode2(tch_data, BUFTAIL8(bursts_p),
 					    !sched_tchh_ul_facch_map[bi->fn % 26],
 					    &n_errors, &n_bits_total);
 		if (rc == GSM_HR_BYTES) { /* only for valid *speech* frames */
@@ -199,7 +235,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 		/* See comment in function rx_tchf_fn() */
 		amr = sizeof(struct amr_hdr);
-		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, bursts_p,
+		rc = gsm0503_tch_ahs_decode_dtx(tch_data + amr, BUFTAIL8(bursts_p),
 						!sched_tchh_ul_facch_map[bi->fn % 26],
 						!fn_is_cmi, chan_state->codec,
 						chan_state->codecs, &chan_state->ul_ft,
@@ -255,6 +291,22 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		}
 
 		break;
+	/* CSD (TCH/H4.8): 6.0 kbit/s radio interface rate */
+	case GSM48_CMODE_DATA_6k0:
+		if (!sched_tchh_ul_csd_map[bi->fn % 26])
+			return 0; /* CSD: skip decoding attempt, need 2 more bursts */
+		rc = gsm0503_tch_hr48_decode(&tch_data[0], BUFPOS(bursts_p, 0),
+					     &n_errors, &n_bits_total);
+		meas_avg_mode = SCHED_MEAS_AVG_M_S22N22;
+		break;
+	/* CSD (TCH/H2.4): 3.6 kbit/s radio interface rate */
+	case GSM48_CMODE_DATA_3k6:
+		if (!sched_tchh_ul_csd_map[bi->fn % 26])
+			return 0; /* CSD: skip decoding attempt, need 2 more bursts */
+		rc = gsm0503_tch_hr24_decode(&tch_data[0], BUFPOS(bursts_p, 0),
+					     &n_errors, &n_bits_total);
+		meas_avg_mode = SCHED_MEAS_AVG_M_S22N22;
+		break;
 	default:
 		LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
 			"TCH mode %u invalid, please fix!\n",
@@ -308,7 +360,7 @@ bfi:
 		rc = 0;
 	}
 
-	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
+	if (rsl_cmode == RSL_CMOD_SPD_SIGN)
 		return 0;
 
 	/* TCH or BFI */
@@ -345,13 +397,14 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* BURST BYPASS */
 
-	 /* shift buffer by 2 bursts for interleaving */
-	memcpy(bursts_p, bursts_p + 232, 232);
-	if (chan_state->dl_ongoing_facch) {
-		memcpy(bursts_p + 232, bursts_p + 464, 232);
-		memset(bursts_p + 464, 0, 232);
-	} else {
-		memset(bursts_p + 232, 0, 232);
+	/* shift buffer by 2 bursts for interleaving */
+	memmove(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 2), 20 * BPLEN);
+	memset(BUFPOS(bursts_p, 20), 0, 2 * BPLEN);
+
+	/* for half-rate CSD we dequeue every 4th burst */
+	if (chan_state->rsl_cmode == RSL_CMOD_SPD_DATA) {
+		if (!sched_tchh_dl_csd_map[br->fn % 26])
+			goto send_burst;
 	}
 
 	/* dequeue a message to be transmitted */
@@ -397,30 +450,45 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			goto send_burst;
 		}
 
-		gsm0503_tch_hr_encode(bursts_p, dummy, sizeof(dummy));
+		gsm0503_tch_hr_encode(BUFPOS(bursts_p, 0), dummy, sizeof(dummy));
 		chan_state->dl_ongoing_facch = 1;
 		chan_state->dl_facch_bursts = 6;
 		goto send_burst;
 	}
 
-	/* populate the buffer with bursts */
 	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN) {
-		gsm0503_tch_hr_encode(bursts_p, msg->l2h, msgb_l2len(msg));
 		chan_state->dl_ongoing_facch = 1; /* first of two TCH frames */
 		chan_state->dl_facch_bursts = 6;
-	} else if (tch_mode == GSM48_CMODE_SPEECH_AMR) {
+	}
+
+	/* populate the buffer with bursts */
+	switch (tch_mode) {
+	case GSM48_CMODE_SIGN:
+	case GSM48_CMODE_SPEECH_V1:
+		gsm0503_tch_hr_encode(BUFPOS(bursts_p, 0), msg->l2h, msgb_l2len(msg));
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
-		gsm0503_tch_ahs_encode(bursts_p,
+		gsm0503_tch_ahs_encode(BUFPOS(bursts_p, 0),
 				       msgb_l2(msg), msgb_l2len(msg),
 				       !sched_tchh_dl_amr_cmi_map[br->fn % 26],
 				       chan_state->codec,
 				       chan_state->codecs,
 				       chan_state->dl_ft,
 				       chan_state->dl_cmr);
-	} else {
-		gsm0503_tch_hr_encode(bursts_p, msg->l2h, msgb_l2len(msg));
+		break;
+	/* CSD (TCH/H4.8): 6.0 kbit/s radio interface rate */
+	case GSM48_CMODE_DATA_6k0:
+		gsm0503_tch_hr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		break;
+	/* CSD (TCH/H2.4): 3.6 kbit/s radio interface rate */
+	case GSM48_CMODE_DATA_3k6:
+		gsm0503_tch_hr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		break;
+	default:
+		OSMO_ASSERT(0);
 	}
 
 	/* free message */
@@ -428,7 +496,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 send_burst:
 	/* compose burst */
-	burst = bursts_p + br->bid * 116;
+	burst = BUFPOS(bursts_p, br->bid);
 	memcpy(br->burst + 3, burst, 58);
 	memcpy(br->burst + 61, TRX_GMSK_NB_TSC(br), 26);
 	memcpy(br->burst + 87, burst + 58, 58);
