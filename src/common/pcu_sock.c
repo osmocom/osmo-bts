@@ -676,6 +676,9 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 
 	switch (data_req->sapi) {
 	case PCU_IF_SAPI_PCH:
+	{
+		const struct gsm48_imm_ass *gsm48_imm_ass;
+		bool confirm;
 		OSMO_STRLCPY_ARRAY(imsi, (char *)data_req->data);
 		if (data_req->len-3 != GSM_MACBLOCK_LEN) {
 			LOGP(DPCU, LOGL_ERROR, "MAC block with invalid length %d (expecting GSM_MACBLOCK_LEN = %d)\n",
@@ -683,8 +686,11 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 			rc = -ENOMEM;
 			break;
 		}
-		paging_add_macblock(bts->paging_state, imsi, data_req->data + 3);
+		gsm48_imm_ass = (struct gsm48_imm_ass *)(data_req->data + 3);
+		confirm = (gsm48_imm_ass->msg_type == GSM48_MT_RR_IMM_ASS);
+		paging_add_macblock(bts->paging_state, imsi, confirm, data_req->data + 3);
 		break;
+	}
 	case PCU_IF_SAPI_AGCH:
 		msg = msgb_alloc(data_req->len, "pcu_agch");
 		if (!msg) {

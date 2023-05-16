@@ -63,6 +63,7 @@ struct paging_record {
 		} normal;
 		struct {
 			uint8_t msg[GSM_MACBLOCK_LEN];
+			bool confirm;
 		} macblock;
 	} u;
 };
@@ -269,7 +270,7 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
-int paging_add_macblock(struct paging_state *ps, const char *imsi, const uint8_t *macblock)
+int paging_add_macblock(struct paging_state *ps, const char *imsi, bool confirm, const uint8_t *macblock)
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
@@ -306,6 +307,7 @@ int paging_add_macblock(struct paging_state *ps, const char *imsi, const uint8_t
 	LOGP(DPAG, LOGL_INFO, "Add MAC block to paging queue (group=%u)\n",
 		paging_group);
 	memcpy(pr->u.macblock.msg, macblock, GSM_MACBLOCK_LEN);
+	pr->u.macblock.confirm = confirm;
 
 	/* enqueue the new message to the HEAD of the queue */
 	llist_add(&pr->list, group_q);
@@ -634,8 +636,10 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 			/* get MAC block message and free record */
 			memcpy(out_buf, pr[num_pr]->u.macblock.msg,
 							GSM_MACBLOCK_LEN);
-			pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.macblock.msg,
-							GSM_MACBLOCK_LEN);
+			if (pr[num_pr]->u.macblock.confirm) {
+				pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.macblock.msg,
+						    GSM_MACBLOCK_LEN);
+			}
 			talloc_free(pr[num_pr]);
 			return GSM_MACBLOCK_LEN;
 		}
