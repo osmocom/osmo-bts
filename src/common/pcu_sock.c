@@ -667,6 +667,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_bts_trx_ts *ts;
 	struct msgb *msg;
 	int rc = 0;
+	char imsi[4];
 
 	LOGP(DPCU, LOGL_DEBUG, "Data request received: sapi=%s arfcn=%d "
 		"block=%d data=%s\n", sapi_string[data_req->sapi],
@@ -675,7 +676,14 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 
 	switch (data_req->sapi) {
 	case PCU_IF_SAPI_PCH:
-		paging_add_macblock(bts->paging_state, data_req->data, data_req->len);
+		OSMO_STRLCPY_ARRAY(imsi, (char *)data_req->data);
+		if (data_req->len-3 != GSM_MACBLOCK_LEN) {
+			LOGP(DPCU, LOGL_ERROR, "MAC block with invalid length %d (expecting GSM_MACBLOCK_LEN = %d)\n",
+			     data_req->len-3, GSM_MACBLOCK_LEN);
+			rc = -ENOMEM;
+			break;
+		}
+		paging_add_macblock(bts->paging_state, imsi, data_req->data + 3);
 		break;
 	case PCU_IF_SAPI_AGCH:
 		msg = msgb_alloc(data_req->len, "pcu_agch");

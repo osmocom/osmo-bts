@@ -269,12 +269,13 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
-int paging_add_macblock(struct paging_state *ps,
-			const uint8_t *data, uint8_t len)
+int paging_add_macblock(struct paging_state *ps, const char *imsi, const uint8_t *macblock)
 {
 	struct llist_head *group_q;
 	struct paging_record *pr;
-	uint16_t imsi, paging_group;
+	uint16_t paging_group;
+	uint16_t _imsi;
+	size_t imsi_len = strlen(imsi);
 
 	check_congestion(ps);
 
@@ -285,17 +286,16 @@ int paging_add_macblock(struct paging_state *ps,
 		return -ENOSPC;
 	}
 
-	if (len != GSM_MACBLOCK_LEN + 3) {
-		LOGP(DPAG, LOGL_ERROR, "MAC block with invalid length %d (GSM_MACBLOCK_LEN + 3)\n", len);
+	/* Tha paging group is calculated from the last three digits of the IMSI */
+	if (imsi_len < 3) {
+		LOGP(DPAG, LOGL_ERROR, "IMSI with invalid length %zu (expecting at least the last 3 digits)\n", imsi_len);
 		return -EINVAL;
 	}
-	len -= 3;
-
-	imsi = 100 * ((*(data++)) - '0');
-	imsi += 10 * ((*(data++)) - '0');
-	imsi += (*(data++)) - '0';
-	paging_group = gsm0502_calc_paging_group(&ps->chan_desc, imsi);
-
+	imsi = imsi + imsi_len - 3;
+	_imsi = 100 * ((*(imsi++)) - '0');
+	_imsi += 10 * ((*(imsi++)) - '0');
+	_imsi += (*(imsi++)) - '0';
+	paging_group = gsm0502_calc_paging_group(&ps->chan_desc, _imsi);
 	group_q = &ps->paging_queue[paging_group];
 
 	pr = talloc_zero(ps, struct paging_record);
@@ -305,7 +305,7 @@ int paging_add_macblock(struct paging_state *ps,
 
 	LOGP(DPAG, LOGL_INFO, "Add MAC block to paging queue (group=%u)\n",
 		paging_group);
-	memcpy(pr->u.macblock.msg, data, GSM_MACBLOCK_LEN);
+	memcpy(pr->u.macblock.msg, macblock, GSM_MACBLOCK_LEN);
 
 	/* enqueue the new message to the HEAD of the queue */
 	llist_add(&pr->list, group_q);
