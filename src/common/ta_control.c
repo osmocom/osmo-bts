@@ -1,7 +1,7 @@
 /* Loop control for Timing Advance */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2021 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *

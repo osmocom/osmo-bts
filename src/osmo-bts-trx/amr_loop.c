@@ -1,7 +1,7 @@
 /* AMR link adaptation loop (see 3GPP TS 45.009, section 3) */
 
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
- * (C) 2022 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2022 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *

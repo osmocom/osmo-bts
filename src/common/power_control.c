@@ -1,7 +1,7 @@
 /* MS Power Control Loop L1 */
 
 /* (C) 2014 by Holger Hans Peter Freyther
- * (C) 2020-2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2020-2021 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  * Author: Vadim Yanitskiy <vyanitskiy@sysmocom.de>
  *
  * All Rights Reserved

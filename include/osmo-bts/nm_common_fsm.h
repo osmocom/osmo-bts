@@ -1,7 +1,7 @@
 /* Header for all NM FSM. Following 3GPP TS 12.21 Figure 2/GSM 12.21:
   GSM 12.21 Objects' Operational state and availability status behaviour during initialization */
 
-/* (C) 2020 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+/* (C) 2020 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  * Author: Pau Espin Pedrol <pespin@sysmocom.de>
  *
  * All Rights Reserved

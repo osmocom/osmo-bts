@@ -3,7 +3,7 @@
 /* (C) 2013 by Andreas Eversberg <jolly@eversberg.eu>
  * (C) 2015 by Alexander Chemeris <Alexander.Chemeris@fairwaves.co>
  * (C) 2015-2017 by Harald Welte <laforge@gnumonks.org>
- * (C) 2020-2021 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * (C) 2020-2021 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *

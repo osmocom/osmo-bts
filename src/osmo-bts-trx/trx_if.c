@@ -8,7 +8,7 @@
  * Copyright (C) 2013  Andreas Eversberg <jolly@eversberg.eu>
  * Copyright (C) 2016-2017  Harald Welte <laforge@gnumonks.org>
  * Copyright (C) 2019  Vadim Yanitskiy <axilirator@gmail.com>
- * Copyright (C) 2021  sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * Copyright (C) 2021  sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *

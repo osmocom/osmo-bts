@@ -1,6 +1,6 @@
 /* NM BTS FSM */
 
-/* (C) 2020 by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+/* (C) 2020 by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  * Author: Pau Espin Pedrol <pespin@sysmocom.de>
  *
  * All Rights Reserved

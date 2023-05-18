@@ -1,6 +1,6 @@
 /*
  * (C) 2013,2014 by Holger Hans Peter Freyther
- * Contributions by sysmocom - s.m.f.c. GmbH <info@sysmocom.de>
+ * Contributions by sysmocom - s.f.m.c. GmbH <info@sysmocom.de>
  *
  * All Rights Reserved
  *
