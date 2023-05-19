@@ -333,30 +333,11 @@ bfi:
 					goto compose_l1sap;
 			}
 
-			switch (tch_mode) {
-			case GSM48_CMODE_SPEECH_V1: /* HR */
-				tch_data[0] = 0x70; /* F = 0, FT = 111 */
-				memset(tch_data + 1, 0, 14);
-				rc = 15;
-				break;
-			case GSM48_CMODE_SPEECH_AMR: /* AMR */
-				rc = osmo_amr_rtp_enc(tch_data,
-					chan_state->codec[chan_state->ul_cmr],
-					chan_state->codec[chan_state->ul_ft],
-					AMR_BAD);
-				if (rc < 2) {
-					LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
-					       "Failed to encode AMR_BAD frame (rc=%d), "
-					       "not sending BFI\n", rc);
-					return -EINVAL;
-				}
-				memset(tch_data + sizeof(struct amr_hdr), 0, rc - sizeof(struct amr_hdr));
-				break;
-			default:
-				LOGL1SB(DL1P, LOGL_ERROR, l1ts, bi,
-					"TCH mode %u invalid, please fix!\n", tch_mode);
-				return -EINVAL;
-			}
+			/* In order to signal BFI in our UL RTP output, we need
+			 * to push an empty payload to l1sap.  The upper layer
+			 * will choose the correct RTP representation of this
+			 * BFI based on model-independent vty config. */
+			rc = 0;
 		}
 	}
 
