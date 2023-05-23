@@ -181,14 +181,11 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		meas_avg_mode = SCHED_MEAS_AVG_M_S6N6;
 		/* fall-through */
 	case GSM48_CMODE_SPEECH_V1: /* HR or signalling */
-		rc = gsm0503_tch_hr_decode(tch_data, *bursts_p,
-					   !sched_tchh_ul_facch_map[bi->fn % 26],
-					   &n_errors, &n_bits_total);
-		if (rc == GSM_HR_BYTES_RTP_RFC5993) { /* only for valid *speech* frames */
-			/* gsm0503_tch_hr_decode() prepends a ToC octet (see RFC5993), skip it */
-			bool is_sid = osmo_hr_check_sid(&tch_data[1], GSM_HR_BYTES);
-			if (is_sid) /* Mark SID frames as such: F = 0, FT = 010 */
-				tch_data[0] = (0x02 << 4);
+		rc = gsm0503_tch_hr_decode2(tch_data, *bursts_p,
+					!sched_tchh_ul_facch_map[bi->fn % 26],
+					&n_errors, &n_bits_total);
+		if (rc == GSM_HR_BYTES) { /* only for valid *speech* frames */
+			bool is_sid = osmo_hr_check_sid(tch_data, GSM_HR_BYTES);
 			lchan_set_marker(is_sid, lchan); /* DTXu */
 		}
 		break;

@@ -10,4 +10,5 @@
 libosmocodec	>1.8.0		osmo_efr_check_sid() new function
 libosmogsm	>1.8.0		<osmocom/gsm/protocol/gsm_44_060.h> added
 libosmocoding	>1.8.0		gsm0503_tch_hr_encode() extended to accept
-				TS 101 318 format
+				TS 101 318 format;
+				gsm0503_tch_hr_decode2() new function
