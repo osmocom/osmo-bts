@@ -54,6 +54,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/msg_utils.h>
+#include <osmo-bts/rtp_input_preen.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
 
@@ -1216,83 +1217,23 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-static bool rtppayload_is_octet_aligned(const uint8_t *rtp_pl, uint8_t payload_len)
+/* This helper function for l1sap_tch_rts_ind() preens incoming RTP frames
+ * for FR/EFR SID: if the received frame is a valid SID per the rules of
+ * GSM 06.31/06.81 section 6.1.1, it needs to be rejuvenated by clearing
+ * all reserved bits and resetting the SID code word to error-free 95 zeros
+ * for FR or 95 ones for EFR, and if the received frame is an invalid SID
+ * per the same rules, then we need to drop it.  We return false if
+ * l1sap_tch_rts_ind() needs to drop this frame, otherwise true. */
+static bool rtppayload_sid_preen(struct gsm_lchan *lchan, struct msgb *msg)
 {
-	/*
-	 * Logic: If 1st bit padding is not zero, packet is either:
-	 * - bandwidth-efficient AMR payload.
-	 * - malformed packet.
-	 * However, Bandwidth-efficient AMR 4,75 frame last in payload(F=0, FT=0)
-	 * with 4th,5ht,6th AMR payload to 0 matches padding==0.
-	 * Furthermore, both AMR 4,75 bw-efficient and octet alignment are 14 bytes long (AMR 4,75 encodes 95b):
-	 * bw-efficient: 95b, + 4b hdr + 6b ToC = 105b, + padding = 112b = 14B.
-	 * octet-aligned: 1B hdr + 1B ToC + 95b = 111b, + padding = 112b = 14B.
-	 * We cannot use other fields to match since they are inside the AMR
-	 * payload bits which are unknown.
-	 * As a result, this function may return false positive (true) for some AMR
-	 * 4,75 AMR frames, but given the length, CMR and FT read is the same as a
-	 * consequence, the damage in here is harmless other than being unable to
-	 * decode the audio at the other side.
-	 */
-	#define AMR_PADDING1(rtp_pl) (rtp_pl[0] & 0x0f)
-	#define AMR_PADDING2(rtp_pl) (rtp_pl[1] & 0x03)
-
-	if (payload_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
-		return false;
-
-	return true;
-}
-
-static bool rtppayload_validate_fr(struct msgb *msg)
-{
-	if (msg->len != GSM_FR_BYTES)
-		return false;
-	if ((msg->data[0] & 0xF0) != 0xD0)
-		return false;
-	return osmo_fr_sid_preen(msg->data);
-}
-
-static bool rtppayload_validate_efr(struct msgb *msg)
-{
-	if (msg->len != GSM_EFR_BYTES)
-		return false;
-	if ((msg->data[0] & 0xF0) != 0xC0)
-		return false;
-	return osmo_efr_sid_preen(msg->data);
-}
-
-static bool rtppayload_is_valid(struct gsm_lchan *lchan, struct msgb *resp_msg)
-{
-	/* If rtp continuous-streaming is enabled, we shall emit RTP packets
-	 * with zero-length payloads as BFI markers. In a TrFO scenario such
-	 * RTP packets sent by call leg A will be received by call leg B,
-	 * hence we need to handle them gracefully. For the purposes of a BTS
-	 * that runs on its own TDMA timing and does not need timing ticks from
-	 * an incoming RTP stream, the correct action upon receiving such
-	 * timing-tick-only RTP packets should be the same as when receiving
-	 * no RTP packet at all. The simplest way to produce that behavior
-	 * is to treat zero-length RTP payloads as invalid. */
-	if (resp_msg->len == 0)
-		return false;
-
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
 		if (lchan->type == GSM_LCHAN_TCH_F)
-			return rtppayload_validate_fr(resp_msg);
+			return osmo_fr_sid_preen(msg->data);
 		else
-			return true;	/* FIXME: implement preening for HR1 */
+			return true;	/* FIXME: see OS#6036 */
 	case GSM48_CMODE_SPEECH_EFR:
-		return rtppayload_validate_efr(resp_msg);
-	case GSM48_CMODE_SPEECH_AMR:
-		/* Avoid forwarding bw-efficient AMR to lower layers,
-		 * most bts models don't support it. */
-		if (!rtppayload_is_octet_aligned(resp_msg->data, resp_msg->len)) {
-			LOGPLCHAN(lchan, DL1P, LOGL_NOTICE,
-				  "RTP->L1: Dropping unexpected AMR encoding (bw-efficient?) %s\n",
-				  osmo_hexdump(resp_msg->data, resp_msg->len));
-			return false;
-		}
-		return true;
+		return osmo_efr_sid_preen(msg->data);
 	default:
 		return true;
 	}
@@ -1337,7 +1278,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	if (!resp_msg) {
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "DL TCH Tx queue underrun\n");
 		resp_l1sap = &empty_l1sap;
-	} else if (!rtppayload_is_valid(lchan, resp_msg)) {
+	} else if (!rtppayload_sid_preen(lchan, resp_msg)) {
 		msgb_free(resp_msg);
 		resp_msg = NULL;
 		resp_l1sap = &empty_l1sap;
@@ -1942,6 +1883,20 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	 * RTP socket anymore */
 	if (lchan->loopback)
 		return;
+
+	/* initial preen */
+	switch (rtp_payload_input_preen(lchan, rtp_pl, rtp_pl_len)) {
+	case PL_DECISION_DROP:
+		return;
+	case PL_DECISION_ACCEPT:
+		break;
+	case PL_DECISION_STRIP_HDR_OCTET:
+		rtp_pl++;
+		rtp_pl_len--;
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
 
 	msg = l1sap_msgb_alloc(rtp_pl_len);
 	if (!msg)

@@ -12,6 +12,7 @@ noinst_HEADERS = \
 	oml.h \
 	paging.h \
 	rsl.h \
+	rtp_input_preen.h \
 	signal.h \
 	vty.h \
 	amr.h \
