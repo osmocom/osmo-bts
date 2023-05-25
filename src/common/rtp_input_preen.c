@@ -81,6 +81,22 @@ input_preen_efr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 	return PL_DECISION_ACCEPT;
 }
 
+static enum pl_input_decision
+input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
+{
+	switch (rtp_pl_len) {
+	case GSM_HR_BYTES:
+		/* RTP input matches our internal format - we are good */
+		return PL_DECISION_ACCEPT;
+	case GSM_HR_BYTES_RTP_RFC5993:
+		/* Strip ToC octet, leaving only "pure" TS 101 318 payload. */
+		return PL_DECISION_STRIP_HDR_OCTET;
+	default:
+		/* invalid payload */
+		return PL_DECISION_DROP;
+	}
+}
+
 enum pl_input_decision
 rtp_payload_input_preen(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 			unsigned rtp_pl_len)
@@ -102,7 +118,7 @@ rtp_payload_input_preen(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 		if (lchan->type == GSM_LCHAN_TCH_F)
 			return input_preen_fr(rtp_pl, rtp_pl_len);
 		else
-			return PL_DECISION_ACCEPT;	/* FIXME: next patch in the series */
+			return input_preen_hr(rtp_pl, rtp_pl_len);
 	case GSM48_CMODE_SPEECH_EFR:
 		return input_preen_efr(rtp_pl, rtp_pl_len);
 	case GSM48_CMODE_SPEECH_AMR:
