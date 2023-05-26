@@ -1,5 +1,7 @@
 [Unit]
 Description=osmo-bts for LC15 / sysmoBTS 2100
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

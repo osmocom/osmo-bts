@@ -1,5 +1,7 @@
 [Unit]
 Description=Osmocom osmo-bts for osmo-trx
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

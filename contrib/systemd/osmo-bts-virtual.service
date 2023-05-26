@@ -1,5 +1,7 @@
 [Unit]
 Description=Osmocom GSM BTS for virtual Um layer based on GSMTAP/UDP
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

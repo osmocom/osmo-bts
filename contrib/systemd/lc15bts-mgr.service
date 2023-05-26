@@ -2,6 +2,8 @@
 Description=osmo-bts manager for LC15 / sysmoBTS 2100
 After=lc15-sysdev-remap.service
 Wants=lc15-sysdev-remap.service
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

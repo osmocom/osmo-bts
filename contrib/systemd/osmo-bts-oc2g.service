@@ -1,5 +1,7 @@
 [Unit]
 Description=osmo-bts for OC-2G
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

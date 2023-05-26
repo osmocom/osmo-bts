@@ -1,5 +1,7 @@
 [Unit]
 Description=osmo-bts manager for sysmoBTS
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
