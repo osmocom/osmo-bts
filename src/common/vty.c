@@ -418,6 +418,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " rtp socket-priority %d%s", bts->rtp_priority, VTY_NEWLINE);
 	if (bts->rtp_nogaps_mode)
 		vty_out(vty, " rtp continuous-streaming%s", VTY_NEWLINE);
+	vty_out(vty, " rtp hr-format %s%s",
+		bts->emit_hr_rfc5993 ? "rfc5993" : "ts101318", VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
 		VTY_NEWLINE);
 	vty_out(vty, " paging lifetime %u%s", paging_get_lifetime(bts->paging_state),
@@ -794,6 +796,18 @@ DEFUN(cfg_bts_no_rtp_cont_stream,
 	struct gsm_bts *bts = vty->index;
 
 	bts->rtp_nogaps_mode = false;
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_rtp_hr_format,
+	   cfg_bts_rtp_hr_format_cmd,
+	   "rtp hr-format (rfc5993|ts101318)",
+	   RTP_STR "HRv1 codec output format\n" "RFC 5993\n" "TS 101 318\n",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->emit_hr_rfc5993 = !strcmp(argv[0], "rfc5993");
 	return CMD_SUCCESS;
 }
 
@@ -2686,6 +2700,7 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_rtp_priority_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_rtp_cont_stream_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_hr_format_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);

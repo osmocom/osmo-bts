@@ -1561,6 +1561,24 @@ static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
 	lchan->rtp_tx_marker = false;
 }
 
+/* a helper function for emitting HR1 UL in RFC 5993 format */
+static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
+			     struct msgb *msg)
+{
+	uint8_t toc;
+
+	OSMO_ASSERT(msg->len == GSM_HR_BYTES);
+	/* FIXME: implement proper SID classification per GSM 06.41 section
+	 * 6.1.1; see OS#6036.  Until then, detect error-free SID frames
+	 * using our existing osmo_hr_check_sid() function. */
+	if (osmo_hr_check_sid(msg->data, msg->len))
+		toc = 0x20;
+	else
+		toc = 0x00;
+	msgb_push_u8(msg, toc);
+	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+}
+
 /* TCH received from bts model */
 static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct ph_tch_param *tch_ind)
@@ -1600,7 +1618,11 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * good enough. */
 	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
 		/* hand msg to RTP code for transmission */
-		send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+		if (bts->emit_hr_rfc5993 && lchan->type == GSM_LCHAN_TCH_H &&
+		    lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
+			send_rtp_rfc5993(lchan, fn, msg);
+		else
+			send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 		/* if loopback is enabled, also queue received RTP data */
 		if (lchan->loopback) {
 			/* add new frame to queue, make sure the queue doesn't get too long */

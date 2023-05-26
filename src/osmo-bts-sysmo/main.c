@@ -82,6 +82,12 @@ int bts_model_init(struct gsm_bts *bts)
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MS_PWR_CTRL_DSP);
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_NM_RCHANNEL_DEPENDS_RCARRIER);
 
+	/* The default HR codec output format in the absence of saved
+	 * vty config needs to match what was implemented previously,
+	 * for the sake of existing deployments, i.e., to avoid
+	 * a surprise functional change upon software update. */
+	bts->emit_hr_rfc5993 = false;
+
 	return 0;
 }
 
