@@ -1164,6 +1164,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				pp_msg = lapdm_phsap_dequeue_msg_facch(lchan, le, fn);
 			else
 				pp_msg = lapdm_phsap_dequeue_msg(le);
+			lchan->tch.dtx_fr_hr_efr.dl_facch_stealing = (pp_msg != NULL);
 		}
 		if (!pp_msg) {
 			if (L1SAP_IS_LINK_SACCH(link_id)) {
@@ -1217,26 +1218,259 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-/* This helper function for l1sap_tch_rts_ind() preens incoming RTP frames
- * for FR/EFR SID: if the received frame is a valid SID per the rules of
- * GSM 06.31/06.81 section 6.1.1, it needs to be rejuvenated by clearing
- * all reserved bits and resetting the SID code word to error-free 95 zeros
- * for FR or 95 ones for EFR, and if the received frame is an invalid SID
- * per the same rules, then we need to drop it.  We return false if
- * l1sap_tch_rts_ind() needs to drop this frame, otherwise true. */
-static bool rtppayload_sid_preen(struct gsm_lchan *lchan, struct msgb *msg)
+/* The following static functions are helpers for l1sap_tch_rts_ind(),
+ * used only for FR/HR/EFR speech modes.  For these speech TCH modes,
+ * if our incoming RTP stream includes SID frames, we need to apply
+ * the following transformations to the downlink frame stream we actually
+ * transmit:
+ *
+ * - We need to cache the last received SID and retransmit it in
+ *   SACCH-aligned frame positions, or if the SACCH-aligned frame
+ *   position was stolen by FACCH, then right after that FACCH.
+ *
+ * - That cached SID needs to be aged and expired, in accord with
+ *   TS 28.062 section C.3.2.1.1 paragraph 5 - the paragraph concerning
+ *   expiration of cached downlink SID.
+ *
+ * - In all other frame positions, extraneous SID frames need to be
+ *   dropped - we send an empty payload to the BTS model, causing it
+ *   to transmit an induced BFI condition on the air (fake DTXd),
+ *   or perhaps real DTXd (actually turning off Tx) in the future.
+ */
+
+/*! \brief Check if the given FN of TCH-RTS-IND corresponds to a mandatory
+ *  SID position for non-AMR codecs that follow SACCH alignment.
+ *  \param[in] lchan Logical channel on which we check scheduling
+ *  \param[in] fn Frame Number for which we check scheduling
+ *  \returns true if this FN is a mandatory SID position, false otherwise
+ */
+static inline bool fr_hr_efr_sid_position(struct gsm_lchan *lchan, uint32_t fn)
 {
+	/* See GSM 05.08 section 8.3 for frame numbers - but we are
+	 * specifically looking for FNs corresponding to the beginning
+	 * of the complete SID frame to be transmitted, rather than all FNs
+	 * where we have to put out a non-suppressed burst. */
+	switch (lchan->type) {
+	case GSM_LCHAN_TCH_F:
+		return fn % 104 == 52;
+	case GSM_LCHAN_TCH_H:
+		switch (lchan->nr) {
+		case 0:
+			return fn % 104 == 0 || fn % 104 == 52;
+		case 1:
+			return fn % 104 == 14 || fn % 104 == 66;
+		default:
+			return false;
+		}
+	default:
+		return false;
+	}
+}
+
+/*! \brief This helper function implements DTXd input processing for FR/HR/EFR:
+ *  we got an RTP input frame, now we need to check if it is SID or not,
+ *  and update our DL SID reshaper state accordingly.
+ *  \param[in] lchan Logical channel structure of the TCH we work with
+ *  \param[in] resp_msg The input frame from RTP
+ *  \param[out] sid_result Output flag indicating if the received frame is SID
+ *  \returns true if the frame in resp_msg is good, false otherwise
+ */
+static bool fr_hr_efr_dtxd_input(struct gsm_lchan *lchan, struct msgb *resp_msg,
+				 bool *sid_result)
+{
+	enum osmo_gsm631_sid_class sidc;
+	bool is_sid;
+
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
-		if (lchan->type == GSM_LCHAN_TCH_F)
-			return osmo_fr_sid_preen(msg->data);
-		else
-			return true;	/* FIXME: see OS#6036 */
+		if (lchan->type == GSM_LCHAN_TCH_F) {
+			sidc = osmo_fr_sid_classify(msgb_l2(resp_msg));
+			switch (sidc) {
+			case OSMO_GSM631_SID_CLASS_SPEECH:
+				is_sid = false;
+				break;
+			case OSMO_GSM631_SID_CLASS_INVALID:
+				/* TS 28.062 section C.3.2.1.1: invalid SIDs
+				 * from call leg A UL are treated like BFIs.
+				 * Drop this frame and act as if we got nothing
+				 * at all from RTP for this FN. */
+				return false;
+			case OSMO_GSM631_SID_CLASS_VALID:
+				is_sid = true;
+				/* The SID code word may have a one bit error -
+				 * rejuvenate it. */
+				osmo_fr_sid_reset(msgb_l2(resp_msg));
+				break;
+			default:
+				/* SID classification per GSM 06.31 section
+				 * 6.1.1 has only 3 possible outcomes. */
+				OSMO_ASSERT(0);
+			}
+		} else {
+			/* The same kind of classification as we do in
+			 * osmo_{fr,efr}_sid_classify() is impossible for HR:
+			 * the equivalent ternary SID classification per
+			 * GSM 06.41 can only be done in the UL-handling BTS,
+			 * directly coupled to the GSM 05.03 channel decoder,
+			 * and cannot be reconstructed downstream from frame
+			 * payload bits.  The only kind of SID we can detect
+			 * here is the perfect, error-free kind. */
+			is_sid = osmo_hr_check_sid(msgb_l2(resp_msg),
+						   msgb_l2len(resp_msg));
+		}
+		break;
 	case GSM48_CMODE_SPEECH_EFR:
-		return osmo_efr_sid_preen(msg->data);
+		/* same logic as for FRv1 */
+		sidc = osmo_efr_sid_classify(msgb_l2(resp_msg));
+		switch (sidc) {
+		case OSMO_GSM631_SID_CLASS_SPEECH:
+			is_sid = false;
+			break;
+		case OSMO_GSM631_SID_CLASS_INVALID:
+			return false;
+		case OSMO_GSM631_SID_CLASS_VALID:
+			is_sid = true;
+			osmo_efr_sid_reset(msgb_l2(resp_msg));
+			break;
+		default:
+			OSMO_ASSERT(0);
+		}
+		break;
 	default:
-		return true;
+		/* This static function should never be called except for
+		 * V1 and EFR speech modes. */
+		OSMO_ASSERT(0);
 	}
+	*sid_result = is_sid;
+	lchan->tch.dtx_fr_hr_efr.last_rtp_input_was_sid = is_sid;
+	if (is_sid) {
+		uint8_t copy_len;
+
+		copy_len = OSMO_MIN(msgb_l2len(resp_msg),
+				ARRAY_SIZE(lchan->tch.dtx_fr_hr_efr.last_sid));
+		memcpy(lchan->tch.dtx_fr_hr_efr.last_sid,
+			msgb_l2(resp_msg), copy_len);
+		lchan->tch.dtx_fr_hr_efr.last_sid_len = copy_len;
+		lchan->tch.dtx_fr_hr_efr.last_sid_age = 0;
+	} else {
+		/* We got a speech frame, not SID - therefore, the state flag
+		 * of "we already transmitted a SID" needs to be cleared,
+		 * so that the very first SID that follows this talkspurt
+		 * will get transmitted right away, without waiting for
+		 * the next mandatory SID position. */
+		lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted = false;
+	}
+	return true;
+}
+
+/*! \brief This helper function implements DTXd output processing for FR/HR/EFR:
+ *  here we update our state to deal with cached SID aging, mandatory-Tx
+ *  frame positions and FACCH stealing, and we make the desired output
+ *  transformations of either regurgitating a cached SID or vice-versa,
+ *  dropping a SID we received from RTP.
+ *  \param[in] lchan Logical channel structure of the TCH we work with
+ *  \param[in] fn Frame Number for which we are preparing DL
+ *  \param[in] current_input_is_sid Self-explanatory
+ *  \param[in] resp_msg_p Pointer to l1sap_tch_rts_ind() internal variable
+ *  \param[in] resp_l1sap_p ditto
+ *  \param[in] empty_l1sap_p ditto
+ *
+ *  This function gets called with pointers to l1sap_tch_rts_ind() internal
+ *  variables and cannot be properly understood on its own, without
+ *  understanding the parent function first.  This situation is unfortunate,
+ *  but it was the only way to factor the present logic out of
+ *  l1sap_tch_rts_ind() main body.
+ */
+static void fr_hr_efr_dtxd_output(struct gsm_lchan *lchan, uint32_t fn,
+				  bool current_input_is_sid,
+				  struct msgb **resp_msg_p,
+				  struct osmo_phsap_prim **resp_l1sap_p,
+				  struct osmo_phsap_prim *empty_l1sap_p)
+{
+	struct msgb *resp_msg = *resp_msg_p;
+	bool sid_in_hand = current_input_is_sid;
+
+	/* Are we at a mandatory-Tx frame position? If so, clear the state flag
+	 * of "we already transmitted a SID in this window" - as of right now,
+	 * a SID has _not_ been transmitted in the present window yet, and if
+	 * we are in a DTX pause, we do need to transmit a SID update as soon
+	 * as we are able to, FACCH permitting. */
+	if (fr_hr_efr_sid_position(lchan, fn))
+		lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted = false;
+
+	/* The next stanza implements logic that was originally meant to reside
+	 * in the TFO block in TRAUs: if the source feeding us RTP is in a DTXu
+	 * pause (resp_msg == NULL, meaning we got nothing from RTP) *and* the
+	 * most recent RTP input we did get was a SID, and that SID hasn't
+	 * expired, then we need to replicate that SID. */
+	if (!resp_msg && lchan->tch.dtx_fr_hr_efr.last_rtp_input_was_sid &&
+	    lchan->tch.dtx_fr_hr_efr.last_sid_age < 47) {
+		/* Whatever we do further below, any time another 20 ms window
+		 * has passed since the last SID was received in RTP, we have
+		 * to age that cached SID. */
+		lchan->tch.dtx_fr_hr_efr.last_sid_age++;
+
+		/* The following conditional checking dl_sid_transmitted flag
+		 * is peculiar to our sans-E1 architecture.  In the original
+		 * T1/E1 Abis architecture the TFO-enabled TRAU would repeat
+		 * the cached SID from call leg A into *every* 20 ms frame in
+		 * its Abis output, and then the BTS would select which ones
+		 * it should transmit per the rules of GSM 06.31/06.81 section
+		 * 5.1.2.  But in our architecture it would be silly and
+		 * wasteful to allocate and fill an msgb for this cached SID
+		 * only to toss it later in the same function - hence the
+		 * logic of section 5.1.2 is absorbed into the decision right
+		 * here to proceed with cached SID regurgitation or not,
+		 * in the form of the following conditional. */
+		if (!lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted)
+			resp_msg = l1sap_msgb_alloc(lchan->tch.dtx_fr_hr_efr.last_sid_len);
+		if (resp_msg) {
+			resp_msg->l2h = msgb_put(resp_msg,
+						lchan->tch.dtx_fr_hr_efr.last_sid_len);
+			memcpy(resp_msg->l2h, lchan->tch.dtx_fr_hr_efr.last_sid,
+				lchan->tch.dtx_fr_hr_efr.last_sid_len);
+			*resp_msg_p = resp_msg;
+			*resp_l1sap_p = msgb_l1sap_prim(resp_msg);
+			sid_in_hand = true;
+		}
+	} else if (resp_msg && sid_in_hand) {
+		/* This "else if" leg implements the logic of section 5.1.2
+		 * for cases when a SID is already present in the RTP input,
+		 * as indicated by (resp_msg != NULL) and sid_in_hand being
+		 * true.  Because we are in the "else" clause of the big "if"
+		 * above, this path executes only when the SID has come from
+		 * RTP in _this_ frame, rather than regurgitated from cache.
+		 * But be it fresh or cached, the rules of section 5.1.2 still
+		 * apply, and if we've already transmitted a SID in the current
+		 * window, then we need to suppress further SIDs and send
+		 * an empty payload to the BTS model, causing the latter
+		 * to transmit an induced BFI condition on the air.  This
+		 * strange-seeming behavior is needed so that the spec-compliant
+		 * Rx DTX handler in the MS will produce the expected output,
+		 * same as if the GSM network were the old-fashioned kind with
+		 * Abis TRAUs and TFO. */
+		if (lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted) {
+			msgb_free(resp_msg);
+			resp_msg = NULL;
+			*resp_msg_p = NULL;
+			*resp_l1sap_p = empty_l1sap_p;
+		}
+	}
+
+	/* The following conditional answers this question: are we actually
+	 * transmitting a SID frame on the air right now, at this frame number?
+	 * If we are certain the BTS model is going to transmit this SID,
+	 * we set the state flag so we won't be transmitting any more SIDs
+	 * until we either hit the next mandatory-Tx position or get another
+	 * little talkspurt followed by new SID.  The check for FACCH stealing
+	 * is included because if the BTS model is going to transmit FACCH in
+	 * the current FN, then we are not actually transmitting SID right now,
+	 * and we still need to transmit a SID ASAP, as soon as the TCH becomes
+	 * becomes free from FACCH activity.  GSM 06.31/06.81 section 5.1.2
+	 * does mention that if the mandatory-Tx frame position is taken up
+	 * by FACCH, then we need to send SID in the following frame. */
+	if (resp_msg && sid_in_hand && !lchan->tch.dtx_fr_hr_efr.dl_facch_stealing)
+		lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted = true;
 }
 
 /* TCH-RTS-IND prim received from bts model */
@@ -1249,6 +1483,7 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct gsm_lchan *lchan;
 	uint8_t chan_nr, marker = 0;
 	uint32_t fn;
+	bool is_fr_hr_efr_sid = false;
 
 	chan_nr = rts_ind->chan_nr;
 	fn = rts_ind->fn;
@@ -1278,10 +1513,6 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	if (!resp_msg) {
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "DL TCH Tx queue underrun\n");
 		resp_l1sap = &empty_l1sap;
-	} else if (!rtppayload_sid_preen(lchan, resp_msg)) {
-		msgb_free(resp_msg);
-		resp_msg = NULL;
-		resp_l1sap = &empty_l1sap;
 	} else {
 		/* Obtain RTP header Marker bit from control buffer */
 		marker = rtpmsg_marker_bit(resp_msg);
@@ -1290,6 +1521,27 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		msgb_push(resp_msg, sizeof(*resp_l1sap));
 		resp_msg->l1h = resp_msg->data;
 		resp_l1sap = msgb_l1sap_prim(resp_msg);
+
+		/* FR/HR/EFR SID or non-SID input handling */
+		if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1 ||
+		    lchan->tch_mode == GSM48_CMODE_SPEECH_EFR) {
+			bool drop;
+
+			drop = !fr_hr_efr_dtxd_input(lchan, resp_msg,
+						     &is_fr_hr_efr_sid);
+			if (OSMO_UNLIKELY(drop)) {
+				msgb_free(resp_msg);
+				resp_msg = NULL;
+				resp_l1sap = &empty_l1sap;
+			}
+		}
+	}
+
+	/* FR/HR/EFR DTXd output stage */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1 ||
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_EFR) {
+		fr_hr_efr_dtxd_output(lchan, fn, is_fr_hr_efr_sid, &resp_msg,
+					&resp_l1sap, &empty_l1sap);
 	}
 
 	memset(resp_l1sap, 0, sizeof(*resp_l1sap));

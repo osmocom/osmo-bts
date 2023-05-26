@@ -8,6 +8,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/logging.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/codec/codec.h>
 #include <osmocom/codec/ecu.h>
 #include <osmocom/gsm/lapdm.h>
 #include <osmocom/gsm/sysinfo.h>
@@ -265,6 +266,19 @@ struct gsm_lchan {
 			/* last UL SPEECH resume flag */
 			bool is_speech_resume;
 		} dtx;
+		struct {
+			bool last_rtp_input_was_sid;
+			uint8_t last_sid[GSM_FR_BYTES];
+			uint8_t last_sid_len;
+			uint8_t last_sid_age;
+			/* A SID was transmitted on the DL in the period
+			 * beginning with the last transmitted speech frame
+			 * or the last mandatory-Tx position, whichever was
+			 * more recent. */
+			bool dl_sid_transmitted;
+			/* The current frame in the DL is taken up by FACCH */
+			bool dl_facch_stealing;
+		} dtx_fr_hr_efr;
 		uint8_t last_cmr;
 		uint32_t last_fn;
 
