@@ -390,7 +390,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1: /* FR / HR */
 			if (br->chan != TRXC_TCHF) /* HR */
-				len = GSM_HR_BYTES_RTP_RFC5993;
+				len = GSM_HR_BYTES;
 			else
 				len = GSM_FR_BYTES;
 			break;
