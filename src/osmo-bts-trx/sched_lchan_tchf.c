@@ -374,8 +374,8 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 		int8_t sti, cmi;
 		bool amr_is_cmr;
 
-		if (rsl_cmode != RSL_CMOD_SPD_SPEECH) {
-			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Dropping speech frame, "
+		if (OSMO_UNLIKELY(rsl_cmode == RSL_CMOD_SPD_SIGN)) {
+			LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Dropping a TCH frame, "
 				"because we are not in speech mode\n");
 			goto free_bad_msg;
 		}
