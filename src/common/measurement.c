@@ -72,7 +72,15 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
 			 * SUB */
 			return true;
+		case GSM48_CMODE_DATA_12k0: /* TCH/F9.6 */
+		case GSM48_CMODE_DATA_6k0: /* TCH/F4.8 */
+			/* FIXME: In case of data traffic channels TCH/F9.6 and TCH/F4.8 the
+			 * RXQUAL_SUB report shall include measurements on the TDMA frames given
+			 * in the table of subclause 8.3 only if L2 fill frames have been received
+			 * as FACCH/F frames at the corresponding frame positions. */
 		default:
+			if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
+				return false;
 			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
@@ -87,7 +95,15 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
 			 * SUB */
 			return true;
+		case GSM48_CMODE_DATA_6k0: /* TCH/H4.8 */
+		case GSM48_CMODE_DATA_3k6: /* TCH/H2.4 */
+			/* FIXME: In case of data traffic channels TCH/H4.8 and TCH/H2.4 the
+			 * RXQUAL_SUB report shall include measurements on the TDMA frames given
+			 * in the table of subclause 8.3 only if L2 fill frames have been received
+			 * as FACCH/H frames at the corresponding frame positions. */
 		default:
+			if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
+				return false;
 			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
