@@ -89,6 +89,20 @@ input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 		/* RTP input matches our internal format - we are good */
 		return PL_DECISION_ACCEPT;
 	case GSM_HR_BYTES_RTP_RFC5993:
+		/* Validate ToC octet: for payload of this length to be valid,
+		 * the F bit must be 0 and the FT field must be either 0 (good
+		 * speech) or 2 (good SID). */
+		switch (rtp_pl[0] & 0xF0) {
+		case 0x00:
+			break;
+		case 0x20:
+			/* TODO (next patch): signal this SID to the
+			 * fr_hr_efr_dtxd_input() handler in l1sap. */
+			break;
+		default:
+			/* invalid payload */
+			return PL_DECISION_DROP;
+		}
 		/* Strip ToC octet, leaving only "pure" TS 101 318 payload. */
 		return PL_DECISION_STRIP_HDR_OCTET;
 	default:
