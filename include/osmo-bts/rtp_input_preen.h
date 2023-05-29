@@ -17,4 +17,4 @@ enum pl_input_decision {
 
 enum pl_input_decision
 rtp_payload_input_preen(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
-			unsigned rtp_pl_len);
+			unsigned rtp_pl_len, bool *rfc5993_sid_flag);

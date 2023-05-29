@@ -1314,9 +1314,17 @@ static bool fr_hr_efr_dtxd_input(struct gsm_lchan *lchan, struct msgb *resp_msg,
 			 * directly coupled to the GSM 05.03 channel decoder,
 			 * and cannot be reconstructed downstream from frame
 			 * payload bits.  The only kind of SID we can detect
-			 * here is the perfect, error-free kind. */
-			is_sid = osmo_hr_check_sid(msgb_l2(resp_msg),
-						   msgb_l2len(resp_msg));
+			 * here is the perfect, error-free kind.  However,
+			 * if we received RFC 5993 payload and the sender
+			 * told us it is valid SID, honor that indication
+			 * and rejuvenate the SID codeword. */
+			if (rtpmsg_is_rfc5993_sid(resp_msg)) {
+				is_sid = true;
+				osmo_hr_sid_reset(msgb_l2(resp_msg));
+			} else {
+				is_sid = osmo_hr_check_sid(msgb_l2(resp_msg),
+							   msgb_l2len(resp_msg));
+			}
 		}
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
@@ -2152,6 +2160,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 {
 	struct gsm_lchan *lchan = rs->priv;
 	struct msgb *msg;
+	bool rfc5993_sid = false;
 
 	/* if we're in loopback mode, we don't accept frames from the
 	 * RTP socket anymore */
@@ -2159,7 +2168,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		return;
 
 	/* initial preen */
-	switch (rtp_payload_input_preen(lchan, rtp_pl, rtp_pl_len)) {
+	switch (rtp_payload_input_preen(lchan, rtp_pl, rtp_pl_len, &rfc5993_sid)) {
 	case PL_DECISION_DROP:
 		return;
 	case PL_DECISION_ACCEPT:
@@ -2184,6 +2193,8 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	rtpmsg_seq(msg) = seq_number;
 	/* Store RTP header Timestamp in control buffer */
 	rtpmsg_ts(msg) = timestamp;
+	/* Store RFC 5993 SID flag likewise */
+	rtpmsg_is_rfc5993_sid(msg) = rfc5993_sid;
 
 	/* make sure the queue doesn't get too long */
 	lchan_dl_tch_queue_enqueue(lchan, msg, 1);

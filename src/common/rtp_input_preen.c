@@ -82,7 +82,8 @@ input_preen_efr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 }
 
 static enum pl_input_decision
-input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
+input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len,
+		bool *rfc5993_sid_flag)
 {
 	switch (rtp_pl_len) {
 	case GSM_HR_BYTES:
@@ -96,8 +97,7 @@ input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 		case 0x00:
 			break;
 		case 0x20:
-			/* TODO (next patch): signal this SID to the
-			 * fr_hr_efr_dtxd_input() handler in l1sap. */
+			*rfc5993_sid_flag = true;
 			break;
 		default:
 			/* invalid payload */
@@ -113,7 +113,7 @@ input_preen_hr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 
 enum pl_input_decision
 rtp_payload_input_preen(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
-			unsigned rtp_pl_len)
+			unsigned rtp_pl_len, bool *rfc5993_sid_flag)
 {
 	/* If rtp continuous-streaming is enabled, we shall emit RTP packets
 	 * with zero-length payloads as BFI markers. In a TrFO scenario such
@@ -132,7 +132,7 @@ rtp_payload_input_preen(struct gsm_lchan *lchan, const uint8_t *rtp_pl,
 		if (lchan->type == GSM_LCHAN_TCH_F)
 			return input_preen_fr(rtp_pl, rtp_pl_len);
 		else
-			return input_preen_hr(rtp_pl, rtp_pl_len);
+			return input_preen_hr(rtp_pl, rtp_pl_len, rfc5993_sid_flag);
 	case GSM48_CMODE_SPEECH_EFR:
 		return input_preen_efr(rtp_pl, rtp_pl_len);
 	case GSM48_CMODE_SPEECH_AMR:
