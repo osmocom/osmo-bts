@@ -154,7 +154,8 @@ static int decode_hr_facch(struct l1sched_ts *l1ts,
 	return GSM_MACBLOCK_LEN;
 }
 
-/*! \brief a single TCH/H burst was received by the PHY, process it */
+/* Process a single Uplink TCH/H burst received by the PHY.
+ * This function is visualized in file 'doc/trx_sched_tch.txt'. */
 int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
