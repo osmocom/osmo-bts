@@ -69,6 +69,34 @@ static const uint8_t sched_tchf_dl_amr_cmi_map[26] = {
 
 extern const uint8_t sched_tchh_dl_amr_cmi_map[26];
 
+static int decode_fr_facch(struct l1sched_ts *l1ts,
+			   const struct trx_ul_burst_ind *bi)
+{
+	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
+	const sbit_t *bursts_p = chan_state->ul_bursts;
+	struct l1sched_meas_set meas_avg;
+	uint8_t data[GSM_MACBLOCK_LEN];
+	int n_errors, n_bits_total;
+	int rc;
+
+	rc = gsm0503_tch_fr_facch_decode(&data[0], BUFTAIL8(bursts_p),
+					 &n_errors, &n_bits_total);
+	if (rc != GSM_MACBLOCK_LEN)
+		return rc;
+
+	/* average measurements of the last 8 bursts, obtain TDMA Fn of the first burst */
+	trx_sched_meas_avg(chan_state, &meas_avg, SCHED_MEAS_AVG_M_S8N8);
+
+	_sched_compose_ph_data_ind(l1ts, meas_avg.fn, bi->chan,
+				   &data[0], GSM_MACBLOCK_LEN,
+				   compute_ber10k(n_bits_total, n_errors),
+				   meas_avg.rssi,
+				   meas_avg.toa256,
+				   meas_avg.ci_cb,
+				   PRES_INFO_UNKNOWN);
+	return GSM_MACBLOCK_LEN;
+}
+
 /*! \brief a single TCH/F burst was received by the PHY, process it */
 int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
@@ -224,12 +252,16 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		break;
 	/* CSD (TCH/F9.6): 12.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_12k0:
+		/* FACCH/F does not steal TCH/F9.6 frames, but only disturbs some bits */
+		decode_fr_facch(l1ts, bi);
 		rc = gsm0503_tch_fr96_decode(&tch_data[0], BUFPOS(bursts_p, 0),
 					     &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S24N22;
 		break;
 	/* CSD (TCH/F4.8): 6.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_6k0:
+		/* FACCH/F does not steal TCH/F4.8 frames, but only disturbs some bits */
+		decode_fr_facch(l1ts, bi);
 		rc = gsm0503_tch_fr48_decode(&tch_data[0], BUFPOS(bursts_p, 0),
 					     &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S24N22;
@@ -237,7 +269,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 #if 0
 	/* TODO: CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
-		/* TCH/F2.4 employs the same interleaving as TCH/FS (8 bursts) */
+		/* TCH/F2.4 employs the same interleaving as TCH/FS (8 bursts),
+		 * so FACCH/F *does* steal TCH/F2.4 frames completely. */
 		rc = gsm0503_tch_fr24_decode(&tch_data[0], BUFTAIL8(bursts_p),
 					     &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S8N8;
@@ -245,6 +278,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 #endif
 	/* CSD (TCH/F14.4): 14.5 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_14k5:
+		/* FACCH/F does not steal TCH/F14.4 frames, but only disturbs some bits */
+		decode_fr_facch(l1ts, bi);
 		rc = gsm0503_tch_fr144_decode(&tch_data[0], BUFPOS(bursts_p, 0),
 					      &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S24N22;
@@ -316,9 +351,10 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
  * FIXME: this function is over-complicated, refactor / get rid of it. */
-struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
+void tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br,
+		    struct msgb **msg_tch, struct msgb **msg_facch)
 {
-	struct msgb *msg1, *msg2, *msg_tch = NULL, *msg_facch = NULL;
+	struct msgb *msg1, *msg2;
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
 	uint8_t tch_mode = chan_state->tch_mode;
@@ -330,50 +366,39 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 	if (msg1) {
 		l1sap = msgb_l1sap_prim(msg1);
 		if (l1sap->oph.primitive == PRIM_TCH) {
-			msg_tch = msg1;
+			*msg_tch = msg1;
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive == PRIM_TCH) {
 					LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "TCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
-					msg_facch = msg2;
+					*msg_facch = msg2;
 			}
 		} else {
-			msg_facch = msg1;
+			*msg_facch = msg1;
 			if (msg2) {
 				l1sap = msgb_l1sap_prim(msg2);
 				if (l1sap->oph.primitive != PRIM_TCH) {
 					LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "FACCH twice, please FIX!\n");
 					msgb_free(msg2);
 				} else
-					msg_tch = msg2;
+					*msg_tch = msg2;
 			}
 		}
 	}
 
 	/* check validity of message */
-	if (msg_facch && msgb_l2len(msg_facch) != GSM_MACBLOCK_LEN) {
+	if (*msg_facch != NULL && msgb_l2len(*msg_facch) != GSM_MACBLOCK_LEN) {
 		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim has odd len=%u != %u\n",
-			msgb_l2len(msg_facch), GSM_MACBLOCK_LEN);
+			msgb_l2len(*msg_facch), GSM_MACBLOCK_LEN);
 		/* free message */
-		msgb_free(msg_facch);
-		msg_facch = NULL;
-	}
-
-	/* prioritize FACCH over speech */
-	if (msg_facch) {
-		/* Unlike SACCH, FACCH has no dedicated slots on the multiframe layout.
-		 * It's multiplexed together with TCH (speech or data) frames basically
-		 * by replacing (stealing) them.  This is common for both TCH/F and
-		 * TCH/H, with the only difference that FACCH/H steals two TCH frames
-		 * (not just one) due to a longer interleaving period. */
-		msgb_free(msg_tch);
-		return msg_facch;
+		msgb_free(*msg_facch);
+		*msg_facch = NULL;
 	}
 
 	/* check validity of message, get AMR ft and cmr */
-	if (msg_tch) {
+	if (*msg_tch != NULL) {
 		int len;
 		uint8_t cmr_codec;
 		int ft, i;
@@ -401,7 +426,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 			len = GSM_EFR_BYTES;
 			break;
 		case GSM48_CMODE_SPEECH_AMR: /* AMR */
-			len = osmo_amr_rtp_dec(msg_tch->l2h, msgb_l2len(msg_tch),
+			len = osmo_amr_rtp_dec(msgb_l2((*msg_tch)), msgb_l2len(*msg_tch),
 					       &cmr_codec, &cmi, &ft_codec,
 					       &bfi, &sti);
 			if (len < 0) {
@@ -433,7 +458,7 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 				goto free_bad_msg;
 			}
 			/* pull the AMR header, it's not being sent over Um */
-			msg_tch->l2h += sizeof(struct amr_hdr);
+			(*msg_tch)->l2h += sizeof(struct amr_hdr);
 			len -= sizeof(struct amr_hdr);
 			break;
 		case GSM48_CMODE_DATA_14k5: /* TCH/F14.4 */
@@ -464,18 +489,16 @@ inval_mode2:
 			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "TCH mode invalid, please fix!\n");
 			goto free_bad_msg;
 		}
-		if (msgb_l2len(msg_tch) != len) {
+		if (msgb_l2len(*msg_tch) != len) {
 			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br, "Cannot send payload with "
 				"invalid length! (expecting %d, received %d)\n",
-				len, msgb_l2len(msg_tch));
+				len, msgb_l2len(*msg_tch));
 free_bad_msg:
 			/* free message */
-			msgb_free(msg_tch);
-			msg_tch = NULL;
+			msgb_free(*msg_tch);
+			*msg_tch = NULL;
 		}
 	}
-
-	return msg_tch;
 }
 
 /* obtain a to-be-transmitted TCH/F (Full Traffic Channel) burst */
@@ -485,7 +508,9 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, *bursts_p = chan_state->dl_bursts;
 	uint8_t *mask = &chan_state->dl_mask;
-	struct msgb *msg;
+	struct msgb *msg_facch = NULL;
+	struct msgb *msg_tch = NULL;
+	struct msgb *msg = NULL;
 
 	/* send burst, if we already got a frame */
 	if (br->bid > 0) {
@@ -502,11 +527,9 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	memmove(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 4), 20 * BPLEN);
 	memset(BUFPOS(bursts_p, 20), 0, 4 * BPLEN);
 
-	/* dequeue a message to be transmitted */
-	msg = tch_dl_dequeue(l1ts, br);
-
-	/* no message at all, send a dummy L2 frame on FACCH */
-	if (msg == NULL) {
+	/* dequeue a TCH and/or a FACCH message to be transmitted */
+	tch_dl_dequeue(l1ts, br, &msg_tch, &msg_facch);
+	if (msg_tch == NULL && msg_facch == NULL) {
 		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
 			0x03, 0x03, 0x01, /* TODO: use randomized padding */
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
@@ -538,7 +561,11 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		goto send_burst;
 	}
 
-	if (msgb_l2len(msg) == GSM_MACBLOCK_LEN)
+	/* Unlike SACCH, FACCH has no dedicated slots on the multiframe layout.
+	 * It's multiplexed together with TCH (speech or data) frames basically
+	 * by replacing (stealing) their bits, either completely or partly. */
+	msg = (msg_facch != NULL) ? msg_facch : msg_tch;
+	if (msg == msg_facch)
 		chan_state->dl_facch_bursts = 8;
 
 	/* populate the buffer with bursts */
@@ -562,28 +589,39 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		break;
 	/* CSD (TCH/F9.6): 12.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_12k0:
-		gsm0503_tch_fr96_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		gsm0503_tch_fr96_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_facch != NULL)
+			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	/* CSD (TCH/F4.8): 6.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_6k0:
-		gsm0503_tch_fr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		gsm0503_tch_fr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_facch != NULL)
+			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 #if 0
 	/* TODO: CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
-		gsm0503_tch_fr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		/* FACCH/F does steal a TCH/F2.4 frame completely */
+		if (msg == msg_facch)
+			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
+		else
+			gsm0503_tch_fr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		break;
 #endif
 	/* CSD (TCH/F14.4): 14.5 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_14k5:
-		gsm0503_tch_fr144_encode(BUFPOS(bursts_p, 0), msgb_l2(msg));
+		gsm0503_tch_fr144_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_facch != NULL)
+			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	default:
 		OSMO_ASSERT(0);
 	}
 
-	/* free message */
-	msgb_free(msg);
+	/* free messages */
+	msgb_free(msg_tch);
+	msgb_free(msg_facch);
 
 send_burst:
 	/* compose burst */
