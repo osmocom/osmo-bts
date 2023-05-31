@@ -704,7 +704,6 @@ static void build_p1_rest_octets(struct p1_rest_octets *p1ro, struct gsm_bts *bt
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
 		   int *is_empty)
 {
-	const struct asci_notification *notif;
 	struct llist_head *group_q;
 	struct gsm_bts *bts = ps->bts;
 	int group;
@@ -733,13 +732,17 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		/* we intentioanally don't try to add notifications here, as ETWS is more critical */
 		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, &p1ro, NULL);
 	} else if (llist_empty(group_q)) {
+		struct p1_rest_octets p1ro;
+		memset(&p1ro, 0, sizeof(p1ro));
+		/* Use NLN to notify MS about ongoing VGCS/VBS calls.
+		 * This is required to make the phone read the NCH to get an updated list of ongoing calls.
+		 * Without this the phone will not allow making VGCS/VBS calls. */
+		p1ro.nln_pch.present = (bts->asci.pos_nch >= 0);
+		p1ro.nln_pch.nln = bts->asci.nln;
+		p1ro.nln_pch.nln_status = bts->asci.nln_status;
 		/* There is nobody to be paged, send Type1 with two empty ID */
 		//DEBUGP(DPAG, "Tx PAGING TYPE 1 (empty)\n");
-		/* for now, we only send VGCS/VBS notfication if we have nothing else to page;
-		 * this is the safe choice.  For other situations with mobile identities in the
-		 * paging type 1, we'd need to check if there's sufficient space in the rest octets. */
-		notif = bts_asci_notification_get_next(bts);
-		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, NULL, notif);
+		len = fill_paging_type_1(out_buf, empty_id_lv, 0, NULL, 0, &p1ro, NULL);
 		*is_empty = 1;
 	} else {
 		struct paging_record *pr[4];
