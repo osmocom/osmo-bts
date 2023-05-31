@@ -296,7 +296,10 @@ struct gsm_bts {
 	/* Advanced Speech Call Items (VBS/VGCS) + NCH related bits */
 	struct {
 		int pos_nch;		/* position of the NCH or < 0, if not available */
+		uint8_t nln, nln_status; /* current notification list number and status */
 		struct llist_head notifications;
+		int notification_entries; /* current number of entries in the list */
+		int notification_count; /* counter to count all entries */
 	} asci;
 
 	struct paging_state *paging_state;
@@ -407,8 +410,14 @@ int bts_link_estab(struct gsm_bts *bts);
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
 struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
 int bts_agch_max_queue_length(int T, int bcch_conf);
-int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt,
-		      int is_ag_res);
+
+enum ccch_msgt {
+	CCCH_MSGT_AGCH,
+	CCCH_MSGT_PCH,
+	CCCH_MSGT_NCH,
+};
+
+int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt, enum ccch_msgt ccch);
 int bts_supports_cipher(struct gsm_bts *bts, int rsl_cipher);
 uint8_t *bts_sysinfo_get(struct gsm_bts *bts, const struct gsm_time *g_time);
 void regenerate_si3_restoctets(struct gsm_bts *bts);

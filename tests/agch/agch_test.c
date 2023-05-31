@@ -159,7 +159,7 @@ static void test_agch_queue(void)
 		if (is_agch)
 			multiframes++;
 
-		rc = bts_ccch_copy_msg(bts, out_buf, &g_time, is_agch);
+		rc = bts_ccch_copy_msg(bts, out_buf, &g_time, (is_agch) ? CCCH_MSGT_AGCH : CCCH_MSGT_PCH);
 		ima = (struct gsm48_imm_ass *)out_buf;
 		switch (ima->msg_type) {
 		case GSM48_MT_RR_IMM_ASS:

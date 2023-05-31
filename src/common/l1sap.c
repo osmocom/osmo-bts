@@ -902,14 +902,31 @@ static int lchan_pdtch_ph_rts_ind_loop(struct gsm_lchan *lchan,
 	return 0;
 }
 
-/* Check if given CCCH frame number is for a PCH or for an AGCH (this function is
+/* Check if given CCCH frame number is for a NCH, PCH or for an AGCH (this function is
  * only used internally, it is public to call it from unit-tests) */
-int is_ccch_for_agch(struct gsm_bts_trx *trx, uint32_t fn) {
+enum ccch_msgt get_ccch_msgt(struct gsm_bts_trx *trx, uint32_t fn)
+{
+	uint8_t block, first_block, num_blocks;
+	int rc;
+
+	block = l1sap_fn2ccch_block(fn);
+
+	/* If there is an NCH, check if the block number matches. It has priority over PCH/AGCH. */
+	if (trx->bts->asci.pos_nch >= 0) {
+		rc = osmo_gsm48_si1ro_nch_pos_decode(trx->bts->asci.pos_nch, &num_blocks, &first_block);
+		if (rc >= 0 && block >= first_block && block < first_block + num_blocks)
+			return CCCH_MSGT_NCH;
+	}
+
 	/* Note: The number of available access grant channels is set by the
 	 * parameter BS_AG_BLKS_RES via system information type 3. This SI is
 	 * transferred to osmo-bts via RSL */
-        return l1sap_fn2ccch_block(fn) < num_agch(trx, "PH-RTS-IND");
+	if (l1sap_fn2ccch_block(fn) < num_agch(trx, "PH-RTS-IND"))
+		return CCCH_MSGT_AGCH;
+
+	return CCCH_MSGT_PCH;
 }
+
 
 /* return the measured average of frame numbers that the RTS clock is running in advance */
 int32_t bts_get_avg_fn_advance(const struct gsm_bts *bts)
@@ -1048,7 +1065,6 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 	struct msgb *pp_msg;
 	bool dtxd_facch = false;
 	int rc;
-	int is_ag_res;
 
 	chan_nr = rts_ind->chan_nr;
 	link_id = rts_ind->link_id;
@@ -1183,8 +1199,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 		}
 	} else if (L1SAP_IS_CHAN_AGCH_PCH(chan_nr)) {
 		p = msgb_put(msg, GSM_MACBLOCK_LEN);
-		is_ag_res = is_ccch_for_agch(trx, fn);
-		rc = bts_ccch_copy_msg(trx->bts, p, &g_time, is_ag_res);
+		rc = bts_ccch_copy_msg(trx->bts, p, &g_time, get_ccch_msgt(trx, fn));
 		if (rc <= 0)
 			memcpy(p, fill_frame, GSM_MACBLOCK_LEN);
 	}

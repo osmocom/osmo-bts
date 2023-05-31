@@ -71,6 +71,10 @@ int bts_asci_notification_add(struct gsm_bts *bts, const uint8_t *group_call_ref
 	/* add at beginning of "queue" to make sure a new call is notified first */
 	llist_add(&n->list, &bts->asci.notifications);
 
+	bts->asci.notification_entries++;
+	bts->asci.notification_count = 0;
+	bts->asci.nln = (bts->asci.nln + 1) % 4;
+
 	return 0;
 }
 
@@ -86,6 +90,10 @@ int bts_asci_notification_del(struct gsm_bts *bts, const uint8_t *group_call_ref
 	llist_del(&n->list);
 	talloc_free(n);
 
+	bts->asci.notification_entries--;
+	bts->asci.notification_count = 0;
+	bts->asci.nln_status = (bts->asci.nln_status + 1) % 2;
+
 	return 0;
 }
 
@@ -100,6 +108,11 @@ int bts_asci_notification_reset(struct gsm_bts *bts)
 		llist_del(&n->list);
 		talloc_free(n);
 	}
+
+	bts->asci.notification_entries = 0;
+	bts->asci.notification_count = 0;
+	bts->asci.nln_status = (bts->asci.nln_status + 1) % 2;
+
 	return 0;
 }
 
@@ -152,4 +165,61 @@ void append_group_call_information(struct bitvec *bv, const uint8_t *gcr, const 
 	}
 
 	bitvec_free(gcr_bv);
+}
+
+#define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
+
+int bts_asci_notify_nch_gen_msg(struct gsm_bts *bts, uint8_t *out_buf)
+{
+	struct gsm48_notification_nch *nn = (struct gsm48_notification_nch *) out_buf;
+	const struct asci_notification *notif;
+	unsigned int ro_len;
+
+	notif = bts_asci_notification_get_next(bts);
+
+	*nn = (struct gsm48_notification_nch) {
+		.proto_discr = GSM48_PDISC_RR,
+		.msg_type = GSM48_MT_RR_NOTIF_NCH,
+	};
+
+	nn->l2_plen = L2_PLEN(nn->data - out_buf);
+
+	/* Pad remaining octets with constant '2B'O */
+	ro_len = GSM_MACBLOCK_LEN - (nn->data - out_buf);
+	memset(nn->data, GSM_MACBLOCK_PADDING, ro_len);
+
+	struct bitvec bv = {
+		.data_len = ro_len,
+		.data = nn->data,
+	};
+
+	/* {0 | 1 < NLN(NCH) : bit (2) >}
+	 * Only send NLN, at the last notifications.
+	 * When the phone receives two NLN with the same value, it knows that all notifications has been received.
+	 * Also send NLN if no notification is available. */
+	if (bts->asci.notification_count >= bts->asci.notification_entries - 1) {
+		bitvec_set_bit(&bv, 1);
+		bitvec_set_uint(&bv, bts->asci.nln, 2);
+	} else {
+		bitvec_set_bit(&bv, 0);
+	}
+
+	/* Count NLN. */
+	if (++bts->asci.notification_count >= bts->asci.notification_entries)
+		bts->asci.notification_count = 0;
+
+	/* < List of Group Call NCH information > ::=
+	 *   { 0 | 1 < Group Call information > < List of Group Call NCH information > } ; */
+	if (notif) {
+		bitvec_set_bit(&bv, 1);
+		append_group_call_information(&bv, notif->group_call_ref,
+						   notif->chan_desc.present ? notif->chan_desc.value : NULL,
+						   notif->chan_desc.len);
+	}
+	bitvec_set_bit(&bv, 0);	/* End of list */
+
+	/* TODO: Additions in Release 6 */
+	/* TODO: Additions in Release 7 */
+
+	return GSM_MACBLOCK_LEN;
 }

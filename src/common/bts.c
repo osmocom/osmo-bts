@@ -56,6 +56,7 @@
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/power_control.h>
 #include <osmo-bts/osmux.h>
+#include <osmo-bts/notification.h>
 
 #define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
@@ -723,8 +724,7 @@ static void compact_agch_queue(struct gsm_bts *bts)
 	return;
 }
 
-int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt,
-		      int is_ag_res)
+int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt, enum ccch_msgt ccch)
 {
 	struct msgb *msg = NULL;
 	int rc = 0;
@@ -737,17 +737,25 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	 */
 	compact_agch_queue(bts);
 
-	/* Check for paging messages first if this is PCH */
-	if (!is_ag_res)
+	switch (ccch) {
+	case CCCH_MSGT_NCH:
+		/* Send NCH message, it has priority over AGCH and does not overlap with PCH. */
+		rc = bts_asci_notify_nch_gen_msg(bts, out_buf);
+		return rc;
+	case CCCH_MSGT_PCH:
+		/* Check whether the block may be overwritten by AGCH. */
 		rc = paging_gen_msg(bts->paging_state, out_buf, gt, &is_empty);
-
-	/* Check whether the block may be overwritten */
-	if (!is_empty)
-		return rc;
-
-	msg = bts_agch_dequeue(bts);
-	if (!msg)
-		return rc;
+		if (!is_empty)
+			return rc;
+		/* fall-through */
+	case CCCH_MSGT_AGCH:
+		/* If fallen here and the AGCH queue is empty, return empty PCH message. */
+		msg = bts_agch_dequeue(bts);
+		if (!msg)
+			return rc;
+		/* Continue to return AGCH message. */
+		break;
+	}
 
 	rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_SENT);
 
@@ -756,7 +764,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	rc = msgb_l3len(msg);
 	msgb_free(msg);
 
-	if (is_ag_res)
+	if (ccch == CCCH_MSGT_AGCH)
 		bts->agch_queue.agch_msgs++;
 	else
 		bts->agch_queue.pch_msgs++;

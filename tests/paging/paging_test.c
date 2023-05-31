@@ -144,7 +144,7 @@ static struct gsm_bts_trx *test_is_ccch_for_agch_setup(uint8_t bs_ag_blks_res)
  * Table 5 of 9 must occur. */
 static void test_is_ccch_for_agch(void)
 {
-	int is_ag_res;
+	enum ccch_msgt ccch;
 	int fn;
 	uint8_t bs_ag_blks_res;
 	struct gsm_bts_trx *trx;
@@ -172,8 +172,8 @@ static void test_is_ccch_for_agch(void)
 		/* Try allo possible settings for bs_ag_blks_res */
 		for (bs_ag_blks_res = 0; bs_ag_blks_res <= 7; bs_ag_blks_res++) {
 			trx = test_is_ccch_for_agch_setup(bs_ag_blks_res);
-			is_ag_res = is_ccch_for_agch(trx, fn);
-			printf(" %u", is_ag_res);
+			ccch = get_ccch_msgt(trx, fn);
+			printf(" %u", (ccch == CCCH_MSGT_AGCH));
 		}
 		printf("\n");
 	}
