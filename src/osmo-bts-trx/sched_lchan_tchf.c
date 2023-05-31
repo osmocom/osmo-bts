@@ -472,10 +472,29 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
 			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
 		};
+		int rc;
 
 		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "No TCH or FACCH prim for transmit.\n");
-		gsm0503_tch_fr_encode(bursts_p, dummy, sizeof(dummy), 1);
-		chan_state->dl_facch_bursts = 8;
+		/* If the channel mode is TCH/FS or TCH/EFS, transmit a dummy
+		 * speech block with inverted CRC3, designed to induce a BFI
+		 * condition in the MS receiver.  In all other channel modes,
+		 * transmit dummy FACCH like we always did before.
+		 *
+		 * FIXME: someone who knows AMR needs to look at this problem
+		 * and decide what is the correct BTS Tx behavior for frame
+		 * gaps in TCH/AFS.  See OS#6049.
+		 */
+		switch (tch_mode) {
+		case GSM48_CMODE_SPEECH_V1:
+		case GSM48_CMODE_SPEECH_EFR:
+			rc = gsm0503_tch_fr_encode(bursts_p, NULL, 0, 1);
+			if (rc == 0)
+				break;
+			/* fall-through */
+		default:
+			gsm0503_tch_fr_encode(bursts_p, dummy, sizeof(dummy), 1);
+			chan_state->dl_facch_bursts = 8;
+		}
 		goto send_burst;
 	}
 
