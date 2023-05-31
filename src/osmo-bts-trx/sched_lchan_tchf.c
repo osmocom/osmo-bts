@@ -117,8 +117,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	if (bi->burst_len > 0) {
 		memcpy(burst, bi->burst + 3, 58);
 		memcpy(burst + 58, bi->burst + 87, 58);
-	} else
-		memset(burst, 0, 116);
+	}
 
 	/* wait until complete set of bursts */
 	if (bi->bid != 3)

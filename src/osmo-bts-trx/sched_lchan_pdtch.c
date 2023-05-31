@@ -88,8 +88,6 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		break;
 	case 0:
 		/* NOPE.ind, assume GPRS? */
-		burst = bursts_p + bi->bid * 116;
-		memset(burst, 0, 116);
 		n_bursts_bits = GSM0503_GPRS_BURSTS_NBITS;
 	}
 
