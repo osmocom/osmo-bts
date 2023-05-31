@@ -295,6 +295,7 @@ struct gsm_bts {
 
 	/* Advanced Speech Call Items (VBS/VGCS) + NCH related bits */
 	struct {
+		int pos_nch;		/* position of the NCH or < 0, if not available */
 		struct llist_head notifications;
 	} asci;
 

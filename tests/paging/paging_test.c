@@ -134,6 +134,7 @@ static struct gsm_bts_trx *test_is_ccch_for_agch_setup(uint8_t bs_ag_blks_res)
 	si3.control_channel_desc.bs_ag_blks_res = bs_ag_blks_res;
 	trx.bts = &bts;
 	bts.si_valid |= 0x8;
+	bts.asci.pos_nch = -1;
 	memcpy(&bts.si_buf[SYSINFO_TYPE_3][0], &si3, sizeof(si3));
 	return &trx;
 }

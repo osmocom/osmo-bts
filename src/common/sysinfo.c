@@ -164,6 +164,26 @@ uint8_t num_agch(const struct gsm_bts_trx *trx, const char * arg)
 	return 1;
 }
 
+/* Returns position of the NCH accroding to SI1 rest octets. See Table 10.5.2.32.1 of TS 44.018.
+ * Returns < 0, if not present. */
+int pos_nch(const struct gsm_bts_trx *trx, const char *arg)
+{
+	const struct gsm_bts *b = trx->bts;
+	const struct gsm48_system_information_type_1 *si1;
+
+	if (GSM_BTS_HAS_SI(b, SYSINFO_TYPE_1)) {
+		si1 = GSM_BTS_SI(b, SYSINFO_TYPE_1);
+		if (si1->rest_octets[0] & 0x80) {
+			/* H <NCH Position : bit (5)> */
+			return (si1->rest_octets[0] >> 2) & 0x1f;
+		}
+		return -ENOTSUP;
+	}
+	LOGP(DL1P, LOGL_NOTICE, "%s: Unable to determine actual NCH Position "
+	     "value as SI1 is not available yet.\n", arg);
+	return -EINVAL;
+}
+
 /* re-generate SI3 restoctets with GPRS indicator depending on the PCU socket connection state */
 void regenerate_si3_restoctets(struct gsm_bts *bts)
 {

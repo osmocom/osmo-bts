@@ -58,6 +58,7 @@ int trx_link_estab(struct gsm_bts_trx *trx);
 void trx_operability_update(struct gsm_bts_trx *trx);
 
 uint8_t num_agch(const struct gsm_bts_trx *trx, const char * arg);
+int pos_nch(const struct gsm_bts_trx *trx, const char *arg);
 bool trx_ms_pwr_ctrl_is_osmo(const struct gsm_bts_trx *trx);
 
 #define LOGPTRX(trx, ss, lvl, fmt, args...) LOGP(ss, lvl, "%s " fmt, gsm_trx_name(trx), ## args)
