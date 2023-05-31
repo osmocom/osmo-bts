@@ -353,6 +353,33 @@ struct p1_rest_octets {
 	} r8;
 };
 
+/* abstract representation of P2 rest octets; we only implement those parts we need for now */
+struct p2_rest_octets {
+	struct {
+		bool present;
+		uint8_t cn3;
+	} cneed;
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
+};
+
+/* abstract representation of P3 rest octets; we only implement those parts we need for now */
+struct p3_rest_octets {
+	struct {
+		bool present;
+		uint8_t cn3;
+		uint8_t cn4;
+	} cneed;
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
+};
+
 /* 3GPP TS 44.018 10.5.2.23 append a segment/page of an ETWS primary notification to given bitvec */
 static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t page_nr,
 				   const uint8_t *etws, ssize_t etws_len)
@@ -424,6 +451,49 @@ static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets
 	}
 }
 
+/* 3GPP TS 44.018 10.5.2.24 append P2 Rest Octets to given bit-vector */
+static void append_p2_rest_octets(struct bitvec *bv, const struct p2_rest_octets *p2ro)
+{
+	/* {L | H <CN3: bit (2)>} */
+	if (p2ro->cneed.present) {
+		bitvec_set_bit(bv, H);
+		bitvec_set_uint(bv, p2ro->cneed.cn3, 2);
+	} else
+		bitvec_set_bit(bv, L);		/* no CN3 */
+
+	/* {L | H < NLN(PCH) : bit (2) <NLN status(PCH) : bit>} */
+	if (p2ro->nln_pch.present) {
+		bitvec_set_bit(bv, H);
+		bitvec_set_uint(bv, p2ro->nln_pch.nln, 2);
+		bitvec_set_uint(bv, p2ro->nln_pch.nln_status, 1);
+	} else
+		bitvec_set_bit(bv, L);		/* no NLN */
+
+	/* Note: If this needs to be extended in the future, check if it actually fits into rest of P2! */
+}
+
+/* 3GPP TS 44.018 10.5.2.25 append P3 Rest Octets to given bit-vector */
+static void append_p3_rest_octets(struct bitvec *bv, const struct p3_rest_octets *p3ro)
+{
+	/* {L | H <CN3: bit (2)> <CN3: bit (2)>} */
+	if (p3ro->cneed.present) {
+		bitvec_set_bit(bv, H);
+		bitvec_set_uint(bv, p3ro->cneed.cn3, 2);
+		bitvec_set_uint(bv, p3ro->cneed.cn4, 2);
+	} else
+		bitvec_set_bit(bv, L);		/* no CN3/CN4 */
+
+	/* {L | H < NLN(PCH) : bit (2) <NLN status(PCH) : bit>} */
+	if (p3ro->nln_pch.present) {
+		bitvec_set_bit(bv, H);
+		bitvec_set_uint(bv, p3ro->nln_pch.nln, 2);
+		bitvec_set_uint(bv, p3ro->nln_pch.nln_status, 1);
+	} else
+		bitvec_set_bit(bv, L);		/* no NLN */
+
+	/* Note: If this needs to be extended in the future, check if it actually fits into 3 octets! */
+}
+
 static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 				uint8_t chan1, const uint8_t *identity2_lv,
 				uint8_t chan2, const struct p1_rest_octets *p1ro,
@@ -466,10 +536,12 @@ static int fill_paging_type_1(uint8_t *out_buf, const uint8_t *identity1_lv,
 
 static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 				uint8_t cneed1, const uint8_t *tmsi2_lv,
-				uint8_t cneed2, const uint8_t *identity3_lv)
+				uint8_t cneed2, const uint8_t *identity3_lv,
+				const struct p2_rest_octets *p2ro)
 {
 	struct gsm48_paging2 *pt2 = (struct gsm48_paging2 *) out_buf;
 	uint32_t tmsi;
+	unsigned int ro_len;
 	uint8_t *cur;
 	int rc;
 
@@ -493,16 +565,32 @@ static int fill_paging_type_2(uint8_t *out_buf, const uint8_t *tmsi1_lv,
 
 	pt2->l2_plen = L2_PLEN(cur - out_buf);
 
-	return cur - out_buf;
+	/* Pad remaining octets with constant '2B'O */
+	ro_len = GSM_MACBLOCK_LEN - (cur - out_buf);
+	memset(cur, GSM_MACBLOCK_PADDING, ro_len);
+
+	/* Optional P2 Rest Octets */
+	if (p2ro) {
+		struct bitvec bv = {
+			.data_len = ro_len,
+			.data = cur,
+		};
+
+		append_p2_rest_octets(&bv, p2ro);
+	}
+
+	return GSM_MACBLOCK_LEN;
 }
 
 static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv, uint8_t cneed1,
 				const uint8_t *tmsi2_lv, uint8_t cneed2,
-				const uint8_t *tmsi3_lv, uint8_t cneed3,
-				const uint8_t *tmsi4_lv, uint8_t cneed4)
+				const uint8_t *tmsi3_lv, const uint8_t *tmsi4_lv,
+				const struct p3_rest_octets *p3ro)
 {
 	struct gsm48_paging3 *pt3 = (struct gsm48_paging3 *) out_buf;
 	uint32_t tmsi;
+	unsigned int ro_len;
+	uint8_t *cur;
 	int rc;
 
 	memset(out_buf, 0, sizeof(*pt3));
@@ -524,13 +612,25 @@ static int fill_paging_type_3(uint8_t *out_buf, const uint8_t *tmsi1_lv, uint8_t
 	rc = tmsi_mi_to_uint(&tmsi, tmsi4_lv);
 	if (rc == 0)
 		pt3->tmsi4 = tmsi;
+	cur = out_buf + 20;	/* Cannot use sizeof(*pt3), because it has more octets. */
 
-	/* The structure definition in libosmocore is wrong. It includes as last
-	 * byte some invalid definition of chneed3/chneed4, so we must do this by hand
-	 * here and cannot rely on sizeof(*pt3) */
-	out_buf[20] = (0x23 & ~0xf8) | 0x80 | (cneed3 & 3) << 5 | (cneed4 & 3) << 3;
+	pt3->l2_plen = L2_PLEN(cur - out_buf);
 
-	return 21;
+	/* Pad remaining octets with constant '2B'O */
+	ro_len = GSM_MACBLOCK_LEN - (cur - out_buf);
+	memset(cur, GSM_MACBLOCK_PADDING, ro_len);
+
+	/* Optional P3 Rest Octets */
+	if (p3ro) {
+		struct bitvec bv = {
+			.data_len = ro_len,
+			.data = cur,
+		};
+
+		append_p3_rest_octets(&bv, p3ro);
+	}
+
+	return GSM_MACBLOCK_LEN;
 }
 
 static const uint8_t empty_id_lv[] = { 0x01, 0xF0 };
@@ -690,24 +790,39 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 		if (num_pr == 4 && num_imsi == 0) {
 			/* No IMSI: easy case, can use TYPE 3 */
 			DEBUGP(DPAG, "Tx PAGING TYPE 3 (4 TMSI)\n");
+			struct p3_rest_octets p3ro;
+			memset(&p3ro, 0, sizeof(p3ro));
+			p3ro.cneed.present = true;
+			p3ro.cneed.cn3 = pr[2]->u.normal.chan_needed;
+			p3ro.cneed.cn4 = pr[3]->u.normal.chan_needed;
+			p3ro.nln_pch.present = (bts->asci.pos_nch >= 0);
+			p3ro.nln_pch.nln = bts->asci.nln;
+			p3ro.nln_pch.nln_status = bts->asci.nln_status;
 			len = fill_paging_type_3(out_buf,
 						 pr[0]->u.normal.identity_lv,
 						 pr[0]->u.normal.chan_needed,
 						 pr[1]->u.normal.identity_lv,
 						 pr[1]->u.normal.chan_needed,
 						 pr[2]->u.normal.identity_lv,
-						 pr[2]->u.normal.chan_needed,
 						 pr[3]->u.normal.identity_lv,
-						 pr[3]->u.normal.chan_needed);
+						 &p3ro);
 		} else if (num_pr >= 3 && num_imsi <= 1) {
 			/* 3 or 4, of which only up to 1 is IMSI */
 			DEBUGP(DPAG, "Tx PAGING TYPE 2 (2 TMSI,1 xMSI)\n");
+			struct p2_rest_octets p2ro;
+			memset(&p2ro, 0, sizeof(p2ro));
+			p2ro.cneed.present = true;
+			p2ro.cneed.cn3 = pr[2]->u.normal.chan_needed;
+			p2ro.nln_pch.present = (bts->asci.pos_nch >= 0);
+			p2ro.nln_pch.nln = bts->asci.nln;
+			p2ro.nln_pch.nln_status = bts->asci.nln_status;
 			len = fill_paging_type_2(out_buf,
 						 pr[0]->u.normal.identity_lv,
 						 pr[0]->u.normal.chan_needed,
 						 pr[1]->u.normal.identity_lv,
 						 pr[1]->u.normal.chan_needed,
-						 pr[2]->u.normal.identity_lv);
+						 pr[2]->u.normal.identity_lv,
+						 &p2ro);
 			if (num_pr == 4) {
 				/* re-add #4 for next time */
 				llist_add(&pr[3]->list, group_q);
