@@ -156,11 +156,18 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 int tx_data_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
-	ubit_t *burst, *bursts_p = l1ts->chan_state[br->chan].dl_bursts;
+	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
+	ubit_t *burst, *bursts_p = chan_state->dl_bursts;
+	uint8_t *mask = &chan_state->dl_mask;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0)
+	if (br->bid > 0) {
+		if ((*mask & 0x01) != 0x01)
+			return -ENOMSG;
 		goto send_burst;
+	}
+
+	*mask = *mask << 4;
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
@@ -194,6 +201,8 @@ send_burst:
 	memcpy(br->burst + 87, burst + 58, 58);
 
 	br->burst_len = GSM_BURST_LEN;
+
+	*mask |= (1 << br->bid);
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 

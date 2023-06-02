@@ -450,11 +450,17 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
 	uint8_t tch_mode = chan_state->tch_mode;
 	ubit_t *burst, *bursts_p = chan_state->dl_bursts;
+	uint8_t *mask = &chan_state->dl_mask;
 	struct msgb *msg;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0)
+	if (br->bid > 0) {
+		if ((*mask & 0x01) != 0x01)
+			return -ENOMSG;
 		goto send_burst;
+	}
+
+	*mask = *mask << 4;
 
 	/* BURST BYPASS */
 
@@ -532,6 +538,8 @@ send_burst:
 		chan_state->dl_facch_bursts--;
 		br->flags |= TRX_BR_F_FACCH;
 	}
+
+	*mask |= (1 << br->bid);
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 

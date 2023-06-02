@@ -144,13 +144,20 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
 	struct msgb *msg = NULL; /* make GCC happy */
-	ubit_t *burst, *bursts_p = l1ts->chan_state[br->chan].dl_bursts;
-	enum trx_mod_type *mod = &l1ts->chan_state[br->chan].dl_mod_type;
+	struct l1sched_chan_state *chan_state = &l1ts->chan_state[br->chan];
+	ubit_t *burst, *bursts_p = chan_state->dl_bursts;
+	enum trx_mod_type *mod = &chan_state->dl_mod_type;
+	uint8_t *mask = &chan_state->dl_mask;
 	int rc = 0;
 
 	/* send burst, if we already got a frame */
-	if (br->bid > 0)
+	if (br->bid > 0) {
+		if ((*mask & 0x01) != 0x01)
+			return -ENOMSG;
 		goto send_burst;
+	}
+
+	*mask = *mask << 4;
 
 	/* get mac block from queue */
 	msg = _sched_dequeue_prim(l1ts, br);
@@ -205,6 +212,8 @@ send_burst:
 
 		br->burst_len = GSM_BURST_LEN;
 	}
+
+	*mask |= (1 << br->bid);
 
 	LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "Transmitting burst=%u.\n", br->bid);
 
