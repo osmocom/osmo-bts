@@ -166,14 +166,14 @@ int tx_pdtch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* BURST BYPASS */
 
 	/* encode bursts */
-	rc = gsm0503_pdtch_egprs_encode(bursts_p, msg->l2h, msg->tail - msg->l2h);
+	rc = gsm0503_pdtch_egprs_encode(bursts_p, msg->l2h, msgb_l2len(msg));
 	if (rc < 0)
-		rc = gsm0503_pdtch_encode(bursts_p, msg->l2h, msg->tail - msg->l2h);
+		rc = gsm0503_pdtch_encode(bursts_p, msg->l2h, msgb_l2len(msg));
 
 	/* check validity of message */
 	if (rc < 0) {
 		LOGL1SB(DL1P, LOGL_FATAL, l1ts, br, "Prim invalid length, please FIX! "
-			"(len=%ld)\n", (long)(msg->tail - msg->l2h));
+			"(len=%u)\n", msgb_l2len(msg));
 		/* free message */
 		msgb_free(msg);
 		return -EINVAL;
