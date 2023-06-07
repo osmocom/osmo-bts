@@ -667,7 +667,6 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	struct gsm_bts_trx_ts *ts;
 	struct msgb *msg;
 	int rc = 0;
-	char imsi[4];
 
 	LOGP(DPCU, LOGL_DEBUG, "Data request received: sapi=%s arfcn=%d "
 		"block=%d data=%s\n", sapi_string[data_req->sapi],
@@ -679,6 +678,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	{
 		const struct gsm48_imm_ass *gsm48_imm_ass;
 		bool confirm;
+		char imsi[4];
 		OSMO_STRLCPY_ARRAY(imsi, (char *)data_req->data);
 		if (data_req->len-3 != GSM_MACBLOCK_LEN) {
 			LOGP(DPCU, LOGL_ERROR, "MAC block with invalid length %d (expecting GSM_MACBLOCK_LEN = %d)\n",
