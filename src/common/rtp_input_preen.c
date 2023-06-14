@@ -34,7 +34,7 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/rtp_input_preen.h>
 
-static bool amr_is_octet_aligned(const uint8_t *rtp_pl, unsigned payload_len)
+static bool amr_is_octet_aligned(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 {
 	/*
 	 * Logic: If 1st bit padding is not zero, packet is either:
@@ -55,7 +55,7 @@ static bool amr_is_octet_aligned(const uint8_t *rtp_pl, unsigned payload_len)
 	#define AMR_PADDING1(rtp_pl) (rtp_pl[0] & 0x0f)
 	#define AMR_PADDING2(rtp_pl) (rtp_pl[1] & 0x03)
 
-	if (payload_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
+	if (rtp_pl_len < 2 || AMR_PADDING1(rtp_pl) || AMR_PADDING2(rtp_pl))
 		return false;
 
 	return true;
