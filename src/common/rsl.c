@@ -811,6 +811,51 @@ static int rsl_rx_sms_bcast_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 	return 0;
 }
 
+/* Broadcast notification about new VGCS/VBS call on every dedicated channel.
+ * This is required for MSs that are currently in dedicated mode that there is an ongoing call and on which channel
+ * the call is active. Most MSs in dedicated mode may not be able to receive the NCH otherwise.
+ * MSs that do not support ASCI will ignore it, as it is an unsupported message for them.
+ */
+static int asci_broadcast_facch(struct gsm_bts *bts, const uint8_t *group_call_ref, const uint8_t *chan_desc,
+				uint8_t chan_desc_len, unsigned int count)
+{
+	uint8_t notif[23];
+	struct msgb *msg, *cmsg;
+	struct gsm_bts_trx *trx;
+	struct gsm_lchan *lchan;
+	unsigned int tn, ln, n;
+	int rc;
+
+	rc = bts_asci_notify_facch_gen_msg(bts, notif, group_call_ref, chan_desc, chan_desc_len);
+	if (rc < 0)
+		return rc;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
+			for (ln = 0; ln < ARRAY_SIZE(trx->ts[tn].lchan); ln++) {
+				lchan = &trx->ts[tn].lchan[ln];
+				if (!lchan_is_dcch(lchan))
+					continue;
+				if (lchan->state != LCHAN_S_ACTIVE)
+					continue;
+				msg = rsl_rll_simple(RSL_MT_UNIT_DATA_REQ, gsm_lchan2chan_nr(lchan), 0x00, 0);
+				msg->l3h = msg->tail; /* emulate rsl_rx_rll() behaviour */
+				msgb_tl16v_put(msg, RSL_IE_L3_INFO, sizeof(notif), (uint8_t *) &notif);
+				for (n = 1; n < count; n++) {
+					cmsg = msgb_copy(msg, "FACCH copy");
+					lapdm_rslms_recvmsg(cmsg, &lchan->lapdm_ch);
+				}
+				lapdm_rslms_recvmsg(msg, &lchan->lapdm_ch);
+			}
+		}
+	}
+
+	return 0;
+}
+
+/* Number of times to broadcast ASCI call on every dedicated channel. */
+#define ASCI_BROADCAST_NUM 3
+
 /* 8.5.10 NOTIFICATION COMMAND */
 static int rsl_rx_notification_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 {
@@ -841,6 +886,9 @@ static int rsl_rx_notification_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
 		rc = bts_asci_notification_add(trx->bts, TLVP_VAL(&tp, RSL_IE_GROUP_CALL_REF),
 					       TLVP_VAL(&tp, RSL_IE_CHAN_DESC), TLVP_LEN(&tp, RSL_IE_CHAN_DESC),
 					       (struct rsl_ie_nch_drx_info *) TLVP_VAL(&tp, RSL_IE_NCH_DRX_INFO));
+		/* Broadcast to FACCH */
+		asci_broadcast_facch(trx->bts, TLVP_VAL(&tp, RSL_IE_GROUP_CALL_REF), TLVP_VAL(&tp, RSL_IE_CHAN_DESC),
+				     TLVP_LEN(&tp, RSL_IE_CHAN_DESC), ASCI_BROADCAST_NUM);
 		break;
 	case RSL_CMD_INDICATOR_STOP:
 		if (!TLVP_PRES_LEN(&tp, RSL_IE_GROUP_CALL_REF, 5)) {

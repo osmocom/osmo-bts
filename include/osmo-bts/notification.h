@@ -57,3 +57,5 @@ const struct asci_notification *bts_asci_notification_get_next(struct gsm_bts *b
 void append_group_call_information(struct bitvec *bv, const uint8_t *gcr, const uint8_t *ch_desc, uint8_t ch_desc_len);
 
 int bts_asci_notify_nch_gen_msg(struct gsm_bts *bts, uint8_t *out_buf);
+int bts_asci_notify_facch_gen_msg(struct gsm_bts *bts, uint8_t *out_buf, const uint8_t *group_call_ref,
+				  const uint8_t *chan_desc, uint8_t chan_desc_len);

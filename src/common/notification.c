@@ -223,3 +223,34 @@ int bts_asci_notify_nch_gen_msg(struct gsm_bts *bts, uint8_t *out_buf)
 
 	return GSM_MACBLOCK_LEN;
 }
+
+int bts_asci_notify_facch_gen_msg(struct gsm_bts *bts, uint8_t *out_buf, const uint8_t *group_call_ref,
+				  const uint8_t *chan_desc, uint8_t chan_desc_len)
+{
+	struct gsm48_hdr_sh *sh = (struct gsm48_hdr_sh *) out_buf;
+	unsigned int ro_len;
+
+	*sh = (struct gsm48_hdr_sh) {
+		.rr_short_pd = GSM48_PDISC_SH_RR,
+		.msg_type = GSM48_MT_RR_SH_FACCH,
+		.l2_header = 0,
+	};
+
+	/* Pad remaining octets with constant '2B'O */
+	ro_len = GSM_MACBLOCK_LEN - (sh->data - out_buf);
+	memset(sh->data, GSM_MACBLOCK_PADDING, ro_len);
+
+	struct bitvec bv = {
+		.data_len = ro_len,
+		.data = sh->data,
+	};
+
+	/*  0 < Group Call information > */
+	bitvec_set_bit(&bv, 0);
+	append_group_call_information(&bv, group_call_ref, chan_desc, chan_desc_len);
+
+	/* TODO: Additions in Release 6 */
+	/* TODO: Additions in Release 7 */
+
+	return GSM_MACBLOCK_LEN;
+}
