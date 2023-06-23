@@ -107,3 +107,5 @@ doc/manuals/build
 contrib/osmo-bts.spec
 contrib/ber/rtp_ber
 contrib/ber/rtp_gen_map
+
+arm-poky-linux-gnueabi-libtool
