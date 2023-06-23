@@ -1795,11 +1795,33 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	struct tlv_parsed tp;
 	const struct tlv_p_entry *ie;
 	uint8_t type, cause;
+	bool reactivation = false;
 	int rc;
 
-	if (lchan->state != LCHAN_S_NONE) {
+	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_PROTO);
+	}
+
+	/* 9.3.3 Activation Type */
+	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
+		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "missing Activation Type\n");
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
+	}
+	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
+	if ((type & RSL_ACT_TYPE_REACT)) {
+		type -= RSL_ACT_TYPE_REACT;
+		reactivation = true;
+	}
+
+	if (!reactivation && lchan->state != LCHAN_S_NONE) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "error: lchan is not available, but in state: %s.\n",
 			  gsm_lchans_name(lchan->state));
+		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
+	}
+
+	if (reactivation && lchan->state == LCHAN_S_NONE) {
+		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "error: reactivation on inactive lchan.\n");
 		return rsl_tx_chan_act_nack(lchan, RSL_ERR_EQUIPMENT_FAIL);
 	}
 
@@ -1844,18 +1866,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		.max = 2 * 15, /* maximum defined in 9.3.4 */
 		.current = 0,
 	};
-
-	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
-		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
-		return rsl_tx_chan_act_nack(lchan, RSL_ERR_PROTO);
-	}
-
-	/* 9.3.3 Activation Type */
-	if (!TLVP_PRESENT(&tp, RSL_IE_ACT_TYPE)) {
-		LOGPLCHAN(lchan, DRSL, LOGL_NOTICE, "missing Activation Type\n");
-		return rsl_tx_chan_act_nack(lchan, RSL_ERR_MAND_IE_ERROR);
-	}
-	type = *TLVP_VAL(&tp, RSL_IE_ACT_TYPE);
 
 	/* 9.3.6 Channel Mode */
 	if (type != RSL_ACT_OSMO_PDCH) {
@@ -2102,6 +2112,19 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->top_acch_active = !lchan->top_acch_cap.rxqual;
 	else
 		lchan->top_acch_active = false;
+
+	/* set ASCI channel into right state */
+	if (reactivation && rsl_chan_rt_is_asci(lchan->rsl_chan_rt))
+		vgcs_lchan_react(lchan);
+
+	/* on reactivation, the channel is already activated */
+	if (reactivation) {
+		rc = rsl_tx_chan_act_ack(lchan);
+		if (rc < 0)
+			LOGP(DRSL, LOGL_ERROR, "%s Cannot send act ack: %d\n",
+			     gsm_ts_and_pchan_name(ts), rc);
+		return 0;
+	}
 
 	/* actually activate the channel in the BTS */
 	rc = l1sap_chan_act(lchan->ts->trx, dch->chan_nr);
