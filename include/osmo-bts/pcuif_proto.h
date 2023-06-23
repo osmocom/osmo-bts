@@ -3,10 +3,11 @@
 
 #include <osmocom/gsm/l1sap.h>
 #include <arpa/inet.h>
+#include <osmocom/gsm/protocol/gsm_23_003.h>
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x0a
+#define PCU_IF_VERSION		0x0b
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -34,7 +35,7 @@
 #define PCU_IF_SAPI_PDTCH	0x05	/* packet data/control/ccch block */
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
 #define PCU_IF_SAPI_PTCCH	0x07	/* packet TA control channel */
-#define PCU_IF_SAPI_AGCH_DT	0x08	/* assignment on AGCH but with additional TLLI */
+#define PCU_IF_SAPI_PCH_DT	0x08	/* assignment on PCH (confirmed using TLLI) */
 
 /* flags */
 #define PCU_IF_FLAG_ACTIVE	(1 << 0)/* BTS is active */
@@ -228,6 +229,17 @@ struct gsm_pcu_if_container {
 	uint16_t	length; /* network byte order */
 	uint8_t		data[0];
 } __attribute__ ((packed));
+
+/* Struct to send a (confirmed) IMMEDIATE ASSIGNMENT message via PCH. The struct is sent as a data request
+ * (data_req) under SAPI PCU_IF_SAPI_PCH_DT. */
+struct gsm_pcu_if_pch_dt {
+	/* TLLI as reference for confirmation */
+	uint32_t tlli;
+	/* IMSI (to derive paging group) */
+	char imsi[OSMO_IMSI_BUF_SIZE];
+	/* GSM mac-block (with immediate assignment message) */
+	uint8_t data[GSM_MACBLOCK_LEN];
+} __attribute__((packed));
 
 struct gsm_pcu_if {
 	/* context based information */

@@ -59,6 +59,7 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PDTCH] =	"PDTCH",
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
+	[PCU_IF_SAPI_PCH_DT] =	"PCH_DT",
 };
 
 /*
@@ -617,28 +618,26 @@ int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 	return pcu_sock_send(msg);
 }
 
-int pcu_tx_pch_data_cnf(uint32_t fn, uint8_t *data, uint8_t len)
+int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t tlli)
 {
 	struct gsm_bts *bts;
 	struct msgb *msg;
 	struct gsm_pcu_if *pcu_prim;
-	struct gsm_pcu_if_data *data_cnf;
 
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
 
 	LOGP(DPCU, LOGL_DEBUG, "Sending PCH confirm\n");
 
-	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF, bts->nr);
+	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF_DT, bts->nr);
 	if (!msg)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
-	data_cnf = &pcu_prim->u.data_cnf;
-
-	data_cnf->sapi = PCU_IF_SAPI_PCH;
-	data_cnf->fn = fn;
-	memcpy(data_cnf->data, data, len);
-	data_cnf->len = len;
+	pcu_prim->u.data_cnf_dt = (struct gsm_pcu_if_data_cnf_dt) {
+		.sapi = PCU_IF_SAPI_PCH_DT,
+		.tlli = tlli,
+		.fn = fn,
+	};
 
 	return pcu_sock_send(msg);
 }
@@ -675,21 +674,23 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		osmo_hexdump(data_req->data, data_req->len));
 
 	switch (data_req->sapi) {
-	case PCU_IF_SAPI_PCH:
+	case PCU_IF_SAPI_PCH_DT:
 	{
+		const struct gsm_pcu_if_pch_dt *gsm_pcu_if_pch_dt;
 		const struct gsm48_imm_ass *gsm48_imm_ass;
 		bool confirm;
-		char imsi[4];
-		OSMO_STRLCPY_ARRAY(imsi, (char *)data_req->data);
-		if (data_req->len-3 != GSM_MACBLOCK_LEN) {
-			LOGP(DPCU, LOGL_ERROR, "MAC block with invalid length %d (expecting GSM_MACBLOCK_LEN = %d)\n",
-			     data_req->len-3, GSM_MACBLOCK_LEN);
-			rc = -ENOMEM;
+
+		if (OSMO_UNLIKELY(data_req->len != sizeof(*gsm_pcu_if_pch_dt))) {
+			LOGP(DPCU, LOGL_ERROR, "Rx malformed DATA.req for PCH\n");
+			rc = -EINVAL;
 			break;
 		}
-		gsm48_imm_ass = (struct gsm48_imm_ass *)(data_req->data + 3);
+
+		gsm_pcu_if_pch_dt = (struct gsm_pcu_if_pch_dt *)data_req->data;
+		gsm48_imm_ass = (struct gsm48_imm_ass *)gsm_pcu_if_pch_dt->data;
 		confirm = (gsm48_imm_ass->msg_type == GSM48_MT_RR_IMM_ASS);
-		paging_add_macblock(bts->paging_state, imsi, confirm, data_req->data + 3);
+		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch_dt->tlli,
+					 gsm_pcu_if_pch_dt->imsi, confirm, gsm_pcu_if_pch_dt->data);
 		break;
 	}
 	case PCU_IF_SAPI_AGCH:

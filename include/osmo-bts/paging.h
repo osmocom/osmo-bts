@@ -37,7 +37,7 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
-int paging_add_macblock(struct paging_state *ps, const char *imsi, bool confirm, const uint8_t *macblock);
+int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi, bool confirm, const uint8_t *macblock);
 
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,
