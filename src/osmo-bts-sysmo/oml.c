@@ -341,6 +341,8 @@ static int trx_mute_on_init_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		bts_shutdown(trx->bts, "RF-MUTE failure");
 	}
 
+	bts_update_status(BTS_STATUS_RF_MUTE, 1);
+
 	msgb_free(resp);
 
 	return 0;
