@@ -312,6 +312,9 @@ struct gsm_lchan {
 		struct osmo_timer_list t3115;
 		/* counts up to Ny2 */
 		unsigned int vgcs_ul_grant_count;
+		/* uplink free message */
+		bool uplink_free;
+		uint8_t uplink_free_msg[GSM_MACBLOCK_LEN];
 	} asci;
 	/* S counter for link loss */
 	int s;

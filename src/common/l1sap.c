@@ -1170,6 +1170,10 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 					memcpy(p + 2, si, GSM_MACBLOCK_LEN - 2);
 				} else
 					memcpy(p + 2, fill_frame, GSM_MACBLOCK_LEN - 2);
+			} else if (vgcs_is_uplink_free(lchan)) {
+				/* If UPLINK FREE message is stored, send it with every DCCH frame. */
+				p = msgb_put(msg, GSM_MACBLOCK_LEN);
+				vgcs_uplink_free_get(lchan, p);
 			} else if (L1SAP_IS_CHAN_SDCCH4(chan_nr) || L1SAP_IS_CHAN_SDCCH8(chan_nr) ||
 				   (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN && !lchan->ts->trx->bts->dtxd)) {
 				/*
@@ -1194,6 +1198,14 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 				check_for_ciph_cmd(pp_msg, lchan, chan_nr);
 				if (dtxd_facch)
 					dtx_dispatch(lchan, E_FACCH);
+				if (rsl_chan_rt_is_vgcs(lchan->rsl_chan_rt)) {
+					/* Check for UPLINK FREE message and store. */
+					if (pp_msg->data[0] == GSM48_MT_RR_SH_UL_FREE << 2)
+						vgcs_uplink_free_set(lchan, pp_msg->data);
+					/* Keep UPLINK FREE message when sending short header messages. */
+					else if ((pp_msg->data[0] & 0x03) != 0x00)
+						vgcs_uplink_free_reset(lchan);
+				}
 			}
 			msgb_free(pp_msg);
 		}
