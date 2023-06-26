@@ -418,6 +418,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " rtp socket-priority %d%s", bts->rtp_priority, VTY_NEWLINE);
 	if (bts->rtp_nogaps_mode)
 		vty_out(vty, " rtp continuous-streaming%s", VTY_NEWLINE);
+	vty_out(vty, " %srtp internal-uplink-ecu%s",
+		bts->use_ul_ecu ? "" : "no ", VTY_NEWLINE);
 	vty_out(vty, " rtp hr-format %s%s",
 		bts->emit_hr_rfc5993 ? "rfc5993" : "ts101318", VTY_NEWLINE);
 	vty_out(vty, " paging queue-size %u%s", paging_get_queue_max(bts->paging_state),
@@ -796,6 +798,28 @@ DEFUN(cfg_bts_no_rtp_cont_stream,
 	struct gsm_bts *bts = vty->index;
 
 	bts->rtp_nogaps_mode = false;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rtp_int_ul_ecu,
+      cfg_bts_rtp_int_ul_ecu_cmd,
+      "rtp internal-uplink-ecu",
+      RTP_STR "Apply a BTS-internal ECU to the uplink traffic frame stream\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->use_ul_ecu = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_rtp_int_ul_ecu,
+      cfg_bts_no_rtp_int_ul_ecu_cmd,
+      "no rtp internal-uplink-ecu",
+      NO_STR RTP_STR "Apply a BTS-internal ECU to the uplink traffic frame stream\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->use_ul_ecu = false;
 	return CMD_SUCCESS;
 }
 
@@ -2700,6 +2724,8 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_rtp_priority_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_rtp_cont_stream_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_int_ul_ecu_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_rtp_int_ul_ecu_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_hr_format_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);

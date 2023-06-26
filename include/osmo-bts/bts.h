@@ -300,6 +300,7 @@ struct gsm_bts {
 	int rtp_priority;
 
 	bool rtp_nogaps_mode;		/* emit RTP stream without any gaps */
+	bool use_ul_ecu;		/* "rtp internal-uplink-ecu" option */
 	bool emit_hr_rfc5993;
 
 	struct {

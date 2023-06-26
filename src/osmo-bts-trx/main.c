@@ -164,6 +164,10 @@ int bts_model_init(struct gsm_bts *bts)
 	 * a surprise functional change upon software update. */
 	bts->emit_hr_rfc5993 = true;
 
+	/* For the same reason as the above, rtp internal-uplink-ecu
+	 * needs to be enabled by default on osmo-bts-trx model only. */
+	bts->use_ul_ecu = true;
+
 	return 0;
 }
 

@@ -235,6 +235,8 @@ OsmoBTS(bts)# list
   rtp socket-priority <0-255>
   rtp continuous-streaming
   no rtp continuous-streaming
+  rtp internal-uplink-ecu
+  no rtp internal-uplink-ecu
   rtp hr-format (rfc5993|ts101318)
   band (450|GSM450|480|GSM480|750|GSM750|810|GSM810|850|GSM850|900|GSM900|1800|DCS1800|1900|PCS1900)
   description .TEXT
