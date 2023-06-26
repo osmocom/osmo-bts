@@ -439,14 +439,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				break;
 			}
 
-			/* Attempt to allocate an Error Concealment Unit
-			 * instance, if available, unless it is disabled
-			 * by the vty config. */
-			if (trx->bts->use_ul_ecu)
-				lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
-			else
-				lchan->ecu_state = NULL;
-
 			/* activate dedicated channel */
 			trx_sched_set_lchan(lchan, chan_nr, LID_DEDIC, true);
 			/* activate associated channel */
@@ -475,13 +467,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 			mph_info_chan_confirm(trx, chan_nr, PRIM_INFO_ACTIVATE, 0);
 			break;
 		case PRIM_INFO_MODIFY:
-			/* ECU for possibly new codec */
-			if (lchan->ecu_state)
-				osmo_ecu_destroy(lchan->ecu_state);
-			if (trx->bts->use_ul_ecu)
-				lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
-			else
-				lchan->ecu_state = NULL;
 			/* change mode */
 			trx_sched_set_mode(lchan->ts, chan_nr,
 					   lchan->rsl_cmode, lchan->tch_mode,
@@ -506,11 +491,6 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					  " channel %s\n", rsl_chan_nr_str(chan_nr));
 				rc = -EPERM;
 				break;
-			}
-			/* clear ECU state (if any) */
-			if (lchan->ecu_state) {
-				osmo_ecu_destroy(lchan->ecu_state);
-				lchan->ecu_state = NULL;
 			}
 			/* deactivate associated channel */
 			bts_model_lchan_deactivate_sacch(lchan);

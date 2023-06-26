@@ -2208,6 +2208,13 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr)
 	if (rc)
 		return -RSL_ERR_EQUIPMENT_FAIL;
 
+	/* Is it TCH?  If it is, attempt to allocate an Error Concealment Unit
+	 * instance, if available, unless it is disabled by vty config. */
+	if (lchan_is_tch(lchan) && trx->bts->use_ul_ecu)
+		lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
+	else
+		lchan->ecu_state = NULL;
+
 	/* Init DTX DL FSM if necessary */
 	if (trx->bts->dtxd && lchan_is_tch(lchan)) {
 		lchan->tch.dtx.dl_amr_fsm = osmo_fsm_inst_alloc(&dtx_dl_amr_fsm,
@@ -2248,6 +2255,12 @@ int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 		lchan->tch.dtx.dl_amr_fsm = NULL;
 	}
 
+	/* clear ECU state (if any) */
+	if (lchan->ecu_state) {
+		osmo_ecu_destroy(lchan->ecu_state);
+		lchan->ecu_state = NULL;
+	}
+
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
 		0);
 }
@@ -2269,6 +2282,19 @@ int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "Modifying channel %s\n",
 		rsl_chan_nr_str(chan_nr));
+
+	/* Is it TCH?  If it is and we are applying internal uplink ECUs,
+	 * the new channel mode calls for a different ECU.  Any changes
+	 * in vty config (enabling or disabling this ECU application)
+	 * will also take effect upon channel modification. */
+	if (lchan_is_tch(lchan)) {
+		if (lchan->ecu_state)
+			osmo_ecu_destroy(lchan->ecu_state);
+		if (trx->bts->use_ul_ecu)
+			lchan->ecu_state = osmo_ecu_init(trx, lchan2ecu_codec(lchan));
+		else
+			lchan->ecu_state = NULL;
+	}
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
 }
