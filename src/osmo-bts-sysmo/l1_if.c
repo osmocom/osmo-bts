@@ -1252,12 +1252,13 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			LOGP(DL1C, LOGL_FATAL, "RF-ACT.conf with status %s\n",
 				get_value_string(femtobts_l1status_names, status));
 			bts_shutdown(trx->bts, "RF-ACT failure");
-		} else
+		} else {
 			bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
 
-		/* signal availability */
-		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
-		osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
+			/* signal availability */
+			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
+		}
 	} else {
 		bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
 		osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_DISABLE, NULL);
