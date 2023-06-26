@@ -332,54 +332,6 @@ int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi
 
 #define L2_PLEN(len)	(((len - 1) << 2) | 0x01)
 
-/* abstract representation of P1 rest octets; we only implement those parts we need for now */
-struct p1_rest_octets {
-	struct {
-		bool present;
-		uint8_t nln;
-		uint8_t nln_status;
-	} nln_pch;
-	bool packet_page_ind[2];
-	bool r8_present;
-	struct {
-		bool prio_ul_access;
-		bool etws_present;
-		struct {
-			bool is_first;
-			uint8_t page_nr;
-			const uint8_t *page;
-			size_t page_bytes;
-		} etws;
-	} r8;
-};
-
-/* abstract representation of P2 rest octets; we only implement those parts we need for now */
-struct p2_rest_octets {
-	struct {
-		bool present;
-		uint8_t cn3;
-	} cneed;
-	struct {
-		bool present;
-		uint8_t nln;
-		uint8_t nln_status;
-	} nln_pch;
-};
-
-/* abstract representation of P3 rest octets; we only implement those parts we need for now */
-struct p3_rest_octets {
-	struct {
-		bool present;
-		uint8_t cn3;
-		uint8_t cn4;
-	} cneed;
-	struct {
-		bool present;
-		uint8_t nln;
-		uint8_t nln_status;
-	} nln_pch;
-};
-
 /* 3GPP TS 44.018 10.5.2.23 append a segment/page of an ETWS primary notification to given bitvec */
 static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t page_nr,
 				   const uint8_t *etws, ssize_t etws_len)
@@ -406,8 +358,8 @@ static void append_etws_prim_notif(struct bitvec *bv, bool is_first, uint8_t pag
 }
 
 /* 3GPP TS 44.018 10.5.2.23 append P1 Rest Octets to given bit-vector */
-static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro,
-				  const struct asci_notification *notif)
+void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro,
+			   const struct asci_notification *notif)
 {
 	/* Paging 1 RO (at least 10 bits before ETWS struct) */
 	if (p1ro->nln_pch.present) {
@@ -452,7 +404,7 @@ static void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets
 }
 
 /* 3GPP TS 44.018 10.5.2.24 append P2 Rest Octets to given bit-vector */
-static void append_p2_rest_octets(struct bitvec *bv, const struct p2_rest_octets *p2ro)
+void append_p2_rest_octets(struct bitvec *bv, const struct p2_rest_octets *p2ro)
 {
 	/* {L | H <CN3: bit (2)>} */
 	if (p2ro->cneed.present) {
@@ -473,7 +425,7 @@ static void append_p2_rest_octets(struct bitvec *bv, const struct p2_rest_octets
 }
 
 /* 3GPP TS 44.018 10.5.2.25 append P3 Rest Octets to given bit-vector */
-static void append_p3_rest_octets(struct bitvec *bv, const struct p3_rest_octets *p3ro)
+void append_p3_rest_octets(struct bitvec *bv, const struct p3_rest_octets *p3ro)
 {
 	/* {L | H <CN3: bit (2)> <CN3: bit (2)>} */
 	if (p3ro->cneed.present) {

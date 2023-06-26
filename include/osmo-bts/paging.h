@@ -7,6 +7,55 @@
 
 struct paging_state;
 struct gsm_bts;
+struct asci_notification;
+
+/* abstract representation of P1 rest octets; we only implement those parts we need for now */
+struct p1_rest_octets {
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
+	bool packet_page_ind[2];
+	bool r8_present;
+	struct {
+		bool prio_ul_access;
+		bool etws_present;
+		struct {
+			bool is_first;
+			uint8_t page_nr;
+			const uint8_t *page;
+			size_t page_bytes;
+		} etws;
+	} r8;
+};
+
+/* abstract representation of P2 rest octets; we only implement those parts we need for now */
+struct p2_rest_octets {
+	struct {
+		bool present;
+		uint8_t cn3;
+	} cneed;
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
+};
+
+/* abstract representation of P3 rest octets; we only implement those parts we need for now */
+struct p3_rest_octets {
+	struct {
+		bool present;
+		uint8_t cn3;
+		uint8_t cn4;
+	} cneed;
+	struct {
+		bool present;
+		uint8_t nln;
+		uint8_t nln_status;
+	} nln_pch;
+};
 
 /* initialize paging code */
 struct paging_state *paging_init(struct gsm_bts *bts,
@@ -38,6 +87,12 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
 int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi, bool confirm, const uint8_t *macblock);
+
+/* Paging rest octests */
+void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro,
+			   const struct asci_notification *notif);
+void append_p2_rest_octets(struct bitvec *bv, const struct p2_rest_octets *p2ro);
+void append_p3_rest_octets(struct bitvec *bv, const struct p3_rest_octets *p3ro);
 
 /* generate paging message for given gsm time */
 int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *gt,

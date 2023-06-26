@@ -27,6 +27,7 @@
 #include <osmo-bts/paging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/l1sap.h>
+#include <osmo-bts/notification.h>
 
 #include <unistd.h>
 
@@ -179,6 +180,167 @@ static void test_is_ccch_for_agch(void)
 	}
 }
 
+static void test_paging_rest_octets1(void)
+{
+	uint8_t out_buf[17];
+	struct p1_rest_octets p1ro = {};
+	struct asci_notification notif = {};
+
+	struct bitvec bv = {
+		.data_len = sizeof(out_buf),
+		.data = out_buf,
+	};
+
+	/* no rest */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	append_p1_rest_octets(&bv, &p1ro, NULL);
+	ASSERT_TRUE(out_buf[0] == 0x2b);
+
+	/* add NLN */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p1ro.nln_pch.present = true;
+	p1ro.nln_pch.nln = 3;
+	p1ro.nln_pch.nln_status = 1;
+	append_p1_rest_octets(&bv, &p1ro, NULL);
+	ASSERT_TRUE(out_buf[0] == 0xfb); /* H 1 11 1 */
+	p1ro.nln_pch.present = 0;
+
+	/* add group callref */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	notif.group_call_ref[0] = 0x12;
+	notif.group_call_ref[1] = 0x34;
+	notif.group_call_ref[2] = 0x56;
+	notif.group_call_ref[3] = 0x78;
+	notif.group_call_ref[4] = 0x90;
+	notif.chan_desc.present = true;
+	notif.chan_desc.len = 3;
+	notif.chan_desc.value[0] = 0x20;
+	notif.chan_desc.value[1] = 0x40;
+	notif.chan_desc.value[2] = 0x80;
+	append_p1_rest_octets(&bv, &p1ro, &notif);
+	ASSERT_TRUE(out_buf[0] == 0x31); /* L L L H 0x123456789 */
+	ASSERT_TRUE(out_buf[1] == 0x23);
+	ASSERT_TRUE(out_buf[2] == 0x45);
+	ASSERT_TRUE(out_buf[3] == 0x67);
+	ASSERT_TRUE(out_buf[4] == 0x89);
+	ASSERT_TRUE(out_buf[5] == 0x90); /* H 0x204080 0 */
+	ASSERT_TRUE(out_buf[6] == 0x20);
+	ASSERT_TRUE(out_buf[7] == 0x40);
+	ASSERT_TRUE(out_buf[8] == 0x2b);
+
+	/* add Packet Page Indication 1 */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p1ro.packet_page_ind[0] = true;
+	append_p1_rest_octets(&bv, &p1ro, NULL);
+	ASSERT_TRUE(out_buf[0] == 0x23); /* L L L L H L L L */
+	p1ro.packet_page_ind[0] = false;
+
+	/* add Packet Page Indication 2 */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p1ro.packet_page_ind[1] = true;
+	append_p1_rest_octets(&bv, &p1ro, NULL);
+	ASSERT_TRUE(out_buf[0] == 0x2f); /* L L L L L H L L */
+	p1ro.packet_page_ind[1] = false;
+
+	/* add ETWS */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p1ro.r8_present = true;
+	p1ro.r8.prio_ul_access = true;
+	p1ro.r8.etws_present = true;
+	p1ro.r8.etws.is_first = true;
+	p1ro.r8.etws.page_nr = 0x5;
+	uint8_t page[] = { 0x22, 0x44, 0x66 };
+	p1ro.r8.etws.page_bytes = sizeof(page);
+	p1ro.r8.etws.page = page;
+	append_p1_rest_octets(&bv, &p1ro, NULL);
+	ASSERT_TRUE(out_buf[0] == 0x2b); /* L L L L L L L L */
+	ASSERT_TRUE(out_buf[1] == 0xe5); /* H 1 1 0 0x5 */
+	ASSERT_TRUE(out_buf[2] == 0x18); /* 0 len=24=0x18 */
+	ASSERT_TRUE(out_buf[3] == 0x22); /* 0x224488 */
+	ASSERT_TRUE(out_buf[4] == 0x44);
+	ASSERT_TRUE(out_buf[5] == 0x66);
+	p1ro.r8_present = false;
+}
+
+static void test_paging_rest_octets2(void)
+{
+	uint8_t out_buf[11];
+	struct p2_rest_octets p2ro = {};
+
+	struct bitvec bv = {
+		.data_len = sizeof(out_buf),
+		.data = out_buf,
+	};
+
+	/* nothing added */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	append_p2_rest_octets(&bv, &p2ro);
+	ASSERT_TRUE(out_buf[0] == 0x2b); /* L L */
+
+	/* add cneed */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p2ro.cneed.present = true;
+	p2ro.cneed.cn3 = 3;
+	append_p2_rest_octets(&bv, &p2ro);
+	ASSERT_TRUE(out_buf[0] == 0xeb); /* H 1 1 L */
+	p2ro.cneed.present = false;
+
+	/* add NLN */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p2ro.nln_pch.present = true;
+	p2ro.nln_pch.nln = 3;
+	p2ro.nln_pch.nln_status = 1;
+	append_p2_rest_octets(&bv, &p2ro);
+	ASSERT_TRUE(out_buf[0] == 0x7b); /* L H 1 11 1 */
+	p2ro.nln_pch.present = 0;
+}
+
+static void test_paging_rest_octets3(void)
+{
+	uint8_t out_buf[3];
+	struct p3_rest_octets p3ro = {};
+
+	struct bitvec bv = {
+		.data_len = sizeof(out_buf),
+		.data = out_buf,
+	};
+
+	/* nothing added */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	append_p3_rest_octets(&bv, &p3ro);
+	ASSERT_TRUE(out_buf[0] == 0x2b); /* L L */
+
+	/* add cneed */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p3ro.cneed.present = true;
+	p3ro.cneed.cn3 = 3;
+	p3ro.cneed.cn4 = 3;
+	append_p3_rest_octets(&bv, &p3ro);
+	ASSERT_TRUE(out_buf[0] == 0xfb); /* H 1 1 1 1 L */
+	p3ro.cneed.present = false;
+
+	/* add NLN */
+	memset(out_buf, GSM_MACBLOCK_PADDING, sizeof(out_buf));
+	bv.cur_bit = 0;
+	p3ro.nln_pch.present = true;
+	p3ro.nln_pch.nln = 3;
+	p3ro.nln_pch.nln_status = 1;
+	append_p3_rest_octets(&bv, &p3ro);
+	ASSERT_TRUE(out_buf[0] == 0x7b); /* L H 1 11 1 */
+	p3ro.nln_pch.present = 0;
+}
+
 int main(int argc, char **argv)
 {
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
@@ -200,6 +362,9 @@ int main(int argc, char **argv)
 	test_paging_smoke();
 	test_paging_sleep();
 	test_is_ccch_for_agch();
+	test_paging_rest_octets1();
+	test_paging_rest_octets2();
+	test_paging_rest_octets3();
 	printf("Success\n");
 
 	return 0;
