@@ -30,7 +30,6 @@
 #include <osmocom/gsm/gsm0502.h>
 
 #include <osmocom/codec/codec.h>
-#include <osmocom/codec/ecu.h>
 
 #include <osmocom/coding/gsm0503_coding.h>
 #include <osmocom/coding/gsm0503_amr_dtx.h>
@@ -285,11 +284,8 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		bfi_flag = true;
 	}
 
-	if (rc != GSM_MACBLOCK_LEN && lchan->ecu_state)
-		osmo_ecu_frame_in(lchan->ecu_state, bfi_flag, tch_data, rc);
-
 	if (bfi_flag)
-		goto bfi;
+		rc = 0;		/* this is how we signal BFI to l1sap */
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
@@ -307,33 +303,12 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 bfi:
 		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
 		 * One is sent here, another will be sent two bursts later (see above). */
-		if (rsl_cmode == RSL_CMOD_SPD_SPEECH) {
-			/* indicate bad frame */
-			if (lchan->tch.dtx.ul_sid) {
-				/* DTXu: pause in progress. Push empty payload to upper layers */
-				rc = 0;
-				goto compose_l1sap;
-			}
-
-			/* If there is an ECU active on this channel, use its output */
-			if (lchan->ecu_state) {
-				rc = osmo_ecu_frame_out(lchan->ecu_state, tch_data);
-				if (rc >= 0) /* Otherwise we send a BFI */
-					goto compose_l1sap;
-			}
-
-			/* In order to signal BFI in our UL RTP output, we need
-			 * to push an empty payload to l1sap.  The upper layer
-			 * will choose the correct RTP representation of this
-			 * BFI based on model-independent vty config. */
-			rc = 0;
-		}
+		rc = 0;
 	}
 
 	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)
 		return 0;
 
-compose_l1sap:
 	/* TCH or BFI */
 	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
 				      meas_avg.toa256, ber10k, meas_avg.rssi,

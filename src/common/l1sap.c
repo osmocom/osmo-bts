@@ -1813,6 +1813,51 @@ static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
 	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 }
 
+/* A helper function for l1sap_tch_ind(): handling BFI
+ *
+ * Please note that we pass the msgb to this function, even though it is
+ * currently not used.  This msgb passing is a provision for adding
+ * support for TRAU-UL-like RTP payload formats like TW-TS-001 that allow
+ * indicating BFI along with deemed-bad frame data bits, just like
+ * GSM 08.60 and 08.61 TRAU-UL frames.
+ */
+static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
+			       const struct gsm_time *g_time, struct msgb *msg)
+{
+	uint32_t fn = g_time->fn;
+	uint8_t ecu_out[GSM_FR_BYTES];
+	int rc;
+
+	/* Are we applying an ECU to this uplink, and are we in a state
+	 * (not DTX pause) where we emit ECU output? */
+	if (lchan->ecu_state && !osmo_ecu_is_dtx_pause(lchan->ecu_state)) {
+		rc = osmo_ecu_frame_out(lchan->ecu_state, ecu_out);
+		/* did it actually give us some output? */
+		if (rc > 0) {
+			/* yes, send it out in RTP */
+			send_ul_rtp_packet(lchan, fn, ecu_out, rc);
+			return;
+		}
+	}
+
+	/* Are we in rtp continuous-streaming special mode? If so, send out
+	 * a BFI packet as zero-length RTP payload. */
+	if (lchan->ts->trx->bts->rtp_nogaps_mode) {
+		send_ul_rtp_packet(lchan, fn, NULL, 0);
+		return;
+	}
+
+	/* Most classic form of BFI handling: generate an intentional gap
+	 * in the outgoing RTP stream. */
+	LOGPLCGT(lchan, g_time, DRTP, LOGL_DEBUG,
+		 "Skipping RTP frame with lost payload\n");
+	if (lchan->abis_ip.osmux.use)
+		lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
+	else if (lchan->abis_ip.rtp_socket)
+		osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
+	lchan->rtp_tx_marker = true;
+}
+
 /* TCH received from bts model */
 static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct ph_tch_param *tch_ind)
@@ -1851,6 +1896,9 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	 * available is expected as empty payload. We also check if quality is
 	 * good enough. */
 	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
+		/* feed the good frame to the ECU, if we are applying one */
+		if (lchan->ecu_state)
+			osmo_ecu_frame_in(lchan->ecu_state, false, msg->data, msg->len);
 		/* hand msg to RTP code for transmission */
 		if (bts->emit_hr_rfc5993 && lchan->type == GSM_LCHAN_TCH_H &&
 		    lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
@@ -1865,19 +1913,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			return 1;
 		}
 	} else {
-		/* Are we in rtp continuous-streaming special mode? If so, send
-		 * out a BFI packet as zero-length RTP payload. */
-		if (bts->rtp_nogaps_mode) {
-			send_ul_rtp_packet(lchan, fn, NULL, 0);
-		} else {
-			LOGPLCGT(lchan, &g_time, DRTP, LOGL_DEBUG,
-				 "Skipping RTP frame with lost payload (chan_nr=0x%02x)\n", chan_nr);
-			if (lchan->abis_ip.osmux.use)
-				lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
-			else if (lchan->abis_ip.rtp_socket)
-				osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
-			lchan->rtp_tx_marker = true;
-		}
+		tch_ul_bfi_handler(lchan, &g_time, msg);
 	}
 
 	lchan->tch.last_fn = fn;
