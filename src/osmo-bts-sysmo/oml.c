@@ -98,7 +98,7 @@ static const enum GsmL1_LogChComb_t pchan_to_logChComb[_GSM_PCHAN_MAX] = {
 	 */
 };
 
-static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
+int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
 
 static void *prim_init(GsmL1_Prim_t *prim, GsmL1_PrimId_t id, struct femtol1_hdl *gl1,
 		       HANDLE hLayer3)
@@ -483,7 +483,7 @@ void bts_model_trx_close(struct gsm_bts_trx *trx)
 		bts_model_trx_close_cb(trx, rc);
 }
 
-static int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb)
+int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb)
 {
 	struct femtol1_hdl *fl1h = trx_femtol1_hdl(trx);
 	uint8_t mute[8];

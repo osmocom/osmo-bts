@@ -1268,14 +1268,16 @@ static int mute_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 	if (status != GsmL1_Status_Success) {
 		LOGP(DL1C, LOGL_ERROR, "Rx RF-MUTE.conf with status %s\n",
 		     get_value_string(femtobts_l1status_names, status));
-		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 0);
+		if (trx->mo.fi->state != NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED)
+			oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 0);
 	} else {
 		int i;
 
 		LOGP(DL1C, LOGL_INFO, "Rx RF-MUTE.conf with status=%s\n",
 		     get_value_string(femtobts_l1status_names, status));
 		bts_update_status(BTS_STATUS_RF_MUTE, fl1h->last_rf_mute[0]);
-		oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 1);
+		if (trx->mo.fi->state != NM_RCARRIER_ST_OP_DISABLED_NOTINSTALLED)
+			oml_mo_rf_lock_chg(&trx->mo, fl1h->last_rf_mute, 1);
 
 		osmo_static_assert(
 			ARRAY_SIZE(trx->ts) >= ARRAY_SIZE(fl1h->last_rf_mute),
@@ -1326,6 +1328,21 @@ int l1if_mute_rf(struct femtol1_hdl *hdl, uint8_t mute[8], l1if_compl_cb *cb)
 #endif /* < 3.6.0 */
 }
 
+static int activate_rf_mute_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp, void *data)
+{
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3, 6, 0)
+	mute_rf_compl_cb(trx, resp, data);
+#endif
+
+	/* signal availability */
+	osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
+	osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
+
+	return 0;
+}
+
+int trx_rf_lock(struct gsm_bts_trx *trx, int locked, l1if_compl_cb *cb);
+
 static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 				void *data)
 {
@@ -1352,10 +1369,11 @@ static int activate_rf_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 			bts_shutdown(trx->bts, "RF-ACT failure");
 		} else {
 			bts_update_status(BTS_STATUS_RF_ACTIVE, 1);
-
-			/* signal availability */
-			osmo_fsm_inst_dispatch(trx->mo.fi, NM_EV_SW_ACT, NULL);
-			osmo_fsm_inst_dispatch(trx->bb_transc.mo.fi, NM_EV_SW_ACT, NULL);
+#if SUPERFEMTO_API_VERSION >= SUPERFEMTO_API(3, 6, 0)
+			trx_rf_lock(trx, 1, activate_rf_mute_compl_cb);
+#else
+			activate_rf_mute_compl_cb(trx, resp, NULL);
+#endif
 		}
 	} else {
 		bts_update_status(BTS_STATUS_RF_ACTIVE, 0);
