@@ -41,6 +41,8 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/bits.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/core/gsmtap.h>
+#include <osmocom/core/gsmtap_util.h>
 
 #include <osmo-bts/phy_link.h>
 #include <osmo-bts/logging.h>
@@ -1339,6 +1341,14 @@ int bts_model_phy_link_open(struct phy_link *plink)
 		return -1;
 	}
 
+	if (plink->u.osmotrx.gsmtap_burst.remote_host) {
+		LOGPPHL(plink, DL1C, LOGL_NOTICE, "Opening burst-gsmtap to remote host %s\n",
+			plink->u.osmotrx.gsmtap_burst.remote_host);
+		plink->u.osmotrx.gsmtap_burst.gti = gsmtap_source_init2(NULL, 0,
+									plink->u.osmotrx.gsmtap_burst.remote_host,
+									GSMTAP_UDP_PORT, 1);
+	}
+
 	/* open the individual instances with their ctrl+data sockets */
 	llist_for_each_entry(pinst, &plink->instances, list) {
 		struct trx_l1h *l1h = pinst->u.osmotrx.hdl;
@@ -1375,6 +1385,11 @@ int bts_model_phy_link_close(struct phy_link *plink)
 	}
 	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
 	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
+
+	if (plink->u.osmotrx.gsmtap_burst.gti) {
+		gsmtap_source_free(plink->u.osmotrx.gsmtap_burst.gti);
+		plink->u.osmotrx.gsmtap_burst.gti = NULL;
+	}
 	return 0;
 }
 
@@ -1384,4 +1399,23 @@ int trx_if_powered(struct trx_l1h *l1h)
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct phy_link *plink = pinst->phy_link;
 	return plink->u.osmotrx.powered;
+}
+
+void gsmtap_bursts_tx(const struct phy_link *plink, uint32_t fn, const struct gsm_lchan *lchan,
+		      const sbit_t *sbits, size_t n_sbits, int n_errors, int n_bits_total,
+		      const struct l1sched_meas_set *meas_avg)
+{
+	struct msgb *msg;
+	int rc;
+
+	if (!plink->u.osmotrx.gsmtap_burst.gti)
+		return;
+
+	msg = gsmtap_makemsg_ex(GSMTAP_TYPE_UM_BURST, lchan->ts->trx->arfcn | GSMTAP_ARFCN_F_UPLINK, lchan->ts->nr,
+				GSMTAP_BURST_NORMAL, lchan->nr, fn, meas_avg->rssi, 0/*snr*/, (const uint8_t *) sbits, n_sbits);
+	if (msg) {
+		rc = gsmtap_sendmsg(plink->u.osmotrx.gsmtap_burst.gti, msg);
+		if (rc < 0)
+			msgb_free(msg);
+	}
 }

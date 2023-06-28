@@ -52,6 +52,11 @@ struct phy_link {
 			bool powered; /* last POWERON (true) or POWEROFF (false) confirmed */
 			bool poweron_sent; /* is there a POWERON in transit? */
 			bool poweroff_sent; /* is there a POWEROFF in transit? */
+			struct {
+				char *remote_host;
+				bool all;
+				struct gsmtap_inst *gti;
+			} gsmtap_burst;
 		} osmotrx;
 		struct {
 			char *mcast_dev;		/* Network device for multicast */

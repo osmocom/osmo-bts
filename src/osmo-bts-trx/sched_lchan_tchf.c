@@ -42,9 +42,11 @@
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
 #include <osmo-bts/msg_utils.h>
+#include <osmo-bts/phy_link.h>
 
 #include <sched_utils.h>
 #include <amr_loop.h>
+#include <trx_if.h>
 
 /* 3GPP TS 45.009, table 3.2.1.3-{1,3}: AMR on Uplink TCH/F.
  *
@@ -74,6 +76,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 {
 	struct l1sched_chan_state *chan_state = &l1ts->chan_state[bi->chan];
 	struct gsm_lchan *lchan = chan_state->lchan;
+	struct phy_link *plink = lchan->ts->trx->pinst->phy_link;
 	sbit_t *burst, *bursts_p = chan_state->ul_bursts;
 	uint8_t *mask = &chan_state->ul_mask;
 	uint8_t rsl_cmode = chan_state->rsl_cmode;
@@ -267,6 +270,9 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * Doing so tells l1sap.c to ignore the measurement result. */
 		meas_avg.rssi = 0;
 		rc = 0;
+
+		if (bfi_flag || OSMO_UNLIKELY(plink->u.osmotrx.gsmtap_burst.all))
+			gsmtap_bursts_tx(plink, bi->fn, lchan, bursts_p, 464, n_errors, n_bits_total, &meas_avg);
 	}
 
 	if (rsl_cmode != RSL_CMOD_SPD_SPEECH)

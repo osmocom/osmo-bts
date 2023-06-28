@@ -32,8 +32,10 @@
 #include <osmo-bts/logging.h>
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/scheduler_backend.h>
+#include <osmo-bts/phy_link.h>
 
 #include <sched_utils.h>
+#include <trx_if.h>
 
 /* Add two arrays of sbits */
 static void add_sbits(sbit_t * current, const sbit_t * previous)
@@ -61,6 +63,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	int rc;
 	struct gsm_lchan *lchan = chan_state->lchan;
 	bool rep_sacch = L1SAP_IS_LINK_SACCH(trx_chan_desc[bi->chan].link_id) && lchan->rep_acch.ul_sacch_active;
+	struct phy_link *plink = lchan->ts->trx->pinst->phy_link;
 
 	/* If handover RACH detection is turned on, treat this burst as an Access Burst.
 	 * Handle NOPE.ind as usually to ensure proper Uplink measurement reporting. */
@@ -128,15 +131,23 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block also yields bad data (%u/%u)\n",
 				       bi->fn % l1ts->mf_period, l1ts->mf_period);
+
+				gsmtap_bursts_tx(plink, bi->fn, lchan, bursts_p, 464, n_errors, n_bits_total, &meas_avg);
 			} else {
 				LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block yields good data (%u/%u)\n",
 				       bi->fn % l1ts->mf_period, l1ts->mf_period);
 				l2_len = GSM_MACBLOCK_LEN;
+				if (OSMO_UNLIKELY(plink->u.osmotrx.gsmtap_burst.all))
+					gsmtap_bursts_tx(plink, bi->fn, lchan, bursts_p, 464, n_errors, n_bits_total, &meas_avg);
 			}
-		}
-	} else
+		} else
+			gsmtap_bursts_tx(plink, bi->fn, lchan, bursts_p, 464, n_errors, n_bits_total, &meas_avg);
+	} else {
 		l2_len = GSM_MACBLOCK_LEN;
+		if (OSMO_UNLIKELY(plink->u.osmotrx.gsmtap_burst.all))
+			gsmtap_bursts_tx(plink, bi->fn, lchan, bursts_p, 464, n_errors, n_bits_total, &meas_avg);
+	}
 
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 

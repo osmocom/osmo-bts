@@ -48,3 +48,10 @@ int trx_if_powered(struct trx_l1h *l1h);
 
 /* Format negotiation command */
 int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb);
+
+struct l1sched_meas_avg;
+struct phy_link;
+
+void gsmtap_bursts_tx(const struct phy_link *plink, uint32_t fn, const struct gsm_lchan *lchan,
+		      const sbit_t *sbits, size_t n_sbits, int n_errors, int n_bits_total,
+		      const struct l1sched_meas_set *meas_avg);

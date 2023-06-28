@@ -504,6 +504,48 @@ DEFUN(cfg_phy_base_port, cfg_phy_base_port_cmd,
 	return CMD_SUCCESS;
 }
 
+#define GSMTAP_BURSTS_STR "Configure GSMTAP for raw bursts\n"
+
+DEFUN_USRATTR(cfg_phy_gsmtap_bursts_host, cfg_phy_gsmtap_bursts_host_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "osmotrx gsmtap-bursts remote-host " VTY_IPV46_CMD,
+	      OSMOTRX_STR GSMTAP_BURSTS_STR
+	      "Set remote IP address to which send raw bursts in GSMTAP format\n"
+	      "Remote IPv4 address\n"
+	      "Remote IPv6 address\n")
+{
+	struct phy_link *plink = vty->index;
+	osmo_talloc_replace_string(plink, &plink->u.osmotrx.gsmtap_burst.remote_host, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN_USRATTR(cfg_phy_no_gsmtap_bursts_host, cfg_phy_no_gsmtap_bursts_host_cmd,
+	      X(BTS_VTY_TRX_POWERCYCLE),
+	      "no osmotrx gsmtap-bursts remote-host",
+	      NO_STR OSMOTRX_STR GSMTAP_BURSTS_STR
+	      "Disable sending GSMTAP bust data\n")
+{
+	struct phy_link *plink = vty->index;
+	talloc_free(plink->u.osmotrx.gsmtap_burst.remote_host);
+	plink->u.osmotrx.gsmtap_burst.remote_host = NULL;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_phy_gsmtap_bursts_type, cfg_phy_gsmtap_bursts_type_cmd,
+	"osmotrx gsmtap-bursts type (all|crc-error)",
+	OSMOTRX_STR GSMTAP_BURSTS_STR
+	"Configure which bursts to send via GSMTAP\n"
+	"Send all burst as GSMTAP burstss\n"
+	"Send only bursts with CRC failures as GSMTAP bursts\n")
+{
+	struct phy_link *plink = vty->index;
+	if (!strcmp(argv[0], "all"))
+		plink->u.osmotrx.gsmtap_burst.all = true;
+	else
+		plink->u.osmotrx.gsmtap_burst.all = false;
+	return CMD_SUCCESS;
+}
+
 DEFUN_USRATTR(cfg_phy_setbsic, cfg_phy_setbsic_cmd,
 	      X(BTS_VTY_TRX_POWERCYCLE),
 	      "osmotrx legacy-setbsic", OSMOTRX_STR
@@ -580,6 +622,12 @@ void bts_model_config_write_phy(struct vty *vty, const struct phy_link *plink)
 
 	if (plink->u.osmotrx.trxd_pdu_ver_max != TRX_DATA_PDU_VER)
 		vty_out(vty, " osmotrx trxd-max-version %d%s", plink->u.osmotrx.trxd_pdu_ver_max, VTY_NEWLINE);
+
+	if (plink->u.osmotrx.gsmtap_burst.remote_host) {
+		vty_out(vty, " osmotrx gsmtap-bursts remote-host %s%s", plink->u.osmotrx.gsmtap_burst.remote_host, VTY_NEWLINE);
+		vty_out(vty, " osmotrx gsmtap-bursts type %s%s",
+			plink->u.osmotrx.gsmtap_burst.all ? "all" : "crc-error", VTY_NEWLINE);
+	}
 }
 
 void bts_model_config_write_phy_inst(struct vty *vty, const struct phy_instance *pinst)
@@ -645,6 +693,9 @@ int bts_model_vty_init(void *ctx)
 	install_element(PHY_NODE, &cfg_phy_setbsic_cmd);
 	install_element(PHY_NODE, &cfg_phy_no_setbsic_cmd);
 	install_element(PHY_NODE, &cfg_phy_trxd_max_version_cmd);
+	install_element(PHY_NODE, &cfg_phy_gsmtap_bursts_host_cmd);
+	install_element(PHY_NODE, &cfg_phy_no_gsmtap_bursts_host_cmd);
+	install_element(PHY_NODE, &cfg_phy_gsmtap_bursts_type_cmd);
 
 	install_element(PHY_INST_NODE, &cfg_phyinst_rxgain_cmd);
 	install_element(PHY_INST_NODE, &cfg_phyinst_tx_atten_cmd);
