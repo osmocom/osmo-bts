@@ -818,7 +818,7 @@ int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 	if (tch_len)
 		memcpy(msg->l2h, tch, tch_len);
 
-	LOGL1S(DL1P, LOGL_DEBUG, l1ts, chan, l1sap->u.data.fn, "%s Rx -> RTP: %s\n",
+	LOGL1S(DL1P, LOGL_DEBUG, l1ts, chan, l1sap->u.tch.fn, "%s Rx -> RTP: %s\n",
 	       gsm_lchan_name(lchan), osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 	/* forward primitive */
 	l1sap_up(l1ts->ts->trx, l1sap);
