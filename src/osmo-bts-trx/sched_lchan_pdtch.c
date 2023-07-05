@@ -131,10 +131,12 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	first_fn = GSM_TDMA_FN_SUB(bi->fn, 3);
-	return _sched_compose_ph_data_ind(l1ts,
-					  first_fn, bi->chan, l2, rc,
-					  meas_avg.rssi, meas_avg.toa256,
-					  meas_avg.ci_cb, ber10k,
+	return _sched_compose_ph_data_ind(l1ts, first_fn, bi->chan,
+					  &l2[0], rc,
+					  ber10k,
+					  meas_avg.rssi,
+					  meas_avg.toa256,
+					  meas_avg.ci_cb,
 					  presence_info);
 }
 

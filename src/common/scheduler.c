@@ -750,10 +750,10 @@ free_msg:
 }
 
 int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
-			       enum trx_chan_type chan, uint8_t *l2,
-			       uint8_t l2_len, float rssi,
+			       enum trx_chan_type chan,
+			       uint8_t *data, uint8_t data_len,
+			       uint16_t ber10k, float rssi,
 			       int16_t ta_offs_256bits, int16_t link_qual_cb,
-			       uint16_t ber10k,
 			       enum osmo_ph_pres_info_type presence_info)
 {
 	struct msgb *msg;
@@ -765,7 +765,7 @@ int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* compose primitive */
-	msg = l1sap_msgb_alloc(l2_len);
+	msg = l1sap_msgb_alloc(data_len);
 	l1sap = msgb_l1sap_prim(msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_PH_DATA,
 		PRIM_OP_INDICATION, msg);
@@ -777,9 +777,9 @@ int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 	l1sap->u.data.ta_offs_256bits = ta_offs_256bits;
 	l1sap->u.data.lqual_cb = link_qual_cb;
 	l1sap->u.data.pdch_presence_info = presence_info;
-	msg->l2h = msgb_put(msg, l2_len);
-	if (l2_len)
-		memcpy(msg->l2h, l2, l2_len);
+	msg->l2h = msgb_put(msg, data_len);
+	if (data_len)
+		memcpy(msg->l2h, data, data_len);
 
 	/* forward primitive */
 	l1sap_up(l1ts->ts->trx, l1sap);
@@ -788,9 +788,11 @@ int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
 }
 
 int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
-			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
-			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
-			   int16_t link_qual_cb, uint8_t is_sub)
+			   enum trx_chan_type chan,
+			   uint8_t *data, uint8_t data_len,
+			   uint16_t ber10k, float rssi,
+			   int16_t ta_offs_256bits, int16_t link_qual_cb,
+			   uint8_t is_sub)
 {
 	struct msgb *msg;
 	struct osmo_phsap_prim *l1sap;
@@ -802,7 +804,7 @@ int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 		chan_nr |= RSL_CHAN_OSMO_VAMOS_MASK;
 
 	/* compose primitive */
-	msg = l1sap_msgb_alloc(tch_len);
+	msg = l1sap_msgb_alloc(data_len);
 	l1sap = msgb_l1sap_prim(msg);
 	osmo_prim_init(&l1sap->oph, SAP_GSM_PH, PRIM_TCH,
 		PRIM_OP_INDICATION, msg);
@@ -814,9 +816,9 @@ int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
 	l1sap->u.tch.lqual_cb = link_qual_cb;
 	l1sap->u.tch.is_sub = is_sub & 1;
 
-	msg->l2h = msgb_put(msg, tch_len);
-	if (tch_len)
-		memcpy(msg->l2h, tch, tch_len);
+	msg->l2h = msgb_put(msg, data_len);
+	if (data_len)
+		memcpy(msg->l2h, data, data_len);
 
 	LOGL1S(DL1P, LOGL_DEBUG, l1ts, chan, l1sap->u.tch.fn, "%s Rx -> RTP: %s\n",
 	       gsm_lchan_name(lchan), msgb_hexdump_l2(msg));

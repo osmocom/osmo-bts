@@ -144,10 +144,12 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	if (rep_sacch)
 		memcpy(chan_state->ul_bursts_prev, bursts_p, 464);
 
-	return _sched_compose_ph_data_ind(l1ts, *first_fn,
-					  bi->chan, l2, l2_len,
-					  meas_avg.rssi, meas_avg.toa256,
-					  meas_avg.ci_cb, ber10k,
+	return _sched_compose_ph_data_ind(l1ts, *first_fn, bi->chan,
+					  &l2[0], l2_len,
+					  ber10k,
+					  meas_avg.rssi,
+					  meas_avg.toa256,
+					  meas_avg.ci_cb,
 					  PRES_INFO_UNKNOWN);
 }
 

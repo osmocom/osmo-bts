@@ -253,10 +253,12 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
-			tch_data + amr, GSM_MACBLOCK_LEN,
-			meas_avg.rssi, meas_avg.toa256,
-			meas_avg.ci_cb, ber10k,
-			PRES_INFO_UNKNOWN);
+					   &tch_data[amr], GSM_MACBLOCK_LEN,
+					   ber10k,
+					   meas_avg.rssi,
+					   meas_avg.toa256,
+					   meas_avg.ci_cb,
+					   PRES_INFO_UNKNOWN);
 
 		/* If we are in SPEECH mode we will generate a fake (BFI) TCH
 		 * indication as well. This indication is needed by the higher
@@ -273,9 +275,13 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		return 0;
 
 	/* TCH or BFI */
-	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
-				      meas_avg.toa256, ber10k, meas_avg.rssi,
-				      meas_avg.ci_cb, is_sub);
+	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan,
+				      &tch_data[0], rc,
+				      ber10k,
+				      meas_avg.rssi,
+				      meas_avg.toa256,
+				      meas_avg.ci_cb,
+				      is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).

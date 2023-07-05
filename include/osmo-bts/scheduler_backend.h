@@ -42,16 +42,18 @@ extern const ubit_t _sched_train_seq_gmsk_sb[64];
 struct msgb *_sched_dequeue_prim(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br);
 
 int _sched_compose_ph_data_ind(struct l1sched_ts *l1ts, uint32_t fn,
-			       enum trx_chan_type chan, uint8_t *l2,
-			       uint8_t l2_len, float rssi,
+			       enum trx_chan_type chan,
+			       uint8_t *data, uint8_t data_len,
+			       uint16_t ber10k, float rssi,
 			       int16_t ta_offs_256bits, int16_t link_qual_cb,
-			       uint16_t ber10k,
 			       enum osmo_ph_pres_info_type presence_info);
 
 int _sched_compose_tch_ind(struct l1sched_ts *l1ts, uint32_t fn,
-			   enum trx_chan_type chan, uint8_t *tch, uint8_t tch_len,
-			   int16_t ta_offs_256bits, uint16_t ber10k, float rssi,
-			   int16_t link_qual_cb, uint8_t is_sub);
+			   enum trx_chan_type chan,
+			   uint8_t *data, uint8_t data_len,
+			   uint16_t ber10k, float rssi,
+			   int16_t ta_offs_256bits, int16_t link_qual_cb,
+			   uint8_t is_sub);
 
 int tx_fcch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);
 int tx_sch_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br);

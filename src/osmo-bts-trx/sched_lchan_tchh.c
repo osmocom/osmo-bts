@@ -295,10 +295,12 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * report gets dropped in process_l1sap_meas_data().  The averaged results
 		 * will be sent with the first (see below) and second (see above) BFIs. */
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
-			tch_data + amr, GSM_MACBLOCK_LEN,
-			tch_mode == GSM48_CMODE_SIGN ? meas_avg.rssi : 0,
-			meas_avg.toa256, meas_avg.ci_cb, ber10k,
-			PRES_INFO_UNKNOWN);
+					   &tch_data[amr], GSM_MACBLOCK_LEN,
+					   ber10k,
+					   tch_mode == GSM48_CMODE_SIGN ? meas_avg.rssi : 0,
+					   meas_avg.toa256,
+					   meas_avg.ci_cb,
+					   PRES_INFO_UNKNOWN);
 		ber10k = 0;
 bfi:
 		/* A FACCH/H frame replaces two speech frames, so we need to send two BFIs.
@@ -310,9 +312,13 @@ bfi:
 		return 0;
 
 	/* TCH or BFI */
-	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan, tch_data, rc,
-				      meas_avg.toa256, ber10k, meas_avg.rssi,
-				      meas_avg.ci_cb, is_sub);
+	return _sched_compose_tch_ind(l1ts, fn_begin, bi->chan,
+				      &tch_data[0], rc,
+				      ber10k,
+				      meas_avg.rssi,
+				      meas_avg.toa256,
+				      meas_avg.ci_cb,
+				      is_sub);
 }
 
 /* common section for generation of TCH bursts (TCH/H and TCH/F).
