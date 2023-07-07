@@ -266,16 +266,16 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 					     &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S24N22;
 		break;
-#if 0
-	/* TODO: CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
+	/* CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
 		/* TCH/F2.4 employs the same interleaving as TCH/FS (8 bursts),
 		 * so FACCH/F *does* steal TCH/F2.4 frames completely. */
+		if (decode_fr_facch(l1ts, bi) == GSM_MACBLOCK_LEN)
+			return 0; /* TODO: emit BFI */
 		rc = gsm0503_tch_fr24_decode(&tch_data[0], BUFTAIL8(bursts_p),
 					     &n_errors, &n_bits_total);
 		meas_avg_mode = SCHED_MEAS_AVG_M_S8N8;
 		break;
-#endif
 	/* CSD (TCH/F14.4): 14.5 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_14k5:
 		/* FACCH/F does not steal TCH/F14.4 frames, but only disturbs some bits */
@@ -478,9 +478,8 @@ void tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br,
 				len = 4 * 60;
 			break;
 		case GSM48_CMODE_DATA_3k6: /* TCH/[FH]2.4 */
-			/* FIXME: TCH/F2.4 is not supported */
 			if (br->chan == TRXC_TCHF)
-				goto inval_mode2; /* 2 * 36 */
+				len = 2 * 36;
 			else
 				len = 4 * 36;
 			break;
@@ -599,8 +598,7 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		if (msg_facch != NULL)
 			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
-#if 0
-	/* TODO: CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
+	/* CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
 		/* FACCH/F does steal a TCH/F2.4 frame completely */
 		if (msg == msg_facch)
@@ -608,7 +606,6 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		else
 			gsm0503_tch_fr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		break;
-#endif
 	/* CSD (TCH/F14.4): 14.5 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_14k5:
 		gsm0503_tch_fr144_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));

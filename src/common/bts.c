@@ -869,14 +869,10 @@ static bool bts_supports_cm_data(const struct gsm_bts *bts,
 				return false; /* invalid */
 			/* fall-through */
 		case RSL_CMOD_CSD_T_4k8:
-			return true;
 		case RSL_CMOD_CSD_T_2k4:
 		case RSL_CMOD_CSD_T_1k2:
 		case RSL_CMOD_CSD_T_600:
 		case RSL_CMOD_CSD_T_1200_75:
-			/* TODO: osmo-bts-trx does not support TCH/F2.4 */
-			if (cm->chan_rt == RSL_CMOD_CRT_TCH_Bm)
-				return false;
 			return true;
 		default:
 			return false;
