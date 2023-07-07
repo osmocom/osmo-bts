@@ -779,8 +779,8 @@ struct gsm_time *get_time(struct gsm_bts *bts)
 	return &bts->gsm_time;
 }
 
-int bts_supports_cm(const struct gsm_bts *bts,
-		    const struct rsl_ie_chan_mode *cm)
+bool bts_supports_cm(const struct gsm_bts *bts,
+		     const struct rsl_ie_chan_mode *cm)
 {
 	enum osmo_bts_features feature = _NUM_BTS_FEAT;
 
@@ -788,22 +788,22 @@ int bts_supports_cm(const struct gsm_bts *bts,
 	case RSL_CMOD_SPD_SIGN:
 		/* We assume that signalling support is mandatory,
 		 * there is no BTS_FEAT_* definition to check that. */
-		return 1;
+		return true;
 	case RSL_CMOD_SPD_SPEECH:
 		break;
 	case RSL_CMOD_CRT_TCH_GROUP_Bm:
 	case RSL_CMOD_CRT_TCH_GROUP_Lm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VGCS))
-			return 0;
+			return false;
 		break;
 	case RSL_CMOD_CRT_TCH_BCAST_Bm:
 	case RSL_CMOD_CRT_TCH_BCAST_Lm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VBS))
-			return 0;
+			return false;
 		break;
 	case RSL_CMOD_SPD_DATA:
 	default:
-		return 0;
+		return false;
 	}
 
 	/* Before the requested pchan/cm combination can be checked, we need to
@@ -811,7 +811,7 @@ int bts_supports_cm(const struct gsm_bts *bts,
 	switch (cm->chan_rt) {
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
-			return 0;
+			return false;
 		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Bm:
 	case RSL_CMOD_CRT_TCH_GROUP_Bm:
@@ -828,13 +828,13 @@ int bts_supports_cm(const struct gsm_bts *bts,
 			break;
 		default:
 			/* Invalid speech codec type => Not supported! */
-			return 0;
+			return false;
 		}
 		break;
 
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
-			return 0;
+			return false;
 		/* fall-through */
 	case RSL_CMOD_CRT_TCH_Lm:
 	case RSL_CMOD_CRT_TCH_GROUP_Lm:
@@ -848,7 +848,7 @@ int bts_supports_cm(const struct gsm_bts *bts,
 			break;
 		default:
 			/* Invalid speech codec type => Not supported! */
-			return 0;
+			return false;
 		}
 		break;
 
@@ -856,14 +856,14 @@ int bts_supports_cm(const struct gsm_bts *bts,
 		LOGP(DRSL, LOGL_ERROR,
 		     "Unhandled RSL channel type=0x%02x/rate=0x%02x\n",
 		     cm->chan_rt, cm->chan_rate);
-		return 0;
+		return false;
 	}
 
 	/* Check if the feature is supported by this BTS */
 	if (osmo_bts_has_feature(bts->features, feature))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 /* return the gsm_lchan for the CBCH (if it exists at all) */

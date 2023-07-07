@@ -248,7 +248,7 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 
 #undef RSL_CMODE
 
-	if (bts_supports_cm(lchan->ts->trx->bts, cm) != 1) {
+	if (!bts_supports_cm(lchan->ts->trx->bts, cm)) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Channel type=0x%02x/mode=%s "
 			  "is not supported by the PHY\n", cm->chan_rt,
 			  gsm48_chan_mode_name(lchan->tch_mode));

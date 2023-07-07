@@ -172,11 +172,11 @@ static void test_bts_supports_cm(void)
 	/* Signalling shall be supported regardless of the features */
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
 					 .spd_ind = RSL_CMOD_SPD_SIGN };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/F */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/F */
 
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
 					 .spd_ind = RSL_CMOD_SPD_SIGN };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/H */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/H */
 
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_F_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
@@ -186,27 +186,27 @@ static void test_bts_supports_cm(void)
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
 					 .spd_ind = RSL_CMOD_SPD_SPEECH,
 					 .chan_rate = RSL_CMOD_SP_GSM1 };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/FS */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/FS */
 
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
 					 .spd_ind = RSL_CMOD_SPD_SPEECH,
 					 .chan_rate = RSL_CMOD_SP_GSM1 };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/HS */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/HS */
 
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
 					 .spd_ind = RSL_CMOD_SPD_SPEECH,
 					 .chan_rate = RSL_CMOD_SP_GSM2 };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 0); /* TCH/EFS */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == false); /* TCH/EFS */
 
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Bm,
 					 .spd_ind = RSL_CMOD_SPD_SPEECH,
 					 .chan_rate = RSL_CMOD_SP_GSM3 };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/AFS */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/AFS */
 
 	cm = (struct rsl_ie_chan_mode) { .chan_rt = RSL_CMOD_CRT_TCH_Lm,
 					 .spd_ind = RSL_CMOD_SPD_SPEECH,
 					 .chan_rate = RSL_CMOD_SP_GSM3 };
-	OSMO_ASSERT(bts_supports_cm(bts, &cm) == 1); /* TCH/AHS */
+	OSMO_ASSERT(bts_supports_cm(bts, &cm) == true); /* TCH/AHS */
 
 	talloc_free(bts);
 }
