@@ -791,6 +791,13 @@ bool bts_supports_cm(const struct gsm_bts *bts,
 		return true;
 	case RSL_CMOD_SPD_SPEECH:
 		break;
+	case RSL_CMOD_SPD_DATA:
+	default:
+		return false;
+	}
+
+	/* Stage 1: check support for the requested channel type */
+	switch (cm->chan_rt) {
 	case RSL_CMOD_CRT_TCH_GROUP_Bm:
 	case RSL_CMOD_CRT_TCH_GROUP_Lm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VGCS))
@@ -801,21 +808,19 @@ bool bts_supports_cm(const struct gsm_bts *bts,
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VBS))
 			return false;
 		break;
-	case RSL_CMOD_SPD_DATA:
-	default:
-		return false;
-	}
-
-	/* Before the requested pchan/cm combination can be checked, we need to
-	 * convert it to a feature identifier we can check */
-	switch (cm->chan_rt) {
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
 		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
 			return false;
-		/* fall-through */
-	case RSL_CMOD_CRT_TCH_Bm:
+		break;
+	}
+
+	/* Stage 2: check support for the requested codec */
+	switch (cm->chan_rt) {
+	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm:
 	case RSL_CMOD_CRT_TCH_GROUP_Bm:
 	case RSL_CMOD_CRT_TCH_BCAST_Bm:
+	case RSL_CMOD_CRT_TCH_Bm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_F_V1;
@@ -833,12 +838,9 @@ bool bts_supports_cm(const struct gsm_bts *bts,
 		break;
 
 	case RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm:
-		if (!osmo_bts_has_feature(bts->features, BTS_FEAT_VAMOS))
-			return false;
-		/* fall-through */
-	case RSL_CMOD_CRT_TCH_Lm:
 	case RSL_CMOD_CRT_TCH_GROUP_Lm:
 	case RSL_CMOD_CRT_TCH_BCAST_Lm:
+	case RSL_CMOD_CRT_TCH_Lm:
 		switch (cm->chan_rate) {
 		case RSL_CMOD_SP_GSM1:
 			feature	= BTS_FEAT_SPEECH_H_V1;
