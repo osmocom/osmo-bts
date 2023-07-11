@@ -412,12 +412,13 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* the first FN 4,13,21 or 5,14,22 defines that CMI is included
 		 * in frame, the first FN 0,8,17 or 1,9,18 defines that CMR is
 		 * included in frame. */
-		gsm0503_tch_ahs_encode(bursts_p, msg->l2h + sizeof(struct amr_hdr),
-			msgb_l2len(msg) - sizeof(struct amr_hdr),
-			!sched_tchh_dl_amr_cmi_map[br->fn % 26],
-			chan_state->codec, chan_state->codecs,
-			chan_state->dl_ft,
-			chan_state->dl_cmr);
+		gsm0503_tch_ahs_encode(bursts_p,
+				       msgb_l2(msg), msgb_l2len(msg),
+				       !sched_tchh_dl_amr_cmi_map[br->fn % 26],
+				       chan_state->codec,
+				       chan_state->codecs,
+				       chan_state->dl_ft,
+				       chan_state->dl_cmr);
 	} else {
 		gsm0503_tch_hr_encode(bursts_p, msg->l2h, msgb_l2len(msg));
 	}

@@ -402,6 +402,9 @@ struct msgb *tch_dl_dequeue(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, br, "Transmitting 'bad AMR frame'\n");
 				goto free_bad_msg;
 			}
+			/* pull the AMR header, it's not being sent over Um */
+			msg_tch->l2h += sizeof(struct amr_hdr);
+			len -= sizeof(struct amr_hdr);
 			break;
 		default:
 inval_mode2:
@@ -490,12 +493,13 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* the first FN 4,13,21 defines that CMI is included in frame,
 		 * the first FN 0,8,17 defines that CMR is included in frame.
 		 */
-		gsm0503_tch_afs_encode(bursts_p, msg->l2h + sizeof(struct amr_hdr),
-			msgb_l2len(msg) - sizeof(struct amr_hdr),
-			!sched_tchf_dl_amr_cmi_map[br->fn % 26],
-			chan_state->codec, chan_state->codecs,
-			chan_state->dl_ft,
-			chan_state->dl_cmr);
+		gsm0503_tch_afs_encode(bursts_p,
+				       msgb_l2(msg), msgb_l2len(msg),
+				       !sched_tchf_dl_amr_cmi_map[br->fn % 26],
+				       chan_state->codec,
+				       chan_state->codecs,
+				       chan_state->dl_ft,
+				       chan_state->dl_cmr);
 	} else {
 		gsm0503_tch_fr_encode(bursts_p, msg->l2h, msgb_l2len(msg), 1);
 	}
