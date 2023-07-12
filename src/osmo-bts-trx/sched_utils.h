@@ -35,6 +35,10 @@
 
 extern void *tall_bts_ctx;
 
+#define BAD_DATA_MSG_FMT "Received bad data (rc=%d, BER %d/%d) ending at fn=%u/%u"
+#define BAD_DATA_MSG_ARGS \
+	rc, n_errors, n_bits_total, bi->fn % l1ts->mf_period, l1ts->mf_period
+
 /* Compute the bit error rate in 1/10000 units */
 static inline uint16_t compute_ber10k(int n_bits_total, int n_errors)
 {

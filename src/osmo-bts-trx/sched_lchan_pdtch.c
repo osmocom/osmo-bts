@@ -122,8 +122,8 @@ int rx_pdtch_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	if (rc > 0) {
 		presence_info = PRES_INFO_BOTH;
 	} else {
-		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Received bad PDTCH (%u/%u)\n",
-			bi->fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
+			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		rc = 0;
 		presence_info = PRES_INFO_INVALID;
 	}

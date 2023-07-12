@@ -169,7 +169,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	int amr = 0;
 	int n_errors = 0;
 	int n_bits_total = 0;
-	bool bfi_flag = false;
 	enum sched_meas_avg_mode meas_avg_mode = SCHED_MEAS_AVG_M_S6N4;
 	struct l1sched_meas_set meas_avg;
 	unsigned int fn_begin;
@@ -358,19 +357,11 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		trx_loop_amr_input(chan_state, &meas_avg);
 
 	/* Check if the frame is bad */
-	if (rc < 0) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received bad data (%u/%u)\n",
-			bi->fn % l1ts->mf_period, l1ts->mf_period);
-		bfi_flag = true;
-	} else if (rc < 4) {
+	if (rc < 4) {
 		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
-			"Received bad data (%u/%u) with invalid codec mode %d\n",
-			bi->fn % l1ts->mf_period, l1ts->mf_period, rc);
-		bfi_flag = true;
-	}
-
-	if (bfi_flag)
+			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		rc = 0;		/* this is how we signal BFI to l1sap */
+	}
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {

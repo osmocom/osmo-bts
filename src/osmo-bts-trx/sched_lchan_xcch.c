@@ -113,8 +113,8 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	/* decode */
 	rc = gsm0503_xcch_decode(l2, bursts_p, &n_errors, &n_bits_total);
 	if (rc) {
-		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi, "Received bad data (%u/%u)\n",
-			bi->fn % l1ts->mf_period, l1ts->mf_period);
+		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
+			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		l2_len = 0;
 
 		/* When SACCH Repetition is active, we may try to decode the
