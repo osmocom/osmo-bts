@@ -26,7 +26,9 @@
 /* Burst Payload LENgth (short alias) */
 #define BPLEN GSM_NBITS_NB_GMSK_PAYLOAD
 
-/* Burst BUFfer capacity (in BPLEN units) */
+/* Burst BUFfer capacity (in BPLEN units).  Why 24?  Because CSD frames
+ * are interleaved over 22 bursts, but on TCH/F we decode every 4th burst,
+ * so it must be a multiple of 4.  See also 'doc/trx_sched_tch.txt'. */
 #define BUFMAX 24
 
 /* Burst BUFfer position macros */

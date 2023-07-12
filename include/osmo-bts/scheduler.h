@@ -132,7 +132,7 @@ struct l1sched_chan_state {
 	/* Uplink measurements */
 	struct {
 		/* Active channel measurements (simple ring buffer) */
-		struct l1sched_meas_set buf[24]; /* up to 24 entries */
+		struct l1sched_meas_set buf[24]; /* up to 24 (BUFMAX) entries */
 		unsigned int current; /* current position */
 
 		/* Interference measurements */
