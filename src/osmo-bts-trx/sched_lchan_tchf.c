@@ -291,6 +291,8 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		return -EINVAL;
 	}
 
+	ber10k = compute_ber10k(n_bits_total, n_errors);
+
 	/* average measurements of the last N (depends on mode) bursts */
 	trx_sched_meas_avg(chan_state, &meas_avg, meas_avg_mode);
 	/* meas_avg.fn now contains TDMA frame number of the first burst */
@@ -305,8 +307,6 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		rc = 0;		/* this is how we signal BFI to l1sap */
 	}
-
-	ber10k = compute_ber10k(n_bits_total, n_errors);
 
 	/* FACCH */
 	if (rc == GSM_MACBLOCK_LEN) {
