@@ -306,10 +306,7 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		rc = 0;		/* this is how we signal BFI to l1sap */
-	}
-
-	/* FACCH */
-	if (rc == GSM_MACBLOCK_LEN) {
+	} else if (rc == GSM_MACBLOCK_LEN) { /* FACCH/F */
 		_sched_compose_ph_data_ind(l1ts, fn_begin, bi->chan,
 					   &tch_data[amr], GSM_MACBLOCK_LEN,
 					   ber10k,

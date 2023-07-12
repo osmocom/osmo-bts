@@ -361,10 +361,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
 		rc = 0;		/* this is how we signal BFI to l1sap */
-	}
-
-	/* FACCH */
-	if (rc == GSM_MACBLOCK_LEN) {
+	} else if (rc == GSM_MACBLOCK_LEN) { /* FACCH */
 		chan_state->ul_ongoing_facch = 1;
 		/* In order to provide an even stream of measurement reports in *speech*
 		 * mode, here we intentionally invalidate RSSI for FACCH, so that this
