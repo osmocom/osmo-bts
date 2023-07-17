@@ -270,6 +270,27 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 	return 0;
 }
 
+/* Convert the last three digits of a given IMSI string to their decimal representation. In case the given IMSI string
+ * is shorter than three or zero digits, it will be assumed as "000" */
+static uint16_t convert_imsi_to_decimal(const char *imsi)
+{
+	uint16_t _imsi;
+	size_t imsi_len = strlen(imsi);
+
+	/* Tha paging group is calculated from the last three digits of the IMSI */
+	if (imsi_len < 3) {
+		LOGP(DPAG, LOGL_ERROR, "short IMSI (%zu digits), will assume \"000\" to calculate paging group\n", imsi_len);
+		_imsi = 0;
+	} else {
+		imsi = imsi + imsi_len - 3;
+		_imsi = 100 * ((*(imsi++)) - '0');
+		_imsi += 10 * ((*(imsi++)) - '0');
+		_imsi += (*(imsi++)) - '0';
+	}
+
+	return _imsi;
+}
+
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
 int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi, bool confirm, const uint8_t *macblock)
@@ -278,7 +299,6 @@ int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi
 	struct paging_record *pr;
 	uint16_t paging_group;
 	uint16_t _imsi;
-	size_t imsi_len = strlen(imsi);
 
 	check_congestion(ps);
 
@@ -289,15 +309,7 @@ int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi
 		return -ENOSPC;
 	}
 
-	/* Tha paging group is calculated from the last three digits of the IMSI */
-	if (imsi_len < 3) {
-		LOGP(DPAG, LOGL_ERROR, "IMSI with invalid length %zu (expecting at least the last 3 digits)\n", imsi_len);
-		return -EINVAL;
-	}
-	imsi = imsi + imsi_len - 3;
-	_imsi = 100 * ((*(imsi++)) - '0');
-	_imsi += 10 * ((*(imsi++)) - '0');
-	_imsi += (*(imsi++)) - '0';
+	_imsi = convert_imsi_to_decimal(imsi);
 	paging_group = gsm0502_calc_paging_group(&ps->chan_desc, _imsi);
 	group_q = &ps->paging_queue[paging_group];
 
