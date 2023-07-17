@@ -1179,7 +1179,7 @@ int lchan_activate(struct gsm_lchan *lchan)
 
 	/* For handover, always start the main channel immediately. lchan->want_dl_sacch_active indicates whether dl
 	 * SACCH should be activated. Also, for HO, start the RACH SAPI. */
-	if (lchan->ho.active == HANDOVER_ENABLED)
+	if (lchan->ho.active == HANDOVER_ENABLED || rsl_chan_rt_is_asci(lchan->rsl_chan_rt))
 		enqueue_sapi_act_cmd(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
 
 	for (i = 0; i < s4l->num_sapis; i++) {

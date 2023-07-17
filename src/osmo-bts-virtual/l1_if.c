@@ -42,6 +42,7 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/scheduler.h>
+#include <osmo-bts/handover.h>
 #include "virtual_um.h"
 
 extern int vbts_sched_start(struct gsm_bts *bts);
@@ -383,7 +384,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					   lchan->tch.amr_mr.mode[2].mode,
 					   lchan->tch.amr_mr.mode[3].mode,
 					   amr_get_initial_mode(lchan),
-					   (lchan->ho.active == 1));
+					   (lchan->ho.active == HANDOVER_ENABLED ||
+					    rsl_chan_rt_is_asci(lchan->rsl_chan_rt)));
 			/* set lchan active */
 			lchan_set_state(lchan, LCHAN_S_ACTIVE);
 			/* set initial ciphering */

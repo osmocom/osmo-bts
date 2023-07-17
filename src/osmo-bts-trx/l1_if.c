@@ -45,6 +45,7 @@
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/pcu_if.h>
 #include <osmo-bts/nm_common_fsm.h>
+#include <osmo-bts/handover.h>
 
 #include "l1_if.h"
 #include "trx_if.h"
@@ -452,7 +453,8 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					   lchan->tch.amr_mr.mode[2].mode,
 					   lchan->tch.amr_mr.mode[3].mode,
 					   amr_get_initial_mode(lchan),
-					   (lchan->ho.active == 1));
+					   (lchan->ho.active == HANDOVER_ENABLED) ||
+					    rsl_chan_rt_is_asci(lchan->rsl_chan_rt));
 			/* set lchan active */
 			lchan_set_state(lchan, LCHAN_S_ACTIVE);
 			/* set initial ciphering */
