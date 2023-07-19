@@ -24,6 +24,7 @@ noinst_HEADERS = \
 	tx_power.h \
 	control_if.h \
 	cbch.h \
+	csd_v110.h \
 	l1sap.h \
 	lchan.h \
 	power_control.h \

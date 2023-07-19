@@ -445,6 +445,7 @@ AC_OUTPUT(
     tests/power/Makefile
     tests/meas/Makefile
     tests/amr/Makefile
+    tests/csd/Makefile
     doc/Makefile
     doc/examples/Makefile
     doc/manuals/Makefile

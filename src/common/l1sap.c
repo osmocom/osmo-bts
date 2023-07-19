@@ -58,6 +58,7 @@
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/asci.h>
+#include <osmo-bts/csd_v110.h>
 
 /* determine the CCCH block number based on the frame number */
 unsigned int l1sap_fn2ccch_block(uint32_t fn)
@@ -1829,9 +1830,27 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
+static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, uint32_t fn,
+				    const uint8_t *data, uint16_t data_len)
+{
+	uint8_t rtp_pl[RFC4040_RTP_PLEN];
+	int rc;
+
+	rc = csd_v110_rtp_encode(lchan, &rtp_pl[0], data, data_len);
+	if (rc < 0)
+		return;
+
+	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+				&rtp_pl[0], sizeof(rtp_pl),
+				fn_ms_adj(fn, lchan),
+				lchan->rtp_tx_marker);
+	/* Only clear the marker bit once we have sent a RTP packet with it */
+	lchan->rtp_tx_marker = false;
+}
+
 /* a helper function for the logic in l1sap_tch_ind() */
-static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
-			       const uint8_t *rtp_pl, uint16_t rtp_pl_len)
+static void send_ul_rtp_packet_speech(struct gsm_lchan *lchan, uint32_t fn,
+				      const uint8_t *rtp_pl, uint16_t rtp_pl_len)
 {
 	if (lchan->abis_ip.osmux.use) {
 		lchan_osmux_send_frame(lchan, rtp_pl, rtp_pl_len,
@@ -1859,7 +1878,7 @@ static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
 	else
 		toc = 0x00;
 	msgb_push_u8(msg, toc);
-	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+	send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
 }
 
 /* A helper function for l1sap_tch_ind(): handling BFI
@@ -1884,7 +1903,7 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 		/* did it actually give us some output? */
 		if (rc > 0) {
 			/* yes, send it out in RTP */
-			send_ul_rtp_packet(lchan, fn, ecu_out, rc);
+			send_ul_rtp_packet_speech(lchan, fn, ecu_out, rc);
 			return;
 		}
 	}
@@ -1892,7 +1911,7 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 	/* Are we in rtp continuous-streaming special mode? If so, send out
 	 * a BFI packet as zero-length RTP payload. */
 	if (lchan->ts->trx->bts->rtp_nogaps_mode) {
-		send_ul_rtp_packet(lchan, fn, NULL, 0);
+		send_ul_rtp_packet_speech(lchan, fn, NULL, 0);
 		return;
 	}
 
@@ -1948,11 +1967,21 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 		if (lchan->ecu_state)
 			osmo_ecu_frame_in(lchan->ecu_state, false, msg->data, msg->len);
 		/* hand msg to RTP code for transmission */
-		if (bts->emit_hr_rfc5993 && lchan->type == GSM_LCHAN_TCH_H &&
-		    lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
-			send_rtp_rfc5993(lchan, fn, msg);
-		else
-			send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+		switch (lchan->rsl_cmode) {
+		case RSL_CMOD_SPD_SPEECH:
+			if (bts->emit_hr_rfc5993 && lchan->type == GSM_LCHAN_TCH_H &&
+			    lchan->tch_mode == GSM48_CMODE_SPEECH_V1)
+				send_rtp_rfc5993(lchan, fn, msg);
+			else
+				send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+			break;
+		case RSL_CMOD_SPD_DATA:
+			send_ul_rtp_packet_data(lchan, fn, msg->data, msg->len);
+			break;
+		case RSL_CMOD_SPD_SIGN:
+		default: /* shall not happen */
+			OSMO_ASSERT(0);
+		}
 		/* if loopback is enabled, also queue received RTP data */
 		if (lchan->loopback) {
 			/* add new frame to queue, make sure the queue doesn't get too long */
@@ -2247,10 +2276,23 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		OSMO_ASSERT(0);
 	}
 
-	msg = l1sap_msgb_alloc(rtp_pl_len);
+	msg = l1sap_msgb_alloc(512);
 	if (!msg)
 		return;
-	memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
+
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA) {
+		int rc = csd_v110_rtp_decode(lchan, msg->tail,
+					     rtp_pl, rtp_pl_len);
+		if (rc > 0) {
+			msgb_put(msg, rc);
+		} else {
+			msgb_free(msg);
+			return;
+		}
+	} else {
+		memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
+	}
+
 	msgb_pull(msg, sizeof(struct osmo_phsap_prim));
 
 	/* Store RTP header Marker bit in control buffer */

@@ -1,4 +1,4 @@
-SUBDIRS = paging cipher agch misc handover tx_power power meas ta_control amr
+SUBDIRS = paging cipher agch misc handover tx_power power meas ta_control amr csd
 
 if ENABLE_SYSMOBTS
 SUBDIRS += sysmobts

@@ -70,3 +70,9 @@ cat $abs_srcdir/amr/amr_test.ok > expout
 cat $abs_srcdir/amr/amr_test.err > experr
 AT_CHECK([$abs_top_builddir/tests/amr/amr_test], [], [expout], [experr])
 AT_CLEANUP
+
+AT_SETUP([csd])
+AT_KEYWORDS([csd])
+cat $abs_srcdir/csd/csd_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/csd/csd_test], [], [ignore], [experr])
+AT_CLEANUP
