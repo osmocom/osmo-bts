@@ -513,13 +513,15 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		break;
 	/* CSD (TCH/H4.8): 6.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_6k0:
-		gsm0503_tch_hr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_tch != NULL)
+			gsm0503_tch_hr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		if (msg_facch != NULL)
 			gsm0503_tch_hr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	/* CSD (TCH/H2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
-		gsm0503_tch_hr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_tch != NULL)
+			gsm0503_tch_hr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		if (msg_facch != NULL)
 			gsm0503_tch_hr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
