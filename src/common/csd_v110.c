@@ -58,6 +58,21 @@ const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
 	},
 };
 
+/* 3GPP TS 44.021, Figure 4: Coding of data rates (E1/E2/E3 bits) */
+static const uint8_t e1e2e3_map[_LCHAN_CSD_M_NUM][3] = {
+	[LCHAN_CSD_M_T_600]	= { 1, 0, 0 },
+	[LCHAN_CSD_M_T_1200]	= { 0, 1, 0 },
+	[LCHAN_CSD_M_T_2400]	= { 1, 1, 0 },
+	[LCHAN_CSD_M_T_4800]	= { 0, 1, 1 },
+	[LCHAN_CSD_M_T_9600]	= { 0, 1, 1 },
+#if 0
+	[LCHAN_CSD_M_T_19200]	= { 0, 1, 1 },
+	[LCHAN_CSD_M_T_38400]	= { 0, 1, 1 },
+	[LCHAN_CSD_M_T_14400]	= { 1, 0, 1 },
+	[LCHAN_CSD_M_T_28800]	= { 1, 0, 1 },
+#endif
+};
+
 int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 			const uint8_t *data, size_t data_len)
 {
@@ -86,8 +101,10 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 		else /* desc->num_bits == 36 */
 			osmo_csd_3k6_decode_frame(&df, &data[i * 36], 36);
 
-		/* FIXME: E1 .. E3 must be set by out-of-band knowledge! */
-		memset(&df.e_bits[0], 0, 3);
+		/* E1 .. E3 must set by out-of-band knowledge */
+		df.e_bits[0] = e1e2e3_map[lchan->csd_mode][0];
+		df.e_bits[1] = e1e2e3_map[lchan->csd_mode][1];
+		df.e_bits[2] = e1e2e3_map[lchan->csd_mode][2];
 
 		osmo_v110_encode_frame(&ra_bits[i * 80], 80, &df);
 	}

@@ -75,15 +75,17 @@ struct amr_multirate_conf {
 };
 
 enum lchan_csd_mode {
-	LCHAN_CSD_M_NT,
+	LCHAN_CSD_M_NT = 0,
 	LCHAN_CSD_M_T_1200_75,
 	LCHAN_CSD_M_T_600,
 	LCHAN_CSD_M_T_1200,
 	LCHAN_CSD_M_T_2400,
+	LCHAN_CSD_M_T_4800,
 	LCHAN_CSD_M_T_9600,
 	LCHAN_CSD_M_T_14400,
 	LCHAN_CSD_M_T_29000,
 	LCHAN_CSD_M_T_32000,
+	_LCHAN_CSD_M_NUM,
 };
 
 /* State of the SAPIs in the lchan */

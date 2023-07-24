@@ -37,6 +37,7 @@ struct test_case {
 	const char *name;
 	enum gsm_chan_t lchan_type;
 	enum gsm48_chan_mode tch_mode;
+	enum lchan_csd_mode csd_mode;
 };
 
 static const struct test_case tests[] = {
@@ -44,31 +45,37 @@ static const struct test_case tests[] = {
 		.name = "TCH/F14.4",
 		.lchan_type = GSM_LCHAN_TCH_F,
 		.tch_mode = GSM48_CMODE_DATA_14k5,
+		.csd_mode = LCHAN_CSD_M_T_14400,
 	},
 	{
 		.name = "TCH/F9.6",
 		.lchan_type = GSM_LCHAN_TCH_F,
 		.tch_mode = GSM48_CMODE_DATA_12k0,
+		.csd_mode = LCHAN_CSD_M_T_9600,
 	},
 	{
 		.name = "TCH/F4.8",
 		.lchan_type = GSM_LCHAN_TCH_F,
 		.tch_mode = GSM48_CMODE_DATA_6k0,
+		.csd_mode = LCHAN_CSD_M_T_4800,
 	},
 	{
 		.name = "TCH/H4.8",
 		.lchan_type = GSM_LCHAN_TCH_H,
 		.tch_mode = GSM48_CMODE_DATA_6k0,
+		.csd_mode = LCHAN_CSD_M_T_4800,
 	},
 	{
 		.name = "TCH/F2.4",
 		.lchan_type = GSM_LCHAN_TCH_F,
 		.tch_mode = GSM48_CMODE_DATA_3k6,
+		.csd_mode = LCHAN_CSD_M_T_2400,
 	},
 	{
 		.name = "TCH/H2.4",
 		.lchan_type = GSM_LCHAN_TCH_H,
 		.tch_mode = GSM48_CMODE_DATA_3k6,
+		.csd_mode = LCHAN_CSD_M_T_600,
 	},
 };
 
@@ -99,6 +106,7 @@ static void exec_test_case(const struct test_case *tc)
 	struct gsm_lchan lchan = {
 		.type = tc->lchan_type,
 		.tch_mode = tc->tch_mode,
+		.csd_mode = tc->csd_mode,
 	};
 
 	/* populate the data_enc[] buffer with some bits */
