@@ -242,29 +242,47 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_32000):
 		/* 32.0 kbit/s services, 32.0 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_32k0;
+		lchan->csd_mode = LCHAN_CSD_M_T_32000;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_29000):
 		/* 29.0 kbit/s services, 29.0 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_29k0;
+		lchan->csd_mode = LCHAN_CSD_M_T_29000;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_14400):
 		/* 14.4 kbit/s services, 14.5 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
+		lchan->csd_mode = LCHAN_CSD_M_T_14400;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_9600):
 		/* 9.6 kbit/s services, 12.0 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
+		lchan->csd_mode = LCHAN_CSD_M_T_9600;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_4800):
 		/* 4.8 kbit/s services, 6.0 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+		lchan->csd_mode = LCHAN_CSD_M_T_4800;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_2400):
+		/* 2.4 kbit/s *and less* services, 3.6 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_3k6;
+		lchan->csd_mode = LCHAN_CSD_M_T_2400;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200):
+		/* 2.4 kbit/s *and less* services, 3.6 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_3k6;
+		lchan->csd_mode = LCHAN_CSD_M_T_1200;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_600):
+		/* 2.4 kbit/s *and less* services, 3.6 kbit/s radio interface rate */
+		lchan->tch_mode = GSM48_CMODE_DATA_3k6;
+		lchan->csd_mode = LCHAN_CSD_M_T_600;
+		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_T_1200_75):
 		/* 2.4 kbit/s *and less* services, 3.6 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_3k6;
+		lchan->csd_mode = LCHAN_CSD_M_T_1200_75;
 		break;
 
 	default:
