@@ -91,15 +91,6 @@ struct gsm_pcu_if_data {
 struct gsm_pcu_if_data_cnf_dt {
 	uint8_t		sapi;
 	uint32_t	msg_id;
-	uint32_t	fn;
-	uint16_t	arfcn;
-	uint8_t		trx_nr;
-	uint8_t		ts_nr;
-	uint8_t		block_nr;
-	int8_t		rssi;
-	uint16_t	ber10k;		/* !< \brief BER in units of 0.01% */
-	int16_t		ta_offs_qbits;	/* !< \brief Burst TA Offset in quarter bits */
-	int16_t		lqual_cb;	/* !< \brief Link quality in centiBel */
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_rts_req {
