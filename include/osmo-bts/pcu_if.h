@@ -23,7 +23,7 @@ int pcu_tx_rach_ind(uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
 int pcu_tx_time_ind(uint32_t fn);
 int pcu_tx_interf_ind(const struct gsm_bts_trx *trx, uint32_t fn);
 int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed);
-int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t tlli);
+int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t msg_id);
 int pcu_tx_susp_req(struct gsm_lchan *lchan, uint32_t tlli, const uint8_t *ra_id, uint8_t cause);
 int pcu_sock_send(struct msgb *msg);
 

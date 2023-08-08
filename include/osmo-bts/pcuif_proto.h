@@ -17,7 +17,7 @@
 #define PCU_IF_MSG_SUSP_REQ	0x03	/* BTS forwards GPRS SUSP REQ to PCU */
 #define PCU_IF_MSG_APP_INFO_REQ	0x04	/* BTS asks PCU to transmit APP INFO via PACCH */
 #define PCU_IF_MSG_RTS_REQ	0x10	/* ready to send request */
-#define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (with direct tlli) */
+#define PCU_IF_MSG_DATA_CNF_DT	0x11	/* confirm (using message id) */
 #define PCU_IF_MSG_RACH_IND	0x22	/* receive RACH */
 #define PCU_IF_MSG_INFO_IND	0x32	/* retrieve BTS info */
 #define PCU_IF_MSG_ACT_REQ	0x40	/* activate/deactivate PDCH */
@@ -35,7 +35,7 @@
 #define PCU_IF_SAPI_PDTCH	0x05	/* packet data/control/ccch block */
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
 #define PCU_IF_SAPI_PTCCH	0x07	/* packet TA control channel */
-#define PCU_IF_SAPI_PCH_DT	0x08	/* assignment on PCH (confirmed using TLLI) */
+#define PCU_IF_SAPI_PCH_DT	0x08	/* assignment on PCH (confirmed using message id) */
 
 /* flags */
 #define PCU_IF_FLAG_ACTIVE	(1 << 0)/* BTS is active */
@@ -87,10 +87,10 @@ struct gsm_pcu_if_data {
 	int16_t		lqual_cb;	/* !< \brief Link quality in centiBel */
 } __attribute__ ((packed));
 
-/* data confirmation with direct tlli (instead of raw mac block with tlli) */
+/* data confirmation with message id (instead of raw mac block) */
 struct gsm_pcu_if_data_cnf_dt {
 	uint8_t		sapi;
-	uint32_t	tlli;
+	uint32_t	msg_id;
 	uint32_t	fn;
 	uint16_t	arfcn;
 	uint8_t		trx_nr;
@@ -233,8 +233,8 @@ struct gsm_pcu_if_container {
 /* Struct to send a (confirmed) IMMEDIATE ASSIGNMENT message via PCH. The struct is sent as a data request
  * (data_req) under SAPI PCU_IF_SAPI_PCH_DT. */
 struct gsm_pcu_if_pch_dt {
-	/* TLLI as reference for confirmation */
-	uint32_t tlli;
+	/* message id as reference for confirmation */
+	uint32_t msg_id;
 	/* IMSI (to derive paging group) */
 	char imsi[OSMO_IMSI_BUF_SIZE];
 	/* GSM mac-block (with immediate assignment message) */

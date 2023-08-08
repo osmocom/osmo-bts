@@ -618,7 +618,7 @@ int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 	return pcu_sock_send(msg);
 }
 
-int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t tlli)
+int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t msg_id)
 {
 	struct gsm_bts *bts;
 	struct msgb *msg;
@@ -635,7 +635,7 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t tlli)
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
 	pcu_prim->u.data_cnf_dt = (struct gsm_pcu_if_data_cnf_dt) {
 		.sapi = PCU_IF_SAPI_PCH_DT,
-		.tlli = tlli,
+		.msg_id = msg_id,
 		.fn = fn,
 	};
 
@@ -689,7 +689,7 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		gsm_pcu_if_pch_dt = (struct gsm_pcu_if_pch_dt *)data_req->data;
 		gsm48_imm_ass = (struct gsm48_imm_ass *)gsm_pcu_if_pch_dt->data;
 		confirm = (gsm48_imm_ass->msg_type == GSM48_MT_RR_IMM_ASS);
-		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch_dt->tlli,
+		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch_dt->msg_id,
 					 gsm_pcu_if_pch_dt->imsi, confirm, gsm_pcu_if_pch_dt->data);
 		break;
 	}

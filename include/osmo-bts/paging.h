@@ -86,7 +86,7 @@ int paging_add_identity(struct paging_state *ps, uint8_t paging_group,
 
 /* Add a ready formatted MAC block message to the paging queue, this can be an IMMEDIATE ASSIGNMENT, or a
  * PAGING COMMAND (from the PCU) */
-int paging_add_macblock(struct paging_state *ps, uint32_t tlli, const char *imsi, bool confirm, const uint8_t *macblock);
+int paging_add_macblock(struct paging_state *ps, uint32_t msg_id, const char *imsi, bool confirm, const uint8_t *macblock);
 
 /* Paging rest octests */
 void append_p1_rest_octets(struct bitvec *bv, const struct p1_rest_octets *p1ro,
