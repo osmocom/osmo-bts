@@ -618,7 +618,7 @@ int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 	return pcu_sock_send(msg);
 }
 
-int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t msg_id)
+int pcu_tx_pch_data_cnf(uint32_t msg_id)
 {
 	struct gsm_bts *bts;
 	struct msgb *msg;
@@ -636,7 +636,6 @@ int pcu_tx_pch_data_cnf(uint32_t fn, uint32_t msg_id)
 	pcu_prim->u.data_cnf_dt = (struct gsm_pcu_if_data_cnf_dt) {
 		.sapi = PCU_IF_SAPI_PCH_DT,
 		.msg_id = msg_id,
-		.fn = fn,
 	};
 
 	return pcu_sock_send(msg);

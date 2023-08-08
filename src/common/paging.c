@@ -734,7 +734,7 @@ int paging_gen_msg(struct paging_state *ps, uint8_t *out_buf, struct gsm_time *g
 							GSM_MACBLOCK_LEN);
 			/* send a confirmation back (if required) */
 			if (pr[num_pr]->u.macblock.confirm)
-				pcu_tx_pch_data_cnf(gt->fn, pr[num_pr]->u.macblock.msg_id);
+				pcu_tx_pch_data_cnf(pr[num_pr]->u.macblock.msg_id);
 			talloc_free(pr[num_pr]);
 			return GSM_MACBLOCK_LEN;
 		}
