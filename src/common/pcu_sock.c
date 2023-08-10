@@ -59,7 +59,7 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PDTCH] =	"PDTCH",
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
-	[PCU_IF_SAPI_PCH_DT] =	"PCH_DT",
+	[PCU_IF_SAPI_PCH_2] =	"PCH_2",
 };
 
 /*
@@ -629,12 +629,12 @@ int pcu_tx_pch_data_cnf(uint32_t msg_id)
 
 	LOGP(DPCU, LOGL_DEBUG, "Sending PCH confirm\n");
 
-	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF_DT, bts->nr);
+	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF_2, bts->nr);
 	if (!msg)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
-	pcu_prim->u.data_cnf_dt = (struct gsm_pcu_if_data_cnf_dt) {
-		.sapi = PCU_IF_SAPI_PCH_DT,
+	pcu_prim->u.data_cnf2 = (struct gsm_pcu_if_data_cnf) {
+		.sapi = PCU_IF_SAPI_PCH_2,
 		.msg_id = msg_id,
 	};
 
@@ -673,23 +673,23 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		osmo_hexdump(data_req->data, data_req->len));
 
 	switch (data_req->sapi) {
-	case PCU_IF_SAPI_PCH_DT:
+	case PCU_IF_SAPI_PCH_2:
 	{
-		const struct gsm_pcu_if_pch_dt *gsm_pcu_if_pch_dt;
+		const struct gsm_pcu_if_pch *gsm_pcu_if_pch;
 		const struct gsm48_imm_ass *gsm48_imm_ass;
 		bool confirm;
 
-		if (OSMO_UNLIKELY(data_req->len != sizeof(*gsm_pcu_if_pch_dt))) {
+		if (OSMO_UNLIKELY(data_req->len != sizeof(*gsm_pcu_if_pch))) {
 			LOGP(DPCU, LOGL_ERROR, "Rx malformed DATA.req for PCH\n");
 			rc = -EINVAL;
 			break;
 		}
 
-		gsm_pcu_if_pch_dt = (struct gsm_pcu_if_pch_dt *)data_req->data;
-		gsm48_imm_ass = (struct gsm48_imm_ass *)gsm_pcu_if_pch_dt->data;
+		gsm_pcu_if_pch = (struct gsm_pcu_if_pch *)data_req->data;
+		gsm48_imm_ass = (struct gsm48_imm_ass *)gsm_pcu_if_pch->data;
 		confirm = (gsm48_imm_ass->msg_type == GSM48_MT_RR_IMM_ASS);
-		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch_dt->msg_id,
-					 gsm_pcu_if_pch_dt->imsi, confirm, gsm_pcu_if_pch_dt->data);
+		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch->msg_id,
+					 gsm_pcu_if_pch->imsi, confirm, gsm_pcu_if_pch->data);
 		break;
 	}
 	case PCU_IF_SAPI_AGCH:
