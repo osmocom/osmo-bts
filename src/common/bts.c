@@ -658,7 +658,7 @@ int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg)
 	return 0;
 }
 
-struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
+static struct msgb *bts_agch_dequeue(struct gsm_bts *bts)
 {
 	struct msgb *msg = msgb_dequeue(&bts->agch_queue.queue);
 	if (!msg)

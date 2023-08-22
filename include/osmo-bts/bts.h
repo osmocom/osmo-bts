@@ -408,7 +408,6 @@ void bts_shutdown_ext(struct gsm_bts *bts, const char *reason, bool exit_proc, b
 int bts_link_estab(struct gsm_bts *bts);
 
 int bts_agch_enqueue(struct gsm_bts *bts, struct msgb *msg);
-struct msgb *bts_agch_dequeue(struct gsm_bts *bts);
 int bts_agch_max_queue_length(int T, int bcch_conf);
 
 enum ccch_msgt {
