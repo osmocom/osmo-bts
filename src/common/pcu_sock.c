@@ -676,8 +676,6 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 	case PCU_IF_SAPI_PCH_2:
 	{
 		const struct gsm_pcu_if_pch *gsm_pcu_if_pch;
-		const struct gsm48_imm_ass *gsm48_imm_ass;
-		bool confirm;
 
 		if (OSMO_UNLIKELY(data_req->len != sizeof(*gsm_pcu_if_pch))) {
 			LOGP(DPCU, LOGL_ERROR, "Rx malformed DATA.req for PCH\n");
@@ -686,10 +684,8 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 		}
 
 		gsm_pcu_if_pch = (struct gsm_pcu_if_pch *)data_req->data;
-		gsm48_imm_ass = (struct gsm48_imm_ass *)gsm_pcu_if_pch->data;
-		confirm = (gsm48_imm_ass->msg_type == GSM48_MT_RR_IMM_ASS);
 		rc = paging_add_macblock(bts->paging_state, gsm_pcu_if_pch->msg_id,
-					 gsm_pcu_if_pch->imsi, confirm, gsm_pcu_if_pch->data);
+					 gsm_pcu_if_pch->imsi, gsm_pcu_if_pch->confirm, gsm_pcu_if_pch->data);
 		break;
 	}
 	case PCU_IF_SAPI_AGCH:

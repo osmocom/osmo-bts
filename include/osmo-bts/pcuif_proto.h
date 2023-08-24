@@ -230,6 +230,9 @@ struct gsm_pcu_if_pch {
 	char imsi[OSMO_IMSI_BUF_SIZE];
 	/* GSM mac-block (with immediate assignment message) */
 	uint8_t data[GSM_MACBLOCK_LEN];
+	/* Set to true in case the receiving end must send a confirmation
+	 * when the MAC block (data) has been sent. */
+	bool confirm;
 } __attribute__((packed));
 
 struct gsm_pcu_if {
