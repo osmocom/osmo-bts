@@ -36,6 +36,7 @@
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
 #define PCU_IF_SAPI_PTCCH	0x07	/* packet TA control channel */
 #define PCU_IF_SAPI_PCH_2	0x08	/* assignment on PCH (confirmed using message id) */
+#define PCU_IF_SAPI_AGCH_2	0x09	/* assignment on AGCH (confirmed using message id) */
 
 /* flags */
 #define PCU_IF_FLAG_ACTIVE	(1 << 0)/* BTS is active */
@@ -228,6 +229,18 @@ struct gsm_pcu_if_pch {
 	uint32_t msg_id;
 	/* IMSI (to derive paging group) */
 	char imsi[OSMO_IMSI_BUF_SIZE];
+	/* GSM mac-block (with immediate assignment message) */
+	uint8_t data[GSM_MACBLOCK_LEN];
+	/* Set to true in case the receiving end must send a confirmation
+	 * when the MAC block (data) has been sent. */
+	bool confirm;
+} __attribute__((packed));
+
+/* Struct to send a (confirmed) IMMEDIATE ASSIGNMENT message via AGCH. The struct is sent as a data request
+ * (data_req) under SAPI PCU_IF_SAPI_AGCH_2. */
+struct gsm_pcu_if_agch {
+	/* message id as reference for confirmation */
+	uint32_t msg_id;
 	/* GSM mac-block (with immediate assignment message) */
 	uint8_t data[GSM_MACBLOCK_LEN];
 	/* Set to true in case the receiving end must send a confirmation

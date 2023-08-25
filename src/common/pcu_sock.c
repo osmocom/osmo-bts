@@ -60,6 +60,7 @@ static const char *sapi_string[] = {
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
 	[PCU_IF_SAPI_PTCCH] = 	"PTCCH",
 	[PCU_IF_SAPI_PCH_2] =	"PCH_2",
+	[PCU_IF_SAPI_AGCH_2] =	"AGCH_2",
 };
 
 /*
@@ -618,7 +619,7 @@ int pcu_tx_pag_req(const uint8_t *identity_lv, uint8_t chan_needed)
 	return pcu_sock_send(msg);
 }
 
-int pcu_tx_pch_data_cnf(uint32_t msg_id)
+int pcu_tx_data_cnf(uint32_t msg_id, uint8_t sapi)
 {
 	struct gsm_bts *bts;
 	struct msgb *msg;
@@ -634,7 +635,7 @@ int pcu_tx_pch_data_cnf(uint32_t msg_id)
 		return -ENOMEM;
 	pcu_prim = (struct gsm_pcu_if *) msg->data;
 	pcu_prim->u.data_cnf2 = (struct gsm_pcu_if_data_cnf) {
-		.sapi = PCU_IF_SAPI_PCH_2,
+		.sapi = sapi,
 		.msg_id = msg_id,
 	};
 
@@ -688,19 +689,30 @@ static int pcu_rx_data_req(struct gsm_bts *bts, uint8_t msg_type,
 					 gsm_pcu_if_pch->imsi, gsm_pcu_if_pch->confirm, gsm_pcu_if_pch->data);
 		break;
 	}
-	case PCU_IF_SAPI_AGCH:
-		msg = msgb_alloc(data_req->len, "pcu_agch");
+	case PCU_IF_SAPI_AGCH_2:
+	{
+		const struct gsm_pcu_if_agch *gsm_pcu_if_agch;
+		struct bts_agch_msg_cb *msg_cb;
+
+		gsm_pcu_if_agch = (struct gsm_pcu_if_agch *)data_req->data;
+
+		msg = msgb_alloc(GSM_MACBLOCK_LEN, "pcu_agch");
 		if (!msg) {
 			rc = -ENOMEM;
 			break;
 		}
-		msg->l3h = msgb_put(msg, data_req->len);
-		memcpy(msg->l3h, data_req->data, data_req->len);
+		msg->l3h = msgb_put(msg, GSM_MACBLOCK_LEN);
+		memcpy(msg->l3h, gsm_pcu_if_agch->data, GSM_MACBLOCK_LEN);
+
+		msg_cb = (struct bts_agch_msg_cb *) msg->cb;
+		msg_cb->confirm = gsm_pcu_if_agch->confirm;
+		msg_cb->msg_id = gsm_pcu_if_agch->msg_id;
 		if (bts_agch_enqueue(bts, msg) < 0) {
 			msgb_free(msg);
 			rc = -EIO;
 		}
 		break;
+	}
 	case PCU_IF_SAPI_PDTCH:
 	case PCU_IF_SAPI_PTCCH:
 		trx = gsm_bts_trx_num(bts, data_req->trx_nr);

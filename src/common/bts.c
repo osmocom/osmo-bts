@@ -47,6 +47,7 @@
 #include <osmo-bts/bts_sm.h>
 #include <osmo-bts/dtx_dl_amr_fsm.h>
 #include <osmo-bts/pcuif_proto.h>
+#include <osmo-bts/pcu_if.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
@@ -729,6 +730,7 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	struct msgb *msg = NULL;
 	int rc = 0;
 	int is_empty = 1;
+	const struct bts_agch_msg_cb *msg_cb;
 
 	/* Do queue house keeping.
 	 * This needs to be done every time a CCCH message is requested, since
@@ -758,6 +760,11 @@ int bts_ccch_copy_msg(struct gsm_bts *bts, uint8_t *out_buf, struct gsm_time *gt
 	}
 
 	rate_ctr_inc2(bts->ctrs, BTS_CTR_AGCH_SENT);
+
+	/* Confirm sending of the AGCH message towards the PCU */
+	msg_cb = (struct bts_agch_msg_cb *) msg->cb;
+	if (msg_cb->confirm)
+		pcu_tx_data_cnf(msg_cb->msg_id, PCU_IF_SAPI_AGCH_2);
 
 	/* Copy AGCH message */
 	memcpy(out_buf, msgb_l3(msg), msgb_l3len(msg));

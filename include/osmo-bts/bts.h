@@ -442,4 +442,11 @@ struct gsm_lchan *gsm_bts_get_cbch(struct gsm_bts *bts);
 
 int bts_set_c0_pwr_red(struct gsm_bts *bts, const uint8_t red);
 
+/* Context information to be put in the control buffer (db) of the AGCH msg
+ * buffer */
+struct bts_agch_msg_cb {
+	uint32_t msg_id;
+	bool confirm;
+} __attribute__ ((packed));
+
 #endif /* _BTS_H */
