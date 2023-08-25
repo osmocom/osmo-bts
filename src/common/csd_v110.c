@@ -91,11 +91,11 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 	if (OSMO_UNLIKELY(data_len < (desc->num_blocks * desc->num_bits)))
 		return -ENODATA;
 
-	/* RA1'/RA1: convert to an intermediate data rate */
+	/* RA1'/RA1: convert from radio rate to an intermediate data rate */
 	for (unsigned int i = 0; i < desc->num_blocks; i++) {
 		struct osmo_v110_decoded_frame df;
 
-		/* convert modified V.110 frames to normal V.110 frames */
+		/* convert a V.110 36-/60-bit frame to a V.110 80-bit frame */
 		if (desc->num_bits == 60)
 			osmo_csd_12k_6k_decode_frame(&df, &data[i * 60], 60);
 		else /* desc->num_bits == 36 */
@@ -158,11 +158,11 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 			ra_bits[i] = (rtp[i] >> 7);
 	}
 
-	/* RA1'/RA1: convert to an intermediate data rate */
+	/* RA1'/RA1: convert from an intermediate rate to radio rate */
 	for (unsigned int i = 0; i < desc->num_blocks; i++) {
 		struct osmo_v110_decoded_frame df;
 
-		/* convert modified V.110 frames to normal V.110 frames */
+		/* convert a V.110 80-bit frame to a V.110 36-/60-bit frame */
 		osmo_v110_decode_frame(&df, &ra_bits[i * 80], 80);
 		if (desc->num_bits == 60)
 			osmo_csd_12k_6k_encode_frame(&data[i * 60], 60, &df);
