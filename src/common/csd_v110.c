@@ -87,9 +87,14 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 	if (OSMO_UNLIKELY(desc->num_blocks == 0))
 		return -ENOTSUP;
 
-	/* handle empty/incomplete frames gracefully */
-	if (OSMO_UNLIKELY(data_len < (desc->num_blocks * desc->num_bits)))
-		return -ENODATA;
+	/* handle empty/incomplete Uplink frames gracefully */
+	if (OSMO_UNLIKELY(data_len < (desc->num_blocks * desc->num_bits))) {
+		/* encode N idle frames as per 3GPP TS 44.021, section 8.1.6 */
+		memset(&ra_bits[0], 0x01, sizeof(ra_bits));
+		for (unsigned int i = 0; i < desc->num_blocks; i++)
+			memset(&ra_bits[i * 80], 0x00, 8); /* alignment pattern */
+		goto ra1_ra2;
+	}
 
 	/* RA1'/RA1: convert from radio rate to an intermediate data rate */
 	for (unsigned int i = 0; i < desc->num_blocks; i++) {
@@ -117,6 +122,7 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 		osmo_v110_encode_frame(&ra_bits[i * 80], 80, &df);
 	}
 
+ra1_ra2:
 	/* RA1/RA2: convert from an intermediate rate to 64 kbit/s */
 	if (desc->num_blocks == 4) {
 		/* 4 * 80 bits (16 kbit/s) => 2 bits per octet */

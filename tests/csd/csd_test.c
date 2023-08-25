@@ -135,6 +135,17 @@ static void exec_test_case(const struct test_case *tc)
 		fprintf(stderr, "[!] Data mismatch @ %03u: D%u vs E%u\n",
 			i, data_dec[i], data_enc[i]);
 	}
+
+	fprintf(stderr, "[i] Testing '%s' (IDLE)\n", tc->name);
+
+	/* encode an idle RTP frame and print it */
+	rc = csd_v110_rtp_encode(&lchan, &rtp[0], &data_enc[0], 0);
+	fprintf(stderr, "[i] csd_v110_rtp_encode() returns %d\n", rc);
+	if (rc != RFC4040_RTP_PLEN)
+		return;
+	/* print the encoded RTP frame (16 bytes per row) */
+	for (unsigned int i = 0; i < sizeof(rtp) / 16; i++)
+		fprintf(stderr, "    %s\n", osmo_hexdump(&rtp[i * 16], 16));
 }
 
 int main(int argc, char **argv)
