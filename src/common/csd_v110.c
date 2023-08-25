@@ -102,9 +102,17 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 			osmo_csd_3k6_decode_frame(&df, &data[i * 36], 36);
 
 		/* E1 .. E3 must set by out-of-band knowledge */
-		df.e_bits[0] = e1e2e3_map[lchan->csd_mode][0];
-		df.e_bits[1] = e1e2e3_map[lchan->csd_mode][1];
-		df.e_bits[2] = e1e2e3_map[lchan->csd_mode][2];
+		if (lchan->csd_mode == LCHAN_CSD_M_NT) {
+			/* non-transparent: as per 3GPP TS 48.020, Table 7 */
+			df.e_bits[0] = 0; /* E1: as per 15.1.2, shall be set to 0 (for BSS-MSC) */
+			df.e_bits[1] = (i >> 1) & 0x01; /* E2: 0 for Q1/Q2, 1 for Q3/Q4 */
+			df.e_bits[2] = (i >> 0) & 0x01; /* E3: 0 for Q1/Q3, 1 for Q2/Q4 */
+		} else {
+			/* transparent: as per 3GPP TS 44.021, Figure 4 */
+			df.e_bits[0] = e1e2e3_map[lchan->csd_mode][0]; /* E1 */
+			df.e_bits[1] = e1e2e3_map[lchan->csd_mode][1]; /* E2 */
+			df.e_bits[2] = e1e2e3_map[lchan->csd_mode][2]; /* E3 */
+		}
 
 		osmo_v110_encode_frame(&ra_bits[i * 80], 80, &df);
 	}
