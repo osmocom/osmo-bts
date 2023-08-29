@@ -628,7 +628,8 @@ int pcu_tx_data_cnf(uint32_t msg_id, uint8_t sapi)
 	/* FIXME: allow multiple BTS */
 	bts = llist_entry(g_bts_sm->bts_list.next, struct gsm_bts, list);
 
-	LOGP(DPCU, LOGL_DEBUG, "Sending PCH confirm\n");
+	LOGP(DPCU, LOGL_DEBUG, "Sending DATA.cnf: sapi=%s msg_id=%08x\n",
+	     sapi_string[sapi], msg_id);
 
 	msg = pcu_msgb_alloc(PCU_IF_MSG_DATA_CNF_2, bts->nr);
 	if (!msg)
