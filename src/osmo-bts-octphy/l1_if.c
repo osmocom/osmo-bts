@@ -768,6 +768,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	bts->variant = BTS_OSMO_OCTPHY;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	bts->gprs.cell.support.gprs_codings = NM_IPAC_MASK_GPRS_CODING_CS;
 
 	/* FIXME: what is the nominal transmit power of the PHY/board? */
 	bts->c0->nominal_power = 15;
@@ -786,6 +787,29 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
+	/* Frequency bands indicated to the BSC */
+	trx->support.freq_bands = NM_IPAC_F_FREQ_BAND_PGSM
+				| NM_IPAC_F_FREQ_BAND_EGSM
+				| NM_IPAC_F_FREQ_BAND_RGSM
+				| NM_IPAC_F_FREQ_BAND_DCS
+				| NM_IPAC_F_FREQ_BAND_PCS
+				| NM_IPAC_F_FREQ_BAND_850
+				| NM_IPAC_F_FREQ_BAND_480
+				| NM_IPAC_F_FREQ_BAND_450;
+
+	/* Channel types and modes indicated to the BSC */
+	trx->support.chan_types = NM_IPAC_MASK_CHANT_COMMON
+#if defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_FCCH_SCH_BCCH_CCCH_SDCCH4_CBCH_SACCHC4)
+				| NM_IPAC_F_CHANT_BCCH_SDCCH4_CBCH
+#endif
+#if defined(cOCTVC1_GSM_LOGICAL_CHANNEL_COMBINATION_ENUM_SDCCH8_CBCH_SACCHC8)
+				| NM_IPAC_F_CHANT_SDCCH8_CBCH
+#endif
+				| NM_IPAC_F_CHANT_PDCHF
+				| NM_IPAC_F_CHANT_TCHF_PDCHF;
+	trx->support.chan_modes = NM_IPAC_F_CHANM_SPEECH_FS
+				| NM_IPAC_F_CHANM_SPEECH_HS;
+
 	return 0;
 }
 

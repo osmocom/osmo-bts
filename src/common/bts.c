@@ -59,6 +59,7 @@
 #include <osmo-bts/osmux.h>
 #include <osmo-bts/notification.h>
 
+#define MAX_TA_DEF	 63 /* default max Timing Advance value */
 #define MIN_QUAL_RACH	 50 /* minimum link quality (in centiBels) for Access Bursts */
 #define MIN_QUAL_NORM	 -5 /* minimum link quality (in centiBels) for Normal Bursts */
 
@@ -344,7 +345,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->bsic_configured = false;
 	bts->load.ccch.load_ind_period = 112;
 	bts->rtp_jitter_buf_ms = 100;
-	bts->max_ta = 63;
+	bts->max_ta = MAX_TA_DEF;
 	bts->ny1 = 4;
 	bts->ny2 = 4;
 	bts->t3105_ms = 300;
@@ -383,6 +384,9 @@ int bts_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_ETWS_PN);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_IPV6_NSVC);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_PAGING_COORDINATION);
+
+	/* Maximum TA supported by the PHY (can be overridden by PHY specific code) */
+	bts->support.max_ta = MAX_TA_DEF;
 
 	rc = bts_model_init(bts);
 	if (rc < 0)

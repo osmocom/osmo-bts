@@ -88,6 +88,8 @@ int bts_model_init(struct gsm_bts *bts)
 	bts->model_priv = bts_oc2g;
 	bts->variant = BTS_OSMO_OC2G;
 	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3);
+	bts->gprs.cell.support.gprs_codings = NM_IPAC_MASK_GPRS_CODING_CS
+					    | NM_IPAC_MASK_GPRS_CODING_MCS;
 	/* specific default values for OC2G platform */
 
 	/* TODO(oramadan) MERGE
@@ -127,6 +129,17 @@ int bts_model_init(struct gsm_bts *bts)
 
 int bts_model_trx_init(struct gsm_bts_trx *trx)
 {
+	/* Frequency bands indicated to the BSC */
+	trx->support.freq_bands = 0x00; /* updated in info_compl_cb() */
+
+	/* Channel types and modes indicated to the BSC */
+	trx->support.chan_types = NM_IPAC_MASK_CHANT_COMMON
+				| NM_IPAC_F_CHANT_BCCH_SDCCH4_CBCH
+				| NM_IPAC_F_CHANT_SDCCH8_CBCH
+				| NM_IPAC_F_CHANT_PDCHF
+				| NM_IPAC_F_CHANT_TCHF_PDCHF;
+	trx->support.chan_modes = NM_IPAC_MASK_CHANM_SPEECH;
+
 	trx->nominal_power = 25;
 	trx->power_params.trx_p_max_out_mdBm = to_mdB(trx->bts->c0->nominal_power);
 	return 0;

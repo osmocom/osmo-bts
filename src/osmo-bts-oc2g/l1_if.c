@@ -1475,6 +1475,30 @@ static int info_compl_cb(struct gsm_bts_trx *trx, struct msgb *resp,
 		LOGP(DL1C, LOGL_FATAL, "BTS band %s not supported by hw\n",
 		     gsm_band_name(trx->bts->band));
 
+	/* Frequency bands indicated to the BSC */
+	switch (fl1h->hw_info.band_support) {
+	case GSM_BAND_450:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_450;
+		break;
+	case GSM_BAND_480:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_480;
+		break;
+	case GSM_BAND_850:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_850;
+		break;
+	case GSM_BAND_900:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_PGSM;
+		/* XXX: does GSM_BAND_900 include NM_IPAC_F_FREQ_BAND_EGSM? */
+		/* XXX: does GSM_BAND_900 include NM_IPAC_F_FREQ_BAND_RGSM? */
+		break;
+	case GSM_BAND_1800:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_DCS;
+		break;
+	case GSM_BAND_1900:
+		trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_PCS;
+		break;
+	}
+
 	/* Request the activation */
 	l1if_activate_rf(fl1h, 1);
 

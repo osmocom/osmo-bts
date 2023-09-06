@@ -44,6 +44,12 @@ struct gsm_bts_trx {
 	/* The associated PHY instance */
 	struct phy_instance *pinst;
 
+	struct {
+		uint32_t freq_bands;	/* see NM_IPAC_F_FREQ_BAND_* flags */
+		uint32_t chan_types;	/* see NM_IPAC_F_CHANT_* flags */
+		uint32_t chan_modes;	/* see NM_IPAC_F_CHANM_* flags */
+	} support;
+
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 

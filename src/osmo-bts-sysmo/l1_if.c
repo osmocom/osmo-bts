@@ -1938,5 +1938,27 @@ int bts_model_phy_link_open(struct phy_link *plink)
 	hdl = pinst->u.sysmobts.hdl;
 	osmo_strlcpy(bts->sub_model, sysmobts_model(hdl->hw_info.model_nr, hdl->hw_info.trx_nr), sizeof(bts->sub_model));
 
+	/* Frequency bands indicated to the BSC */
+	for (unsigned int i = 0; i < sizeof(hdl->hw_info.band_support) * 8; i++) {
+		if (~hdl->hw_info.band_support & (1 << i))
+			continue;
+		switch (1 << i) {
+		case GSM_BAND_850:
+			pinst->trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_850;
+			break;
+		case GSM_BAND_900:
+			pinst->trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_PGSM;
+			/* XXX: does GSM_BAND_900 include NM_IPAC_F_FREQ_BAND_EGSM? */
+			/* XXX: does GSM_BAND_900 include NM_IPAC_F_FREQ_BAND_RGSM? */
+			break;
+		case GSM_BAND_1800:
+			pinst->trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_DCS;
+			break;
+		case GSM_BAND_1900:
+			pinst->trx->support.freq_bands |= NM_IPAC_F_FREQ_BAND_PCS;
+			break;
+		}
+	}
+
 	return 0;
 }

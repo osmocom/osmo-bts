@@ -130,6 +130,9 @@ struct gsm_gprs_cell {
 	uint16_t bvci;
 	uint8_t timer[11];
 	struct gprs_rlc_cfg rlc_cfg;
+	struct {
+		uint32_t gprs_codings;	/* see NM_IPAC_F_GPRS_CODING_* flags */
+	} support;
 };
 
 /* Struct that holds one OML-Address (Address of the BSC) */
@@ -319,6 +322,7 @@ struct gsm_bts {
 
 	struct {
 		uint8_t ciphers;	/* flags A5/1==0x1, A5/2==0x2, A5/3==0x4 */
+		uint8_t max_ta;		/* maximum timing advance */
 	} support;
 	struct {
 		uint8_t tc4_ctr;

@@ -217,6 +217,68 @@ static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
 	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, len, bts->features->data);
 }
 
+/* Add ip.access feature flags for the given MO */
+static int add_att_ipacc_features(struct msgb *msg, const struct gsm_abis_mo *mo)
+{
+	const struct gsm_bts *bts = mo->bts;
+	const struct gsm_bts_trx *trx;
+	uint32_t val;
+	uint8_t *len;
+
+	msgb_v_put(msg, NM_ATT_IPACC_SUPP_FEATURES);
+
+	/* We don't know the length yet, so we update it later. */
+	len = msgb_put(msg, 2);
+
+	switch (mo->obj_class) {
+	case NM_OC_BTS:
+		msgb_tv16_put(msg, NM_IPAC_EIE_MAX_TA, 1); /* TL16 */
+		msgb_put_u8(msg, (bts->support.max_ta >> 0) & 0xff);
+		break;
+	case NM_OC_RADIO_CARRIER:
+		trx = container_of(mo, struct gsm_bts_trx, mo);
+		msgb_tv16_put(msg, NM_IPAC_EIE_FREQ_BANDS, 1); /* TL16 */
+		msgb_put_u8(msg, (trx->support.freq_bands >> 0) & 0xff);
+		break;
+	case NM_OC_BASEB_TRANSC:
+		trx = container_of(mo, struct gsm_bts_trx, bb_transc.mo);
+		msgb_tv16_put(msg, NM_IPAC_EIE_CIPH_ALGOS, 1); /* TL16 */
+		msgb_put_u8(msg, bts->support.ciphers); /* LSB is A5/1 */
+
+		msgb_tv16_put(msg, NM_IPAC_EIE_CHAN_TYPES, 2); /* TL16 */
+		msgb_put_u8(msg, (trx->support.chan_types >> 0) & 0xff);
+		msgb_put_u8(msg, (trx->support.chan_types >> 8) & 0xff);
+
+		msgb_tv16_put(msg, NM_IPAC_EIE_CHAN_MODES, 3); /* TL16 */
+		msgb_put_u8(msg, (trx->support.chan_modes >>  0) & 0xff);
+		msgb_put_u8(msg, (trx->support.chan_modes >>  8) & 0xff);
+		msgb_put_u8(msg, (trx->support.chan_modes >> 16) & 0xff);
+
+		msgb_tv16_put(msg, NM_IPAC_EIE_RTP_FEATURES, 1); /* TL16 */
+		val = NM_IPAC_F_RTP_FEAT_IR_64k;
+		msgb_put_u8(msg, (val >> 0) & 0xff);
+
+		msgb_tv16_put(msg, NM_IPAC_EIE_RSL_FEATURES, 1); /* TL16 */
+		val = NM_IPAC_F_RSL_FEAT_DYN_PDCH_ACT
+		    | NM_IPAC_F_RSL_FEAT_RTP_PT2;
+		msgb_put_u8(msg, (val >> 0) & 0xff);
+		break;
+	case NM_OC_GPRS_CELL:
+		msgb_tv16_put(msg, NM_IPAC_EIE_GPRS_CODING, 2); /* TL16 */
+		msgb_put_u8(msg, (bts->gprs.cell.support.gprs_codings >> 0) & 0xff);
+		msgb_put_u8(msg, (bts->gprs.cell.support.gprs_codings >> 8) & 0xff);
+		break;
+	default:
+		msgb_get(msg, 1 + 2); /* TL16 */
+		return -ENOTSUP;
+	}
+
+	/* Finally, update the length */
+	osmo_store16be((uint16_t)(msg->tail - (len + 2)), len);
+
+	return 0;
+}
+
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
 static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
@@ -250,6 +312,10 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			if (mo->obj_class == NM_OC_BTS)
 				add_bts_feat(nmsg, mo->bts);
 			else
+				goto unsupported;
+			break;
+		case NM_ATT_IPACC_SUPP_FEATURES:
+			if (add_att_ipacc_features(nmsg, mo) != 0)
 				goto unsupported;
 			break;
 		default:
