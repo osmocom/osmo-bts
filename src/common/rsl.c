@@ -561,6 +561,7 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 	struct gsm48_system_information_type_2quater *si2q;
 	struct bitvec bv;
 	const uint8_t *si_buf;
+	uint8_t prev_bs_ag_blks_res = 0xff; /* 0xff = unknown */
 
 	if (rsl_tlv_parse(&tp, msgb_l3(msg), msgb_l3len(msg)) < 0) {
 		LOGPTRX(trx, DRSL, LOGL_ERROR, "%s(): rsl_tlv_parse() failed\n", __func__);
@@ -592,7 +593,8 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		LOGP(DRSL, LOGL_INFO, " Rx RSL BCCH INFO (SI%s, %u bytes)\n",
 		     get_value_string(osmo_sitype_strs, osmo_si), len);
 
-		if (SYSINFO_TYPE_2quater == osmo_si) {
+		switch (osmo_si) {
+		case SYSINFO_TYPE_2quater:
 			si2q = (struct gsm48_system_information_type_2quater *) TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO);
 			bv.data = si2q->rest_octets;
 			bv.data_len = GSM_MACBLOCK_LEN;
@@ -620,7 +622,15 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 			memset(GSM_BTS_SI2Q(bts, bts->si2q_index), GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
 			memcpy(GSM_BTS_SI2Q(bts, bts->si2q_index), TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
-		} else {
+			break;
+		case SYSINFO_TYPE_3:
+			/* Keep previous BS_AG_BLKS_RES, used below */
+			if (GSM_BTS_HAS_SI(bts, SYSINFO_TYPE_3)) {
+				const struct gsm48_system_information_type_3 *si3 = GSM_BTS_SI(bts, SYSINFO_TYPE_3);
+				prev_bs_ag_blks_res = si3->control_channel_desc.bs_ag_blks_res;
+			}
+			/* fall-through */
+		default:
 			memset(bts->si_buf[osmo_si], GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
 			memcpy(bts->si_buf[osmo_si], TLVP_VAL(&tp, RSL_IE_FULL_BCCH_INFO), len);
 		}
@@ -629,7 +639,9 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 
 		switch (osmo_si) {
 		case SYSINFO_TYPE_3:
-			if (trx->nr == 0 && num_agch(trx, "RSL") != 1) {
+			/* If CCCH config on TS0 changed, reactivate the chan with the new config: */
+			if (trx->nr == 0 && trx->bts->c0->ts[0].lchan[CCCH_LCHAN].state != LCHAN_S_NONE &&
+			    num_agch(trx, "RSL") != prev_bs_ag_blks_res) {
 				trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
 					LCHAN_REL_ACT_REACT;
 				lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
