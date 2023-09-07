@@ -630,10 +630,12 @@ static int rsl_rx_bcch_info(struct gsm_bts_trx *trx, struct msgb *msg)
 		switch (osmo_si) {
 		case SYSINFO_TYPE_3:
 			if (trx->nr == 0 && num_agch(trx, "RSL") != 1) {
-				lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
-				/* will be reactivated by sapi_deactivate_cb() */
 				trx->bts->c0->ts[0].lchan[CCCH_LCHAN].rel_act_kind =
 					LCHAN_REL_ACT_REACT;
+				lchan_deactivate(&trx->bts->c0->ts[0].lchan[CCCH_LCHAN]);
+				/* will be reactivated by (see OS#1575):
+				 * - bts-trx: lchan_deactivate()
+				 * - sysmo,lc15,oc2g: lchan_deactivate()....[async]...sapi_deactivate_cb() */
 			}
 			/* decode original SI3 Rest Octets as sent by BSC */
 			si_buf = (const uint8_t *) GSM_BTS_SI(bts, osmo_si);

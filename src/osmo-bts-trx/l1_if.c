@@ -90,16 +90,21 @@ struct trx_l1h *trx_l1h_alloc(void *tall_ctx, struct phy_instance *pinst)
 
 int bts_model_lchan_deactivate(struct gsm_lchan *lchan)
 {
-	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
-		lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
-		/* FIXME: perform whatever is needed (if any) to set proper PCH/AGCH allocation according to
-		   3GPP TS 44.018 Table 10.5.2.11.1 using num_agch(lchan->ts->trx, "TRX L1"); function */
-		return 0;
-	}
+	int rc;
 	/* set lchan inactive */
 	lchan_set_state(lchan, LCHAN_S_NONE);
 
-	return trx_sched_set_lchan(lchan, gsm_lchan2chan_nr(lchan), LID_DEDIC, false);
+	/* Disable it on the scheduler: */
+	rc = trx_sched_set_lchan(lchan, gsm_lchan2chan_nr(lchan), LID_DEDIC, false);
+
+	/* Reactivate CCCH due to SI3 update in RSL */
+	if (lchan->rel_act_kind == LCHAN_REL_ACT_REACT) {
+		lchan->rel_act_kind = LCHAN_REL_ACT_RSL;
+		trx_sched_set_lchan(lchan, gsm_lchan2chan_nr(lchan), LID_DEDIC, true);
+		lchan_set_state(lchan, LCHAN_S_ACTIVE);
+		return rc;
+	}
+	return rc;
 }
 
 int bts_model_lchan_deactivate_sacch(struct gsm_lchan *lchan)
