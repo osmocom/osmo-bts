@@ -217,17 +217,14 @@ static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
 
 /* Handle a list of attributes requested by the BSC, compose
  * TRX-specific Get Attribute Response IE as per 9.4.64. */
-static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_trx *trx,
+static inline int handle_attrs_trx(struct msgb *out_msg,
+				   const struct gsm_abis_mo *mo,
 				   const uint8_t *attr, uint16_t attr_len)
 {
+	const struct gsm_bts_trx *trx = container_of(mo, struct gsm_bts_trx, bb_transc.mo);
 	uint8_t num_unsupported = 0;
 	uint8_t *buf;
 	int i;
-
-	if (!trx) {
-		LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes for unknown TRX\n", gsm_trx_name(trx));
-		return -NM_NACK_TRXNR_UNKN;
-	}
 
 	for (i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
@@ -253,17 +250,14 @@ static inline int handle_attrs_trx(struct msgb *out_msg, const struct gsm_bts_tr
 
 /* Handle a list of attributes requested by the BSC, compose
  * BTS-specific Get Attribute Response IE as per 9.4.64. */
-static inline int handle_attrs_bts(struct msgb *out_msg, const struct gsm_bts *bts,
+static inline int handle_attrs_bts(struct msgb *out_msg,
+				   const struct gsm_abis_mo *mo,
 				   const uint8_t *attr, uint16_t attr_len)
 {
+	const struct gsm_bts *bts = container_of(mo, struct gsm_bts, mo);
 	uint8_t num_unsupported = 0;
 	uint8_t *buf;
 	int i;
-
-	if (!bts) {
-		LOGP(DOML, LOGL_ERROR, "O&M Get Attributes for unknown BTS\n");
-		return -NM_NACK_BTSNR_UNKN;
-	}
 
 	for (i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
@@ -303,10 +297,10 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 
 	switch (mo->obj_class) {
 	case NM_OC_BTS:
-		rc = handle_attrs_bts(nmsg, mo->bts, attr, attr_len);
+		rc = handle_attrs_bts(nmsg, mo, attr, attr_len);
 		break;
 	case NM_OC_BASEB_TRANSC:
-		rc = handle_attrs_trx(nmsg, gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr), attr, attr_len);
+		rc = handle_attrs_trx(nmsg, mo, attr, attr_len);
 		break;
 	default:
 		LOGP(DOML, LOGL_ERROR, "%s: Unsupported MO class in Get Attribute Response\n",
