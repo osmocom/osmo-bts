@@ -7,9 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what	        description / commit summary line
-libosmocodec	>1.8.0		osmo_efr_check_sid() new function
-libosmogsm	>1.8.0		<osmocom/gsm/protocol/gsm_44_060.h> added
-libosmocoding	>1.8.0		gsm0503_tch_hr_encode() extended to accept
-				TS 101 318 format;
-				gsm0503_tch_hr_decode2() new function
-libosmogsm	>1.8.0		gsm0502_fn2ccch_block() new function

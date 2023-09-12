@@ -1,3 +1,239 @@
+osmo-bts (1.7.0) unstable; urgency=medium
+
+  [ arehbein ]
+  * common: Fix memleak in get_smscb_block()
+  * doc: Adapt to use of 'telnet_init_default'
+  * common: Remove redundant checks
+  * common: Remove unused function gsm_objclass2nmstate()
+  * gsm_objclass2mo(): Change signature/set NACK cause
+  * gsm_objclass2obj(): Change signature/set NACK cause
+  * PCU interface: Log version when starting listener
+  * common: Have PCU socket connection use osmo_wqueue
+  * common: Make socket queue max. length configurable
+
+  [ Max ]
+  * bts-virtual: fix segfault
+  * osmo-bts-trx: log TRXC/TRXD connection address
+  * osmo-bts-trx: use bool for true/false flags
+  * GSMTAP: allow configuring local address
+  * license: fix typos
+
+  [ Vadim Yanitskiy ]
+  * paging_add_imm_ass(): remove meaningless from_pcu argument
+  * osmo-bts-{trx,virtual}: clean up bts_model_l1sap_down()
+  * osmo-bts-{trx,virtual}: check lchan against NULL in bts_model_l1sap_down()
+  * osmo-bts-{trx,virtual}: set rc on error in bts_model_l1sap_down()
+  * GSMTAP: print 'gsmtap-local-host' if not NULL
+  * osmo-bts-virtual: indicate BTS_FEAT_[E]GPRS to the BSC
+  * rsl: remove redundant gsm_lchan_name() in rsl_tx_rf_rel_ack()
+  * rsl: reduce logging verbosity on some messages
+  * tests: use -no-install libtool flag to avoid ./lt-* scripts
+  * scheduler: log pchan value in trx_sched_set_pchan()
+  * osmo-bts-virtual: properly handle dynamic TS in vbts_set_ts()
+  * contrib/osmo-bts.spec.in: do not depend on libosmogb
+  * osmo-bts-trx: properly activate [CBCH/]BCCH/CCCH
+  * rsl: rsl_handle_chan_mod_ie(): add missing GSM48_CMODE_* values
+  * osmo-bts-{sysmo,lc15,oc2g}: fix segfault in ph_tch_req()
+  * tests: $(BUILT_SOURCES) is not defined, depend on osmo-bts-virtual
+  * osmo-bts-virtual: properly activate [CBCH/]BCCH/CCCH
+  * flags: add missing entries to bts_impl_flag_desc[]
+  * flags: group BTS_INTERNAL_FLAG_* into an enum
+  * flags: ensure completeness of bts_impl_flag_desc[]
+  * fixup: common: Remove unused function gsm_objclass2nmstate()
+  * oml: gsm_objclass2{mo,obj}(): cosmetic: return immediately
+  * oml: gsm_objclass2{mo,obj}(): set cause for unknown obj_class
+  * oml: reset BCCH carrier power reduction mode (if enabled)
+  * copyright: fix typo: sysmocom s/s.m.f.c./s.f.m.c./ GmbH
+  * osmo-bts-trx: alloc/free burst buffers in trx_sched_set_lchan()
+  * osmo-bts-trx: use direct pointer to chan_state->{ul,dl}_bursts
+  * osmo-bts-trx: tch_dl_dequeue(): do not drop CSD frames
+  * osmo-bts-trx: tx_pdtch_fn(): use msgb_l2len()
+  * osmo-bts-trx: fix recent regression in Tx lchan handlers
+  * osmo-bts-trx: remove redundant memset() on receipt of NOPE.ind
+  * l1sap: use gsm0502_fn2ccch_block() from libosmogsm
+  * scheduler: fix wrong union field in _sched_compose_tch_ind()
+  * scheduler: use msgb_hexdump_l2() in _sched_compose_tch_ind()
+  * scheduler: unify argument names/order for _sched_compose_*_ind()
+  * scheduler: constify *data pointer in _sched_compose_*_ind()
+  * scheduler: use size_t for data_len in _sched_compose_*_ind()
+  * fix bts_supports_cm(): properly check feature flags for VGCS/VBS
+  * measurement: suppress unsupported tch_mode warnings for CSD
+  * osmo-bts-trx: pull the AMR header in tch_dl_dequeue()
+  * osmo-bts-trx: implement CSD scheduling support
+  * osmo-bts-trx: implement FACCH/[FH] support for CSD
+  * osmo-bts-trx: implement TCH/F2.4 support for CSD
+  * osmo-bts-trx: visualize rx_tch[fh]_fn() functions
+  * osmo-bts-trx: unify and enrich 'Received bad data' logging
+  * osmo-bts-trx: rx_tchf_fn(): move compute_ber10k() above
+  * osmo-bts-trx: rx_tch[fh]_fn(): combine rc-checking ifs
+  * osmo-bts-trx: change 'Received bad data' back to LOGL_DEBUG
+  * osmo-bts-trx: tx_tch[fh]_fn(): fix NULL pointer dereference
+  * osmo-bts-trx: document/clarify the meaning of BUFMAX=24
+  * l1sap: proper rate adaptation for CSD (RFC4040 'clearmode')
+  * csd_v110_rtp_encode(): properly set E1/E2/E3 bits
+  * osmo-bts-trx: bts_supports_cm_data(): allow non-transparent modes
+  * rsl: rsl_handle_chan_mod_ie(): set lchan->csd_mode
+  * rsl: rsl_handle_chan_mod_ie(): do not use legacy defines
+  * csd_v110: fix comments in csd_v110_rtp_{en,de}code()
+  * csd_v110: properly set E1/E2/E3 for non-transparent data
+  * csd_v110: handle empty/incomplete Uplink frames gracefully
+
+  [ Philipp Maier ]
+  * pcu_sock: rename rc to fd
+  * pcu_sock: cosmetic: remove whitespace after type cast
+  * pcu_sock: cosmetic: remove unnecessary line breaks
+  * pcu_sock: do not mess with the osmo fd flags directly
+  * sched_lchan_tchx: use GSM_HR_BYTES_RTP_RFC5993 constant
+  * l1sap: fix wording in comment
+  * pcu_sock: don not continue when running out of TRX space
+  * paging: cosmetic: rename all IMM.ASS references to MAC block
+  * paging: parse PCUIF data indication outside of paging.c
+  * paging: do not confirm PAGING COMMAND messages
+  * pcu_sock: move variable declaration of imsi[4] into related scope
+  * l1sap: cosmetic: rename payload_len to rtp_pl_len
+  * pcu_sock: use PCUIF version 11 (direct TLLI)
+  * paging: also accept zero length IMSI strings 3
+  * pcuif_proto: rename tlli to msg_id
+  * pcu_sock: get rid of fn parameter in pcu_tx_pch_data_cnf
+  * pcuif_proto: remove unnecessary members from gsm_pcu_if_data_cnf_dt
+  * pcuif_proto: get rid of _DT, _dt (Direct TLLI)
+  * bts: make bts_agch_dequeue static
+  * pcuif_proto: use confirm flag in struct gsm_pcu_if_pch
+  * pcu_sock: use PCU_IF_SAPI_AGCH_2 instead PCU_IF_SAPI_AGCH
+  * pcu_sock: print SAPI and msg_id when sending confirmation
+
+  [ Pau Espin Pedrol ]
+  * bts-trx: Fix no NM Radio{Carrier,Channel} switching to Enabled if one TRX is rf_locked
+  * pcu_sock: Submit all DATA.ind regardless of link quality
+  * pcu_sock.c: Call osmo_fd_unregister() before closing and changing bfd->fd
+  * Rewrite pcu_sock_write()
+  * lchan: Improve error path logging in gsm_pchan2chan_nr()
+  * cosmetic: gsm_pchan2chan_nr(): Update spec documentation
+  * cosmetic: bts_trx.h: Fix whitespace
+  * Avoid tx RF Resource Ind for disabled TRX
+  * bts-trx: Avoid pushing interf_meas for disabled TRX
+  * contrib/ber: Avoid regenerating codec_bit_class.h every build
+  * bts-trx: Drop unused param to internal function
+  * Clarify configuration of TSC on each timeslot
+  * bts_model_apply_oml(): Drop unneded code
+  * oml.c: Remove dot character at the end of log lines
+  * nm: Apply BTS/TRX/TS OML Attributes through NM FSMs
+  * nm: Drop NM_EV_SETATTR_{ACK/NACK}
+  * oml: Get rid of unused tlv_parsed param in bts_model_apply_oml()
+  * bts_model_apply_oml(): Improve definition of parameter
+  * lc15,oc2g,sysmo: Update GPRS NM object state at the right time
+  * Simplify implementation of bts_model_opstart() in all bts types
+  * nm: Apply OPSTART through NM FSMs
+  * NM: NACK received OML OPSTART if no attributes were set beforehand
+  * Introduce NM FSM for GPRS NSE object
+  * Fix octet 2 of NM GPRS Cell
+  * Introduce NM FSM for GPRS Cell object
+  * Rearrange declaration of struct gsm_bts_gprs_nsvc
+  * Move NSVC structs to be part of NSE
+  * bts: Simplify lifecycle of BTS inside bts_list
+  * Introduce NM FSM for GPRS NSVC object
+  * nm: Dispatch NM_EV_SW_ACT in cascade to BTS SiteMgr children
+  * Merge gsm_network into gsm_bts_sm and place gsm_bts under it
+  * Move GPRS NSE under BTS SiteMgr
+  * Drop NM_EV_BBTRANSC_INSTALLED in favour of generic NM_EV_SW_ACT
+  * nm: Document current state of SW_ACT in TRX related objects
+  * Properly report all states through NM FSM upon OML link up
+  * Update g_bts_sm->num_bts when bts is added/removed from bts list
+  * Move pcu_sock_state to gprs section of bts_sm
+  * pcu_sock: Allocate pcu_sock_state using g_bts_sm talloc context
+  * pcu_sock: Drop bts_sm pointer
+  * oml: Fix potential null ptr access on trx object
+  * bts-sysmo: Fix pinst->version filled too early
+  * bts-sysmo: Delay marking phy_link as connected until L1 reset + got info
+  * vty.c: Use already available tpp pointer
+  * octphy: Fix clearly wrong noop assignment
+  * bbtransc/rcarrier: Fix statechg done twice upon NM_EV_RX_OPSTART
+  * Increase PCUIF wqueue size
+  * bts-trx: Fix CCCH not enabled if BS_AG_BLKS_RES!=1 is provided by BSC
+  * rsl: Improve logic reactivating CCCH upon SI3 BS_AG_BLKS_RES change
+
+  [ Oliver Smith ]
+  * gitignore: add vty pdf
+  * doc: rsl: add RSL_IE_IPAC_RTP_CSD_FORMAT
+  * rsl_rx_ipac_XXcx: parse csd_fmt_d/ir
+  * debian: set compat level to 10
+  * systemd: depend on networking-online.target
+  * gitignore: add arm-poky-linux-gnueabi-libtool
+  * osmo-bts-sysmo: trx_mute_on_init_cb: call bts_update_status
+  * osmo-bts-sysmo: activate_rf: no dispatch on fail
+  * osmo-bts-sysmo/l1_if: move mute_rf_compl_cb up
+  * osmo-bts-sysmo: mute PHY until OML is ready
+
+  [ Harald Welte ]
+  * DTX: bts-{sysmo,oc2g,lc15}: Print DEBUG messages about ONSET
+  * cosmetic: Replace %i with %d
+  * Introduce LOGPLCFN() for logging lchan-name + frame number
+  * bts-{sysmo,oc2g,lc15}: Fix RTP of AMR SID_FIRST_P1
+  * common/vty: Print AMR MultiRate Configuration in "show lchan"
+  * bts-{sysmo,oc2g,lc15}: Dump logical channel params during MPH-ACTIVATE.req
+  * cosmetic: use __func__ instead of __FUNCTION__
+  * lc15: fix compiler warning about wrong indent
+  * lc15: Remove unused warning
+  * lc15/oc2g: remove unused variables
+  * oc2g: Fix 'unused variable' compiler warning
+  * cosmetic: Remove "FIXME?" from Odd AMR CMI phase
+  * lc15: fix compiler warning about unused variable cell_size
+  * Replace explicit gsm_lchan_name() calls with LOGPLCHAN
+  * logging: Introduce LOGPLCGT()
+  * cosmetic: Change LOGPLCFN argument order
+  * paging: Add support for generating NLN/NLN-Status in P1 Rest Octets
+  * Add ASCI (advanced speech call items) log sub-system
+  * ASCI: NCH / NOTIFICATION support
+  * validate RSL "channel rate and type" against VGCS/VBS flags
+  * Store "Channel rate and type" from RSL Channel Mode IE in BTS
+  * ASCI: VGCS/VBS RACH -> RSL TALKER/LISTENER DETECT
+  * sysmo: Enable VGSCS + VBS feature flags
+  * omldummy: Claim to support VBS + VGCS towards BSC
+
+  [ Mychaela N. Falconia ]
+  * trx: detect UL SID in EFR just like in FR
+  * sysmo: fix handling of SID in EFR
+  * common: implement rtp continuous-streaming mode
+  * rtp continuous-streaming: fix BFI in the quality-suppressed case
+  * sysmo: emit empty RTP ticks during FACCH stealing on TCH/F
+  * bts-{lc15,oc2g,sysmo}: support EFR in repeat_last_sid()
+  * RTP input, FR & EFR: preen incoming payloads for SID errors
+  * lc15,oc2g: fix handling of SID in EFR
+  * all models, FR/EFR UL: change SID check to _is_any_sid()
+  * trx: remove model-specific BFI packet formats
+  * refactor: replace rtppayload_is_valid() with preening before enqueue
+  * all models, HR1 codec: accept both TS101318 and RFC5993 formats
+  * trx: fix HR1 codec breakage from format change
+  * trx, HR1 codec: change UL PHY output format to TS 101 318
+  * all models, HR1 codec: select RTP output format via vty option
+  * FR/HR/EFR TCH DL: implement DTX rules
+  * HR1 codec: validate ToC header in RFC5993 RTP input
+  * HR1 codec: act on SID indication in RFC5993 RTP input
+  * trx TCH DL: transmit invalid speech blocks instead of dummy FACCH
+  * ECU in UL path: make it optional per vty config
+  * ECU in UL path: move state alloc/free to l1sap
+  * ECU in UL path: move it from trx model to l1sap
+
+  [ Sylvain Munaut ]
+  * contrib: Add BER testing tool
+
+  [ Andreas Eversberg ]
+  * Change return value of bts_supports_cm() from int to bool
+  * ASCI: Add function to reactivate channel
+  * ASCI: Retrieve NCH position from System Information 1
+  * ASCI: Add Notification CHannel (NCH) support
+  * ASCI: Add support for rest octets in Paging request type 2 and 3
+  * ASCI: Send only NLN on Paging request type 1 rest octets
+  * ASCI: Add Notification/FACCH support
+  * ASCI: Repeat UPLINK FREE message until uplink becomes busy
+  * Add test cases for rest octets of Paging Requests
+  * ASCI: Enable UPLINK ACCESS on various BTS models
+
+  [ Keith ]
+  * Fix incorrect order of params passed to logging macro
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 12 Sep 2023 16:05:30 +0200
+
 osmo-bts (1.6.0) unstable; urgency=medium
 
   [ Vadim Yanitskiy ]
