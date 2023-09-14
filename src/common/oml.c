@@ -230,6 +230,18 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 
 	for (unsigned int i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
+		case NM_ATT_OPER_STATE:
+			msgb_tv16_put(nmsg, attr[i], 1);
+			msgb_put_u8(nmsg, mo->nm_state.operational);
+			break;
+		case NM_ATT_ADM_STATE:
+			msgb_tv16_put(nmsg, attr[i], 1);
+			msgb_put_u8(nmsg, mo->nm_state.administrative);
+			break;
+		case NM_ATT_AVAIL_STATUS:
+			msgb_tv16_put(nmsg, attr[i], 1);
+			msgb_put_u8(nmsg, mo->nm_state.availability);
+			break;
 		case NM_ATT_SW_CONFIG:
 			if (add_att_sw_config(nmsg, mo) != 0)
 				goto unsupported;
