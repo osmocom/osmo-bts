@@ -1810,9 +1810,20 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
 		handover_frame(lchan);
 
-	/* report first valid received frame to VGCS talker process */
-	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt) && lchan->asci.talker_active == VGCS_TALKER_WAIT_FRAME)
-		vgcs_talker_frame(lchan);
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt)) {
+		/* report first valid received frame to VGCS talker process */
+		if (lchan->asci.talker_active == VGCS_TALKER_WAIT_FRAME)
+			vgcs_talker_frame(lchan);
+		/* Do not forward any message that is received on the uplink to LAPD while
+		 * the uplink is not active. If the MS did not recognize (fast enough) that
+		 * the uplink is free, it may continue to transmit LAPD messages. A
+		 * response by LAPD to these messages is not desired and not required. If
+		 * LAPD would respond, it would cause stopping transmission of UPLINK FREE
+		 * messages. No MS could access the uplink anymore.
+		 */
+		if (lchan->asci.talker_active != VGCS_TALKER_ACTIVE)
+			return 0;
+	}
 
 	if (L1SAP_IS_LINK_SACCH(link_id))
 		le = &lchan->lapdm_ch.lapdm_acch;
