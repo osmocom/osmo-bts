@@ -164,9 +164,9 @@ int oml_mo_send_msg(const struct gsm_abis_mo *mo, struct msgb *msg, uint8_t msg_
 	return oml_send_msg(msg, 0);
 }
 
-static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
+/* Put NM_ATT_SW_CONFIG as per 9.4.61 "SW Configuration" */
+static int add_att_sw_config(struct msgb *msg, const struct gsm_abis_mo *mo)
 {
-	uint16_t total_len = 0;
 	uint8_t *len;
 
 	/* Put NM_ATT_SW_CONFIG as per 9.4.61 "SW Configuration". */
@@ -175,17 +175,39 @@ static inline void add_bts_attrs(struct msgb *msg, const struct gsm_bts *bts)
 	/* We don't know the length yet, so we update it later. */
 	len = msgb_put(msg, 2);
 
-	total_len += abis_nm_put_sw_file(msg, "osmobts", PACKAGE_VERSION, true);
-	total_len += abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT),
-					 btsvariant2str(bts->variant), true);
+	switch (mo->obj_class) {
+	case NM_OC_BTS:
+	{
+		const struct gsm_bts *bts = mo->bts;
 
-	if (strlen(bts->sub_model)) {
-		total_len += abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL),
-						 bts->sub_model, true);
+		abis_nm_put_sw_file(msg, "osmobts", PACKAGE_VERSION, true);
+		abis_nm_put_sw_file(msg, btsatttr2str(BTS_TYPE_VARIANT),
+				    btsvariant2str(bts->variant), true);
+		if (strlen(bts->sub_model)) {
+			abis_nm_put_sw_file(msg, btsatttr2str(BTS_SUB_MODEL),
+					    bts->sub_model, true);
+		}
+		break;
+	}
+	case NM_OC_BASEB_TRANSC:
+	{
+		const struct gsm_bts_trx *trx = container_of(mo, struct gsm_bts_trx, bb_transc.mo);
+		const struct phy_instance *pinst = trx->pinst;
+		const char *phy_version;
+
+		phy_version = pinst && strlen(pinst->version) ? pinst->version : "Unknown";
+		abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), phy_version, true);
+		break;
+	}
+	default:
+		msgb_get(msg, 1 + 2); /* TL16 */
+		return -ENOTSUP;
 	}
 
 	/* Finally, update the length */
-	osmo_store16be(total_len, len);
+	osmo_store16be((uint16_t)(msg->tail - (len + 2)), len);
+
+	return 0;
 }
 
 /* Add BTS features as 3GPP TS 52.021 §9.4.30 Manufacturer Id */
@@ -195,125 +217,41 @@ static inline void add_bts_feat(struct msgb *msg, const struct gsm_bts *bts)
 	msgb_tl16v_put(msg, NM_ATT_MANUF_ID, len, bts->features->data);
 }
 
-static inline void add_trx_attr(struct msgb *msg, const struct gsm_bts_trx *trx)
-{
-	const struct phy_instance *pinst = trx_phy_instance(trx);
-	const char *phy_version;
-	uint16_t total_len;
-	uint8_t *len;
-
-	/* Put NM_ATT_SW_CONFIG as per 9.4.61 "SW Configuration". */
-	msgb_v_put(msg, NM_ATT_SW_CONFIG);
-
-	/* We don't know the length yet, so we update it later. */
-	len = msgb_put(msg, 2);
-
-	phy_version = pinst && strlen(pinst->version) ? pinst->version : "Unknown";
-	total_len = abis_nm_put_sw_file(msg, btsatttr2str(TRX_PHY_VERSION), phy_version, true);
-
-	/* Finally, update the length */
-	osmo_store16be(total_len, len);
-}
-
-/* Handle a list of attributes requested by the BSC, compose
- * TRX-specific Get Attribute Response IE as per 9.4.64. */
-static inline int handle_attrs_trx(struct msgb *out_msg,
-				   const struct gsm_abis_mo *mo,
-				   const uint8_t *attr, uint16_t attr_len)
-{
-	const struct gsm_bts_trx *trx = container_of(mo, struct gsm_bts_trx, bb_transc.mo);
-	uint8_t num_unsupported = 0;
-	uint8_t *buf;
-	int i;
-
-	for (i = 0; i < attr_len; i++) {
-		switch (attr[i]) {
-		case NM_ATT_SW_CONFIG:
-			add_trx_attr(out_msg, trx);
-			break;
-		default:
-			LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes [%u], %s is unsupported by TRX\n",
-			     gsm_trx_name(trx), i, get_value_string(abis_nm_att_names, attr[i]));
-			/* Push this tag to the list of unsupported attributes */
-			buf = msgb_push(out_msg, 1);
-			*buf = attr[i];
-			num_unsupported++;
-		}
-	}
-
-	/* Push the amount of unsupported attributes */
-	buf = msgb_push(out_msg, 1);
-	*buf = num_unsupported;
-
-	return 0;
-}
-
-/* Handle a list of attributes requested by the BSC, compose
- * BTS-specific Get Attribute Response IE as per 9.4.64. */
-static inline int handle_attrs_bts(struct msgb *out_msg,
-				   const struct gsm_abis_mo *mo,
-				   const uint8_t *attr, uint16_t attr_len)
-{
-	const struct gsm_bts *bts = container_of(mo, struct gsm_bts, mo);
-	uint8_t num_unsupported = 0;
-	uint8_t *buf;
-	int i;
-
-	for (i = 0; i < attr_len; i++) {
-		switch (attr[i]) {
-		case NM_ATT_SW_CONFIG:
-			add_bts_attrs(out_msg, bts);
-			break;
-		case NM_ATT_MANUF_ID:
-			add_bts_feat(out_msg, bts);
-			break;
-		default:
-			LOGP(DOML, LOGL_ERROR, "O&M Get Attributes [%u], %s is unsupported by BTS\n", i,
-			     get_value_string(abis_nm_att_names, attr[i]));
-			/* Push this tag to the list of unsupported attributes */
-			buf = msgb_push(out_msg, 1);
-			*buf = attr[i];
-			num_unsupported++;
-		}
-	}
-
-	/* Push the amount of unsupported attributes */
-	buf = msgb_push(out_msg, 1);
-	*buf = num_unsupported;
-
-	return 0;
-}
-
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
 static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
-	const char *mo_name = gsm_abis_mo_name(mo);
+	unsigned int num_unsupported = 0;
 	int rc;
 
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
 
-	switch (mo->obj_class) {
-	case NM_OC_BTS:
-		rc = handle_attrs_bts(nmsg, mo, attr, attr_len);
-		break;
-	case NM_OC_BASEB_TRANSC:
-		rc = handle_attrs_trx(nmsg, mo, attr, attr_len);
-		break;
-	default:
-		LOGP(DOML, LOGL_ERROR, "%s: Unsupported MO class in Get Attribute Response\n",
-		     mo_name);
-		rc = -NM_NACK_OBJCLASS_NOTSUPP;
+	for (unsigned int i = 0; i < attr_len; i++) {
+		switch (attr[i]) {
+		case NM_ATT_SW_CONFIG:
+			if (add_att_sw_config(nmsg, mo) != 0)
+				goto unsupported;
+			break;
+		case NM_ATT_MANUF_ID:
+			if (mo->obj_class == NM_OC_BTS)
+				add_bts_feat(nmsg, mo->bts);
+			else
+				goto unsupported;
+			break;
+		default:
+unsupported:
+			LOGP(DOML, LOGL_ERROR, "%s: O&M Get Attributes [%u], %s is unsupported\n",
+			     gsm_abis_mo_name(mo), i, get_value_string(abis_nm_att_names, attr[i]));
+			/* Push this tag to the list of unsupported attributes */
+			msgb_push_u8(nmsg, attr[i]);
+			num_unsupported++;
+		}
 	}
 
-	if (rc < 0) {
-		LOGP(DOML, LOGL_ERROR, "%s: Tx Get Attribute Response FAILED with rc=%d\n",
-		     mo_name, rc);
-		msgb_free(nmsg);
-		return rc;
-	}
+	/* Push the amount of unsupported attributes */
+	msgb_push_u8(nmsg, num_unsupported);
 
 	/* Push Get Attribute Response Info TL (actually TV where V is L) */
 	msgb_tv16_push(nmsg, NM_ATT_GET_ARI, msgb_length(nmsg));
