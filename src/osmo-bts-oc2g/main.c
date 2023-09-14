@@ -103,6 +103,7 @@ int bts_model_init(struct gsm_bts *bts)
 
 	/* order alphabetically */
 	osmo_bts_set_feature(bts->features, BTS_FEAT_AGCH_PCH_PROP);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_EGPRS);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_GPRS);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_OML_ALERTS);
