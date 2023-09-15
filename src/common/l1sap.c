@@ -1979,6 +1979,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			send_ul_rtp_packet_data(lchan, fn, msg->data, msg->len);
 			break;
 		case RSL_CMOD_SPD_SIGN:
+			return 0; /* drop stale TCH.ind */
 		default: /* shall not happen */
 			OSMO_ASSERT(0);
 		}
