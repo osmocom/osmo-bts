@@ -99,9 +99,9 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(line);
 	sign_ts = e1inp_line_ipa_rsl_ts(line, 0);
 	e1inp_ts_config_sign(sign_ts, line);
-	trx->rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL, NULL, 0, 0);
-	OSMO_ASSERT(trx->rsl_link);
-	trx->rsl_link->trx = trx;
+	trx->bb_transc.rsl.link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL, NULL, 0, 0);
+	OSMO_ASSERT(trx->bb_transc.rsl.link);
+	trx->bb_transc.rsl.link->trx = trx;
 
 	fprintf(stderr, "test 1: without timeout\n");
 
@@ -114,9 +114,9 @@ int main(int argc, char **argv)
 	lchan->ho.active = HANDOVER_ENABLED;
 	lchan->ho.ref = 23;
 	l1sap_chan_act(lchan->ts->trx, 0x0a);
-	OSMO_ASSERT(msgb_dequeue(&trx->rsl_link->tx_list));
-	OSMO_ASSERT(msgb_dequeue(&trx->rsl_link->tx_list));
-	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
+	OSMO_ASSERT(msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
+	OSMO_ASSERT(!msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 
 	/* send access burst with wrong ref */
 	memset(&nl1sap, 0, sizeof(nl1sap));
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 
 	/* expect no action */
 	OSMO_ASSERT(modify_count == 0);
-	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(!msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 
 	/* send access burst with correct ref */
 	nl1sap.u.rach_ind.ra = 23;
@@ -140,10 +140,10 @@ int main(int argc, char **argv)
 	expect_phys_info(&trx->ts[2].lchan[0].lapdm_ch.lapdm_dcch);
 
 	/* expect exactly one HO.DET */
-	OSMO_ASSERT(msg = msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(msg = msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 	rslh = msgb_l2(msg);
 	OSMO_ASSERT(rslh->c.msg_type == RSL_MT_HANDO_DET);
-	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(!msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 
 	/* expect T3105 running */
 	OSMO_ASSERT(osmo_timer_pending(&trx->ts[2].lchan[0].ho.t3105))
@@ -171,10 +171,10 @@ int main(int argc, char **argv)
 	expect_phys_info(&trx->ts[2].lchan[0].lapdm_ch.lapdm_dcch);
 
 	/* expect exactly one HO.DET */
-	OSMO_ASSERT(msg = msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(msg = msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 	rslh = msgb_l2(msg);
 	OSMO_ASSERT(rslh->c.msg_type == RSL_MT_HANDO_DET);
-	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(!msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 
 	for (i = 0; i < bts->ny1 - 1; i++) {
 		/* expect T3105 running */
@@ -196,10 +196,10 @@ int main(int argc, char **argv)
 	OSMO_ASSERT(!osmo_timer_pending(&trx->ts[2].lchan[0].ho.t3105))
 
 	/* expect exactly one CONN.FAIL */
-	OSMO_ASSERT(msg = msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(msg = msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 	rslh = msgb_l2(msg);
 	OSMO_ASSERT(rslh->c.msg_type == RSL_MT_CONN_FAIL);
-	OSMO_ASSERT(!msgb_dequeue(&trx->rsl_link->tx_list));
+	OSMO_ASSERT(!msgb_dequeue(&trx->bb_transc.rsl.link->tx_list));
 
 #if 0
 	while (!quit) {

@@ -153,7 +153,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	if (trx->bts->variant != BTS_OSMO_OMLDUMMY) { /* In OMLDUMMY, phy=NULL */
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		phy_state_connected = phy_link_state_get(pinst->phy_link) == PHY_LINK_CONNECTED;
-		rsl_link_connected = !!trx->rsl_link;
+		rsl_link_connected = !!trx->bb_transc.rsl.link;
 	} else {
 		phy_state_connected = true;
 		rsl_link_connected = true;

@@ -2911,7 +2911,7 @@ static int tx_ipac_XXcx_nack(struct gsm_lchan *lchan, uint8_t cause,
 
 static char *get_rsl_local_ip(struct gsm_bts_trx *trx)
 {
-	struct e1inp_ts *ts = trx->rsl_link->ts;
+	struct e1inp_ts *ts = trx->bb_transc.rsl.link->ts;
 	struct sockaddr_storage ss;
 	socklen_t sa_len = sizeof(ss);
 	static char hostbuf[256];
@@ -3054,7 +3054,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		 * address */
 		if (connect_ip == 0) {
 			struct e1inp_sign_link *sign_link =
-						lchan->ts->trx->rsl_link;
+						lchan->ts->trx->bb_transc.rsl.link;
 
 			ia.s_addr = htonl(get_signlink_remote_ip(sign_link));
 		} else

@@ -225,9 +225,9 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 
 	/* Then iterate over the RSL signalling links */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->rsl_link) {
-			e1inp_sign_link_destroy(trx->rsl_link);
-			trx->rsl_link = NULL;
+		if (trx->bb_transc.rsl.link) {
+			e1inp_sign_link_destroy(trx->bb_transc.rsl.link);
+			trx->bb_transc.rsl.link = NULL;
 			if (trx == trx->bts->c0)
 				load_timer_stop(trx->bts);
 		} else {
@@ -364,7 +364,7 @@ int abis_bts_rsl_sendmsg(struct msgb *msg)
 
 	/* osmo-bts uses msg->trx internally, but libosmo-abis uses
 	 * the signalling link at msg->dst */
-	msg->dst = msg->trx->rsl_link;
+	msg->dst = msg->trx->bb_transc.rsl.link;
 	return abis_sendmsg(msg);
 }
 
@@ -404,10 +404,10 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 			break;
 		}
 		e1inp_ts_config_sign(sign_ts, line);
-		trx->rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
-						       trx, trx->bb_transc.rsl.tei, 0);
+		trx->bb_transc.rsl.link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
+								 trx, trx->bb_transc.rsl.tei, 0);
 		trx_link_estab(trx);
-		return trx->rsl_link;
+		return trx->bb_transc.rsl.link;
 	}
 	return NULL;
 }

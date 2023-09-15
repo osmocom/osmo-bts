@@ -90,7 +90,7 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 			vty_out(vty, " bsic   : undefined%s", VTY_NEWLINE);
 
 		/* trx->ts[tn].priv is NULL in absence of the A-bis connection */
-		if (trx->rsl_link == NULL)
+		if (trx->bb_transc.rsl.link == NULL)
 			continue;
 
 		for (tn = 0; tn < ARRAY_SIZE(trx->ts); tn++) {
