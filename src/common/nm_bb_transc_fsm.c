@@ -119,6 +119,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 {
 	struct gsm_bts_bb_trx *bb_transc = (struct gsm_bts_bb_trx *)fi->priv;
 	struct gsm_bts_trx *trx = gsm_bts_bb_trx_get_trx(bb_transc);
+	struct gsm_bts *bts = trx->bts;
 	struct nm_fsm_ev_setattr_data *setattr_data;
 	bool phy_state_connected;
 	bool rsl_link_connected;
@@ -145,6 +146,19 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 			return;
 		}
 #endif
+		/* Connect RSL link: */
+		if (bts->variant == BTS_OSMO_OMLDUMMY) {
+			LOGPFSML(fi, LOGL_NOTICE, "Not connecting RSL in OML-DUMMY!\n");
+		} else {
+			rc = e1inp_ipa_bts_rsl_connect_n(bts->oml_link->ts->line,
+							 bb_transc->rsl.rem_addrstr.ip,
+							 bb_transc->rsl.rem_addrstr.port, trx->nr);
+			if (rc < 0) {
+				LOGPFSML(fi, LOGL_NOTICE, "Error connecting IPA RSL: %d\n", rc);
+				oml_mo_opstart_nack(&bb_transc->mo, NM_NACK_CANT_PERFORM);
+				return;
+			}
+		}
 		bts_model_opstart(trx->bts, &bb_transc->mo, bb_transc);
 		return;
 	case NM_EV_OPSTART_ACK:
@@ -170,7 +184,7 @@ static void st_op_disabled_offline(struct osmo_fsm_inst *fi, uint32_t event, voi
 	}
 
 
-	if (trx->bts->variant != BTS_OSMO_OMLDUMMY) { /* In OMLDUMMY, phy=NULL */
+	if (bts->variant != BTS_OSMO_OMLDUMMY) { /* In OMLDUMMY, phy=NULL */
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		phy_state_connected = phy_link_state_get(pinst->phy_link) == PHY_LINK_CONNECTED;
 		rsl_link_connected = !!trx->bb_transc.rsl.link;

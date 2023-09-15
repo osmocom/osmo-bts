@@ -1512,17 +1512,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts *bts, struct msgb *msg,
 	     trx_name, bb_transc->rsl.rem_addrstr.ip, bb_transc->rsl.rem_addrstr.port,
 	     bb_transc->rsl.tei);
 
-	if (bts->variant == BTS_OSMO_OMLDUMMY) {
-		rc = 0;
-		LOGP(DOML, LOGL_NOTICE, "%s: Not connecting RSL in OML-DUMMY!\n", trx_name);
-	} else {
-		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, bb_transc->rsl.rem_addrstr.ip,
-						 bb_transc->rsl.rem_addrstr.port, trx->nr);
-		if (rc < 0) {
-			LOGP(DOML, LOGL_NOTICE, "%s: Error connecting IPA RSL: %d\n", trx_name, rc);
-			rc = NM_NACK_CANT_PERFORM;
-		}
-	}
+	rc = 0;
 
 tx_ack_nack:
 	/* The ACK/NACK is expected to contain all IEs */
