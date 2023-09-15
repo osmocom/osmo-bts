@@ -1,9 +1,15 @@
 #pragma once
 
+#include <osmocom/core/sockaddr_str.h>
 #include <osmo-bts/gsm_data.h>
 
 struct gsm_bts_bb_trx {
 	struct gsm_abis_mo mo;
+	/* how do we talk RSL with this TRX? */
+	struct {
+		struct osmo_sockaddr_str rem_addrstr;
+		uint8_t tei;
+	} rsl;
 };
 
 /* One TRX in a BTS */
@@ -17,7 +23,6 @@ struct gsm_bts_trx {
 	/* human readable name / description */
 	char *description;
 	/* how do we talk RSL with this TRX? */
-	uint8_t rsl_tei;
 	struct e1inp_sign_link *rsl_link;
 
 	/* NM Radio Carrier and Baseband Transciever */

@@ -405,7 +405,7 @@ static struct e1inp_sign_link *sign_link_up(void *unit, struct e1inp_line *line,
 		}
 		e1inp_ts_config_sign(sign_ts, line);
 		trx->rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
-						       trx, trx->rsl_tei, 0);
+						       trx, trx->bb_transc.rsl.tei, 0);
 		trx_link_estab(trx);
 		return trx->rsl_link;
 	}

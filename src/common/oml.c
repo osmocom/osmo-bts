@@ -1534,6 +1534,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts *bts, struct msgb *msg,
 	struct e1inp_sign_link *oml_link = bts->oml_link;
 	const struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+	struct gsm_bts_bb_trx *bb_transc;
 	const char *trx_name;
 	struct in_addr in;
 	uint16_t port = IPA_TCP_PORT_RSL;
@@ -1547,6 +1548,7 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts *bts, struct msgb *msg,
 
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_DST_IP_PORT))
 		port = ntohs(tlvp_val16_unal(tp, NM_ATT_IPACC_DST_IP_PORT));
+
 	if (TLVP_PRESENT(tp, NM_ATT_IPACC_STREAM_ID))
 		stream_id = *TLVP_VAL(tp, NM_ATT_IPACC_STREAM_ID);
 
@@ -1557,17 +1559,21 @@ static int rx_oml_ipa_rsl_connect(struct gsm_bts *bts, struct msgb *msg,
 		goto tx_ack_nack;
 	}
 
-	trx_name = gsm_trx_name(trx);
+	bb_transc = &trx->bb_transc;
+	osmo_sockaddr_str_from_in_addr(&bb_transc->rsl.rem_addrstr, &in, port);
+	bb_transc->rsl.tei = stream_id;
 
+	trx_name = gsm_trx_name(trx);
 	LOGP(DOML, LOGL_INFO, "%s: Rx IPA RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
-	     trx_name, inet_ntoa(in), port, stream_id);
+	     trx_name, bb_transc->rsl.rem_addrstr.ip, bb_transc->rsl.rem_addrstr.port,
+	     bb_transc->rsl.tei);
 
 	if (bts->variant == BTS_OSMO_OMLDUMMY) {
 		rc = 0;
 		LOGP(DOML, LOGL_NOTICE, "%s: Not connecting RSL in OML-DUMMY!\n", trx_name);
 	} else {
-		trx->rsl_tei = stream_id;
-		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, inet_ntoa(in), port, trx->nr);
+		rc = e1inp_ipa_bts_rsl_connect_n(oml_link->ts->line, bb_transc->rsl.rem_addrstr.ip,
+						 bb_transc->rsl.rem_addrstr.port, trx->nr);
 		if (rc < 0) {
 			LOGP(DOML, LOGL_NOTICE, "%s: Error connecting IPA RSL: %d\n", trx_name, rc);
 			rc = NM_NACK_CANT_PERFORM;
