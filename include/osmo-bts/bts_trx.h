@@ -9,6 +9,7 @@ struct gsm_bts_bb_trx {
 	struct {
 		struct osmo_sockaddr_str rem_addrstr;
 		uint8_t tei;
+		struct e1inp_sign_link *link;
 	} rsl;
 };
 
@@ -22,8 +23,6 @@ struct gsm_bts_trx {
 	uint8_t nr;
 	/* human readable name / description */
 	char *description;
-	/* how do we talk RSL with this TRX? */
-	struct e1inp_sign_link *rsl_link;
 
 	/* NM Radio Carrier and Baseband Transciever */
 	struct gsm_abis_mo mo;
