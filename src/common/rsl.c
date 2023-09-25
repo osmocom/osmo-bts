@@ -993,6 +993,15 @@ static int rsl_rx_osmo_etws_cmd(struct gsm_bts_trx *trx, struct msgb *msg)
  *  \param[in] len length of \a current in octets */
 static inline void lapdm_ui_prefix(uint8_t *buf, uint32_t *valid, const uint8_t *current, uint8_t osmo_si, uint16_t len)
 {
+	/* Special case for short header SI. Do not pre-fix the two-byte UI header. */
+	switch (osmo_si) {
+	case SYSINFO_TYPE_10:
+		(*valid) |= (1 << osmo_si);
+		memset(buf, GSM_MACBLOCK_PADDING, sizeof(sysinfo_buf_t));
+		memcpy(buf, current, len);
+		return;
+	}
+
 	/* We have to pre-fix with the two-byte LAPDM UI header */
 	if (len > sizeof(sysinfo_buf_t) - 2) {
 		LOGP(DRSL, LOGL_ERROR, "Truncating received SI%s (%u -> %zu) to prepend LAPDM UI header (2 bytes)\n",
