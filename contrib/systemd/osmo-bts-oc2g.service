@@ -11,7 +11,6 @@ WorkingDirectory=%S/osmocom
 RuntimeDirectory=osmo-bts
 Restart=always
 RestartSec=2
-RestartPreventExitStatus=1
 
 # CPU scheduling policy:
 CPUSchedulingPolicy=rr
