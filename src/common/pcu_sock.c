@@ -264,7 +264,7 @@ int pcu_tx_info_ind(void)
 		LOGP(DPCU, LOGL_INFO, "BTS is down\n");
 
 	if (pcu_direct)
-		info_ind->flags |= PCU_IF_FLAG_SYSMO;
+		info_ind->flags |= PCU_IF_FLAG_DIRECT_PHY;
 
 	info_ind->bsic = bts->bsic;
 	/* RAI */
