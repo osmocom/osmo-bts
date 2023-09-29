@@ -60,7 +60,9 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	case GSM_LCHAN_TCH_F:
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
+		case GSM48_CMODE_SPEECH_V1_VAMOS:
 		case GSM48_CMODE_SPEECH_EFR:
+		case GSM48_CMODE_SPEECH_V2_VAMOS:
 			/* Active TDMA frame subset for TCH/F: 52, 53, 54, 55, 56, 57, 58, 59.
 			 * There is only one *complete* block in this subset starting at FN=52.
 			 * Incomplete blocks {... 52, 53, 54, 55} and {56, 57, 58, 59 ...}
@@ -88,6 +90,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	case GSM_LCHAN_TCH_H:
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
+		case GSM48_CMODE_SPEECH_V1_VAMOS:
 			if (ts45008_dtx_tchh_fn_map[fn104])
 				return true;
 			break;
@@ -430,11 +433,15 @@ static int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SIGN: /* TCH/F sign: DTX *is* permitted */
 		case GSM48_CMODE_SPEECH_V1: /* TCH/FS */
+		case GSM48_CMODE_SPEECH_V1_VAMOS:
 		case GSM48_CMODE_SPEECH_EFR: /* TCH/EFS */
+		case GSM48_CMODE_SPEECH_V2_VAMOS:
 			return 1 + 1; /* 1 x SACCH + 1 x TCH */
 		case GSM48_CMODE_SPEECH_AMR: /* TCH/AFS */
+		case GSM48_CMODE_SPEECH_V3_VAMOS:
 		case GSM48_CMODE_SPEECH_V4: /* O-TCH/WFS */
 		case GSM48_CMODE_SPEECH_V5: /* TCH/WFS */
+		case GSM48_CMODE_SPEECH_V5_VAMOS:
 		default:
 			return -1; /* at least 1 x SACCH + M x TCH (variable) */
 		}
@@ -443,8 +450,10 @@ static int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 		case GSM48_CMODE_SIGN: /* TCH/H sign: DTX *is not* permitted */
 			return 1 + 12; /* 1 x SACCH + 12 x TCH */
 		case GSM48_CMODE_SPEECH_V1:
+		case GSM48_CMODE_SPEECH_V1_VAMOS:
 			return 1 + 2; /* 1 x SACCH + 2 x TCH */
 		case GSM48_CMODE_SPEECH_AMR: /* TCH/AHS */
+		case GSM48_CMODE_SPEECH_V3_VAMOS:
 		case GSM48_CMODE_SPEECH_V4: /* O-TCH/WHS */
 		case GSM48_CMODE_SPEECH_V6: /* O-TCH/AHS */
 		default:
