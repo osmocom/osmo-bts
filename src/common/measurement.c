@@ -59,6 +59,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	switch (lchan->type) {
 	case GSM_LCHAN_TCH_F:
 		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SIGN: /* TCH/F sign: DTX *is* permitted */
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_V1_VAMOS:
 		case GSM48_CMODE_SPEECH_EFR:
@@ -70,10 +71,6 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			if (fn104 == 52)
 				return true;
 			break;
-		case GSM48_CMODE_SIGN:
-			/* No DTX allowed; SUB=FULL, therefore measurements at all frame numbers are
-			 * SUB */
-			return true;
 		case GSM48_CMODE_DATA_12k0: /* TCH/F9.6 */
 		case GSM48_CMODE_DATA_6k0: /* TCH/F4.8 */
 			/* FIXME: In case of data traffic channels TCH/F9.6 and TCH/F4.8 the
