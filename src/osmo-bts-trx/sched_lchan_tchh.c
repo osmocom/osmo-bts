@@ -323,7 +323,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	case GSM48_CMODE_DATA_6k0:
 		if (!sched_tchh_ul_csd_map[bi->fn % 26])
 			return 0; /* CSD: skip decoding attempt, need 2 more bursts */
-		/* FACCH/F does not steal TCH/H4.8 frames, but only disturbs some bits */
+		/* FACCH/H does not steal TCH/H4.8 frames, but only disturbs some bits */
 		decode_hr_facch(l1ts, bi);
 		rc = gsm0503_tch_hr48_decode(&tch_data[0], BUFPOS(bursts_p, 0),
 					     &n_errors, &n_bits_total);
@@ -333,7 +333,7 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	case GSM48_CMODE_DATA_3k6:
 		if (!sched_tchh_ul_csd_map[bi->fn % 26])
 			return 0; /* CSD: skip decoding attempt, need 2 more bursts */
-		/* FACCH/F does not steal TCH/H2.4 frames, but only disturbs some bits */
+		/* FACCH/H does not steal TCH/H2.4 frames, but only disturbs some bits */
 		decode_hr_facch(l1ts, bi);
 		rc = gsm0503_tch_hr24_decode(&tch_data[0], BUFPOS(bursts_p, 0),
 					     &n_errors, &n_bits_total);
