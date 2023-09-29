@@ -434,6 +434,9 @@ static int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
+		if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
+			return 1 + 1; /* 1 x SACCH + 1 x FACCH */
+		/* else: signalling or speech */
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SIGN: /* TCH/F sign: DTX *is* permitted */
 		case GSM48_CMODE_SPEECH_V1: /* TCH/FS */
@@ -450,6 +453,9 @@ static int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 			return -1; /* at least 1 x SACCH + M x TCH (variable) */
 		}
 	case GSM_PCHAN_TCH_H:
+		if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
+			return 1 + 2; /* 1 x SACCH + 2 x FACCH */
+		/* else: signalling or speech */
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SIGN: /* TCH/H sign: DTX *is not* permitted */
 			return 1 + 12; /* 1 x SACCH + 12 x TCH */
