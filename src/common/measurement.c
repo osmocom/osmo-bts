@@ -417,32 +417,38 @@ static unsigned int lchan_meas_num_expected(const struct gsm_lchan *lchan)
 }
 
 /* In DTX a subset of blocks must always be transmitted
- * See also: GSM 05.08, chapter 8.3 Aspects of discontinuous transmission (DTX) */
-static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
+ * See also: GSM 05.08, chapter 8.3 Aspects of discontinuous transmission (DTX)
+ * Return value N: (N < 0) -- at least N SUB frames expected;
+ *                 (N > 0) -- exactly N SUB frames expected;
+ *                 (N == 0) - unknown channel type/mode? */
+static int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 {
 	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
 
-	/* AMR is using a more elaborated model with a dymanic amount of
-	 * DTX blocks so this function is not applicable to determine the
-	 * amount of expected SUB Measurements when AMR is used */
-	OSMO_ASSERT(lchan->tch_mode != GSM48_CMODE_SPEECH_AMR);
-
 	switch (pchan) {
 	case GSM_PCHAN_TCH_F:
-		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
-			/* 1 block SACCH, 24 blocks TCH (see note 1) */
-			return 25;
-		} else {
-			/* 1 block SACCH, 1 block TCH */
-			return 2;
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SIGN: /* TCH/F sign: DTX *is* permitted */
+		case GSM48_CMODE_SPEECH_V1: /* TCH/FS */
+		case GSM48_CMODE_SPEECH_EFR: /* TCH/EFS */
+			return 1 + 1; /* 1 x SACCH + 1 x TCH */
+		case GSM48_CMODE_SPEECH_AMR: /* TCH/AFS */
+		case GSM48_CMODE_SPEECH_V4: /* O-TCH/WFS */
+		case GSM48_CMODE_SPEECH_V5: /* TCH/WFS */
+		default:
+			return -1; /* at least 1 x SACCH + M x TCH (variable) */
 		}
 	case GSM_PCHAN_TCH_H:
-		if (lchan->tch_mode == GSM48_CMODE_SIGN) {
-			/* 1 block SACCH, 12 blocks TCH (see ynote 1) */
-			return 13;
-		} else {
-			/* 1 block SACCH, 2 blocks TCH */
-			return 3;
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SIGN: /* TCH/H sign: DTX *is not* permitted */
+			return 1 + 12; /* 1 x SACCH + 12 x TCH */
+		case GSM48_CMODE_SPEECH_V1:
+			return 1 + 2; /* 1 x SACCH + 2 x TCH */
+		case GSM48_CMODE_SPEECH_AMR: /* TCH/AHS */
+		case GSM48_CMODE_SPEECH_V4: /* O-TCH/WHS */
+		case GSM48_CMODE_SPEECH_V6: /* O-TCH/AHS */
+		default:
+			return -1; /* at least 1 x SACCH + M x TCH (variable) */
 		}
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 	case GSM_PCHAN_SDCCH8_SACCH8C_CBCH:
@@ -455,8 +461,6 @@ static unsigned int lchan_meas_sub_num_expected(const struct gsm_lchan *lchan)
 	default:
 		return 0;
 	}
-
-	/* Note 1: In signalling mode all blocks count as SUB blocks. */
 }
 
 /* if we clip the TOA value to 12 bits, i.e. toa256=3200,
@@ -562,7 +566,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	unsigned int num_meas_sub = 0;
 	unsigned int num_meas_sub_actual = 0;
 	unsigned int num_meas_sub_subst = 0;
-	unsigned int num_meas_sub_expect;
+	int num_meas_sub_expect;
 	unsigned int num_ul_meas;
 	unsigned int num_ul_meas_actual = 0;
 	unsigned int num_ul_meas_subst = 0;
@@ -582,16 +586,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	 * intentionally to save energy. It is not necessarly an error
 	 * when we get less measurements as we expect. */
 	num_ul_meas_expect = lchan_meas_num_expected(lchan);
-
-	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR)
-		num_meas_sub_expect = lchan_meas_sub_num_expected(lchan);
-	else {
-		/* When AMR is used, we expect at least one SUB frame, since
-		 * the SACCH will always be SUB frame. There may occur more
-		 * SUB frames but since DTX periods in AMR are dynamic, we
-		 * can not know how many exactly. */
-		num_meas_sub_expect = 1;
-	}
+	num_meas_sub_expect = lchan_meas_sub_num_expected(lchan);
 
 	if (lchan->meas.num_ul_meas > num_ul_meas_expect)
 		num_ul_meas_excess = lchan->meas.num_ul_meas - num_ul_meas_expect;
@@ -637,11 +632,8 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		} else {
 			m = &measurement_dummy;
 
-			/* For AMR the amount of SUB frames is defined by the
-			 * the occurrence of DTX periods, which are dynamically
-			 * negotiated in AMR, so we can not know if and how many
-			 * SUB frames are missing. */
-			if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
+			/* only if we know the exact number of SUB measurements */
+			if (num_meas_sub_expect >= 0) {
 				if (num_meas_sub <= i) {
 					num_meas_sub_subst++;
 					is_sub = true;
@@ -658,16 +650,6 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 		}
 	}
 
-	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
-		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
-			  "Received UL measurements contain %u SUB measurements, expected %u\n",
-			  num_meas_sub_actual, num_meas_sub_expect);
-	} else {
-		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
-			  "Received UL measurements contain %u SUB measurements, expected at least %u\n",
-			  num_meas_sub_actual, num_meas_sub_expect);
-	}
-
 	LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG, "Replaced %u measurements with dummy values, "
 		  "from which %u were SUB measurements\n", num_ul_meas_subst, num_meas_sub_subst);
 
@@ -678,17 +660,24 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 	 * above only adds missing measurements during the calculation
 	 * it can not remove excess SUB measurements or add missing SUB
 	 * measurements when there is no more room in the interval. */
-	if (lchan->tch_mode != GSM48_CMODE_SPEECH_AMR) {
-		if (num_meas_sub != num_meas_sub_expect) {
+	if (num_meas_sub_expect < 0) {
+		num_meas_sub_expect = -num_meas_sub_expect;
+		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
+			  "Received UL measurements contain %u SUB measurements, expected at least %d\n",
+			  num_meas_sub_actual, num_meas_sub_expect);
+		if (OSMO_UNLIKELY(num_meas_sub < num_meas_sub_expect)) {
 			LOGPLCHAN(lchan, DMEAS, LOGL_ERROR,
 				  "Incorrect number of SUB measurements detected! "
-				  "(%u vs exp %u)\n", num_meas_sub, num_meas_sub_expect);
+				  "(%u vs exp >=%d)\n", num_meas_sub, num_meas_sub_expect);
 		}
 	} else {
-		if (num_meas_sub < num_meas_sub_expect) {
+		LOGPLCHAN(lchan, DMEAS, LOGL_DEBUG,
+			  "Received UL measurements contain %u SUB measurements, expected %d\n",
+			  num_meas_sub_actual, num_meas_sub_expect);
+		if (OSMO_UNLIKELY(num_meas_sub != num_meas_sub_expect)) {
 			LOGPLCHAN(lchan, DMEAS, LOGL_ERROR,
 				  "Incorrect number of SUB measurements detected! "
-				  "(%u vs exp >=%u)\n", num_meas_sub, num_meas_sub_expect);
+				  "(%u vs exp %d)\n", num_meas_sub, num_meas_sub_expect);
 		}
 	}
 
