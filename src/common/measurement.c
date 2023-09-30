@@ -19,13 +19,22 @@
 /* Active TDMA frame subset for TCH/H in DTX mode (see 3GPP TS 45.008 Section 8.3).
  * This mapping is used to determine if a L2 block starting at the given TDMA FN
  * belongs to the SUB set and thus shall always be transmitted in DTX mode. */
-static const uint8_t ts45008_dtx_tchh_fn_map[104] = {
+static const uint8_t ts45008_dtx_tchh_speech_fn_map[104] = {
 	/* TCH/H(0): 0, 2, 4, 6, 52, 54, 56, 58 */
 	[0]  = 1, /* block { 0,  2,  4,  6} */
 	[52] = 1, /* block {52, 54, 56, 58} */
 	/* TCH/H(1): 14, 16, 18, 20, 66, 68, 70, 72 */
 	[14] = 1, /* block {14, 16, 18, 20} */
 	[66] = 1, /* block {66, 68, 70, 72} */
+};
+
+static const uint8_t ts45008_dtx_tchh_data_fn_map[104] = {
+	/* UL TCH/H(0): 52, 54, 56, 58, 60, 62, 65, 67, 69, 71 */
+	[52] = 1, /* block {52, 54, 56, 58, 60, 62} */
+	[60] = 1, /* block {60, 62, 65, 67, 69, 71} */
+	/* UL TCH/H(1): 70, 72, 74, 76, 79, 81, 83, 85, 87, 89 */
+	[70] = 1, /* block {70, 72, 74, 76, 79, 81} */
+	[79] = 1, /* block {79, 81, 83, 85, 87, 89} */
 };
 
 /* In cases where we less measurements than we expect we must assume that we
@@ -50,7 +59,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 	uint32_t fn104 = fn % 104;
 
 	/* See TS 45.008 Sections 8.3 and 8.4 for a detailed descriptions of the rules
-	 * implemented here. We only implement the logic for Voice, not CSD */
+	 * implemented here. We implement the logic for both speech and data (CSD). */
 
 	/* AMR is special, SID frames may be scheduled dynamically at any time */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
@@ -73,13 +82,12 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			break;
 		case GSM48_CMODE_DATA_12k0: /* TCH/F9.6 */
 		case GSM48_CMODE_DATA_6k0: /* TCH/F4.8 */
-			/* FIXME: In case of data traffic channels TCH/F9.6 and TCH/F4.8 the
-			 * RXQUAL_SUB report shall include measurements on the TDMA frames given
-			 * in the table of subclause 8.3 only if L2 fill frames have been received
-			 * as FACCH/F frames at the corresponding frame positions. */
+			/* FIXME: The RXQUAL_SUB (not RXLEV!) report shall include measurements on
+			 * the TDMA frames given in the table of subclause 8.3 only if L2 fill frames
+			 * have been received as FACCH/F frames at the corresponding frame positions. */
 		default:
 			if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
-				return false;
+				return fn104 == 52;
 			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
@@ -88,7 +96,7 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 		switch (lchan->tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_V1_VAMOS:
-			if (ts45008_dtx_tchh_fn_map[fn104])
+			if (ts45008_dtx_tchh_speech_fn_map[fn104])
 				return true;
 			break;
 		case GSM48_CMODE_SIGN:
@@ -97,13 +105,12 @@ bool ts45008_83_is_sub(struct gsm_lchan *lchan, uint32_t fn)
 			return true;
 		case GSM48_CMODE_DATA_6k0: /* TCH/H4.8 */
 		case GSM48_CMODE_DATA_3k6: /* TCH/H2.4 */
-			/* FIXME: In case of data traffic channels TCH/H4.8 and TCH/H2.4 the
-			 * RXQUAL_SUB report shall include measurements on the TDMA frames given
-			 * in the table of subclause 8.3 only if L2 fill frames have been received
-			 * as FACCH/H frames at the corresponding frame positions. */
+			/* FIXME: The RXQUAL_SUB (not RXLEV!) report shall include measurements on
+			 * the TDMA frames given in the table of subclause 8.3 only if L2 fill frames
+			 * have been received as FACCH/H frames at the corresponding frame positions. */
 		default:
 			if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA)
-				return false;
+				return ts45008_dtx_tchh_data_fn_map[fn104] == 1;
 			LOGPLCFN(lchan, fn, DMEAS, LOGL_ERROR, "Unsupported lchan->tch_mode %u\n", lchan->tch_mode);
 			break;
 		}
