@@ -634,7 +634,7 @@ int lchan_meas_check_compute(struct gsm_lchan *lchan, uint32_t fn)
 
 			/* only if we know the exact number of SUB measurements */
 			if (num_meas_sub_expect >= 0) {
-				if (num_meas_sub <= i) {
+				if (num_meas_sub < num_meas_sub_expect) {
 					num_meas_sub_subst++;
 					is_sub = true;
 				}
