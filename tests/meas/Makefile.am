@@ -20,7 +20,7 @@ LDADD = \
 
 check_PROGRAMS = meas_test
 noinst_HEADERS = sysmobts_fr_samples.h meas_testcases.h
-EXTRA_DIST = meas_test.ok
+EXTRA_DIST = meas_test.ok meas_test.err
 
 meas_test_SOURCES = meas_test.c $(srcdir)/../stubs.c
 meas_test_LDADD = $(top_builddir)/src/common/libbts.a $(LDADD)

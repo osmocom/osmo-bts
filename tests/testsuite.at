@@ -55,7 +55,8 @@ AT_CLEANUP
 AT_SETUP([meas])
 AT_KEYWORDS([meas])
 cat $abs_srcdir/meas/meas_test.ok > expout
-AT_CHECK([$abs_top_builddir/tests/meas/meas_test], [], [expout], [ignore])
+cat $abs_srcdir/meas/meas_test.err > experr
+AT_CHECK([$abs_top_builddir/tests/meas/meas_test], [], [expout], [experr])
 AT_CLEANUP
 
 AT_SETUP([ta_control])
