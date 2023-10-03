@@ -86,35 +86,10 @@ static int go_to_parent(struct vty *vty)
 	return vty->node;
 }
 
-static int is_config_node(struct vty *vty, int node)
-{
-	switch (node) {
-	case MGR_NODE:
-	case ACT_NORM_NODE:
-	case ACT_WARN_NODE:
-	case ACT_CRIT_NODE:
-	case LIMIT_SUPPLY_TEMP_NODE:
-	case LIMIT_SOC_NODE:
-	case LIMIT_FPGA_NODE:
-	case LIMIT_RMSDET_NODE:
-	case LIMIT_OCXO_NODE:
-	case LIMIT_TX_TEMP_NODE:
-	case LIMIT_PA_TEMP_NODE:
-	case LIMIT_SUPPLY_VOLT_NODE:
-	case LIMIT_VSWR_NODE:
-	case LIMIT_SUPPLY_PWR_NODE:
-	case LIMIT_PA_PWR_NODE:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 static struct vty_app_info vty_info = {
 	.name           = "oc2gbts-mgr",
 	.version        = PACKAGE_VERSION,
 	.go_parent_cb   = go_to_parent,
-	.is_config_node = is_config_node,
 	.copyright	= copyright,
 };
 

@@ -21,7 +21,6 @@ extern struct cmd_element cfg_bts_no_auto_band_cmd;
 struct phy_instance *vty_get_phy_instance(struct vty *vty, int phy_nr, int inst_nr);
 
 int bts_vty_go_parent(struct vty *vty);
-int bts_vty_is_config_node(struct vty *vty, int node);
 
 int bts_vty_init(void *ctx);
 

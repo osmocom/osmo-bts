@@ -140,20 +140,6 @@ int bts_vty_go_parent(struct vty *vty)
 	return vty->node;
 }
 
-int bts_vty_is_config_node(struct vty *vty, int node)
-{
-	switch (node) {
-	case TRX_NODE:
-	case BTS_NODE:
-	case PHY_NODE:
-	case PHY_INST_NODE:
-	case OSMUX_NODE:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 static const char osmobts_copyright[] =
 	"Copyright (C) 2010-2011 by Harald Welte, Andreas Eversberg and On-Waves\r\n"
 	"Copyright (C) 2011-2022 by sysmocom - s.f.m.c. GmbH\r\n"
@@ -166,7 +152,6 @@ struct vty_app_info bts_vty_info = {
 	.version	= PACKAGE_VERSION,
 	.copyright	= osmobts_copyright,
 	.go_parent_cb	= bts_vty_go_parent,
-	.is_config_node	= bts_vty_is_config_node,
 	.usr_attr_desc	= {
 		[BTS_VTY_ATTR_NEW_LCHAN] = \
 			"This command applies for newly created lchans",

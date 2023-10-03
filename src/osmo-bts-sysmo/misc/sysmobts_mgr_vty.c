@@ -69,28 +69,10 @@ static int go_to_parent(struct vty *vty)
 	return vty->node;
 }
 
-static int is_config_node(struct vty *vty, int node)
-{
-	switch (node) {
-	case MGR_NODE:
-	case ACT_NORM_NODE:
-	case ACT_WARN_NODE:
-	case ACT_CRIT_NODE:
-	case LIMIT_RF_NODE:
-	case LIMIT_DIGITAL_NODE:
-	case LIMIT_BOARD_NODE:
-	case LIMIT_PA_NODE:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 static struct vty_app_info vty_info = {
 	.name           = "sysmobts-mgr",
 	.version        = PACKAGE_VERSION,
 	.go_parent_cb   = go_to_parent,
-	.is_config_node = is_config_node,
 	.copyright	= copyright,
 };
 
