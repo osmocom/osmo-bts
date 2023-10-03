@@ -1,5 +1,5 @@
 /* Copyright (C) 2015 by Yves Godin <support@nuranwireless.com>
- * 
+ *
  * Based on sysmoBTS:
  *     sysmobts_mgr_vty.c
  *     (C) 2014 by oc2gcom - s.f.m.c. GmbH
@@ -649,7 +649,7 @@ DEFUN(show_thresh, show_thresh_cmd, "show thresholds",
 
 DEFUN(calibrate_clock, calibrate_clock_cmd,
       "calibrate clock",
-      "Calibration commands\n" 
+      "Calibration commands\n"
       "Calibrate clock against GPS PPS\n")
 {
 	if (oc2gbts_mgr_calib_run(s_mgr) < 0) {
