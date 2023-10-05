@@ -230,6 +230,25 @@ static void info_ind_fill_trx(struct gsm_pcu_if_info_trx *trx_info,
 	}
 }
 
+static enum gsm_pcuif_bts_model bts_model_from_variant(enum gsm_bts_type_variant variant)
+{
+	switch (variant) {
+	case BTS_OSMO_LITECELL15:
+		return PCU_IF_BTS_MODEL_LC15;
+	case BTS_OSMO_OC2G:
+		return PCU_IF_BTS_MODEL_OC2G;
+	case BTS_OSMO_OCTPHY:
+		return PCU_IF_BTS_MODEL_OCTPHY;
+	case BTS_OSMO_SYSMO:
+		return PCU_IF_BTS_MODEL_SYSMO;
+	case BTS_OSMO_TRX:
+	case BTS_OSMO_VIRTUAL:
+		return PCU_IF_BTS_MODEL_TRX;
+	default:
+		return PCU_IF_BTS_MODEL_UNSPEC;
+	}
+}
+
 int pcu_tx_info_ind(void)
 {
 	struct msgb *msg;
@@ -357,6 +376,8 @@ int pcu_tx_info_ind(void)
 
 		info_ind_fill_trx(&info_ind->trx[trx->nr], trx);
 	}
+
+	info_ind->bts_model = bts_model_from_variant(bts->variant);
 
 	return pcu_sock_send(msg);
 }

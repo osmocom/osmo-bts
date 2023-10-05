@@ -7,7 +7,7 @@
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x0b
+#define PCU_IF_VERSION		0x0c
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -56,6 +56,17 @@
 #define PCU_IF_ADDR_TYPE_UNSPEC	0x00	/* No address - empty entry */
 #define PCU_IF_ADDR_TYPE_IPV4	0x04	/* IPv4 address */
 #define PCU_IF_ADDR_TYPE_IPV6	0x29	/* IPv6 address */
+
+/* BTS model */
+enum gsm_pcuif_bts_model {
+	PCU_IF_BTS_MODEL_UNSPEC,
+	PCU_IF_BTS_MODEL_LC15,
+	PCU_IF_BTS_MODEL_OC2G,
+	PCU_IF_BTS_MODEL_OCTPHY,
+	PCU_IF_BTS_MODEL_SYSMO,
+	PCU_IF_BTS_MODEL_TRX,
+	PCU_IF_BTS_MODEL_RBS,
+};
 
 #define PCU_IF_NUM_NSVC 2
 #define PCU_IF_NUM_TRX 8
@@ -170,6 +181,7 @@ struct gsm_pcu_if_info_ind {
 		struct in_addr v4;
 		struct in6_addr v6;
 	} remote_ip[PCU_IF_NUM_NSVC];
+	uint8_t		bts_model; /* enum gsm_pcuif_bts_model */
 } __attribute__ ((packed));
 
 struct gsm_pcu_if_act_req {
