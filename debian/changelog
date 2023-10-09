@@ -1,3 +1,18 @@
+osmo-bts (1.7.1) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * l1sap: l1sap_tch_ind(): fix segfault on stale TCH.ind
+
+  [ Oliver Smith ]
+  * systemd: remove RestartPreventExitStatus=1
+
+  [ Andreas Eversberg ]
+  * ASCI: Ignore LAPD frames from MS, while the uplink is not active
+  * Do not prefix UI header to System Information Type 10
+  * Increase RR scheduler priority to 20, to avoid dropped bursts
+
+ -- Oliver Smith <osmith@sysmocom.de>  Mon, 09 Oct 2023 10:11:10 +0200
+
 osmo-bts (1.7.0) unstable; urgency=medium
 
   [ arehbein ]
