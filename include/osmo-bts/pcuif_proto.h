@@ -12,7 +12,6 @@
 
 /* msg_type */
 #define PCU_IF_MSG_DATA_REQ	0x00	/* send data to given channel */
-#define PCU_IF_MSG_DATA_CNF	0x01	/* confirm (e.g. transmission on PCH) */
 #define PCU_IF_MSG_DATA_IND	0x02	/* receive data from given channel */
 #define PCU_IF_MSG_SUSP_REQ	0x03	/* BTS forwards GPRS SUSP REQ to PCU */
 #define PCU_IF_MSG_APP_INFO_REQ	0x04	/* BTS asks PCU to transmit APP INFO via PACCH */
@@ -29,8 +28,6 @@
 
 /* sapi */
 #define PCU_IF_SAPI_RACH	0x01	/* channel request on CCCH */
-#define PCU_IF_SAPI_AGCH	0x02	/* assignment on AGCH */
-#define PCU_IF_SAPI_PCH		0x03	/* paging/assignment on PCH */
 #define PCU_IF_SAPI_BCCH	0x04	/* SI on BCCH */
 #define PCU_IF_SAPI_PDTCH	0x05	/* packet data/control/ccch block */
 #define PCU_IF_SAPI_PRACH	0x06	/* packet random access channel */
@@ -256,7 +253,6 @@ struct gsm_pcu_if {
 
 	union {
 		struct gsm_pcu_if_data		data_req;
-		struct gsm_pcu_if_data		data_cnf;
 		struct gsm_pcu_if_data_cnf	data_cnf2;
 		struct gsm_pcu_if_data		data_ind;
 		struct gsm_pcu_if_susp_req	susp_req;

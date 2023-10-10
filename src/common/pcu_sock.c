@@ -53,8 +53,6 @@ static int avail_lai = 0, avail_nse = 0, avail_cell = 0, avail_nsvc[2] = {0, 0};
 
 static const char *sapi_string[] = {
 	[PCU_IF_SAPI_RACH] =	"RACH",
-	[PCU_IF_SAPI_AGCH] =	"AGCH",
-	[PCU_IF_SAPI_PCH] =	"PCH",
 	[PCU_IF_SAPI_BCCH] =	"BCCH",
 	[PCU_IF_SAPI_PDTCH] =	"PDTCH",
 	[PCU_IF_SAPI_PRACH] =	"PRACH",
