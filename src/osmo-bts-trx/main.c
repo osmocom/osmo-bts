@@ -156,6 +156,8 @@ int bts_model_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_AMR);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_SPEECH_H_V1);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_VAMOS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_VGCS);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_VBS);
 
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_MEAS_PAYLOAD_COMB);
 	bts_internal_flag_set(bts, BTS_INTERNAL_FLAG_INTERF_MEAS);
