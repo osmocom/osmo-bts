@@ -2444,3 +2444,26 @@ int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr)
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_MODIFY, 0);
 }
+
+int l1sap_uplink_access(struct gsm_lchan *lchan, bool active)
+{
+	uint8_t chan_nr = gsm_lchan2chan_nr(lchan);
+	struct osmo_phsap_prim l1sap;
+
+	if (lchan->state != LCHAN_S_ACTIVE && !rsl_chan_rt_is_asci(lchan->rsl_chan_rt)) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Channel %s is not an active ASCI type channel.\n",
+			  rsl_chan_nr_str(chan_nr));
+		return -EINVAL;
+	}
+
+	LOGPLCHAN(lchan, DL1C, LOGL_INFO, "%s uplink access detection on channel %s\n",
+		  (active) ? "Activating" : "Deactivating", rsl_chan_nr_str(chan_nr));
+
+
+	memset(&l1sap, 0, sizeof(l1sap));
+	osmo_prim_init(&l1sap.oph, SAP_GSM_PH, PRIM_MPH_INFO, PRIM_OP_REQUEST, NULL);
+	l1sap.u.info.type = (active) ? PRIM_INFO_ACT_UL_ACC : PRIM_INFO_DEACT_UL_ACC;
+	l1sap.u.info.u.ulacc_req.chan_nr = chan_nr;
+
+	return l1sap_down(lchan->ts->trx, &l1sap);
+}

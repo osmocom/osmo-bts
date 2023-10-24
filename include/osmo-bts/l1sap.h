@@ -102,6 +102,7 @@ int l1sap_chan_act(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_deact_sacch(struct gsm_bts_trx *trx, uint8_t chan_nr);
 int l1sap_chan_modify(struct gsm_bts_trx *trx, uint8_t chan_nr);
+int l1sap_uplink_access(struct gsm_lchan *lchan, bool active);
 
 enum l1sap_common_sapi {
 	L1SAP_COMMON_SAPI_UNKNOWN,

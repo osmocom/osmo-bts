@@ -219,7 +219,7 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 
 	/* release handover, listener and talker states */
 	handover_reset(lchan);
-	vgcs_talker_reset(lchan);
+	vgcs_talker_reset(lchan, false);
 	vgcs_listener_reset(lchan);
 	vgcs_uplink_free_reset(lchan);
 

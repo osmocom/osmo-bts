@@ -2207,8 +2207,12 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		lchan->top_acch_active = false;
 
 	/* set ASCI channel into right state */
-	if (reactivation && rsl_chan_rt_is_asci(lchan->rsl_chan_rt))
-		vgcs_lchan_react(lchan);
+	if (rsl_chan_rt_is_asci(lchan->rsl_chan_rt)) {
+		if (reactivation)
+			vgcs_lchan_react(lchan);
+		else
+			vgcs_lchan_activate(lchan);
+	}
 
 	/* on reactivation, the channel is already activated */
 	if (reactivation) {
@@ -3618,7 +3622,7 @@ static int rsl_rx_rll(struct gsm_bts_trx *trx, struct msgb *msg)
 
 	/* VGCS Uplink is released by MSC using REL-REQ. */
 	if (rh->c.msg_type == RSL_MT_REL_REQ)
-		vgcs_talker_reset(lchan);
+		vgcs_talker_reset(lchan, true);
 
 	LOGPLCHAN(lchan, DRLL, LOGL_DEBUG, "Rx RLL %s Abis -> LAPDm\n", rsl_msg_name(rh->c.msg_type));
 
@@ -3840,7 +3844,7 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 
 		/* REL_IND handling */
 		if (rh->msg_type == RSL_MT_REL_IND && lchan_is_tch(lchan)) {
-			vgcs_talker_reset(lchan);
+			vgcs_talker_reset(lchan, true);
 			LOGPLCHAN(lchan, DRSL, LOGL_INFO,
 				  "Scheduling %s to L3 in next associated TCH-RTS.ind\n",
 				  rsl_msg_name(rh->msg_type));

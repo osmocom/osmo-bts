@@ -126,9 +126,9 @@ void vgcs_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay, uint32_t 
 
 		/* Stop RACH detection, wait for valid frame */
 		lchan->asci.talker_active = VGCS_TALKER_WAIT_FRAME;
-		if (l1sap_chan_modify(lchan->ts->trx, gsm_lchan2chan_nr(lchan)) != 0) {
-			LOGPLCHAN(lchan, DASCI, LOGL_ERROR, "failed to modify channel after TALKER DET\n");
-			rsl_tx_conn_fail(lchan, RSL_ERR_TALKER_ACC_FAIL);
+		if (l1sap_uplink_access(lchan, false) != 0) {
+			LOGPLCHAN(lchan, DASCI, LOGL_ERROR, "Failed to deactivate uplink access after TALKER DET.\n");
+			rsl_tx_conn_fail(lchan, RSL_ERR_EQUIPMENT_FAIL);
 			lchan->asci.talker_active = VGCS_TALKER_NONE;
 			return;
 		}
@@ -151,11 +151,25 @@ void vgcs_rach(struct gsm_lchan *lchan, uint8_t ra, uint8_t acc_delay, uint32_t 
 	}
 }
 
+/* Received channel activation. */
+void vgcs_lchan_activate(struct gsm_lchan *lchan)
+{
+	LOGPLCHAN(lchan, DASCI, LOGL_INFO, "Channel is activated.\n");
+	if (l1sap_uplink_access(lchan, true) != 0) {
+		LOGPLCHAN(lchan, DASCI, LOGL_ERROR, "Failed to activate uplink access after channel activation.\n");
+		rsl_tx_conn_fail(lchan, RSL_ERR_EQUIPMENT_FAIL);
+	}
+}
+
 /* Received channel reactivation. (for assignment) */
 void vgcs_lchan_react(struct gsm_lchan *lchan)
 {
 	LOGPLCHAN(lchan, DASCI, LOGL_INFO, "Channel is activated for assignment.\n");
 	lchan->asci.talker_active = VGCS_TALKER_WAIT_FRAME;
+	if (l1sap_uplink_access(lchan, false) != 0) {
+		LOGPLCHAN(lchan, DASCI, LOGL_ERROR, "Failed to deactivate uplink access for assignment.\n");
+		rsl_tx_conn_fail(lchan, RSL_ERR_EQUIPMENT_FAIL);
+	}
 	radio_link_timeout_reset(lchan);
 }
 
@@ -169,7 +183,7 @@ void vgcs_talker_frame(struct gsm_lchan *lchan)
 }
 
 /* Release VGCS Talker state. */
-void vgcs_talker_reset(struct gsm_lchan *lchan)
+void vgcs_talker_reset(struct gsm_lchan *lchan, bool ul_access)
 {
 	if (lchan->asci.talker_active == VGCS_TALKER_NONE)
 		return;
@@ -179,8 +193,15 @@ void vgcs_talker_reset(struct gsm_lchan *lchan)
 	/* Stop T3115 */
 	osmo_timer_del(&lchan->asci.t3115);
 
-	/* Talker detection done */
+	/* Talker released. */
 	lchan->asci.talker_active = VGCS_TALKER_NONE;
+	if (ul_access) {
+		if (l1sap_uplink_access(lchan, true) != 0) {
+			LOGPLCHAN(lchan, DASCI, LOGL_ERROR,
+				  "Failed to activate uplink access after uplink became free.\n");
+			rsl_tx_conn_fail(lchan, RSL_ERR_EQUIPMENT_FAIL);
+		}
+	}
 }
 
 /* Release VGCS Listener state. */
