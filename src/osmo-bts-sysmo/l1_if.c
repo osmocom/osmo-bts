@@ -604,6 +604,15 @@ static int mph_info_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		else
 			l1if_rsl_chan_rel(lchan);
 		break;
+	case PRIM_INFO_ACT_UL_ACC:
+	case PRIM_INFO_DEACT_UL_ACC:
+		chan_nr = l1sap->u.info.u.ulacc_req.chan_nr;
+		lchan = get_lchan_by_chan_nr(trx, chan_nr);
+		if (l1sap->u.info.type == PRIM_INFO_ACT_UL_ACC)
+			l1if_set_ul_acc(lchan, true);
+		else
+			l1if_set_ul_acc(lchan, false);
+		break;
 	default:
 		LOGP(DL1C, LOGL_NOTICE, "unknown MPH-INFO.req %d\n",
 			l1sap->u.info.type);

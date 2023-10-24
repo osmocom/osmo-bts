@@ -1172,8 +1172,8 @@ int lchan_activate(struct gsm_lchan *lchan)
 		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "Trying to activate lchan, but commands in queue\n");
 
 	/* For handover, always start the main channel immediately. lchan->want_dl_sacch_active indicates whether dl
-	 * SACCH should be activated. Also, for HO and VGCS listener/talker detection, start the RACH SAPI. */
-	if (lchan->ho.active == HANDOVER_ENABLED || rsl_chan_rt_is_asci(lchan->rsl_chan_rt))
+	 * SACCH should be activated. */
+	if (lchan->ho.active == HANDOVER_ENABLED)
 		enqueue_sapi_act_cmd(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
 
 	for (i = 0; i < s4l->num_sapis; i++) {
@@ -1466,6 +1466,16 @@ int l1if_set_ciphering(struct femtol1_hdl *fl1h,
 		dir = GsmL1_Dir_RxUplink;
 
 	enqueue_sapi_ciphering_cmd(lchan, dir);
+
+	return 0;
+}
+
+int l1if_set_ul_acc(struct gsm_lchan *lchan, bool active)
+{
+	if (active)
+		enqueue_sapi_act_cmd(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
+	else
+		check_sapi_release(lchan, GsmL1_Sapi_Rach, GsmL1_Dir_RxUplink);
 
 	return 0;
 }

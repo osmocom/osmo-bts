@@ -145,6 +145,7 @@ int l1if_rsl_chan_rel(struct gsm_lchan *lchan);
 int l1if_rsl_chan_mod(struct gsm_lchan *lchan);
 int l1if_rsl_deact_sacch(struct gsm_lchan *lchan);
 int l1if_rsl_mode_modify(struct gsm_lchan *lchan);
+int l1if_set_ul_acc(struct gsm_lchan *lchan, bool active);
 
 /* calibration loading */
 int calib_load(struct femtol1_hdl *fl1h);
