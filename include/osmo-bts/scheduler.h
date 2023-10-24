@@ -186,6 +186,9 @@ int trx_sched_set_pchan(struct gsm_bts_trx_ts *ts, enum gsm_phys_chan_config pch
 /*! \brief set all matching logical channels active/inactive */
 int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_id, bool active);
 
+/*! \brief set uplink access on given logical channels active/inactive */
+int trx_sched_set_ul_access(struct gsm_lchan *lchan, uint8_t chan_nr, bool active);
+
 /*! \brief set all logical channels of BCCH/CCCH active/inactive */
 int trx_sched_set_bcch_ccch(struct gsm_lchan *lchan, bool active);
 

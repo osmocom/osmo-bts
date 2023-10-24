@@ -1144,6 +1144,33 @@ int trx_sched_set_lchan(struct gsm_lchan *lchan, uint8_t chan_nr, uint8_t link_i
 	return found ? 0 : -EINVAL;
 }
 
+int trx_sched_set_ul_access(struct gsm_lchan *lchan, uint8_t chan_nr, bool active)
+{
+	struct l1sched_ts *l1ts = lchan->ts->priv;
+	uint8_t tn = L1SAP_CHAN2TS(chan_nr);
+	uint8_t ss = l1sap_chan2ss(chan_nr);
+	int i;
+
+	if (!l1ts) {
+		LOGPLCHAN(lchan, DL1C, LOGL_ERROR, "%s UL access on lchan with uninitialized scheduler structure.\n",
+			  (active) ? "Activating" : "Deactivating");
+		return -EINVAL;
+	}
+
+	/* look for all matching chan_nr */
+	for (i = 0; i < _TRX_CHAN_MAX; i++) {
+		if (trx_chan_desc[i].chan_nr == (chan_nr & RSL_CHAN_NR_MASK)) {
+			struct l1sched_chan_state *l1cs = &l1ts->chan_state[i];
+
+			l1cs->ho_rach_detect = active;
+		}
+	}
+
+	_sched_act_rach_det(lchan->ts->trx, tn, ss, active);
+
+	return 0;
+}
+
 int trx_sched_set_bcch_ccch(struct gsm_lchan *lchan, bool active)
 {
 	struct l1sched_ts *l1ts = lchan->ts->priv;

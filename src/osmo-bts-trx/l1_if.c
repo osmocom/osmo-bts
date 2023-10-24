@@ -417,10 +417,18 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 		/* put data into scheduler's queue */
 		return trx_sched_tch_req(trx, l1sap);
 	case OSMO_PRIM(PRIM_MPH_INFO, PRIM_OP_REQUEST):
-		if (l1sap->u.info.type == PRIM_INFO_ACT_CIPH)
+		switch (l1sap->u.info.type) {
+		case PRIM_INFO_ACT_CIPH:
 			chan_nr = l1sap->u.info.u.ciph_req.chan_nr;
-		else /* u.act_req used by PRIM_INFO_{ACTIVATE,DEACTIVATE,MODIFY} */
+			break;
+		case PRIM_INFO_ACT_UL_ACC:
+		case PRIM_INFO_DEACT_UL_ACC:
+			chan_nr = l1sap->u.info.u.ulacc_req.chan_nr;
+			break;
+		default:
+			/* u.act_req used by PRIM_INFO_{ACTIVATE,DEACTIVATE,MODIFY} */
 			chan_nr = l1sap->u.info.u.act_req.chan_nr;
+		}
 		lchan = get_lchan_by_chan_nr(trx, chan_nr);
 		if (OSMO_UNLIKELY(lchan == NULL)) {
 			LOGP(DL1C, LOGL_ERROR,
@@ -436,6 +444,12 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 				l1if_set_ciphering(lchan, chan_nr, 0);
 			if (l1sap->u.info.u.ciph_req.downlink)
 				l1if_set_ciphering(lchan, chan_nr, 1);
+			break;
+		case PRIM_INFO_ACT_UL_ACC:
+			trx_sched_set_ul_access(lchan, chan_nr, true);
+			break;
+		case PRIM_INFO_DEACT_UL_ACC:
+			trx_sched_set_ul_access(lchan, chan_nr, false);
 			break;
 		case PRIM_INFO_ACTIVATE:
 			if ((chan_nr & 0xE0) == 0x80) {
@@ -458,8 +472,7 @@ int bts_model_l1sap_down(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap)
 					   lchan->tch.amr_mr.mode[2].mode,
 					   lchan->tch.amr_mr.mode[3].mode,
 					   amr_get_initial_mode(lchan),
-					   (lchan->ho.active == HANDOVER_ENABLED) ||
-					    rsl_chan_rt_is_asci(lchan->rsl_chan_rt));
+					   (lchan->ho.active == HANDOVER_ENABLED));
 			/* set lchan active */
 			lchan_set_state(lchan, LCHAN_S_ACTIVE);
 			/* set initial ciphering */
