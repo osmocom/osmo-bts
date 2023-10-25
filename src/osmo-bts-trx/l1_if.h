@@ -120,6 +120,10 @@ struct trx_l1h {
 	struct llist_head	trx_ctrl_list;
 	/* Latest RSPed cmd, used to catch duplicate RSPs from sent retransmissions */
 	struct trx_ctrl_msg 	*last_acked;
+	/* Whether the code path is in the middle of handling a received message. */
+	bool			in_trx_ctrl_read_cb;
+	/* Whether the l1h->trx_ctrl_list was flushed by the callback handling a received message */
+	bool			flushed_while_in_trx_ctrl_read_cb;
 
 	//struct gsm_bts_trx	*trx;
 	struct phy_instance	*phy_inst;
