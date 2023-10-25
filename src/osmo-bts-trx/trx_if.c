@@ -721,13 +721,6 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	rsp.cb = tcm->cb;
 
-	/* Remove command from list, save it to last_acked and remove previous
-	 * last_acked. Do it before calling callback to avoid user freeing tcm
-	 * pointer if flushing/closing the iface. */
-	llist_del(&tcm->list);
-	talloc_free(l1h->last_acked);
-	l1h->last_acked = tcm;
-
 	/* check for response code */
 	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm);
 	if (rc == -EINVAL)
@@ -735,10 +728,14 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* re-schedule last cmd in rc seconds time */
 	if (rc > 0) {
-		if (!llist_empty(&l1h->trx_ctrl_list))
-			osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
+		osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
 		return 0;
 	}
+
+	/* remove command from list, save it to last_acked and removed previous last_acked */
+	llist_del(&tcm->list);
+	talloc_free(l1h->last_acked);
+	l1h->last_acked = tcm;
 
 	trx_ctrl_send(l1h);
 
