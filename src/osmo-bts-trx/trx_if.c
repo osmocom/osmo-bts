@@ -269,8 +269,10 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 		tcm->cmd, tcm->params_len ? " " : "", tcm->params);
 	llist_add_tail(&tcm->list, &l1h->trx_ctrl_list);
 
-	/* send message, if we didn't already have pending messages */
-	if (prev == NULL)
+	/* send message, if we didn't already have pending messages.
+	 * If we are in the rx_rsp callback code path, skip sending, the
+	 * callback will do so when returning to it. */
+	if (prev == NULL && !l1h->in_trx_ctrl_read_cb)
 		trx_ctrl_send(l1h);
 
 	return 0;
@@ -673,6 +675,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	struct trx_ctrl_rsp rsp;
 	int len, rc;
 	struct trx_ctrl_msg *tcm;
+	bool flushed;
 
 	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
 	if (len <= 0)
@@ -722,21 +725,34 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 	rsp.cb = tcm->cb;
 
 	/* check for response code */
+	l1h->in_trx_ctrl_read_cb = true;
 	rc = trx_ctrl_rx_rsp(l1h, &rsp, tcm);
+	/* Reset state: */
+	flushed = l1h->flushed_while_in_trx_ctrl_read_cb;
+	l1h->flushed_while_in_trx_ctrl_read_cb = false;
+	l1h->in_trx_ctrl_read_cb = false;
+
 	if (rc == -EINVAL)
 		goto rsp_error;
 
 	/* re-schedule last cmd in rc seconds time */
 	if (rc > 0) {
-		osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
+		/* The queue may have been flushed in the trx_ctrl_rx_rsp(): */
+		if (!llist_empty(&l1h->trx_ctrl_list))
+			osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
 		return 0;
 	}
 
-	/* remove command from list, save it to last_acked and removed previous last_acked */
-	llist_del(&tcm->list);
-	talloc_free(l1h->last_acked);
-	l1h->last_acked = tcm;
+	if (!flushed) {
+		/* Remove command from list, save it to last_acked and removed
+		 * previous last_acked */
+		llist_del(&tcm->list);
+		talloc_free(l1h->last_acked);
+		l1h->last_acked = tcm;
+	} /* else: tcm was freed by trx_if_flush(), do not access it. */
 
+
+	/* Send next message waiting in the list: */
 	trx_ctrl_send(l1h);
 
 	return 0;
@@ -1224,6 +1240,10 @@ void trx_if_flush(struct trx_l1h *l1h)
 
 	/* Tx queue is now empty, so there's no point in keeping the retrans timer armed: */
 	osmo_timer_del(&l1h->trx_ctrl_timer);
+
+	/* If we are in read_cb, signal to the returning code path that we freed the list. */
+	if (l1h->in_trx_ctrl_read_cb)
+		l1h->flushed_while_in_trx_ctrl_read_cb = true;
 }
 
 /*! close the TRX for given handle (data + control socket) */
