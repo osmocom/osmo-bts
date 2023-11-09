@@ -535,16 +535,25 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		int rc;
 
 		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "No TCH or FACCH prim for transmit.\n");
-		/* If the channel mode is TCH/FS or TCH/EFS, transmit a dummy
-		 * speech block with inverted CRC3, designed to induce a BFI
-		 * condition in the MS receiver.  In all other channel modes,
-		 * transmit dummy FACCH like we always did before.
+		/* - If the channel mode is TCH/FS or TCH/EFS, transmit a dummy
+		 *   speech block with inverted CRC3, designed to induce a BFI
+		 *   condition in the MS receiver.
+		 * - If the channel mode is one of the CSD modes, transmit an
+		 *   idle frame as described in 3GPP TS 44.021, sections 8.1.6
+		 *   and 10.2.3 (all data, status and E-bits set to binary '1').
+		 * - In all other channel modes, transmit dummy FACCH
+		 *   like we always did before.
 		 *
 		 * FIXME: someone who knows AMR needs to look at this problem
 		 * and decide what is the correct BTS Tx behavior for frame
 		 * gaps in TCH/AFS.  See OS#6049.
 		 */
 		switch (tch_mode) {
+		case GSM48_CMODE_DATA_12k0:
+		case GSM48_CMODE_DATA_6k0:
+		case GSM48_CMODE_DATA_3k6:
+		case GSM48_CMODE_DATA_14k5:
+			break; /* see below */
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_EFR:
 			rc = gsm0503_tch_fr_encode(BUFPOS(bursts_p, 0), NULL, 0, 1);
@@ -591,30 +600,36 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		break;
 	/* CSD (TCH/F9.6): 12.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_12k0:
-		if (msg_tch != NULL)
-			gsm0503_tch_fr96_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_tch == NULL)
+			msg_tch = tch_dummy_msgb(4 * 60, 0x01);
+		gsm0503_tch_fr96_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		if (msg_facch != NULL)
 			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	/* CSD (TCH/F4.8): 6.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_6k0:
-		if (msg_tch != NULL)
-			gsm0503_tch_fr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_tch == NULL)
+			msg_tch = tch_dummy_msgb(2 * 60, 0x01);
+		gsm0503_tch_fr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		if (msg_facch != NULL)
 			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	/* CSD (TCH/F2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
 		/* FACCH/F does steal a TCH/F2.4 frame completely */
-		if (msg == msg_facch)
+		if (msg_facch != NULL) {
 			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
-		else
+		} else {
+			if (msg_tch == NULL)
+				msg_tch = tch_dummy_msgb(2 * 36, 0x01);
 			gsm0503_tch_fr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		}
 		break;
 	/* CSD (TCH/F14.4): 14.5 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_14k5:
-		if (msg_tch != NULL)
-			gsm0503_tch_fr144_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		if (msg_tch == NULL)
+			msg_tch = tch_dummy_msgb(290, 0x01);
+		gsm0503_tch_fr144_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
 		if (msg_facch != NULL)
 			gsm0503_tch_fr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
