@@ -399,6 +399,8 @@ bfi:
 extern void tch_dl_dequeue(struct l1sched_ts *l1ts, const struct trx_dl_burst_req *br,
 			   struct msgb **msg_tch, struct msgb **msg_facch);
 
+struct msgb *tch_dummy_msgb(size_t size, uint8_t pad);
+
 /* obtain a to-be-transmitted TCH/H (Half Traffic Channel) burst */
 int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
@@ -445,11 +447,6 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 
 	/* no message at all, send a dummy L2 frame on FACCH */
 	if (msg_tch == NULL && msg_facch == NULL) {
-		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
-			0x03, 0x03, 0x01, /* TODO: use randomized padding */
-			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
-			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
-		};
 		int rc;
 
 		LOGL1SB(DL1P, LOGL_INFO, l1ts, br, "No TCH or FACCH prim for transmit.\n");
@@ -462,25 +459,30 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * and decide what is the correct BTS Tx behavior for frame
 		 * gaps in TCH/AHS.  See OS#6049.
 		 */
-		if (tch_mode == GSM48_CMODE_SPEECH_V1) {
+		switch (tch_mode) {
+		case GSM48_CMODE_SPEECH_V1:
 			rc = gsm0503_tch_hr_encode(BUFPOS(bursts_p, 0), NULL, 0);
 			if (rc == 0)
 				goto send_burst;
-		}
+			/* fall-through */
+		case GSM48_CMODE_SIGN:
+		default:
+			/* FACCH/H can only be scheduled at specific TDMA offset */
+			if (!sched_tchh_dl_facch_map[br->fn % 26]) {
+				/* FACCH/H is not allowed, send half-filled bursts with even numbered
+				 * bits contaning 232 encoded bits of the previous L2 frame, and 232
+				 * odd numbered bits all set to 0. */
+				goto send_burst;
+			}
 
-		/* FACCH/H can only be scheduled at specific TDMA offset */
-		if (!sched_tchh_dl_facch_map[br->fn % 26]) {
-			/* FACCH/H is not allowed, send half-filled bursts with even numbered
-			 * bits contaning 232 encoded bits of the previous L2 frame, and 232
-			 * odd numbered bits all set to 0. */
-			goto send_burst;
+			/* TODO: use randomized padding */
+			msg_facch = tch_dummy_msgb(GSM_MACBLOCK_LEN, GSM_MACBLOCK_PADDING);
+			/* dummy LAPDm func=UI frame */
+			msg_facch->l2h[0] = 0x03;
+			msg_facch->l2h[1] = 0x03;
+			msg_facch->l2h[2] = 0x01;
+			break;
 		}
-
-		gsm0503_tch_hr_encode(BUFPOS(bursts_p, 0), dummy, sizeof(dummy));
-		if (chan_state->rsl_cmode != RSL_CMOD_SPD_DATA)
-			chan_state->dl_ongoing_facch = 1;
-		chan_state->dl_facch_bursts = 6;
-		goto send_burst;
 	}
 
 	/* Unlike SACCH, FACCH has no dedicated slots on the multiframe layout.

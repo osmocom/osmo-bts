@@ -490,6 +490,19 @@ free_bad_msg:
 	}
 }
 
+struct msgb *tch_dummy_msgb(size_t size, uint8_t pad)
+{
+	struct msgb *msg;
+
+	msg = msgb_alloc(size, __func__);
+	OSMO_ASSERT(msg != NULL);
+
+	msg->l2h = msgb_put(msg, size);
+	memset(msg->l2h, pad, size);
+
+	return msg;
+}
+
 /* obtain a to-be-transmitted TCH/F (Full Traffic Channel) burst */
 int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 {
@@ -519,11 +532,6 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	/* dequeue a TCH and/or a FACCH message to be transmitted */
 	tch_dl_dequeue(l1ts, br, &msg_tch, &msg_facch);
 	if (msg_tch == NULL && msg_facch == NULL) {
-		static const uint8_t dummy[GSM_MACBLOCK_LEN] = {
-			0x03, 0x03, 0x01, /* TODO: use randomized padding */
-			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
-			0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
-		};
 		int rc;
 
 		LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br, "No TCH or FACCH prim for transmit.\n");
@@ -541,13 +549,18 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		case GSM48_CMODE_SPEECH_EFR:
 			rc = gsm0503_tch_fr_encode(BUFPOS(bursts_p, 0), NULL, 0, 1);
 			if (rc == 0)
-				break;
+				goto send_burst;
 			/* fall-through */
+		case GSM48_CMODE_SIGN:
 		default:
-			gsm0503_tch_fr_encode(BUFPOS(bursts_p, 0), dummy, sizeof(dummy), 1);
-			chan_state->dl_facch_bursts = 8;
+			/* TODO: use randomized padding */
+			msg_facch = tch_dummy_msgb(GSM_MACBLOCK_LEN, GSM_MACBLOCK_PADDING);
+			/* dummy LAPDm func=UI frame */
+			msg_facch->l2h[0] = 0x03;
+			msg_facch->l2h[1] = 0x03;
+			msg_facch->l2h[2] = 0x01;
+			break;
 		}
-		goto send_burst;
 	}
 
 	/* Unlike SACCH, FACCH has no dedicated slots on the multiframe layout.
