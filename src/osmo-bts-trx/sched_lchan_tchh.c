@@ -463,7 +463,7 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		 * gaps in TCH/AHS.  See OS#6049.
 		 */
 		if (tch_mode == GSM48_CMODE_SPEECH_V1) {
-			rc = gsm0503_tch_hr_encode(bursts_p, NULL, 0);
+			rc = gsm0503_tch_hr_encode(BUFPOS(bursts_p, 0), NULL, 0);
 			if (rc == 0)
 				goto send_burst;
 		}

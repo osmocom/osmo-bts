@@ -539,12 +539,12 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		switch (tch_mode) {
 		case GSM48_CMODE_SPEECH_V1:
 		case GSM48_CMODE_SPEECH_EFR:
-			rc = gsm0503_tch_fr_encode(bursts_p, NULL, 0, 1);
+			rc = gsm0503_tch_fr_encode(BUFPOS(bursts_p, 0), NULL, 0, 1);
 			if (rc == 0)
 				break;
 			/* fall-through */
 		default:
-			gsm0503_tch_fr_encode(bursts_p, dummy, sizeof(dummy), 1);
+			gsm0503_tch_fr_encode(BUFPOS(bursts_p, 0), dummy, sizeof(dummy), 1);
 			chan_state->dl_facch_bursts = 8;
 		}
 		goto send_burst;
