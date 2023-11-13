@@ -57,41 +57,40 @@ const struct value_string lchan_ciph_state_names[] = {
 };
 
 /* prepare the per-SAPI T200 arrays for a given lchan */
-static int t200_by_lchan(int *t200_ms_dcch, int *t200_ms_acch, struct gsm_lchan *lchan)
+static int t200_by_lchan(uint32_t *t200_fn_dcch, uint32_t *t200_fn_acch, struct gsm_lchan *lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	/* we have to compensate for the "RTS advance" due to the asynchronous interface between
-	 * the BTS (LAPDm) and the PHY/L1 (OsmoTRX or DSP in case of osmo-bts-{sysmo,lc15,oc2g,octphy} */
-	int32_t fn_advance = bts_get_avg_fn_advance(bts);
-	int32_t fn_advance_us = fn_advance * 4615;
-	int fn_advance_ms = fn_advance_us / 1000;
-
-	t200_ms_acch[DL_SAPI0] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
-	t200_ms_acch[DL_SAPI3] = bts->t200_ms[T200_SACCH_SDCCH] + fn_advance_ms;
-
-	if (lchan->rep_acch_cap.dl_facch_all && lchan_is_tch(lchan)) {
-		t200_ms_acch[DL_SAPI0] *= 2;
-		t200_ms_acch[DL_SAPI3] *= 2;
-	}
-
 	switch (lchan->type) {
 	case GSM_LCHAN_SDCCH:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_SDCCH] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_SDCCH_SAPI3] + fn_advance_ms;
+		t200_fn_dcch[DL_SAPI0] = bts->t200_fn[T200_SDCCH];
+		t200_fn_dcch[DL_SAPI3] = bts->t200_fn[T200_SDCCH_SAPI3];
+		t200_fn_acch[DL_SAPI0] = bts->t200_fn[T200_SACCH_SDCCH];
+		t200_fn_acch[DL_SAPI3] = bts->t200_fn[T200_SACCH_SDCCH];
 		break;
 	case GSM_LCHAN_TCH_F:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_FACCH_F] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_FACCH_F] + fn_advance_ms;
+		t200_fn_dcch[DL_SAPI0] = bts->t200_fn[T200_FACCH_F];
+		t200_fn_dcch[DL_SAPI3] = bts->t200_fn[T200_FACCH_F];
+		t200_fn_acch[DL_SAPI0] = bts->t200_fn[T200_SACCH_TCH_SAPI0];
+		t200_fn_acch[DL_SAPI3] = bts->t200_fn[T200_SACCH_TCH_SAPI3];
 		break;
 	case GSM_LCHAN_TCH_H:
-		t200_ms_dcch[DL_SAPI0] = bts->t200_ms[T200_FACCH_H] + fn_advance_ms;
-		t200_ms_dcch[DL_SAPI3] = bts->t200_ms[T200_FACCH_H] + fn_advance_ms;
+		t200_fn_dcch[DL_SAPI0] = bts->t200_fn[T200_FACCH_H];
+		t200_fn_dcch[DL_SAPI3] = bts->t200_fn[T200_FACCH_H];
+		t200_fn_acch[DL_SAPI0] = bts->t200_fn[T200_SACCH_TCH_SAPI0];
+		t200_fn_acch[DL_SAPI3] = bts->t200_fn[T200_SACCH_TCH_SAPI3];
 		break;
 	default:
 		/* Channels such as CCCH don't use lapdm DL, and hence no T200 is needed */
 		return -1;
 	}
+
+	/* Add time of two extra messages frames. */
+	if (lchan->rep_acch_cap.dl_facch_all && lchan_is_tch(lchan)) {
+		t200_fn_acch[DL_SAPI0] += 104 * 2;
+		t200_fn_acch[DL_SAPI3] += 104 * 2;
+	}
+
 	return 0;
 }
 
@@ -152,17 +151,17 @@ void gsm_lchan_name_update(struct gsm_lchan *lchan)
 int lchan_init_lapdm(struct gsm_lchan *lchan)
 {
 	struct lapdm_channel *lc = &lchan->lapdm_ch;
-	int t200_ms_dcch[_NR_DL_SAPI], t200_ms_acch[_NR_DL_SAPI];
+	uint32_t t200_fn_dcch[_NR_DL_SAPI], t200_fn_acch[_NR_DL_SAPI];
 
-	if (t200_by_lchan(t200_ms_dcch, t200_ms_acch, lchan) == 0) {
+	if (t200_by_lchan(t200_fn_dcch, t200_fn_acch, lchan) == 0) {
 		LOGPLCHAN(lchan, DLLAPD, LOGL_DEBUG,
-			  "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in ms)\n",
-			  t200_ms_dcch[DL_SAPI0], t200_ms_dcch[DL_SAPI3],
-			  t200_ms_acch[DL_SAPI0], t200_ms_acch[DL_SAPI3]);
-		lapdm_channel_init3(lc, LAPDM_MODE_BTS, t200_ms_dcch, t200_ms_acch, lchan->type,
-				    gsm_lchan_name(lchan));
-		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY);
+			  "Setting T200 D0=%u, D3=%u, S0=%u, S3=%u (all in frames)\n",
+			  t200_fn_dcch[DL_SAPI0], t200_fn_dcch[DL_SAPI3],
+			  t200_fn_acch[DL_SAPI0], t200_fn_acch[DL_SAPI3]);
+		lapdm_channel_init3(lc, LAPDM_MODE_BTS, NULL, NULL, lchan->type, gsm_lchan_name(lchan));
+		lapdm_channel_set_flags(lc, LAPDM_ENT_F_POLLING_ONLY | LAPDM_ENT_F_RTS);
 		lapdm_channel_set_l1(lc, NULL, lchan);
+		lapdm_channel_set_t200_fn(lc, t200_fn_dcch, t200_fn_acch);
 	}
 	/* We still need to set Rx callback to receive RACH requests: */
 	lapdm_channel_set_l3(lc, lapdm_rll_tx_cb, lchan);

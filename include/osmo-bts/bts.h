@@ -241,7 +241,7 @@ struct gsm_bts {
 		int16_t boundary[6];
 		uint8_t intave;
 	} interference;
-	unsigned int t200_ms[7];
+	uint32_t t200_fn[7];
 	unsigned int t3105_ms;
 	unsigned int t3115_ms;	/* VGCS UPLINK GRANT repeat timer */
 	struct {

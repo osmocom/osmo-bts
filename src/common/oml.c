@@ -525,16 +525,21 @@ int oml_mo_tx_sw_act_rep(const struct gsm_abis_mo *mo)
 	return oml_mo_send_msg(mo, nmsg, NM_MT_SW_ACTIVATED_REP);
 }
 
-/* The defaults below correspond to various sources/recommendations that could be found online.
- * The BSC should override this via OML anyway. */
-const unsigned int oml_default_t200_ms[7] = {
-        [T200_SDCCH]		= 1000,
-        [T200_FACCH_F]		= 1000,
-        [T200_FACCH_H]		= 1000,
-        [T200_SACCH_TCH_SAPI0]	= 2000,
-        [T200_SACCH_SDCCH]	= 2000,
-        [T200_SDCCH_SAPI3]	= 1000,
-        [T200_SACCH_TCH_SAPI3]	= 2000,
+/* The defaults below correspond to the number of frames until a response from the MS is expected.
+ * It defines the FN distance between the frame number when a message is sent (first frame) and when the response is
+ * received (first frame). On SACCH the duration is two frames, because SAPI0 and SAPI3 are are transmitted in
+ * alternating order. On DCCH with SAPI3 the duration is two seconds, because SAPI0 has priority over SAPI3.
+ *
+ * See Table 8 if 3GPP TS 44.006. Note that the table only shows the FN distance between frames.
+ */
+const uint32_t oml_default_t200_fn[7] = {
+	[T200_SDCCH]		= 4+32,
+	[T200_FACCH_F]		= 8+9,
+	[T200_FACCH_H]		= 6+10,
+	[T200_SACCH_TCH_SAPI0]	= 79+25+104,
+	[T200_SACCH_SDCCH]	= 4+32+51,
+	[T200_SDCCH_SAPI3]	= 4+32+408, /* two seconds */
+	[T200_SACCH_TCH_SAPI3]	= 79+25+104,
 };
 
 /* 3GPP TS 52.021 §8.11.1 Get Attributes has been received */
@@ -677,25 +682,26 @@ static int oml_rx_set_bts_attr(struct gsm_bts *bts, struct msgb *msg)
 	}
 
 	/* 9.4.53 T200 */
-	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(bts->t200_ms))) {
-		payload = TLVP_VAL(&tp, NM_ATT_T200);
-		for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++) {
-			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
+	if (TLVP_PRES_LEN(&tp, NM_ATT_T200, ARRAY_SIZE(bts->t200_fn))) {
+		/* The OML message NM_ATT_T200 is ignored, because T200 timeouts are set to
+		 * the minimal response time. Longer timeouts would cause lower throughput
+		 * in case of lost frames. Shorter timeouts would cause LAPDm to fail. */
+		DEBUGPFOH(DOML, foh, "Ignoring T200 BTS attribute.\n");
 #if 0
-			bts->t200_ms[i] = t200_ms;
-			DEBUGPFOH(DOML, foh, "T200[%u]: OML=%u, mult=%u => %u ms\n",
+		payload = TLVP_VAL(&tp, NM_ATT_T200);
+		for (i = 0; i < ARRAY_SIZE(bts->t200_fn); i++) {
+			uint32_t t200_ms = payload[i] * abis_nm_t200_ms[i];
+			uint32_t t200_fn = t200_ms * 1000 + (GSM_TDMA_FN_DURATION_uS - 1) / GSM_TDMA_FN_DURATION_uS;
+			/* Values must not be less than absolute minimum. */
+			if (oml_default_t200_fn[i] <= t200_fn)
+				bts->t200_fn[i] = t200_fn;
+			else
+				bts->t200_fn[i] = oml_default_t200_fn[i];
+			DEBUGPFOH(DOML, foh, "T200[%u]: OML=%u, mult=%u => %u ms -> %u fn\n",
 				  i, payload[i], abis_nm_t200_ms[i],
-				  bts->t200_ms[i]);
-#else
-                        /* we'd rather use the 1s/2s (long) defaults by
-                         * libosmocore, as we appear to have some bug(s)
-                         * related to handling T200 expiration in
-                         * libosmogsm lapd(m) code? */
-                        LOGPFOH(DOML, LOGL_NOTICE, foh, "Ignoring T200[%u] (%u ms) "
-                                "as sent by BSC due to suspected LAPDm bug!\n",
-                                i, t200_ms);
-#endif
+				  t200_ms, bts->t200_fn[i]);
 		}
+#endif
 	}
 
 	/* 9.4.31 Maximum Timing Advance */

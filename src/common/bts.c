@@ -355,8 +355,8 @@ int bts_init(struct gsm_bts *bts)
 	bts->max_ber10k_rach = 1707; /* 7 of 41 bits is Eb/N0 of 0 dB = 0.1707 */
 	bts->pcu.sock_path = talloc_strdup(bts, PCU_SOCK_DEFAULT);
 	bts->pcu.sock_wqueue_len_max = BTS_PCU_SOCK_WQUEUE_LEN_DEFAULT;
-	for (i = 0; i < ARRAY_SIZE(bts->t200_ms); i++)
-		bts->t200_ms[i] = oml_default_t200_ms[i];
+	for (i = 0; i < ARRAY_SIZE(bts->t200_fn); i++)
+		bts->t200_fn[i] = oml_default_t200_fn[i];
 
 	/* default RADIO_LINK_TIMEOUT */
 	bts->radio_link_timeout.oml = 32;

@@ -957,10 +957,10 @@ static void l1sap_update_fnstats(struct gsm_bts *bts, uint32_t rts_fn)
 }
 
 /* Common dequeueing function */
-static inline struct msgb *lapdm_phsap_dequeue_msg(struct lapdm_entity *le)
+static inline struct msgb *lapdm_phsap_dequeue_msg(struct lapdm_entity *le, uint32_t fn)
 {
 	struct osmo_phsap_prim pp;
-	if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+	if (lapdm_phsap_dequeue_prim_fn(le, &pp, fn) < 0)
 		return NULL;
 	return pp.oph.msg;
 }
@@ -983,7 +983,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan
 		lchan->rep_acch.dl_facch[1].msg = NULL;
 	} else {
 		/* Fetch new FACCH from queue ... */
-		if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+		if (lapdm_phsap_dequeue_prim_fn(le, &pp, fn) < 0)
 			return NULL;
 		msg = pp.oph.msg;
 
@@ -1013,7 +1013,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_facch(struct gsm_lchan *lchan
 }
 
 /* Special dequeueing function with SACCH repetition (3GPP TS 44.006, section 11) */
-static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan, struct lapdm_entity *le)
+static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan, struct lapdm_entity *le, uint32_t fn)
 {
 	struct osmo_phsap_prim pp;
 	struct msgb *msg;
@@ -1037,7 +1037,7 @@ static inline struct msgb *lapdm_phsap_dequeue_msg_sacch(struct gsm_lchan *lchan
 	}
 
 	/* Fetch new repetition candidate from queue */
-	if (lapdm_phsap_dequeue_prim(le, &pp) < 0)
+	if (lapdm_phsap_dequeue_prim_fn(le, &pp, fn) < 0)
 		return NULL;
 	msg = pp.oph.msg;
 	sapi = (msg->data[0] >> 2) & 0x07;
@@ -1148,9 +1148,9 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 						LOGPLCHAN(lchan, DL1P, LOGL_DEBUG, "DL-SACCH repetition: active => inactive\n");
 					lchan->rep_acch.dl_sacch_active = false;
 				}
-				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le);
+				pp_msg = lapdm_phsap_dequeue_msg_sacch(lchan, le, fn);
 			} else {
-				pp_msg = lapdm_phsap_dequeue_msg(le);
+				pp_msg = lapdm_phsap_dequeue_msg(le, fn);
 			}
 		} else {
 			if (lchan->ts->trx->bts->dtxd)
@@ -1159,7 +1159,7 @@ static int l1sap_ph_rts_ind(struct gsm_bts_trx *trx,
 			if (lchan->rep_acch.dl_facch_active && lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
 				pp_msg = lapdm_phsap_dequeue_msg_facch(lchan, le, fn);
 			else
-				pp_msg = lapdm_phsap_dequeue_msg(le);
+				pp_msg = lapdm_phsap_dequeue_msg(le, fn);
 			lchan->tch.dtx_fr_hr_efr.dl_facch_stealing = (pp_msg != NULL);
 		}
 		if (!pp_msg) {
@@ -1802,9 +1802,18 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 		lchan_meas_handle_sacch(lchan, msg);
 	}
 
+	if (L1SAP_IS_LINK_SACCH(link_id))
+		le = &lchan->lapdm_ch.lapdm_acch;
+	else
+		le = &lchan->lapdm_ch.lapdm_dcch;
+
 	/* bad frame */
-	if (len == 0)
+	if (len == 0) {
+		/* Notify current receive FN to lapdm. */
+		lapdm_t200_fn(le, fn);
+
 		return -EINVAL;
+	}
 
 	/* report first valid received frame to handover process */
 	if (lchan->ho.active == HANDOVER_WAIT_FRAME)
@@ -1825,17 +1834,15 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 			return 0;
 	}
 
-	if (L1SAP_IS_LINK_SACCH(link_id))
-		le = &lchan->lapdm_ch.lapdm_acch;
-	else
-		le = &lchan->lapdm_ch.lapdm_dcch;
-
 	if (check_for_first_ciphrd(lchan, data, len))
 		l1sap_tx_ciph_req(lchan->ts->trx, chan_nr, 1, 0);
 
 	/* SDCCH, SACCH and FACCH all go to LAPDm */
 	msgb_pull_to_l2(msg);
 	lapdm_phsap_up(&l1sap->oph, le);
+
+	/* Notify current receive FN to lapdm. */
+	lapdm_t200_fn(le, fn);
 
 	/* don't free, because we forwarded data */
 	return 1;
@@ -1960,6 +1967,12 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	} else {
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH.ind\n");
 	}
+
+	/* Notify current receive FN to lapdm.
+	 * TCH frames may be indicated before FACCH frames are indicated. To prevent T200 timeout before FACCH is
+	 * received, subtract one frame number, so that timeout is processed next time after FACCH is received.
+	 */
+	lapdm_t200_fn(&lchan->lapdm_ch.lapdm_dcch, GSM_TDMA_FN_SUB(fn, 1));
 
 	/* The ph_tch_param contained in the l1sap primitive may contain
 	 * measurement data. If this data is present, forward it for

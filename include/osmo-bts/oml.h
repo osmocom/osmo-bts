@@ -68,7 +68,7 @@ int oml_fom_ack_nack_copy_msg(const struct msgb *old_msg, uint8_t cause);
 int oml_mo_fom_ack_nack(const struct gsm_abis_mo *mo, uint8_t orig_msg_type,
 			uint8_t cause);
 
-extern const unsigned int oml_default_t200_ms[7];
+extern const uint32_t oml_default_t200_fn[7];
 
 /* Transmit failure event report */
 int oml_tx_failure_event_rep(const struct gsm_abis_mo *mo, enum abis_nm_severity severity,
