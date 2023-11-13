@@ -36,14 +36,10 @@
 #include <sched_utils.h>
 
 /* Add two arrays of sbits */
-static void add_sbits(sbit_t * current, const sbit_t * previous)
+static void add_sbits(sbit_t *current, const sbit_t *previous)
 {
-	unsigned int i;
-	for (i = 0; i < 464; i++) {
-		*current = (*current) / 2 + (*previous) / 2;
-		current++;
-		previous++;
-	}
+	for (unsigned int i = 0; i < 464; i++)
+		current[i] = current[i] / 2 + previous[i] / 2;
 }
 
 /*! \brief a single (SDCCH/SACCH) burst was received by the PHY, process it */
