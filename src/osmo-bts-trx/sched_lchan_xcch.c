@@ -38,7 +38,7 @@
 /* Add two arrays of sbits */
 static void add_sbits(sbit_t *current, const sbit_t *previous)
 {
-	for (unsigned int i = 0; i < 464; i++)
+	for (unsigned int i = 0; i < BPLEN * 4; i++)
 		current[i] = current[i] / 2 + previous[i] / 2;
 }
 
@@ -67,7 +67,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* clear burst & store frame number of first burst */
 	if (bi->bid == 0) {
-		memset(bursts_p, 0, 464);
+		memset(bursts_p, 0, BPLEN * 4);
 		*mask = 0x0;
 		*first_fn = bi->fn;
 	}
@@ -138,7 +138,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* Keep a copy to ease decoding in the next repetition pass */
 	if (rep_sacch)
-		memcpy(chan_state->ul_bursts_prev, bursts_p, 464);
+		memcpy(chan_state->ul_bursts_prev, bursts_p, BPLEN * 4);
 
 	return _sched_compose_ph_data_ind(l1ts, *first_fn, bi->chan,
 					  &l2[0], l2_len,
