@@ -92,7 +92,6 @@ struct l1sched_chan_state {
 	enum trx_mod_type	dl_mod_type;	/* Downlink modulation type */
 	uint8_t			dl_mask;	/* mask of transmitted bursts */
 	sbit_t			*ul_bursts;	/* burst buffer for RX */
-	sbit_t			*ul_bursts_prev;/* previous burst buffer for RX (repeated SACCH) */
 	uint32_t		ul_first_fn;	/* fn of first burst */
 	uint32_t		ul_mask;	/* mask of received bursts */
 

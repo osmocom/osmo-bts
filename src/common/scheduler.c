@@ -1084,11 +1084,8 @@ static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
 		const size_t buf_size = 24 * GSM_NBITS_NB_GMSK_PAYLOAD;
 		if (trx_chan_desc[chan].dl_fn != NULL)
 			chan_state->dl_bursts = talloc_zero_size(l1ts, buf_size);
-		if (trx_chan_desc[chan].ul_fn != NULL) {
+		if (trx_chan_desc[chan].ul_fn != NULL)
 			chan_state->ul_bursts = talloc_zero_size(l1ts, buf_size);
-			if (L1SAP_IS_LINK_SACCH(trx_chan_desc[chan].link_id))
-				chan_state->ul_bursts_prev = talloc_zero_size(l1ts, buf_size);
-		}
 	} else {
 		chan_state->ho_rach_detect = 0;
 
@@ -1100,7 +1097,6 @@ static void _trx_sched_set_lchan(struct gsm_lchan *lchan,
 		/* Release memory used by Rx/Tx burst buffers */
 		TALLOC_FREE(chan_state->dl_bursts);
 		TALLOC_FREE(chan_state->ul_bursts);
-		TALLOC_FREE(chan_state->ul_bursts_prev);
 	}
 
 	chan_state->active = active;

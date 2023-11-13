@@ -67,7 +67,9 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	/* clear burst & store frame number of first burst */
 	if (bi->bid == 0) {
-		memset(bursts_p, 0, BPLEN * 4);
+		if (rep_sacch) /* Keep a copy to ease decoding in the next repetition pass */
+			memcpy(BUFPOS(bursts_p, 4), BUFPOS(bursts_p, 0), BPLEN * 4);
+		memset(BUFPOS(bursts_p, 0), 0, BPLEN * 4);
 		*mask = 0x0;
 		*first_fn = bi->fn;
 	}
@@ -107,7 +109,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	*mask = 0x0;
 
 	/* decode */
-	rc = gsm0503_xcch_decode(l2, bursts_p, &n_errors, &n_bits_total);
+	rc = gsm0503_xcch_decode(l2, BUFPOS(bursts_p, 0), &n_errors, &n_bits_total);
 	if (rc) {
 		LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 			BAD_DATA_MSG_FMT "\n", BAD_DATA_MSG_ARGS);
@@ -118,8 +120,8 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		 * information from the previous SACCH block. See also:
 		 * 3GPP TS 44.006, section 11.2 */
 		if (rep_sacch) {
-			add_sbits(bursts_p, chan_state->ul_bursts_prev);
-			rc = gsm0503_xcch_decode(l2, bursts_p, &n_errors, &n_bits_total);
+			add_sbits(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 4));
+			rc = gsm0503_xcch_decode(l2, BUFPOS(bursts_p, 0), &n_errors, &n_bits_total);
 			if (rc) {
 				LOGL1SB(DL1P, LOGL_NOTICE, l1ts, bi,
 				       "Combining current SACCH block with previous SACCH block also yields bad data (%u/%u)\n",
@@ -135,10 +137,6 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		l2_len = GSM_MACBLOCK_LEN;
 
 	ber10k = compute_ber10k(n_bits_total, n_errors);
-
-	/* Keep a copy to ease decoding in the next repetition pass */
-	if (rep_sacch)
-		memcpy(chan_state->ul_bursts_prev, bursts_p, BPLEN * 4);
 
 	return _sched_compose_ph_data_ind(l1ts, *first_fn, bi->chan,
 					  &l2[0], l2_len,
