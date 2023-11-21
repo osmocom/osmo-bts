@@ -208,6 +208,8 @@ struct gsm_lchan {
 	uint8_t sapis_dl[23];
 	uint8_t sapis_ul[23];
 	struct lapdm_channel lapdm_ch;
+	/* It is required to have L3 info with DL establishment. */
+	bool l3_info_estab;
 	struct llist_head dl_tch_queue;
 	unsigned int dl_tch_queue_len;
 	struct {

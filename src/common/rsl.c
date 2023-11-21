@@ -1907,6 +1907,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		reactivation = true;
 	}
 
+	/* If Activation Type is IMMEDIATE ASSIGNMENT, we expect L3 info with establishment. */
+	lchan->l3_info_estab = (type == RSL_ACT_INTRA_IMM_ASS);
+
 	if (!reactivation && lchan->state != LCHAN_S_NONE) {
 		LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "error: lchan is not available, but in state: %s.\n",
 			  gsm_lchans_name(lchan->state));
@@ -3830,6 +3833,23 @@ int lapdm_rll_tx_cb(struct msgb *msg, struct lapdm_entity *le, void *ctx)
 
 	msg->trx = lchan->ts->trx;
 	msg->lchan = lchan;
+
+	/* If DL estabishment on main signaling link and SAPI 0 with L3 info is expected. */
+	if (lchan->l3_info_estab && rh->msg_type == RSL_MT_EST_IND) {
+		struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
+		if ((rllh->link_id & 0xc7) == 0) {
+			/* Reject initial establishment without L3 info. */
+			if (msgb_l2len(msg) == sizeof(struct abis_rsl_rll_hdr)) {
+				LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "RLL EST IND without contention resolution.\n");
+				/* Release normally, re-use the msgb. */
+				rh->msg_type = RSL_MT_REL_REQ;
+				msgb_tv_put(msg, RSL_IE_RELEASE_MODE, RSL_REL_NORMAL);
+				return rsl_rx_rll(lchan->ts->trx, msg);
+			}
+			/* Re-estabishment without contention resoltuion is allowed. */
+			lchan->l3_info_estab = false;
+		}
+	}
 
 	/* If this is a Measurement Report, then we simply ignore it,
 	 * because it has already been processed in l1sap_ph_data_ind(). */
