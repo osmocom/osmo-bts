@@ -371,6 +371,16 @@ static bool chan_nr_is_dchan(uint8_t chan_nr)
 		return true;
 }
 
+static struct gsm_bts_trx *trx_lookup_by_arfcn(struct llist_head *trx_list, uint16_t arfcn)
+{
+	struct gsm_bts_trx *trx;
+	llist_for_each_entry(trx, trx_list, list) {
+		if (trx->arfcn == arfcn)
+			return trx;
+	}
+	return NULL;
+}
+
 static struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, uint8_t chan_nr,
 				      const char *log_name)
 {
@@ -1383,18 +1393,33 @@ static int rsl_rx_imm_ass(struct gsm_bts_trx *trx, struct msgb *msg)
 	 * the channel is active. Hence we still wait for the activation, but don't need the Abis roundtrip of Activ ACK
 	 * -> Immediate Assignment via the BSC.
 	 * If anything is wrong with the sizes or the lchan lookup, behave normally, i.e. do not do the RR IA caching,
-	 * but just send the RR message to the MS as-is. */
+	 * but just send the RR message to the MS as-is.
+	 * 'trx' here is the TRX of the BCCH channel. To find the correct TRX for the IMM ASS target, we need to look up
+	 * the ARFCN that is contained in the IMM ASS message. When frequency hopping is enabled, there will not be an
+	 * ARFCN, so we cannot support early-IA with frequency hopping enabled. */
 	if (msg->len >= sizeof(struct gsm48_imm_ass)) {
 		struct gsm48_imm_ass *rr_ia = (void*)msg->data;
-		struct gsm_lchan *ia_target_lchan = lchan_lookup(trx, rr_ia->chan_desc.chan_nr, "Early IA check: ");
-		if (ia_target_lchan && ia_target_lchan->state != LCHAN_S_ACTIVE) {
-			/* Target lchan is not yet active. Cache the IA.
-			 * If a previous IA is still lingering, free it. */
-			msgb_free(ia_target_lchan->early_rr_ia);
-			ia_target_lchan->early_rr_ia = msg;
+		if (rr_ia->chan_desc.h0.h == 0) {
+			/* hopping is disabled. */
+			struct gsm_bts_trx *ia_target_trx;
+			uint16_t arfcn;
+			arfcn = (rr_ia->chan_desc.h0.arfcn_high << 8) + rr_ia->chan_desc.h0.arfcn_low;
 
-			/* return 1 means: don't msgb_free() the msg */
-			return 1;
+			ia_target_trx = trx_lookup_by_arfcn(&trx->bts->trx_list, arfcn);
+			if (ia_target_trx) {
+				/* found the ARFCN's trx */
+				struct gsm_lchan *ia_target_lchan;
+				ia_target_lchan = lchan_lookup(ia_target_trx, rr_ia->chan_desc.chan_nr, "Early IA check: ");
+				if (ia_target_lchan && ia_target_lchan->state != LCHAN_S_ACTIVE) {
+					/* Target lchan is not yet active. Cache the IA.
+					 * If a previous IA is still lingering, free it. */
+					msgb_free(ia_target_lchan->early_rr_ia);
+					ia_target_lchan->early_rr_ia = msg;
+
+					/* return 1 means: don't msgb_free() the msg */
+					return 1;
+				}
+			}
 		}
 	}
 
