@@ -287,7 +287,11 @@ struct gsm_lchan {
 		} dtx_fr_hr_efr;
 		uint8_t last_cmr;
 		uint32_t last_fn;
-
+		struct {
+			/* buffers to re-combine RLP frame from multiple Um blocks */
+			uint8_t rlp_buf_ul[576/8]; /* maximum size of RLP frame */
+			uint8_t rlp_buf_dl[576/8]; /* maximum size of RLP frame */
+		} csd;
 	} tch;
 
 	/* 3GPP TS 48.058 § 9.3.37: [0; 255] ok, -1 means invalid*/

@@ -377,6 +377,7 @@ struct gsm_bts {
 		char *local_host;
 		uint32_t sapi_mask;
 		uint8_t sapi_acch;
+		bool rlp;
 	} gsmtap;
 
 	struct osmux_state osmux;

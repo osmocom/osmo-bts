@@ -447,6 +447,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
 		vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 	}
+	if (bts->gsmtap.rlp)
+		vty_out(vty, " gsmtap-rlp%s", VTY_NEWLINE);
 	vty_out(vty, " min-qual-rach %d%s", bts->min_qual_rach,
 		VTY_NEWLINE);
 	vty_out(vty, " min-qual-norm %d%s", bts->min_qual_norm,
@@ -2386,6 +2388,24 @@ DEFUN(cfg_bts_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gsmtap_rlp, cfg_bts_gsmtap_rlp_cmd,
+	"gsmtap-rlp",
+	"Enable generation of GSMTAP frames for RLP (non-transparent CSD)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->gsmtap.rlp = true;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_gsmtap_rlp, cfg_bts_no_gsmtap_rlp_cmd,
+	"no gsmtap-rlp",
+	NO_STR "Disable generation of GSMTAP frames for RLP (non-transparent CSD)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->gsmtap.rlp = false;
+	return CMD_SUCCESS;
+}
+
 static struct cmd_node phy_node = {
 	PHY_NODE,
 	"%s(phy)# ",
@@ -2757,6 +2777,8 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_all_cmd);
 	install_element(BTS_NODE, &cfg_bts_gsmtap_sapi_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_gsmtap_sapi_cmd);
+	install_element(BTS_NODE, &cfg_bts_gsmtap_rlp_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_gsmtap_rlp_cmd);
 
 	/* Osmux Node */
 	install_element(BTS_NODE, &cfg_bts_osmux_cmd);

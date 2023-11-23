@@ -1848,11 +1848,80 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, uint32_t fn,
+/* process one MAC block of unpacked bits of a non-transparent CSD channel */
+static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
+				   const struct ph_tch_param *tch_ind,
+				   const uint8_t *data, unsigned int data_len)
+{
+	struct gsm_bts_trx *trx = lchan->ts->trx;
+	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
+	pbit_t *rlp_buf;
+	int byte_len;
+
+	if (!inst || !trx->bts->gsmtap.rlp)
+		return;
+
+	if (lchan->csd_mode != LCHAN_CSD_M_NT)
+		return;
+
+	if (is_uplink)
+		rlp_buf = lchan->tch.csd.rlp_buf_ul;
+	else
+		rlp_buf = lchan->tch.csd.rlp_buf_dl;
+
+	/* TCH/F 9.6: 4x60bit block => 240bit RLP frame
+	 * TCH/F 4.8: 2x 2x60bit blocks starting at B0/B2/B4 => 240bit RLP frame
+	 * TCH/H 4.8: 4x60bit block => 240bit RLP frame
+	 * TCH/F 2.4: 2x36bit blocks => transparent only
+	 * TCH/H 2.4: 4x36bit blocks => transparent only
+	 * TCH/F 14.4: 2x 290 bit block (starting with M1=0) => 576-bit RLP frame
+	 */
+
+	if (lchan->type == GSM_LCHAN_TCH_F && lchan->tch_mode == GSM48_CMODE_DATA_6k0) {
+		/* in this mode we have 120bit MAC blocks; two of them need to be concatenated
+		 * to render a 240-bit RLP frame. The fist block is present in B0/B2/B4.
+		 * The E7 bit is used to indicate the Frame MF0a */
+		OSMO_ASSERT(data_len == 120);
+		ubit_t e7 = data[4*7+3];
+		if (e7 == 0) {
+			osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
+			return;
+		} else {
+			osmo_ubit2pbit_ext(rlp_buf, 120, data, 0, data_len, 1);
+			byte_len = 240/8;
+		}
+	} else if (lchan->type == GSM_LCHAN_TCH_F && lchan->tch_mode == GSM48_CMODE_DATA_14k5) {
+		/* in this mode we have 290bit MAC blocks containing M1, M2 and 288 data bits;
+		 * two of them need to be concatenated to render a
+		 * 576-bit RLP frame. The start of a RLP frame is
+		 * denoted by a block with M1-bit set to 0. */
+		OSMO_ASSERT(data_len == 290);
+		ubit_t m1 = data[0];
+		if (m1 == 0) {
+			osmo_ubit2pbit_ext(rlp_buf, 0, data, 2, data_len, 1);
+			return;
+		} else {
+			osmo_ubit2pbit_ext(rlp_buf, 288, data, 2, data_len, 1);
+			byte_len = 576/8;
+		}
+	} else {
+		byte_len = osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
+	}
+
+	gsmtap_send_ex(inst, GSMTAP_TYPE_GSM_RLP, trx->arfcn | is_uplink ? GSMTAP_ARFCN_F_UPLINK : 0,
+		       lchan->ts->nr,
+		       lchan->type == GSM_LCHAN_TCH_H ? GSMTAP_CHANNEL_VOICE_H : GSMTAP_CHANNEL_VOICE_F,
+		       lchan->nr, tch_ind->fn, tch_ind->rssi, 0, rlp_buf, byte_len);
+
+}
+
+static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
 				    const uint8_t *data, uint16_t data_len)
 {
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
 	int rc;
+
+	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
 
 	rc = csd_v110_rtp_encode(lchan, &rtp_pl[0], data, data_len);
 	if (rc < 0)
@@ -1860,7 +1929,7 @@ static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, uint32_t fn,
 
 	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
 				&rtp_pl[0], sizeof(rtp_pl),
-				fn_ms_adj(fn, lchan),
+				fn_ms_adj(tch_ind->fn, lchan),
 				lchan->rtp_tx_marker);
 	/* Only clear the marker bit once we have sent a RTP packet with it */
 	lchan->rtp_tx_marker = false;
@@ -2000,7 +2069,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 				send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
 			break;
 		case RSL_CMOD_SPD_DATA:
-			send_ul_rtp_packet_data(lchan, fn, msg->data, msg->len);
+			send_ul_rtp_packet_data(lchan, tch_ind, msg->data, msg->len);
 			break;
 		case RSL_CMOD_SPD_SIGN:
 			return 0; /* drop stale TCH.ind */
@@ -2309,6 +2378,10 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		int rc = csd_v110_rtp_decode(lchan, msg->tail,
 					     rtp_pl, rtp_pl_len);
 		if (rc > 0) {
+			/* 'fake' tch_ind containing all-zero so gsmtap code can be shared
+			 * between UL and DL */
+			static const struct ph_tch_param fake_tch_ind = {};
+			gsmtap_csd_rlp_process(lchan, false, &fake_tch_ind, msg->tail, rc);
 			msgb_put(msg, rc);
 		} else {
 			msgb_free(msg);
@@ -2419,6 +2492,10 @@ int l1sap_chan_rel(struct gsm_bts_trx *trx, uint8_t chan_nr)
 		osmo_ecu_destroy(lchan->ecu_state);
 		lchan->ecu_state = NULL;
 	}
+
+	/* reset CSD RLP buffers to avoid any user plane data leaking from
+	 * one previous lchan into a later one */
+	memset(&lchan->tch.csd, 0, sizeof(lchan->tch.csd));
 
 	return l1sap_chan_act_dact_modify(trx, chan_nr, PRIM_INFO_DEACTIVATE,
 		0);

@@ -262,6 +262,8 @@ OsmoBTS(bts)# list
   gsmtap-sapi (enable-all|disable-all)
   gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
   no gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
+  gsmtap-rlp
+  no gsmtap-rlp
   osmux
   trx <0-254>
 ...
@@ -285,6 +287,7 @@ OsmoBTS(bts)# ?
   gsmtap-remote-host        Enable GSMTAP Um logging (see also 'gsmtap-sapi')
   gsmtap-local-host         Enable local bind for GSMTAP Um logging (see also 'gsmtap-sapi')
   gsmtap-sapi               Enable/disable sending of UL/DL messages over GSMTAP
+  gsmtap-rlp                Enable generation of GSMTAP frames for RLP (non-transparent CSD)
   osmux                     Configure Osmux
   trx                       Select a TRX to configure
 ...
