@@ -538,15 +538,14 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		/* - If the channel mode is TCH/FS or TCH/EFS, transmit a dummy
 		 *   speech block with inverted CRC3, designed to induce a BFI
 		 *   condition in the MS receiver.
+		 * - If the channel mode is TCH/AFS, transmit a dummy speech
+		 *   block with inverted CRC6, designed to induce a BFI
+		 *   condition in the MS receiver.
 		 * - If the channel mode is one of the CSD modes, transmit an
 		 *   idle frame as described in 3GPP TS 44.021, sections 8.1.6
 		 *   and 10.2.3 (all data, status and E-bits set to binary '1').
 		 * - In all other channel modes, transmit dummy FACCH
 		 *   like we always did before.
-		 *
-		 * FIXME: someone who knows AMR needs to look at this problem
-		 * and decide what is the correct BTS Tx behavior for frame
-		 * gaps in TCH/AFS.  See OS#6049.
 		 */
 		switch (tch_mode) {
 		case GSM48_CMODE_DATA_12k0:
@@ -562,6 +561,21 @@ int tx_tchf_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 			/* fall-through */
 		case GSM48_CMODE_SIGN:
 		default:
+			if (tch_mode == GSM48_CMODE_SPEECH_AMR) {
+				/* the first FN 4,13,21 defines that CMI is included in frame,
+				 * the first FN 0,8,17 defines that CMR is included in frame.
+				 */
+				rc = gsm0503_tch_afs_encode(BUFPOS(bursts_p, 0),
+							    NULL, 0,
+							    !sched_tchf_dl_amr_cmi_map[br->fn % 26],
+							    chan_state->codec,
+							    chan_state->codecs,
+							    chan_state->dl_ft,
+							    chan_state->dl_cmr);
+				if (rc == 0)
+					goto send_burst;
+			}
+
 			/* TODO: use randomized padding */
 			msg_facch = tch_dummy_msgb(GSM_MACBLOCK_LEN, GSM_MACBLOCK_PADDING);
 			/* dummy LAPDm func=UI frame */
