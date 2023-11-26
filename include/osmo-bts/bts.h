@@ -378,6 +378,7 @@ struct gsm_bts {
 		uint32_t sapi_mask;
 		uint8_t sapi_acch;
 		bool rlp;
+		bool rlp_skip_null;
 	} gsmtap;
 
 	struct osmux_state osmux;

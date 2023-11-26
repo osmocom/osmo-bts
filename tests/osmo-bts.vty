@@ -262,7 +262,7 @@ OsmoBTS(bts)# list
   gsmtap-sapi (enable-all|disable-all)
   gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
   no gsmtap-sapi (bcch|ccch|rach|agch|pch|sdcch|tch/f|tch/h|pacch|pdtch|ptcch|cbch|sacch)
-  gsmtap-rlp
+  gsmtap-rlp [skip-null]
   no gsmtap-rlp
   osmux
   trx <0-254>

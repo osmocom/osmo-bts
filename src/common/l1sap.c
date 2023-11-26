@@ -33,6 +33,7 @@
 #include <osmocom/gsm/l1sap.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/rsl.h>
+#include <osmocom/gsm/rlp.h>
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/gsmtap_util.h>
 #include <osmocom/core/utils.h>
@@ -1855,6 +1856,7 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
+	struct osmo_rlp_frame_decoded rlpf;
 	pbit_t *rlp_buf;
 	int byte_len;
 
@@ -1906,6 +1908,12 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 		}
 	} else {
 		byte_len = osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
+	}
+
+	if (trx->bts->gsmtap.rlp_skip_null) {
+		int rc = osmo_rlp_decode(&rlpf, 0, rlp_buf, byte_len);
+		if (rc == 0 && rlpf.ftype == OSMO_RLP_FT_U && rlpf.u_ftype == OSMO_RLP_U_FT_NULL)
+			return;
 	}
 
 	gsmtap_send_ex(inst, GSMTAP_TYPE_GSM_RLP, trx->arfcn | is_uplink ? GSMTAP_ARFCN_F_UPLINK : 0,

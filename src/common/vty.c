@@ -447,8 +447,12 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		sapi_buf = osmo_str_tolower(get_value_string(gsmtap_sapi_names, GSMTAP_CHANNEL_ACCH));
 		vty_out(vty, " gsmtap-sapi %s%s", sapi_buf, VTY_NEWLINE);
 	}
-	if (bts->gsmtap.rlp)
-		vty_out(vty, " gsmtap-rlp%s", VTY_NEWLINE);
+	if (bts->gsmtap.rlp) {
+		if (bts->gsmtap.rlp_skip_null)
+			vty_out(vty, " gsmtap-rlp skip-null%s", VTY_NEWLINE);
+		else
+			vty_out(vty, " gsmtap-rlp%s", VTY_NEWLINE);
+	}
 	vty_out(vty, " min-qual-rach %d%s", bts->min_qual_rach,
 		VTY_NEWLINE);
 	vty_out(vty, " min-qual-norm %d%s", bts->min_qual_norm,
@@ -2389,11 +2393,16 @@ DEFUN(cfg_bts_no_gsmtap_sapi, cfg_bts_no_gsmtap_sapi_cmd,
 }
 
 DEFUN(cfg_bts_gsmtap_rlp, cfg_bts_gsmtap_rlp_cmd,
-	"gsmtap-rlp",
-	"Enable generation of GSMTAP frames for RLP (non-transparent CSD)\n")
+	"gsmtap-rlp [skip-null]",
+	"Enable generation of GSMTAP frames for RLP (non-transparent CSD)\n"
+	"Skip the generation of GSMTAP for RLP NULL frames\n")
 {
 	struct gsm_bts *bts = vty->index;
 	bts->gsmtap.rlp = true;
+	if (argc >= 1 && !strcmp(argv[0], "skip-null"))
+		bts->gsmtap.rlp_skip_null = true;
+	else
+		bts->gsmtap.rlp_skip_null = false;
 	return CMD_SUCCESS;
 }
 
