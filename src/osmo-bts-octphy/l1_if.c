@@ -479,7 +479,7 @@ static int ph_data_req(struct gsm_bts_trx *trx, struct msgb *msg,
 		abort();
 	}
 
-	len = msgb_l2len(msg);
+	len = (msg->l2h) ? msgb_l2len(msg) : 0;
 
 	chan_nr = l1sap->u.data.chan_nr;
 	link_id = l1sap->u.data.link_id;
