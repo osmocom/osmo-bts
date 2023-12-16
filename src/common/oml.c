@@ -279,6 +279,113 @@ static int add_att_ipacc_features(struct msgb *msg, const struct gsm_abis_mo *mo
 	return 0;
 }
 
+/* Add attribute 9.4.8 BCCH ARFCN for BTS class */
+static inline void add_att_bcch_arfcn(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 16 bit value */
+	msgb_tv16_put(msg, NM_ATT_BCCH_ARFCN, bts->c0->arfcn);
+}
+
+/* Add attribute 9.4.25 Interference Level Boundaries for BTS class */
+static inline void add_att_interf_bound(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit values */
+	msgb_put_u8(msg, NM_ATT_INTERF_BOUND);
+	for (int j = 0; j < ARRAY_SIZE(bts->interference.boundary); j++)
+		msgb_put_u8(msg, abs(bts->interference.boundary[j]));
+}
+
+/* Add attribute 9.4.24 Intave Parameter for BTS class */
+static inline void add_att_intave_param(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_INTAVE_PARAM, bts->interference.intave);
+}
+
+/* Add attribute 9.4.14 Connection Failure Criterion for BTS class */
+static inline void add_att_conn_fail_crit(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + length + values */
+	msgb_tv16_put(msg, NM_ATT_CONN_FAIL_CRIT, 2);
+	msgb_put_u8(msg, 0x01);
+	msgb_put_u8(msg, bts->radio_link_timeout.current);
+}
+
+/* Add attribute 9.4.31 Maximum Timing Advance for BTS class */
+static inline void add_att_max_ta(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_MAX_TA, bts->max_ta);
+}
+
+/* Add attribute 9.4.39 Overload Period for BTS class */
+static inline void add_att_overl_period(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + length + value */
+	msgb_tv16_put(msg, NM_ATT_OVERL_PERIOD, 1);
+	msgb_put_u8(msg, bts->load.overload_period);
+}
+
+/* Add attribute 9.4.12 CCCH Load Threshold for BTS class */
+static inline void add_att_ccch_l_t(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_CCCH_L_T, bts->load.ccch.load_ind_thresh);
+}
+
+/* Add attribute 9.4.11 CCCH Load Indication Period for BTS class */
+static inline void add_att_ccch_l_i_p(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_CCCH_L_I_P, bts->load.ccch.load_ind_period);
+}
+
+/* Add attribute 9.4.44 RACH Busy Threshold for BTS class */
+static inline void add_att_rach_b_thresh(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_RACH_B_THRESH, abs(bts->load.rach.busy_thresh));
+}
+
+/* Add attribute 9.4.45 RACH Load Averaging Slots for BTS class */
+static inline void add_att_ldavg_slots(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 16 bit value */
+	msgb_tv16_put(msg, NM_ATT_LDAVG_SLOTS, bts->load.rach.averaging_slots);
+}
+
+/* Add attribute 9.4.10 BTS Air Timer for BTS class */
+static inline void add_att_bts_air_timer(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_BTS_AIR_TIMER, bts->t3105_ms / 10);
+}
+
+/* Add attribute 9.4.37 NY1 for BTS class */
+static inline void add_att_ny1(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_NY1, bts->ny1);
+}
+
+/* Add attribute 9.4.9 BSIC for BTS class */
+static inline int add_att_bsic(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* BSIC must be configured. */
+	if (!bts->bsic_configured)
+		return -EINVAL;
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_BSIC, bts->bsic);
+	return 0;
+}
+
+/* Add attribute 9.4.20 GSM Time for BTS class */
+static inline void add_att_gsm_time(struct msgb *msg, const struct gsm_bts *bts)
+{
+	/* type + 16 bit value */
+	msgb_tv16_put(msg, NM_ATT_GSM_TIME, bts->gsm_time.fn % GSM_RFN_MODULUS);
+}
+
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
 static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
@@ -317,6 +424,77 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 		case NM_ATT_IPACC_SUPP_FEATURES:
 			if (add_att_ipacc_features(nmsg, mo) != 0)
 				goto unsupported;
+			break;
+		case NM_ATT_BCCH_ARFCN:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_bcch_arfcn(nmsg, mo->bts);
+			break;
+		case NM_ATT_INTERF_BOUND:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_interf_bound(nmsg, mo->bts);
+			break;
+		case NM_ATT_INTAVE_PARAM:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_intave_param(nmsg, mo->bts);
+			break;
+		case NM_ATT_CONN_FAIL_CRIT:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_conn_fail_crit(nmsg, mo->bts);
+			break;
+		case NM_ATT_MAX_TA:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_max_ta(nmsg, mo->bts);
+			break;
+		case NM_ATT_OVERL_PERIOD:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_overl_period(nmsg, mo->bts);
+			break;
+		case NM_ATT_CCCH_L_T:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_ccch_l_t(nmsg, mo->bts);
+			break;
+		case NM_ATT_CCCH_L_I_P:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_ccch_l_i_p(nmsg, mo->bts);
+			break;
+		case NM_ATT_RACH_B_THRESH:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_rach_b_thresh(nmsg, mo->bts);
+			break;
+		case NM_ATT_LDAVG_SLOTS:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_ldavg_slots(nmsg, mo->bts);
+			break;
+		case NM_ATT_BTS_AIR_TIMER:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_bts_air_timer(nmsg, mo->bts);
+			break;
+		case NM_ATT_NY1:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_ny1(nmsg, mo->bts);
+			break;
+		case NM_ATT_BSIC:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			if (add_att_bsic(nmsg, mo->bts) != 0)
+				goto unsupported;
+			break;
+		case NM_ATT_GSM_TIME:
+			if (mo->obj_class != NM_OC_BTS)
+				goto unsupported;
+			add_att_gsm_time(nmsg, mo->bts);
 			break;
 		default:
 unsupported:
