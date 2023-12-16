@@ -408,6 +408,61 @@ static inline void add_att_arfcn_list(struct msgb *msg, const struct gsm_bts_trx
 #endif
 }
 
+/* Add attribute 9.4.5 ARFCN List for channel class */
+static inline void add_att_arfcn_list_ts(struct msgb *msg, const struct gsm_bts_trx_ts *ts)
+{
+	if (ts->hopping.enabled) {
+		/* type + length + values */
+		msgb_tv16_put(msg, NM_ATT_ARFCN_LIST, ts->hopping.arfcn_num * 2);
+		for (int j = 0; j < ts->hopping.arfcn_num; j++)
+			msgb_put_u16(msg, ts->hopping.arfcn_list[j]);
+	} else {
+		/* type + length + values */
+		msgb_tv16_put(msg, NM_ATT_ARFCN_LIST, 2);
+		msgb_put_u16(msg, ts->trx->arfcn);
+	}
+}
+
+/* Add attribute 9.4.13 Channel Combination for channel class */
+static inline int add_att_chan_comb(struct msgb *msg, const struct gsm_bts_trx_ts *ts)
+{
+	int comb = abis_nm_chcomb4pchan(ts->pchan);
+
+	/* If current channel combination is not yet set, 0xff is returned. */
+	if (comb < 0 || comb == 0xff)
+		return -EINVAL;
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_CHAN_COMB, comb);
+	return 0;
+}
+
+/* Add attribute 9.4.60 TSC for channel class */
+static inline void add_att_tsc(struct msgb *msg, const struct gsm_bts_trx_ts *ts)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_TSC, ts->tsc);
+}
+
+/* Add attribute 9.4.60 HSN for channel class */
+static inline int add_att_hsn(struct msgb *msg, const struct gsm_bts_trx_ts *ts)
+{
+	if (!ts->hopping.enabled)
+		return -EINVAL;
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_HSN, ts->hopping.hsn);
+	return 0;
+}
+
+/* Add attribute 9.4.21 MAIO for channel class */
+static inline int add_att_maio(struct msgb *msg, const struct gsm_bts_trx_ts *ts)
+{
+	if (!ts->hopping.enabled)
+		return -EINVAL;
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_MAIO, ts->hopping.maio);
+	return 0;
+}
+
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
 static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
@@ -415,14 +470,20 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 	struct msgb *nmsg = oml_msgb_alloc();
 	unsigned int num_unsupported = 0;
 	struct gsm_bts_trx *trx = NULL;
+	struct gsm_bts_trx_ts *ts = NULL;
 	int rc;
 
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
 
-	/* Set TRX, if object class is Radio Carrier or Baseband Transceiver. */
-	if (mo->obj_class == NM_OC_RADIO_CARRIER || mo->obj_class == NM_OC_BASEB_TRANSC)
+	/* Set TRX, if object class is Radio Carrier, Baseband Transceiver or Channel. */
+	if (mo->obj_class == NM_OC_RADIO_CARRIER || mo->obj_class == NM_OC_BASEB_TRANSC ||
+	    mo->obj_class == NM_OC_CHANNEL)
 		trx = gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr);
+
+	/* Set TS, if object class is Channel. */
+	if (mo->obj_class == NM_OC_CHANNEL && trx)
+		ts = &trx->ts[mo->obj_inst.ts_nr];
 
 	for (unsigned int i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
@@ -529,9 +590,37 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			add_att_rf_maxpowr_r(nmsg, trx);
 			break;
 		case NM_ATT_ARFCN_LIST:
-			if (mo->obj_class != NM_OC_RADIO_CARRIER || !trx)
+			if (mo->obj_class == NM_OC_RADIO_CARRIER && trx) {
+				add_att_arfcn_list(nmsg, trx);
+				break;
+			}
+			if (mo->obj_class == NM_OC_CHANNEL && ts) {
+				add_att_arfcn_list_ts(nmsg, ts);
+				break;
+			}
+			goto unsupported;
+		case NM_ATT_CHAN_COMB:
+			if (mo->obj_class != NM_OC_CHANNEL || !ts)
 				goto unsupported;
-			add_att_arfcn_list(nmsg, trx);
+			if (add_att_chan_comb(nmsg, ts) != 0)
+				goto unsupported;
+			break;
+		case NM_ATT_TSC:
+			if (mo->obj_class != NM_OC_CHANNEL || !ts)
+				goto unsupported;
+			add_att_tsc(nmsg, ts);
+			break;
+		case NM_ATT_HSN:
+			if (mo->obj_class != NM_OC_CHANNEL || !ts)
+				goto unsupported;
+			if (add_att_hsn(nmsg, ts) != 0)
+				goto unsupported;
+			break;
+		case NM_ATT_MAIO:
+			if (mo->obj_class != NM_OC_CHANNEL || !ts)
+				goto unsupported;
+			if (add_att_maio(nmsg, ts) != 0)
+				goto unsupported;
 			break;
 		default:
 unsupported:
