@@ -386,16 +386,47 @@ static inline void add_att_gsm_time(struct msgb *msg, const struct gsm_bts *bts)
 	msgb_tv16_put(msg, NM_ATT_GSM_TIME, bts->gsm_time.fn % GSM_RFN_MODULUS);
 }
 
+/* Add attribute 9.4.47 RF Max Power Reduction for radio carrier class */
+static inline void add_att_rf_maxpowr_r(struct msgb *msg, const struct gsm_bts_trx *trx)
+{
+	/* type + 8 bit value */
+	msgb_tv_put(msg, NM_ATT_RF_MAXPOWR_R, trx->max_power_red / 2);
+}
+
+/* Add attribute 9.4.5 ARFCN List for radio carrier class */
+static inline void add_att_arfcn_list(struct msgb *msg, const struct gsm_bts_trx *trx)
+{
+#if 0
+	/* type + length + values */
+	msgb_tv16_put(msg, NM_ATT_ARFCN_LIST, trx->arfcn_num * 2);
+	for (int j = 0; j < trx->arfcn_num; j++)
+		msgb_put_u16(msg, trx->arfcn_list[j]);
+#else
+	/* type + length + values */
+	msgb_tv16_put(msg, NM_ATT_ARFCN_LIST, 2);
+	msgb_put_u16(msg, trx->arfcn);
+#endif
+}
+
 /* send 3GPP TS 52.021 §8.11.2 Get Attribute Response */
 static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			    const uint8_t *attr, uint16_t attr_len)
 {
 	struct msgb *nmsg = oml_msgb_alloc();
 	unsigned int num_unsupported = 0;
+	struct gsm_bts_trx *trx = NULL;
 	int rc;
 
 	if (!nmsg)
 		return -NM_NACK_CANT_PERFORM;
+
+	/* Set TRX, if object class is Radio Carrier or Baseband Transceiver. */
+	switch (mo->obj_class) {
+	case NM_OC_RADIO_CARRIER:
+	case NM_OC_BASEB_TRANSC:
+		trx = gsm_bts_trx_num(mo->bts, mo->obj_inst.trx_nr);
+		break;
+	}
 
 	for (unsigned int i = 0; i < attr_len; i++) {
 		switch (attr[i]) {
@@ -495,6 +526,16 @@ static int oml_tx_attr_resp(const struct gsm_abis_mo *mo,
 			if (mo->obj_class != NM_OC_BTS)
 				goto unsupported;
 			add_att_gsm_time(nmsg, mo->bts);
+			break;
+		case NM_ATT_RF_MAXPOWR_R:
+			if (mo->obj_class != NM_OC_RADIO_CARRIER || !trx)
+				goto unsupported;
+			add_att_rf_maxpowr_r(nmsg, trx);
+			break;
+		case NM_ATT_ARFCN_LIST:
+			if (mo->obj_class != NM_OC_RADIO_CARRIER || !trx)
+				goto unsupported;
+			add_att_arfcn_list(nmsg, trx);
 			break;
 		default:
 unsupported:
