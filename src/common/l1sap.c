@@ -1858,6 +1858,7 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
 	struct osmo_rlp_frame_decoded rlpf;
 	pbit_t *rlp_buf;
+	uint16_t arfcn;
 	int byte_len;
 
 	if (!inst || !trx->bts->gsmtap.rlp)
@@ -1916,8 +1917,11 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 			return;
 	}
 
-	gsmtap_send_ex(inst, GSMTAP_TYPE_GSM_RLP, trx->arfcn | is_uplink ? GSMTAP_ARFCN_F_UPLINK : 0,
-		       lchan->ts->nr,
+	arfcn = trx->arfcn;
+	if (is_uplink)
+		arfcn |= GSMTAP_ARFCN_F_UPLINK;
+
+	gsmtap_send_ex(inst, GSMTAP_TYPE_GSM_RLP, arfcn, lchan->ts->nr,
 		       lchan->type == GSM_LCHAN_TCH_H ? GSMTAP_CHANNEL_VOICE_H : GSMTAP_CHANNEL_VOICE_F,
 		       lchan->nr, tch_ind->fn, tch_ind->rssi, 0, rlp_buf, byte_len);
 
