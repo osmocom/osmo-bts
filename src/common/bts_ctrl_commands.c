@@ -84,12 +84,45 @@ static int set_oml_alert(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
+static int verify_max_ber10k_rach(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+	int max_ber10k_rach = atoi(cmd->value);
+
+	if (max_ber10k_rach < 0 || max_ber10k_rach > 10000) {
+		cmd->reply = "Value is out of range";
+		return 1;
+	}
+
+	return 0;
+}
+
+static int get_max_ber10k_rach(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = talloc_asprintf(cmd, "%u", g_bts->max_ber10k_rach);
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int set_max_ber10k_rach(struct ctrl_cmd *cmd, void *data)
+{
+	g_bts->max_ber10k_rach = atoi(cmd->value);
+	cmd->reply = "OK";
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(max_ber10k_rach, "max-ber10k-rach");
+
 int bts_ctrl_cmds_install(struct gsm_bts *bts)
 {
 	int rc = 0;
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_therm_att);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_oml_alert);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_max_ber10k_rach);
 	g_bts = bts;
 
 	return rc;
