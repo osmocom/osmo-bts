@@ -48,3 +48,7 @@ int trx_if_powered(struct trx_l1h *l1h);
 
 /* Format negotiation command */
 int trx_if_cmd_setformat(struct trx_l1h *l1h, uint8_t ver, trx_if_cmd_generic_cb *cb);
+
+int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb,
+		    const char *cmd, const char *fmt, ...);
+#define trx_ctrl_cmd(l1h, critical, cmd, fmt, ...) trx_ctrl_cmd_cb(l1h, critical, NULL, cmd, fmt, ##__VA_ARGS__)

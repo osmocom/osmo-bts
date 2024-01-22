@@ -194,6 +194,39 @@ DEFUN(show_phy, show_phy_cmd, "show phy",
 	return CMD_SUCCESS;
 }
 
+DEFUN_HIDDEN(test_send_trxc,
+	     test_send_trxc_cmd,
+	     "test send-trxc-cmd <0-255> CMD [.ARGS]",
+	     "Various testing commands\n"
+	     "Send an arbitrary TRX command\n"
+	     "Transceiver number\n"
+	     "TRXC command\n" "TRXC command arguments\n")
+{
+	const struct gsm_bts_trx *trx;
+	const struct phy_instance *pinst;
+	struct trx_l1h *l1h;
+	int rc;
+
+	trx = gsm_bts_trx_num(g_bts, atoi(argv[0]));
+	if (trx == NULL) {
+		vty_out(vty, "%% Could not find TRX%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pinst = trx_phy_instance(trx);
+	l1h = pinst->u.osmotrx.hdl;
+
+	if (argc > 2) {
+		char *cmd_args = argv_concat(argv, argc, 2);
+		rc = trx_ctrl_cmd(l1h, 0, argv[1], "%s", cmd_args);
+		talloc_free(cmd_args);
+	} else {
+		rc = trx_ctrl_cmd(l1h, 0, argv[1], "");
+	}
+
+	return (rc == 0) ? CMD_SUCCESS : CMD_WARNING;
+}
+
 DEFUN_USRATTR(cfg_trx_nominal_power, cfg_trx_nominal_power_cmd,
 	      X(BTS_VTY_TRX_POWERCYCLE),
 	      "nominal-tx-power <-10-100>",
@@ -629,6 +662,8 @@ int bts_model_vty_init(void *ctx)
 {
 	install_element_ve(&show_transceiver_cmd);
 	install_element_ve(&show_phy_cmd);
+
+	install_element(ENABLE_NODE, &test_send_trxc_cmd);
 
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_no_nominal_power_cmd);

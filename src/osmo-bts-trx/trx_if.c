@@ -227,8 +227,8 @@ void trx_if_init(struct trx_l1h *l1h)
  *  The new command will be added to the end of the control command
  *  queue.
  */
-static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const char *cmd,
-	const char *fmt, ...)
+int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb,
+		    const char *cmd, const char *fmt, ...)
 {
 	struct trx_ctrl_msg *tcm;
 	struct trx_ctrl_msg *prev = NULL;
@@ -277,7 +277,6 @@ static int trx_ctrl_cmd_cb(struct trx_l1h *l1h, int critical, void *cb, const ch
 
 	return 0;
 }
-#define trx_ctrl_cmd(l1h, critical, cmd, fmt, ...) trx_ctrl_cmd_cb(l1h, critical, NULL, cmd, fmt, ##__VA_ARGS__)
 
 /*! Send "POWEROFF" command to TRX */
 int trx_if_cmd_poweroff(struct trx_l1h *l1h, trx_if_cmd_poweronoff_cb *cb)
