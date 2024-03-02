@@ -233,7 +233,7 @@ static void sysmobts_mgr_temp_handle(struct sysmobts_mgr_instance *manager,
 	rep->variable = "oml-alert";
 	rep->value = oml_alert;
 	LOGP(DTEMP, LOGL_ERROR, "OML alert sent: %d\n",
-	     ctrl_cmd_send(&ctrl->write_queue, rep));
+	     ctrl_cmd_send2(ctrl, rep));
 	talloc_free(rep);
 }
 
