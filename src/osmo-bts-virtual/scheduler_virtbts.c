@@ -102,8 +102,6 @@ static void _tx_to_virt_um(struct l1sched_ts *l1ts,
 		if (rc < 0)
 			LOGL1SB(DL1P, LOGL_ERROR, l1ts, br,
 			       "GSMTAP msg could not send to virtual Um: %s\n", strerror(-rc));
-		else if (rc == 0)
-			bts_shutdown(trx->bts, "VirtPHY write socket died\n");
 		else
 			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, br,
 			       "Sending GSMTAP message to virtual Um\n");
