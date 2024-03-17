@@ -104,6 +104,15 @@ static const struct rate_ctr_desc bts_ctr_desc[] = {
 	[BTS_CTR_AGCH_RCVD] =		{"agch:rcvd", "Received AGCH requests (Abis)"},
 	[BTS_CTR_AGCH_SENT] =		{"agch:sent", "Sent AGCH requests (Abis)"},
 	[BTS_CTR_AGCH_DELETED] =	{"agch:delete", "Sent AGCH DELETE IND (Abis)"},
+
+	[BTS_CTR_RTP_RX_TOTAL] =	{"rtp:rx:total", "Total number of received RTP packets"},
+	[BTS_CTR_RTP_RX_MARKER] =	{"rtp:rx:marker", "Number of received RTP packets with marker bit set"},
+	[BTS_CTR_RTP_RX_DROP_PREEN] =	{"rtp:rx:drop:preen", "Total number of received RTP packets dropped during preening"},
+	[BTS_CTR_RTP_RX_DROP_LOOPBACK] = {"rtp:rx:drop:loopback", "Total number of received RTP packets dropped during loopback"},
+	[BTS_CTR_RTP_RX_DROP_OVERFLOW] = {"rtp:rx:drop:overflow", "Total number of received RTP packets dropped during DL queue overflow"},
+	[BTS_CTR_RTP_RX_DROP_V110_DEC] = {"rtp:rx:drop:v110_dec", "Total number of received RTP packets dropped during V.110 decode"},
+	[BTS_CTR_RTP_TX_TOTAL] =	{"rtp:tx:total", "Total number of transmitted RTP packets"},
+	[BTS_CTR_RTP_TX_MARKER] =	{"rtp:tx:marker", "Number of transmitted RTP packets with marker bit set"},
 };
 static const struct rate_ctr_group_desc bts_ctrg_desc = {
 	"bts",

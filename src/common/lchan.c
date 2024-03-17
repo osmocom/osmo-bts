@@ -652,9 +652,11 @@ void lchan_rtp_socket_free(struct gsm_lchan *lchan)
 /*! limit number of queue entries to %u; drops any surplus messages */
 void lchan_dl_tch_queue_enqueue(struct gsm_lchan *lchan, struct msgb *msg, unsigned int limit)
 {
-	if (lchan->dl_tch_queue_len > limit)
-		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "freeing %d queued frames\n",
-			  lchan->dl_tch_queue_len - limit);
+	if (lchan->dl_tch_queue_len > limit) {
+		unsigned int excess = lchan->dl_tch_queue_len - limit;
+		LOGPLCHAN(lchan, DL1P, LOGL_NOTICE, "freeing %d queued frames\n", excess);
+		rate_ctr_add2(lchan->ts->trx->bts->ctrs, BTS_CTR_RTP_RX_DROP_OVERFLOW, excess);
+	}
 	while (lchan->dl_tch_queue_len > limit) {
 		struct msgb *tmp = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 		msgb_free(tmp);

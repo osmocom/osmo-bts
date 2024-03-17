@@ -1930,6 +1930,7 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
 				    const uint8_t *data, uint16_t data_len)
 {
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
 	int rc;
 
@@ -1938,6 +1939,10 @@ static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, const struct ph_tch
 	rc = csd_v110_rtp_encode(lchan, &rtp_pl[0], data, data_len);
 	if (rc < 0)
 		return;
+
+	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
+	if (lchan->rtp_tx_marker)
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
 
 	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
 				&rtp_pl[0], sizeof(rtp_pl),
@@ -1951,12 +1956,17 @@ static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, const struct ph_tch
 static void send_ul_rtp_packet_speech(struct gsm_lchan *lchan, uint32_t fn,
 				      const uint8_t *rtp_pl, uint16_t rtp_pl_len)
 {
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+
 	if (lchan->abis_ip.osmux.use) {
 		lchan_osmux_send_frame(lchan, rtp_pl, rtp_pl_len,
 				       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
 	} else if (lchan->abis_ip.rtp_socket) {
 		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
 			rtp_pl, rtp_pl_len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
+		if (lchan->rtp_tx_marker)
+			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
 	}
 	/* Only clear the marker bit once we have sent a RTP packet with it */
 	lchan->rtp_tx_marker = false;
@@ -2360,17 +2370,25 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		     uint32_t timestamp, bool marker)
 {
 	struct gsm_lchan *lchan = rs->priv;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg;
 	bool rfc5993_sid = false;
 
+	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_TOTAL);
+	if (marker)
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_MARKER);
+
 	/* if we're in loopback mode, we don't accept frames from the
 	 * RTP socket anymore */
-	if (lchan->loopback)
+	if (lchan->loopback) {
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_DROP_LOOPBACK);
 		return;
+	}
 
 	/* initial preen */
 	switch (rtp_payload_input_preen(lchan, rtp_pl, rtp_pl_len, &rfc5993_sid)) {
 	case PL_DECISION_DROP:
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_DROP_PREEN);
 		return;
 	case PL_DECISION_ACCEPT:
 		break;
@@ -2396,6 +2414,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			gsmtap_csd_rlp_process(lchan, false, &fake_tch_ind, msg->tail, rc);
 			msgb_put(msg, rc);
 		} else {
+			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_DROP_V110_DEC);
 			msgb_free(msg);
 			return;
 		}
