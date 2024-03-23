@@ -57,6 +57,13 @@ There also is an
 [Abis reference Manual](https://ftp.osmocom.org/docs/latest/osmobts-abis.pdf)
 describing the OsmoBTS specific A-bis dialect.
 
+Forum
+-----
+
+We welcome any osmo-bts related discussions in the
+[Cellular Network Infrastructure -> 2G RAN (GERAN)](https://discourse.osmocom.org/c/cni/geran)
+section of the osmocom discourse (web based Forum).
+
 Mailing List
 ------------
 
@@ -68,6 +75,13 @@ options and the list archive.
 Please observe the [Osmocom Mailing List
 Rules](https://osmocom.org/projects/cellular-infrastructure/wiki/Mailing_List_Rules)
 when posting.
+
+Issue Tracker
+-------------
+
+We use the [issue tracker of the osmo-bts project on osmocom.org](https://osmocom.org/projects/osmobts/issues) for
+tracking the state of bug reports and feature requests.  Feel free to submit any issues you may find, or help
+us out by resolving existing issues.
 
 Contributing
 ------------
