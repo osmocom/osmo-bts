@@ -234,6 +234,10 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
 	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
 
+	LOGPLCHAN(lchan, DLOOP, LOGL_NOTICE,
+		  "PESPIN: ci_on=%u Rx ms_power_lvl=%u ul_rssi_dbm=%d ul_lqual_cb=%d\n",
+		  ci_on, ms_power_lvl, ul_rssi_dbm, ul_lqual_cb);
+
 	/* If computed C/I is enabled and out of acceptable thresholds: */
 	if (ci_on && ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
 		new_dbm = ms_dbm + params->inc_step_size_db;
