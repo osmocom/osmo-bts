@@ -1867,10 +1867,10 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	int current_dbm = ms_pwr_dbm(trx->bts->band, st->current);
 	int max_dbm = ms_pwr_dbm(trx->bts->band, st->max);
 
-	cfg_out(vty, "Current power level: %u, -%d dBm",
+	cfg_out(vty, "Current power level: %u, %d dBm",
 		st->current, current_dbm);
 	if (st->dpc_params != NULL)
-		vty_out(vty, " (max %u, -%d dBm)", st->max, max_dbm);
+		vty_out(vty, " (max %u, %d dBm)", st->max, max_dbm);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
 	if (st->dpc_params == NULL)
