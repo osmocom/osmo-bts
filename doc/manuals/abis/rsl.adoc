@@ -867,6 +867,8 @@ addition to those indicated in 3GPP TS 48.058 Section 9.3:
 | 0x01 | RSL_IE_CHAN_NR | <<RSL_IE_CHAN_NR>>
 | 0x60 | RSL_IE_OSMO_REP_ACCH_CAP | <<RSL_IE_OSMO_REP_ACCH_CAP>>
 | 0x61 | RSL_IE_OSMO_TRAINING_SEQUENCE | <<RSL_IE_OSMO_TRAINING_SEQUENCE>>
+| 0x62 | RSL_IE_OSMO_TEMP_OVP_ACCH_CAP | <<RSL_IE_OSMO_TEMP_OVP_ACCH_CAP>>
+| 0x63 | RSL_IE_OSMO_OSMUX_CID | <<RSL_IE_OSMO_OSMUX_CID>>
 | 0xf0 | RSL_IE_IPAC_REMOTE_IP | <<RSL_IE_IPAC_REMOTE_IP>>
 | 0xf1 | RSL_IE_IPAC_REMOTE_PORT | <<RSL_IE_IPAC_REMOTE_PORT>>
 | 0xf3 | RSL_IE_IPAC_LOCAL_PORT | <<RSL_IE_IPAC_LOCAL_PORT>>
@@ -1088,6 +1090,16 @@ for future use.
 | 7 | 'Training Sequence Code (TSC) 7'
 | 8..255 | reserved values
 |===
+
+[[RSL_IE_OSMO_TEMP_OVP_ACCH_CAP]]
+==== RSL_IE_OSMO_TEMP_OVP_ACCH_CAP
+
+FIXME: this IE has been defined, but remains to be documented.
+
+[[RSL_IE_OSMO_OSMUX_CID]]
+==== RSL_IE_OSMO_OSMUX_CID
+
+FIXME: this IE has been defined, but remains to be documented.
 
 [[RSL_IE_IPAC_RTP_CSD_FORMAT]]
 ==== RSL_IE_IPAC_RTP_CSD_FORMAT
