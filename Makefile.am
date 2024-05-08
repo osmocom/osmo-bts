@@ -8,7 +8,6 @@ EXTRA_DIST = \
 	.version \
 	README.md \
 	contrib/dump_docs.py \
-	contrib/osmo-bts.spec.in \
 	debian \
 	git-version-gen \
 	$(NULL)
