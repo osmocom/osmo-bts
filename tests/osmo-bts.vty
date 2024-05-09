@@ -19,14 +19,14 @@ OsmoBTS> ?
 
 OsmoBTS> show ?
 ...
-  bts             Display information about a BTS
-  trx             Display information about a TRX
-  timeslot        Display information about a TS
-  lchan           Display information about a logical channel
-  timer           Show timers
-  e1_driver       Display information about available E1 drivers
-  e1_line         Display information about a E1 line
-  e1_timeslot     Display information about a E1 timeslot
+  bts              Display information about a BTS
+  trx              Display information about a TRX
+  timeslot         Display information about a TS
+  lchan            Display information about a logical channel
+  timer            Show timers
+  e1_driver        Display information about available E1 drivers
+  e1_line          Display information about a E1 line
+  e1_timeslot      Display information about a E1 timeslot
 ...
 OsmoBTS> show bts ?
   [<0-255>]  BTS Number
@@ -120,14 +120,14 @@ OsmoBTS# ?
 
 OsmoBTS# show ?
 ...
-  bts             Display information about a BTS
-  trx             Display information about a TRX
-  timeslot        Display information about a TS
-  lchan           Display information about a logical channel
-  timer           Show timers
-  e1_driver       Display information about available E1 drivers
-  e1_line         Display information about a E1 line
-  e1_timeslot     Display information about a E1 timeslot
+  bts              Display information about a BTS
+  trx              Display information about a TRX
+  timeslot         Display information about a TS
+  lchan            Display information about a logical channel
+  timer            Show timers
+  e1_driver        Display information about available E1 drivers
+  e1_line          Display information about a E1 line
+  e1_timeslot      Display information about a E1 timeslot
 ...
 OsmoBTS# show bts ?
   [<0-255>]  BTS Number
