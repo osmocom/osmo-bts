@@ -10,6 +10,9 @@ StateDirectory=osmocom
 WorkingDirectory=%S/osmocom
 Restart=always
 RestartSec=2
+User=osmocom
+Group=osmocom
+AmbientCapabilities=CAP_SYS_NICE
 
 # CPU scheduling policy:
 CPUSchedulingPolicy=rr
