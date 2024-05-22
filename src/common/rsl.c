@@ -2979,7 +2979,7 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	const uint8_t *payload_type, *speech_mode, *payload_type2, *csd_fmt;
-	const uint8_t *osmux_cid = NULL;
+	const uint8_t *osmux_cid = NULL, *rtp_extensions = NULL;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0;
@@ -3035,6 +3035,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 		osmux_cid = TLVP_VAL(&tp, RSL_IE_OSMO_OSMUX_CID);
 	if (osmux_cid)
 		LOGPC(DRSL, LOGL_DEBUG, "osmux_cid=%u ", *osmux_cid);
+
+	/* same here */
+	if (TLVP_PRES_LEN(&tp, RSL_IE_OSMO_RTP_EXTENSIONS, 1))
+		rtp_extensions = TLVP_VAL(&tp, RSL_IE_OSMO_RTP_EXTENSIONS);
+	if (rtp_extensions)
+		LOGPC(DRSL, LOGL_DEBUG, "rtp_extensions=%u ", *rtp_extensions);
 
 	if (dch->c.msg_type == RSL_MT_IPAC_CRCX && connect_ip && connect_port)
 		inc_ip_port = 1;
@@ -3163,6 +3169,12 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	}
 	if (speech_mode)
 		lchan->abis_ip.speech_mode = *speech_mode;
+
+	/* Configure non-standard RTP extensions */
+	if (rtp_extensions)
+		lchan->abis_ip.rtp_extensions = *rtp_extensions;
+	else
+		lchan->abis_ip.rtp_extensions = 0;
 
 	/* FIXME: CSD, jitterbuffer, compression */
 

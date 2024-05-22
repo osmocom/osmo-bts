@@ -64,21 +64,49 @@ static bool amr_is_octet_aligned(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 static enum pl_input_decision
 input_preen_fr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 {
-	if (rtp_pl_len != GSM_FR_BYTES)
+	switch (rtp_pl_len) {
+	case GSM_FR_BYTES:	/* standard TS 101 318 or RFC 3551 format */
+		/* magic must be correct */
+		if ((rtp_pl[0] & 0xF0) != 0xD0)
+			return PL_DECISION_DROP;
+		return PL_DECISION_ACCEPT;
+	case GSM_FR_BYTES+1:	/* Themyscira TW-TS-001 format */
+		/* TEH octet must be correct, and not a BFI */
+		if ((rtp_pl[0] & 0xF6) != 0xE0)
+			return PL_DECISION_DROP;
+		/* standard FR magic must be correct too */
+		if ((rtp_pl[1] & 0xF0) != 0xD0)
+			return PL_DECISION_DROP;
+		/* Strip TEH octet, leaving only standard FR payload. */
+		return PL_DECISION_STRIP_HDR_OCTET;
+	default:
+		/* invalid payload */
 		return PL_DECISION_DROP;
-	if ((rtp_pl[0] & 0xF0) != 0xD0)
-		return PL_DECISION_DROP;
-	return PL_DECISION_ACCEPT;
+	}
 }
 
 static enum pl_input_decision
 input_preen_efr(const uint8_t *rtp_pl, unsigned rtp_pl_len)
 {
-	if (rtp_pl_len != GSM_EFR_BYTES)
+	switch (rtp_pl_len) {
+	case GSM_EFR_BYTES:	/* standard TS 101 318 or RFC 3551 format */
+		/* magic must be correct */
+		if ((rtp_pl[0] & 0xF0) != 0xC0)
+			return PL_DECISION_DROP;
+		return PL_DECISION_ACCEPT;
+	case GSM_EFR_BYTES+1:	/* Themyscira TW-TS-001 format */
+		/* TEH octet must be correct, and not a BFI */
+		if ((rtp_pl[0] & 0xF6) != 0xE0)
+			return PL_DECISION_DROP;
+		/* standard EFR magic must be correct too */
+		if ((rtp_pl[1] & 0xF0) != 0xC0)
+			return PL_DECISION_DROP;
+		/* Strip TEH octet, leaving only standard EFR payload. */
+		return PL_DECISION_STRIP_HDR_OCTET;
+	default:
+		/* invalid payload */
 		return PL_DECISION_DROP;
-	if ((rtp_pl[0] & 0xF0) != 0xC0)
-		return PL_DECISION_DROP;
-	return PL_DECISION_ACCEPT;
+	}
 }
 
 static enum pl_input_decision

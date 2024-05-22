@@ -168,6 +168,7 @@ struct gsm_lchan {
 		uint16_t conn_id;
 		uint8_t rtp_payload;
 		uint8_t rtp_payload2;
+		uint8_t rtp_extensions;
 		uint8_t speech_mode;
 		struct {
 			bool use;

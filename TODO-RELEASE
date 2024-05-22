@@ -9,4 +9,5 @@
 #library	what	        description / commit summary line
 libosmogsm	>1.9.0		added new PRIM_INFO to include/osmocom/gsm/l1sap.h
 libosmogsm	>1.9.0		use of RLP code in libosmogsm
+libosmogsm	>1.9.0		BTS feature & RSL defs for ThemWi RTP extensions
 libosmoctrl 	>1.9.0		use ctrl_cmd_send2()
