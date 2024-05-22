@@ -2978,7 +2978,8 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	struct tlv_parsed tp;
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	const uint8_t *payload_type, *speech_mode, *payload_type2, *osmux_cid, *csd_fmt;
+	const uint8_t *payload_type, *speech_mode, *payload_type2, *csd_fmt;
+	const uint8_t *osmux_cid = NULL;
 	uint32_t connect_ip = 0;
 	uint16_t connect_port = 0;
 	int rc, inc_ip_port = 0;
@@ -3029,7 +3030,9 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	if (payload_type2)
 		LOGPC(DRSL, LOGL_DEBUG, "payload_type2=%u ", *payload_type2);
 
-	osmux_cid = TLVP_VAL(&tp, RSL_IE_OSMO_OSMUX_CID);
+	/* this IE has TLV format when TV would have been good enough */
+	if (TLVP_PRES_LEN(&tp, RSL_IE_OSMO_OSMUX_CID, 1))
+		osmux_cid = TLVP_VAL(&tp, RSL_IE_OSMO_OSMUX_CID);
 	if (osmux_cid)
 		LOGPC(DRSL, LOGL_DEBUG, "osmux_cid=%u ", *osmux_cid);
 
