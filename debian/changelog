@@ -1,3 +1,100 @@
+osmo-bts (1.8.0) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * osmo-bts-{oc2g,lc15}: signal CBCH support to BSC
+  * oml: oml_tx_attr_resp(): pass *mo to handle_attrs_{bts,trx}()
+  * oml: refactor generation of Get Attribute Response
+  * oml: oml_tx_attr_resp(): handle common nm_state attributes
+  * oml: implement handling of NM_ATT_IPACC_SUPP_FEATURES
+  * l1sap: l1sap_tch_ind(): fix segfault on stale TCH.ind
+  * osmo-bts-trx: rx_tchh_fn(): fix copy-pasted comment
+  * meas: also match stderr logging for meas_test
+  * meas: lchan_meas_sub_num_expected(): proper cmode enforcement
+  * meas: lchan_meas_check_compute(): fix -SUB frame substitution
+  * meas: handle VAMOS specific chan modes
+  * meas: fix ts45008_83_is_sub(): DTX is permitted on TCH/F sign
+  * meas: ts45008_83_is_sub(): properly handle CSD modes
+  * meas: lchan_meas_sub_num_expected(): handle CSD modes
+  * osmo-bts-trx: tx_tch[fh]_fn(): use BUFPOS macro everywhere
+  * osmo-bts-trx: tx_tch[fh]_fn(): rework generation of dummy FACCH
+  * osmo-bts-trx: tx_tch[fh]_fn(): fix sending idle CSD frames
+  * osmo-bts-trx: add_sbits(): simplify, improve coding style
+  * osmo-bts-trx: use BPLEN macro instead of magic numbers
+  * osmo-bts-trx: eliminate ul_bursts_prev, use the primary buffer
+  * l1sap: fix logic error in gsmtap_csd_rlp_process()
+  * osmo-bts-trx: add test VTY command to send arbitrary TRXC messages
+  * doc/examples: fix missing config files in release tarballs
+  * osmo-bts-{trx,virtual}: do not advertise TCH/F14.4 NT
+  * tests/osmo-bts.vty: aligh with recent libosmovty changes
+  * README.md: cosmetic: fix a typo
+  * doc/examples: use common 'ipa unit-id' in all files
+  * doc/examples: drop no-op 'gsmtap-sapi' lines
+  * doc/examples: osmo-bts-trx.cfg: set 'oml remote-ip' to '127.0.0.1'
+
+  [ Pau Espin Pedrol ]
+  * oml: Store RSL connect related fields in bb_transc
+  * Move trx->rsl_link to trx->bb_transc.rsl.link
+  * nm: delay RSL connect until BBTRANSC object is OPSTARTed
+  * cosmetic: oc2g_mgr: fix trailing whitespace
+  * Drop use of deprectated vty callback is_config_node
+  * Revert "trx_if: Allow calling trx_if_flush/close from within TRXC callback"
+  * trx_if: Allow calling trx_if_flush/close from within TRXC callback (v2)
+
+  [ Andreas Eversberg ]
+  * ASCI: Ignore LAPD frames from MS, while the uplink is not active
+  * Do not prefix UI header to System Information Type 10
+  * Increase RR scheduler priority to 20, to avoid dropped bursts
+  * ASCI: Add control of uplink access to osmo-bts-trx
+  * ASCI: Add control of uplink access to osmo-bts-sysmo
+  * ASCI: Enable voice group/broadcast call feature at osmo-bts-trx
+  * ASCI: Control uplink access bursts detection of physical interface
+  * ASCI: Add library requirements for uplink access to TODO-RELEASE
+  * Use uniform log format for default config files
+  * Transmit invalid AMR speech blocks instead of dummy FACCH
+  * LAPDm: Reject (release) establishment on DCCH, SAPI 0 without L3 payload
+  * Handle empty (idle) PDCH blocks gracefully
+  * Use polling based LAPDm with frame numbers
+  * OML: Add Get Attributes for supported MOs for BTS Object Class
+  * OML: Add Get Attributes for supported MOs for Radio Carrier Object Class
+  * OML: Add Get Attributes for supported MOs for Channel Object Class
+  * Fix ASCI access burst detection with osmo-bts-trx
+
+  [ Oliver Smith ]
+  * systemd: remove RestartPreventExitStatus=1
+  * contrib: remove rpm spec file
+  * contrib/systemd: run as osmocom user
+
+  [ Philipp Maier ]
+  * pcuif_proto: rename PCU_IF_FLAG_SYSMO to PCU_IF_FLAG_DIRECT_PHY
+  * pcuif_proto: clean up last remains of old PCUIF v10
+  * pcuif_proto: signal BTS model via PCUIF
+
+  [ Harald Welte ]
+  * Add GSMTAP encapsulation of RLP frames in CSD NT mode
+  * gsmtap-rlp: Add support for skipping generating NULL frames
+  * Fix license headers.
+  * sysmobts_mgr_temp: Migrate to ctrl_cmd_send2()
+  * osmo-bts-virtual: Port over to osmo_io
+  * common: Add RTP related rate counters
+  * Add funding link to github mirror
+  * README.md: Add Forum + Issue Tracker sections
+
+  [ Matan Perelman ]
+  * ctrl: Add max ber10k rach
+
+  [ Neels Hofmeyr ]
+  * early-IA: use the correct TRX
+
+  [ Keith ]
+  * vty info: MS power levels in dBm are not negative
+
+  [ Mychaela N. Falconia ]
+  * rsl.adoc: mention currently undocumented IEs
+  * rsl: parse RSL_IE_OSMO_OSMUX_CID correctly
+  * common: add support for TW-TS-001
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 24 Jul 2024 16:40:02 +0200
+
 osmo-bts (1.7.0) unstable; urgency=medium
 
   [ arehbein ]

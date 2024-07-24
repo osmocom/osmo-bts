@@ -7,12 +7,12 @@ Build-Depends: debhelper (>= 10),
                dh-autoreconf,
                autotools-dev,
                pkg-config,
-               libosmocore-dev (>= 1.9.0),
-               libosmo-abis-dev (>= 1.5.0),
-               libosmo-netif-dev (>= 1.4.0),
+               libosmocore-dev (>= 1.10.0),
+               libosmo-abis-dev (>= 1.6.0),
+               libosmo-netif-dev (>= 1.5.0),
                libgps-dev,
                txt2man,
-               osmo-gsm-manuals-dev (>= 1.5.0)
+               osmo-gsm-manuals-dev (>= 1.6.0)
 Standards-Version: 3.9.8
 Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
 Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
