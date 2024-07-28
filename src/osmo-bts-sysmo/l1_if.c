@@ -987,23 +987,28 @@ static int handle_ph_data_ind(struct femtol1_hdl *fl1, GsmL1_PhDataInd_t *data_i
 		return rc;
 	}
 
-	/* If we got FACCH, the RTP clock needs to account for it,
-	 * and if we have rtp continuous-streaming enabled,
-	 * an actual BFI packet will be emitted.
+	/* When TCH UL receiver in sysmoBTS PHY detects FACCH,
+	 * it behaves as follows (observed):
 	 *
-	 * Only the case of TCH/F is currently handled; the task of
-	 * supporting TCH/H is left as a FIXME for other/later
-	 * developers.  The difficulty with supporting FACCH/H is that
-	 * only one GsmL1_Sapi_FacchH message will be received,
-	 * covering 40 ms of time, but two RTP "tick" output calls
-	 * will need to be made, with appropriately adjusted frame
-	 * numbers.  As a further consideration for rtp continuous-streaming
-	 * mode, having the two RTP BFI packets sent directly back to back,
-	 * as opposed to proper 20 ms timing, may be so undesirable
-	 * that some deployments may rather disable TCH/H (use only TCH/F)
-	 * than deal with the extra pain, or use TCH/H only on SDR-based
-	 * BTS with osmo-bts-trx where correct timing is easily achieved. */
-	if (data_ind->sapi == GsmL1_Sapi_FacchF)
+	 * - In each 20 ms window (both TCH/F and TCH/H), a single
+	 *   PH-DATA.ind arrives.
+	 * - In the case of TCH/F, this PH-DATA.ind carries GsmL1_Sapi_FacchF
+	 *   instead of GsmL1_Sapi_TchF.
+	 * - In the case of TCH/H, the PH-DATA.ind for block 0 carries
+	 *   GsmL1_Sapi_FacchH instead of GsmL1_Sapi_TchH.  However,
+	 *   in the following 20 ms window (block 1 of FACCH/H)
+	 *   a PH-DATA.ind with GsmL1_Sapi_TchH arrives as normal.
+	 *   Typically the latter PHY message carries a BFI (0 length payload),
+	 *   but nonzero payloads have also been observed under some conditions.
+	 *   (The latter case remains to be investigated further.)
+	 *
+	 * In those 20 ms windows where we receive PH-DATA.ind for FACCH
+	 * instead of the usual TCH kind, we need to pass an empty payload
+	 * to the upper layers so we can produce the correct effect in
+	 * the outgoing RTP stream depending on configuration.
+	 */
+	if (data_ind->sapi == GsmL1_Sapi_FacchF ||
+	    data_ind->sapi == GsmL1_Sapi_FacchH)
 		l1if_tch_rx_facch(trx, chan_nr, l1p_msg);
 
 	/* fill L1SAP header */
