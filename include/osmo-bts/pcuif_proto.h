@@ -7,7 +7,7 @@
 
 #define PCU_SOCK_DEFAULT	"/tmp/pcu_bts"
 
-#define PCU_IF_VERSION		0x0c
+#define PCU_IF_VERSION		0x0d
 #define TXT_MAX_LEN	128
 
 /* msg_type */
@@ -256,6 +256,10 @@ struct gsm_pcu_if_agch {
 	 * when the MAC block (data) has been sent. */
 	bool confirm;
 } __attribute__((packed));
+
+/* reserved BTS number to indicate that the PCUIF INDICATION is not targeted to a
+ * specific BTS. (commonly used with TXT indications to transfer the PCU version number) */
+#define PCU_IF_BTS_NR_BCAST 0xff
 
 struct gsm_pcu_if {
 	/* context based information */

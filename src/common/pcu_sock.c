@@ -858,27 +858,40 @@ static int pcu_tx_si_all(struct gsm_bts *bts)
 static int pcu_rx_txt_ind(struct gsm_bts *bts,
 			  struct gsm_pcu_if_txt_ind *txt)
 {
-	int rc;
+	int rc = 0;
 
 	switch (txt->type) {
 	case PCU_VERSION:
 		LOGP(DPCU, LOGL_INFO, "OsmoPCU version %s connected\n",
 		     txt->text);
-		oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_CEASED, OSMO_EVT_PCU_VERS, txt->text);
-		osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
 
-		/* patch SI to advertise GPRS, *if* the SI sent by BSC said so */
-		regenerate_si3_restoctets(bts);
-		regenerate_si4_restoctets(bts);
+		/* we use the reception of the PCU_VERSION as a trigger to make the PCU available for
+		 * all BTSs handled by this process (currently this is exactly one BTS, see FIXME notes) */
+		llist_for_each_entry(bts, &g_bts_sm->bts_list, list) {
+			oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_CEASED, OSMO_EVT_PCU_VERS, txt->text);
+			osmo_strlcpy(bts->pcu_version, txt->text, MAX_VERSION_LENGTH);
 
-		rc = pcu_tx_si_all(bts);
+			/* patch SI to advertise GPRS, *if* the SI sent by BSC said so */
+			regenerate_si3_restoctets(bts);
+			regenerate_si4_restoctets(bts);
+
+			if (pcu_tx_si_all(bts) < 0)
+				rc = -EINVAL;
+		}
 		if (rc < 0)
-			return -EINVAL;
-
+			return rc;
 		break;
 	case PCU_OML_ALERT:
-		oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_INDETERMINATE, OSMO_EVT_EXT_ALARM,
-					 txt->text);
+		if (bts) {
+			/* The PCU_OML_ALERT is directed to a spcific BTS object */
+			oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_INDETERMINATE, OSMO_EVT_EXT_ALARM, txt->text);
+		} else {
+			/* The PCU_OML_ALERT is directed to all BTS objects (currently this is exactly one BTS,
+			 * see FIXME notes) */
+			llist_for_each_entry(bts, &g_bts_sm->bts_list, list) {
+				oml_tx_failure_event_rep(&bts->gprs.cell.mo, NM_SEVER_INDETERMINATE, OSMO_EVT_EXT_ALARM, txt->text);
+			}
+		}
 		break;
 	default:
 		LOGP(DPCU, LOGL_ERROR, "Unknown TXT_IND type %u received\n",
@@ -937,35 +950,43 @@ static int pcu_rx_act_req(struct gsm_bts *bts,
 			return -EINVAL; \
 		} \
 	} while (0)
+
+#define ENSURE_BTS_OBJECT() \
+	if ((bts = gsm_bts_num(g_bts_sm, pcu_prim->bts_nr)) == NULL) { \
+		LOGP(DPCU, LOGL_ERROR, "Received PCU Prim for non-existent BTS %u\n", pcu_prim->bts_nr); \
+		return -EINVAL; \
+	}
+
 static int pcu_rx(uint8_t msg_type, struct gsm_pcu_if *pcu_prim, size_t prim_len)
 {
 	int rc = 0;
-	struct gsm_bts *bts;
+	struct gsm_bts *bts = NULL;
 	size_t exp_len;
-
-	if ((bts = gsm_bts_num(g_bts_sm, pcu_prim->bts_nr)) == NULL) {
-		LOGP(DPCU, LOGL_ERROR, "Received PCU Prim for non-existent BTS %u\n", pcu_prim->bts_nr);
-		return -EINVAL;
-	}
 
 	switch (msg_type) {
 	case PCU_IF_MSG_DATA_REQ:
+		ENSURE_BTS_OBJECT();
 		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.data_req);
 		rc = pcu_rx_data_req(bts, msg_type, &pcu_prim->u.data_req);
 		break;
 	case PCU_IF_MSG_PAG_REQ:
+		ENSURE_BTS_OBJECT();
 		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.pag_req);
 		rc = pcu_rx_pag_req(bts, msg_type, &pcu_prim->u.pag_req);
 		break;
 	case PCU_IF_MSG_ACT_REQ:
+		ENSURE_BTS_OBJECT();
 		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.act_req);
 		rc = pcu_rx_act_req(bts, &pcu_prim->u.act_req);
 		break;
 	case PCU_IF_MSG_TXT_IND:
+		if (pcu_prim->bts_nr != PCU_IF_BTS_NR_BCAST)
+			ENSURE_BTS_OBJECT();
 		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.txt_ind);
 		rc = pcu_rx_txt_ind(bts, &pcu_prim->u.txt_ind);
 		break;
 	case PCU_IF_MSG_CONTAINER:
+		ENSURE_BTS_OBJECT();
 		CHECK_IF_MSG_SIZE(prim_len, pcu_prim->u.container);
 		/* ^ check if we can access container fields, v check with container data length */
 		exp_len = PCUIF_HDR_SIZE + sizeof(pcu_prim->u.container) + osmo_load16be(&pcu_prim->u.container.length);
