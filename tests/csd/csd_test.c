@@ -54,10 +54,22 @@ static const struct test_case tests[] = {
 		.csd_mode = LCHAN_CSD_M_T_9600,
 	},
 	{
+		.name = "TCH/F9.6 NT",
+		.lchan_type = GSM_LCHAN_TCH_F,
+		.tch_mode = GSM48_CMODE_DATA_12k0,
+		.csd_mode = LCHAN_CSD_M_NT,
+	},
+	{
 		.name = "TCH/F4.8",
 		.lchan_type = GSM_LCHAN_TCH_F,
 		.tch_mode = GSM48_CMODE_DATA_6k0,
 		.csd_mode = LCHAN_CSD_M_T_4800,
+	},
+	{
+		.name = "TCH/F4.8 NT",
+		.lchan_type = GSM_LCHAN_TCH_F,
+		.tch_mode = GSM48_CMODE_DATA_6k0,
+		.csd_mode = LCHAN_CSD_M_NT,
 	},
 	{
 		.name = "TCH/H4.8",
