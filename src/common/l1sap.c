@@ -2460,7 +2460,9 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		OSMO_ASSERT(0);
 	}
 
-	msg = l1sap_msgb_alloc(512);
+#define L1SAP_MSGB_L2LEN_TCH 512
+
+	msg = l1sap_msgb_alloc(L1SAP_MSGB_L2LEN_TCH);
 	if (!msg)
 		return;
 
@@ -2479,6 +2481,12 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 			return;
 		}
 	} else {
+		if (OSMO_UNLIKELY(rtp_pl_len > L1SAP_MSGB_L2LEN_TCH)) {
+			LOGPLCHAN(lchan, DL1P, LOGL_ERROR,
+				  "%s(): incoming RTP truncated: %u -> %u\n",
+				  __func__, rtp_pl_len, L1SAP_MSGB_L2LEN_TCH);
+			rtp_pl_len = L1SAP_MSGB_L2LEN_TCH; /* truncate */
+		}
 		memcpy(msgb_put(msg, rtp_pl_len), rtp_pl, rtp_pl_len);
 	}
 
