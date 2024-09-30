@@ -1857,7 +1857,6 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 {
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
-	struct osmo_rlp_frame_decoded rlpf;
 	pbit_t *rlp_buf;
 	uint16_t arfcn;
 	int byte_len;
@@ -1913,6 +1912,7 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 	}
 
 	if (trx->bts->gsmtap.rlp_skip_null) {
+		struct osmo_rlp_frame_decoded rlpf;
 		int rc = osmo_rlp_decode(&rlpf, 0, rlp_buf, byte_len);
 		if (rc == 0 && rlpf.ftype == OSMO_RLP_FT_U && rlpf.u_ftype == OSMO_RLP_U_FT_NULL)
 			return;
