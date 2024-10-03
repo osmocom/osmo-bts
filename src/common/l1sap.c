@@ -2597,6 +2597,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg;
 	bool rfc5993_sid = false;
+	uint8_t csd_align_bits = 0;
 
 	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_TOTAL);
 	if (marker)
@@ -2631,7 +2632,7 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		return;
 
 	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA) {
-		int rc = csd_v110_rtp_decode(lchan, msg->tail,
+		int rc = csd_v110_rtp_decode(lchan, msg->tail, &csd_align_bits,
 					     rtp_pl, rtp_pl_len);
 		if (rc > 0) {
 			/* 'fake' tch_ind containing all-zero so gsmtap code can be shared
@@ -2664,6 +2665,8 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 	rtpmsg_ts(msg) = timestamp;
 	/* Store RFC 5993 SID flag likewise */
 	rtpmsg_is_rfc5993_sid(msg) = rfc5993_sid;
+	/* ditto with CSD alignment bits */
+	rtpmsg_csd_align_bits(msg) = csd_align_bits;
 
 	/* make sure the queue doesn't get too long */
 	lchan_dl_tch_queue_enqueue(lchan, msg, 1);

@@ -166,10 +166,11 @@ static bool check_v110_align(const ubit_t *ra_bits)
 }
 
 int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
-			const uint8_t *rtp, size_t rtp_len)
+			uint8_t *align_bits, const uint8_t *rtp, size_t rtp_len)
 {
 	const struct csd_v110_lchan_desc *desc;
 	ubit_t ra_bits[80 * 4];
+	uint8_t align_accum = 0;
 
 	OSMO_ASSERT(lchan->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
@@ -207,7 +208,13 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 			osmo_csd_12k_6k_encode_frame(&data[i * 60], 60, &df);
 		else /* desc->num_bits == 36 */
 			osmo_csd_3k6_encode_frame(&data[i * 36], 36, &df);
+		/* save bits E2 & E3 that may be needed for RLP alignment */
+		align_accum <<= 2;
+		align_accum |= df.e_bits[1] << 1;
+		align_accum |= df.e_bits[2] << 0;
 	}
 
+	if (align_bits)
+		*align_bits = align_accum;
 	return desc->num_blocks * desc->num_bits;
 }
