@@ -25,6 +25,9 @@ struct msgb;
 /* Access 4th part of msgb control buffer */
 #define rtpmsg_is_rfc5993_sid(x) ((x)->cb[3])
 
+/* Access 5th part of msgb control buffer */
+#define rtpmsg_csd_align_bits(x) ((x)->cb[4])
+
 /**
  * Classification of OML message. ETSI for plain GSM 12.21
  * messages and IPA/Osmo for manufacturer messages.
