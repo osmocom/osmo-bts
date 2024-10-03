@@ -99,29 +99,29 @@
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-[i] Testing 'TCH/H4.8' (bitnum=240)
+[i] Testing 'TCH/H4.8' (bitnum=120)
 [i] csd_v110_rtp_encode() returns 160
-    3f 3f 3f 3f bf bf bf bf ff 7f 7f 7f bf bf bf bf 
-    ff 7f 7f 7f bf ff 7f 7f bf bf bf bf ff 7f 7f 7f 
-    bf bf bf bf ff 7f 7f 7f 3f 3f 3f 3f bf bf bf bf 
-    ff 7f 7f 7f bf bf bf bf ff 7f 7f 7f bf ff 7f 7f 
-    bf bf bf bf ff 7f 7f 7f bf bf bf bf ff 7f 7f 7f 
-    3f 3f 3f 3f bf bf bf bf ff 7f 7f 7f bf bf bf bf 
-    ff 7f 7f 7f bf ff 7f 7f bf bf bf bf ff 7f 7f 7f 
-    bf bf bf bf ff 7f 7f 7f 3f 3f 3f 3f bf bf bf bf 
-    ff 7f 7f 7f bf bf bf bf ff 7f 7f 7f bf ff 7f 7f 
-    bf bf bf bf ff 7f 7f 7f bf bf bf bf ff 7f 7f 7f 
-[i] csd_v110_rtp_decode() returns 240
+    7f 7f 7f 7f 7f 7f 7f 7f ff 7f ff 7f ff 7f ff 7f 
+    ff ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 7f 
+    ff ff 7f ff 7f ff 7f ff ff 7f ff ff 7f ff 7f ff 
+    ff 7f ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 
+    ff 7f ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff 7f ff 7f ff 7f ff 7f 
+    ff ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 7f 
+    ff ff 7f ff 7f ff 7f ff ff 7f ff ff 7f ff 7f ff 
+    ff 7f ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 
+    ff 7f ff 7f ff 7f ff 7f ff ff 7f ff 7f ff 7f ff 
+[i] csd_v110_rtp_decode() returns 120
 [i] Testing 'TCH/H4.8' (IDLE)
 [i] csd_v110_rtp_encode() returns 160
-    3f 3f 3f 3f ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff 3f 3f 3f 3f ff ff ff ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    3f 3f 3f 3f ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff 3f 3f 3f 3f ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff ff ff ff ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
 [i] Testing 'TCH/F2.4' (bitnum=72)
@@ -149,28 +149,28 @@
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-[i] Testing 'TCH/H2.4' (bitnum=144)
+[i] Testing 'TCH/H2.4' (bitnum=72)
 [i] csd_v110_rtp_encode() returns 160
-    3f 3f 3f 3f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f 
-    bf 7f bf 7f ff 3f 7f 7f bf 7f bf 7f bf 7f bf 7f 
-    bf 7f bf 7f bf 7f bf 7f 3f 3f 3f 3f bf 7f bf 7f 
-    bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f ff 3f 7f 7f 
-    bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f 
-    3f 3f 3f 3f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f 
-    bf 7f bf 7f ff 3f 7f 7f bf 7f bf 7f bf 7f bf 7f 
-    bf 7f bf 7f bf 7f bf 7f 3f 3f 3f 3f bf 7f bf 7f 
-    bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f ff 3f 7f 7f 
-    bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f bf 7f 
-[i] csd_v110_rtp_decode() returns 144
+    7f 7f 7f 7f 7f 7f 7f 7f ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff ff 7f 7f 7f ff 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff ff 7f 7f 7f ff 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+    ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff ff 7f 7f ff 
+[i] csd_v110_rtp_decode() returns 72
 [i] Testing 'TCH/H2.4' (IDLE)
 [i] csd_v110_rtp_encode() returns 160
-    3f 3f 3f 3f ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff 3f 3f 3f 3f ff ff ff ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    3f 3f 3f 3f ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
-    ff ff ff ff ff ff ff ff 3f 3f 3f 3f ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
+    7f 7f 7f 7f 7f 7f 7f 7f ff ff ff ff ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
+    ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
     ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 

@@ -93,7 +93,7 @@ static const struct test_case tests[] = {
 
 static void exec_test_case(const struct test_case *tc)
 {
-	const struct csd_v110_frame_desc *desc;
+	const struct csd_v110_lchan_desc *desc;
 	uint8_t rtp[RFC4040_RTP_PLEN] = { 0 };
 	ubit_t data_enc[BBUF_MAX];
 	ubit_t data_dec[BBUF_MAX];
@@ -101,10 +101,7 @@ static void exec_test_case(const struct test_case *tc)
 
 	/* obtain a V.110 frame description for the given channel type/rate */
 	OSMO_ASSERT(tc->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
-	if (tc->lchan_type == GSM_LCHAN_TCH_F)
-		desc = &csd_v110_lchan_desc[tc->tch_mode].fr;
-	else
-		desc = &csd_v110_lchan_desc[tc->tch_mode].hr;
+	desc = &csd_v110_lchan_desc[tc->tch_mode];
 
 	/* total number of bits carried by a radio interface block */
 	const unsigned int bit_num = desc->num_bits * desc->num_blocks;
