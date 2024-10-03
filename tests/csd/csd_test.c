@@ -124,7 +124,7 @@ static void exec_test_case(const struct test_case *tc)
 		data_enc[i] = i & 0x01;
 
 	/* encode an RTP frame and print it */
-	rc = csd_v110_rtp_encode(&lchan, &rtp[0], &data_enc[0], bit_num);
+	rc = csd_v110_rtp_encode(&lchan, &rtp[0], &data_enc[0], bit_num, 0);
 	fprintf(stderr, "[i] csd_v110_rtp_encode() returns %d\n", rc);
 	if (rc != RFC4040_RTP_PLEN)
 		return;
@@ -148,7 +148,7 @@ static void exec_test_case(const struct test_case *tc)
 	fprintf(stderr, "[i] Testing '%s' (IDLE)\n", tc->name);
 
 	/* encode an idle RTP frame and print it */
-	rc = csd_v110_rtp_encode(&lchan, &rtp[0], &data_enc[0], 0);
+	rc = csd_v110_rtp_encode(&lchan, &rtp[0], &data_enc[0], 0, 0);
 	fprintf(stderr, "[i] csd_v110_rtp_encode() returns %d\n", rc);
 	if (rc != RFC4040_RTP_PLEN)
 		return;

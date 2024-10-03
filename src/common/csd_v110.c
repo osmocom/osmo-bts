@@ -78,7 +78,8 @@ static const uint8_t e1e2e3_map[_LCHAN_CSD_M_NUM][3] = {
 };
 
 int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
-			const uint8_t *data, size_t data_len)
+			const uint8_t *data, size_t data_len,
+			uint8_t nt48_half_num)
 {
 	const struct csd_v110_lchan_desc *desc;
 	ubit_t ra_bits[80 * 4];
@@ -110,9 +111,15 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 		/* E1 .. E3 must set by out-of-band knowledge */
 		if (lchan->csd_mode == LCHAN_CSD_M_NT) {
 			/* non-transparent: as per 3GPP TS 48.020, Table 7 */
-			df.e_bits[0] = 0; /* E1: as per 15.1.2, shall be set to 0 (for BSS-MSC) */
-			df.e_bits[1] = (i >> 1) & 0x01; /* E2: 0 for Q1/Q2, 1 for Q3/Q4 */
-			df.e_bits[2] = (i >> 0) & 0x01; /* E3: 0 for Q1/Q3, 1 for Q2/Q4 */
+			/* E1: as per 15.1.2, shall be set to 0 (for BSS-MSC) */
+			df.e_bits[0] = 0;
+			/* E2: 0 for Q1/Q2, 1 for Q3/Q4 */
+			if (desc->num_blocks == 4)
+				df.e_bits[1] = (i >> 1) & 0x01;
+			else
+				df.e_bits[1] = nt48_half_num;
+			/* E3: 0 for Q1/Q3, 1 for Q2/Q4 */
+			df.e_bits[2] = (i >> 0) & 0x01;
 		} else {
 			/* transparent: as per 3GPP TS 44.021, Figure 4 */
 			df.e_bits[0] = e1e2e3_map[lchan->csd_mode][0]; /* E1 */
