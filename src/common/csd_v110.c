@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include <osmocom/core/bits.h>
@@ -150,6 +151,20 @@ ra1_ra2:
 	return RFC4040_RTP_PLEN;
 }
 
+static bool check_v110_align(const ubit_t *ra_bits)
+{
+	int i;
+	ubit_t bit0 = 0, bit1 = 1;
+
+	/* The weird code structure is for performance optimization,
+	 * to avoid conditionals inside loops. */
+	for (i = 0; i < 8; i++)
+		bit0 |= ra_bits[i];
+	for (i = 1; i < 10; i++)
+		bit1 &= ra_bits[i * 8];
+	return (bit0 == 0) && (bit1 == 1);
+}
+
 int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 			const uint8_t *rtp, size_t rtp_len)
 {
@@ -181,6 +196,11 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 	for (unsigned int i = 0; i < desc->num_blocks; i++) {
 		struct osmo_v110_decoded_frame df;
 
+		/* We require our RTP input to consist of aligned V.110
+		 * frames.  If we get misaligned input, let's catch it
+		 * explicitly, rather than send garbage downstream. */
+		if (!check_v110_align(&ra_bits[i * 80]))
+			return -EINVAL;
 		/* convert a V.110 80-bit frame to a V.110 36-/60-bit frame */
 		osmo_v110_decode_frame(&df, &ra_bits[i * 80], 80);
 		if (desc->num_bits == 60)
