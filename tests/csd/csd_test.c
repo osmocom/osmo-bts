@@ -133,7 +133,7 @@ static void exec_test_case(const struct test_case *tc)
 		fprintf(stderr, "    %s\n", osmo_hexdump(&rtp[i * 16], 16));
 
 	/* decode the encoded RTP frame */
-	rc = csd_v110_rtp_decode(&lchan, &data_dec[0], &rtp[0], sizeof(rtp));
+	rc = csd_v110_rtp_decode(&lchan, &data_dec[0], NULL, &rtp[0], sizeof(rtp));
 	fprintf(stderr, "[i] csd_v110_rtp_decode() returns %d\n", rc);
 	if (rc != bit_num)
 		return;
