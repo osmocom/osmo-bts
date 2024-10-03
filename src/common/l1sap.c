@@ -2056,15 +2056,27 @@ static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
 	lchan->rtp_tx_marker = false;
 }
 
+/* In the case of TCH/F4.8 NT, we have to set bit E2 based on the TDMA
+ * frame number at which we received the block in question.  See
+ * GSM 05.03 section 3.4.1 and the mapping tables of GSM 05.02. */
+static const uint8_t tchf48_nt_e2_map[26] = {
+	[4]  = 1,	/* B1 position */
+	[13] = 1,	/* B3 position */
+	[21] = 1,	/* B5 position */
+};
+
 static void handle_tch_ind_csd_fr(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
 				  const uint8_t *data, uint16_t data_len)
 {
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
+	uint8_t tchf48_half = tchf48_nt_e2_map[tch_ind->fn % 26];
 	int rc;
 
 	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
 
-	rc = csd_v110_rtp_encode(lchan, rtp_pl, data, data_len);
+	/* the last argument matters only for TCH/F4.8 NT mode,
+	 * ignored in all other cases. */
+	rc = csd_v110_rtp_encode(lchan, rtp_pl, data, data_len, tchf48_half);
 	if (rc < 0)
 		return;
 
@@ -2076,7 +2088,7 @@ static void handle_csd_hr_bfi(struct gsm_lchan *lchan)
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
 	int rc, i;
 
-	rc = csd_v110_rtp_encode(lchan, rtp_pl, NULL, 0);
+	rc = csd_v110_rtp_encode(lchan, rtp_pl, NULL, 0, 0);
 	if (rc < 0)
 		return;
 
@@ -2105,7 +2117,7 @@ static void handle_tch_ind_csd_hr(struct gsm_lchan *lchan, const struct ph_tch_p
 	for (i = 0; i < 2; i++) {
 		rc = csd_v110_rtp_encode(lchan, rtp_pl,
 					 data + i * bits_per_20ms,
-					 bits_per_20ms);
+					 bits_per_20ms, i);
 		if (rc < 0)
 			return;
 		send_ul_rtp_packet_hrdata(lchan, rtp_pl, sizeof(rtp_pl));
