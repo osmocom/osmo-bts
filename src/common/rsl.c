@@ -205,37 +205,48 @@ static int rsl_handle_chan_mod_ie(struct gsm_lchan *lchan,
 	/* If octet 4 indicates non-transparent data */
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_14k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_14k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_12k0):
 		lchan->tch_mode = GSM48_CMODE_DATA_12k0;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_6k0):
 		lchan->tch_mode = GSM48_CMODE_DATA_6k0;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_43k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_43k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NT_28k8):
 		/* 28.8 kbit/s services, 29.0 kbit/s radio interface rate */
 		lchan->tch_mode = GSM48_CMODE_DATA_29k0;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_43k5_14k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_43k5_14k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_29k0_14k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_29k0_14k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_43k5_29k0):
 		lchan->tch_mode = GSM48_CMODE_DATA_43k5_29k0;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_14k5_43k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_14k5_43k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_14k5_29k0):
 		lchan->tch_mode = GSM48_CMODE_DATA_14k5_29k0;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 	case RSL_CMODE(RSL_CMOD_SPD_DATA, RSL_CMOD_CSD_NTA_29k0_43k5):
 		lchan->tch_mode = GSM48_CMODE_DATA_29k0_43k5;
+		lchan->csd_mode = LCHAN_CSD_M_NT;
 		break;
 
 	/* If octet 4 indicates transparent data */
