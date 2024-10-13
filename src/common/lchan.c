@@ -56,6 +56,20 @@ const struct value_string lchan_ciph_state_names[] = {
 	{ 0, NULL }
 };
 
+const struct value_string lchan_csd_mode_descs[] = {
+	{ LCHAN_CSD_M_NT,		"non-transparent" },
+	{ LCHAN_CSD_M_T_1200_75,	"transparent @ 1200/75 bps" },
+	{ LCHAN_CSD_M_T_600,		"transparent @ 600 bps" },
+	{ LCHAN_CSD_M_T_1200,		"transparent @ 1200 bps" },
+	{ LCHAN_CSD_M_T_2400,		"transparent @ 2400 bps" },
+	{ LCHAN_CSD_M_T_4800,		"transparent @ 4800 bps" },
+	{ LCHAN_CSD_M_T_9600,		"transparent @ 9600 bps" },
+	{ LCHAN_CSD_M_T_14400,		"transparent @ 14400 bps" },
+	{ LCHAN_CSD_M_T_29000,		"transparent @ 29000 bps" },
+	{ LCHAN_CSD_M_T_32000,		"transparent @ 32000 bps" },
+	{ 0, NULL }
+};
+
 /* prepare the per-SAPI T200 arrays for a given lchan */
 static int t200_by_lchan(uint32_t *t200_fn_dcch, uint32_t *t200_fn_acch, struct gsm_lchan *lchan)
 {

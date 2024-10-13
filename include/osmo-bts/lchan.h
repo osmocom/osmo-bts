@@ -88,6 +88,12 @@ enum lchan_csd_mode {
 	_LCHAN_CSD_M_NUM,
 };
 
+extern const struct value_string lchan_csd_mode_descs[];
+static inline const char *lchan_csd_mode_desc(enum lchan_csd_mode mode)
+{
+	return get_value_string(lchan_csd_mode_descs, mode);
+}
+
 /* State of the SAPIs in the lchan */
 enum lchan_sapi_state {
 	LCHAN_SAPI_S_NONE,

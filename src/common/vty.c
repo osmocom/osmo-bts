@@ -1997,6 +1997,11 @@ static void lchan_dump_full_vty(struct vty *vty, const struct gsm_lchan *lchan)
 	vty_out(vty, "  Channel Mode / Codec: %s%s",
 		gsm48_chan_mode_name(lchan->tch_mode),
 		VTY_NEWLINE);
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA) {
+		vty_out(vty, "  CSD mode: %s%s",
+			lchan_csd_mode_desc(lchan->csd_mode),
+			VTY_NEWLINE);
+	}
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		const struct amr_multirate_conf *amr_mrc = &lchan->tch.amr_mr;
 		const struct gsm48_multi_rate_conf *mr_conf =
