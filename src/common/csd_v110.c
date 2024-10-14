@@ -37,24 +37,28 @@ const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
 #if 0
 	[GSM48_CMODE_DATA_14k5] = {
 		/* TCH/F14.4: 290 bits every 20 ms (14.5 kbit/s) */
-		.fr = { .num_blocks = 1, .num_bits = 290 },
+		.num_blocks = 1,
+		.num_bits = 290,
+		.ra2_ir = 16,
 	},
 #endif
 	[GSM48_CMODE_DATA_12k0] = {
 		/* TCH/F9.6: 4 * 60 bits every 20 ms (12.0 kbit/s) */
-		.fr = { .num_blocks = 4, .num_bits = 60 },
+		.num_blocks = 4,
+		.num_bits = 60,
+		.ra2_ir = 16,
 	},
 	[GSM48_CMODE_DATA_6k0] = {
-		/* TCH/F4.8: 2 * 60 bits every 20 ms (6.0 kbit/s) */
-		.fr = { .num_blocks = 2, .num_bits = 60 },
-		/* TCH/H4.8: 4 * 60 bits every 40 ms (6.0 kbit/s) */
-		.hr = { .num_blocks = 4, .num_bits = 60 },
+		/* TCH/[FH]4.8: 2 * 60 bits every 20 ms (6.0 kbit/s) */
+		.num_blocks = 2,
+		.num_bits = 60,
+		.ra2_ir = 8,
 	},
 	[GSM48_CMODE_DATA_3k6] = {
-		/* TCH/F2.4: 2 * 36 bits every 20 ms (3.6 kbit/s) */
-		.fr = { .num_blocks = 2, .num_bits = 36 },
-		/* TCH/H2.4: 4 * 36 bits every 40 ms (3.6 kbit/s) */
-		.hr = { .num_blocks = 4, .num_bits = 36 },
+		/* TCH/[FH]2.4: 2 * 36 bits every 20 ms (3.6 kbit/s) */
+		.num_blocks = 2,
+		.num_bits = 36,
+		.ra2_ir = 8,
 	},
 };
 
@@ -76,14 +80,11 @@ static const uint8_t e1e2e3_map[_LCHAN_CSD_M_NUM][3] = {
 int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 			const uint8_t *data, size_t data_len)
 {
-	const struct csd_v110_frame_desc *desc;
+	const struct csd_v110_lchan_desc *desc;
 	ubit_t ra_bits[80 * 4];
 
 	OSMO_ASSERT(lchan->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
-	if (lchan->type == GSM_LCHAN_TCH_F)
-		desc = &csd_v110_lchan_desc[lchan->tch_mode].fr;
-	else
-		desc = &csd_v110_lchan_desc[lchan->tch_mode].hr;
+	desc = &csd_v110_lchan_desc[lchan->tch_mode];
 	if (OSMO_UNLIKELY(desc->num_blocks == 0))
 		return -ENOTSUP;
 
@@ -124,7 +125,7 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 
 ra1_ra2:
 	/* RA1/RA2: convert from an intermediate rate to 64 kbit/s */
-	if (desc->num_blocks == 4) {
+	if (desc->ra2_ir == 16) {
 		/* 4 * 80 bits (16 kbit/s) => 2 bits per octet */
 		for (unsigned int i = 0, j = 0; i < RFC4040_RTP_PLEN; i++) {
 			rtp[i]  = (0xff >> 2);
@@ -145,14 +146,11 @@ ra1_ra2:
 int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 			const uint8_t *rtp, size_t rtp_len)
 {
-	const struct csd_v110_frame_desc *desc;
+	const struct csd_v110_lchan_desc *desc;
 	ubit_t ra_bits[80 * 4];
 
 	OSMO_ASSERT(lchan->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
-	if (lchan->type == GSM_LCHAN_TCH_F)
-		desc = &csd_v110_lchan_desc[lchan->tch_mode].fr;
-	else
-		desc = &csd_v110_lchan_desc[lchan->tch_mode].hr;
+	desc = &csd_v110_lchan_desc[lchan->tch_mode];
 	if (OSMO_UNLIKELY(desc->num_blocks == 0))
 		return -ENOTSUP;
 
@@ -160,7 +158,7 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 		return -EINVAL;
 
 	/* RA1/RA2: convert from 64 kbit/s to an intermediate rate */
-	if (desc->num_blocks == 4) {
+	if (desc->ra2_ir == 16) {
 		/* 4 * 80 bits (16 kbit/s) => 2 bits per octet */
 		for (unsigned int i = 0, j = 0; i < RFC4040_RTP_PLEN; i++) {
 			ra_bits[j++] = (rtp[i] >> 7);

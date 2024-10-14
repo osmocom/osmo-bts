@@ -117,14 +117,7 @@ static const uint8_t sched_tchh_ul_csd_map[26] = {
 
 /* TDMA frame number of burst 'a' % 26 is the table index.
  * This mapping is valid for both TCH/H(0) and TCH/H(1). */
-static const uint8_t sched_tchh_dl_csd_map[26] = {
-	[0]  = 1, /* TCH/H(0): B0(0  ... 19) */
-	[1]  = 1, /* TCH/H(1): B0(1  ... 20) */
-	[8]  = 1, /* TCH/H(0): B1(8  ... 2) */
-	[9]  = 1, /* TCH/H(1): B1(9  ... 3) */
-	[17] = 1, /* TCH/H(0): B2(17 ... 10) */
-	[18] = 1, /* TCH/H(1): B2(18 ... 11) */
-};
+extern const uint8_t sched_tchh_dl_csd_map[26];
 
 static int decode_hr_facch(struct l1sched_ts *l1ts,
 			   const struct trx_ul_burst_ind *bi)
