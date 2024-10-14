@@ -51,6 +51,7 @@ libbts_a_SOURCES = \
 	bts_ctrl_commands.c \
 	bts_ctrl_lookup.c \
 	bts_shutdown_fsm.c \
+	csd_rlp.c \
 	csd_v110.c \
 	l1sap.c \
 	cbch.c \

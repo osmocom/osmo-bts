@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
+#include <osmocom/core/bits.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/logging.h>
@@ -295,9 +296,14 @@ struct gsm_lchan {
 		uint8_t last_cmr;
 		uint32_t last_fn;
 		struct {
-			/* buffers to re-combine RLP frame from multiple Um blocks */
+			/* RLP GSMTAP mechanism */
 			uint8_t rlp_buf_ul[576/8]; /* maximum size of RLP frame */
 			uint8_t rlp_buf_dl[576/8]; /* maximum size of RLP frame */
+			/* alignment of RLP frames in DL for NT modes */
+			ubit_t rlpdl_data_bits[60 * 7];
+			uint16_t rlpdl_align_bits;
+			uint8_t rlpdl_fill_level;
+			ubit_t tchf48_nt_2ndhalf[120];
 		} csd;
 	} tch;
 
