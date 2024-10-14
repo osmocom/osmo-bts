@@ -60,6 +60,7 @@
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/asci.h>
+#include <osmo-bts/csd_rlp.h>
 #include <osmo-bts/csd_v110.h>
 
 /* determine the CCCH block number based on the frame number */
@@ -1516,6 +1517,7 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
 	uint8_t *phy_data;
 	struct gsm_time g_time;
+	bool good_rlp;
 	int i;
 
 	/* The generic scheduler still sends us TCH-RTS.ind every 20 ms,
@@ -1545,16 +1547,36 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 						  &lchan->dl_tch_queue_len);
 	}
 
+	if (lchan->csd_mode == LCHAN_CSD_M_NT) {
+		for (i = 0; i < 2; i++) {
+			if (input_msg[i]) {
+				ntcsd_dl_input_48(lchan, input_msg[i]->data,
+					  rtpmsg_csd_align_bits(input_msg[i]));
+			} else {
+				ntcsd_dl_reset(lchan);
+			}
+		}
+	}
+
 	phy_msg = l1sap_msgb_alloc(bits_per_20ms * 2);
 	if (phy_msg) {
 		resp_l1sap = msgb_l1sap_prim(phy_msg);
 		phy_msg->l2h = phy_msg->tail;
-		for (i = 0; i < 2; i++) {
-			phy_data = msgb_put(phy_msg, bits_per_20ms);
-			if (input_msg[i])
-				memcpy(phy_data, input_msg[i]->data, bits_per_20ms);
-			else
-				memset(phy_data, 0x01, bits_per_20ms);
+		if (lchan->csd_mode == LCHAN_CSD_M_NT) {
+			phy_data = msgb_put(phy_msg, 240); /* RLP frame */
+			good_rlp = ntcsd_dl_output(lchan, phy_data);
+			if (good_rlp)
+				gsmtap_csd_rlp_dl(lchan, fn, phy_data, 240);
+		} else {
+			for (i = 0; i < 2; i++) {
+				phy_data = msgb_put(phy_msg, bits_per_20ms);
+				if (input_msg[i]) {
+					memcpy(phy_data, input_msg[i]->data,
+						bits_per_20ms);
+				} else {
+					memset(phy_data, 0x01, bits_per_20ms);
+				}
+			}
 		}
 	} else {
 		resp_l1sap = &empty_l1sap;
@@ -1577,6 +1599,111 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 	l1sap_down(trx, resp_l1sap);
 
 	return 0;
+}
+
+/* The case of TCH/F4.8 NT also requires special processing that is
+ * somewhat similar to half-rate CSD.  We have to produce an RLP frame
+ * for DL every 40 ms, thus it makes the most sense for us to poll
+ * the Rx jitter buffer every 40 ms just like with CSD-HR.  However,
+ * we need to send TCH.req to the PHY every 20 ms, sending either
+ * the first half or the second half of the RLP frame we put together
+ * every 40 ms. */
+static int tch_rts_ind_tchf48_nt(struct gsm_bts_trx *trx,
+				 struct gsm_lchan *lchan,
+				 struct ph_tch_param *rts_ind)
+{
+	uint8_t chan_nr = rts_ind->chan_nr;
+	uint32_t fn = rts_ind->fn;
+	struct msgb *input_msg, *phy_msg;
+	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
+	ubit_t rlp_frame[240];
+	bool good_rlp;
+	struct gsm_time g_time;
+	int i;
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	/* Input processing happens every 40 ms */
+	if (csd_tchf48_nt_e2_map[fn % 26] == 0) {
+		for (i = 0; i < 2; i++) {
+			if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
+				osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
+				lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
+			}
+			input_msg = msgb_dequeue_count(&lchan->dl_tch_queue,
+						       &lchan->dl_tch_queue_len);
+			if (input_msg) {
+				ntcsd_dl_input_48(lchan, input_msg->data,
+					  rtpmsg_csd_align_bits(input_msg));
+				msgb_free(input_msg);
+			} else {
+				ntcsd_dl_reset(lchan);
+			}
+		}
+		good_rlp = ntcsd_dl_output(lchan, rlp_frame);
+		if (good_rlp)
+			gsmtap_csd_rlp_dl(lchan, fn, rlp_frame, 240);
+		memcpy(lchan->tch.csd.tchf48_nt_2ndhalf, rlp_frame+120, 120);
+	}
+
+	/* back to every 20 ms code path */
+	phy_msg = l1sap_msgb_alloc(120);	/* half of RLP frame */
+	if (phy_msg) {
+		resp_l1sap = msgb_l1sap_prim(phy_msg);
+		phy_msg->l2h = msgb_put(phy_msg, 120);
+		if (csd_tchf48_nt_e2_map[fn % 26] == 0)
+			memcpy(phy_msg->l2h, rlp_frame, 120);
+		else
+			memcpy(phy_msg->l2h, lchan->tch.csd.tchf48_nt_2ndhalf, 120);
+	} else {
+		resp_l1sap = &empty_l1sap;
+	}
+
+	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
+	osmo_prim_init(&resp_l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_REQUEST,
+		phy_msg);
+	resp_l1sap->u.tch.chan_nr = chan_nr;
+	resp_l1sap->u.tch.fn = fn;
+	resp_l1sap->u.tch.marker = 0;	/* M bit is undefined for clearmode */
+
+	LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Tx TCH.req\n");
+
+	l1sap_down(trx, resp_l1sap);
+
+	return 0;
+}
+
+/* For TCH/F9.6 NT we need much less special processing than for TCH/F4.8 NT
+ * or for CSD-HR, but we still need to handle the possibility of misaligned
+ * RTP input, i.e., pseudo-V.110 frames aligned in the packet, but not
+ * forming proper RLP frame alignment via E2 & E3 bits. */
+static void tchf96_nt_dl_alignment(struct gsm_lchan *lchan, struct msgb *msg,
+				   uint32_t fn)
+{
+	bool good_rlp;
+
+	if (!msg) {
+		ntcsd_dl_reset(lchan);
+		/* FIXME: do we really need to generate a PHY packet filled
+		 * with 0 bits to satisfy TS 44.021 section 12.1, or can we
+		 * get by with letting the PHY fill in ones like it does
+		 * for all other CSD modes? */
+		return;
+	}
+	/* Fast path: handle the good case of already proper alignment */
+	if ((rtpmsg_csd_align_bits(msg) & 0xFF) == NTCSD_ALIGNED_EBITS) {
+		/* clear the buffer in case we have to do misaligned packets
+		 * later, but otherwise let it go! */
+		ntcsd_dl_reset(lchan);
+		gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(msg), msgb_l2len(msg));
+		return;
+	}
+	/* Slow path: realign like in other NT modes */
+	OSMO_ASSERT(msgb_l2len(msg) == 240);
+	ntcsd_dl_input_96(lchan, msgb_l2(msg), rtpmsg_csd_align_bits(msg));
+	good_rlp = ntcsd_dl_output(lchan, msgb_l2(msg));
+	if (good_rlp)
+		gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(msg), msgb_l2len(msg));
 }
 
 /* TCH-RTS-IND prim received from bts model */
@@ -1604,8 +1731,14 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH-RTS.ind\n");
 	}
 
-	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA && lchan->type == GSM_LCHAN_TCH_H)
+	/* CSD-HR requires special processing */
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA &&
+	    lchan->type == GSM_LCHAN_TCH_H)
 		return tch_rts_ind_csd_hr(trx, lchan, rts_ind);
+	/* so does TCH/F4.8 NT mode */
+	if (lchan->tch_mode == GSM48_CMODE_DATA_6k0 &&
+	    lchan->csd_mode == LCHAN_CSD_M_NT)
+		return tch_rts_ind_tchf48_nt(trx, lchan, rts_ind);
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
@@ -1651,6 +1784,24 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	    lchan->tch_mode == GSM48_CMODE_SPEECH_EFR) {
 		fr_hr_efr_dtxd_output(lchan, fn, is_fr_hr_efr_sid, &resp_msg,
 					&resp_l1sap, &empty_l1sap);
+	}
+
+	/* minimal extra handling for the remaining CSD NT modes */
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA &&
+	    lchan->csd_mode == LCHAN_CSD_M_NT) {
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_DATA_12k0:
+			tchf96_nt_dl_alignment(lchan, resp_msg, fn);
+			break;
+		case GSM48_CMODE_DATA_14k5:
+			gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(resp_msg),
+					  msgb_l2len(resp_msg));
+			break;
+		default:
+			LOGPLCGT(lchan, &g_time, DL1P, LOGL_ERROR,
+				"Invalid TCH mode in TCH-RTS.ind under CSD NT\n");
+			break;
+		}
 	}
 
 	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
@@ -1942,84 +2093,6 @@ static int l1sap_ph_data_ind(struct gsm_bts_trx *trx,
 	return 1;
 }
 
-/* process one MAC block of unpacked bits of a non-transparent CSD channel */
-static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
-				   const struct ph_tch_param *tch_ind,
-				   const uint8_t *data, unsigned int data_len)
-{
-	struct gsm_bts_trx *trx = lchan->ts->trx;
-	struct gsmtap_inst *inst = trx->bts->gsmtap.inst;
-	pbit_t *rlp_buf;
-	uint16_t arfcn;
-	int byte_len;
-
-	if (!inst || !trx->bts->gsmtap.rlp)
-		return;
-
-	if (lchan->csd_mode != LCHAN_CSD_M_NT)
-		return;
-
-	if (is_uplink)
-		rlp_buf = lchan->tch.csd.rlp_buf_ul;
-	else
-		rlp_buf = lchan->tch.csd.rlp_buf_dl;
-
-	/* TCH/F 9.6: 4x60bit block => 240bit RLP frame
-	 * TCH/F 4.8: 2x 2x60bit blocks starting at B0/B2/B4 => 240bit RLP frame
-	 * TCH/H 4.8: 4x60bit block => 240bit RLP frame
-	 * TCH/F 2.4: 2x36bit blocks => transparent only
-	 * TCH/H 2.4: 4x36bit blocks => transparent only
-	 * TCH/F 14.4: 2x 290 bit block (starting with M1=0) => 576-bit RLP frame
-	 */
-
-	if (lchan->type == GSM_LCHAN_TCH_F && lchan->tch_mode == GSM48_CMODE_DATA_6k0) {
-		/* in this mode we have 120bit MAC blocks; two of them need to be concatenated
-		 * to render a 240-bit RLP frame. The fist block is present in B0/B2/B4.
-		 * The E7 bit is used to indicate the Frame MF0a */
-		OSMO_ASSERT(data_len == 120);
-		ubit_t e7 = data[4*7+3];
-		if (e7 == 0) {
-			osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
-			return;
-		} else {
-			osmo_ubit2pbit_ext(rlp_buf, 120, data, 0, data_len, 1);
-			byte_len = 240/8;
-		}
-	} else if (lchan->type == GSM_LCHAN_TCH_F && lchan->tch_mode == GSM48_CMODE_DATA_14k5) {
-		/* in this mode we have 290bit MAC blocks containing M1, M2 and 288 data bits;
-		 * two of them need to be concatenated to render a
-		 * 576-bit RLP frame. The start of a RLP frame is
-		 * denoted by a block with M1-bit set to 0. */
-		OSMO_ASSERT(data_len == 290);
-		ubit_t m1 = data[0];
-		if (m1 == 0) {
-			osmo_ubit2pbit_ext(rlp_buf, 0, data, 2, data_len, 1);
-			return;
-		} else {
-			osmo_ubit2pbit_ext(rlp_buf, 288, data, 2, data_len, 1);
-			byte_len = 576/8;
-		}
-	} else {
-		byte_len = osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
-	}
-
-	if (trx->bts->gsmtap.rlp_skip_null) {
-		struct osmo_rlp_frame_decoded rlpf;
-		int rc = osmo_rlp_decode(&rlpf, 0, rlp_buf, byte_len);
-		if (rc == 0 && rlpf.ftype == OSMO_RLP_FT_U && rlpf.u_ftype == OSMO_RLP_U_FT_NULL)
-			return;
-	}
-
-	arfcn = trx->arfcn;
-	if (is_uplink)
-		arfcn |= GSMTAP_ARFCN_F_UPLINK;
-
-	gsmtap_send_ex(inst, GSMTAP_TYPE_GSM_RLP, arfcn, lchan->ts->nr,
-		       lchan->type == GSM_LCHAN_TCH_H ? GSMTAP_CHANNEL_VOICE_H : GSMTAP_CHANNEL_VOICE_F,
-		       lchan->nr, tch_ind->fn, tch_ind->rssi, 0, rlp_buf, byte_len);
-
-}
-
 /* a helper function for the logic in l1sap_tch_ind() */
 static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
 				const uint8_t *rtp_pl, uint16_t rtp_pl_len)
@@ -2060,20 +2133,11 @@ static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
 	lchan->rtp_tx_marker = false;
 }
 
-/* In the case of TCH/F4.8 NT, we have to set bit E2 based on the TDMA
- * frame number at which we received the block in question.  See
- * GSM 05.03 section 3.4.1 and the mapping tables of GSM 05.02. */
-static const uint8_t tchf48_nt_e2_map[26] = {
-	[4]  = 1,	/* B1 position */
-	[13] = 1,	/* B3 position */
-	[21] = 1,	/* B5 position */
-};
-
 static void handle_tch_ind_csd_fr(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
 				  const uint8_t *data, uint16_t data_len)
 {
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
-	uint8_t tchf48_half = tchf48_nt_e2_map[tch_ind->fn % 26];
+	uint8_t tchf48_half = csd_tchf48_nt_e2_map[tch_ind->fn % 26];
 	int rc;
 
 	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
@@ -2645,10 +2709,6 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		int rc = csd_v110_rtp_decode(lchan, msg->tail, &csd_align_bits,
 					     rtp_pl, rtp_pl_len);
 		if (rc > 0) {
-			/* 'fake' tch_ind containing all-zero so gsmtap code can be shared
-			 * between UL and DL */
-			static const struct ph_tch_param fake_tch_ind = {};
-			gsmtap_csd_rlp_process(lchan, false, &fake_tch_ind, msg->tail, rc);
 			msgb_put(msg, rc);
 		} else {
 			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_DROP_V110_DEC);
