@@ -1490,6 +1490,95 @@ static void fr_hr_efr_dtxd_output(struct gsm_lchan *lchan, uint32_t fn,
 		lchan->tch.dtx_fr_hr_efr.dl_sid_transmitted = true;
 }
 
+/* TDMA frame number of burst 'a' % 26 is the table index.
+ * This mapping is valid for both TCH/H(0) and TCH/H(1). */
+const uint8_t sched_tchh_dl_csd_map[26] = {
+	[0]  = 1, /* TCH/H(0): B0(0  ... 19) */
+	[1]  = 1, /* TCH/H(1): B0(1  ... 20) */
+	[8]  = 1, /* TCH/H(0): B1(8  ... 2) */
+	[9]  = 1, /* TCH/H(1): B1(9  ... 3) */
+	[17] = 1, /* TCH/H(0): B2(17 ... 10) */
+	[18] = 1, /* TCH/H(1): B2(18 ... 11) */
+};
+
+/* In the case of half-rate CSD, we need to send TCH.req every 40 ms instead of
+ * every 20 ms.  However, both TS 48.103 and common sense desire for
+ * interoperability (between FR and HR, between OsmoBTS and E1 BTS)
+ * require 20 ms RTP packetization interval.  Hence a special adapter
+ * function is needed. */
+static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
+				struct ph_tch_param *rts_ind)
+{
+	uint8_t chan_nr = rts_ind->chan_nr;
+	uint32_t fn = rts_ind->fn;
+	unsigned bits_per_20ms;
+	struct msgb *input_msg[2], *phy_msg;
+	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
+	uint8_t *phy_data;
+	struct gsm_time g_time;
+	int i;
+
+	/* The generic scheduler still sends us TCH-RTS.ind every 20 ms,
+	 * hence we have to filter out half of them here. */
+	if (!sched_tchh_dl_csd_map[fn % 26])
+		return 0;
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_DATA_6k0:
+		bits_per_20ms = 60 * 2;
+		break;
+	case GSM48_CMODE_DATA_3k6:
+		bits_per_20ms = 36 * 2;
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
+			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
+		}
+		input_msg[i] = msgb_dequeue_count(&lchan->dl_tch_queue,
+						  &lchan->dl_tch_queue_len);
+	}
+
+	phy_msg = l1sap_msgb_alloc(bits_per_20ms * 2);
+	if (phy_msg) {
+		resp_l1sap = msgb_l1sap_prim(phy_msg);
+		phy_msg->l2h = phy_msg->tail;
+		for (i = 0; i < 2; i++) {
+			phy_data = msgb_put(phy_msg, bits_per_20ms);
+			if (input_msg[i])
+				memcpy(phy_data, input_msg[i]->data, bits_per_20ms);
+			else
+				memset(phy_data, 0x01, bits_per_20ms);
+		}
+	} else {
+		resp_l1sap = &empty_l1sap;
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (input_msg[i])
+			msgb_free(input_msg[i]);
+	}
+
+	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
+	osmo_prim_init(&resp_l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_REQUEST,
+		phy_msg);
+	resp_l1sap->u.tch.chan_nr = chan_nr;
+	resp_l1sap->u.tch.fn = fn;
+	resp_l1sap->u.tch.marker = 0;	/* M bit is undefined for clearmode */
+
+	LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Tx TCH.req\n");
+
+	l1sap_down(trx, resp_l1sap);
+
+	return 0;
+}
+
 /* TCH-RTS-IND prim received from bts model */
 static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	struct osmo_phsap_prim *l1sap, struct ph_tch_param *rts_ind)
@@ -1514,6 +1603,9 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	} else {
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH-RTS.ind\n");
 	}
+
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA && lchan->type == GSM_LCHAN_TCH_H)
+		return tch_rts_ind_csd_hr(trx, lchan, rts_ind);
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
@@ -1928,34 +2020,9 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 
 }
 
-static void send_ul_rtp_packet_data(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
-				    const uint8_t *data, uint16_t data_len)
-{
-	struct gsm_bts *bts = lchan->ts->trx->bts;
-	uint8_t rtp_pl[RFC4040_RTP_PLEN];
-	int rc;
-
-	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
-
-	rc = csd_v110_rtp_encode(lchan, &rtp_pl[0], data, data_len);
-	if (rc < 0)
-		return;
-
-	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
-	if (lchan->rtp_tx_marker)
-		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
-
-	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-				&rtp_pl[0], sizeof(rtp_pl),
-				fn_ms_adj(tch_ind->fn, lchan),
-				lchan->rtp_tx_marker);
-	/* Only clear the marker bit once we have sent a RTP packet with it */
-	lchan->rtp_tx_marker = false;
-}
-
 /* a helper function for the logic in l1sap_tch_ind() */
-static void send_ul_rtp_packet_speech(struct gsm_lchan *lchan, uint32_t fn,
-				      const uint8_t *rtp_pl, uint16_t rtp_pl_len)
+static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
+				const uint8_t *rtp_pl, uint16_t rtp_pl_len)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
@@ -1973,6 +2040,97 @@ static void send_ul_rtp_packet_speech(struct gsm_lchan *lchan, uint32_t fn,
 	lchan->rtp_tx_marker = false;
 }
 
+/* A modified version of send_ul_rtp_packet() that skips fn_ms_adj() check:
+ * this check will produce a lot of noise when we send two RTP packets
+ * back-to-back every 40 ms on the same frame number, */
+static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
+				      const uint8_t *rtp_pl, uint16_t rtp_pl_len)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+
+	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
+	if (lchan->rtp_tx_marker)
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
+
+	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+				rtp_pl, rtp_pl_len,
+				GSM_RTP_DURATION,
+				lchan->rtp_tx_marker);
+	/* Only clear the marker bit once we have sent a RTP packet with it */
+	lchan->rtp_tx_marker = false;
+}
+
+static void handle_tch_ind_csd_fr(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
+				  const uint8_t *data, uint16_t data_len)
+{
+	uint8_t rtp_pl[RFC4040_RTP_PLEN];
+	int rc;
+
+	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
+
+	rc = csd_v110_rtp_encode(lchan, rtp_pl, data, data_len);
+	if (rc < 0)
+		return;
+
+	send_ul_rtp_packet(lchan, tch_ind->fn, rtp_pl, sizeof(rtp_pl));
+}
+
+static void handle_csd_hr_bfi(struct gsm_lchan *lchan)
+{
+	uint8_t rtp_pl[RFC4040_RTP_PLEN];
+	int rc, i;
+
+	rc = csd_v110_rtp_encode(lchan, rtp_pl, NULL, 0);
+	if (rc < 0)
+		return;
+
+	for (i = 0; i < 2; i++)
+		send_ul_rtp_packet_hrdata(lchan, rtp_pl, sizeof(rtp_pl));
+}
+
+static void handle_tch_ind_csd_hr(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
+				  const uint8_t *data, uint16_t data_len)
+{
+	unsigned bits_per_20ms;
+	uint8_t rtp_pl[RFC4040_RTP_PLEN];
+	int rc, i;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_DATA_6k0:
+		bits_per_20ms = 60 * 2;
+		break;
+	case GSM48_CMODE_DATA_3k6:
+		bits_per_20ms = 36 * 2;
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
+
+	if (data_len != bits_per_20ms * 2) {
+		handle_csd_hr_bfi(lchan);
+		return;
+	}
+	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
+
+	for (i = 0; i < 2; i++) {
+		rc = csd_v110_rtp_encode(lchan, rtp_pl,
+					 data + i * bits_per_20ms,
+					 bits_per_20ms);
+		if (rc < 0)
+			return;
+		send_ul_rtp_packet_hrdata(lchan, rtp_pl, sizeof(rtp_pl));
+	}
+}
+
+static void handle_tch_ind_csd(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
+				const uint8_t *data, uint16_t data_len)
+{
+	if (lchan->type == GSM_LCHAN_TCH_F)
+		handle_tch_ind_csd_fr(lchan, tch_ind, data, data_len);
+	else
+		handle_tch_ind_csd_hr(lchan, tch_ind, data, data_len);
+}
+
 /* a helper function for emitting HR1 UL in RFC 5993 format */
 static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
 			     struct msgb *msg)
@@ -1988,7 +2146,7 @@ static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
 	else
 		toc = 0x00;
 	msgb_push_u8(msg, toc);
-	send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 }
 
 /* a helper function for emitting FR/EFR UL in TW-TS-001 format */
@@ -2015,9 +2173,9 @@ static void send_rtp_twts001(struct gsm_lchan *lchan, uint32_t fn,
 		teh |= 0x01;
 	if (send_frame) {
 		msgb_push_u8(msg, teh);
-		send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+		send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 	} else {
-		send_ul_rtp_packet_speech(lchan, fn, &teh, 1);
+		send_ul_rtp_packet(lchan, fn, &teh, 1);
 	}
 }
 
@@ -2056,7 +2214,7 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 		/* did it actually give us some output? */
 		if (rc > 0) {
 			/* yes, send it out in RTP */
-			send_ul_rtp_packet_speech(lchan, fn, ecu_out, rc);
+			send_ul_rtp_packet(lchan, fn, ecu_out, rc);
 			return;
 		}
 	}
@@ -2064,7 +2222,7 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 	/* Are we in rtp continuous-streaming special mode? If so, send out
 	 * a BFI packet as zero-length RTP payload. */
 	if (lchan->ts->trx->bts->rtp_nogaps_mode) {
-		send_ul_rtp_packet_speech(lchan, fn, NULL, 0);
+		send_ul_rtp_packet(lchan, fn, NULL, 0);
 		return;
 	}
 
@@ -2136,7 +2294,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 				if (lchan->abis_ip.rtp_extensions & OSMO_RTP_EXT_TWTS001)
 					send_rtp_twts001(lchan, fn, msg, true);
 				else
-					send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+					send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 			} else if (lchan->type == GSM_LCHAN_TCH_H &&
 				   lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
 				/* HR codec: TS 101 318 or RFC 5993,
@@ -2144,14 +2302,14 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 				if (bts->emit_hr_rfc5993)
 					send_rtp_rfc5993(lchan, fn, msg);
 				else
-					send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+					send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 			} else {
 				/* generic case, no RTP alterations */
-				send_ul_rtp_packet_speech(lchan, fn, msg->data, msg->len);
+				send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 			}
 			break;
 		case RSL_CMOD_SPD_DATA:
-			send_ul_rtp_packet_data(lchan, tch_ind, msg->data, msg->len);
+			handle_tch_ind_csd(lchan, tch_ind, msg->data, msg->len);
 			break;
 		case RSL_CMOD_SPD_SIGN:
 			return 0; /* drop stale TCH.ind */
@@ -2166,7 +2324,11 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			return 1;
 		}
 	} else {
-		tch_ul_bfi_handler(lchan, &g_time, msg);
+		if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA &&
+		    lchan->type == GSM_LCHAN_TCH_H)
+			handle_csd_hr_bfi(lchan);
+		else
+			tch_ul_bfi_handler(lchan, &g_time, msg);
 	}
 
 	lchan->tch.last_fn = fn;

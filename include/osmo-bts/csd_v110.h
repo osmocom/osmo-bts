@@ -5,14 +5,10 @@
 
 struct gsm_lchan;
 
-struct csd_v110_frame_desc {
+struct csd_v110_lchan_desc {
 	uint16_t num_blocks;
 	uint16_t num_bits;
-};
-
-struct csd_v110_lchan_desc {
-	struct csd_v110_frame_desc fr;
-	struct csd_v110_frame_desc hr;
+	uint8_t ra2_ir;
 };
 
 extern const struct csd_v110_lchan_desc csd_v110_lchan_desc[256];
