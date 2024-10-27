@@ -1977,10 +1977,9 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 		if (e7 == 0) {
 			osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
 			return;
-		} else {
-			osmo_ubit2pbit_ext(rlp_buf, 120, data, 0, data_len, 1);
-			byte_len = 240/8;
 		}
+		osmo_ubit2pbit_ext(rlp_buf, 120, data, 0, data_len, 1);
+		byte_len = 240/8;
 	} else if (lchan->type == GSM_LCHAN_TCH_F && lchan->tch_mode == GSM48_CMODE_DATA_14k5) {
 		/* in this mode we have 290bit MAC blocks containing M1, M2 and 288 data bits;
 		 * two of them need to be concatenated to render a
@@ -1991,10 +1990,9 @@ static void gsmtap_csd_rlp_process(struct gsm_lchan *lchan, bool is_uplink,
 		if (m1 == 0) {
 			osmo_ubit2pbit_ext(rlp_buf, 0, data, 2, data_len, 1);
 			return;
-		} else {
-			osmo_ubit2pbit_ext(rlp_buf, 288, data, 2, data_len, 1);
-			byte_len = 576/8;
 		}
+		osmo_ubit2pbit_ext(rlp_buf, 288, data, 2, data_len, 1);
+		byte_len = 576/8;
 	} else {
 		byte_len = osmo_ubit2pbit_ext(rlp_buf, 0, data, 0, data_len, 1);
 	}
