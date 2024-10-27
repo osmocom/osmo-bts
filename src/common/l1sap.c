@@ -1540,17 +1540,37 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 						  &lchan->dl_tch_queue_len);
 	}
 
+	if (lchan->csd_mode == LCHAN_CSD_M_NT) {
+		for (i = 0; i < ARRAY_SIZE(input_msg); i++) {
+			if (input_msg[i]) {
+				ntcsd_dl_input_48(lchan, input_msg[i]->data,
+					  rtpmsg_csd_align_bits(input_msg[i]));
+			} else {
+				ntcsd_dl_reset(lchan);
+			}
+		}
+	}
+
 	phy_msg = l1sap_msgb_alloc(bits_per_20ms * 2);
 	if (phy_msg) {
 		resp_l1sap = msgb_l1sap_prim(phy_msg);
 		phy_msg->l2h = phy_msg->tail;
-		for (i = 0; i < ARRAY_SIZE(input_msg); i++) {
-			phy_data = msgb_put(phy_msg, bits_per_20ms);
-			if (input_msg[i]) {
-				memcpy(phy_data, input_msg[i]->data, bits_per_20ms);
-			} else {
-				/* IDLE frame, filled with 1 bits */
-				memset(phy_data, 0x01, bits_per_20ms);
+		if (lchan->csd_mode == LCHAN_CSD_M_NT) {
+			bool good_rlp;
+			phy_data = msgb_put(phy_msg, 240); /* RLP frame */
+			good_rlp = ntcsd_dl_output(lchan, phy_data);
+			if (good_rlp)
+				gsmtap_csd_rlp_dl(lchan, fn, phy_data, 240);
+		} else {
+			for (i = 0; i < ARRAY_SIZE(input_msg); i++) {
+				phy_data = msgb_put(phy_msg, bits_per_20ms);
+				if (input_msg[i]) {
+					memcpy(phy_data, input_msg[i]->data,
+						bits_per_20ms);
+				} else {
+					/* IDLE frame, filled with 1 bits */
+					memset(phy_data, 0x01, bits_per_20ms);
+				}
 			}
 		}
 	} else {
@@ -1574,6 +1594,111 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 	l1sap_down(trx, resp_l1sap);
 
 	return 0;
+}
+
+/* The case of TCH/F4.8 NT also requires special processing that is
+ * somewhat similar to half-rate CSD.  We have to produce an RLP frame
+ * for DL every 40 ms, thus it makes the most sense for us to poll
+ * the Rx jitter buffer every 40 ms just like with CSD-HR.  However,
+ * we need to send TCH.req to the PHY every 20 ms, sending either
+ * the first half or the second half of the RLP frame we put together
+ * every 40 ms. */
+static int tch_rts_ind_tchf48_nt(struct gsm_bts_trx *trx,
+				 struct gsm_lchan *lchan,
+				 struct ph_tch_param *rts_ind)
+{
+	uint8_t chan_nr = rts_ind->chan_nr;
+	uint32_t fn = rts_ind->fn;
+	struct msgb *input_msg, *phy_msg;
+	struct osmo_phsap_prim *resp_l1sap, empty_l1sap;
+	ubit_t rlp_frame[240];
+	bool good_rlp;
+	struct gsm_time g_time;
+	int i;
+
+	gsm_fn2gsmtime(&g_time, fn);
+
+	/* Input processing happens every 40 ms */
+	if (csd_tchf48_nt_e2_map[fn % 26] == 0) {
+		for (i = 0; i < 2; i++) {
+			if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
+				osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
+				lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
+			}
+			input_msg = msgb_dequeue_count(&lchan->dl_tch_queue,
+						       &lchan->dl_tch_queue_len);
+			if (input_msg) {
+				ntcsd_dl_input_48(lchan, input_msg->data,
+					  rtpmsg_csd_align_bits(input_msg));
+				msgb_free(input_msg);
+			} else {
+				ntcsd_dl_reset(lchan);
+			}
+		}
+		good_rlp = ntcsd_dl_output(lchan, rlp_frame);
+		if (good_rlp)
+			gsmtap_csd_rlp_dl(lchan, fn, rlp_frame, 240);
+		memcpy(lchan->tch.csd.tchf48_nt_2ndhalf, rlp_frame+120, 120);
+	}
+
+	/* back to every 20 ms code path */
+	phy_msg = l1sap_msgb_alloc(120);	/* half of RLP frame */
+	if (phy_msg) {
+		resp_l1sap = msgb_l1sap_prim(phy_msg);
+		phy_msg->l2h = msgb_put(phy_msg, 120);
+		if (csd_tchf48_nt_e2_map[fn % 26] == 0)
+			memcpy(phy_msg->l2h, rlp_frame, 120);
+		else
+			memcpy(phy_msg->l2h, lchan->tch.csd.tchf48_nt_2ndhalf, 120);
+	} else {
+		resp_l1sap = &empty_l1sap;
+	}
+
+	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
+	osmo_prim_init(&resp_l1sap->oph, SAP_GSM_PH, PRIM_TCH, PRIM_OP_REQUEST,
+		phy_msg);
+	resp_l1sap->u.tch.chan_nr = chan_nr;
+	resp_l1sap->u.tch.fn = fn;
+	resp_l1sap->u.tch.marker = 0;	/* M bit is undefined for clearmode */
+
+	LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Tx TCH.req\n");
+
+	l1sap_down(trx, resp_l1sap);
+
+	return 0;
+}
+
+/* For TCH/F9.6 NT we need much less special processing than for TCH/F4.8 NT
+ * or for CSD-HR, but we still need to handle the possibility of misaligned
+ * RTP input, i.e., pseudo-V.110 frames aligned in the packet, but not
+ * forming proper RLP frame alignment via E2 & E3 bits. */
+static void tchf96_nt_dl_alignment(struct gsm_lchan *lchan, struct msgb *msg,
+				   uint32_t fn)
+{
+	bool good_rlp;
+
+	if (!msg) {
+		ntcsd_dl_reset(lchan);
+		/* FIXME: do we really need to generate a PHY packet filled
+		 * with 0 bits to satisfy TS 44.021 section 12.1, or can we
+		 * get by with letting the PHY fill in ones like it does
+		 * for all other CSD modes? */
+		return;
+	}
+	/* Fast path: handle the good case of already proper alignment */
+	if ((rtpmsg_csd_align_bits(msg) & 0xFF) == NTCSD_ALIGNED_EBITS) {
+		/* clear the buffer in case we have to do misaligned packets
+		 * later, but otherwise let it go! */
+		ntcsd_dl_reset(lchan);
+		gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(msg), msgb_l2len(msg));
+		return;
+	}
+	/* Slow path: realign like in other NT modes */
+	OSMO_ASSERT(msgb_l2len(msg) == 240);
+	ntcsd_dl_input_96(lchan, msgb_l2(msg), rtpmsg_csd_align_bits(msg));
+	good_rlp = ntcsd_dl_output(lchan, msgb_l2(msg));
+	if (good_rlp)
+		gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(msg), msgb_l2len(msg));
 }
 
 /* TCH-RTS-IND prim received from bts model */
@@ -1601,8 +1726,14 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 		LOGPLCGT(lchan, &g_time, DL1P, LOGL_DEBUG, "Rx TCH-RTS.ind\n");
 	}
 
-	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA && lchan->type == GSM_LCHAN_TCH_H)
+	/* CSD-HR requires special processing */
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA &&
+	    lchan->type == GSM_LCHAN_TCH_H)
 		return tch_rts_ind_csd_hr(trx, lchan, rts_ind);
+	/* so does TCH/F4.8 NT mode */
+	if (lchan->tch_mode == GSM48_CMODE_DATA_6k0 &&
+	    lchan->csd_mode == LCHAN_CSD_M_NT)
+		return tch_rts_ind_tchf48_nt(trx, lchan, rts_ind);
 
 	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
 		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
@@ -1648,6 +1779,24 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	    lchan->tch_mode == GSM48_CMODE_SPEECH_EFR) {
 		fr_hr_efr_dtxd_output(lchan, fn, is_fr_hr_efr_sid, &resp_msg,
 					&resp_l1sap, &empty_l1sap);
+	}
+
+	/* minimal extra handling for the remaining CSD NT modes */
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_DATA &&
+	    lchan->csd_mode == LCHAN_CSD_M_NT) {
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_DATA_12k0:
+			tchf96_nt_dl_alignment(lchan, resp_msg, fn);
+			break;
+		case GSM48_CMODE_DATA_14k5:
+			gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(resp_msg),
+					  msgb_l2len(resp_msg));
+			break;
+		default:
+			LOGPLCGT(lchan, &g_time, DL1P, LOGL_ERROR,
+				"Invalid TCH mode in TCH-RTS.ind under CSD NT\n");
+			break;
+		}
 	}
 
 	memset(resp_l1sap, 0, sizeof(*resp_l1sap));
@@ -1979,20 +2128,11 @@ static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
 	lchan->rtp_tx_marker = false;
 }
 
-/* In the case of TCH/F4.8 NT, we have to set bit E2 based on the TDMA
- * frame number at which we received the block in question.  See
- * GSM 05.03 section 3.4.1 and the mapping tables of GSM 05.02. */
-static const uint8_t tchf48_nt_e2_map[26] = {
-	[4]  = 1,	/* B1 position */
-	[13] = 1,	/* B3 position */
-	[21] = 1,	/* B5 position */
-};
-
 static void handle_tch_ind_csd_fr(struct gsm_lchan *lchan, const struct ph_tch_param *tch_ind,
 				  const uint8_t *data, uint16_t data_len)
 {
 	uint8_t rtp_pl[RFC4040_RTP_PLEN];
-	uint8_t tchf48_half = tchf48_nt_e2_map[tch_ind->fn % 26];
+	uint8_t tchf48_half = csd_tchf48_nt_e2_map[tch_ind->fn % 26];
 	int rc;
 
 	gsmtap_csd_rlp_process(lchan, true, tch_ind, data, data_len);
@@ -2558,10 +2698,6 @@ void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
 		int rc = csd_v110_rtp_decode(lchan, msg->tail, &csd_align_bits,
 					     rtp_pl, rtp_pl_len);
 		if (rc > 0) {
-			/* 'fake' tch_ind containing all-zero so gsmtap code can be shared
-			 * between UL and DL */
-			static const struct ph_tch_param fake_tch_ind = {};
-			gsmtap_csd_rlp_process(lchan, false, &fake_tch_ind, msg->tail, rc);
 			msgb_put(msg, rc);
 		} else {
 			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_RX_DROP_V110_DEC);
