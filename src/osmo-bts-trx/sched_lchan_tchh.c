@@ -420,12 +420,6 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 	memmove(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 2), 20 * BPLEN);
 	memset(BUFPOS(bursts_p, 20), 0, 2 * BPLEN);
 
-	/* for half-rate CSD we dequeue every 4th burst */
-	if (chan_state->rsl_cmode == RSL_CMOD_SPD_DATA) {
-		if (!sched_tchh_dl_csd_map[br->fn % 26])
-			goto send_burst;
-	}
-
 	/* dequeue a TCH and/or a FACCH message to be transmitted */
 	tch_dl_dequeue(l1ts, br, &msg_tch, &msg_facch);
 
@@ -529,17 +523,25 @@ int tx_tchh_fn(struct l1sched_ts *l1ts, struct trx_dl_burst_req *br)
 		break;
 	/* CSD (TCH/H4.8): 6.0 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_6k0:
-		if (msg_tch == NULL)
-			msg_tch = tch_dummy_msgb(4 * 60, 0x01);
-		gsm0503_tch_hr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		/* for half-rate CSD we run the encoder every 4th burst (like for TCH/F)
+		 * because the interleaving is done as specified for the TCH/F9.6 */
+		if (sched_tchh_dl_csd_map[br->fn % 26]) {
+			if (msg_tch == NULL)
+				msg_tch = tch_dummy_msgb(4 * 60, 0x01);
+			gsm0503_tch_hr48_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		}
 		if (msg_facch != NULL)
 			gsm0503_tch_hr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
 	/* CSD (TCH/H2.4): 3.6 kbit/s radio interface rate */
 	case GSM48_CMODE_DATA_3k6:
-		if (msg_tch == NULL)
-			msg_tch = tch_dummy_msgb(4 * 36, 0x01);
-		gsm0503_tch_hr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		/* for half-rate CSD we run the encoder every 4th burst (like for TCH/F)
+		 * because the interleaving is done as specified for the TCH/F9.6 */
+		if (sched_tchh_dl_csd_map[br->fn % 26]) {
+			if (msg_tch == NULL)
+				msg_tch = tch_dummy_msgb(4 * 36, 0x01);
+			gsm0503_tch_hr24_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_tch));
+		}
 		if (msg_facch != NULL)
 			gsm0503_tch_hr_facch_encode(BUFPOS(bursts_p, 0), msgb_l2(msg_facch));
 		break;
