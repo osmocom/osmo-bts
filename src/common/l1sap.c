@@ -2097,7 +2097,7 @@ static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
 	if (lchan->abis_ip.osmux.use) {
 		lchan_osmux_send_frame(lchan, rtp_pl, rtp_pl_len,
 				       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
-	} else if (lchan->abis_ip.rtp_socket) {
+	} else if (lchan->abis_ip.rtp_socket != NULL) {
 		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
 			rtp_pl, rtp_pl_len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
 		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
@@ -2116,14 +2116,15 @@ static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
-	if (lchan->rtp_tx_marker)
-		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
-
-	osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-				rtp_pl, rtp_pl_len,
-				GSM_RTP_DURATION,
-				lchan->rtp_tx_marker);
+	if (lchan->abis_ip.rtp_socket != NULL) {
+		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
+					rtp_pl, rtp_pl_len,
+					GSM_RTP_DURATION,
+					lchan->rtp_tx_marker);
+		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
+		if (lchan->rtp_tx_marker)
+			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
+	}
 	/* Only clear the marker bit once we have sent a RTP packet with it */
 	lchan->rtp_tx_marker = false;
 }
