@@ -896,8 +896,8 @@ static bool bts_supports_cm_data(const struct gsm_bts *bts,
 	switch (bts->variant) {
 	case BTS_OSMO_TRX:
 		switch (cm->chan_rate) {
-		/* TODO: RSL_CMOD_CSD_NT_14k5 */
-		/* TODO: RSL_CMOD_CSD_T_14k4 */
+		case RSL_CMOD_CSD_NT_14k5:
+		case RSL_CMOD_CSD_T_14k4:
 		case RSL_CMOD_CSD_NT_12k0:
 		case RSL_CMOD_CSD_T_9k6:
 			if (cm->chan_rt != RSL_CMOD_CRT_TCH_Bm)

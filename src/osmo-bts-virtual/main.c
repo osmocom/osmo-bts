@@ -99,9 +99,6 @@ int bts_model_trx_init(struct gsm_bts_trx *trx)
 	trx->support.chan_modes = NM_IPAC_MASK_CHANM_SPEECH
 				| NM_IPAC_MASK_CHANM_CSD_NT
 				| NM_IPAC_MASK_CHANM_CSD_T;
-	/* TODO: missing rate adaptation for TCH/F14.4 (see OS#6167) */
-	trx->support.chan_modes &= ~NM_IPAC_F_CHANM_CSD_T_14k4;
-	trx->support.chan_modes &= ~NM_IPAC_F_CHANM_CSD_NT_14k4;
 
 	return 0;
 }

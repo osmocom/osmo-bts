@@ -145,6 +145,10 @@ static void exec_test_case(const struct test_case *tc)
 			i, data_dec[i], data_enc[i]);
 	}
 
+	/* for TCH/F14.4, we always expect a valid block */
+	if (tc->tch_mode == GSM48_CMODE_DATA_14k5)
+		return;
+
 	fprintf(stderr, "[i] Testing '%s' (IDLE)\n", tc->name);
 
 	/* encode an idle RTP frame and print it */

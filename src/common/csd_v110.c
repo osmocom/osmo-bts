@@ -30,13 +30,13 @@
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/isdn/v110.h>
 #include <osmocom/trau/csd_ra2.h>
+#include <osmocom/trau/csd_raa_prime.h>
 
 #include <osmo-bts/csd_v110.h>
 #include <osmo-bts/lchan.h>
 
 /* key is enum gsm48_chan_mode, so assuming a value in range 0..255 */
 const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
-#if 0
 	[GSM48_CMODE_DATA_14k5] = {
 		/* TCH/F14.4: 8 * 36 + 2 bits every 20 ms (14.5 kbit/s) */
 		.num_frames = 8,
@@ -44,7 +44,6 @@ const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
 		.num_other_bits = 2,	/* M-bits */
 		.ra2_ir = 16,
 	},
-#endif
 	[GSM48_CMODE_DATA_12k0] = {
 		/* TCH/F9.6: 4 * 60 bits every 20 ms (12.0 kbit/s) */
 		.num_frames = 4,
@@ -91,6 +90,32 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
 	if (OSMO_UNLIKELY(desc->num_frames == 0))
 		return -ENOTSUP;
+
+	/* TCH/F14.4 is special: RAA' function is employed */
+	if (lchan->tch_mode == GSM48_CMODE_DATA_14k5) {
+		/* 3GPP TS 44.021, section 10.3 "TCH/F14.4 channel coding"
+		 * 3GPP TS 48.020, chapter 11 "THE RAA' FUNCTION" */
+		const ubit_t *m_bits = &data[0]; /* M-bits */
+		const ubit_t *d_bits = &data[2]; /* D-bits */
+		ubit_t c4, c5;
+
+		/* 3GPP TS 48.020, Table 3
+		 * | C4 | Date Rate |
+		 * | =1 | 14,4 kbit/s |
+		 * | =0 | 14.4 kbit/s idle (IWF to BSS only) | */
+		c4 = 1;
+		/* 3GPP TS 48.020, Table 4
+		 * | C5 | BSS to IWF FT | IWF to BSS UFE |
+		 * | =1 | idle | framing error |
+		 * | =0 | data | no framing error | */
+		c5 = 0;
+
+		/* Unless there is a bug, it's highly unlikely */
+		OSMO_ASSERT(data_len == CSD_V110_NUM_BITS(desc));
+
+		osmo_csd144_to_atrau_bits(&ra_bits[0], m_bits, d_bits, c4, c5);
+		goto ra1_ra2;
+	}
 
 	/* handle empty/incomplete Uplink frames gracefully */
 	if (OSMO_UNLIKELY(data_len < CSD_V110_NUM_BITS(desc))) {
@@ -177,6 +202,18 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 		osmo_csd_ra2_16k_unpack(&ra_bits[0], &rtp[0], RFC4040_RTP_PLEN);
 	else /* desc->ra2_ir == 8 */
 		osmo_csd_ra2_8k_unpack(&ra_bits[0], &rtp[0], RFC4040_RTP_PLEN);
+
+	/* TCH/F14.4 is special: RAA' function is employed */
+	if (lchan->tch_mode == GSM48_CMODE_DATA_14k5) {
+		/* 3GPP TS 44.021, section 10.3 "TCH/F14.4 channel coding"
+		 * 3GPP TS 48.020, chapter 11 "THE RAA' FUNCTION" */
+		ubit_t *m_bits = &data[0]; /* M-bits */
+		ubit_t *d_bits = &data[2]; /* D-bits */
+		int rc;
+
+		rc = osmo_csd144_from_atrau_bits(m_bits, d_bits, NULL, NULL, &ra_bits[0]);
+		return rc == 0 ? CSD_V110_NUM_BITS(desc) : rc;
+	}
 
 	/* RA1'/RA1: convert from an intermediate rate to radio rate */
 	for (unsigned int i = 0; i < desc->num_frames; i++) {

@@ -1,4 +1,16 @@
-[i] Skipping 'TCH/F14.4' (not implemented)
+[i] Testing 'TCH/F14.4' (bitnum=290)
+[i] csd_v110_rtp_encode() returns 160
+    3f 3f 3f 3f 3f 3f 3f 3f bf ff bf 7f bf bf bf bf 
+    bf bf bf bf bf bf bf bf bf bf bf bf bf bf ff 7f 
+    7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 
+    7f bf bf bf bf bf bf bf bf bf bf bf bf bf bf bf 
+    bf bf bf ff 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 
+    7f 7f 7f 7f 7f 7f bf bf bf bf bf bf bf bf bf bf 
+    bf bf bf bf bf bf bf bf ff 7f 7f 7f 7f 7f 7f 7f 
+    7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f bf bf bf bf bf 
+    bf bf bf bf bf bf bf bf bf bf bf bf bf ff 7f 7f 
+    7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 7f 
+[i] csd_v110_rtp_decode() returns 290
 [i] Testing 'TCH/F9.6' (bitnum=240)
 [i] csd_v110_rtp_encode() returns 160
     3f 3f 3f 3f bf bf bf bf ff 7f 7f 7f bf bf bf bf 
