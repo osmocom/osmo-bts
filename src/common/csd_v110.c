@@ -29,6 +29,7 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/isdn/v110.h>
+#include <osmocom/trau/csd_ra2.h>
 
 #include <osmo-bts/csd_v110.h>
 #include <osmo-bts/lchan.h>
@@ -133,20 +134,10 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 
 ra1_ra2:
 	/* RA1/RA2: convert from an intermediate rate to 64 kbit/s */
-	if (desc->ra2_ir == 16) {
-		/* 4 * 80 bits (16 kbit/s) => 2 bits per octet */
-		for (unsigned int i = 0, j = 0; i < RFC4040_RTP_PLEN; i++) {
-			rtp[i]  = (0xff >> 2);
-			rtp[i] |= (ra_bits[j++] << 7);
-			rtp[i] |= (ra_bits[j++] << 6);
-		}
-	} else {
-		/* 2 * 80 bits (8 kbit/s) => 1 bit per octet */
-		for (unsigned int i = 0; i < RFC4040_RTP_PLEN; i++) {
-			rtp[i]  = (0xff >> 1);
-			rtp[i] |= (ra_bits[i] << 7);
-		}
-	}
+	if (desc->ra2_ir == 16)
+		osmo_csd_ra2_16k_pack(&rtp[0], &ra_bits[0], RFC4040_RTP_PLEN);
+	else /* desc->ra2_ir == 8 */
+		osmo_csd_ra2_8k_pack(&rtp[0], &ra_bits[0], RFC4040_RTP_PLEN);
 
 	return RFC4040_RTP_PLEN;
 }
@@ -181,17 +172,10 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 		return -EINVAL;
 
 	/* RA1/RA2: convert from 64 kbit/s to an intermediate rate */
-	if (desc->ra2_ir == 16) {
-		/* 4 * 80 bits (16 kbit/s) => 2 bits per octet */
-		for (unsigned int i = 0, j = 0; i < RFC4040_RTP_PLEN; i++) {
-			ra_bits[j++] = (rtp[i] >> 7);
-			ra_bits[j++] = (rtp[i] >> 6) & 0x01;
-		}
-	} else {
-		/* 2 * 80 bits (8 kbit/s) => 1 bit per octet */
-		for (unsigned int i = 0; i < RFC4040_RTP_PLEN; i++)
-			ra_bits[i] = (rtp[i] >> 7);
-	}
+	if (desc->ra2_ir == 16)
+		osmo_csd_ra2_16k_unpack(&ra_bits[0], &rtp[0], RFC4040_RTP_PLEN);
+	else /* desc->ra2_ir == 8 */
+		osmo_csd_ra2_8k_unpack(&ra_bits[0], &rtp[0], RFC4040_RTP_PLEN);
 
 	/* RA1'/RA1: convert from an intermediate rate to radio rate */
 	for (unsigned int i = 0; i < desc->num_blocks; i++) {
