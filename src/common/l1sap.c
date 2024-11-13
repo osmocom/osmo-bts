@@ -1789,8 +1789,11 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 			tchf96_nt_dl_alignment(lchan, resp_msg, fn);
 			break;
 		case GSM48_CMODE_DATA_14k5:
-			gsmtap_csd_rlp_dl(lchan, fn, msgb_l2(resp_msg),
-					  msgb_l2len(resp_msg));
+			if (resp_msg != NULL) {
+				gsmtap_csd_rlp_dl(lchan, fn,
+						  msgb_l2(resp_msg),
+						  msgb_l2len(resp_msg));
+			}
 			break;
 		default:
 			LOGPLCGT(lchan, &g_time, DL1P, LOGL_ERROR,
