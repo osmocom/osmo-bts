@@ -583,7 +583,7 @@ int lchan_rtp_socket_create(struct gsm_lchan *lchan, const char *bind_ip)
 	//if (!payload_type)
 	lchan->tch.last_fn = LCHAN_FN_DUMMY;
 	lchan->abis_ip.rtp_socket = rtp_abst_socket_create(lchan->ts->trx,
-					false, &bts->twjit_cfg);
+					bts->use_twrtp, &bts->twjit_cfg);
 
 	if (!lchan->abis_ip.rtp_socket) {
 		LOGPLCHAN(lchan, DRTP, LOGL_ERROR, "IPAC Failed to create RTP/RTCP sockets\n");
