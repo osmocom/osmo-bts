@@ -3,6 +3,7 @@
 
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/socket.h>
+#include <themwi/rtp/twjit.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_trx.h>
 #include <osmo-bts/osmux.h>
@@ -318,6 +319,7 @@ struct gsm_bts {
 	struct llist_head bsc_oml_hosts;
 	unsigned int rtp_jitter_buf_ms;
 	bool rtp_jitter_adaptive;
+	struct twrtp_jibuf_config twjit_cfg;
 
 	uint16_t rtp_port_range_start;
 	uint16_t rtp_port_range_end;
