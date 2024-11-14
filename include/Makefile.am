@@ -1,1 +1,1 @@
-SUBDIRS = osmo-bts
+SUBDIRS = osmo-bts themwi

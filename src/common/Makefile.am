@@ -71,7 +71,26 @@ libbts_a_SOURCES = \
 	nm_gprs_nsvc_fsm.c \
 	nm_radio_carrier_fsm.c \
 	notification.c \
+	twrtp/bind_fdpair.c \
+	twrtp/endp_bind.c \
+	twrtp/endp_create.c \
+	twrtp/endp_register.c \
+	twrtp/rtcp_rx.c \
+	twrtp/rtcp_tx.c \
+	twrtp/rtp_rx.c \
+	twrtp/rtp_tx.c \
+	twrtp/set_dscp_prio.c \
+	twrtp/set_remote.c \
+	twrtp/set_sdes.c \
+	twrtp/twjit.c \
+	twrtp/twjit_in.c \
+	twrtp/twjit_out.c \
+	twrtp/twjit_vty.c \
 	probes.d \
+	$(NULL)
+
+noinst_HEADERS = \
+	twrtp/endp_internal.h \
 	$(NULL)
 
 libl1sched_a_SOURCES = scheduler.c
