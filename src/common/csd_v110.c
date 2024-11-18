@@ -92,7 +92,7 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 		return -ENOTSUP;
 
 	/* handle empty/incomplete Uplink frames gracefully */
-	if (OSMO_UNLIKELY(data_len < (desc->num_blocks * desc->num_bits))) {
+	if (OSMO_UNLIKELY(data_len < CSD_V110_NUM_BITS(desc))) {
 		/* encode N idle frames as per 3GPP TS 44.021, section 8.1.6 */
 		memset(&ra_bits[0], 0x01, sizeof(ra_bits));
 		for (unsigned int i = 0; i < desc->num_blocks; i++)
@@ -200,5 +200,5 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 
 	if (align_bits)
 		*align_bits = align_accum;
-	return desc->num_blocks * desc->num_bits;
+	return CSD_V110_NUM_BITS(desc);
 }

@@ -104,7 +104,7 @@ static void exec_test_case(const struct test_case *tc)
 	desc = &csd_v110_lchan_desc[tc->tch_mode];
 
 	/* total number of bits carried by a radio interface block */
-	const unsigned int bit_num = desc->num_bits * desc->num_blocks;
+	const unsigned int bit_num = CSD_V110_NUM_BITS(desc);
 	if (bit_num == 0) {
 		fprintf(stderr, "[i] Skipping '%s' (not implemented)\n", tc->name);
 		return;

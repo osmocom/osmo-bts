@@ -1528,7 +1528,7 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 	gsm_fn2gsmtime(&g_time, fn);
 
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
-	bits_per_20ms = desc->num_blocks * desc->num_bits;
+	bits_per_20ms = CSD_V110_NUM_BITS(desc);
 	OSMO_ASSERT(bits_per_20ms != 0);
 
 	for (i = 0; i < ARRAY_SIZE(input_msg); i++) {
@@ -2172,7 +2172,7 @@ static void handle_tch_ind_csd_hr(struct gsm_lchan *lchan, const struct ph_tch_p
 	int rc, i;
 
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
-	bits_per_20ms = desc->num_blocks * desc->num_bits;
+	bits_per_20ms = CSD_V110_NUM_BITS(desc);
 	OSMO_ASSERT(bits_per_20ms != 0);
 
 	if (data_len != bits_per_20ms * 2) {

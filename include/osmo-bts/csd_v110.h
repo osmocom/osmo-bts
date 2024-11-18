@@ -13,6 +13,9 @@ struct csd_v110_lchan_desc {
 
 extern const struct csd_v110_lchan_desc csd_v110_lchan_desc[256];
 
+#define CSD_V110_NUM_BITS(desc) \
+	((desc)->num_blocks * (desc)->num_bits)
+
 int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 			const uint8_t *data, size_t data_len,
 			uint8_t nt48_half_num);
