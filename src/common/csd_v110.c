@@ -39,27 +39,27 @@ const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
 #if 0
 	[GSM48_CMODE_DATA_14k5] = {
 		/* TCH/F14.4: 290 bits every 20 ms (14.5 kbit/s) */
-		.num_blocks = 1,
-		.num_bits = 290,
+		.num_frames = 1,
+		.num_frame_bits = 290,
 		.ra2_ir = 16,
 	},
 #endif
 	[GSM48_CMODE_DATA_12k0] = {
 		/* TCH/F9.6: 4 * 60 bits every 20 ms (12.0 kbit/s) */
-		.num_blocks = 4,
-		.num_bits = 60,
+		.num_frames = 4,
+		.num_frame_bits = 60,
 		.ra2_ir = 16,
 	},
 	[GSM48_CMODE_DATA_6k0] = {
 		/* TCH/[FH]4.8: 2 * 60 bits every 20 ms (6.0 kbit/s) */
-		.num_blocks = 2,
-		.num_bits = 60,
+		.num_frames = 2,
+		.num_frame_bits = 60,
 		.ra2_ir = 8,
 	},
 	[GSM48_CMODE_DATA_3k6] = {
 		/* TCH/[FH]2.4: 2 * 36 bits every 20 ms (3.6 kbit/s) */
-		.num_blocks = 2,
-		.num_bits = 36,
+		.num_frames = 2,
+		.num_frame_bits = 36,
 		.ra2_ir = 8,
 	},
 };
@@ -88,26 +88,26 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 
 	OSMO_ASSERT(lchan->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
-	if (OSMO_UNLIKELY(desc->num_blocks == 0))
+	if (OSMO_UNLIKELY(desc->num_frames == 0))
 		return -ENOTSUP;
 
 	/* handle empty/incomplete Uplink frames gracefully */
 	if (OSMO_UNLIKELY(data_len < CSD_V110_NUM_BITS(desc))) {
 		/* encode N idle frames as per 3GPP TS 44.021, section 8.1.6 */
 		memset(&ra_bits[0], 0x01, sizeof(ra_bits));
-		for (unsigned int i = 0; i < desc->num_blocks; i++)
+		for (unsigned int i = 0; i < desc->num_frames; i++)
 			memset(&ra_bits[i * 80], 0x00, 8); /* alignment pattern */
 		goto ra1_ra2;
 	}
 
 	/* RA1'/RA1: convert from radio rate to an intermediate data rate */
-	for (unsigned int i = 0; i < desc->num_blocks; i++) {
+	for (unsigned int i = 0; i < desc->num_frames; i++) {
 		struct osmo_v110_decoded_frame df;
 
 		/* convert a V.110 36-/60-bit frame to a V.110 80-bit frame */
-		if (desc->num_bits == 60)
+		if (desc->num_frame_bits == 60)
 			osmo_csd_12k_6k_decode_frame(&df, &data[i * 60], 60);
-		else /* desc->num_bits == 36 */
+		else /* desc->num_frame_bits == 36 */
 			osmo_csd_3k6_decode_frame(&df, &data[i * 36], 36);
 
 		/* E1 .. E3 must set by out-of-band knowledge */
@@ -116,7 +116,7 @@ int csd_v110_rtp_encode(const struct gsm_lchan *lchan, uint8_t *rtp,
 			/* E1: as per 15.1.2, shall be set to 0 (for BSS-MSC) */
 			df.e_bits[0] = 0;
 			/* E2: 0 for Q1/Q2, 1 for Q3/Q4 */
-			if (desc->num_blocks == 4)
+			if (desc->num_frames == 4)
 				df.e_bits[1] = (i >> 1) & 0x01;
 			else
 				df.e_bits[1] = nt48_half_num;
@@ -165,7 +165,7 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 
 	OSMO_ASSERT(lchan->tch_mode < ARRAY_SIZE(csd_v110_lchan_desc));
 	desc = &csd_v110_lchan_desc[lchan->tch_mode];
-	if (OSMO_UNLIKELY(desc->num_blocks == 0))
+	if (OSMO_UNLIKELY(desc->num_frames == 0))
 		return -ENOTSUP;
 
 	if (OSMO_UNLIKELY(rtp_len != RFC4040_RTP_PLEN))
@@ -178,7 +178,7 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 		osmo_csd_ra2_8k_unpack(&ra_bits[0], &rtp[0], RFC4040_RTP_PLEN);
 
 	/* RA1'/RA1: convert from an intermediate rate to radio rate */
-	for (unsigned int i = 0; i < desc->num_blocks; i++) {
+	for (unsigned int i = 0; i < desc->num_frames; i++) {
 		struct osmo_v110_decoded_frame df;
 
 		/* We require our RTP input to consist of aligned V.110
@@ -188,9 +188,9 @@ int csd_v110_rtp_decode(const struct gsm_lchan *lchan, uint8_t *data,
 			return -EINVAL;
 		/* convert a V.110 80-bit frame to a V.110 36-/60-bit frame */
 		osmo_v110_decode_frame(&df, &ra_bits[i * 80], 80);
-		if (desc->num_bits == 60)
+		if (desc->num_frame_bits == 60)
 			osmo_csd_12k_6k_encode_frame(&data[i * 60], 60, &df);
-		else /* desc->num_bits == 36 */
+		else /* desc->num_frame_bits == 36 */
 			osmo_csd_3k6_encode_frame(&data[i * 36], 36, &df);
 		/* save bits E2 & E3 that may be needed for RLP alignment */
 		align_accum <<= 2;
