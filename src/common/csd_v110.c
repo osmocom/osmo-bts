@@ -38,9 +38,10 @@
 const struct csd_v110_lchan_desc csd_v110_lchan_desc[256] = {
 #if 0
 	[GSM48_CMODE_DATA_14k5] = {
-		/* TCH/F14.4: 290 bits every 20 ms (14.5 kbit/s) */
-		.num_frames = 1,
-		.num_frame_bits = 290,
+		/* TCH/F14.4: 8 * 36 + 2 bits every 20 ms (14.5 kbit/s) */
+		.num_frames = 8,
+		.num_frame_bits = 36,	/* D-bits */
+		.num_other_bits = 2,	/* M-bits */
 		.ra2_ir = 16,
 	},
 #endif
