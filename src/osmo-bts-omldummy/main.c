@@ -7,6 +7,7 @@
 
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/application.h>
+#include <osmocom/core/logging.h>
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
 #include <osmo-bts/bts.h>
@@ -44,10 +45,14 @@ void parse_cmdline(int argc, char **argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"features", 1, 0, 'f'},
+			{ "debug", 1, 0, 'd' },
+			{ "disable-color", 0, 0, 's' },
+			{ "timestamp", 0, 0, 'T' },
+			{ "log-level", 1, 0, 'e' },
 			{0}
 		};
 
-		c = getopt_long(argc, argv, "hf:", long_options, &option_index);
+		c = getopt_long(argc, argv, "hf:d:sTe:", long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -57,6 +62,18 @@ void parse_cmdline(int argc, char **argv)
 			exit(0);
 		case 'f':
 			cmdline.features = optarg;
+			break;
+		case 's':
+			log_set_use_color(osmo_stderr_target, 0);
+			break;
+		case 'd':
+			log_parse_category_mask(osmo_stderr_target, optarg);
+			break;
+		case 'T':
+			log_set_print_timestamp(osmo_stderr_target, 1);
+			break;
+		case 'e':
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		default:
 			/* catch unknown options *as well as* missing arguments. */
@@ -111,12 +128,12 @@ int main(int argc, char **argv)
 	struct bsc_oml_host *bsc_oml_host;
 	int i;
 
-	parse_cmdline(argc, argv);
-
 	tall_bts_ctx = talloc_named_const(NULL, 1, "OsmoBTS context");
 	msgb_talloc_ctx_init(tall_bts_ctx, 10*1024);
 
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
+
+	parse_cmdline(argc, argv);
 
 	g_bts_sm = gsm_bts_sm_alloc(tall_bts_ctx);
 	if (!g_bts_sm)
