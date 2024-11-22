@@ -476,8 +476,11 @@ static int inp_s_cbfn(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	struct input_signal_data *isd = signal_data;
-	DEBUGP(DABIS, "Input Signal %s received for link_type=%s\n",
-	       get_value_string(e1inp_signal_names, signal), e1inp_signtype_name(isd->link_type));
+	DEBUGP(DABIS, "Input Signal %s received for ts-%u-%u link_type=%s\n",
+	       get_value_string(e1inp_signal_names, signal),
+	       isd->line ? isd->line->num : -1,
+	       isd->ts_nr,
+	       e1inp_signtype_name(isd->link_type));
 
 	return 0;
 }
