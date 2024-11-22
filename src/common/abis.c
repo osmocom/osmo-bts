@@ -87,10 +87,17 @@ struct abis_link_fsm_priv {
 
 static void reset_oml_link(struct gsm_bts *bts)
 {
+	struct e1inp_sign_link *link;
+
 	if (bts->oml_link) {
 		struct timespec now;
 
-		e1inp_sign_link_destroy(bts->oml_link);
+		/* Mark bts->oml_link ptr null before calling sign_link_destroy,
+		 * to avoid a callback triggering this same code path. */
+		link = bts->oml_link;
+		bts->oml_link = NULL;
+
+		e1inp_sign_link_destroy(link);
 
 		/* Log a special notice if the OML connection was dropped relatively quickly. */
 		if (bts->oml_conn_established_timestamp.tv_sec != 0 && clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
@@ -100,14 +107,16 @@ static void reset_oml_link(struct gsm_bts *bts)
 			     "A common error is a mismatch between unit_id configuration parameters of BTS and BSC.\n",
 			     (uint64_t) (now.tv_sec - bts->oml_conn_established_timestamp.tv_sec));
 		}
-		bts->oml_link = NULL;
 	}
 	memset(&bts->oml_conn_established_timestamp, 0, sizeof(bts->oml_conn_established_timestamp));
 
 	/* Same for IPAC_PROTO_OSMO on the same ipa connection: */
 	if (bts->osmo_link) {
-		e1inp_sign_link_destroy(bts->osmo_link);
+		/* Mark bts->osmo_link ptr null before calling sign_link_destroy,
+		 * to avoid a callback triggering this same code path. */
+		link = bts->osmo_link;
 		bts->osmo_link = NULL;
+		e1inp_sign_link_destroy(link);
 	}
 
 }
@@ -226,8 +235,11 @@ static void abis_link_connected(struct osmo_fsm_inst *fi, uint32_t event, void *
 	/* Then iterate over the RSL signalling links */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		if (trx->bb_transc.rsl.link) {
-			e1inp_sign_link_destroy(trx->bb_transc.rsl.link);
+			/* Mark link ptr null before calling sign_link_destroy,
+			 * to avoid a callback triggering this same code path. */
+			struct e1inp_sign_link *link = trx->bb_transc.rsl.link;
 			trx->bb_transc.rsl.link = NULL;
+			e1inp_sign_link_destroy(link);
 			if (trx == trx->bts->c0)
 				load_timer_stop(trx->bts);
 		} else {
