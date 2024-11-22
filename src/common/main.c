@@ -361,7 +361,7 @@ int bts_main(int argc, char **argv)
 	/* TODO: move this to gsm_bts_alloc() */
 	if (g_bts->gsmtap.remote_host != NULL) {
 		LOGP(DLGLOBAL, LOGL_NOTICE,
-		     "Setting up GSMTAP Um forwarding '%s->'%s:%u'\n",
+		     "Setting up GSMTAP Um forwarding '%s'->'%s:%u'\n",
 		     g_bts->gsmtap.local_host, g_bts->gsmtap.remote_host, GSMTAP_UDP_PORT);
 		g_bts->gsmtap.inst = gsmtap_source_init2(g_bts->gsmtap.local_host, 0,
 							 g_bts->gsmtap.remote_host, GSMTAP_UDP_PORT, 1);
