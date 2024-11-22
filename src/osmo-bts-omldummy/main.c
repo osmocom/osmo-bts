@@ -132,6 +132,8 @@ int main(int argc, char **argv)
 	msgb_talloc_ctx_init(tall_bts_ctx, 10*1024);
 
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
+	log_set_print_category(osmo_stderr_target, 1);
+	log_set_print_category_hex(osmo_stderr_target, 0);
 
 	parse_cmdline(argc, argv);
 
