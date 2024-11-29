@@ -39,10 +39,10 @@
 #include <osmocom/core/signal.h>
 #include <osmocom/core/macaddr.h>
 #include <osmocom/core/fsm.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
+#include <osmocom/gsm/ipa.h>
 #include <osmocom/abis/abis.h>
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipaccess.h>
-#include <osmocom/gsm/ipa.h>
 
 #include <osmo-bts/abis.h>
 #include <osmo-bts/logging.h>

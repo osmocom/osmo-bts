@@ -36,10 +36,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+#include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/abis/e1_input.h>
-#include <osmocom/abis/ipaccess.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
