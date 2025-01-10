@@ -182,6 +182,12 @@ static struct cmd_node osmux_node = {
 	1,
 };
 
+static struct cmd_node twjit_node = {
+	TWJIT_NODE,
+	"%s(twjit)# ",
+	1,
+};
+
 gDEFUN(cfg_bts_auto_band, cfg_bts_auto_band_cmd,
 	"auto-band",
 	"Automatically select band for ARFCN based on configured band\n")
@@ -283,6 +289,18 @@ DEFUN(cfg_bts_osmux_dummy_padding,
 		bts->osmux.dummy_padding = true;
 	else if (strcmp(argv[0], "off") == 0)
 		bts->osmux.dummy_padding = false;
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_twjit, cfg_bts_twjit_cmd,
+	   "twjit",
+	   "Configure TW jitter buffer",
+	   CMD_ATTR_IMMEDIATE)
+{
+	struct gsm_bts *bts = vty->index;
+
+	vty->node = TWJIT_NODE;
+	vty->index = &bts->twjit_cfg;
 	return CMD_SUCCESS;
 }
 
@@ -470,6 +488,7 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	vty_out(vty, " smscb queue-hysteresis %d%s", bts->smscb_queue_hyst, VTY_NEWLINE);
 
 	config_write_osmux(vty, " ", bts);
+	osmo_twjit_config_write(vty, &bts->twjit_cfg, "twjit", " ");
 
 	bts_model_config_write_bts(vty, bts);
 
@@ -2804,6 +2823,11 @@ int bts_vty_init(void *ctx)
 	install_element(OSMUX_NODE, &cfg_bts_osmux_batch_factor_cmd);
 	install_element(OSMUX_NODE, &cfg_bts_osmux_batch_size_cmd);
 	install_element(OSMUX_NODE, &cfg_bts_osmux_dummy_padding_cmd);
+
+	/* twjit config node */
+	install_element(BTS_NODE, &cfg_bts_twjit_cmd);
+	install_node(&twjit_node, config_write_dummy);
+	osmo_twjit_vty_init(TWJIT_NODE);
 
 	/* add and link to TRX config node */
 	install_element(BTS_NODE, &cfg_bts_trx_cmd);
