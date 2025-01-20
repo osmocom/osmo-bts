@@ -145,7 +145,7 @@ static void test_sacch_get(void)
 
 	/* initialize the input. */
 	for (i = 1; i < _MAX_SYSINFO_TYPE; ++i) {
-		lchan.si.valid |= (1 << i);
+		lchan.si.valid |= (((uint32_t)1) << i);
 		memset(GSM_LCHAN_SI(&lchan, i), i, GSM_MACBLOCK_LEN);
 	}
 

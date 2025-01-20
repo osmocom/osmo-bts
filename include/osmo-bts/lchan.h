@@ -385,6 +385,8 @@ struct gsm_lchan {
 	struct osmo_timer_list early_rr_ia_delay;
 };
 
+osmo_static_assert(_MAX_SYSINFO_TYPE <= 32, ensure_gsm_lchan_si_bitmasks_are_large_enough);
+
 extern const struct value_string lchan_ciph_state_names[];
 static inline const char *lchan_ciph_state_name(uint8_t state)
 {
