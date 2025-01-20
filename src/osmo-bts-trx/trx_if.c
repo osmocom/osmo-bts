@@ -1023,6 +1023,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
 	uint8_t pdu_ver;
+	int rc;
 
 	buf_len = recv(ofd->fd, trx_data_buf, sizeof(trx_data_buf), 0);
 	if (OSMO_UNLIKELY(buf_len <= 0)) {
@@ -1053,23 +1054,24 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		bi.flags = 0x00;
 
 		/* Make sure that we have enough bytes to parse the header */
-		if (OSMO_UNLIKELY(buf_len < trx_data_rx_hdr_len[pdu_ver])) {
+		hdr_len = trx_data_rx_hdr_len[pdu_ver];
+		if (OSMO_UNLIKELY(buf_len < hdr_len)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
-				pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
+				pdu_ver, buf_len, hdr_len);
 			return -EINVAL;
 		}
 
 		/* Parse header depending on the PDU version */
 		switch (pdu_ver) {
 		case 0: /* TRXDv0 */
-			hdr_len = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
+			rc = trx_data_handle_hdr_v0(l1h->phy_inst, &bi, buf, buf_len);
 			break;
 		case 1: /* TRXDv1 */
-			hdr_len = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
+			rc = trx_data_handle_hdr_v1(l1h->phy_inst, &bi, buf, buf_len);
 			break;
 		case 2: /* TRXDv2 */
-			hdr_len = trx_data_handle_pdu_v2(l1h->phy_inst, &bi, buf, buf_len);
+			rc = trx_data_handle_pdu_v2(l1h->phy_inst, &bi, buf, buf_len);
 			break;
 		default:
 			/* Shall not happen */
@@ -1077,8 +1079,13 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		}
 
 		/* Header parsing error */
-		if (OSMO_UNLIKELY(hdr_len < 0))
-			return hdr_len;
+		if (OSMO_UNLIKELY(rc < 0))
+			return rc;
+
+		/* CID#465552: make sure buf_len - hdr_len can never become negative. It is already implied, but the
+		 * indirection of hdr_len returned by trx_data_handle_*() opens more bug vectors. So make sure the
+		 * trx_data_handle_*() return value is identical to the initially validated length. */
+		OSMO_ASSERT(rc == hdr_len);
 
 		if (OSMO_UNLIKELY(bi.fn >= GSM_TDMA_HYPERFRAME)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
