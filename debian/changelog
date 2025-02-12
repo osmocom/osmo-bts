@@ -1,3 +1,44 @@
+osmo-bts (1.9.0) unstable; urgency=medium
+
+  [ Mychaela N. Falconia ]
+  * sysmo: generate empty TCH/H payload on FACCH/H Rx
+  * CSD: implement half-rate modes correctly
+  * csd_v110: set E2 bit correctly for TCH/[FH]4.8 NT
+  * CSD RTP: verify alignment of V.110 frames
+  * csd_v110_rtp_decode: preserve E2 & E3 bits for RLP alignment
+  * cosmetic: eliminate else-after-return in gsmtap_csd_rlp_process()
+  * cosmetic: move gsmtap_csd_rlp_process() to csd_rlp.c
+  * CSD NT modes: transmit properly aligned RLP frames on DL
+
+  [ Vadim Yanitskiy ]
+  * tests/csd: add NT variants for TCH/F4.8 and TCH/F9.6
+  * l1sap: prevent buffer overflow in l1sap_rtp_rx_cb()
+  * l1sap: move struct osmo_rlp_frame_decoded to the if-scope
+  * rsl: rsl_handle_chan_mod_ie(): set lchan->csd_mode for NT CSD
+  * vty: lchan_dump_full_vty(): print CSD mode
+  * l1sap: make send_ul_rtp_packet_hrdata() NULL-safe
+  * osmo-bts-trx: fix scheduling of DL FACCH/H for TCH/H4.8 and TCH/H2.4
+  * l1sap: l1sap_tch_rts_ind(): fix NULL ptr dereference
+  * csd_v110: use osmo_csd_ra2_* API from libosmotrau
+  * csd_v110: add CSD_V110_NUM_BITS macro
+  * csd_v110: clarify field names in csd_v110_lchan_desc[]
+  * csd_v110: clarify lchan description for TCH/F14.4
+  * csd_v110: handle TCH/F14.4
+
+  [ Pau Espin Pedrol ]
+  * jenkins.sh: libosmo-netif no longer depends on libosmo-abis
+  * bts-omldummy: Support configuring logging through cmdline
+  * bts-omldummy: print category names instead of hex values
+  * Fix missing quote char in log line
+  * abis: Log line and ts nr of signal
+  * abis: Fix reusing bts->*_link while it is being destroyed
+  * Drop use of libosmo-abis osmocom/abis/ipaccess.h
+
+  [ Philipp Maier ]
+  * pcu_sock: do not receive a TXT ind. with PCU_VERSION for a specific BTS
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 12 Feb 2025 12:56:09 +0100
+
 osmo-bts (1.8.0) unstable; urgency=medium
 
   [ Vadim Yanitskiy ]

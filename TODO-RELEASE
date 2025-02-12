@@ -7,5 +7,3 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what			description / commit summary line
-libosmotrau	>1.6.0			osmo_csd_ra2_{16k,8k}_{pack,unpack}() API
-libosmotrau	>1.6.0			osmo_csd144_{to,from}_atrau_bits() API
