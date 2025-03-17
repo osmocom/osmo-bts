@@ -206,6 +206,12 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	if (params == NULL)
 		return 0;
 
+	/* Average the input RxLev/RxQual samples (if needed).  Do this before
+	 * the loop suspension logic to keep the pre-processing state updated. */
+	ci_meas = lchan_get_ci_thresholds(lchan);
+	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
+	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
+
 	/* Shall we skip current block based on configured interval? */
 	if (ctrl_interval_skip_block(params, state))
 		return 0;
@@ -225,14 +231,9 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		return 0;
 	}
 
-	ci_meas = lchan_get_ci_thresholds(lchan);
-
 	/* Is C/I based algo enabled by config?
 	* FIXME: this can later be generalized when properly implementing P & N counting. */
 	ci_on = ci_meas->lower_cmp_n && ci_meas->upper_cmp_n;
-
-	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
-	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
 
 	/* If computed C/I is enabled and out of acceptable thresholds: */
 	if (ci_on && ul_lqual_cb_avg < ci_meas->lower_thresh * 10) {
@@ -334,10 +335,6 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		  lchan->tch.dtx.dl_active ? "enabled" : "disabled",
 		  lchan->tch.dtx.dl_active ? "SUB" : "FULL");
 
-	/* Shall we skip current block based on configured interval? */
-	if (ctrl_interval_skip_block(params, state))
-		return 0;
-
 	/* If DTx is active on Downlink, use the '-SUB' */
 	if (lchan->tch.dtx.dl_active) {
 		rxqual = mr->rxqual_sub;
@@ -347,8 +344,15 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		rxlev = mr->rxlev_full;
 	}
 
+	/* Average the input RxLev/RxQual samples (if needed).  Do this before
+	 * the loop suspension logic to keep the pre-processing state updated. */
 	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, rxlev);
 	rxqual_avg = do_avg_algo(&params->rxqual_meas, &state->rxqual_meas_proc, rxqual);
+
+	/* Shall we skip current block based on configured interval? */
+	if (ctrl_interval_skip_block(params, state))
+		return 0;
+
 	/* If RxQual > L_RXQUAL_XX_P, try to increase Tx power */
 	if (rxqual_avg > params->rxqual_meas.lower_thresh) {
 		/* Increase Tx power by reducing Tx attenuation */
