@@ -2078,8 +2078,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 
 		/* Spec explicitly states BTS should only perform
-		* autonomous MS power control loop in BTS if 'MS Power
-		* Parameters' IE is present! */
+		 * autonomous MS power control loop in BTS if 'MS Power
+		 * Parameters' IE is present! */
 		lchan->ms_power_ctrl.dpc_params = params;
 	}
 
