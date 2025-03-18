@@ -1987,17 +1987,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 	}
 
-	/* Initialize MS Power Control defaults */
-	lchan->ms_power_ctrl = (struct lchan_power_ctrl_state) {
-		.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0),
-		.current = lchan->ms_power_ctrl.max,
-	};
-
-	/* Initialize BS Power Control defaults */
-	lchan->bs_power_ctrl = (struct lchan_power_ctrl_state) {
-		.max = 2 * 15, /* maximum defined in 9.3.4 */
-		.current = 0,
-	};
+	/* Initialize MS/BS Power Control state */
+	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
+	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
 
 	/* 9.3.6 Channel Mode */
 	if (type != RSL_ACT_OSMO_PDCH) {
@@ -2054,13 +2046,18 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 		LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "BS Power attenuation %u dB\n",
 			  lchan->bs_power_ctrl.current);
+	} else {
+		lchan->bs_power_ctrl.max = 2 * 15; /* maximum defined in 9.3.4 */
+		lchan->bs_power_ctrl.current = 0;
 	}
 
 	/* 9.3.13 MS Power */
-	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
+	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1))
 		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
-	}
+	else /* XXX: should we use the maximum power level instead of 0 dBm? */
+		lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
+
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
 		lchan->ta_ctrl.current = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
