@@ -411,6 +411,7 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 	struct timespec tv_now;
 	uint64_t expire_count;
 	int64_t elapsed_us, error_us;
+	const char *reason = NULL;
 	int rc, i;
 
 	if (!(what & OSMO_FD_READ))
@@ -430,8 +431,9 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* check if transceiver is still alive */
 	if (tcs->fn_without_clock_ind++ == TRX_LOSS_FRAMES) {
-		LOGP(DL1C, LOGL_NOTICE, "No more clock from transceiver\n");
-		goto no_clock;
+		reason = "No more clock from transceiver";
+		LOGP(DL1C, LOGL_ERROR, "%s\n", reason);
+		goto shutdown;
 	}
 
 	/* compute actual elapsed time and resulting OS scheduling error */
@@ -446,9 +448,11 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* if someone played with clock, or if the process stalled */
 	if (elapsed_us > GSM_TDMA_FN_DURATION_uS * MAX_FN_SKEW || elapsed_us < 0) {
-		LOGP(DL1C, LOGL_ERROR, "PC clock skew: elapsed_us=%" PRId64 ", error_us=%" PRId64 "\n",
-			elapsed_us, error_us);
-		goto no_clock;
+		LOGP(DL1C, LOGL_ERROR,
+		     "PC clock skew: elapsed_us=%" PRId64 ", error_us=%" PRId64 "\n",
+		     elapsed_us, error_us);
+		reason = "PC clock skew too high";
+		goto shutdown;
 	}
 
 	/* call bts_sched_fn() for all expired FN */
@@ -457,9 +461,9 @@ static int trx_fn_timer_cb(struct osmo_fd *ofd, unsigned int what)
 
 	return 0;
 
-no_clock:
+shutdown:
 	osmo_timerfd_disable(&tcs->fn_timer_ofd);
-	bts_shutdown(bts, "No clock from osmo-trx");
+	bts_shutdown(bts, reason);
 	return -1;
 }
 
