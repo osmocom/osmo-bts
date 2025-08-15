@@ -423,6 +423,8 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " rtp ip-dscp %d%s", bts->rtp_ip_dscp, VTY_NEWLINE);
 	if (bts->rtp_priority != -1)
 		vty_out(vty, " rtp socket-priority %d%s", bts->rtp_priority, VTY_NEWLINE);
+	vty_out(vty, " rtp library %s%s", bts->use_twrtp ? "twrtp" : "ortp",
+		VTY_NEWLINE);
 	if (bts->rtp_nogaps_mode)
 		vty_out(vty, " rtp continuous-streaming%s", VTY_NEWLINE);
 	vty_out(vty, " %srtp internal-uplink-ecu%s",
@@ -793,6 +795,19 @@ DEFUN_USRATTR(cfg_bts_rtp_priority,
 
 	bts->rtp_priority = prio;
 
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_rtp_library,
+	   cfg_bts_rtp_library_cmd,
+	   "rtp library (ortp|twrtp)",
+	   RTP_STR "RTP library selection\n"
+	   "Belledonne ortp\n" "Themyscira twrtp\n",
+	   BTS_VTY_ATTR_NEW_LCHAN)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->use_twrtp = !strcmp(argv[0], "twrtp");
 	return CMD_SUCCESS;
 }
 
@@ -2776,6 +2791,7 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_rtp_port_range_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_ip_dscp_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_priority_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_library_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_int_ul_ecu_cmd);
