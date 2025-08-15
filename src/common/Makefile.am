@@ -71,6 +71,9 @@ libbts_a_SOURCES = \
 	nm_gprs_nsvc_fsm.c \
 	nm_radio_carrier_fsm.c \
 	notification.c \
+	twjit.c \
+	twjit_vty.c \
+	twrtp.c \
 	probes.d \
 	$(NULL)
 

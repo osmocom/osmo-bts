@@ -433,6 +433,7 @@ AC_OUTPUT(
     src/osmo-bts-octphy/Makefile
     include/Makefile
     include/osmo-bts/Makefile
+    include/twrtp-local/Makefile
     tests/Makefile
     tests/paging/Makefile
     tests/agch/Makefile
