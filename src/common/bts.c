@@ -337,7 +337,9 @@ int bts_init(struct gsm_bts *bts)
 
 	/* configurable via VTY */
 	bts->paging_state = paging_init(bts, 200, 0);
+	bts->rtp_jitter_buf_ms = 100;
 	bts->rtp_jitter_adaptive = false;
+	obts_twjit_config_init(&bts->twjit_cfg);
 	bts->rtp_port_range_start = 16384;
 	bts->rtp_port_range_end = 17407;
 	bts->rtp_port_range_next = bts->rtp_port_range_start;
@@ -353,7 +355,6 @@ int bts_init(struct gsm_bts *bts)
 	bts->bsic = 0xff; /* invalid value, guarded by bsc_configured=false */
 	bts->bsic_configured = false;
 	bts->load.ccch.load_ind_period = 112;
-	bts->rtp_jitter_buf_ms = 100;
 	bts->max_ta = MAX_TA_DEF;
 	bts->ny1 = 4;
 	bts->ny2 = 4;
