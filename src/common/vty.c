@@ -42,7 +42,6 @@
 #include <osmocom/core/gsmtap.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/sockaddr_str.h>
-#include <osmocom/trau/osmo_ortp.h>
 #include <osmocom/core/fsm.h>
 #include <osmocom/codec/codec.h>
 
@@ -61,6 +60,7 @@
 #include <osmo-bts/vty.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/osmux.h>
+#include <osmo-bts/rtp_abstract.h>
 
 #define VTY_STR	"Configure the VTY\n"
 
@@ -2561,9 +2561,8 @@ DEFUN(bts_t_t_l_jitter_buf,
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	rc = osmo_rtp_socket_set_param(lchan->abis_ip.rtp_socket,
-				  lchan->ts->trx->bts->rtp_jitter_adaptive ?
-				  OSMO_RTP_P_JIT_ADAP : OSMO_RTP_P_JITBUF,
+	rc = rtp_abst_socket_set_param(lchan->abis_ip.rtp_socket,
+				  lchan->ts->trx->bts->rtp_jitter_adaptive,
 				  jitbuf_ms);
 	if (rc < 0)
 		vty_out(vty, "%% error setting jitter parameters: %s%s",
