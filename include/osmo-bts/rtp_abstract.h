@@ -48,7 +48,11 @@ struct rtp_abst_socket {
 	struct osmo_rtp_socket *ortp;
 	struct obts_twrtp *twrtp;
 	struct sockaddr_in local_addr;
+	uint32_t twrtp_rx_ticks;
 	uint32_t twrtp_rx_pl_bytes;
+	uint32_t twrtp_rx_bad_hdr;
+	uint32_t twrtp_rx_wrong_pt;
+	uint32_t twrtp_pl_extr_errors;
 	uint8_t payload_type;
 };
 

@@ -166,28 +166,27 @@ void rtp_abst_socket_poll(struct rtp_abst_socket *rs)
 #endif
 
 	obts_twrtp_twjit_rx_ctrl(rs->twrtp, true);
+	rs->twrtp_rx_ticks++;
 	msg = obts_twrtp_twjit_rx_poll(rs->twrtp);
 	if (!msg)
 		return;
 
 	rtph = osmo_rtp_get_hdr(msg);
 	if (!rtph) {
-		LOGP(DRTP, LOGL_ERROR, "got RTP packet with invalid header\n");
+		rs->twrtp_rx_bad_hdr++;
 		msgb_free(msg);
 		return;
 	}
 
 	if (rtph->payload_type != rs->payload_type) {
-		LOGP(DRTP, LOGL_ERROR,
-		     "Rx RTP packet has wrong payload type\n");
+		rs->twrtp_rx_wrong_pt++;
 		msgb_free(msg);
 		return;
 	}
 
 	rtp_pl = osmo_rtp_get_payload(rtph, msg, &rtp_pl_len);
 	if (!rtp_pl) {
-		LOGP(DRTP, LOGL_ERROR,
-		     "error retrieving payload from RTP packet\n");
+		rs->twrtp_pl_extr_errors++;
 		msgb_free(msg);
 		return;
 	}
@@ -253,17 +252,121 @@ void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs,
 				int subsys, int level,
 				const char *cause)
 {
+	struct obts_twjit *twjit;
+	const struct obts_twrtp_stats *twrtp_stats;
+	const struct obts_twjit_stats *twjit_stats;
+
 #ifdef HAVE_ORTP
 	if (rs->ortp) {
 		char prefix[80];
 
 		snprintf(prefix, sizeof(prefix), "Closing RTP socket on %s ",
 			 cause);
-		osmo_rtp_socket_log_stats(rs->ortp, subsys, level, prefix);
+		osmo_rtp_socket_log_stats(rs->ortp, DRTP, LOGL_INFO, prefix);
 		return;
 	}
 #endif
-	/* FIXME: implement stats log output for twrtp */
+
+	twjit = obts_twrtp_get_twjit(rs->twrtp);
+	twrtp_stats = obts_twrtp_get_stats(rs->twrtp);
+	twjit_stats = obts_twjit_get_stats(twjit);
+
+	LOGP(DRTP, LOGL_INFO, "RTP session complete with %s\n", cause);
+	/* normal Rx stats */
+	LOGP(DRTP, LOGL_INFO, "Rx active for %u ticks\n", rs->twrtp_rx_ticks);
+	LOGP(DRTP, LOGL_INFO, "twjit rx_packets=%u delivered_pkt=%u\n",
+	     twjit_stats->rx_packets, twjit_stats->delivered_pkt);
+	if (twjit_stats->handovers_in || twjit_stats->handovers_out) {
+		LOGP(DRTP, LOGL_INFO,
+		     "twjit handovers_in=%u handovers_out=%u\n",
+		     twjit_stats->handovers_in, twjit_stats->handovers_out);
+	}
+	if (twjit_stats->too_old) {
+		LOGP(DRTP, LOGL_INFO, "twjit too_old=%u\n",
+		     twjit_stats->too_old);
+	}
+	if (twjit_stats->underruns) {
+		LOGP(DRTP, LOGL_INFO, "twjit underruns=%u\n",
+		     twjit_stats->underruns);
+	}
+	if (twjit_stats->ho_underruns) {
+		LOGP(DRTP, LOGL_INFO, "twjit ho_underruns=%u\n",
+		     twjit_stats->ho_underruns);
+	}
+	if (twjit_stats->output_gaps) {
+		LOGP(DRTP, LOGL_INFO, "twjit output_gaps=%u\n",
+		     twjit_stats->output_gaps);
+	}
+	if (twjit_stats->thinning_drops) {
+		LOGP(DRTP, LOGL_INFO, "twjit thinning_drops=%u\n",
+		     twjit_stats->thinning_drops);
+	}
+	if (twjit_stats->duplicate_ts) {
+		LOGP(DRTP, LOGL_INFO, "twjit duplicate_ts=%u\n",
+		     twjit_stats->duplicate_ts);
+	}
+	if (twjit_stats->ssrc_changes) {
+		LOGP(DRTP, LOGL_INFO, "twjit ssrc_changes=%u\n",
+		     twjit_stats->ssrc_changes);
+	}
+	if (twjit_stats->seq_skips) {
+		LOGP(DRTP, LOGL_INFO, "twjit seq_skips=%u\n",
+		     twjit_stats->seq_skips);
+	}
+	if (twjit_stats->seq_backwards) {
+		LOGP(DRTP, LOGL_INFO, "twjit seq_backwards=%u\n",
+		     twjit_stats->seq_backwards);
+	}
+	if (twjit_stats->seq_repeats) {
+		LOGP(DRTP, LOGL_INFO, "twjit seq_repeats=%u\n",
+		     twjit_stats->seq_repeats);
+	}
+	if (twjit_stats->intentional_gaps) {
+		LOGP(DRTP, LOGL_INFO, "twjit intentional_gaps=%u\n",
+		     twjit_stats->intentional_gaps);
+	}
+	if (twjit_stats->ts_resets) {
+		LOGP(DRTP, LOGL_INFO, "twjit ts_resets=%u\n",
+		     twjit_stats->ts_resets);
+	}
+	LOGP(DRTP, LOGL_INFO, "Rx max jitter %u.%03u ms\n",
+	     twjit_stats->jitter_max >> 3, (twjit_stats->jitter_max & 7) * 125);
+	/* Rx error stats */
+	if (twrtp_stats->rx_rtp_badsrc) {
+		LOGP(DRTP, LOGL_ERROR, "Rx %u RTP packets from wrong src\n",
+		     twrtp_stats->rx_rtp_badsrc);
+	}
+	if (twrtp_stats->rx_rtcp_badsrc) {
+		LOGP(DRTP, LOGL_ERROR, "Rx %u RTCP packets from wrong src\n",
+		     twrtp_stats->rx_rtcp_badsrc);
+	}
+	if (twjit_stats->bad_packets) {
+		LOGP(DRTP, LOGL_ERROR, "Rx %u bad RTP packets (twjit)\n",
+		     twjit_stats->bad_packets);
+	}
+	if (rs->twrtp_rx_bad_hdr) {
+		LOGP(DRTP, LOGL_ERROR, "Rx %u bad RTP packets (after twjit)\n",
+		     rs->twrtp_rx_bad_hdr);
+	}
+	if (rs->twrtp_rx_wrong_pt) {
+		LOGP(DRTP, LOGL_ERROR, "Rx wrong pt number (%u times)\n",
+		     rs->twrtp_rx_wrong_pt);
+	}
+	if (rs->twrtp_pl_extr_errors) {
+		LOGP(DRTP, LOGL_ERROR,
+		     "Rx failed to extract payload (%u times)\n",
+		     rs->twrtp_pl_extr_errors);
+	}
+	if (twrtp_stats->rx_rtcp_invalid) {
+		LOGP(DRTP, LOGL_ERROR, "Rx %u bad RTCP packets\n",
+	             twrtp_stats->rx_rtcp_invalid);
+	}
+	if (twrtp_stats->rx_rtcp_wrong_ssrc) {
+		LOGP(DRTP, LOGL_ERROR, "Rx RTCP RR for wrong SSRC (%u times)\n",
+		     twrtp_stats->rx_rtcp_wrong_ssrc);
+	}
+	/* Tx stats */
+	LOGP(DRTP, LOGL_INFO, "Tx %u RTP packets\n", twrtp_stats->tx_rtp_pkt);
 }
 
 static uint32_t compute_lost_count(struct obts_twjit *twjit)
