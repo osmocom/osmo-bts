@@ -248,9 +248,7 @@ int rtp_abst_socket_set_param(struct rtp_abst_socket *rs,
 	return 0;	/* not applicable to twrtp */
 }
 
-void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs,
-				int subsys, int level,
-				const char *cause)
+void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs, const char *cause)
 {
 	struct obts_twjit *twjit;
 	const struct obts_twrtp_stats *twrtp_stats;

@@ -82,9 +82,7 @@ int rtp_abst_get_bound_ip_port(struct rtp_abst_socket *rs,
 int rtp_abst_socket_set_param(struct rtp_abst_socket *rs,
 			      bool jitter_adaptive, int jitter_ms);
 
-void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs,
-				int subsys, int level,
-				const char *cause);
+void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs, const char *cause);
 
 void rtp_abst_socket_stats(struct rtp_abst_socket *rs,
 				uint32_t *sent_packets, uint32_t *sent_octets,
