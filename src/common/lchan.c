@@ -214,8 +214,8 @@ void gsm_lchan_release(struct gsm_lchan *lchan, enum lchan_rel_act_kind rel_kind
 
 	if (lchan->abis_ip.rtp_socket) {
 		rsl_tx_ipac_dlcx_ind(lchan, RSL_ERR_NORMAL_UNSPEC);
-		rtp_abst_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
-			"Closing RTP socket on Channel Release ");
+		rtp_abst_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP,
+					  LOGL_INFO, "Channel Release");
 		lchan_rtp_socket_free(lchan);
 	} else if (lchan->abis_ip.osmux.use) {
 		lchan_osmux_release(lchan);

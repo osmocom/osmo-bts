@@ -80,7 +80,7 @@ int rtp_abst_socket_set_param(struct rtp_abst_socket *rs,
 
 void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs,
 				int subsys, int level,
-				const char *pfx);
+				const char *cause);
 
 void rtp_abst_socket_stats(struct rtp_abst_socket *rs,
 				uint32_t *sent_packets, uint32_t *sent_octets,

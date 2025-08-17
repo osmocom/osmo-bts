@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -250,11 +251,15 @@ int rtp_abst_socket_set_param(struct rtp_abst_socket *rs,
 
 void rtp_abst_socket_log_stats(struct rtp_abst_socket *rs,
 				int subsys, int level,
-				const char *pfx)
+				const char *cause)
 {
 #ifdef HAVE_ORTP
 	if (rs->ortp) {
-		osmo_rtp_socket_log_stats(rs->ortp, subsys, level, pfx);
+		char prefix[80];
+
+		snprintf(prefix, sizeof(prefix), "Closing RTP socket on %s ",
+			 cause);
+		osmo_rtp_socket_log_stats(rs->ortp, subsys, level, prefix);
 		return;
 	}
 #endif

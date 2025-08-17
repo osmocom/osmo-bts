@@ -3209,8 +3209,8 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 
 	rc = rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
 	if (lchan->abis_ip.rtp_socket) {
-		rtp_abst_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
-					  "Closing RTP socket on DLCX ");
+		rtp_abst_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP,
+					  LOGL_INFO, "DLCX");
 		lchan_rtp_socket_free(lchan);
 	}
 	return rc;
