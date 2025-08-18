@@ -115,6 +115,7 @@ int rtp_abst_socket_connect(struct rtp_abst_socket *rs,
 		return osmo_rtp_socket_connect(rs->ortp, inet_ntoa(*ip), port);
 #endif
 
+	memset(&remote, 0, sizeof(remote));
 	remote.sin_family = AF_INET;
 	memcpy(&remote.sin_addr, ip, sizeof(struct in_addr));
 	remote.sin_port = htons(port);
