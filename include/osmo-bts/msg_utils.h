@@ -13,20 +13,37 @@
 
 struct msgb;
 
-/* Access 1st part of msgb control buffer */
+/****************************************************************
+* Accessor macros for control buffer words in RTP input path (DL)
+*****************************************************************/
+
+/* Storing RTP header fields in the path from RTP and Osmux
+ * Rx callback functions to TCH-RTS.ind handling.
+ * FIXME: do we really need this RTP header info downstream
+ * of the jitter buffer mechanism in the RTP endpoint library?
+ */
 #define rtpmsg_marker_bit(x) ((x)->cb[0])
+#define rtpmsg_seq(x)        ((x)->cb[1])
+#define rtpmsg_ts(x)         ((x)->cb[2])
 
-/* Access 2nd part of msgb control buffer */
-#define rtpmsg_seq(x) ((x)->cb[1])
-
-/* Access 3rd part of msgb control buffer */
-#define rtpmsg_ts(x) ((x)->cb[2])
-
-/* Access 4th part of msgb control buffer */
+/* l1sap_rtp_rx_cb() does some preening or preparsing on some
+ * RTP payloads, and in two cases (HR with RFC 5993 input and
+ * CSD NT modes) this preparsing step produces some metadata
+ * that need to be passed to TCH-RTS.ind handling.
+ */
 #define rtpmsg_is_rfc5993_sid(x) ((x)->cb[3])
-
-/* Access 5th part of msgb control buffer */
 #define rtpmsg_csd_align_bits(x) ((x)->cb[4])
+
+/********************************************************
+* Accessor macros for control buffer words in TCH UL path
+*********************************************************/
+
+/* We provide an ability for BTS models to indicate BFI along with payload
+ * bits just like in GSM 08.60 TRAU-UL frames, and the same BFI flag can
+ * then be set by model-independent functions for higher-level BFI
+ * conditions.  This cb word shall act as a Boolean flag.
+ */
+#define tch_ul_msg_bfi(x) ((x)->cb[0])
 
 /**
  * Classification of OML message. ETSI for plain GSM 12.21

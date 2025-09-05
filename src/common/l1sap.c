@@ -2220,16 +2220,15 @@ static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
 
 /* a helper function for emitting FR/EFR UL in TW-TS-001 format */
 static void send_rtp_twts001(struct gsm_lchan *lchan, uint32_t fn,
-			     struct msgb *msg, bool good_frame)
+			     struct msgb *msg)
 {
 	uint8_t teh;
 	bool send_frame;
 
 	if (msg->len == GSM_FR_BYTES || msg->len == GSM_EFR_BYTES) {
-		if (good_frame)
-			teh = 0xE0;
-		else
-			teh = 0xE2;
+		teh = 0xE0;
+		if (tch_ul_msg_bfi(msg))
+			teh |= 0x02;
 		send_frame = true;
 	} else {
 		teh = 0xE6;
@@ -2272,7 +2271,7 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 	    lchan->type == GSM_LCHAN_TCH_F &&
 	    (lchan->tch_mode == GSM48_CMODE_SPEECH_V1 ||
 	     lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)) {
-		send_rtp_twts001(lchan, fn, msg, false);
+		send_rtp_twts001(lchan, fn, msg);
 		return;
 	}
 
@@ -2345,10 +2344,31 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	msgb_pull_to_l2(msg);
 
 	/* Low level layers always call us when TCH content is expected, even if
-	 * the content is not available due to decoding issues. Content not
-	 * available is expected as empty payload. We also check if quality is
-	 * good enough. */
-	if (msg->len && tch_ind->lqual_cb >= bts->min_qual_norm) {
+	 * the content is not available due to decoding issues.  Content not
+	 * available is indicated as empty payload, also termed BFI w/o data.
+	 * Alternatively, a BTS model can supply channel-decoded payload bits,
+	 * but also set BFI flag, just like in TRAU-UL frames on E1 Abis.
+	 *
+	 * If the channel mode is speech (not CSD), we also check if quality is
+	 * good enough - if it isn't, we set BFI.  This quality check is
+	 * essential with FRv1 codec and DTXu, otherwise DTXu pauses will be
+	 * filled with very unpleasant sounds as channel-decoded radio noise
+	 * gets declared as good traffic frames with 1/8 probability given
+	 * only a 3-bit CRC.  However, this check is restricted to speech
+	 * because per the specs, BFI does not exist in CSD: every channel-
+	 * decoded frame is passed along, error handling either falls on RLP
+	 * or is the responsibility of user applications in Transparent mode.
+	 */
+	if ((lchan->rsl_cmode == RSL_CMOD_SPD_SPEECH) &&
+	    (tch_ind->lqual_cb < bts->min_qual_norm))
+		tch_ul_msg_bfi(msg) = true;
+
+	/* FR/HR/EFR SID classification, with potential effects on BFI flag,
+	 * will go here - further patches in the series. */
+
+	/* Good RTP output happens when we got some payload AND it is not
+	 * marked as BFI. */
+	if (msg->len && !tch_ul_msg_bfi(msg)) {
 		/* feed the good frame to the ECU, if we are applying one */
 		if (lchan->ecu_state)
 			osmo_ecu_frame_in(lchan->ecu_state, false, msg->data, msg->len);
@@ -2361,7 +2381,7 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 			     lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)) {
 				/* FR and EFR codecs */
 				if (lchan->abis_ip.rtp_extensions & OSMO_RTP_EXT_TWTS001)
-					send_rtp_twts001(lchan, fn, msg, true);
+					send_rtp_twts001(lchan, fn, msg);
 				else
 					send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 			} else if (lchan->type == GSM_LCHAN_TCH_H &&
