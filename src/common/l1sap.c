@@ -2328,7 +2328,19 @@ static void tch_ul_fr_hr_efr(struct gsm_lchan *lchan, uint32_t fn, struct msgb *
 {
 	enum osmo_gsm631_sid_class sidc;
 
-	/* If we got no payload (BFI without data), there is nothing
+	/* No matter what else is happening, even if we are about to bail out
+	 * early because we received FACCH and thus BFI-no-data, if we are
+	 * at a mandatory-Tx position for SID, we need to clear UL SID filter
+	 * state so that the next valid SID frame will be allowed through,
+	 * whether it occurs right now or in a later frame position because
+	 * of FACCH.  See the note in GSM 06.31 section 5.1.2: if the
+	 * SACCH-aligned SID update position is stolen by FACCH, the next
+	 * frame position shall carry the SID update as soon as FACCH stealing
+	 * is over. */
+	if (fr_hr_efr_sid_position(lchan, fn))
+		lchan->tch.dtx_fr_hr_efr.ul_sid_filter = false;
+
+	/* If we got no payload (BFI without data), there is nothing more
 	 * for us to do here. */
 	if (msg->len == 0)
 		return;
@@ -2369,11 +2381,26 @@ static void tch_ul_fr_hr_efr(struct gsm_lchan *lchan, uint32_t fn, struct msgb *
 	 *    is an accepted SID frame in the definition of GSM 06.31
 	 *    and its HR & EFR counterparts.
 	 *
-	 * 2) Next patch in the series will introduce logic that sets BFI
-	 *    under certain conditions dependent on SID classification and
-	 *    previous state, in order to suppress false indications of
-	 *    "valid" SID to the Rx DTX handler on the RTP receiving end
-	 *    during "half-block" conditions.
+	 * 2) As a result of how FR/HR/EFR DTX interacts with block diagonal
+	 *    interleaving, at the beginning and end of each DTX pause a
+	 *    correctly functioning TCH receiver will always pick up an
+	 *    artifact consisting of 4 received bursts (2 for TCH/HS)
+	 *    and same number of omitted bursts.  Standard channel decoding
+	 *    of this Rx artifact will produce a "half-block" in which half
+	 *    of the bits prior to convolutional decoding will come from
+	 *    a SID repetition whose Tx was notionally suppressed, while
+	 *    the other half will be garbage.  As a result of convolutional
+	 *    decoding, the result will often appear as valid SID per
+	 *    classification rules - but passing it as such to the Rx DTX
+	 *    handler is wrong.  Classic E1 BTS and GSM MS implementations
+	 *    include a kind of SID filter at this point, setting BFI on
+	 *    these received half-blocks, so that the Rx DTX handler will
+	 *    see an invalid SID condition.  Invalid SID means that comfort
+	 *    noise generation is to be continued, but no updated CN
+	 *    parameters are available - which is the truth in half-block
+	 *    Rx situations.  We implement the same filter.  More info here:
+	 *
+	 *    https://osmocom.org/projects/retro-gsm/wiki/DTXu_half-blocks
 	 *
 	 * 3) For HR codec only, RTP output format functions need to know
 	 *    both BFI flag and SID classification.
@@ -2382,12 +2409,32 @@ static void tch_ul_fr_hr_efr(struct gsm_lchan *lchan, uint32_t fn, struct msgb *
 	case OSMO_GSM631_SID_CLASS_SPEECH:
 		/* Only a good speech frame, not an unusable frame,
 		 * using GSM 06.31 definitions, marks exit from a DTX pause. */
-		if (!tch_ul_msg_bfi(msg))
+		if (!tch_ul_msg_bfi(msg)) {
 			lchan_set_marker(false, lchan);
+			lchan->tch.dtx_fr_hr_efr.ul_sid_filter = false;
+		}
 		break;
-	case OSMO_GSM631_SID_CLASS_INVALID:
 	case OSMO_GSM631_SID_CLASS_VALID:
+		/* Here comes the just-described SID filter.  The logic is
+		 * thus: a valid SID is allowed through to the Rx DTX handler
+		 * if it follows speech (end of talkspurt), if it appears
+		 * in the expected mandatory-Tx position for SID updates,
+		 * or if it happens after that mandatory-Tx position due to
+		 * FACCH stealing.  Otherwise, valid SID is converted to
+		 * invalid by setting BFI.
+		 */
+		if (lchan->tch.dtx_fr_hr_efr.ul_sid_filter)
+			tch_ul_msg_bfi(msg) = true;
+		/* fall through */
+	case OSMO_GSM631_SID_CLASS_INVALID:
+		/* Whether we got valid or invalid SID, we know that the MS
+		 * has entered or remains in a DTXu pause.  (Invalid SID
+		 * means that MS state is known to be DTXu, but no CN
+		 * parameters are available.)  Hence we indicate DTXu pause
+		 * state for both RTP marker bit and SID filter mechanisms.
+		 */
 		lchan_set_marker(true, lchan);
+		lchan->tch.dtx_fr_hr_efr.ul_sid_filter = true;
 		break;
 	default:
 		/* There are only 3 possible SID classifications per

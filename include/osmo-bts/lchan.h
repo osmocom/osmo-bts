@@ -292,6 +292,9 @@ struct gsm_lchan {
 			bool dl_sid_transmitted;
 			/* The current frame in the DL is taken up by FACCH */
 			bool dl_facch_stealing;
+			/* UL SID filter to catch DTXu half-blocks,
+			 * see tch_ul_fr_hr_efr() function. */
+			bool ul_sid_filter;
 		} dtx_fr_hr_efr;
 		uint8_t last_cmr;
 		uint32_t last_fn;
