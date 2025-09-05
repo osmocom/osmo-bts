@@ -394,6 +394,7 @@ int bts_init(struct gsm_bts *bts)
 	osmo_bts_set_feature(bts->features, BTS_FEAT_IPV6_NSVC);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_PAGING_COORDINATION);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_TWTS001);
+	osmo_bts_set_feature(bts->features, BTS_FEAT_TWTS002);
 
 	/* Maximum TA supported by the PHY (can be overridden by PHY specific code) */
 	bts->support.max_ta = MAX_TA_DEF;

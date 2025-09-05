@@ -2229,12 +2229,63 @@ static void send_rtp_twts001(struct gsm_lchan *lchan, uint32_t fn,
 	}
 }
 
+/* See Section 5.2 of RFC5993 and TW-TS-002 */
+enum super5993_ft {
+	FT_GOOD_SPEECH		= 0,
+	FT_INVALID_SID		= 1,
+	FT_GOOD_SID		= 2,
+	FT_BFI_WITH_DATA	= 6,
+	FT_NO_DATA		= 7,
+};
+
+/* a helper function for emitting GSM-HR UL in TW-TS-002 format */
+static void send_rtp_twts002(struct gsm_lchan *lchan, uint32_t fn,
+			     struct msgb *msg)
+{
+	enum super5993_ft ft;
+	uint8_t toc;
+
+	if (msg->len == GSM_HR_BYTES) {
+		switch (tch_ul_msg_hr_sid(msg)) {
+		case OSMO_GSM631_SID_CLASS_SPEECH:
+			ft = tch_ul_msg_bfi(msg) ? FT_BFI_WITH_DATA
+						 : FT_GOOD_SPEECH;
+			break;
+		case OSMO_GSM631_SID_CLASS_INVALID:
+			ft = FT_INVALID_SID;
+			break;
+		case OSMO_GSM631_SID_CLASS_VALID:
+			ft = tch_ul_msg_bfi(msg) ? FT_INVALID_SID : FT_GOOD_SID;
+			break;
+		default:
+			OSMO_ASSERT(0);
+		}
+	} else {
+		ft = FT_NO_DATA;
+	}
+	/* ToC octet of TW-TS-002 is an extension of RFC 5993 */
+	toc = ft << 4;
+	if (ft == FT_INVALID_SID)
+		toc |= 0x04;	/* TW-TS-002 version 1.2.0 */
+	/* always set DTXd and TAF bits */
+	if (lchan->ts->trx->bts->dtxd)
+		toc |= 0x08;
+	if (fr_hr_efr_sid_position(lchan, fn))
+		toc |= 0x01;
+	if (ft != FT_NO_DATA) {
+		msgb_push_u8(msg, toc);
+		send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+	} else {
+		send_ul_rtp_packet(lchan, fn, &toc, 1);
+	}
+}
+
 /* A helper function for l1sap_tch_ind(): handling BFI
  *
  * Please note that the msgb passed to this function is used only when
- * the CN asked the BSS to emit extended RTP formats (currently TW-TS-001,
- * later TW-TS-002 as well) that can indicate BFI along with deemed-bad
- * frame data bits, just like GSM 08.60 and 08.61 TRAU-UL frames.
+ * the CN asked the BSS to emit extended RTP formats of TW-TS-001 or
+ * TW-TS-002 that can indicate BFI along with deemed-bad frame data bits,
+ * just like GSM 08.60 and 08.61 TRAU-UL frames.
  */
 static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 			       const struct gsm_time *g_time, struct msgb *msg)
@@ -2254,6 +2305,14 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 	    (lchan->tch_mode == GSM48_CMODE_SPEECH_V1 ||
 	     lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)) {
 		send_rtp_twts001(lchan, fn, msg);
+		return;
+	}
+
+	/* Ditto for TCH/HS and TW-TS-002. */
+	if ((lchan->abis_ip.rtp_extensions & OSMO_RTP_EXT_TWTS002) &&
+	    lchan->type == GSM_LCHAN_TCH_H &&
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
+		send_rtp_twts002(lchan, fn, msg);
 		return;
 	}
 
@@ -2530,10 +2589,14 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 					send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
 			} else if (lchan->type == GSM_LCHAN_TCH_H &&
 				   lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
-				/* HR codec: TS 101 318 or RFC 5993,
-				 * will also support TW-TS-002 in the future. */
-				send_gsmhr_std_rtp(lchan, &g_time, msg,
-						   bts->emit_hr_rfc5993);
+				/* HR codec: TW-TS-002 in ThemWi environment,
+				 * or TS 101 318 or RFC 5993 in traditional
+				 * 3GPP or Osmocom environments. */
+				if (lchan->abis_ip.rtp_extensions & OSMO_RTP_EXT_TWTS002)
+					send_rtp_twts002(lchan, fn, msg);
+				else
+					send_gsmhr_std_rtp(lchan, &g_time, msg,
+							   bts->emit_hr_rfc5993);
 			} else {
 				/* generic case, no RTP alterations */
 				send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
