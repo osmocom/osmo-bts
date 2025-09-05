@@ -68,8 +68,6 @@ static struct msgb *l1_to_rtppayload_fr(uint8_t *l1_payload, uint8_t payload_len
 	cur = msgb_put(msg, GSM_FR_BYTES);
 	memcpy(cur, l1_payload, GSM_FR_BYTES);
 
-	lchan_set_marker(osmo_fr_is_any_sid(l1_payload), lchan);
-
 	return msg;
 }
 
@@ -102,8 +100,6 @@ static struct msgb *l1_to_rtppayload_efr(uint8_t *l1_payload,
 	cur = msgb_put(msg, GSM_EFR_BYTES);
 	memcpy(cur, l1_payload, GSM_EFR_BYTES);
 
-	lchan_set_marker(osmo_efr_is_any_sid(l1_payload), lchan);
-
 	return msg;
 }
 
@@ -133,8 +129,6 @@ static struct msgb *l1_to_rtppayload_hr(uint8_t *l1_payload, uint8_t payload_len
 
 	cur = msgb_put(msg, GSM_HR_BYTES);
 	memcpy(cur, l1_payload, GSM_HR_BYTES);
-
-	lchan_set_marker(osmo_hr_check_sid(l1_payload, payload_len), lchan);
 
 	return msg;
 }

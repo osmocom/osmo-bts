@@ -232,10 +232,6 @@ int rx_tchh_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 		rc = gsm0503_tch_hr_decode2(tch_data, BUFTAIL8(bursts_p),
 					    !sched_tchh_ul_facch_map[bi->fn % 26],
 					    &n_errors, &n_bits_total);
-		if (rc == GSM_HR_BYTES) { /* only for valid *speech* frames */
-			bool is_sid = osmo_hr_check_sid(tch_data, GSM_HR_BYTES);
-			lchan_set_marker(is_sid, lchan); /* DTXu */
-		}
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 or 1,9,18 defines that CMI is included

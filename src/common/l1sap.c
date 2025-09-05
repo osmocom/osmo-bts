@@ -2200,24 +2200,6 @@ static void handle_tch_ind_csd(struct gsm_lchan *lchan, const struct ph_tch_para
 		handle_tch_ind_csd_hr(lchan, tch_ind, data, data_len);
 }
 
-/* a helper function for emitting HR1 UL in RFC 5993 format */
-static void send_rtp_rfc5993(struct gsm_lchan *lchan, uint32_t fn,
-			     struct msgb *msg)
-{
-	uint8_t toc;
-
-	OSMO_ASSERT(msg->len == GSM_HR_BYTES);
-	/* FIXME: implement proper SID classification per GSM 06.41 section
-	 * 6.1.1; see OS#6036.  Until then, detect error-free SID frames
-	 * using our existing osmo_hr_check_sid() function. */
-	if (osmo_hr_check_sid(msg->data, msg->len))
-		toc = 0x20;
-	else
-		toc = 0x00;
-	msgb_push_u8(msg, toc);
-	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
-}
-
 /* a helper function for emitting FR/EFR UL in TW-TS-001 format */
 static void send_rtp_twts001(struct gsm_lchan *lchan, uint32_t fn,
 			     struct msgb *msg)
@@ -2305,6 +2287,117 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 	lchan->rtp_tx_marker = true;
 }
 
+/* Helper function for l1sap_tch_ind(): RTP output for GSM-HR in either
+ * of the two standard, non-ThemWi-extended payload formats, with restrictions
+ * inherent to these non-TRAU-UL-like formats. */
+static void send_gsmhr_std_rtp(struct gsm_lchan *lchan,
+		const struct gsm_time *g_time, struct msgb *msg,
+		bool emit_rfc5993)
+{
+	uint32_t fn = g_time->fn;
+
+	OSMO_ASSERT(msg->len == GSM_HR_BYTES);
+
+	switch (tch_ul_msg_hr_sid(msg)) {
+	case OSMO_GSM631_SID_CLASS_SPEECH:
+		break;
+	case OSMO_GSM631_SID_CLASS_INVALID:
+		/* neither of these RTP formats allows invalid SID */
+		tch_ul_bfi_handler(lchan, g_time, msg);
+		return;
+	case OSMO_GSM631_SID_CLASS_VALID:
+		/* both formats require perfect, error-free SID output */
+		osmo_hr_sid_reset(msg->data);
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
+
+	/* Are we emitting "bare" TS 101 318 or "decorated" RFC 5993? */
+	if (emit_rfc5993) {
+		uint8_t toc = tch_ul_msg_hr_sid(msg) << 4;
+		msgb_push_u8(msg, toc);
+	}
+
+	send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+}
+
+/* Helper function for l1sap_tch_ind(): SID classification and related logic
+ * for FR, HR and EFR speech codecs. */
+static void tch_ul_fr_hr_efr(struct gsm_lchan *lchan, uint32_t fn, struct msgb *msg)
+{
+	enum osmo_gsm631_sid_class sidc;
+
+	/* If we got no payload (BFI without data), there is nothing
+	 * for us to do here. */
+	if (msg->len == 0)
+		return;
+
+	/* GSM 06.31, 06.41 and 06.81 are DTX specs for FR, HR and EFR,
+	 * respectively.  Section 6.1.1 in each of these specs defines a
+	 * ternary SID classification whereby each channel-decoded traffic
+	 * frame is valid SID, invalid SID or non-SID speech.  Perform
+	 * this classification. */
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		if (lchan->type == GSM_LCHAN_TCH_F) {
+			sidc = osmo_fr_sid_classify(msg->data);
+		} else {
+			/* None of our current BTS models has UFI or BCI
+			 * error flags for TCH/HS UL Rx, hence we have to
+			 * perform SID classification without BCI. */
+			sidc = osmo_hr_sid_classify(msg->data, false, NULL);
+			/* Pass it to RTP output functions */
+			tch_ul_msg_hr_sid(msg) = sidc;
+		}
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		sidc = osmo_efr_sid_classify(msg->data);
+		break;
+	default:
+		/* This static function should never be called except for
+		 * V1 and EFR speech modes. */
+		OSMO_ASSERT(0);
+	}
+
+	/* We use this SID classification for three purposes:
+	 *
+	 * 1) For those users who desire to have RTP marker bit set in the
+	 *    output packet corresponding to the first speech frame after
+	 *    a DTX pause, the logic of lchan_set_marker() is driven by
+	 *    the determination of whether or not each received traffic frame
+	 *    is an accepted SID frame in the definition of GSM 06.31
+	 *    and its HR & EFR counterparts.
+	 *
+	 * 2) Next patch in the series will introduce logic that sets BFI
+	 *    under certain conditions dependent on SID classification and
+	 *    previous state, in order to suppress false indications of
+	 *    "valid" SID to the Rx DTX handler on the RTP receiving end
+	 *    during "half-block" conditions.
+	 *
+	 * 3) For HR codec only, RTP output format functions need to know
+	 *    both BFI flag and SID classification.
+	 */
+	switch (sidc) {
+	case OSMO_GSM631_SID_CLASS_SPEECH:
+		/* Only a good speech frame, not an unusable frame,
+		 * using GSM 06.31 definitions, marks exit from a DTX pause. */
+		if (!tch_ul_msg_bfi(msg))
+			lchan_set_marker(false, lchan);
+		break;
+	case OSMO_GSM631_SID_CLASS_INVALID:
+	case OSMO_GSM631_SID_CLASS_VALID:
+		lchan_set_marker(true, lchan);
+		break;
+	default:
+		/* There are only 3 possible SID classifications per
+		 * section 6.1.1 of each of the three DTX specs,
+		 * and correspondingly only 3 possible output values
+		 * from osmo_*_sid_classify() functions. */
+		OSMO_ASSERT(0);
+	}
+}
+
 /* TCH received from bts model */
 static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	struct ph_tch_param *tch_ind)
@@ -2363,8 +2456,12 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 	    (tch_ind->lqual_cb < bts->min_qual_norm))
 		tch_ul_msg_bfi(msg) = true;
 
-	/* FR/HR/EFR SID classification, with potential effects on BFI flag,
-	 * will go here - further patches in the series. */
+	/* For FR, HR or EFR speech we also have to perform SID classification
+	 * and apply logic that results from such.  This logic can also set
+	 * BFI that wasn't set before! */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_V1 ||
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_EFR)
+		tch_ul_fr_hr_efr(lchan, fn, msg);
 
 	/* Good RTP output happens when we got some payload AND it is not
 	 * marked as BFI. */
@@ -2388,10 +2485,8 @@ static int l1sap_tch_ind(struct gsm_bts_trx *trx, struct osmo_phsap_prim *l1sap,
 				   lchan->tch_mode == GSM48_CMODE_SPEECH_V1) {
 				/* HR codec: TS 101 318 or RFC 5993,
 				 * will also support TW-TS-002 in the future. */
-				if (bts->emit_hr_rfc5993)
-					send_rtp_rfc5993(lchan, fn, msg);
-				else
-					send_ul_rtp_packet(lchan, fn, msg->data, msg->len);
+				send_gsmhr_std_rtp(lchan, &g_time, msg,
+						   bts->emit_hr_rfc5993);
 			} else {
 				/* generic case, no RTP alterations */
 				send_ul_rtp_packet(lchan, fn, msg->data, msg->len);

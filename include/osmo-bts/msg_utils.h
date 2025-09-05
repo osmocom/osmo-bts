@@ -45,6 +45,18 @@ struct msgb;
  */
 #define tch_ul_msg_bfi(x) ((x)->cb[0])
 
+/* For HRv1 codec, we have to pass SID classification from the function
+ * that makes the initial determination to TS 101 318, RFC 5993 and
+ * TW-TS-002 output functions.  Per classic GSM specs, common across
+ * FR/HR/EFR, SID classification code is an integer equal to 0, 1 or 2;
+ * in Osmocom it is enum osmo_gsm631_sid_class.
+ *
+ * NOTE: while the actual SID ternary classification exists in exactly
+ * the same form across all 3 of FR/HR/EFR, we store it in a cb word
+ * only for HR codec where we need it for RTP output functions.
+ */
+#define tch_ul_msg_hr_sid(x) ((x)->cb[1])
+
 /**
  * Classification of OML message. ETSI for plain GSM 12.21
  * messages and IPA/Osmo for manufacturer messages.

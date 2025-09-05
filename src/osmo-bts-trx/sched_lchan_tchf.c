@@ -166,14 +166,10 @@ int rx_tchf_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 	case GSM48_CMODE_SPEECH_V1: /* FR */
 		rc = gsm0503_tch_fr_decode(tch_data, BUFTAIL8(bursts_p),
 					   1, 0, &n_errors, &n_bits_total);
-		if (rc == GSM_FR_BYTES) /* only for valid *speech* frames */
-			lchan_set_marker(osmo_fr_is_any_sid(tch_data), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_EFR: /* EFR */
 		rc = gsm0503_tch_fr_decode(tch_data, BUFTAIL8(bursts_p),
 					   1, 1, &n_errors, &n_bits_total);
-		if (rc == GSM_EFR_BYTES) /* only for valid *speech* frames */
-			lchan_set_marker(osmo_efr_is_any_sid(tch_data), lchan); /* DTXu */
 		break;
 	case GSM48_CMODE_SPEECH_AMR: /* AMR */
 		/* the first FN 0,8,17 defines that CMI is included in frame,
