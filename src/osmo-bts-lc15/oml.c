@@ -458,7 +458,7 @@ uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx)
 {
 	const struct lc15l1_hdl *fl1h = trx_lc15l1_hdl(trx);
 
-	return fl1h->hLayer1;
+	return (uint32_t)fl1h->hLayer1;
 }
 
 static int trx_close_compl_cb(struct gsm_bts_trx *trx, struct msgb *l1_msg,
