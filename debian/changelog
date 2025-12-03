@@ -1,3 +1,21 @@
+osmo-bts (1.10.0) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * rsl: rsl_rx_chan_activ(): fix code formatting
+  * power_control: always feed input values to do_avg_algo()
+  * osmo-bts-trx: trx_fn_timer_cb(): fix misleading shutdown reason
+
+  [ Mychaela N. Falconia ]
+  * TCH UL path: add out-of-band BFI flag
+  * FR/HR/EFR: centralize TCH UL SID classification
+  * FR/HR/EFR: implement SID filter in TCH UL path
+  * HRv1 codec: add support for TW-TS-002
+
+  [ Oliver Smith ]
+  * Fix build with debian 13
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 03 Dec 2025 19:27:41 +0100
+
 osmo-bts (1.9.0) unstable; urgency=medium
 
   [ Mychaela N. Falconia ]
