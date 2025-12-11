@@ -11,7 +11,6 @@ Build-Depends: debhelper (>= 10),
                libosmo-abis-dev (>= 2.1.0),
                libosmo-netif-dev (>= 1.7.0),
                libgps-dev,
-               txt2man,
                osmo-gsm-manuals-dev (>= 1.7.0)
 Standards-Version: 3.9.8
 Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-bts
