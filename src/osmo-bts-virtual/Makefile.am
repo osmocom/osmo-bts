@@ -8,7 +8,6 @@ AM_CFLAGS = \
 	$(LIBOSMOTRAU_CFLAGS) \
 	$(LIBOSMONETIF_CFLAGS) \
 	$(LIBOSMOCODEC_CFLAGS) \
-	$(LIBGPS_CFLAGS) \
 	$(NULL)
 
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include -Iinclude

@@ -12,7 +12,6 @@ AM_CFLAGS = \
 	$(LIBOSMOABIS_CFLAGS) \
 	$(LIBOSMOTRAU_CFLAGS) \
 	$(LIBOSMONETIF_CFLAGS) \
-	$(LIBGPS_CFLAGS) \
 	$(LIBSYSTEMD_CFLAGS) \
 	$(NULL)
 
@@ -91,7 +90,6 @@ lc15bts_mgr_SOURCES = \
 lc15bts_mgr_LDADD = \
 	$(top_builddir)/src/common/libbts.a \
 	$(COMMON_LDADD) \
-	$(LIBGPS_LIBS) \
 	$(LIBSYSTEMD_LIBS) \
 	$(NULL)
 
