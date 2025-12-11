@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/osmo_io.h>
 
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/bts_trx.h>
@@ -44,7 +45,7 @@ struct phy_link {
 			char *remote_ip;
 			uint16_t base_port_local;
 			uint16_t base_port_remote;
-			struct osmo_fd trx_ofd_clk;
+			struct osmo_io_fd *trx_clk_iofd;
 			uint32_t clock_advance;
 			uint32_t rts_advance;
 			bool use_legacy_setbsic;

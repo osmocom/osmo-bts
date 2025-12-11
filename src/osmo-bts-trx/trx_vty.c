@@ -62,10 +62,11 @@ DEFUN(show_transceiver, show_transceiver_cmd, "show transceiver",
 	llist_for_each_entry(trx, &g_bts->trx_list, list) {
 		struct phy_instance *pinst = trx_phy_instance(trx);
 		struct phy_link *plink = pinst->phy_link;
-		char *sname = osmo_sock_get_name(NULL, plink->u.osmotrx.trx_ofd_clk.fd);
+		const char *sname = plink->u.osmotrx.trx_clk_iofd ?
+				    osmo_iofd_get_name(plink->u.osmotrx.trx_clk_iofd) :
+				    NULL;
 		l1h = pinst->u.osmotrx.hdl;
-		vty_out(vty, "TRX %d %s%s", trx->nr, sname, VTY_NEWLINE);
-		talloc_free(sname);
+		vty_out(vty, "TRX %d %s%s", trx->nr, sname ? sname : "", VTY_NEWLINE);
 		vty_out(vty, " %s%s",
 			trx_if_powered(l1h) ? "poweron":"poweroff",
 			VTY_NEWLINE);
