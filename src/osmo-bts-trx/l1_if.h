@@ -126,6 +126,13 @@ struct trx_l1h {
 	/* Whether the l1h->trx_ctrl_list was flushed by the callback handling a received message */
 	bool			flushed_while_in_trx_ctrl_read_cb;
 
+	struct {
+		/* the Tx buffer used by trx_if_send_burst() */
+		struct msgb	*sndbuf;
+		/* number of PDUs in the Tx buffer */
+		unsigned int	sndbuf_num_pdus;
+	} data;
+
 	//struct gsm_bts_trx	*trx;
 	struct phy_instance	*phy_inst;
 
