@@ -105,34 +105,35 @@ static void trx_udp_close(struct osmo_fd *ofd)
  */
 
 /* get clock from clock socket */
-static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
+static void trx_clk_read_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
 {
-	struct phy_link *plink = ofd->data;
+	struct phy_link *plink = osmo_iofd_get_data(iofd);
 	struct phy_instance *pinst = phy_instance_by_num(plink, 0);
-	char buf[TRXC_MSG_BUF_SIZE];
-	ssize_t len;
+	char *buf;
 	uint32_t fn;
 
 	OSMO_ASSERT(pinst);
 
-	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
-	if (len <= 0) {
-		strerror_r(errno, (char *)buf, sizeof(buf));
+	if (res <= 0) {
+		char errbuf[256];
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		LOGPPHI(pinst, DTRX, LOGL_ERROR,
-			"recv() failed on TRXD with rc=%zd (%s)\n", len, buf);
-		return len;
+			"recv() failed on TRXD with rc=%d (%s)\n", res, errbuf);
+		goto ret_free_msg;
 	}
-	buf[len] = '\0';
+
+	msgb_put_u8(msg, (uint8_t)'\0');
+	buf = (char *)msgb_data(msg);
 
 	if (!!strncmp(buf, "IND CLOCK ", 10)) {
 		LOGPPHI(pinst, DTRX, LOGL_NOTICE,
 			"Unknown message on clock port: %s\n", buf);
-		return 0;
+		goto ret_free_msg;
 	}
 
 	if (sscanf(buf, "IND CLOCK %u", &fn) != 1) {
 		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Unable to parse '%s'\n", buf);
-		return 0;
+		goto ret_free_msg;
 	}
 
 	LOGPPHI(pinst, DTRX, LOGL_INFO, "Clock indication: fn=%u\n", fn);
@@ -145,14 +146,20 @@ static int trx_clk_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	if (!plink->u.osmotrx.powered) {
 		LOGPPHI(pinst, DTRX, LOGL_NOTICE, "Ignoring CLOCK IND %u, TRX not yet powered on\n", fn);
-		return 0;
+		goto ret_free_msg;
 	}
 	/* inform core TRX clock handling code that a FN has been received */
 	trx_sched_clock(pinst->trx->bts, fn);
 
-	return 0;
+ret_free_msg:
+	msgb_free(msg);
 }
 
+static void trx_clk_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
+{
+	/* libosmocore before change-id I0c071a29e508884bac331ada5e510bbfcf440bbf requires write call-back
+	 * even if we don't care about it */
+}
 
 /*
  * TRX ctrl socket
@@ -1273,6 +1280,11 @@ static uint16_t compute_port(struct phy_instance *pinst, bool remote, bool is_da
 		return plink->u.osmotrx.base_port_local + (pinst->num << 1) + inc;
 }
 
+static const struct osmo_io_ops trx_clk_ioops = {
+	.read_cb = trx_clk_read_cb,
+	.write_cb = trx_clk_write_cb,
+};
+
 /*! open a TRX interface. creates control + data sockets */
 static int trx_if_open(struct trx_l1h *l1h)
 {
@@ -1339,21 +1351,30 @@ static int trx_phy_inst_open(struct phy_instance *pinst)
 int bts_model_phy_link_open(struct phy_link *plink)
 {
 	struct phy_instance *pinst;
-	int rc;
+	char sock_name_buf[OSMO_SOCK_NAME_MAXLEN] = {};
+	int fd;
 
 	phy_link_state_set(plink, PHY_LINK_CONNECTING);
 
 	/* open the shared/common clock socket */
-	rc = trx_udp_open(plink, &plink->u.osmotrx.trx_ofd_clk,
-			  plink->u.osmotrx.local_ip,
-			  plink->u.osmotrx.base_port_local,
-			  plink->u.osmotrx.remote_ip,
-			  plink->u.osmotrx.base_port_remote,
-			  trx_clk_read_cb);
-	if (rc < 0) {
+	fd = osmo_sock_init2(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
+			     plink->u.osmotrx.local_ip,
+			     plink->u.osmotrx.base_port_local,
+			     plink->u.osmotrx.remote_ip,
+			     plink->u.osmotrx.base_port_remote,
+			     OSMO_SOCK_F_BIND | OSMO_SOCK_F_CONNECT | OSMO_SOCK_F_NONBLOCK);
+	if (fd < 0) {
 		phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
 		return -1;
 	}
+	osmo_sock_get_name_buf(sock_name_buf, OSMO_SOCK_NAME_MAXLEN, fd);
+	plink->u.osmotrx.trx_clk_iofd = osmo_iofd_setup(plink, fd, sock_name_buf,
+							OSMO_IO_FD_MODE_READ_WRITE,
+							&trx_clk_ioops, plink);
+	if (!plink->u.osmotrx.trx_clk_iofd)
+		goto cleanup;
+	osmo_iofd_set_alloc_info(plink->u.osmotrx.trx_clk_iofd, TRXC_MSG_BUF_SIZE, 0);
+	osmo_iofd_register(plink->u.osmotrx.trx_clk_iofd, -1);
 
 	/* open the individual instances with their ctrl+data sockets */
 	llist_for_each_entry(pinst, &plink->instances, list) {
@@ -1373,7 +1394,8 @@ cleanup:
 			pinst->u.osmotrx.hdl = NULL;
 		}
 	}
-	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
+	osmo_iofd_free(plink->u.osmotrx.trx_clk_iofd);
+	plink->u.osmotrx.trx_clk_iofd = NULL;
 	return -1;
 }
 
@@ -1389,7 +1411,8 @@ int bts_model_phy_link_close(struct phy_link *plink)
 		}
 		trx_phy_inst_close(pinst);
 	}
-	trx_udp_close(&plink->u.osmotrx.trx_ofd_clk);
+	osmo_iofd_free(plink->u.osmotrx.trx_clk_iofd);
+	plink->u.osmotrx.trx_clk_iofd = NULL;
 	phy_link_state_set(plink, PHY_LINK_SHUTDOWN);
 	return 0;
 }
