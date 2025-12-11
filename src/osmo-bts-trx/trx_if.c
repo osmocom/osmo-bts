@@ -1120,9 +1120,8 @@ static void trx_data_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
-	static struct msgb *trx_data_last_msg = NULL;
-	static unsigned int pdu_num = 0;
-	uint8_t *buf;
+	struct msgb *sndbuf = NULL;
+	uint8_t *buf = NULL;
 	int rc;
 
 	/* Make sure that the PHY is powered on */
@@ -1132,33 +1131,33 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		return -ENODEV;
 	}
 
-	if (!trx_data_last_msg) {
-		trx_data_last_msg = msgb_alloc(TRXD_MSG_BUF_SIZE, "tx_trxd");
-		OSMO_ASSERT(trx_data_last_msg);
-		buf = msgb_data(trx_data_last_msg);
+	if (l1h->data.sndbuf == NULL) {
+		l1h->data.sndbuf = msgb_alloc_c(l1h, TRXD_MSG_BUF_SIZE, "tx_trxd");
+		OSMO_ASSERT(l1h->data.sndbuf);
 	}
+	sndbuf = l1h->data.sndbuf;
 
 	/* Burst batching breaker */
 	if (br == NULL) {
-		if (pdu_num > 0)
+		if (l1h->data.sndbuf_num_pdus > 0)
 			goto sendall;
 		return -ENOMSG;
 	}
 
-	/* l2h holds Pointer to the last encoded PDU */
-	trx_data_last_msg->l2h = trx_data_last_msg->tail;
+	/* l2h points to the last encoded PDU */
+	sndbuf->l2h = sndbuf->tail;
 
 	switch (pdu_ver) {
 	/* Both versions have the same PDU format */
 	case 0: /* TRXDv0 */
 	case 1: /* TRXDv1 */
-		buf = (uint8_t *)msgb_put(trx_data_last_msg, 6);
+		buf = (uint8_t *)msgb_put(sndbuf, 6);
 		buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
 		osmo_store32be(br->fn, buf + 1);
 		buf[5] = br->att;
 		break;
 	case 2: /* TRXDv2 */
-		buf = (uint8_t *)msgb_put(trx_data_last_msg, 8);
+		buf = (uint8_t *)msgb_put(sndbuf, 8);
 		buf[0] = br->tn;
 		/* BATCH.ind will be unset in the last PDU */
 		buf[1] = (br->trx_num & 0x3f) | (1 << 7);
@@ -1169,9 +1168,9 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		buf[4] = (uint8_t) br->scpir;
 		buf[5] = buf[6] = buf[7] = 0x00; /* Spare */
 		/* Some fields are not present in batched PDUs */
-		if (pdu_num == 0) {
+		if (l1h->data.sndbuf_num_pdus == 0) {
 			buf[0] |= (pdu_ver & 0x0f) << 4;
-			msgb_put_u32(trx_data_last_msg, br->fn);
+			msgb_put_u32(sndbuf, br->fn);
 		}
 		break;
 	default:
@@ -1180,10 +1179,10 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	}
 
 	/* copy ubits {0,1} */
-	memcpy(msgb_put(trx_data_last_msg, br->burst_len), br->burst, br->burst_len);
+	memcpy(msgb_put(sndbuf, br->burst_len), br->burst, br->burst_len);
 
 	/* One more PDU in the buffer */
-	pdu_num++;
+	l1h->data.sndbuf_num_pdus++;
 
 	/* TRXDv2: wait for the batching breaker */
 	if (pdu_ver >= 2)
@@ -1192,23 +1191,23 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 sendall:
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG,
 		"Tx TRXDv%u datagram with %u PDU(s)\n",
-		pdu_ver, pdu_num);
+		pdu_ver, l1h->data.sndbuf_num_pdus);
 
 	/* TRXDv2: unset BATCH.ind in the last PDU */
 	if (pdu_ver >= 2)
-		trx_data_last_msg->l2h[1] &= ~(1 << 7);
+		sndbuf->l2h[1] &= ~(1 << 7);
 
-	rc = osmo_iofd_write_msgb(l1h->trx_data_iofd, trx_data_last_msg);
+	rc = osmo_iofd_write_msgb(l1h->trx_data_iofd, sndbuf);
 	if (OSMO_UNLIKELY(rc < 0)) {
 		char errbuf[256];
 		strerror_r(errno, errbuf, sizeof(errbuf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"osmo_iofd_write_msgb() failed on TRXD with rc=%d (%s)\n",
 			rc, errbuf);
-		msgb_free(trx_data_last_msg);
+		msgb_free(sndbuf);
 	}
-	trx_data_last_msg = NULL;
-	pdu_num = 0;
+	l1h->data.sndbuf = NULL;
+	l1h->data.sndbuf_num_pdus = 0;
 
 	return 0;
 }
