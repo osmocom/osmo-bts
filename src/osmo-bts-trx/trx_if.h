@@ -2,8 +2,8 @@
 
 /* TRXC read/send buffer size */
 #define TRXC_MSG_BUF_SIZE	1500
-/* TRXD read/send buffer size (max. lo MTU) */
-#define TRXD_MSG_BUF_SIZE	65536
+/* TRXD read/send buffer size (max. IPv4 MTU) */
+#define TRXD_MSG_BUF_SIZE	65535U
 
 struct trx_dl_burst_req;
 struct trx_l1h;
