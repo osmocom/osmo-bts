@@ -65,42 +65,6 @@
 #endif /* HAVE_SYSTEMTAP */
 
 /*
- * socket helper functions
- */
-
-/*! convenience wrapper to open socket + fill in osmo_fd */
-static int trx_udp_open(void *priv, struct osmo_fd *ofd, const char *host_local,
-			uint16_t port_local, const char *host_remote, uint16_t port_remote,
-			int (*cb)(struct osmo_fd *fd, unsigned int what))
-{
-	int rc;
-
-	/* Init */
-	ofd->fd = -1;
-	ofd->cb = cb;
-	ofd->data = priv;
-
-	/* Listen / Binds + Connect */
-	rc = osmo_sock_init2_ofd(ofd, AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP, host_local, port_local,
-				host_remote, port_remote, OSMO_SOCK_F_BIND | OSMO_SOCK_F_CONNECT);
-	if (rc < 0)
-		return rc;
-
-	return 0;
-}
-
-/* close socket + unregister osmo_fd */
-static void trx_udp_close(struct osmo_fd *ofd)
-{
-	if (ofd->fd >= 0) {
-		osmo_fd_unregister(ofd);
-		close(ofd->fd);
-		ofd->fd = -1;
-	}
-}
-
-
-/*
  * TRX clock socket
  */
 
@@ -169,27 +133,40 @@ static void trx_clk_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
 static void trx_ctrl_send(struct trx_l1h *l1h)
 {
 	struct trx_ctrl_msg *tcm;
-	char buf[TRXC_MSG_BUF_SIZE];
-	int len;
-	ssize_t snd_len;
+	char *buf;
+	struct msgb *msg;
+	int len, rc;
 
 	/* get first command */
 	if (llist_empty(&l1h->trx_ctrl_list))
 		return;
 	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
-	len = snprintf(buf, sizeof(buf), "CMD %s%s%s", tcm->cmd, tcm->params_len ? " ":"", tcm->params);
-	OSMO_ASSERT(len < sizeof(buf));
+	msg = msgb_alloc(TRXC_MSG_BUF_SIZE, "trxc_cmd");
+	buf = (char *)msgb_data(msg);
+	len = snprintf(buf, msg->data_len, "CMD %s%s%s", tcm->cmd, tcm->params_len ? " ":"", tcm->params);
+	OSMO_ASSERT(len < msg->data_len);
+	msgb_put(msg, len);
+
+	if (!l1h->trx_ctrl_iofd) {
+		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
+			"TRXC: no socket available to send '%s'\n", buf);
+		msgb_free(msg);
+		goto resched;
+	}
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_DEBUG, "Sending control '%s'\n", buf);
 	/* send command */
-	snd_len = send(l1h->trx_ofd_ctrl.fd, buf, len+1, 0);
-	if (snd_len <= 0) {
-		strerror_r(errno, (char *)buf, sizeof(buf));
+	rc = osmo_iofd_write_msgb(l1h->trx_ctrl_iofd, msg);
+	if (rc < 0) {
+		char errbuf[256];
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"send() failed on TRXC with rc=%zd (%s)\n", snd_len, buf);
+			"osmo_iofd_write_msgb() failed on TRXC with rc=%d (%s)\n", rc, errbuf);
+		msgb_free(msg);
 	}
 
+resched:
 	/* start timer */
 	osmo_timer_schedule(&l1h->trx_ctrl_timer, 2, 0);
 }
@@ -217,9 +194,6 @@ void trx_if_init(struct trx_l1h *l1h)
 
 	/* initialize ctrl queue */
 	INIT_LLIST_HEAD(&l1h->trx_ctrl_list);
-
-	l1h->trx_ofd_ctrl.fd = -1;
-	l1h->trx_ofd_data.fd = -1;
 }
 
 /*! Send a new TRX control command.
@@ -673,23 +647,24 @@ static int trx_ctrl_rx_rsp(struct trx_l1h *l1h,
 }
 
 /*! Get + parse response from TRX ctrl socket */
-static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
+static void trx_ctrl_read_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
 {
-	struct trx_l1h *l1h = ofd->data;
+	struct trx_l1h *l1h = osmo_iofd_get_data(iofd);
 	struct phy_instance *pinst = l1h->phy_inst;
-	char buf[TRXC_MSG_BUF_SIZE];
+	const char *buf;
 	struct trx_ctrl_rsp rsp;
-	int len, rc;
+	int rc;
 	struct trx_ctrl_msg *tcm;
 	bool flushed;
 
-	len = recv(ofd->fd, buf, sizeof(buf) - 1, 0);
-	if (len <= 0)
-		return len;
-	buf[len] = '\0';
+	if (res <= 0)
+		goto ret_free_msg;
 
-	if (parse_rsp(buf, len, &rsp) < 0)
-		return 0;
+	msgb_put_u8(msg, (uint8_t)'\0');
+	buf = (char *)msgb_data(msg);
+
+	if (parse_rsp(buf, res, &rsp) < 0)
+		goto ret_free_msg;
 
 	LOGPPHI(l1h->phy_inst, DTRX, LOGL_INFO, "Response message: '%s'\n", buf);
 
@@ -702,13 +677,12 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
-			return 0;
+			goto ret_free_msg;
 		}
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Response message without command\n");
-		return -EINVAL;
+		goto ret_free_msg;
 	}
-	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg,
-		list);
+	tcm = llist_entry(l1h->trx_ctrl_list.next, struct trx_ctrl_msg, list);
 
 	/* check if response matches command */
 	if (!cmd_matches_rsp(tcm, &rsp)) {
@@ -716,7 +690,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		if (l1h->last_acked && cmd_matches_rsp(l1h->last_acked, &rsp)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_NOTICE, "Discarding duplicated RSP "
 				"from old CMD '%s'\n", buf);
-			return 0;
+			goto ret_free_msg;
 		}
 		LOGPPHI(l1h->phy_inst, DTRX, (tcm->critical) ? LOGL_FATAL : LOGL_NOTICE,
 			"Response message '%s' does not match command "
@@ -746,7 +720,7 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 		/* The queue may have been flushed in the trx_ctrl_rx_rsp(): */
 		if (!llist_empty(&l1h->trx_ctrl_list))
 			osmo_timer_schedule(&l1h->trx_ctrl_timer, rc, 0);
-		return 0;
+		goto ret_free_msg;
 	}
 
 	if (!flushed) {
@@ -760,15 +734,22 @@ static int trx_ctrl_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 	/* Send next message waiting in the list: */
 	trx_ctrl_send(l1h);
-
-	return 0;
+	msgb_free(msg);
+	return;
 
 rsp_error:
 	bts_shutdown(pinst->trx->bts, "TRX-CTRL-MSG: CRITICAL");
 	/* keep tcm list, so process is stopped */
-	return -EIO;
+ret_free_msg:
+	msgb_free(msg);
 }
 
+
+static void trx_ctrl_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
+{
+	/* libosmocore before change-id I0c071a29e508884bac331ada5e510bbfcf440bbf requires
+	 * write call-back even if we don't care about it */
+}
 
 /*
  * TRX burst data socket
@@ -1019,26 +1000,24 @@ static const char *trx_data_desc_msg(const struct trx_ul_burst_ind *bi)
 	return buf;
 }
 
-/* TRXD buffer used by Rx/Tx handlers */
-static uint8_t trx_data_buf[TRXD_MSG_BUF_SIZE];
-
 /* Parse TRXD message from transceiver, compose an UL burst indication. */
-static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
+static void trx_data_read_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
 {
-	const uint8_t *buf = &trx_data_buf[0];
-	struct trx_l1h *l1h = ofd->data;
+	struct trx_l1h *l1h = osmo_iofd_get_data(iofd);
+	const uint8_t *buf;
 	struct trx_ul_burst_ind bi;
 	ssize_t hdr_len, buf_len;
 	uint8_t pdu_ver;
 
-	buf_len = recv(ofd->fd, trx_data_buf, sizeof(trx_data_buf), 0);
-	if (OSMO_UNLIKELY(buf_len <= 0)) {
-		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
+	if (OSMO_UNLIKELY(res <= 0)) {
+		char errbuf[256];
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"recv() failed on TRXD with rc=%zd (%s)\n",
-			buf_len, trx_data_buf);
-		return buf_len;
+			"recv() failed on TRXD with rc=%d (%s)\n", res, errbuf);
+		goto ret_msg_free;
 	}
+	buf = msgb_data(msg);
+	buf_len = msgb_length(msg);
 
 	/* Parse PDU version first */
 	pdu_ver = buf[0] >> 4;
@@ -1048,7 +1027,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Rx TRXD PDU with unexpected version %u (expected %u)\n",
 			pdu_ver, l1h->config.trxd_pdu_ver_use);
-		return -EIO;
+		goto ret_msg_free;
 	}
 
 	/* We're about to parse the first PDU */
@@ -1064,7 +1043,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: len=%zd < expected %u\n",
 				pdu_ver, buf_len, trx_data_rx_hdr_len[pdu_ver]);
-			return -EINVAL;
+			goto ret_msg_free;
 		}
 
 		/* Parse header depending on the PDU version */
@@ -1085,13 +1064,13 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 
 		/* Header parsing error */
 		if (OSMO_UNLIKELY(hdr_len < 0))
-			return hdr_len;
+			goto ret_msg_free;
 
 		if (OSMO_UNLIKELY(bi.fn >= GSM_TDMA_HYPERFRAME)) {
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: illegal TDMA fn=%u\n",
 				pdu_ver, bi.fn);
-			return -EINVAL;
+			goto ret_msg_free;
 		}
 
 		/* We're done with the header now */
@@ -1103,7 +1082,7 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 			LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv%u PDU: odd burst length=%zd\n",
 				pdu_ver, buf_len);
-			return -EINVAL;
+			goto ret_msg_free;
 		}
 
 		/* We're done with the burst bits now */
@@ -1124,7 +1103,14 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 		TRACE(OSMO_BTS_TRX_UL_DATA_DONE(l1h->phy_inst->trx->nr, bi.tn, bi.fn));
 	} while (bi.flags & TRX_BI_F_BATCH_IND);
 
-	return 0;
+ret_msg_free:
+	msgb_free(msg);
+}
+
+static void trx_data_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
+{
+	/* libosmocore before change-id I0c071a29e508884bac331ada5e510bbfcf440bbf requires
+	 * write call-back even if we don't care about it */
 }
 
 /*! Send burst data for given FN/timeslot to TRX
@@ -1134,16 +1120,22 @@ static int trx_data_read_cb(struct osmo_fd *ofd, unsigned int what)
 int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 {
 	uint8_t pdu_ver = l1h->config.trxd_pdu_ver_use;
-	static uint8_t *buf = &trx_data_buf[0];
-	static uint8_t *last_pdu = NULL;
+	static struct msgb *trx_data_last_msg = NULL;
 	static unsigned int pdu_num = 0;
-	ssize_t snd_len, buf_len;
+	uint8_t *buf;
+	int rc;
 
 	/* Make sure that the PHY is powered on */
 	if (OSMO_UNLIKELY(!trx_if_powered(l1h))) {
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
 			"Ignoring Tx data, transceiver is powered off\n");
 		return -ENODEV;
+	}
+
+	if (!trx_data_last_msg) {
+		trx_data_last_msg = msgb_alloc(TRXD_MSG_BUF_SIZE, "tx_trxd");
+		OSMO_ASSERT(trx_data_last_msg);
+		buf = msgb_data(trx_data_last_msg);
 	}
 
 	/* Burst batching breaker */
@@ -1153,19 +1145,20 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		return -ENOMSG;
 	}
 
-	/* Pointer to the last encoded PDU */
-	last_pdu = &buf[0];
+	/* l2h holds Pointer to the last encoded PDU */
+	trx_data_last_msg->l2h = trx_data_last_msg->tail;
 
 	switch (pdu_ver) {
 	/* Both versions have the same PDU format */
 	case 0: /* TRXDv0 */
 	case 1: /* TRXDv1 */
+		buf = (uint8_t *)msgb_put(trx_data_last_msg, 6);
 		buf[0] = ((pdu_ver & 0x0f) << 4) | br->tn;
 		osmo_store32be(br->fn, buf + 1);
 		buf[5] = br->att;
-		buf += 6;
 		break;
 	case 2: /* TRXDv2 */
+		buf = (uint8_t *)msgb_put(trx_data_last_msg, 8);
 		buf[0] = br->tn;
 		/* BATCH.ind will be unset in the last PDU */
 		buf[1] = (br->trx_num & 0x3f) | (1 << 7);
@@ -1178,10 +1171,8 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 		/* Some fields are not present in batched PDUs */
 		if (pdu_num == 0) {
 			buf[0] |= (pdu_ver & 0x0f) << 4;
-			osmo_store32be(br->fn, buf + 8);
-			buf += 4;
+			msgb_put_u32(trx_data_last_msg, br->fn);
 		}
-		buf += 8;
 		break;
 	default:
 		/* Shall not happen */
@@ -1189,8 +1180,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	}
 
 	/* copy ubits {0,1} */
-	memcpy(buf, br->burst, br->burst_len);
-	buf += br->burst_len;
+	memcpy(msgb_put(trx_data_last_msg, br->burst_len), br->burst, br->burst_len);
 
 	/* One more PDU in the buffer */
 	pdu_num++;
@@ -1206,20 +1196,19 @@ sendall:
 
 	/* TRXDv2: unset BATCH.ind in the last PDU */
 	if (pdu_ver >= 2)
-		last_pdu[1] &= ~(1 << 7);
+		trx_data_last_msg->l2h[1] &= ~(1 << 7);
 
-	buf_len = buf - &trx_data_buf[0];
-	buf = &trx_data_buf[0];
-	pdu_num = 0;
-
-	snd_len = send(l1h->trx_ofd_data.fd, trx_data_buf, buf_len, 0);
-	if (OSMO_UNLIKELY(snd_len <= 0)) {
-		strerror_r(errno, (char *) trx_data_buf, sizeof(trx_data_buf));
+	rc = osmo_iofd_write_msgb(l1h->trx_data_iofd, trx_data_last_msg);
+	if (OSMO_UNLIKELY(rc < 0)) {
+		char errbuf[256];
+		strerror_r(errno, errbuf, sizeof(errbuf));
 		LOGPPHI(l1h->phy_inst, DTRX, LOGL_ERROR,
-			"send() failed on TRXD with rc=%zd (%s)\n",
-			snd_len, trx_data_buf);
-		return -2;
+			"osmo_iofd_write_msgb() failed on TRXD with rc=%d (%s)\n",
+			rc, errbuf);
+		msgb_free(trx_data_last_msg);
 	}
+	trx_data_last_msg = NULL;
+	pdu_num = 0;
 
 	return 0;
 }
@@ -1261,8 +1250,10 @@ void trx_if_close(struct trx_l1h *l1h)
 	trx_if_flush(l1h);
 
 	/* close sockets */
-	trx_udp_close(&l1h->trx_ofd_ctrl);
-	trx_udp_close(&l1h->trx_ofd_data);
+	osmo_iofd_free(l1h->trx_ctrl_iofd);
+	l1h->trx_ctrl_iofd = NULL;
+	osmo_iofd_free(l1h->trx_data_iofd);
+	l1h->trx_data_iofd = NULL;
 }
 
 /*! compute UDP port number used for TRX protocol */
@@ -1280,6 +1271,16 @@ static uint16_t compute_port(struct phy_instance *pinst, bool remote, bool is_da
 		return plink->u.osmotrx.base_port_local + (pinst->num << 1) + inc;
 }
 
+static const struct osmo_io_ops trx_ctrl_ioops = {
+	.read_cb = trx_ctrl_read_cb,
+	.write_cb = trx_ctrl_write_cb,
+};
+
+static const struct osmo_io_ops trx_data_ioops = {
+	.read_cb = trx_data_read_cb,
+	.write_cb = trx_data_write_cb,
+};
+
 static const struct osmo_io_ops trx_clk_ioops = {
 	.read_cb = trx_clk_read_cb,
 	.write_cb = trx_clk_write_cb,
@@ -1290,27 +1291,56 @@ static int trx_if_open(struct trx_l1h *l1h)
 {
 	struct phy_instance *pinst = l1h->phy_inst;
 	struct phy_link *plink = pinst->phy_link;
+	char sock_name_buf[OSMO_SOCK_NAME_MAXLEN] = {};
 	int rc;
+
+	unsigned int flags = OSMO_SOCK_F_BIND | OSMO_SOCK_F_CONNECT | OSMO_SOCK_F_NONBLOCK;
 
 	LOGPPHI(pinst, DTRX, LOGL_NOTICE, "Opening TRXC/TRXD connections to %s\n", plink->u.osmotrx.remote_ip);
 
-	/* open sockets */
-	rc = trx_udp_open(l1h, &l1h->trx_ofd_ctrl,
-			  plink->u.osmotrx.local_ip,
-			  compute_port(pinst, false, false),
-			  plink->u.osmotrx.remote_ip,
-			  compute_port(pinst, true, false), trx_ctrl_read_cb);
+	/* open TRXC socket */
+	rc = osmo_sock_init2(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
+			     plink->u.osmotrx.local_ip,
+			     compute_port(pinst, false, false),
+			     plink->u.osmotrx.remote_ip,
+			     compute_port(pinst, true, false),
+			     flags);
 	if (rc < 0)
 		return rc;
-	rc = trx_udp_open(l1h, &l1h->trx_ofd_data,
-			  plink->u.osmotrx.local_ip,
-			  compute_port(pinst, false, true),
-			  plink->u.osmotrx.remote_ip,
-			  compute_port(pinst, true, true), trx_data_read_cb);
-	if (rc < 0)
-		return rc;
+	osmo_sock_get_name_buf(sock_name_buf, OSMO_SOCK_NAME_MAXLEN, rc);
+	l1h->trx_ctrl_iofd = osmo_iofd_setup(l1h, rc, sock_name_buf, OSMO_IO_FD_MODE_READ_WRITE, &trx_ctrl_ioops, l1h);
+	if (!l1h->trx_ctrl_iofd) {
+		close(rc);
+		return -ENOMEDIUM;
+	}
+	osmo_iofd_set_alloc_info(l1h->trx_ctrl_iofd, TRXC_MSG_BUF_SIZE, 0);
 
+	/* open TRXD socket */
+	rc = osmo_sock_init2(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP,
+			     plink->u.osmotrx.local_ip,
+			     compute_port(pinst, false, true),
+			     plink->u.osmotrx.remote_ip,
+			     compute_port(pinst, true, true),
+			     flags);
+	if (rc < 0)
+		goto ret_close_trxc;
+	osmo_sock_get_name_buf(sock_name_buf, OSMO_SOCK_NAME_MAXLEN, rc);
+	l1h->trx_data_iofd = osmo_iofd_setup(l1h, rc, sock_name_buf, OSMO_IO_FD_MODE_READ_WRITE, &trx_data_ioops, l1h);
+	if (!l1h->trx_data_iofd) {
+		close(rc);
+		goto ret_close_trxc;
+	}
+	osmo_iofd_set_alloc_info(l1h->trx_data_iofd, TRXD_MSG_BUF_SIZE, 0);
+
+	/* register sockets */
+	osmo_iofd_register(l1h->trx_ctrl_iofd, -1);
+	osmo_iofd_register(l1h->trx_data_iofd, -1);
 	return 0;
+
+ret_close_trxc:
+	osmo_iofd_free(l1h->trx_ctrl_iofd);
+	l1h->trx_ctrl_iofd = NULL;
+	return rc;
 }
 
 /*! close the control + burst data sockets for one phy_instance */

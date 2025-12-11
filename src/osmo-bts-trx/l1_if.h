@@ -2,6 +2,7 @@
 #define L1_IF_H_TRX
 
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/osmo_io.h>
 
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/phy_link.h>
@@ -128,9 +129,9 @@ struct trx_l1h {
 	//struct gsm_bts_trx	*trx;
 	struct phy_instance	*phy_inst;
 
-	struct osmo_fd		trx_ofd_ctrl;
+	struct osmo_io_fd	*trx_ctrl_iofd;
 	struct osmo_timer_list	trx_ctrl_timer;
-	struct osmo_fd		trx_ofd_data;
+	struct osmo_io_fd	*trx_data_iofd;
 
 	/* transceiver config */
 	struct trx_config	config;
