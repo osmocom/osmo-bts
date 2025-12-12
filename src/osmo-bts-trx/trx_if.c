@@ -755,18 +755,11 @@ static void trx_ctrl_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg
  * TRX burst data socket
  */
 
-/* Uplink TRXDv0 header length: TDMA TN + FN + RSSI + ToA256 */
-#define TRX_UL_V0HDR_LEN	(1 + 4 + 1 + 2)
-/* Uplink TRXDv1 header length: additional MTS + C/I */
-#define TRX_UL_V1HDR_LEN	(TRX_UL_V0HDR_LEN + 1 + 2)
-/* Uplink TRXDv2 header length: TDMA TN + TRXN + MTS + RSSI + ToA256 + C/I */
-#define TRX_UL_V2HDR_LEN	(1 + 1 + 1 + 1 + 2 + 2)
-
 /* Minimum Uplink TRXD header length for all PDU versions */
 static const uint8_t trx_data_rx_hdr_len[] = {
-	TRX_UL_V0HDR_LEN, /* TRXDv0 */
-	TRX_UL_V1HDR_LEN, /* TRXDv1 */
-	TRX_UL_V2HDR_LEN, /* TRXDv2 */
+	TRXD_UL_V0HDR_LEN, /* TRXDv0 */
+	TRXD_UL_V1HDR_LEN, /* TRXDv1 */
+	TRXD_UL_V2HDR_LEN, /* TRXDv2 */
 };
 
 static const uint8_t trx_data_mod_val[] = {
@@ -792,7 +785,7 @@ static int trx_data_handle_hdr_v0(struct phy_instance *phy_inst,
 {
 	/* Parse TRXDv0 specific header part */
 	trx_data_handle_hdr_v0_part(bi, buf);
-	buf_len -= TRX_UL_V0HDR_LEN;
+	buf_len -= TRXD_UL_V0HDR_LEN;
 
 	/* Guess modulation and burst length by the rest octets.
 	 * NOTE: a legacy transceiver may append two garbage bytes. */
@@ -811,7 +804,7 @@ static int trx_data_handle_hdr_v0(struct phy_instance *phy_inst,
 		return -EINVAL;
 	}
 
-	return TRX_UL_V0HDR_LEN;
+	return TRXD_UL_V0HDR_LEN;
 }
 
 /* Parser for MTS (Modulation and Training Sequence) */
@@ -862,7 +855,7 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 
 	/* Parse TRXDv0 specific header part */
 	trx_data_handle_hdr_v0_part(bi, buf);
-	buf += TRX_UL_V0HDR_LEN;
+	buf += TRXD_UL_V0HDR_LEN;
 
 	/* MTS (Modulation and Training Sequence) */
 	rc = trx_data_parse_mts(phy_inst, bi, buf[0]);
@@ -873,7 +866,7 @@ static int trx_data_handle_hdr_v1(struct phy_instance *phy_inst,
 	bi->ci_cb = (int16_t) osmo_load16be(buf + 1);
 	bi->flags |= TRX_BI_F_CI_CB;
 
-	return TRX_UL_V1HDR_LEN;
+	return TRXD_UL_V1HDR_LEN;
 }
 
 /* TRXD header dissector for version 0x01 */
@@ -907,18 +900,18 @@ static int trx_data_handle_pdu_v2(struct phy_instance *phy_inst,
 
 	/* TDMA frame number is absent in batched PDUs */
 	if (bi->_num_pdus == 0) {
-		if (OSMO_UNLIKELY(buf_len < sizeof(bi->fn) + TRX_UL_V2HDR_LEN)) {
+		if (OSMO_UNLIKELY(buf_len < sizeof(bi->fn) + TRXD_UL_V2HDR_LEN)) {
 			LOGPPHI(phy_inst, DTRX, LOGL_ERROR,
 				"Rx malformed TRXDv2 PDU: not enough bytes "
 				"to parse TDMA frame number\n");
 			return -EINVAL;
 		}
 
-		bi->fn = osmo_load32be(buf + TRX_UL_V2HDR_LEN);
-		return TRX_UL_V2HDR_LEN + sizeof(bi->fn);
+		bi->fn = osmo_load32be(buf + TRXD_UL_V2HDR_LEN);
+		return TRXD_UL_V2HDR_LEN + sizeof(bi->fn);
 	}
 
-	return TRX_UL_V2HDR_LEN;
+	return TRXD_UL_V2HDR_LEN;
 }
 
 /* TRXD burst handler (version independent) */
@@ -1132,7 +1125,7 @@ int trx_if_send_burst(struct trx_l1h *l1h, const struct trx_dl_burst_req *br)
 	}
 
 	if (l1h->data.sndbuf == NULL) {
-		l1h->data.sndbuf = msgb_alloc_c(l1h, TRXD_MSG_BUF_SIZE, "tx_trxd");
+		l1h->data.sndbuf = msgb_alloc_c(l1h, TRXD_DL_MSG_BUF_SIZE, "tx_trxd");
 		OSMO_ASSERT(l1h->data.sndbuf);
 	}
 	sndbuf = l1h->data.sndbuf;
@@ -1329,7 +1322,7 @@ static int trx_if_open(struct trx_l1h *l1h)
 		close(rc);
 		goto ret_close_trxc;
 	}
-	osmo_iofd_set_alloc_info(l1h->trx_data_iofd, TRXD_MSG_BUF_SIZE, 0);
+	osmo_iofd_set_alloc_info(l1h->trx_data_iofd, TRXD_UL_MSG_BUF_SIZE, 0);
 
 	/* register sockets */
 	osmo_iofd_register(l1h->trx_ctrl_iofd, -1);

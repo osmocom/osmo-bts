@@ -1,9 +1,37 @@
 #pragma once
 
+#include <osmocom/core/utils.h>
+#include <osmo-bts/scheduler.h>
+
+/* NOTE: (2*GSM_BURST_LEN = VAMOS)
+ * This ends up being EGPRS_BURST_LEN, 444 */
+#define TRXD_BURST_SIZE_MAX	OSMO_MAX(2 * GSM_BURST_LEN, EGPRS_BURST_LEN)
+
+/* Uplink TRXDv0 header length: TDMA TN + FN + RSSI + ToA256 */
+#define TRXD_UL_V0HDR_LEN	(1 + 4 + 1 + 2)
+/* Uplink TRXDv1 header length: additional MTS + C/I */
+#define TRXD_UL_V1HDR_LEN	(TRXD_UL_V0HDR_LEN + 1 + 2)
+/* Uplink TRXDv2 header length: TDMA TN + TRXN + MTS + RSSI + ToA256 + C/I */
+#define TRXD_UL_V2HDR_LEN	(1 + 1 + 1 + 1 + 2 + 2)
+/* NOTE: TRXDv0: a legacy transceiver may append two garbage bytes:
+ * NOTE: TRXDv2: 4+ to account for optional TDMA Fn field: */
+#define TRXD_UL_MAX_HDR_LEN	OSMO_MAX(TRXD_UL_V0HDR_LEN + 2, OSMO_MAX(TRXD_UL_V1HDR_LEN, 4 + TRXD_UL_V2HDR_LEN))
+/* Note (OS#5827): once we support TRX batching, we miss here "* PCU_IF_NUM_TRX" */
+#define TRXD_UL_MSG_BUF_SIZE	((TRXD_UL_MAX_HDR_LEN + TRXD_BURST_SIZE_MAX) * TRX_NR_TS)
+
+
+/* Downlink TRXDv0/1 header length: TDMA TN + FN + Att */
+#define TRXD_DL_V0HDR_LEN	(1 + 4 + 1)
+#define TRXD_DL_V1HDR_LEN	TRXD_DL_V0HDR_LEN
+/* Downlink TRXDv2 header length: TDMA TN + TRXN + MTS + Att + SCPIR + spare3 + FN (on first PDU) */
+#define TRXD_DL_V2HDR_LEN	(1 + 1 + 1 + 1 + 1 + 3 + 4)
+#define TRXD_DL_MAX_HDR_LEN	OSMO_MAX(TRXD_DL_V0HDR_LEN, OSMO_MAX(TRXD_DL_V1HDR_LEN, TRXD_DL_V2HDR_LEN))
+
+/* Note (OS#5827): once we support TRX batching, we miss here "* PCU_IF_NUM_TRX" */
+#define TRXD_DL_MSG_BUF_SIZE	((TRXD_DL_MAX_HDR_LEN + TRXD_BURST_SIZE_MAX) * TRX_NR_TS)
+
 /* TRXC read/send buffer size */
 #define TRXC_MSG_BUF_SIZE	1500
-/* TRXD read/send buffer size (max. IPv4 MTU) */
-#define TRXD_MSG_BUF_SIZE	65535U
 
 struct trx_dl_burst_req;
 struct trx_l1h;
