@@ -400,7 +400,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 	switch (event) {
 	case TRX_PROV_EV_CLOSE:
 		/* In this state, we didn't for sure send a POWERON yet, hence we
-		   are save directly applying the close as if we received a
+		   are safe directly applying the close as if we received a
 		   POWEROFF RSP: */
 		if (pinst->num == 0)
 			trx_prov_fsm_apply_close(pinst->phy_link, 0);
