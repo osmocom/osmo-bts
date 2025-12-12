@@ -947,8 +947,8 @@ static int trx_data_handle_burst(struct trx_ul_burst_ind *bi,
 
 	/* Modulation types defined in 3GPP TS 45.002 */
 	static const size_t bl[] = {
-		[TRX_MOD_T_GMSK] = 148, /* 1 bit per symbol */
-		[TRX_MOD_T_8PSK] = 444, /* 3 bits per symbol */
+		[TRX_MOD_T_GMSK] = GSM_BURST_LEN, /* 1 bit per symbol */
+		[TRX_MOD_T_8PSK] = EGPRS_BURST_LEN, /* 3 bits per symbol */
 	};
 
 	bi->burst_len = bl[bi->mod];
