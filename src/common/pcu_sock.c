@@ -34,6 +34,9 @@
 #include <osmocom/core/write_queue.h>
 #include <osmocom/gsm/gsm23003.h>
 #include <osmocom/gsm/abis_nm.h>
+
+#include <osmocom/netif/stream.h>
+
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/pcu_if.h>
@@ -1012,18 +1015,14 @@ static int pcu_rx(uint8_t msg_type, struct gsm_pcu_if *pcu_prim, size_t prim_len
  */
 
 struct pcu_sock_state {
-	struct osmo_fd listen_bfd;	/* fd for listen socket */
-	struct osmo_wqueue upqueue;	/* For sending messages; has fd for conn. to PCU */
+	struct osmo_stream_srv_link *srv_link; /* fd for listen socket */
+	struct osmo_stream_srv *conn;
 };
-
-static void pcu_sock_close(struct pcu_sock_state *state);
 
 int pcu_sock_send(struct msgb *msg)
 {
 	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
-	struct osmo_fd *conn_bfd;
 	struct gsm_pcu_if *pcu_prim = (struct gsm_pcu_if *) msg->data;
-	int rc;
 
 	if (!state) {
 		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND &&
@@ -1033,8 +1032,7 @@ int pcu_sock_send(struct msgb *msg)
 		msgb_free(msg);
 		return -EINVAL;
 	}
-	conn_bfd = &state->upqueue.bfd;
-	if (conn_bfd->fd <= 0) {
+	if (!state->conn) {
 		if (pcu_prim->msg_type != PCU_IF_MSG_TIME_IND &&
 		    pcu_prim->msg_type != PCU_IF_MSG_INTERF_IND)
 			LOGP(DPCU, LOGL_NOTICE, "PCU socket not connected, "
@@ -1043,21 +1041,12 @@ int pcu_sock_send(struct msgb *msg)
 		return -EIO;
 	}
 
-	rc = osmo_wqueue_enqueue(&state->upqueue, msg);
-	if (rc < 0) {
-		if (rc == -ENOSPC)
-			LOGP(DPCU, LOGL_NOTICE, "PCU not reacting (more than %u messages waiting). Closing connection\n",
-			     state->upqueue.max_length);
-		pcu_sock_close(state);
-		msgb_free(msg);
-		return rc;
-	}
+	osmo_stream_srv_send(state->conn, msg);
 	return 0;
 }
 
 static void pcu_sock_close(struct pcu_sock_state *state)
 {
-	struct osmo_fd *bfd = &state->upqueue.bfd;
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	unsigned int tn;
@@ -1071,16 +1060,12 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 
 	bts->pcu_version[0] = '\0';
 
-	osmo_fd_unregister(bfd);
-	close(bfd->fd);
-	bfd->fd = -1;
+	osmo_stream_srv_destroy(state->conn);
+	state->conn = NULL;
 
 	/* patch SI3 to remove GPRS indicator */
 	regenerate_si3_restoctets(bts);
 	regenerate_si4_restoctets(bts);
-
-	/* re-enable the generation of ACCEPT for new connections */
-	osmo_fd_read_enable(&state->listen_bfd);
 
 #if 0
 	/* remove si13, ... */
@@ -1102,28 +1087,27 @@ static void pcu_sock_close(struct pcu_sock_state *state)
 			l1sap_chan_rel(trx, gsm_lchan2chan_nr(&ts->lchan[0]));
 		}
 	}
-
-	osmo_wqueue_clear(&state->upqueue);
 }
 
-static int pcu_sock_read(struct osmo_fd *bfd)
+static int pcu_sock_conn_closed_cb(struct osmo_stream_srv *conn)
 {
-	struct pcu_sock_state *state = (struct pcu_sock_state *)bfd->data;
+	struct pcu_sock_state *state = osmo_stream_srv_get_data(conn);
+	LOGP(DPCU, LOGL_ERROR, "PCUIF connection closed\n");
+	state->conn = NULL;
+	pcu_sock_close(state);
+	return 0;
+}
+
+static int pcu_sock_conn_read_cb(struct osmo_stream_srv *conn, int res, struct msgb *msg)
+{
+	struct pcu_sock_state *state = osmo_stream_srv_get_data(conn);
 	struct gsm_pcu_if *pcu_prim;
-	struct msgb *msg;
 	int rc;
 
-	msg = msgb_alloc(sizeof(*pcu_prim) + 1000, "pcu_sock_rx");
-	if (!msg)
-		return -ENOMEM;
-
-	pcu_prim = (struct gsm_pcu_if *) msg->tail;
-
-	rc = recv(bfd->fd, msg->tail, msgb_tailroom(msg), 0);
-	if (rc == 0)
+	if (res == 0)
 		goto close;
 
-	if (rc < 0) {
+	if (res < 0) {
 		if (errno == EAGAIN) {
 			msgb_free(msg);
 			return 0;
@@ -1131,14 +1115,15 @@ static int pcu_sock_read(struct osmo_fd *bfd)
 		goto close;
 	}
 
-	if (rc < PCUIF_HDR_SIZE) {
+	if (res < PCUIF_HDR_SIZE) {
 		LOGP(DPCU, LOGL_ERROR, "Received %d bytes on PCU Socket, but primitive hdr size "
-		     "is %zu, discarding\n", rc, PCUIF_HDR_SIZE);
+		     "is %zu, discarding\n", res, PCUIF_HDR_SIZE);
 		msgb_free(msg);
 		return 0;
 	}
 
-	rc = pcu_rx(pcu_prim->msg_type, pcu_prim, rc);
+	pcu_prim = (struct gsm_pcu_if *) msgb_data(msg);
+	rc = pcu_rx(pcu_prim->msg_type, pcu_prim, msgb_length(msg));
 
 	/* as we always synchronously process the message in pcu_rx() and
 	 * its callbacks, we can free the message here. */
@@ -1152,61 +1137,20 @@ close:
 	return -1;
 }
 
-static int pcu_sock_write(struct osmo_fd *bfd, struct msgb *msg)
-{
-	struct pcu_sock_state *state = bfd->data;
-	int rc;
-
-	/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
-	OSMO_ASSERT(msgb_length(msg) > 0);
-	/* try to send it over the socket */
-	rc = write(bfd->fd, msgb_data(msg), msgb_length(msg));
-	if (OSMO_UNLIKELY(rc == 0))
-		goto close;
-	if (OSMO_UNLIKELY(rc < 0)) {
-		if (errno == EAGAIN)
-			return -EAGAIN;
-		return -1;
-	}
-	return 0;
-
-close:
-	pcu_sock_close(state);
-	return -1;
-}
-
 /* accept connection coming from PCU */
-static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
+static int pcu_sock_accept(struct osmo_stream_srv_link *link, int fd)
 {
-	struct pcu_sock_state *state = (struct pcu_sock_state *)bfd->data;
-	struct osmo_fd *conn_bfd = &state->upqueue.bfd;
-	struct sockaddr_un un_addr;
-	socklen_t len;
-	int fd;
+	struct pcu_sock_state *state = osmo_stream_srv_link_get_data(link);
 
-	len = sizeof(un_addr);
-	fd = accept(bfd->fd, (struct sockaddr *)&un_addr, &len);
-	if (fd < 0) {
-		LOGP(DPCU, LOGL_ERROR, "Failed to accept a new connection\n");
-		return -1;
-	}
-
-	if (conn_bfd->fd >= 0) {
+	if (state->conn) {
 		LOGP(DPCU, LOGL_NOTICE, "PCU connects but we already have another active connection ?!?\n");
-		/* We already have one PCU connected, this is all we support */
-		osmo_fd_read_disable(&state->listen_bfd);
 		close(fd);
 		return 0;
 	}
 
-	osmo_fd_setup(conn_bfd, fd, OSMO_FD_READ, osmo_wqueue_bfd_cb, state, 0);
-
-	if (osmo_fd_register(conn_bfd) != 0) {
-		LOGP(DPCU, LOGL_ERROR, "Failed to register new connection fd\n");
-		close(conn_bfd->fd);
-		conn_bfd->fd = -1;
-		return -1;
-	}
+	state->conn = osmo_stream_srv_create2(state, link, fd, state);
+	osmo_stream_srv_set_read_cb(state->conn, pcu_sock_conn_read_cb);
+	osmo_stream_srv_set_closed_cb(state->conn, pcu_sock_conn_closed_cb);
 
 	LOGP(DPCU, LOGL_NOTICE, "PCU socket connected to external PCU\n");
 
@@ -1216,45 +1160,58 @@ static int pcu_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	return 0;
 }
 
+static struct pcu_sock_state *pcu_sock_state_alloc(struct gsm_bts_sm *bts_sm, const char *path, int qlength_max)
+{
+	struct pcu_sock_state *state;
+	state = talloc_zero(bts_sm, struct pcu_sock_state);
+	OSMO_ASSERT(state);
+
+	state->srv_link = osmo_stream_srv_link_create(state);
+	OSMO_ASSERT(state->srv_link);
+	osmo_stream_srv_link_set_domain(state->srv_link, AF_UNIX);
+	osmo_stream_srv_link_set_type(state->srv_link, SOCK_SEQPACKET);
+	osmo_stream_srv_link_set_name(state->srv_link, "PCUIF");
+	osmo_stream_srv_link_set_data(state->srv_link, state);
+	osmo_stream_srv_link_set_accept_cb(state->srv_link, pcu_sock_accept);
+	osmo_stream_srv_link_set_msgb_alloc_info(state->srv_link, sizeof(struct gsm_pcu_if) + 1000, 0);
+	osmo_stream_srv_link_set_tx_queue_max_length(state->srv_link, qlength_max);
+	osmo_stream_srv_link_set_addr(state->srv_link, path);
+
+	return state;
+}
+
+static void pcu_sock_state_free(struct pcu_sock_state *state)
+{
+	if (!state)
+		return;
+
+	if (state->conn)
+		pcu_sock_close(state);
+
+	osmo_stream_srv_link_destroy(state->srv_link);
+	state->srv_link = NULL;
+	talloc_free(state);
+}
+
 int pcu_sock_init(const char *path, int qlength_max)
 {
 	struct pcu_sock_state *state;
-	struct osmo_fd *bfd;
 	int rc;
 
-	state = talloc_zero(g_bts_sm, struct pcu_sock_state);
+	state = pcu_sock_state_alloc(g_bts_sm, path, qlength_max);
 	if (!state)
 		return -ENOMEM;
 
-	osmo_wqueue_init(&state->upqueue, qlength_max);
-	state->upqueue.read_cb = pcu_sock_read;
-	state->upqueue.write_cb = pcu_sock_write;
-	state->upqueue.bfd.fd = -1;
-
-	bfd = &state->listen_bfd;
-
-	rc = osmo_sock_unix_init(SOCK_SEQPACKET, 0, path, OSMO_SOCK_F_BIND);
+	rc = osmo_stream_srv_link_open(state->srv_link);
 	if (rc < 0) {
 		LOGP(DPCU, LOGL_ERROR, "Could not create %s unix socket: %s\n",
 		     path, strerror(errno));
-		talloc_free(state);
+		pcu_sock_state_free(state);
 		return -1;
 	}
 
-	osmo_fd_setup(bfd, rc, OSMO_FD_READ, pcu_sock_accept, state, 0);
-
-	rc = osmo_fd_register(bfd);
-	if (rc < 0) {
-		LOGP(DPCU, LOGL_ERROR, "Could not register listen fd: %d\n",
-			rc);
-		close(bfd->fd);
-		talloc_free(state);
-		return rc;
-	}
-
-	osmo_signal_register_handler(SS_GLOBAL, pcu_if_signal_cb, NULL);
-
 	g_bts_sm->gprs.pcu_state = state;
+	osmo_signal_register_handler(SS_GLOBAL, pcu_if_signal_cb, NULL);
 
 	LOGP(DPCU, LOGL_INFO, "Started listening on PCU socket (PCU IF v%u): %s\n", PCU_IF_VERSION, path);
 
@@ -1263,20 +1220,11 @@ int pcu_sock_init(const char *path, int qlength_max)
 
 void pcu_sock_exit(void)
 {
-	struct pcu_sock_state *state = g_bts_sm->gprs.pcu_state;
-	struct osmo_fd *bfd, *conn_bfd;
-
-	if (!state)
+	if (!g_bts_sm->gprs.pcu_state)
 		return;
 
 	osmo_signal_unregister_handler(SS_GLOBAL, pcu_if_signal_cb, NULL);
-	conn_bfd = &state->upqueue.bfd;
-	if (conn_bfd->fd > 0)
-		pcu_sock_close(state);
-	bfd = &state->listen_bfd;
-	close(bfd->fd);
-	osmo_fd_unregister(bfd);
-	talloc_free(state);
+	pcu_sock_state_free(g_bts_sm->gprs.pcu_state);
 	g_bts_sm->gprs.pcu_state = NULL;
 }
 
@@ -1285,7 +1233,7 @@ bool pcu_connected(void) {
 
 	if (!state)
 		return false;
-	if (state->upqueue.bfd.fd <= 0)
+	if (!state->conn)
 		return false;
 	return true;
 }
