@@ -111,24 +111,12 @@ static int rx_down_osmo_pcu(struct gsm_bts *bts, struct msgb *msg)
 /* incoming IPA/OSMO extension Abis message from BSC */
 int down_osmo(struct gsm_bts *bts, struct msgb *msg)
 {
-	uint8_t *type;
-
-	if (msgb_l2len(msg) < 1) {
-		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
-					 "OSMO message too short\n");
-		msgb_free(msg);
-		return -EIO;
-	}
-
-	type = msgb_l2(msg);
-	msg->l2h = type + 1;
-
-	switch (*type) {
+	switch (osmo_ipa_msgb_cb_proto_ext(msg)) {
 	case IPAC_PROTO_EXT_PCU:
 		return rx_down_osmo_pcu(bts, msg);
 	default:
 		oml_tx_failure_event_rep(&bts->mo, NM_SEVER_MAJOR, OSMO_EVT_MAJ_UKWN_MSG,
-					 "OSMO message unknown extension %u\n", *type);
+					 "OSMO message unknown extension %u\n", osmo_ipa_msgb_cb_proto_ext(msg));
 		msgb_free(msg);
 		return -EIO;
 	}
