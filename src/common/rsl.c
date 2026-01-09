@@ -1989,8 +1989,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 	}
 
-	lchan_ms_pwr_ctrl_reset(lchan);
-
 	/* 9.3.6 Channel Mode */
 	if (type != RSL_ACT_OSMO_PDCH) {
 		if (rsl_handle_chan_mod_ie(lchan, &tp, &cause) != 0)
@@ -2050,11 +2048,11 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* 9.3.13 MS Power */
-	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1))
+	lchan_ms_pwr_ctrl_reset(lchan);
+	if (TLVP_PRES_LEN(&tp, RSL_IE_MS_POWER, 1)) {
 		lchan->ms_power_ctrl.max = *TLVP_VAL(&tp, RSL_IE_MS_POWER) & 0x1F;
-	else /* XXX: should we use the maximum power level instead of 0 dBm? */
-		lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
-	lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
+		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
+	}
 
 	/* 9.3.24 Timing Advance */
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))

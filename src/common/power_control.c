@@ -145,6 +145,10 @@ void lchan_ms_pwr_ctrl_reset(struct gsm_lchan *lchan)
 	 * state->dpc_params = NULL (static mode).
 	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
 	memset(state, 0, sizeof(*state));
+
+	/* XXX: should we use the maximum power level instead of 0 dBm? */
+	state->max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	state->current = state->max;
 }
 
 /* Shall we skip current block based on configured interval? */
