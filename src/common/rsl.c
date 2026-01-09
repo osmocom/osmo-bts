@@ -58,6 +58,7 @@
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/notification.h>
 #include <osmo-bts/asci.h>
+#include <osmo-bts/ta_control.h>
 
 //#define FAKE_CIPH_MODE_COMPL
 
@@ -1765,7 +1766,7 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
 	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
 	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
-	lchan->ta_ctrl.current = 0;
+	lchan_ms_ta_ctrl_reset(lchan);
 	copy_sacch_si_to_lchan(lchan);
 	memset(&lchan->tch, 0, sizeof(lchan->tch));
 }

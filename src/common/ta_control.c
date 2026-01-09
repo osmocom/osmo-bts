@@ -42,6 +42,12 @@
 #define TA_MAX_INC_STEP 2
 #define TA_MAX_DEC_STEP 2
 
+void lchan_ms_ta_ctrl_reset(struct gsm_lchan *lchan)
+{
+	/* Trigger loop on first TA input: */
+	lchan->ta_ctrl.skip_block_num = 0;
+	lchan->ta_ctrl.current = 0;
+}
 
 /* Shall we skip current block based on configured interval? */
 static bool ctrl_interval_skip_block(struct gsm_lchan *lchan)
