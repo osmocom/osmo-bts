@@ -27,6 +27,7 @@
 
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/bts_trx.h>
+#include <osmo-bts/lchan.h>
 #include <osmo-bts/logging.h>
 
 /* 3GPP TS 45.010 sec 5.6.3 Delay assessment error:
