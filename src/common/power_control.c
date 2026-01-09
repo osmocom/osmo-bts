@@ -137,6 +137,16 @@ static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params, const ui
 	return delta;
 }
 
+void lchan_ms_pwr_ctrl_reset(struct gsm_lchan *lchan)
+{
+	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
+
+	/* This below implicitly sets:
+	 * state->dpc_params = NULL (static mode).
+	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
+	memset(state, 0, sizeof(*state));
+}
+
 /* Shall we skip current block based on configured interval? */
 static bool ctrl_interval_skip_block(const struct gsm_power_ctrl_params *params,
 				     struct lchan_power_ctrl_state *state)
@@ -308,6 +318,16 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	bts_model_adjst_ms_pwr(lchan);
 
 	return 1;
+}
+
+void lchan_bs_pwr_ctrl_reset(struct gsm_lchan *lchan)
+{
+	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
+
+	/* This below implicitly sets:
+	 * state->dpc_params = NULL (static mode).
+	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
+	memset(state, 0, sizeof(*state));
 }
 
 /*! compute the new Downlink attenuation value for the given logical channel.

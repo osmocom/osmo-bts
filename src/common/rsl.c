@@ -58,6 +58,7 @@
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/notification.h>
 #include <osmo-bts/asci.h>
+#include <osmo-bts/power_control.h>
 #include <osmo-bts/ta_control.h>
 
 //#define FAKE_CIPH_MODE_COMPL
@@ -1764,8 +1765,8 @@ static void clear_lchan_for_pdch_activ(struct gsm_lchan *lchan)
 	lchan->tch_mode = 0;
 	memset(&lchan->encr, 0, sizeof(lchan->encr));
 	memset(&lchan->ho, 0, sizeof(lchan->ho));
-	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
-	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
+	lchan_bs_pwr_ctrl_reset(lchan);
+	lchan_ms_pwr_ctrl_reset(lchan);
 	lchan_ms_ta_ctrl_reset(lchan);
 	copy_sacch_si_to_lchan(lchan);
 	memset(&lchan->tch, 0, sizeof(lchan->tch));
@@ -1989,8 +1990,8 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* Initialize MS/BS Power Control state */
-	memset(&lchan->ms_power_ctrl, 0, sizeof(lchan->ms_power_ctrl));
-	memset(&lchan->bs_power_ctrl, 0, sizeof(lchan->bs_power_ctrl));
+	lchan_bs_pwr_ctrl_reset(lchan);
+	lchan_ms_pwr_ctrl_reset(lchan);
 
 	/* 9.3.6 Channel Mode */
 	if (type != RSL_ACT_OSMO_PDCH) {

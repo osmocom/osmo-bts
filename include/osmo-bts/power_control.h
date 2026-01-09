@@ -81,10 +81,12 @@ extern const struct gsm_power_ctrl_params power_ctrl_params_def;
 void power_ctrl_params_def_reset(struct gsm_power_ctrl_params *params, bool is_bs_pwr);
 
 struct gsm_lchan;
+void lchan_ms_pwr_ctrl_reset(struct gsm_lchan *lchan);
 int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const uint8_t ms_power_lvl,
 		      const int8_t ul_rssi_dbm,
 		      const int16_t ul_lqual_cb);
 
+void lchan_bs_pwr_ctrl_reset(struct gsm_lchan *lchan);
 int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		      const struct gsm48_meas_res *mr);
