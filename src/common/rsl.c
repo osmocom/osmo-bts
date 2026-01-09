@@ -1989,8 +1989,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 		}
 	}
 
-	/* Initialize MS/BS Power Control state */
-	lchan_bs_pwr_ctrl_reset(lchan);
 	lchan_ms_pwr_ctrl_reset(lchan);
 
 	/* 9.3.6 Channel Mode */
@@ -2028,6 +2026,7 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* 9.3.4 BS Power */
+	lchan_bs_pwr_ctrl_reset(lchan);
 	if (TLVP_PRES_LEN(&tp, RSL_IE_BS_POWER, 1)) {
 		if (*TLVP_VAL(&tp, RSL_IE_BS_POWER) & (1 << 4)) {
 			LOGPLCHAN(lchan, DRSL, LOGL_NOTICE,
@@ -2048,9 +2047,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 		LOGPLCHAN(lchan, DRSL, LOGL_DEBUG, "BS Power attenuation %u dB\n",
 			  lchan->bs_power_ctrl.current);
-	} else {
-		lchan->bs_power_ctrl.max = 2 * 15; /* maximum defined in 9.3.4 */
-		lchan->bs_power_ctrl.current = 0;
 	}
 
 	/* 9.3.13 MS Power */
@@ -2096,9 +2092,6 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
 		}
-
-		/* NOTE: it's safer to start from 0 */
-		lchan->bs_power_ctrl.current = 0;
 		lchan->bs_power_ctrl.dpc_params = params;
 	}
 

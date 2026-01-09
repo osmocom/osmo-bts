@@ -325,9 +325,12 @@ void lchan_bs_pwr_ctrl_reset(struct gsm_lchan *lchan)
 	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
 
 	/* This below implicitly sets:
+	 * state->current = 0 (it's safer to start from 0 unless told differently).
 	 * state->dpc_params = NULL (static mode).
 	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
 	memset(state, 0, sizeof(*state));
+
+	state->max = 2 * 15; /* maximum defined in 9.3.4 */
 }
 
 /*! compute the new Downlink attenuation value for the given logical channel.
