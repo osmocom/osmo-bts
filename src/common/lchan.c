@@ -326,6 +326,8 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 		lchan->pending_rel_ind_msg = NULL;
 		msgb_free(lchan->pending_chan_activ);
 		lchan->pending_chan_activ = NULL;
+		lchan_bs_pwr_ctrl_reset(lchan);
+		lchan_ms_pwr_ctrl_reset(lchan);
 		lchan_ms_ta_ctrl_reset(lchan);
 		/* fall through */
 	default:
