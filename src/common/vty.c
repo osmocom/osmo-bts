@@ -1833,11 +1833,11 @@ static void lchan_bs_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	cfg_out(vty, "BS (Downlink) Power Control (%s mode):%s",
-		st->dpc_params ? "dynamic" : "static", VTY_NEWLINE);
+		st->dpc_enabled ? "dynamic" : "static", VTY_NEWLINE);
 	indent += 2;
 
 	cfg_out(vty, "Channel reduction: %u dB", st->current);
-	if (st->dpc_params != NULL)
+	if (st->dpc_enabled)
 		vty_out(vty, " (max %u dB)", st->max);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
@@ -1848,11 +1848,11 @@ static void lchan_bs_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	cfg_out(vty, "Actual / Nominal power: %d dBm / %d dBm%s",
 		actual, trx->nominal_power, VTY_NEWLINE);
 
-	if (st->dpc_params == NULL)
+	if (!st->dpc_enabled)
 		return;
 
 	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
-	dump_dpc_params(vty, indent + 2, st->dpc_params, false);
+	dump_dpc_params(vty, indent + 2, &st->dpc_params, false);
 }
 
 static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
@@ -1862,7 +1862,7 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 	const struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	cfg_out(vty, "MS (Uplink) Power Control (%s):%s",
-		st->dpc_params ? "dynamic" : "static", VTY_NEWLINE);
+		st->dpc_enabled ? "dynamic" : "static", VTY_NEWLINE);
 	indent += 2;
 
 	int current_dbm = ms_pwr_dbm(trx->bts->band, st->current);
@@ -1870,15 +1870,15 @@ static void lchan_ms_power_ctrl_state_dump(struct vty *vty, unsigned int indent,
 
 	cfg_out(vty, "Current power level: %u, %d dBm",
 		st->current, current_dbm);
-	if (st->dpc_params != NULL)
+	if (st->dpc_enabled)
 		vty_out(vty, " (max %u, %d dBm)", st->max, max_dbm);
 	vty_out(vty, "%s", VTY_NEWLINE);
 
-	if (st->dpc_params == NULL)
+	if (!st->dpc_enabled)
 		return;
 
 	cfg_out(vty, "Power Control parameters:%s", VTY_NEWLINE);
-	dump_dpc_params(vty, indent + 2, st->dpc_params, true);
+	dump_dpc_params(vty, indent + 2, &st->dpc_params, true);
 }
 
 static void lchan_acch_rep_state_dump(struct vty *vty, unsigned int indent,
@@ -2604,7 +2604,6 @@ DEFUN_ATTR(bts_t_t_l_power_ctrl_mode,
 	   "Enable the power control loop\n",
 	   CMD_ATTR_HIDDEN)
 {
-	const struct gsm_power_ctrl_params *params;
 	struct lchan_power_ctrl_state *state;
 	const char **args = argv + 4;
 	struct gsm_lchan *lchan;
@@ -2615,18 +2614,15 @@ DEFUN_ATTR(bts_t_t_l_power_ctrl_mode,
 		return CMD_WARNING;
 	}
 
-	if (strcmp(args[0], "bs-power-ctrl") == 0) {
-		params = &lchan->bs_dpc_params;
+	if (strcmp(args[0], "bs-power-ctrl") == 0)
 		state = &lchan->bs_power_ctrl;
-	} else { /* ms-power-ctrl */
-		params = &lchan->ms_dpc_params;
+	else/* ms-power-ctrl */
 		state = &lchan->ms_power_ctrl;
-	}
 
 	if (strcmp(args[1], "dynamic") == 0)
-		state->dpc_params = params;
+		state->dpc_enabled = true;
 	else
-		state->dpc_params = NULL;
+		state->dpc_enabled = false;
 
 	return CMD_SUCCESS;
 }

@@ -106,9 +106,9 @@ static void init_test(const char *name)
 	g_bts->c0 = g_trx;
 
 	/* Init defaultBS power control parameters, enable dynamic power control */
-	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].bs_dpc_params;
-	g_trx->ts[0].lchan[0].bs_power_ctrl.dpc_params = params;
+	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].bs_power_ctrl.dpc_params;
 	*params = power_ctrl_params_def;
+	g_trx->ts[0].lchan[0].bs_power_ctrl.dpc_enabled = true;
 
 	/* Disable loop SACCH block skip by default: */
 	params->ctrl_interval = 0;
@@ -146,30 +146,31 @@ static int exec_power_step(struct gsm_lchan *lchan,
 	case PWR_TEST_ST_SET_STATE:
 		printf("#%02u %s() <- State (re)set (current %u dB, max %u dB)\n",
 		       n, __func__, step->state.current, step->state.max);
-		lchan->bs_power_ctrl = step->state;
-		lchan->bs_power_ctrl.dpc_params = &lchan->bs_dpc_params;
+		lchan->bs_power_ctrl.current = step->state.current;
+		lchan->bs_power_ctrl.max = step->state.max;
+		lchan->bs_power_ctrl.dpc_enabled = true;
 		return 0; /* we're done */
 	case PWR_TEST_ST_DISABLE_DPC:
 		printf("#%02u %s() <- Dynamic power control is disabled\n", n, __func__);
-		lchan->bs_power_ctrl.dpc_params = NULL;
+		lchan->bs_power_ctrl.dpc_enabled = false;
 		return 0; /* we're done */
 	case PWR_TEST_ST_SET_CTRL_INTERVAL:
 		printf("#%02u %s() <- (Re)set power control interval: %u -> %u\n",
-		       n, __func__, lchan->bs_dpc_params.ctrl_interval, step->ctrl_interval);
-		lchan->bs_dpc_params.ctrl_interval = step->ctrl_interval;
+		       n, __func__, lchan->bs_power_ctrl.dpc_params.ctrl_interval, step->ctrl_interval);
+		lchan->bs_power_ctrl.dpc_params.ctrl_interval = step->ctrl_interval;
 		return 0; /* we're done */
 	case PWR_TEST_ST_SET_STEP_SIZE:
 		printf("#%02u %s() <- Set step size: inc %u dB, red %u dB\n",
 		       n, __func__, step->step_size.inc, step->step_size.red);
-		lchan->bs_dpc_params.inc_step_size_db = step->step_size.inc;
-		lchan->bs_dpc_params.red_step_size_db = step->step_size.red;
+		lchan->bs_power_ctrl.dpc_params.inc_step_size_db = step->step_size.inc;
+		lchan->bs_power_ctrl.dpc_params.red_step_size_db = step->step_size.red;
 		return 0; /* we're done */
 	case PWR_TEST_ST_SET_RXLEV_PARAMS:
 		printf("#%02u %s() <- (Re)set RxLev params (thresh %u .. %u, "
 							   "averaging is %sabled)\n",
 		       n, __func__, step->mp.lower_thresh, step->mp.upper_thresh,
 		       step->mp.algo != GSM_PWR_CTRL_MEAS_AVG_ALGO_NONE ? "en" : "dis");
-		lchan->bs_dpc_params.rxlev_meas = step->mp;
+		lchan->bs_power_ctrl.dpc_params.rxlev_meas = step->mp;
 		return 0; /* we're done */
 	case PWR_TEST_ST_ENABLE_DTXD:
 		printf("#%02u %s() <- Enable DTXd\n", n, __func__);
@@ -204,7 +205,7 @@ static void exec_power_test(const struct power_test_step *steps,
 	init_test(name);
 
 	struct gsm_lchan *lchan = &g_trx->ts[0].lchan[0];
-	struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
+	struct gsm_power_ctrl_params *params = &lchan->bs_power_ctrl.dpc_params;
 
 	/* No RxLev hysteresis: lower == upper */
 	params->rxlev_meas.lower_thresh = PWR_TEST_RXLEV_TARGET;

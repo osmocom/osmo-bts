@@ -120,8 +120,9 @@ struct gsm_rep_facch {
 
 
 struct lchan_power_ctrl_state {
-	/* Dynamic Power Control parameters (NULL in static mode) */
-	const struct gsm_power_ctrl_params *dpc_params;
+	/* Dynamic Power Control parameters (false = static mode) */
+	bool dpc_enabled;
+	struct gsm_power_ctrl_params dpc_params;
 	/* Measurement pre-processing state (for dynamic mode) */
 	struct gsm_power_ctrl_meas_proc_state rxlev_meas_proc;
 	struct gsm_power_ctrl_meas_proc_state rxqual_meas_proc;
@@ -355,10 +356,6 @@ struct gsm_lchan {
 	/* MS/BS power control state */
 	struct lchan_power_ctrl_state ms_power_ctrl;
 	struct lchan_power_ctrl_state bs_power_ctrl;
-
-	/* MS/BS Dynamic Power Control parameters */
-	struct gsm_power_ctrl_params ms_dpc_params;
-	struct gsm_power_ctrl_params bs_dpc_params;
 
 	/* Temporary ACCH overpower capabilities and state */
 	struct abis_rsl_osmo_temp_ovp_acch_cap top_acch_cap;

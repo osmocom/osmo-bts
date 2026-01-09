@@ -55,9 +55,9 @@ static void init_test(const char *name)
 	g_bts->c0 = g_trx;
 
 	/* Init default MS power control parameters, enable dynamic power control */
-	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].ms_dpc_params;
-	g_trx->ts[0].lchan[0].ms_power_ctrl.dpc_params = params;
+	struct gsm_power_ctrl_params *params = &g_trx->ts[0].lchan[0].ms_power_ctrl.dpc_params;
 	*params = power_ctrl_params_def;
+	g_trx->ts[0].lchan[0].ms_power_ctrl.dpc_enabled = true;
 
 	/* Disable loop SACCH block skip by default: */
 	params->ctrl_interval = 0;
@@ -98,7 +98,7 @@ static void test_power_loop(void)
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
-	params = lchan->ms_power_ctrl.dpc_params;
+	params = &lchan->ms_power_ctrl.dpc_params;
 	lchan->type = GSM_LCHAN_SDCCH;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
@@ -160,11 +160,11 @@ static void test_power_loop(void)
 	OSMO_ASSERT(lchan->ms_power_ctrl.max == 0);
 
 	/* Disable dynamic power control and jump down */
-	lchan->ms_power_ctrl.dpc_params = NULL;
+	lchan->ms_power_ctrl.dpc_enabled = false;
 	apply_power_test(lchan, -60, good_lqual, 0, 14);
 
 	/* Enable and leave it again */
-	lchan->ms_power_ctrl.dpc_params = &lchan->ms_dpc_params;
+	lchan->ms_power_ctrl.dpc_enabled = true;
 	apply_power_test(lchan, -40, good_lqual, 1, 15);
 }
 
@@ -178,11 +178,11 @@ static void test_pf_algo_ewma(void)
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
 	lchan->type = GSM_LCHAN_SDCCH;
-	params = lchan->ms_power_ctrl.dpc_params;
+	params = &lchan->ms_power_ctrl.dpc_params;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 	avg100 = &lchan->ms_power_ctrl.rxlev_meas_proc.ewma.Avg100;
 
-	struct gsm_power_ctrl_meas_params *mp = &lchan->ms_dpc_params.rxlev_meas;
+	struct gsm_power_ctrl_meas_params *mp = &lchan->ms_power_ctrl.dpc_params.rxlev_meas;
 	mp->algo = GSM_PWR_CTRL_MEAS_AVG_ALGO_OSMO_EWMA;
 	mp->ewma.alpha = 20; /* 80% smoothing */
 
@@ -238,18 +238,18 @@ static void test_pf_algo_ewma(void)
 static void test_power_hysteresis(void)
 {
 	struct gsm_lchan *lchan;
-	const struct gsm_power_ctrl_params *params;
+	struct gsm_power_ctrl_params *params;
 	int16_t good_lqual;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
 	lchan->type = GSM_LCHAN_SDCCH;
-	params = lchan->ms_power_ctrl.dpc_params;
+	params = &lchan->ms_power_ctrl.dpc_params;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
 	/* Tolerate power deviations in range -80 .. -70 */
-	lchan->ms_dpc_params.rxlev_meas.lower_thresh = 30;
-	lchan->ms_dpc_params.rxlev_meas.upper_thresh = 40;
+	params->rxlev_meas.lower_thresh = 30;
+	params->rxlev_meas.upper_thresh = 40;
 
 	lchan->ms_power_ctrl.current = ms_pwr_ctl_lvl(GSM_BAND_1800, 0);
 	OSMO_ASSERT(lchan->ms_power_ctrl.current == 15);
@@ -277,7 +277,7 @@ static void test_power_ctrl_interval(void)
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
 	lchan->type = GSM_LCHAN_SDCCH;
-	params = lchan->ms_power_ctrl.dpc_params;
+	params = &lchan->ms_power_ctrl.dpc_params;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 
 	lchan->ms_power_ctrl.max = ms_pwr_ctl_lvl(GSM_BAND_1800, 26);
@@ -325,7 +325,7 @@ static void test_power_ctrl_interval(void)
 
 		/* Set the corresponding power control interval */
 		printf("%s(): power control interval is now %u\n", __func__, i);
-		lchan->ms_dpc_params.ctrl_interval = i;
+		lchan->ms_power_ctrl.dpc_params.ctrl_interval = i;
 
 		for (j = 0; j < ARRAY_SIZE(script[i]); j++) {
 			apply_power_test(lchan, script[i][j][0],  /* UL RxLev */
@@ -346,7 +346,7 @@ static void test_power_loop_ci(void)
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
-	params = lchan->ms_power_ctrl.dpc_params;
+	params = &lchan->ms_power_ctrl.dpc_params;
 	lchan->type = GSM_LCHAN_SDCCH;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 	too_low_lqual = (params->ci_sdcch_meas.lower_thresh - 1) * 10;
@@ -383,14 +383,14 @@ static void test_power_loop_ci(void)
 static void test_good_threshold_convergence(void)
 {
 	struct gsm_lchan *lchan;
-	const struct gsm_power_ctrl_params *params;
+	struct gsm_power_ctrl_params *params;
 	int16_t good_lqual, good_rxlev;
 
 	init_test(__func__);
 	lchan = &g_trx->ts[0].lchan[0];
-	params = lchan->ms_power_ctrl.dpc_params;
-	lchan->ms_dpc_params.rxlev_meas.upper_thresh = 37;
-	lchan->ms_dpc_params.rxlev_meas.lower_thresh = 30;
+	params = &lchan->ms_power_ctrl.dpc_params;
+	params->rxlev_meas.upper_thresh = 37;
+	params->rxlev_meas.lower_thresh = 30;
 	lchan->type = GSM_LCHAN_SDCCH;
 	good_lqual = (params->ci_sdcch_meas.lower_thresh + 2) * 10;
 	good_rxlev = rxlev2dbm(params->rxlev_meas.lower_thresh + 2);

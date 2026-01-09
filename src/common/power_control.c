@@ -140,14 +140,18 @@ static int calc_delta_rxlev(const struct gsm_power_ctrl_params *params, const ui
 void lchan_ms_pwr_ctrl_reset(struct gsm_lchan *lchan)
 {
 	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
+	struct gsm_power_ctrl_params *params = &state->dpc_params;
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	/* This below implicitly sets:
-	 * state->dpc_params = NULL (static mode).
+	 * state->dpc_enabled = false (static mode).
 	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
 	memset(state, 0, sizeof(*state));
 
+	memcpy(params, trx->ms_dpc_params, sizeof(*params));
+
 	/* XXX: should we use the maximum power level instead of 0 dBm? */
-	state->max = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, 0);
+	state->max = ms_pwr_ctl_lvl(trx->bts->band, 0);
 	state->current = state->max;
 }
 
@@ -170,7 +174,7 @@ static bool ctrl_interval_skip_block(const struct gsm_power_ctrl_params *params,
 
 static const struct gsm_power_ctrl_meas_params *lchan_get_ci_thresholds(const struct gsm_lchan *lchan)
 {
-	const struct gsm_power_ctrl_params *params = lchan->ms_power_ctrl.dpc_params;
+	const struct gsm_power_ctrl_params *params = &lchan->ms_power_ctrl.dpc_params;
 
 	switch (lchan->type) {
 	case GSM_LCHAN_SDCCH:
@@ -204,7 +208,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 		      const int16_t ul_lqual_cb)
 {
 	struct lchan_power_ctrl_state *state = &lchan->ms_power_ctrl;
-	const struct gsm_power_ctrl_params *params = state->dpc_params;
+	const struct gsm_power_ctrl_params *params = &state->dpc_params;
 	struct gsm_bts_trx *trx = lchan->ts->trx;
 	struct gsm_bts *bts = trx->bts;
 	enum gsm_band band = bts->band;
@@ -217,7 +221,7 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 
 	if (!trx_ms_pwr_ctrl_is_osmo(trx))
 		return 0;
-	if (params == NULL)
+	if (!state->dpc_enabled)
 		return 0;
 
 	/* Average the input RxLev/RxQual samples (if needed).  Do this before
@@ -327,12 +331,16 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 void lchan_bs_pwr_ctrl_reset(struct gsm_lchan *lchan)
 {
 	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
+	struct gsm_power_ctrl_params *params = &state->dpc_params;
+	struct gsm_bts_trx *trx = lchan->ts->trx;
 
 	/* This below implicitly sets:
+	 * state->dpc_enabled = false (static mode).
 	 * state->current = 0 (it's safer to start from 0 unless told differently).
-	 * state->dpc_params = NULL (static mode).
 	 * state->skip_block_num = 0, so that 1st power input is taken into account. */
 	memset(state, 0, sizeof(*state));
+
+	memcpy(params, trx->bs_dpc_params, sizeof(*params));
 
 	state->max = 2 * 15; /* maximum defined in 9.3.4 */
 }
@@ -345,12 +353,12 @@ int lchan_bs_pwr_ctrl(struct gsm_lchan *lchan,
 		      const struct gsm48_meas_res *mr)
 {
 	struct lchan_power_ctrl_state *state = &lchan->bs_power_ctrl;
-	const struct gsm_power_ctrl_params *params = state->dpc_params;
+	const struct gsm_power_ctrl_params *params = &state->dpc_params;
 	uint8_t rxqual, rxqual_avg, rxlev, rxlev_avg;
 	int new_att;
 
 	/* Check if dynamic BS Power Control is enabled */
-	if (params == NULL)
+	if (!state->dpc_enabled)
 		return 0;
 
 	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Rx DL Measurement Report: "

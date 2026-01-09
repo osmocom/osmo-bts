@@ -2061,35 +2061,25 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 
 	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
-		struct gsm_power_ctrl_params *params = &lchan->ms_dpc_params;
-
 		/* Parsed parameters will override per-TRX defaults */
-		memcpy(params, ts->trx->ms_dpc_params, sizeof(*params));
-
-		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+		if (ie->len && parse_power_ctrl_params(&lchan->ms_power_ctrl.dpc_params, ie->val, ie->len) != 0) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse MS Power Parameters IE\n");
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
 		}
-
 		/* Spec explicitly states BTS should only perform
 		 * autonomous MS power control loop in BTS if 'MS Power
 		 * Parameters' IE is present! */
-		lchan->ms_power_ctrl.dpc_params = params;
+		lchan->ms_power_ctrl.dpc_enabled = true;
 	}
 
 	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
-		struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
-
 		/* Parsed parameters will override per-TRX defaults */
-		memcpy(params, ts->trx->bs_dpc_params, sizeof(*params));
-
-		/* Parsed parameters will override per-TRX defaults */
-		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
+		if (ie->len && parse_power_ctrl_params(&lchan->bs_power_ctrl.dpc_params, ie->val, ie->len) != 0) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
 		}
-		lchan->bs_power_ctrl.dpc_params = params;
+		lchan->bs_power_ctrl.dpc_enabled = true;
 	}
 
 	/* 9.3.16 Physical Context */
@@ -2560,29 +2550,24 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 
 	/* Spec explicitly states BTS should only perform autonomous MS Power
 	 * control loop in BTS if 'MS Power Parameters' IE is present! */
-	lchan->ms_power_ctrl.dpc_params = NULL;
+	lchan->ms_power_ctrl.dpc_enabled = false;
 
 	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
-		struct gsm_power_ctrl_params *params = &lchan->ms_dpc_params;
-
+		struct gsm_power_ctrl_params *params = &lchan->ms_power_ctrl.dpc_params;
 		/* Parsed parameters will override per-TRX defaults */
 		memcpy(params, msg->trx->ms_dpc_params, sizeof(*params));
-
 		/* Parsed parameters will override per-TRX defaults */
 		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse MS Power Parameters IE\n");
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
 		}
-
-		lchan->ms_power_ctrl.dpc_params = params;
+		lchan->ms_power_ctrl.dpc_enabled = true;
 	}
 
 	/* Only set current to max if actual value of current
 	   in dBm > value in dBm from max, or if fixed. */
-	if (lchan->ms_power_ctrl.dpc_params == NULL) {
-		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
-	} else {
+	if (lchan->ms_power_ctrl.dpc_enabled) {
 		max_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.max);
 		curr_pwr = ms_pwr_dbm(bts->band, lchan->ms_power_ctrl.current);
 		if (max_pwr < 0 || curr_pwr < 0) {
@@ -2593,6 +2578,8 @@ static int rsl_rx_ms_pwr_ctrl(struct msgb *msg)
 		} else if (curr_pwr > max_pwr) {
 			lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 		}
+	} else {
+		lchan->ms_power_ctrl.current = lchan->ms_power_ctrl.max;
 	}
 
 	bts_model_adjst_ms_pwr(lchan);
@@ -2647,23 +2634,20 @@ static int rsl_rx_bs_pwr_ctrl(struct msgb *msg)
 
 	/* 9.3.32 (TLV) BS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_BS_POWER_PARAM)) != NULL) {
-		struct gsm_power_ctrl_params *params = &lchan->bs_dpc_params;
-
+		struct gsm_power_ctrl_params *params = &lchan->bs_power_ctrl.dpc_params;
 		/* Parsed parameters will override per-TRX defaults */
 		memcpy(params, trx->bs_dpc_params, sizeof(*params));
-
 		/* Parsed parameters will override per-TRX defaults */
 		if (ie->len && parse_power_ctrl_params(params, ie->val, ie->len) != 0) {
 			LOGPLCHAN(lchan, DRSL, LOGL_ERROR, "Failed to parse BS Power Parameters IE\n");
 			return rsl_tx_chan_act_nack(lchan, RSL_ERR_IE_CONTENT);
 		}
-
 		/* NOTE: it's safer to start from 0 */
 		lchan->bs_power_ctrl.current = 0;
 		lchan->bs_power_ctrl.max = new;
-		lchan->bs_power_ctrl.dpc_params = params;
+		lchan->bs_power_ctrl.dpc_enabled = true;
 	} else {
-		lchan->bs_power_ctrl.dpc_params = NULL;
+		lchan->bs_power_ctrl.dpc_enabled = false;
 		lchan->bs_power_ctrl.current = new;
 	}
 
