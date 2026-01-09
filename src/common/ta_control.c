@@ -46,6 +46,7 @@ void lchan_ms_ta_ctrl_reset(struct gsm_lchan *lchan)
 {
 	/* Trigger loop on first TA input: */
 	lchan->ta_ctrl.skip_block_num = 0;
+	/* Assume TA=0 if not indicated by the BSC */
 	lchan->ta_ctrl.current = 0;
 }
 

@@ -2055,10 +2055,9 @@ static int rsl_rx_chan_activ(struct msgb *msg)
 	}
 
 	/* 9.3.24 Timing Advance */
+	lchan_ms_ta_ctrl_reset(lchan);
 	if (TLVP_PRES_LEN(&tp, RSL_IE_TIMING_ADVANCE, 1))
 		lchan->ta_ctrl.current = *TLVP_VAL(&tp, RSL_IE_TIMING_ADVANCE);
-	else /* assume TA=0 if not indicated by the BSC */
-		lchan->ta_ctrl.current = 0;
 
 	/* 9.3.31 (TLV) MS Power Parameters IE (vendor specific) */
 	if ((ie = TLVP_GET(&tp, RSL_IE_MS_POWER_PARAM)) != NULL) {
