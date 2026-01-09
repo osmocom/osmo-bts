@@ -65,13 +65,13 @@ static bool ctrl_interval_skip_block(struct gsm_lchan *lchan)
  */
 void lchan_ms_ta_ctrl(struct gsm_lchan *lchan, uint8_t ms_tx_ta, int16_t toa256)
 {
-	int16_t new_ta;
+	int16_t new_ta, delta_ta;
 
 	/* Shall we skip current block based on configured interval? */
 	if (ctrl_interval_skip_block(lchan))
 		return;
 
-	int16_t delta_ta = toa256/256;
+	delta_ta = toa256/256;
 	if (toa256 >= 0) {
 		if ((toa256 - (256 * delta_ta)) > TOA256_THRESH)
 			delta_ta++;
