@@ -34,6 +34,7 @@
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/asci.h>
+#include <osmo-bts/ta_control.h>
 #include <errno.h>
 
 static const struct value_string lchan_s_names[] = {
@@ -325,6 +326,7 @@ void lchan_set_state(struct gsm_lchan *lchan, enum gsm_lchan_state state)
 		lchan->pending_rel_ind_msg = NULL;
 		msgb_free(lchan->pending_chan_activ);
 		lchan->pending_chan_activ = NULL;
+		lchan_ms_ta_ctrl_reset(lchan);
 		/* fall through */
 	default:
 		if (lchan->early_rr_ia) {
