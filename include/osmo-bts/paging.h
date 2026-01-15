@@ -57,6 +57,8 @@ struct p3_rest_octets {
 	} nln_pch;
 };
 
+#define NUM_PAGING_MAX_DEFAULT 200
+
 /* initialize paging code */
 struct paging_state *paging_init(struct gsm_bts *bts,
 				 unsigned int num_paging_max,

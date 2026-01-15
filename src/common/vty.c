@@ -56,6 +56,7 @@
 #include <osmo-bts/oml.h>
 #include <osmo-bts/signal.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/paging.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/measurement.h>
 #include <osmo-bts/vty.h>
@@ -838,7 +839,7 @@ DEFUN_ATTR(cfg_bts_paging_queue_size,
 	   cfg_bts_paging_queue_size_cmd,
 	   "paging queue-size <1-1024>",
 	   PAG_STR "Maximum length of BTS-internal paging queue\n"
-	   "Maximum length of BTS-internal paging queue\n",
+	   "Maximum length of BTS-internal paging queue (default " OSMO_STRINGIFY_VAL(NUM_PAGING_MAX_DEFAULT) ")\n",
 	   CMD_ATTR_IMMEDIATE)
 {
 	struct gsm_bts *bts = vty->index;

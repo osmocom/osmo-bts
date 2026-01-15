@@ -336,7 +336,7 @@ int bts_init(struct gsm_bts *bts)
 	bts->agch_queue.thresh_level = GSM_BTS_AGCH_QUEUE_THRESH_LEVEL_DEFAULT;
 
 	/* configurable via VTY */
-	bts->paging_state = paging_init(bts, 200, 0);
+	bts->paging_state = paging_init(bts, NUM_PAGING_MAX_DEFAULT, 0);
 	bts->rtp_jitter_adaptive = false;
 	bts->rtp_port_range_start = 16384;
 	bts->rtp_port_range_end = 17407;
