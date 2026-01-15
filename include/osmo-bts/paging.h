@@ -61,12 +61,6 @@ struct p3_rest_octets {
 struct paging_state *paging_init(struct gsm_bts *bts,
 				 unsigned int num_paging_max,
 				 unsigned int paging_lifetime);
-
-/* (re) configure paging code */
-void paging_config(struct paging_state *ps,
-		  unsigned int num_paging_max,
-		  unsigned int paging_lifetime);
-
 void paging_reset(struct paging_state *ps);
 
 /* The max number of paging entries */
