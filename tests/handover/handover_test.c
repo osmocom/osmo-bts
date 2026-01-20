@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 	msgb_talloc_ctx_init(tall_bts_ctx, 0);
 
 	osmo_init_logging2(tall_bts_ctx, &bts_log_info);
-	osmo_stderr_target->categories[DHO].loglevel = LOGL_DEBUG;
+	log_set_category_filter(osmo_stderr_target, DHO, 1, LOGL_DEBUG);
 
 	g_bts_sm = gsm_bts_sm_alloc(tall_bts_ctx);
 	if (!g_bts_sm) {
