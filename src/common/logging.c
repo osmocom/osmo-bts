@@ -136,12 +136,12 @@ static struct log_info_cat bts_log_info_cat[] = {
 
 static int osmo_bts_filter_fn(const struct log_context *ctx, struct log_target *tgt)
 {
-	uint8_t *sapi = ctx->ctx[LOG_CTX_L1_SAPI];
-	uint16_t *sapi_mask = tgt->filter_data[LOG_FLT_L1_SAPI];
+	uint8_t *sapi = log_get_context(ctx, LOG_CTX_L1_SAPI);
+	uint16_t *sapi_mask = log_get_filter_data(tgt, LOG_FLT_L1_SAPI);
 
-	if ((tgt->filter_map & (1 << LOG_FLT_L1_SAPI)) != 0
-	    && sapi_mask && sapi
-	    && (*sapi_mask & (1 << *sapi)) != 0)
+	if (log_get_filter(tgt, LOG_FLT_L1_SAPI) &&
+	    sapi_mask && sapi &&
+	    (*sapi_mask & (1 << *sapi)) != 0)
 		return 1;
 
 	return 0;

@@ -7,3 +7,4 @@
 # If any interfaces have been added since the last public release: c:r:a + 1.
 # If any interfaces have been removed or changed since the last public release: c:r:0.
 #library	what			description / commit summary line
+libosmocore >1.12.0 log_get_context(), log_{get,set}_filter(_data)()
