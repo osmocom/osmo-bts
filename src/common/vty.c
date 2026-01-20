@@ -2663,20 +2663,21 @@ DEFUN(logging_fltr_l1_sapi, logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 {
 	int sapi = get_string_value(l1sap_common_sapi_names, argv[0]);
 	struct log_target *tgt = osmo_log_vty2tgt(vty);
-	uint16_t **sapi_mask;
+	uint16_t *sapi_mask;
 
 	OSMO_ASSERT(sapi >= 0);
+	OSMO_ASSERT(sapi <= 31);
 	if (!tgt)
 		return CMD_WARNING;
 
-	sapi_mask = (uint16_t **)&tgt->filter_data[LOG_FLT_L1_SAPI];
+	sapi_mask = log_get_filter_data(tgt, LOG_FLT_L1_SAPI);
 
-	if (!*sapi_mask)
-		*sapi_mask = talloc(tgt, uint16_t);
+	if (!sapi_mask)
+		sapi_mask = talloc_zero(tgt, uint16_t);
 
-	OSMO_ASSERT(sapi <= 31);
-	**sapi_mask |= (1 << sapi);
-	tgt->filter_map |= (1 << LOG_FLT_L1_SAPI);
+	*sapi_mask |= (1 << sapi);
+	log_set_filter_data(tgt, LOG_FLT_L1_SAPI, sapi_mask);
+	log_set_filter(tgt, LOG_FLT_L1_SAPI, true);
 
 	return CMD_SUCCESS;
 }
@@ -2688,14 +2689,19 @@ DEFUN(no_logging_fltr_l1_sapi, no_logging_fltr_l1_sapi_cmd, "HIDDEN", "HIDDEN")
 	uint16_t *sapi_mask;
 
 	OSMO_ASSERT(sapi >= 0);
+	OSMO_ASSERT(sapi <= 31);
 	if (!tgt)
 		return CMD_WARNING;
-	if (!tgt->filter_data[LOG_FLT_L1_SAPI])
+	sapi_mask = (uint16_t *)log_get_filter_data(tgt, LOG_FLT_L1_SAPI);
+	if (!sapi_mask)
 		return CMD_SUCCESS;
-
-	OSMO_ASSERT(sapi <= 31);
-	sapi_mask = (uint16_t *)tgt->filter_data[LOG_FLT_L1_SAPI];
 	*sapi_mask &= ~(1 << sapi);
+
+	if (*sapi_mask == 0x0000) {
+		log_set_filter_data(tgt, LOG_FLT_L1_SAPI, NULL);
+		log_set_filter(tgt, LOG_FLT_L1_SAPI, false);
+		talloc_free(sapi_mask);
+	}
 
 	return CMD_SUCCESS;
 }
