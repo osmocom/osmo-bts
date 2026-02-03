@@ -35,6 +35,7 @@
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/nm_common_fsm.h>
 #include <osmo-bts/signal.h>
+#include <osmo-bts/tx_power.h>
 
 #include "l1_if.h"
 #include "trx_provision_fsm.h"
@@ -101,6 +102,13 @@ static void l1if_setformat_cb(struct trx_l1h *l1h, int rc)
 	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETFORMAT_CNF, (void*)(intptr_t)rc);
 }
 
+static void l1if_setpower_att_cb(struct trx_l1h *l1h, int power_att_db, int rc)
+{
+	if (rc != 0)
+		return;
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETPOWER_CNF, NULL);
+}
+
 /*
  * transceiver provisioning
  */
@@ -137,6 +145,9 @@ static void trx_provision_reset(struct trx_l1h *l1h)
 
 	l1h->config.nomtxpower_sent = false;
 	l1h->config.nomtxpower_acked = false;
+
+	l1h->config.setpower_sent = false;
+	l1h->config.setpower_acked = false;
 
 	l1h->config.maxdly_sent = false;
 
@@ -206,6 +217,18 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		l1h->config.bsic_sent = true;
 		l1h->config.bsic_acked = false;
 	}
+	/* Once the nominal Tx power is known, apply the initial Tx power attenuation
+	 * before the transceiver is powered on.  Otherwise it will be transmitting
+	 * at full power for a certain period of time before the power ramping begins. */
+	if (!l1h->config.setpower_sent &&
+	    (l1h->config.nomtxpower_acked || l1h->config.nominal_power_set_by_vty)) {
+		int initial_mdBm = power_ramp_initial_power_mdBm(pinst->trx);
+		int power_att_dB = (get_p_max_out_mdBm(pinst->trx) - initial_mdBm) / 1000;
+
+		trx_if_cmd_setpower_att(l1h, power_att_dB, l1if_setpower_att_cb);
+		l1h->config.setpower_sent = true;
+		l1h->config.setpower_acked = false;
+	}
 
 	/* Ask transceiver to use the newest TRXD PDU version if not using it yet */
 	if (!l1h->config.setformat_sent) {
@@ -269,9 +292,10 @@ static bool trx_is_provisioned(struct trx_l1h *l1h)
 	    (l1h->config.bsic_acked || !pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
 	    (l1h->config.tsc_acked || pinst->phy_link->u.osmotrx.use_legacy_setbsic) &&
 	    (l1h->config.nomtxpower_acked || l1h->config.nominal_power_set_by_vty) &&
+	    (l1h->config.setpower_acked) &&
 	    (l1h->config.setformat_acked)) {
 		    return true;
-	    }
+	}
 	return false;
 }
 
@@ -463,6 +487,10 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.nomtxpower_acked = true;
 		l1if_trx_set_nominal_power(trx, nominal_power);
 		break;
+	case TRX_PROV_EV_SETPOWER_CNF:
+		if (l1h->config.setpower_sent)
+			l1h->config.setpower_acked = true;
+		break;
 	case TRX_PROV_EV_SETBSIC_CNF:
 		if (l1h->config.bsic_sent)
 			l1h->config.bsic_acked = true;
@@ -516,7 +544,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 		else
 			trx_prov_fsm_state_chg(fi, TRX_PROV_ST_OPEN_WAIT_POWERON_CNF);
 	} else {
-		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s%s\n",
+		LOGPFSML(fi, LOGL_INFO, "Delay poweron, wait for:%s%s%s%s%s%s%s%s%s\n",
 			l1h->config.enabled ? "" :" enable",
 			pinst->phy_link->u.osmotrx.use_legacy_setbsic ?
 				(l1h->config.bsic_valid ? (l1h->config.bsic_acked ? "" : " bsic-ack") : " bsic") :
@@ -525,6 +553,7 @@ static void st_open_poweroff(struct osmo_fsm_inst *fi, uint32_t event, void *dat
 			l1h->config.rxtune_acked ? "" : " rxtune-ack",
 			l1h->config.txtune_acked ? "" : " txtune-ack",
 			l1h->config.nominal_power_set_by_vty ? "" : (l1h->config.nomtxpower_acked ? "" : " nomtxpower-ack"),
+			l1h->config.setpower_acked ? "" : " setpower-ack",
 			l1h->config.setformat_acked ? "" : " setformat-ack",
 			waiting_other_trx ? "" : " other-trx"
 			);
@@ -669,6 +698,7 @@ static struct osmo_fsm_state trx_prov_fsm_states[] = {
 			X(TRX_PROV_EV_RXTUNE_CNF) |
 			X(TRX_PROV_EV_TXTUNE_CNF) |
 			X(TRX_PROV_EV_NOMTXPOWER_CNF) |
+			X(TRX_PROV_EV_SETPOWER_CNF) |
 			X(TRX_PROV_EV_SETBSIC_CNF) |
 			X(TRX_PROV_EV_SETTSC_CNF) |
 			X(TRX_PROV_EV_SETFORMAT_CNF),
@@ -724,6 +754,7 @@ const struct value_string trx_prov_fsm_event_names[] = {
 	OSMO_VALUE_STRING(TRX_PROV_EV_RXTUNE_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_TXTUNE_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_NOMTXPOWER_CNF),
+	OSMO_VALUE_STRING(TRX_PROV_EV_SETPOWER_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_SETBSIC_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_SETTSC_CNF),
 	OSMO_VALUE_STRING(TRX_PROV_EV_SETFORMAT_CNF),

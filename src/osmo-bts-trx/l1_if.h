@@ -97,6 +97,9 @@ struct trx_config {
 	bool			nomtxpower_sent;
 	bool			nomtxpower_acked;
 
+	bool			setpower_sent;
+	bool			setpower_acked;
+
 	bool			maxdly_valid;
 	int			maxdly;
 	bool			maxdly_sent;
