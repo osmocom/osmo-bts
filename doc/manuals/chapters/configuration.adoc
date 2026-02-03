@@ -197,7 +197,7 @@ OsmoBTS(trx)# write <1>
 configuration file.
 
 De-activating power-ramping can be performed by setting the max-initial value
-to the nominal power. The default max-initial value is 23 dBm.
+to the nominal power. The default max-initial value is 0 dBm.
 
 
 ==== Running multiple instances
