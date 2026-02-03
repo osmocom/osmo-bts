@@ -204,7 +204,7 @@ int l1if_provision_transceiver_trx(struct trx_l1h *l1h)
 		l1h->config.setformat_sent = true;
 		if (plink->u.osmotrx.trxd_pdu_ver_max == 0) {
 			LOGPPHI(pinst, DL1C, LOGL_INFO,
-				"No need to negotiate max TRXD version 0");
+				"No need to negotiate max TRXD version 0\n");
 			l1h->config.trxd_pdu_ver_use = 0;
 			l1h->config.setformat_acked = true;
 		} else {
