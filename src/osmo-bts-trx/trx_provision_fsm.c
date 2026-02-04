@@ -63,22 +63,30 @@ static void l1if_poweronoff_cb(struct trx_l1h *l1h, bool poweronoff, int rc)
 
 static void l1if_rxtune_cb(struct trx_l1h *l1h, int rc)
 {
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_RXTUNE_CNF, (void*)(intptr_t)rc);
+	if (rc != 0)
+		return;
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_RXTUNE_CNF, NULL);
 }
 
 static void l1if_txtune_cb(struct trx_l1h *l1h, int rc)
 {
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_TXTUNE_CNF, (void*)(intptr_t)rc);
+	if (rc != 0)
+		return;
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_TXTUNE_CNF, NULL);
 }
 
 static void l1if_settsc_cb(struct trx_l1h *l1h, int rc)
 {
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETTSC_CNF, (void*)(intptr_t)rc);
+	if (rc != 0)
+		return;
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETTSC_CNF, NULL);
 }
 
 static void l1if_setbsic_cb(struct trx_l1h *l1h, int rc)
 {
-	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETBSIC_CNF, (void*)(intptr_t)rc);
+	if (rc != 0)
+		return;
+	osmo_fsm_inst_dispatch(l1h->provision_fi, TRX_PROV_EV_SETBSIC_CNF, NULL);
 }
 
 static void l1if_getnompower_cb(struct trx_l1h *l1h, int nominal_power, int rc)
