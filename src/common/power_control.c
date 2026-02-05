@@ -230,6 +230,13 @@ int lchan_ms_pwr_ctrl(struct gsm_lchan *lchan,
 	ul_lqual_cb_avg = do_avg_algo(ci_meas, &state->ci_meas_proc, ul_lqual_cb);
 	rxlev_avg = do_avg_algo(&params->rxlev_meas, &state->rxlev_meas_proc, dbm2rxlev(ul_rssi_dbm));
 
+	LOGPLCHAN(lchan, DLOOP, LOGL_DEBUG, "Rx UL Measurement Report: "
+		  "ms-pwr-lvl[curr %u, max %u], RSSI[curr %d, avg %d, thresh %d..%d] dBm,"
+		  " C/I[curr %d, avg %d, thresh %d..%d] dB\n",
+		  ms_power_lvl, state->max, ul_rssi_dbm, rxlev2dbm(rxlev_avg),
+		  rxlev2dbm(params->rxlev_meas.lower_thresh), rxlev2dbm(params->rxlev_meas.upper_thresh),
+		  ul_lqual_cb/10, ul_lqual_cb_avg/10, ci_meas->lower_thresh, ci_meas->upper_thresh);
+
 	/* Shall we skip current block based on configured interval? */
 	if (ctrl_interval_skip_block(params, state))
 		return 0;

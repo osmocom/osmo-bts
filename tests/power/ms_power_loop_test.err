@@ -1,65 +1,140 @@
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 7, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 7 (16 dBm) => 5 (20 dBm): ms-pwr-lvl[curr 7, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 5, max 2], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 5 (20 dBm): ms-pwr-lvl[curr 5, max 2], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 5, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 5 (20 dBm) => 3 (24 dBm): ms-pwr-lvl[curr 5, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 3, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 3 (24 dBm) => 2 (26 dBm): ms-pwr-lvl[curr 3, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 2, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2 (26 dBm): ms-pwr-lvl[curr 2, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 2, max 0], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 2 (26 dBm) => 0 (30 dBm): ms-pwr-lvl[curr 2, max 0], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 0, max 0], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 0 (30 dBm): ms-pwr-lvl[curr 0, max 0], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 0, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 0 (30 dBm) => 30 (34 dBm): ms-pwr-lvl[curr 0, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 30, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 30 (34 dBm) => 29 (36 dBm): ms-pwr-lvl[curr 30, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 29, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29 (36 dBm): ms-pwr-lvl[curr 29, max 29], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 29, max 29], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 29 (36 dBm): ms-pwr-lvl[curr 29, max 29], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 29, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 29 (36 dBm) => 30 (34 dBm): ms-pwr-lvl[curr 29, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 30, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 30 (34 dBm) => 31 (32 dBm): ms-pwr-lvl[curr 30, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 31, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 31 (32 dBm) => 0 (30 dBm): ms-pwr-lvl[curr 31, max 29], RSSI[curr -45, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 0, max 29], RSSI[curr -73, avg -73, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 0 (30 dBm) => 1 (28 dBm): ms-pwr-lvl[curr 0, max 29], RSSI[curr -73, avg -73, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 1, max 29], RSSI[curr -77, avg -77, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 1 (28 dBm) => 0 (30 dBm): ms-pwr-lvl[curr 1, max 29], RSSI[curr -77, avg -77, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 0, max 14], RSSI[curr -73, avg -73, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 0 (30 dBm) => 14 (2 dBm): ms-pwr-lvl[curr 0, max 14], RSSI[curr -73, avg -73, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 14, max 0], RSSI[curr -40, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 14 (2 dBm) => 15 (0 dBm): ms-pwr-lvl[curr 14, max 0], RSSI[curr -40, avg -47, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -78, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (3 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -78, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -80, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -80, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -70, avg -78, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (11 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -70, avg -78, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -50, avg -50, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -50, avg -50, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -50, avg -50, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -50, avg -50, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -110, avg -92, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -110, avg -92, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -72, avg -72, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -72, avg -72, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -78, avg -78, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -78, avg -78, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -75, avg -75, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -70, avg -70, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -70, avg -70, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -80, avg -80, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -80, avg -80, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -85, avg -85, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -85, avg -85, thresh -80..-70] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 7, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 7 (16 dBm) => 5 (20 dBm): ms-pwr-lvl[curr 7, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 5, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 5 (20 dBm) => 3 (24 dBm): ms-pwr-lvl[curr 5, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 3, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 3 (24 dBm) => 2 (26 dBm): ms-pwr-lvl[curr 3, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 2, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 2 (26 dBm): ms-pwr-lvl[curr 2, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 11 (8 dBm) => 9 (12 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 9 (12 dBm) => 7 (16 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 7, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -90, avg -90, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 15 (0 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 15, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 11, avg 11, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 15 (0 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 15, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 11, avg 11, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 11, avg 11, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 11, avg 11, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 11 (8 dBm) => 12 (6 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 12, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 12 (6 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 12, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Raising MS power control level 13 (4 dBm) => 11 (8 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 11, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 11 (8 dBm) => 12 (6 dBm): ms-pwr-lvl[curr 11, max 2], RSSI[curr -100, avg -100, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 12, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 12 (6 dBm) => 13 (4 dBm): ms-pwr-lvl[curr 12, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 13, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Lowering MS power control level 13 (4 dBm) => 14 (2 dBm): ms-pwr-lvl[curr 13, max 2], RSSI[curr -60, avg -60, thresh -75..-75] dBm, C/I[curr 17, avg 17, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 10 (10 dBm): ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 10 (10 dBm): ms-pwr-lvl[curr 10, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
+(bts=0,trx=0,ts=0,ss=0) Rx UL Measurement Report: ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
 (bts=0,trx=0,ts=0,ss=0) Keeping MS power at control level 9 (12 dBm): ms-pwr-lvl[curr 9, max 2], RSSI[curr -78, avg -78, thresh -80..-73] dBm, C/I[curr 14, avg 14, thresh 12..16] dB
