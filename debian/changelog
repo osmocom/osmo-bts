@@ -1,3 +1,47 @@
+osmo-bts (1.11.0) unstable; urgency=medium
+
+  [ Pau Espin Pedrol ]
+  * bts-trx: Use existing defines for burst sizes instead of hardcoded values
+  * bts-trx: Set max TRXD buf size to UINT16_MAX
+  * bts-trx: Convert trx clk socket to iofd
+  * bts-trx: Convert TRXC and TRXD sockets to iofd
+  * bts-trx: define TRXD_MSG_BUF_SIZE as a more realistic lower value
+  * pcu_sock: Use osmo_io
+  * cosmetic: bts-trx: fix typo in comment
+  * abis_osmo: Fix reading Abis IPA OSMO_EXT type
+  * ta_control: Move skip_block logic to helper function
+  * ta_control: Move variable declaration to the top of the function
+  * ta_control: Add missing include for lchan.h
+  * ta_control: Fix skip_block_num not reset when switching TS to PDCH
+  * ta_control: Reset state during lchan deactivation
+  * {bs,ms}_power_control: Add helper function to reset state
+  * {bs,ms}_power_control: Reset state during lchan deactivation
+  * bs_power_control: Apply defaults during reset
+  * ms_power_control: Apply defaults during reset
+  * ta_power_control: reset during lchan activation
+  * paging: Remove unused function
+  * vty: document default value for 'paging queue-size'
+  * {bs,ms}_power_control: Move params inside lchan_power_ctrl_state
+  * tests: Use log_set_category_filter() libosmocore API
+  * Avoid accessing struct log_target members directly
+
+  [ Vadim Yanitskiy ]
+  * doc: osmo-bts-virtual.cfg: drop non-existent logging category
+  * osmo-bts-{lc15,omldummy,virtual}: drop LIBGPS_{CFLAGS,LIBS}
+  * debian/control: drop 'txt2man' from Build-Depends
+  * debian/control: drop 'libgps-dev' from Build-Depends
+  * bts-trx: get rid of static variables in trx_if_send_burst()
+  * rsl: rsl_rx_chan_activ(): set TA=0 if not indicated by the BSC
+  * fixup: rsl: properly initialize MS/BS Power Control state
+  * doc: fix default 'max-initial' value
+  * osmo-bts-trx: add missing \n to a logging message
+  * osmo-bts-trx: trx_provision_fsm: mark internal functions as static
+  * osmo-bts-trx: trx_provision_fsm: do not send *_CNF events on failure
+  * osmo-bts-trx: apply 'max-initial' value before POWERON
+  * power_control: lchan_ms_pwr_ctrl(): always log input values
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 19 Feb 2026 13:26:13 +0100
+
 osmo-bts (1.10.0) unstable; urgency=medium
 
   [ Vadim Yanitskiy ]
