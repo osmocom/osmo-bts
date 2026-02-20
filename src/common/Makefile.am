@@ -36,6 +36,7 @@ libbts_a_SOURCES = \
 	bts_sm.c \
 	bts_trx.c \
 	rsl.c \
+	rtp_abstract.c \
 	rtp_input_preen.c \
 	vty.c \
 	paging.c \
