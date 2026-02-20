@@ -39,7 +39,6 @@
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
-#include <osmocom/trau/osmo_ortp.h>
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
@@ -55,6 +54,7 @@
 #include <osmo-bts/cbch.h>
 #include <osmo-bts/l1sap.h>
 #include <osmo-bts/bts_model.h>
+#include <osmo-bts/rtp_abstract.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/notification.h>
 #include <osmo-bts/asci.h>
@@ -2756,7 +2756,7 @@ static void rsl_add_rtp_stats(struct gsm_lchan *lchan, struct msgb *msg)
 	msgb_tv_put(msg, RSL_IE_IPAC_CONN_STAT, sizeof(uint32_t) * 7);
 
 	if (lchan->abis_ip.rtp_socket) {
-		osmo_rtp_socket_stats(lchan->abis_ip.rtp_socket,
+		rtp_abst_socket_stats(lchan->abis_ip.rtp_socket,
 				      &packets_sent, &octets_sent,
 				      &packets_recv, &octets_recv,
 				      &packets_lost, &arrival_jitter);
@@ -3144,13 +3144,13 @@ static int rsl_rx_ipac_XXcx(struct msgb *msg)
 	if (payload_type) {
 		lchan->abis_ip.rtp_payload = *payload_type;
 		if (lchan->abis_ip.rtp_socket)
-			osmo_rtp_socket_set_pt(lchan->abis_ip.rtp_socket,
+			rtp_abst_socket_set_pt(lchan->abis_ip.rtp_socket,
 						*payload_type);
 	}
 	if (payload_type2) {
 		lchan->abis_ip.rtp_payload2 = *payload_type2;
 		if (lchan->abis_ip.rtp_socket)
-			osmo_rtp_socket_set_pt(lchan->abis_ip.rtp_socket,
+			rtp_abst_socket_set_pt(lchan->abis_ip.rtp_socket,
 						*payload_type2);
 	}
 	if (speech_mode)
@@ -3184,8 +3184,7 @@ static int rsl_rx_ipac_dlcx(struct msgb *msg)
 
 	rc = rsl_tx_ipac_dlcx_ack(lchan, inc_conn_id);
 	if (lchan->abis_ip.rtp_socket) {
-		osmo_rtp_socket_log_stats(lchan->abis_ip.rtp_socket, DRTP, LOGL_INFO,
-					  "Closing RTP socket on DLCX ");
+		rtp_abst_socket_log_stats(lchan->abis_ip.rtp_socket, "DLCX");
 		lchan_rtp_socket_free(lchan);
 	}
 	return rc;

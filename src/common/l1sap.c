@@ -41,8 +41,6 @@
 
 #include <osmocom/codec/codec.h>
 
-#include <osmocom/trau/osmo_ortp.h>
-
 #include <osmo-bts/logging.h>
 #include <osmo-bts/gsm_data.h>
 #include <osmo-bts/l1sap.h>
@@ -56,6 +54,7 @@
 #include <osmo-bts/bts_model.h>
 #include <osmo-bts/handover.h>
 #include <osmo-bts/msg_utils.h>
+#include <osmo-bts/rtp_abstract.h>
 #include <osmo-bts/rtp_input_preen.h>
 #include <osmo-bts/pcuif_proto.h>
 #include <osmo-bts/cbch.h>
@@ -1532,10 +1531,8 @@ static int tch_rts_ind_csd_hr(struct gsm_bts_trx *trx, struct gsm_lchan *lchan,
 	OSMO_ASSERT(bits_per_20ms != 0);
 
 	for (i = 0; i < ARRAY_SIZE(input_msg); i++) {
-		if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
-			osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
-		}
+		if (!lchan->loopback && lchan->abis_ip.rtp_socket)
+			rtp_abst_socket_poll(lchan->abis_ip.rtp_socket);
 		input_msg[i] = msgb_dequeue_count(&lchan->dl_tch_queue,
 						  &lchan->dl_tch_queue_len);
 	}
@@ -1621,10 +1618,8 @@ static int tch_rts_ind_tchf48_nt(struct gsm_bts_trx *trx,
 	/* Input processing happens every 40 ms */
 	if (csd_tchf48_nt_e2_map[fn % 26] == 0) {
 		for (i = 0; i < 2; i++) {
-			if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
-				osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
-				lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
-			}
+			if (!lchan->loopback && lchan->abis_ip.rtp_socket)
+				rtp_abst_socket_poll(lchan->abis_ip.rtp_socket);
 			input_msg = msgb_dequeue_count(&lchan->dl_tch_queue,
 						       &lchan->dl_tch_queue_len);
 			if (input_msg) {
@@ -1735,16 +1730,8 @@ static int l1sap_tch_rts_ind(struct gsm_bts_trx *trx,
 	    lchan->csd_mode == LCHAN_CSD_M_NT)
 		return tch_rts_ind_tchf48_nt(trx, lchan, rts_ind);
 
-	if (!lchan->loopback && lchan->abis_ip.rtp_socket) {
-		osmo_rtp_socket_poll(lchan->abis_ip.rtp_socket);
-		/* FIXME: we _assume_ that we never miss TDMA
-		 * frames and that we always get to this point
-		 * for every to-be-transmitted voice frame.  A
-		 * better solution would be to compute
-		 * rx_user_ts based on how many TDMA frames have
-		 * elapsed since the last call */
-		lchan->abis_ip.rtp_socket->rx_user_ts += GSM_RTP_DURATION;
-	}
+	if (!lchan->loopback && lchan->abis_ip.rtp_socket)
+		rtp_abst_socket_poll(lchan->abis_ip.rtp_socket);
 	/* get a msgb from the dl_tx_queue */
 	resp_msg = msgb_dequeue_count(&lchan->dl_tch_queue, &lchan->dl_tch_queue_len);
 	if (!resp_msg) {
@@ -2101,8 +2088,9 @@ static void send_ul_rtp_packet(struct gsm_lchan *lchan, uint32_t fn,
 		lchan_osmux_send_frame(lchan, rtp_pl, rtp_pl_len,
 				       fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
 	} else if (lchan->abis_ip.rtp_socket != NULL) {
-		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-			rtp_pl, rtp_pl_len, fn_ms_adj(fn, lchan), lchan->rtp_tx_marker);
+		fn_ms_adj(fn, lchan);	/* for diagnostics only */
+		rtp_abst_send_frame(lchan->abis_ip.rtp_socket,
+			rtp_pl, rtp_pl_len, lchan->rtp_tx_marker);
 		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
 		if (lchan->rtp_tx_marker)
 			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
@@ -2120,10 +2108,8 @@ static void send_ul_rtp_packet_hrdata(struct gsm_lchan *lchan,
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	if (lchan->abis_ip.rtp_socket != NULL) {
-		osmo_rtp_send_frame_ext(lchan->abis_ip.rtp_socket,
-					rtp_pl, rtp_pl_len,
-					GSM_RTP_DURATION,
-					lchan->rtp_tx_marker);
+		rtp_abst_send_frame(lchan->abis_ip.rtp_socket,
+			rtp_pl, rtp_pl_len, lchan->rtp_tx_marker);
 		rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_TOTAL);
 		if (lchan->rtp_tx_marker)
 			rate_ctr_inc2(bts->ctrs, BTS_CTR_RTP_TX_MARKER);
@@ -2341,8 +2327,10 @@ static void tch_ul_bfi_handler(struct gsm_lchan *lchan,
 		 "Skipping RTP frame with lost payload\n");
 	if (lchan->abis_ip.osmux.use)
 		lchan_osmux_skipped_frame(lchan, fn_ms_adj(fn, lchan));
-	else if (lchan->abis_ip.rtp_socket)
-		osmo_rtp_skipped_frame(lchan->abis_ip.rtp_socket, fn_ms_adj(fn, lchan));
+	else if (lchan->abis_ip.rtp_socket) {
+		fn_ms_adj(fn, lchan);	/* for diagnostics only */
+		rtp_abst_skipped_frame(lchan->abis_ip.rtp_socket);
+	}
 	lchan->rtp_tx_marker = true;
 }
 
@@ -2881,7 +2869,7 @@ int l1sap_pdch_req(struct gsm_bts_trx_ts *ts, int is_ptcch, uint32_t fn,
 }
 
 /*! \brief call-back function for incoming RTP */
-void l1sap_rtp_rx_cb(struct osmo_rtp_socket *rs, const uint8_t *rtp_pl,
+void l1sap_rtp_rx_cb(struct rtp_abst_socket *rs, const uint8_t *rtp_pl,
                      unsigned int rtp_pl_len, uint16_t seq_number,
 		     uint32_t timestamp, bool marker)
 {
