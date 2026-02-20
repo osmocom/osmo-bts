@@ -13,6 +13,7 @@ enum bts_vty_node {
 	BTS_NODE,
 	TRX_NODE,
 	OSMUX_NODE,
+	TWJIT_NODE,
 };
 
 extern struct cmd_element cfg_bts_auto_band_cmd;
