@@ -347,6 +347,23 @@ int bts_init(struct gsm_bts *bts)
 	bts->rtp_priority = -1;
 	bts->emit_hr_rfc5993 = true;
 
+	/* At the present point in OsmoBTS evolution the user can select
+	 * which RTP library should be used: Belledonne ortp (legacy) or
+	 * Themyscira twrtp (integrated into libosmo-netif).  There is
+	 * a desire to eventually deprecate ortp altogether and support
+	 * only Osmocom-native twrtp, but because the two implementations
+	 * take drastically different approaches to the hard problem of
+	 * converting from an incoming RTP stream to fixed timing for
+	 * GSM TCH Tx, the transition should involve extensive testing
+	 * by users of the software (GSM network operators), as opposed
+	 * to being imposed by developers as a flag day change.
+	 * The current default is to use ortp, in order to avoid any
+	 * surprise changes in behaviour.  It is expected that this
+	 * default will change at some point in the future, prior to
+	 * full discontinuation of support for ortp.
+	 */
+	bts->use_twrtp = false;
+
 	/* Default (fall-back) MS/BS Power control parameters */
 	power_ctrl_params_def_reset(&bts->bs_dpc_params, true);
 	power_ctrl_params_def_reset(&bts->ms_dpc_params, false);

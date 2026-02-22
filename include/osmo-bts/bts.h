@@ -319,6 +319,7 @@ struct gsm_bts {
 	struct llist_head bsc_oml_hosts;
 	unsigned int rtp_jitter_buf_ms;
 	bool rtp_jitter_adaptive;
+	bool use_twrtp;
 	struct osmo_twjit_config *twjit_cfg;
 
 	uint16_t rtp_port_range_start;
