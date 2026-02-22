@@ -265,6 +265,7 @@ OsmoBTS(bts)# list
   gsmtap-rlp [skip-null]
   no gsmtap-rlp
   osmux
+  twjit
   trx <0-254>
 ...
 OsmoBTS(bts)# ?
@@ -289,6 +290,7 @@ OsmoBTS(bts)# ?
   gsmtap-sapi               Enable/disable sending of UL/DL messages over GSMTAP
   gsmtap-rlp                Enable generation of GSMTAP frames for RLP (non-transparent CSD)
   osmux                     Configure Osmux
+  twjit                     Configure TW jitter buffer
   trx                       Select a TRX to configure
 ...
 OsmoBTS(bts)# trx 0
