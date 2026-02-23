@@ -190,7 +190,7 @@ struct gsm_lchan {
 			/* Used to build rtp messages we send to osmux */
 			struct osmo_rtp_handle *rtpst;
 		} osmux;
-		struct osmo_rtp_socket *rtp_socket;
+		struct rtp_abst_socket *rtp_socket;
 	} abis_ip;
 
 	char *name;

@@ -24,13 +24,13 @@
 #include <osmo-bts/amr.h>
 #include <osmo-bts/rsl.h>
 #include <osmo-bts/bts.h>
+#include <osmo-bts/rtp_abstract.h>
 
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/fsm.h>
-#include <osmocom/trau/osmo_ortp.h>
 
 #include <arpa/inet.h>
 #include <errno.h>
