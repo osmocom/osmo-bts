@@ -424,6 +424,16 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 		vty_out(vty, " rtp ip-dscp %d%s", bts->rtp_ip_dscp, VTY_NEWLINE);
 	if (bts->rtp_priority != -1)
 		vty_out(vty, " rtp socket-priority %d%s", bts->rtp_priority, VTY_NEWLINE);
+	/* We write out "rtp library" setting only when it differs from the
+	 * default.  This policy is necessary in order to make the new default
+	 * take effect for 'indifferent' users when we change it - and finally,
+	 * this vty setting will disappear altogether when we eventually drop
+	 * ortp support and make twrtp mandatory.
+	 * In the meantime, however, extra attention is required to keep
+	 * the following code in sync with changes in the default!
+	 */
+	if (bts->use_twrtp)
+		vty_out(vty, " rtp library twrtp%s", VTY_NEWLINE);
 	if (bts->rtp_nogaps_mode)
 		vty_out(vty, " rtp continuous-streaming%s", VTY_NEWLINE);
 	vty_out(vty, " %srtp internal-uplink-ecu%s",
@@ -794,6 +804,19 @@ DEFUN_USRATTR(cfg_bts_rtp_priority,
 
 	bts->rtp_priority = prio;
 
+	return CMD_SUCCESS;
+}
+
+DEFUN_ATTR(cfg_bts_rtp_library,
+	   cfg_bts_rtp_library_cmd,
+	   "rtp library (ortp|twrtp)",
+	   RTP_STR "RTP library selection\n"
+	   "Belledonne ortp\n" "Themyscira twrtp\n",
+	   BTS_VTY_ATTR_NEW_LCHAN)
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->use_twrtp = !strcmp(argv[0], "twrtp");
 	return CMD_SUCCESS;
 }
 
@@ -1479,6 +1502,33 @@ DEFUN(show_bts_gprs, show_bts_gprs_cmd,
 
 	/* TODO: also print info about PCUIF connection */
 	gprs_dump_vty(vty, bts);
+	return CMD_SUCCESS;
+}
+
+/* "show running-config" cannot reliably indicate which RTP library is
+ * selected because we have to omit "rtp library" setting when it matches
+ * the default, and that default is expected to change as we progress
+ * toward eventual removal of ortp.  This additional show command
+ * allows an operator to see unambiguously which RTP library is in use.
+ */
+DEFUN(show_bts_rtp, show_bts_rtp_cmd,
+      "show bts <0-255> rtp",
+      SHOW_STR "Display information about a BTS\n"
+      BTS_NR_STR "RTP library selection\n")
+{
+	const struct gsm_bts *bts;
+
+	bts = gsm_bts_num(g_bts_sm, atoi(argv[0]));
+	if (bts == NULL) {
+		vty_out(vty, "%% can't find BTS '%s'%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "RTP library: %s%s",
+		bts->use_twrtp ? "Themyscira twrtp" : "Belledonne ortp",
+		VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -2761,6 +2811,7 @@ int bts_vty_init(void *ctx)
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
 	install_element_ve(&show_bts_gprs_cmd);
+	install_element_ve(&show_bts_rtp_cmd);
 
 	install_element_ve(&logging_fltr_l1_sapi_cmd);
 	install_element_ve(&no_logging_fltr_l1_sapi_cmd);
@@ -2779,6 +2830,7 @@ int bts_vty_init(void *ctx)
 	install_element(BTS_NODE, &cfg_bts_rtp_port_range_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_ip_dscp_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_priority_cmd);
+	install_element(BTS_NODE, &cfg_bts_rtp_library_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_rtp_cont_stream_cmd);
 	install_element(BTS_NODE, &cfg_bts_rtp_int_ul_ecu_cmd);

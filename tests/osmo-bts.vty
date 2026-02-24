@@ -33,6 +33,7 @@ OsmoBTS> show bts ?
   <0-255>    BTS Number
 OsmoBTS> show bts 0 ?
   gprs  GPRS/EGPRS configuration
+  rtp   RTP library selection
   <cr>  
 OsmoBTS> show trx ?
   [<0-255>]  BTS Number
@@ -134,6 +135,7 @@ OsmoBTS# show bts ?
   <0-255>    BTS Number
 OsmoBTS# show bts 0 ?
   gprs  GPRS/EGPRS configuration
+  rtp   RTP library selection
   <cr>  
 OsmoBTS# show trx ?
   [<0-255>]  BTS Number
@@ -233,6 +235,7 @@ OsmoBTS(bts)# list
   rtp port-range <1-65534> <1-65534>
   rtp ip-dscp <0-63>
   rtp socket-priority <0-255>
+  rtp library (ortp|twrtp)
   rtp continuous-streaming
   no rtp continuous-streaming
   rtp internal-uplink-ecu
