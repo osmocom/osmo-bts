@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define HAVE_ORTP
+#include "btsconfig.h"
 
 #include <osmocom/core/logging.h>
 #include <osmocom/core/msgb.h>

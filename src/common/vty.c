@@ -432,8 +432,10 @@ static void config_write_bts_single(struct vty *vty, const struct gsm_bts *bts)
 	 * In the meantime, however, extra attention is required to keep
 	 * the following code in sync with changes in the default!
 	 */
+#ifdef HAVE_ORTP
 	if (bts->use_twrtp)
 		vty_out(vty, " rtp library twrtp%s", VTY_NEWLINE);
+#endif
 	if (bts->rtp_nogaps_mode)
 		vty_out(vty, " rtp continuous-streaming%s", VTY_NEWLINE);
 	vty_out(vty, " %srtp internal-uplink-ecu%s",
@@ -815,8 +817,18 @@ DEFUN_ATTR(cfg_bts_rtp_library,
 	   BTS_VTY_ATTR_NEW_LCHAN)
 {
 	struct gsm_bts *bts = vty->index;
+	bool use_twrtp;
 
-	bts->use_twrtp = !strcmp(argv[0], "twrtp");
+	use_twrtp = !strcmp(argv[0], "twrtp");
+#ifndef HAVE_ORTP
+	if (!use_twrtp) {
+		vty_out(vty,
+			"%% Error: OsmoBTS was built without ortp support%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+#endif
+	bts->use_twrtp = use_twrtp;
 	return CMD_SUCCESS;
 }
 

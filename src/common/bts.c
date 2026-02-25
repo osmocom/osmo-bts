@@ -20,6 +20,8 @@
  *
  */
 
+#include "btsconfig.h"
+
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -38,7 +40,10 @@
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 #include <osmocom/gsm/gsm48.h>
 #include <osmocom/gsm/lapdm.h>
+
+#ifdef HAVE_ORTP
 #include <osmocom/trau/osmo_ortp.h>
+#endif
 
 #include <osmo-bts/logging.h>
 #include <osmo-bts/abis.h>
@@ -316,7 +321,6 @@ int bts_init(struct gsm_bts *bts)
 {
 	int rc, i;
 	static int initialized = 0;
-	void *tall_rtp_ctx;
 
 	bts->band = GSM_BAND_1800;
 
@@ -358,11 +362,14 @@ int bts_init(struct gsm_bts *bts)
 	 * by users of the software (GSM network operators), as opposed
 	 * to being imposed by developers as a flag day change.
 	 * The current default is to use ortp, in order to avoid any
-	 * surprise changes in behaviour.  It is expected that this
-	 * default will change at some point in the future, prior to
-	 * full discontinuation of support for ortp.
+	 * surprise changes in behaviour - but only if ortp is available
+	 * at compile time.
 	 */
+#ifdef HAVE_ORTP
 	bts->use_twrtp = false;
+#else
+	bts->use_twrtp = true;
+#endif
 
 	/* Default (fall-back) MS/BS Power control parameters */
 	power_ctrl_params_def_reset(&bts->bs_dpc_params, true);
@@ -393,10 +400,15 @@ int bts_init(struct gsm_bts *bts)
 	oml_mo_state_init(&bts->mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 	oml_mo_state_init(&bts->gprs.cell.mo, NM_OPSTATE_DISABLED, NM_AVSTATE_NOT_INSTALLED);
 
+#ifdef HAVE_ORTP
 	/* allocate a talloc pool for ORTP to ensure it doesn't have to go back
 	 * to the libc malloc all the time */
-	tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
-	osmo_rtp_init(tall_rtp_ctx);
+	{
+		void *tall_rtp_ctx;
+		tall_rtp_ctx = talloc_pool(tall_bts_ctx, 262144);
+		osmo_rtp_init(tall_rtp_ctx);
+	}
+#endif
 
 	/* Osmux */
 	rc = bts_osmux_init(bts);

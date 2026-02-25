@@ -308,6 +308,19 @@ if test "$enable_oc2g" = "yes"; then
 	CPPFLAGS=$oldCPPFLAGS
 fi
 
+AC_ARG_ENABLE([ortp], [AS_HELP_STRING([--disable-ortp], [Build without ortp support])],
+    [
+        ENABLE_ORTP=$enableval
+    ],
+    [
+        ENABLE_ORTP="yes"
+    ])
+AS_IF([test "x$ENABLE_ORTP" = "xyes"], [
+	AC_DEFINE([HAVE_ORTP],[1],[Build with ortp support])
+])
+AM_CONDITIONAL(ENABLE_ORTP, test "x$ENABLE_ORTP" = "xyes")
+AC_SUBST(ENABLE_ORTP)
+
 # Generate manuals
 AC_ARG_ENABLE(manuals,
 	[AS_HELP_STRING(
