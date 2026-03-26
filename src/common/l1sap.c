@@ -215,6 +215,9 @@ static int check_for_ciph_cmd(struct msgb *msg, struct gsm_lchan *lchan,
 		return 0;
 	}
 
+	if (msgb_length(msg) < 5)
+		return 0;
+
 	/* First byte (Address Field) of LAPDm header) */
 	if (msg->data[0] != 0x03)
 		return 0;
