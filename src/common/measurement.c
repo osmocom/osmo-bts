@@ -252,7 +252,7 @@ static uint8_t translate_tch_meas_rep_fn104(uint8_t fn_mod)
  * unit-tests) */
 int is_meas_complete(struct gsm_lchan *lchan, uint32_t fn)
 {
-	unsigned int fn_mod = -1;
+	int fn_mod = -1;
 	const uint8_t *tbl;
 	int rc = 0;
 	enum gsm_phys_chan_config pchan = ts_pchan(lchan->ts);
