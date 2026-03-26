@@ -20,7 +20,6 @@
  */
 
 #include <stdint.h>
-#include <limits.h>
 #include <errno.h>
 
 #include <osmocom/core/utils.h>
@@ -34,8 +33,7 @@
 static int get_pa_drive_level_mdBm(const struct power_amp *pa,
 		       int desired_p_out_mdBm, unsigned int arfcn)
 {
-	if (arfcn >= ARRAY_SIZE(pa->calib.delta_mdB))
-		return INT_MIN;
+	OSMO_ASSERT(arfcn < ARRAY_SIZE(pa->calib.delta_mdB));
 
 	/* FIXME: temperature compensation */
 
