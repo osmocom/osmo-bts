@@ -1009,7 +1009,7 @@ bool trx_sched_is_sacch_fn(const struct gsm_bts_trx_ts *ts, uint32_t fn, bool up
 
 	i = find_sched_mframe_idx(ts_pchan(ts), ts->nr);
 	if (i < 0)
-		return -EINVAL;
+		return false;
 	sched = &trx_sched_multiframes[i];
 	frame = &sched->frames[fn % sched->period];
 	if (uplink)
