@@ -581,7 +581,10 @@ static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *
 			"through VTY cmd 'nominal-tx-power'.\n",
 			rsp->status);
 	if (cb) {
-		sscanf(rsp->params, "%d", &nominal_power);
+		if (sscanf(rsp->params, "%d", &nominal_power) != 1) {
+			LOGPPHI(pinst, DTRX, LOGL_ERROR, "Failed to parse NOMTXPOWER response\n");
+			return -EINVAL;
+		}
 		cb(l1h, nominal_power, rsp->status);
 	}
 	return 0;
@@ -597,7 +600,10 @@ static int trx_ctrl_rx_rsp_setpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rs
 		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETPOWER failed with status %d\n",
 			rsp->status);
 	if (cb) {
-		sscanf(rsp->params, "%d", &power_att);
+		if (sscanf(rsp->params, "%d", &power_att) != 1) {
+			LOGPPHI(pinst, DTRX, LOGL_ERROR, "Failed to parse SETPOWER response\n");
+			return -EINVAL;
+		}
 		cb(l1h, power_att, rsp->status);
 	}
 	return 0;
