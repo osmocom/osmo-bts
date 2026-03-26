@@ -511,13 +511,13 @@ static int trx_ctrl_rx_rsp_setslot(struct trx_l1h *l1h, struct trx_ctrl_rsp *rsp
 	unsigned int tn, ts_type;
 
 	if (rsp->status)
-		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETSLOT failed with status %d\n",
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "SETSLOT failed with status %d\n",
 			rsp->status);
 
 	/* Since message was already validated against CMD we sent, we know format
 	 * of params is: "<TN> <TS_TYPE>" */
 	if (sscanf(rsp->params, "%u %u", &tn, &ts_type) < 2) {
-		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETSLOT unable to parse params\n");
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "Failed to parse SETSLOT response\n");
 		return -EINVAL;
 	}
 
@@ -575,10 +575,9 @@ static int trx_ctrl_rx_rsp_nomtxpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *
 	int nominal_power;
 
 	if (rsp->status)
-		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver NOMTXPOWER failed "
-			"with status %d. If your transceiver doesn't support this "
-			"command, then please set the nominal transmit power manually "
-			"through VTY cmd 'nominal-tx-power'.\n",
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "NOMTXPOWER failed with status %d. "
+			"If your transceiver doesn't support this command, then please "
+			"set the nominal transmit power manually through VTY cmd 'nominal-tx-power'.\n",
 			rsp->status);
 	if (cb) {
 		if (sscanf(rsp->params, "%d", &nominal_power) != 1) {
@@ -597,7 +596,7 @@ static int trx_ctrl_rx_rsp_setpower(struct trx_l1h *l1h, struct trx_ctrl_rsp *rs
 	int power_att;
 
 	if (rsp->status)
-		LOGPPHI(pinst, DTRX, LOGL_ERROR, "transceiver SETPOWER failed with status %d\n",
+		LOGPPHI(pinst, DTRX, LOGL_ERROR, "SETPOWER failed with status %d\n",
 			rsp->status);
 	if (cb) {
 		if (sscanf(rsp->params, "%d", &power_att) != 1) {
