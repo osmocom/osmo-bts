@@ -53,8 +53,6 @@ static int set_therm_att(struct ctrl_cmd *cmd, void *data)
 	struct trx_power_params *tpp = &trx->power_params;
 	int val = atoi(cmd->value);
 
-	printf("set_therm_att(trx=%p, tpp=%p)\n", trx, tpp);
-
 	tpp->thermal_attenuation_mdB = val;
 
 	power_ramp_start(trx, tpp->p_total_cur_mdBm, 0, NULL);
