@@ -186,12 +186,6 @@ int rx_rach_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 	case RACH_SYNCH_SEQ_TS0:
 	default:
-		/* Fall-back to the default TS0 if needed */
-		if (synch_seq != RACH_SYNCH_SEQ_TS0) {
-			LOGL1SB(DL1P, LOGL_DEBUG, l1ts, bi, "Falling-back to the default TS0\n");
-			synch_seq = RACH_SYNCH_SEQ_TS0;
-		}
-
 		rc = gsm0503_rach_decode_ber(&ra, bi->burst + RACH_EXT_TAIL_LEN + RACH_SYNCH_SEQ_LEN,
 					     trx->bts->bsic, &n_errors, &n_bits_total);
 		if (rc) {
