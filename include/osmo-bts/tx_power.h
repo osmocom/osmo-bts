@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <osmocom/core/timer.h>
 
 /* our unit is 'milli dB" or "milli dBm", i.e. 1/1000 of a dB(m) */
@@ -59,6 +60,8 @@ struct trx_power_params {
 		struct osmo_timer_list step_timer;
 		/* call-back called when target is reached */
 		ramp_compl_cb_t compl_cb;
+		/* set to true after compl_cb has been called (ramp target confirmed by hardware) */
+		bool complete;
 	} ramp;
 };
 

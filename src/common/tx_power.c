@@ -210,6 +210,7 @@ static void power_ramp_do_step(struct gsm_bts_trx *trx, int first)
 
 	/* we had finished in last loop iteration */
 	if (!first && tpp->ramp.attenuation_mdB == 0) {
+		tpp->ramp.complete = true;
 		if (tpp->ramp.compl_cb)
 			tpp->ramp.compl_cb(trx);
 		return;
@@ -261,6 +262,7 @@ int _power_ramp_start(struct gsm_bts_trx *trx, int p_total_tgt_mdBm, int bypass,
 	/* set the new target */
 	tpp->p_total_tgt_mdBm = p_total_tgt_mdBm;
 	tpp->ramp.compl_cb = ramp_compl_cb;
+	tpp->ramp.complete = false;
 
 	if (skip_ramping) {
 		/* Jump straight to the target power */

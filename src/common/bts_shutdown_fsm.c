@@ -110,7 +110,7 @@ static void st_wait_ramp_down_compl(struct osmo_fsm_inst *fi, uint32_t event, vo
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED &&
-			    trx->power_params.p_total_cur_mdBm > BTS_SHUTDOWN_POWER_RAMP_TGT)
+			    !trx->power_params.ramp.complete)
 				remaining++;
 		}
 
