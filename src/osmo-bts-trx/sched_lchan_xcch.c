@@ -117,8 +117,7 @@ int rx_data_fn(struct l1sched_ts *l1ts, const struct trx_ul_burst_ind *bi)
 
 		/* When SACCH Repetition is active, we may try to decode the
 		 * current SACCH block by including the information from the
-		 * information from the previous SACCH block. See also:
-		 * 3GPP TS 44.006, section 11.2 */
+		 * previous SACCH block. See also 3GPP TS 44.006, section 11.2 */
 		if (rep_sacch) {
 			add_sbits(BUFPOS(bursts_p, 0), BUFPOS(bursts_p, 4));
 			rc = gsm0503_xcch_decode(l2, BUFPOS(bursts_p, 0), &n_errors, &n_bits_total);
