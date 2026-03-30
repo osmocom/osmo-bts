@@ -60,7 +60,7 @@ struct trx_power_params {
 		struct osmo_timer_list step_timer;
 		/* call-back called when target is reached */
 		ramp_compl_cb_t compl_cb;
-		/* set to true after compl_cb has been called (ramp target confirmed by hardware) */
+		/* set to true just before compl_cb is called (ramp target confirmed by hardware) */
 		bool complete;
 	} ramp;
 };
