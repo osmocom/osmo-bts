@@ -172,6 +172,9 @@ uint32_t trx_get_hlayer1(const struct gsm_bts_trx *trx)
 int bts_model_init(struct gsm_bts *bts)
 {
 	bts->variant = BTS_OSMO_OMLDUMMY;
+	bts->support.ciphers = CIPHER_A5(1) | CIPHER_A5(2) | CIPHER_A5(3) | CIPHER_A5(4);
+	bts->gprs.cell.support.gprs_codings = NM_IPAC_MASK_GPRS_CODING_CS
+					    | NM_IPAC_MASK_GPRS_CODING_MCS;
 	/* order alphabetically */
 	osmo_bts_set_feature(bts->features, BTS_FEAT_BCCH_POWER_RED);
 	osmo_bts_set_feature(bts->features, BTS_FEAT_CBCH);
@@ -186,6 +189,25 @@ int bts_model_trx_init(struct gsm_bts_trx *trx)
 	struct trx_power_params *tpp = &trx->power_params;
 	/* Speed up shutdown, we don't care about power ramping in omldummy */
 	tpp->ramp.step_interval_sec = 0;
+	/* Frequency bands indicated to the BSC */
+	trx->support.freq_bands = NM_IPAC_F_FREQ_BAND_PGSM
+				| NM_IPAC_F_FREQ_BAND_EGSM
+				| NM_IPAC_F_FREQ_BAND_RGSM
+				| NM_IPAC_F_FREQ_BAND_DCS
+				| NM_IPAC_F_FREQ_BAND_PCS
+				| NM_IPAC_F_FREQ_BAND_850
+				| NM_IPAC_F_FREQ_BAND_480
+				| NM_IPAC_F_FREQ_BAND_450;
+
+	/* Channel types and modes indicated to the BSC */
+	trx->support.chan_types = NM_IPAC_MASK_CHANT_COMMON
+				| NM_IPAC_F_CHANT_BCCH_SDCCH4_CBCH
+				| NM_IPAC_F_CHANT_SDCCH8_CBCH
+				| NM_IPAC_F_CHANT_PDCHF
+				| NM_IPAC_F_CHANT_TCHF_PDCHF;
+	trx->support.chan_modes = NM_IPAC_MASK_CHANM_SPEECH
+				| NM_IPAC_MASK_CHANM_CSD_NT
+				| NM_IPAC_MASK_CHANM_CSD_T;
 	return 0;
 }
 
