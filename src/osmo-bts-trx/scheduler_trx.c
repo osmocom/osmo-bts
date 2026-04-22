@@ -28,7 +28,6 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <inttypes.h>
-#include <sys/timerfd.h>
 
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
