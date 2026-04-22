@@ -321,6 +321,11 @@ AS_IF([test "x$ENABLE_ORTP" = "xyes"], [
 AM_CONDITIONAL(ENABLE_ORTP, test "x$ENABLE_ORTP" = "xyes")
 AC_SUBST(ENABLE_ORTP)
 
+AC_CHECK_HEADER([linux/if_packet.h], [linux_if_packet_header="yes"], [])
+if test "x$linux_if_packet_header" = "xyes" ; then
+	AC_DEFINE(HAVE_LINUX_IF_PACKET_H, 1, [Define if we found linux/if_packet.h])
+fi
+
 # Generate manuals
 AC_ARG_ENABLE(manuals,
 	[AS_HELP_STRING(

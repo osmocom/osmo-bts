@@ -8,8 +8,11 @@
 #include <osmo-bts/scheduler.h>
 #include <osmo-bts/bts_trx.h>
 
-#include <linux/if_packet.h>
 #include "btsconfig.h"
+
+#ifdef HAVE_LINUX_IF_PACKET_H
+#include <linux/if_packet.h>
+#endif /* HAVE_LINUX_IF_PACKET_H */
 
 
 struct virt_um_inst;
@@ -64,8 +67,10 @@ struct phy_link {
 			struct virt_um_inst *virt_um;
 		} virt;
 		struct {
+#ifdef HAVE_LINUX_IF_PACKET_H
 			/* MAC address of the PHY */
 			struct sockaddr_ll phy_addr;
+#endif /* HAVE_LINUX_IF_PACKET_H */
 			/* Network device name */
 			char *netdev_name;
 
